@@ -50,10 +50,13 @@ After selecting a host, ae-cli automatically checks if the token is valid. If no
 
 ```bash
 # TE meta domain (metadata and governance)
-ae-cli te_meta +list_events --project_id 1
+ae-cli analysis_meta +list_events --project_id 1
 
 # Table output
-ae-cli te_meta +list_events --project_id 1 --format table
+ae-cli analysis_meta +list_events --project_id 1 --format table
+
+# Raw API call
+ae-cli api GET /v1/ta/event/catalog/listEvent --params '{"projectId": 1}'
 ```
 
 ## Authentication
@@ -80,13 +83,13 @@ ae-cli auth logout
 
 | Domain | Commands | Description |
 |--------|----------|-------------|
-| `te_analysis` | 31 | Analysis workflows: alerts, reports, dashboards, ad-hoc/drilldown, clusters/tags, metadata/metrics, project tools, entity details, analysis schema |
-| `te_audience` | 14 | Audience operations: clusters, tags, and cluster/tag definition schema |
-| `te_meta` | 20 | Metadata governance: events/properties, metrics, virtual metadata, project config, tracking plan, mark times, resource links |
-| `te_engage` | 40+ | Hermes Engage MCP: channels, tasks, configs, flows, strategies |
+| `analysis` | 31 | Analysis workflows: alerts, reports, dashboards, ad-hoc/drilldown, clusters/tags, metadata/metrics, project tools, entity details, analysis schema |
+| `analysis_audience` | 14 | Audience operations: clusters, tags, and cluster/tag definition schema |
+| `analysis_meta` | 20 | Metadata governance: events/properties, metrics, virtual metadata, project config, tracking plan, mark times, resource links |
+| `engage` | 40+ | Hermes Engage MCP: channels, tasks, configs, flows, strategies |
 | `te_dataops` | 50+ | Data warehouse management: repos, datatables, flows, IDE queries, integration, operations |
 | `te_community` | 30+ | Community analysis: posts search, sentiment analysis, topic trends, livestream data |
-| `te_common` | 2 | Cross-module common constraints: resource link completion, project ID gate |
+| `analysis_common` | 2 | Cross-module common constraints: resource link completion, project ID gate |
 | `operation` | 11 | Tasks, flows, channels, space navigation |
 
 ### Global Options
@@ -117,7 +120,7 @@ ae-cli auth logout
 Install them with:
 
 ```bash
-npx skills add ThinkingAIAgenticEngine/ae-cli -g -y
+npx skills add http://10.27.249.150:8888/te-ai/te-cli.git#release/6.0 te-ai/ae-cli -g -y
 ```
 
 ## Skill Details
@@ -147,7 +150,7 @@ Metadata and tracking-plan governance:
 - **Mark Times**: date markers management
 - **Entity Catalog**: entity listing
 
-### te-engage (40+ tools)
+### engage (40+ tools)
 
 Hermes Engage MCP capabilities:
 - **Channels**: channel management, config channels, approval management
@@ -218,10 +221,10 @@ src/
 ## Verification Scripts
 
 ```bash
-npm run verify:te-analysis-tools
-npm run verify:te-audience-tools
-npm run verify:te-meta-tools
-npm run verify:te-common-tools
+npm run verify:analysis-tools
+npm run verify:analysis-audience-tools
+npm run verify:analysis-meta-tools
+npm run verify:analysis-common-tools
 ```
 
 ## License
