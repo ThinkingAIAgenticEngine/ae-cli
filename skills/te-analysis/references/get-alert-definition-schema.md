@@ -1,4 +1,4 @@
-# te_analysis +get_alert_definition_schema (Get Alert Definition Schema)
+# analysis +get_alert_definition_schema (Get Alert Definition Schema)
 
 > **Prerequisite:** Read [`../te-shared/SKILL.md`](../../te-shared/SKILL.md)
 
@@ -13,8 +13,8 @@ Domain: **Metadata queries**
 
 ## Command
 ```bash
-te-cli te_analysis +get_alert_definition_schema
-te-cli te_analysis +get_alert_definition_schema --dry-run
+ae-cli analysis +get_alert_definition_schema
+ae-cli analysis +get_alert_definition_schema --dry-run
 ```
 
 ## Parameters

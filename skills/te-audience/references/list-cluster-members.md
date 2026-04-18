@@ -1,4 +1,4 @@
-# te_audience +list_cluster_members (View Cluster Members)
+# analysis_audience +list_cluster_members (View Cluster Members)
 
 > **Prerequisite:** Read [`../te-shared/SKILL.md`](../../te-shared/SKILL.md)
 
@@ -9,9 +9,9 @@ Domain: **Cluster Management**
 
 ## Commands
 ```bash
-te-cli te_audience +list_cluster_members --project_id 1 --cluster_name demo
-te-cli te_audience +list_cluster_members --project_id 1 --cluster_name demo --property_names '["#user_id","name"]' --use_cache false
-te-cli te_audience +list_cluster_members --dry-run
+ae-cli analysis_audience +list_cluster_members --project_id 1 --cluster_name demo
+ae-cli analysis_audience +list_cluster_members --project_id 1 --cluster_name demo --property_names '["#user_id","name"]' --use_cache false
+ae-cli analysis_audience +list_cluster_members --dry-run
 ```
 
 ## Parameters

@@ -1,4 +1,4 @@
-# te_meta +batch_edit_metadata (Batch Edit Metadata)
+# analysis_meta +batch_edit_metadata (Batch Edit Metadata)
 
 > **Prerequisite:** Read [`../te-shared/SKILL.md`](../../te-shared/SKILL.md)
 
@@ -10,8 +10,8 @@ Domain: **Metadata Query**
 
 ## Command
 ```bash
-te-cli te_meta +batch_edit_metadata --project_id 1 --type event --items '[{"eventName":"purchase","eventDesc":"Purchase"}]'
-te-cli te_meta +batch_edit_metadata --dry-run
+ae-cli analysis_meta +batch_edit_metadata --project_id 1 --type event --items '[{"eventName":"purchase","eventDesc":"Purchase"}]'
+ae-cli analysis_meta +batch_edit_metadata --dry-run
 ```
 
 ## Parameters

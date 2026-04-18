@@ -1,4 +1,4 @@
-# te_audience +list_tag_members (View Tag Members)
+# analysis_audience +list_tag_members (View Tag Members)
 
 > **Prerequisite:** Read [`../te-shared/SKILL.md`](../../te-shared/SKILL.md)
 
@@ -9,9 +9,9 @@ Domain: **Tag Management**
 
 ## Commands
 ```bash
-te-cli te_audience +list_tag_members --project_id 1 --tag_name demo
-te-cli te_audience +list_tag_members --project_id 1 --tag_name demo --snapshot_date 2026-04-01 --property_names '["#user_id","name"]' --use_cache false
-te-cli te_audience +list_tag_members --dry-run
+ae-cli analysis_audience +list_tag_members --project_id 1 --tag_name demo
+ae-cli analysis_audience +list_tag_members --project_id 1 --tag_name demo --snapshot_date 2026-04-01 --property_names '["#user_id","name"]' --use_cache false
+ae-cli analysis_audience +list_tag_members --dry-run
 ```
 
 ## Parameters

@@ -1,124 +1,124 @@
 # te-community community-analyzing-theme-comment
 
-> **前置条件:** 阅读 [`../te-shared/SKILL.md`](../te-shared/SKILL.md)
+> **Prerequisite:** Read [`../te-shared/SKILL.md`](../te-shared/SKILL.md)
 
-主题评论区深度分析：对指定帖子或视频的评论区进行深度分析，生成包含评论走势、观点分布和总结的深度分析报告。
+In-depth analysis of topic comment areas: Conduct in-depth analysis of the comment areas of specified posts or videos, and generate an in-depth analysis report including comment trends, opinion distribution, and summary.
 
-触发场景: 当用户需要对指定主题（帖子或视频）的评论区进行深度分析时使用此技能。
+Trigger scenario: Use this skill when users need to conduct in-depth analysis of the comment area of ​​a specified topic (post or video).
 
-## 分析流程
+## Analysis process
 
-1. **确定目标帖子/视频**：获取 UUID、channelId 和 resourceType，或通过 `search_posts` 搜索
-2. **获取评论区数据**：调用 `get_post_detail` 获取目标内容详情和评论区
-3. **分页获取完整评论区**：循环获取所有评论，剔除灌水、纯表情等无意义内容
-4. **深度分析**：
-   - 评论走势分析（时间趋势、情感分布趋势）
-   - 观点分析（提取正面/负面观点及代表性评论）
-   - 总结分析（大盘数据、观点分析、生态分析）
+1. **Identify target post/video**: Get UUID, channelId and resourceType, or search via `search_posts`
+2. **Get comment area data**: Call `get_post_detail` to obtain the target content details and comment area
+3. **Get the complete comment area in paging**: loop through all comments and eliminate meaningless content such as irrigation and pure expressions.
+4. **In-depth analysis**:
+- Comment trend analysis (time trend, sentiment distribution trend)
+- Opinion analysis (extracting positive/negative opinions and representative comments)
+- Summary analysis (market data, opinion analysis, ecological analysis)
 
-## 执行流程
+## Execution process
 
-**步骤 1：确定目标帖子/视频**
-- 检查用户是否已明确指定需要分析的帖子或视频（UUID、channelId、resourceType）
-- 如果用户已提供以上信息，直接跳转到步骤 2
-- 如果用户未指定目标，需要使用 `search_posts` 工具搜索合适的帖子
+**Step 1: Identify Target Posts/Videos**
+- Check if the user has explicitly specified the post or video to be analyzed (UUID, channelId, resourceType)
+- If the user has provided the above information, jump directly to step 2
+- If the user does not specify a target, the `search_posts` tool needs to be used to search for suitable posts
 
-**步骤 2：获取评论区数据**
-- 使用 `get_post_detail` 工具获取目标内容的详细信息和评论区
-- 分页获取完整评论区（pageSize 建议 100）
-- 检查返回结果中的评论数量和 hasMore 字段
-- 如果 hasMore 为 true，继续调用获取下一页
+**Step 2: Get comment area data**
+- Use the `get_post_detail` tool to get the details and comments section of the target content
+- Get the complete comment area in pagination (pageSize recommended is 100)
+- Check the number of comments and the hasMore field in the returned results
+- If hasMore is true, continue calling to get the next page
 
-**评论筛选规则**：
-在获取和存储评论时，需要剔除以下无分析意义的内容：
-- **灌水评论**：重复发布相同或相似内容、刷屏内容
-- **纯表情/符号**：仅包含表情符号、符号组合（如 "？？？"、"！！！"）
-- **无实质内容**：字符数少于 3 的评论
-- **系统消息**：官方自动生成的消息
+**Comment filtering rules**:
+When obtaining and storing comments, the following content that has no analytical significance needs to be eliminated:
+- **Spoiled comments**: Repeated posting of the same or similar content, content that swipes the screen
+- **Pure emoticons/symbols**: Contains only emoticons and symbol combinations (such as "???", "!!!")
+- **No substance**: Comments with less than 3 characters
+- **System Message**: Official automatically generated message
 
-**步骤 3：深度分析**
+**Step 3: In-depth analysis**
 
-**3.1 评论走势分析**
-- 评论时间趋势：统计评论发布的时间分布，按天为单位汇总
-- 情感分布趋势：按天统计正面、中性、负面评论的比例变化
+**3.1 Comment Trend Analysis**
+- Comment time trend: statistics on the time distribution of comments published, summarized by day
+- Sentiment distribution trend: Statistics on changes in the proportion of positive, neutral, and negative comments by day
 
-**3.2 观点分析**
-- 对所有有效评论进行文本聚类和主题提取
-- 识别重复出现的关键词和短语
-- 合并语义相近的观点
-- 区分正面观点和负面观点
-- 每个观点包含：观点标题、观点描述、匹配评论数、代表性评论（最多 10 条）
-- **观点对立处理**：允许同一事物存在截然相反的正反观点，不要合并对立的观点
+**3.2 Viewpoint analysis**
+- Text clustering and topic extraction of all valid comments
+- Identify recurring keywords and phrases
+- Merge semantically similar views
+- Differentiate between positive and negative viewpoints
+- Each opinion includes: opinion title, opinion description, number of matching comments, representative comments (up to 10)
+- **Handling Opposing Viewpoints**: Allow diametrically opposed positive and negative views on the same thing to exist, and do not merge opposing views.
 
-**3.3 总结分析**
-- 大盘数据总结：评论总量、整体情感分布、评论峰值时间
-- 观点分析总结：主要正面观点、主要负面观点、观点冲突点、玩家核心诉求
-- 评论区生态分析：整体氛围、评论与内容关联度、核心用户群体特征、潜在风险点和机会点
+**3.3 Summary analysis**
+- Summary of market data: total number of comments, overall sentiment distribution, peak comment time
+- Summary of opinion analysis: main positive opinions, main negative opinions, points of conflict of opinions, core needs of players
+- Ecological analysis of the comment area: overall atmosphere, relevance of comments and content, core user group characteristics, potential risks and opportunities
 
-## 输出结构
+## Output structure (must be complete)
 
-### 一、基本信息
-- **帖子/视频标题**：标题内容
-- **来源渠道**：渠道名称
-- **发布时间**：发布日期
-- **分析时间范围**：分析的时间段
-- **有效评论数**：剔除无效评论后的数量
+### 1. Basic information
+- **Post/Video Title**: Title content
+- **Source Channel**: Channel name
+- **Published**: Release date
+- **Analysis Time Range**: The time period for analysis
+- **Number of valid comments**: The number after excluding invalid comments
 
-### 二、评论走势
+### 2. Comment trends
 
-**时间趋势**
+**Time Trend**
 
-| 日期 | 评论数 | 占比 |
+| Date | Number of comments | Percentage |
 |------|--------|------|
-| YYYY-MM-DD | 数量 | X% |
+| YYYY-MM-DD | Quantity | X% |
 
-**情感分布**
+**Emotion Distribution**
 
-| 日期 | 正面 | 中性 | 负面 |
+| Date | Positive | Neutral | Negative |
 |------|------|------|------|
 | YYYY-MM-DD | X% | X% | X% |
 
-### 三、观点分析
+### 3. Viewpoint analysis
 
-**正面观点**
+**Positive View**
 
-**观点一：[观点标题]**
-- **观点描述**：[详细描述]
-- **匹配评论数**：X 条
-- **代表性评论**：
-  - 「[评论1]」
-  - 「[评论2]」
+**Viewpoint 1: [Viewpoint Title]**
+- **Viewpoint Description**: [Detailed Description]
+- **Number of matching comments**: X
+- **Representative comments**:
+- "[Comment 1]"
+- "[Comment 2]"
 
-**负面观点**
+**Negative opinions (can be multiple)**
 
-**观点一：[观点标题]**
-- **观点描述**：[详细描述]
-- **匹配评论数**：X 条
-- **代表性评论**：
-  - 「[评论1]」
-  - 「[评论2]」
+**Viewpoint 1: [Viewpoint Title]**
+- **Viewpoint Description**: [Detailed Description]
+- **Number of matching comments**: X
+- **Representative comments**:
+- "[Comment 1]"
+- "[Comment 2]"
 
-### 四、总结
+### 4. Summary
 
-**大盘数据总结**：
-- 评论总量、整体情感分布、评论峰值时间
+**Broad market data summary**:
+- Total number of comments, overall sentiment distribution, peak comment time
 
-**观点分析总结**：
-- 主要正面观点
-- 主要负面观点
-- 观点冲突点
-- 玩家核心诉求
+**Summary of opinion analysis**:
+- Mainly positive points
+- Mainly negative points
+- Points of conflict of opinions
+- Players’ core needs
 
-**生态分析与建议**：
-- 整体氛围
-- 评论与内容关联度
-- 核心用户群体特征
-- 潜在风险点和机会点
+**Ecological Analysis and Suggestions**:
+- Overall atmosphere
+- Relevance of comments and content
+- Characteristics of core user groups
+-Potential risks and opportunities
 
-## 示例
+## Example
 
 ```bash
-# 用户输入示例
-"分析一下这个帖子的评论区"
-"帮我深度分析这个视频的用户反馈"
+# User input example
+"Analyze the comment area of ​​this post"
+"Help me deeply analyze the user feedback of this video"
 ```

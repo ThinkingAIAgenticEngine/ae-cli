@@ -1,25 +1,25 @@
-# te-engage +config-item-strategy-comparison
+# te-engage +config_item_strategy_comparison
 
-> **前置条件:** 阅读 [`../../te-shared/SKILL.md`](../../te-shared/SKILL.md)
+> **Prerequisite:** Read [`../../te-shared/SKILL.md`](../../te-shared/SKILL.md)
 
-对同一配置项下的多个策略进行对比。
+Compare multiple strategies under the same config item.
 
-映射命令: `te-cli te-engage +config-item-strategy-comparison`
+Mapped command: `ae-cli engage +config_item_strategy_comparison`
 
 ## Flags
 
-| Flag | 类型 | 必填 | 说明 |
+| Flag | Type | Required | Description |
 |------|------|------|------|
-| `--project-id` / `-p` | number | 是 | 项目 ID |
-| `--config-id` | string | 是 | 配置项 ID |
-| `--strategy-id-list` | json | 是 | 策略 ID JSON 数组，至少两个 |
-| `--request-id` | string | 否 | 查询 requestId |
-| `--show-time-zone` | number | 否 | 展示时区偏移 |
+| `--project_id` / `-p` | number | Yes | Project ID |
+| `--config_id` | string | Yes | config item ID |
+| `--strategy_id_list` | json | Yes | strategy ID JSON array with at least two entries |
+| `--request_id` | string | No | query requestId |
+| `--show_time_zone` | number | No | display timezone offset |
 
-## 示例
+## Examples
 
 ```bash
-te-cli te-engage +config-item-strategy-comparison \
-  --project-id 1 --config-id cfg_123 \
-  --strategy-id-list '["strategy_a","strategy_b"]'
+ae-cli engage +config_item_strategy_comparison \
+  --project_id 1 --config_id cfg_123 \
+  --strategy_id_list '["strategy_a","strategy_b"]'
 ```

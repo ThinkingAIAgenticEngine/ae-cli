@@ -1,4 +1,4 @@
-# te_audience +get_tag_definition_schema (Get Tag Definition Schema)
+# analysis_audience +get_tag_definition_schema (Get Tag Definition Schema)
 
 > **Prerequisite:** Read [`../te-shared/SKILL.md`](../../te-shared/SKILL.md)
 
@@ -12,8 +12,8 @@ Domain: **Schema Query**
 
 ## Commands
 ```bash
-te-cli te_audience +get_tag_definition_schema
-te-cli te_audience +get_tag_definition_schema --dry-run
+ae-cli analysis_audience +get_tag_definition_schema
+ae-cli analysis_audience +get_tag_definition_schema --dry-run
 ```
 
 ## Parameters

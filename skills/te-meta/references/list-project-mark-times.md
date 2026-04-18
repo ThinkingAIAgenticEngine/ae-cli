@@ -1,4 +1,4 @@
-# te_meta +list_project_mark_times (List Project Mark Times)
+# analysis_meta +list_project_mark_times (List Project Mark Times)
 
 > **Prerequisite:** Read [`../te-shared/SKILL.md`](../../te-shared/SKILL.md)
 
@@ -10,9 +10,9 @@ Domain: **Project Configuration**
 
 ## Commands
 ```bash
-te-cli te_meta +list_project_mark_times --project_id 1
-te-cli te_meta +list_project_mark_times --project_id 1 --zone_offset 8
-te-cli te_meta +list_project_mark_times --dry-run
+ae-cli analysis_meta +list_project_mark_times --project_id 1
+ae-cli analysis_meta +list_project_mark_times --project_id 1 --zone_offset 8
+ae-cli analysis_meta +list_project_mark_times --dry-run
 ```
 
 ## Parameters

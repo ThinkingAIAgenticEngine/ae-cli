@@ -10,7 +10,7 @@ export const createTag = createMcpCommand({
     { name: 'type', type: 'string', required: false, desc: 'Tag type: condition/metric/first_last/sql. Default: condition' },
     { name: 'definition', type: 'json', required: true, desc: 'Tag definition JSON. See +get_tag_definition_schema' },
     { name: 'zone_offset', type: 'number', required: false, desc: 'Optional time zone offset, valid range: -12 to 14' },
-    { name: 'entity_id', type: 'number', required: false, desc: 'Optional entity ID. Use te_meta +list_entities to query' },
+    { name: 'entity_id', type: 'number', required: false, desc: 'Optional entity ID. Use analysis_meta +list_entities to query' },
   ],
   risk: 'write',
   buildArgs: (ctx) => ({

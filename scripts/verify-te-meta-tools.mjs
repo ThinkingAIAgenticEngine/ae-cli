@@ -40,22 +40,22 @@ for (const file of commandFiles) {
 
 const commandSet = new Set(commands);
 if (commandSet.size !== commands.length) {
-  fail('duplicate te_meta command names found in source files');
+  fail('duplicate analysis_meta command names found in source files');
 }
 
 const EXPECTED_COUNT = 20;
 if (commands.length !== EXPECTED_COUNT) {
-  fail(`te_meta tool count mismatch: expected ${EXPECTED_COUNT}, got ${commands.length}`);
+  fail(`analysis_meta tool count mismatch: expected ${EXPECTED_COUNT}, got ${commands.length}`);
 }
 
-const help = spawnSync('npx', ['tsx', 'src/index.ts', 'te_meta', '--help'], {
+const help = spawnSync('npx', ['tsx', 'src/index.ts', 'analysis_meta', '--help'], {
   cwd: ROOT,
   encoding: 'utf-8',
 });
 
 if (help.status !== 0) {
   process.stderr.write(help.stderr || '');
-  fail('failed to run te_meta --help');
+  fail('failed to run analysis_meta --help');
 }
 
 for (const tool of commands) {
@@ -65,4 +65,4 @@ for (const tool of commands) {
   }
 }
 
-console.log(`OK: verified ${commands.length} te_meta tools are registered and aligned.`);
+console.log(`OK: verified ${commands.length} analysis_meta tools are registered and aligned.`);

@@ -45,17 +45,17 @@ if (coreSet.size !== coreCommands.length) {
 
 const EXPECTED_CORE_COUNT = 31;
 if (coreCommands.length !== EXPECTED_CORE_COUNT) {
-  fail(`te_analysis tool count mismatch: expected ${EXPECTED_CORE_COUNT}, got ${coreCommands.length}`);
+  fail(`analysis tool count mismatch: expected ${EXPECTED_CORE_COUNT}, got ${coreCommands.length}`);
 }
 
-const help = spawnSync('npx', ['tsx', 'src/index.ts', 'te_analysis', '--help'], {
+const help = spawnSync('npx', ['tsx', 'src/index.ts', 'analysis', '--help'], {
   cwd: ROOT,
   encoding: 'utf-8',
 });
 
 if (help.status !== 0) {
   process.stderr.write(help.stderr || '');
-  fail('failed to run te_analysis --help');
+  fail('failed to run analysis --help');
 }
 
 for (const tool of coreCommands) {
@@ -65,4 +65,4 @@ for (const tool of coreCommands) {
   }
 }
 
-console.log(`OK: verified ${coreCommands.length} te_analysis tools are registered and aligned.`);
+console.log(`OK: verified ${coreCommands.length} analysis tools are registered and aligned.`);

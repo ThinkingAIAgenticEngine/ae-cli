@@ -1,34 +1,34 @@
 # te-community get_livestream_detail
 
-> **前置条件:** 阅读 [`../te-shared/SKILL.md`](../te-shared/SKILL.md)
+> **Prerequisite:** Read [`../te-shared/SKILL.md`](../te-shared/SKILL.md)
 
-单场直播详情：互动排行榜和分页互动内容。
+Details of a single livestream: interactive rankings and paginated interactive content.
 
-映射命令: `te-cli community get_livestream_detail`
+Mapping command: `ae-cli community get_livestream_detail`
 
 ## Flags
 
-| Flag | 类型 | 必填 | 说明 |
+| Flag | Type | Required | Description |
 |------|------|------|------|
-| `--space-id` | number | 是 | 社区空间 ID |
-| `--game-id` | number | 是 | 游戏/空间标识 |
-| `--stream-id` | string | 是 | 直播会话 ID，从 get_livestream_list 获取 |
-| `--activity-types` | string | 否 | 互动类型过滤：0弹幕、1礼物、2醒目留言、3 premium，逗号分隔 |
-| `--anchor-time` | string | 否 | 互动锚点时间，格式 yyyy-MM-dd HH:mm |
-| `--search-word` | string | 否 | 关键词过滤互动详情 |
-| `--order-by` | number | 否 | 排序：0互动时间desc、1互动时间asc |
-| `--page-num` | number | 否 | 页码，从 1 开始 |
-| `--page-size` | number | 否 | 每页条数 |
+| `--space-id` | number | yes | community space ID |
+| `--game-id` | number | yes | game/space ID |
+| `--stream-id` | string | Yes | Live session ID, obtained from get_livestream_list |
+| `--activity-types` | string | No | Interaction type filtering: 0 danmaku, 1 gift, 2 eye-catching message, 3 premium, comma separated |
+| `--anchor-time` | string | No | Interaction anchor time, format yyyy-MM-dd HH:mm |
+| `--search-word` | string | No | Keyword filter interaction details |
+| `--order-by` | number | No | Sorting: 0 interaction time desc, 1 interaction time asc |
+| `--page-num` | number | No | Page number, starting from 1 |
+| `--page-size` | number | No | Number of items per page |
 
-## 示例
+## Example
 
 ```bash
-# 获取直播详情
-te-cli community get_livestream_detail \
+# Get livestream details
+ae-cli community get_livestream_detail \
   --space-id 1 --game-id 1 --stream-id <stream-id>
 
-# 过滤弹幕类型
-te-cli community get_livestream_detail \
+# Filter danmaku types
+ae-cli community get_livestream_detail \
   --space-id 1 --game-id 1 --stream-id <stream-id> \
   --activity-types 0,1
 ```

@@ -1,4 +1,4 @@
-# te_analysis +build_entity_details_sql (Generate Entity Details SQL)
+# analysis +build_entity_details_sql (Generate Entity Details SQL)
 
 > **Prerequisite:** Read [`../te-shared/SKILL.md`](../../te-shared/SKILL.md)
 
@@ -18,16 +18,16 @@ Domain: **Entity details SQL queries**
 
 ## Prerequisite call chain (required for constructing definition/properties)
 1. First confirm the cluster type (condition / sql).
-2. Read `get-cluster-definition-schema.md`, then call `te-cli te_audience +get_cluster_definition_schema --cluster_type <condition|sql>` to get the structure.
-3. Read `list-events.md`, then call `te-cli te_meta +list_events --project_id 1`.
-4. Read `list-properties.md`, then call `te-cli te_meta +list_properties --project_id 1`.
+2. Read `get-cluster-definition-schema.md`, then call `ae-cli analysis_audience +get_cluster_definition_schema --cluster_type <condition|sql>` to get the structure.
+3. Read `list-events.md`, then call `ae-cli analysis_meta +list_events --project_id 1`.
+4. Read `list-properties.md`, then call `ae-cli analysis_meta +list_properties --project_id 1`.
 5. Build `definition` (and optional `properties`) from the schema + metadata, then call `+build_entity_details_sql`.
 
 ## Command
 ```bash
-te-cli te_analysis +build_entity_details_sql --project_id 1 --definition '{}'
-te-cli te_analysis +build_entity_details_sql --project_id 1 --entity_id 1001 --definition '{}' --properties '{}' --sort_by time --sort_order desc --limit 100 --zone_offset 8
-te-cli te_analysis +build_entity_details_sql --dry-run
+ae-cli analysis +build_entity_details_sql --project_id 1 --definition '{}'
+ae-cli analysis +build_entity_details_sql --project_id 1 --entity_id 1001 --definition '{}' --properties '{}' --sort_by time --sort_order desc --limit 100 --zone_offset 8
+ae-cli analysis +build_entity_details_sql --dry-run
 ```
 
 ## Parameters
@@ -35,8 +35,8 @@ te-cli te_analysis +build_entity_details_sql --dry-run
 |---|---|---|
 | `--project_id` / `-p` | Yes | Project ID |
 | `--entity_id` | No | Optional entity ID used in multi-entity scenarios. If omitted, the default user entity is used. |
-| `--definition` | Yes | Cluster definition JSON. MUST call `+get_cluster_definition_schema` first, then fill valid event/property names from `te_meta +list_events` / `te_meta +list_properties` in the same `project_id`. |
-| `--properties` | No | Optional display properties JSON, for example `[{"columnName":"#user_id","tableType":"0"},{"columnName":"device_id","tableType":"0"}]`. If provided, property names should come from `te_meta +list_properties` in the same `project_id`. |
+| `--definition` | Yes | Cluster definition JSON. MUST call `+get_cluster_definition_schema` first, then fill valid event/property names from `analysis_meta +list_events` / `analysis_meta +list_properties` in the same `project_id`. |
+| `--properties` | No | Optional display properties JSON, for example `[{"columnName":"#user_id","tableType":"0"},{"columnName":"device_id","tableType":"0"}]`. If provided, property names should come from `analysis_meta +list_properties` in the same `project_id`. |
 | `--sort_by` | No | Optional sort field |
 | `--sort_order` | No | Optional sort order. Supported values: asc and desc |
 | `--limit` | No | Optional result limit. Default: 1000, maximum: 10000 |
@@ -54,5 +54,5 @@ te-cli te_analysis +build_entity_details_sql --dry-run
 - If `Invalid JSON` appears, first check the schema required fields, then verify whether the event/property names come from metadata query results for the same `project_id`.
 
 ## Recommended chaining
-- +get_cluster_definition_schema -> te_meta +list_events -> te_meta +list_properties -> +build_entity_details_sql
+- +get_cluster_definition_schema -> analysis_meta +list_events -> analysis_meta +list_properties -> +build_entity_details_sql
 - +query_entity_details -> +query_event_details -> +build_event_details_sql

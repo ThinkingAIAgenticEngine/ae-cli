@@ -1,26 +1,26 @@
 # te-community get_livestream_list
 
-> **前置条件:** 阅读 [`../te-shared/SKILL.md`](../te-shared/SKILL.md)
+> **Prerequisite:** Read [`../te-shared/SKILL.md`](../te-shared/SKILL.md)
 
-获取房间的直播场次列表（录播记录）。
+Get the list of livestream sessions for a room (stream history).
 
-映射命令: `te-cli community get_livestream_list`
+Mapping command: `ae-cli community get_livestream_list`
 
 ## Flags
 
-| Flag | 类型 | 必填 | 说明 |
+| Flag | Type | Required | Description |
 |------|------|------|------|
-| `--space-id` | number | 是 | 社区空间 ID |
-| `--game-id` | number | 是 | 游戏/空间标识 |
-| `--channel-id` | number | 否 | 渠道 ID，从 get_livestream_rooms 获取 |
-| `--room-id` | string | 否 | 房间 ID，从 get_livestream_rooms 获取 |
-| `--start-time` | string | 否 | 统计开始时间，格式 yyyy-MM-dd |
-| `--end-time` | string | 否 | 统计结束时间，格式 yyyy-MM-dd |
+| `--space-id` | number | yes | community space ID |
+| `--game-id` | number | yes | game/space ID |
+| `--channel-id` | number | no | Channel ID (obtain via `get_livestream_rooms`) |
+| `--room-id` | string | No | Room ID (obtain via `get_livestream_rooms`) |
+| `--start-time` | string | No | Start date for statistics, format yyyy-MM-dd |
+| `--end-time` | string | No | End date for statistics, format yyyy-MM-dd |
 
-## 示例
+## Example
 
 ```bash
-# 获取直播列表
-te-cli community get_livestream_list \
+# Get the livestream session list
+ae-cli community get_livestream_list \
   --space-id 1 --game-id 1 --channel-id 1
 ```

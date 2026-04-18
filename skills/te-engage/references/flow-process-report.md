@@ -1,43 +1,43 @@
-# te-engage +flow-process-report
+# te-engage +flow_process_report
 
-> **前置条件:** 阅读 [`../../te-shared/SKILL.md`](../../te-shared/SKILL.md)
+> **Prerequisite:** Read [`../../te-shared/SKILL.md`](../../te-shared/SKILL.md)
 
-查询流程级别的过程报表。
+Query the process-level report for a flow.
 
-映射命令: `te-cli te-engage +flow-process-report`
+Mapped command: `ae-cli engage +flow_process_report`
 
 ## Flags
 
-| Flag | 类型 | 必填 | 说明 |
+| Flag | Type | Required | Description |
 |------|------|------|------|
-| `--project-id` / `-p` | number | 是 | 项目 ID |
-| `--report-type` | string | 是 | 报表类型 |
-| `--flow-id` | string | 否 | Flow ID |
-| `--flow-uuid` | string | 否 | Flow UUID |
-| `--request-id` | string | 否 | 查询 requestId |
-| `--push-language-code` | string | 否 | 推送语言代码 |
-| `--data-dim-type` | string | 否 | 数据维度类型 |
-| `--start-time` | string | 否 | 开始日期 |
-| `--end-time` | string | 否 | 结束日期 |
-| `--show-time-zone` | string | 否 | 展示时区偏移 |
+| `--project_id` / `-p` | number | Yes | Project ID |
+| `--report_type` | string | Yes | report type |
+| `--flow_id` | string | No | Flow ID |
+| `--flow_uuid` | string | No | Flow UUID |
+| `--request_id` | string | No | Query requestId |
+| `--push_language_code` | string | No | push language code |
+| `--data_dim_type` | string | No | data dimension type |
+| `--start_time` | string | No | Start date |
+| `--end_time` | string | No | End date |
+| `--show_time_zone` | string | No | display timezone offset |
 
-## 枚举说明
+## Enum Notes
 
-### `--report-type`
+### `--report_type`
 
-- `overview`: 流程总览
-- `detail`: 流程明细
-- `exit_detail`: 退出明细
-- `push_detail`: 推送明细
+- `overview`: flow overview
+- `detail`: flow detail
+- `exit_detail`: exit detail
+- `push_detail`: push detail
 
-### `--data-dim-type`
+### `--data_dim_type`
 
-- `uv`: 按去重用户数统计
-- `pv`: 按事件/次数统计
+- `uv`: count by unique users
+- `pv`: count by events/occurrences
 
-### `--push-language-code`
+### `--push_language_code`
 
-常见值包括：
+Common values include:
 
 - `default`
 - `en`
@@ -46,14 +46,14 @@
 - `ja`
 - `ko`
 
-## 参数约束
+## Parameter Constraints
 
-- `--flow-id` 和 `--flow-uuid` 至少传一个。
-- 当 `--report-type` 为 `detail`、`exit_detail`、`push_detail` 时，`--start-time` 和 `--end-time` 必填。
-- 当 `--report-type` 为 `overview` 时，可以不传时间，也可以成对传入 `--start-time` 和 `--end-time`。
+- `--flow_id` At least one of `--flow_id` and `--flow_uuid` must be provided.
+- When `--report_type` is `detail`, `exit_detail`, or `push_detail`, both `--start_time` and `--end_time` are required.
+- When `--report_type` is `overview`, you may omit time or provide `--start_time` and `--end_time` as a pair.
 
-## 示例
+## Examples
 
 ```bash
-te-cli te-engage +flow-process-report --project-id 1 --flow-uuid flow_uuid_123 --report-type overview
+ae-cli engage +flow_process_report --project_id 1 --flow_uuid flow_uuid_123 --report_type overview
 ```

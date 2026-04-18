@@ -1,26 +1,26 @@
-# te-engage +task-detail
+# te-engage +task_detail
 
-> **前置条件:** 阅读 [`../../te-shared/SKILL.md`](../../te-shared/SKILL.md)
+> **Prerequisite:** Read [`../../te-shared/SKILL.md`](../../te-shared/SKILL.md)
 
-查询单个任务详情。
+Query the details of a single task.
 
-映射命令: `te-cli te-engage +task-detail`
+Mapped command: `ae-cli engage +task_detail`
 
 ## Flags
 
-| Flag | 类型 | 必填 | 说明 |
+| Flag | Type | Required | Description |
 |------|------|------|------|
-| `--project-id` / `-p` | number | 是 | 项目 ID |
-| `--task-id` | string | 是 | 任务 ID |
+| `--project_id` / `-p` | number | Yes | Project ID |
+| `--task_id` | string | Yes | task ID |
 
-## 返回值里的常见枚举
+## Common enums in the response
 
 ### `status`
 
-- `0`: `DRAFT`，草稿，未提交
-- `1`: `WORKING`，运行中
-- `2`: `PENDING`，已暂停
-- `3`: `COMPLETE`，已结束
+- `0`: `DRAFT`, draft, not submitted
+- `1`: `WORKING`, running
+- `2`: `PENDING`, paused
+- `3`: `COMPLETE`, completed
 
 ### `mappingStatus`
 
@@ -28,8 +28,8 @@
 - `1`: `WORKING`
 - `2`: `PENDING`
 - `3`: `COMPLETE`
-- `4`: `APPROVE`，待审批
-- `5`: `DENY`，审批拒绝
+- `4`: `APPROVE`, pending review
+- `5`: `DENY`, review denied
 
 ### `channelType`
 
@@ -51,11 +51,11 @@
 
 ### `realtime`
 
-- `0`: physical cluster，物理人群
-- `1`: virtual cluster，虚拟人群
+- `0`: physical cluster, physical audience
+- `1`: virtual cluster, virtual audience
 
-## 示例
+## Examples
 
 ```bash
-te-cli te-engage +task-detail --project-id 1 --task-id task_123
+ae-cli engage +task_detail --project_id 1 --task_id task_123
 ```

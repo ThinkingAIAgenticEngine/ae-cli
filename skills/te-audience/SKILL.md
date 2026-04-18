@@ -5,7 +5,7 @@ description: "TE audience operations and targeting: create, update, query, recom
 metadata:
   requires:
     bins: ["ae-cli"]
-  cliHelp: "ae-cli te_audience --help"
+  cliHelp: "ae-cli analysis_audience --help"
 ---
 
 # te-audience
@@ -25,7 +25,7 @@ Use `te-audience` when the user needs cluster and tag capabilities:
 
 ## Command Format
 
-`ae-cli te_audience +<tool_name> [options]`
+`ae-cli analysis_audience +<tool_name> [options]`
 
 ## Tool Groups (14)
 
@@ -52,10 +52,10 @@ Use `te-audience` when the user needs cluster and tag capabilities:
 ## Quick Validation
 
 ```bash
-ae-cli te_audience --help
-npm run verify:te-audience-tools
+ae-cli analysis_audience --help
+npm run verify:analysis-audience-tools
 # Example: preview the request with dry-run (replace project_id with your actual project ID)
-ae-cli te_audience +list_clusters --project_id <YOUR_PROJECT_ID> --dry-run
+ae-cli analysis_audience +list_clusters --project_id <YOUR_PROJECT_ID> --dry-run
 ```
 
 ## Reference Docs

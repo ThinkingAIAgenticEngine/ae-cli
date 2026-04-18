@@ -1,23 +1,23 @@
 # te-community get_daily_summary
 
-> **前置条件:** 阅读 [`../te-shared/SKILL.md`](../te-shared/SKILL.md)
+> **Prerequisite:** Read [`../te-shared/SKILL.md`](../te-shared/SKILL.md)
 
-指定日期的社区日报：热榜排名和精选观点（正面/负面）。
+Community daily news for a given day: hot list rankings and selected opinions (positive/negative).
 
-映射命令: `te-cli community get_daily_summary`
+Mapping command: `ae-cli community get_daily_summary`
 
 ## Flags
 
-| Flag | 类型 | 必填 | 说明 |
+| Flag | Type | Required | Description |
 |------|------|------|------|
-| `--space-id` | number | 是 | 社区空间 ID |
-| `--game-id` | number | 是 | 游戏/空间标识 |
-| `--date` | string | 是 | 日期，格式 yyyy-MM-dd |
+| `--space-id` | number | yes | community space ID |
+| `--game-id` | number | yes | game/space ID |
+| `--date` | string | Yes | Date, format yyyy-MM-dd |
 
-## 示例
+## Example
 
 ```bash
-# 获取日报
-te-cli community get_daily_summary \
+# Get daily report
+ae-cli community get_daily_summary \
   --space-id 1 --game-id 1 --date 2024-01-01
 ```

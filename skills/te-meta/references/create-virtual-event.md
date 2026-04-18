@@ -1,4 +1,4 @@
-# te_meta +create_virtual_event (Create Virtual Event)
+# analysis_meta +create_virtual_event (Create Virtual Event)
 
 > **Prerequisite:** Read [`../te-shared/SKILL.md`](../../te-shared/SKILL.md)
 
@@ -22,17 +22,17 @@ Domain: **Metadata Query**
 - Do not generate the final `events` / `filter` until the document review and prerequisite command calls above are complete.
 
 ## Prerequisite Call Chain (Required for Constructing events/filter)
-1. Read `get-filter-schema.md`, then call `te-cli te_analysis +get_filter_schema` to get the filter structure.
-2. Read `list-events.md`, then call `te-cli te_meta +list_events --project_id 1` to get available events.
-3. Read `list-properties.md`, then call `te-cli te_meta +list_properties --project_id 1` to get properties available for filtering.
+1. Read `get-filter-schema.md`, then call `ae-cli analysis +get_filter_schema` to get the filter structure.
+2. Read `list-events.md`, then call `ae-cli analysis_meta +list_events --project_id 1` to get available events.
+3. Read `list-properties.md`, then call `ae-cli analysis_meta +list_properties --project_id 1` to get properties available for filtering.
 4. Build `events` / `filter` from the schema + metadata, then call `+create_virtual_event`.
 5. Example events JSON: `[{"eventName":"purchase"},{"eventName":"add_to_cart"}]`
 
 ## Commands
 ```bash
-te-cli te_meta +create_virtual_event --project_id 1 --event_name ta@demo --event_desc demo --events '[{"eventName":"purchase"}]'
-te-cli te_meta +create_virtual_event --project_id 1 --event_name ta@demo2 --event_desc demo --remark demo --events '[{"eventName":"add_to_cart"}]' --filter '{}' --override true
-te-cli te_meta +create_virtual_event --dry-run
+ae-cli analysis_meta +create_virtual_event --project_id 1 --event_name ta@demo --event_desc demo --events '[{"eventName":"purchase"}]'
+ae-cli analysis_meta +create_virtual_event --project_id 1 --event_name ta@demo2 --event_desc demo --remark demo --events '[{"eventName":"add_to_cart"}]' --filter '{}' --override true
+ae-cli analysis_meta +create_virtual_event --dry-run
 ```
 
 ## Parameters
@@ -42,8 +42,8 @@ te-cli te_meta +create_virtual_event --dry-run
 | `--event_name` | Yes | Unique name for the virtual event (must start with 'ta@') |
 | `--event_desc` | Yes | Display name/description |
 | `--remark` | No | Optional remarks |
-| `--events` | Yes | JSON array of events to combine. MUST follow `+get_filter_schema`, and event/property fields must come from `te_meta +list_events` / `te_meta +list_properties` in the same `project_id`. |
-| `--filter` | No | Optional global filter JSON for all events. If provided, MUST follow `+get_filter_schema`, and referenced fields must come from `te_meta +list_properties`. |
+| `--events` | Yes | JSON array of events to combine. MUST follow `+get_filter_schema`, and event/property fields must come from `analysis_meta +list_events` / `analysis_meta +list_properties` in the same `project_id`. |
+| `--filter` | No | Optional global filter JSON for all events. If provided, MUST follow `+get_filter_schema`, and referenced fields must come from `analysis_meta +list_properties`. |
 | `--override` | No | Whether to override if event already exists. Default: false |
 
 ## Decision Rules
@@ -60,5 +60,5 @@ te-cli te_meta +create_virtual_event --dry-run
 - If the result after writing does not match expectations, immediately reread the corresponding list/get interfaces for before-and-after comparison.
 
 ## Recommended Chaining
-- +get_filter_schema -> te_meta +list_events -> te_meta +list_properties -> +create_virtual_event
+- +get_filter_schema -> analysis_meta +list_events -> analysis_meta +list_properties -> +create_virtual_event
 - +list_events -> +create_virtual_event

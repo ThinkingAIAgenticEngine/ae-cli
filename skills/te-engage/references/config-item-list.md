@@ -1,19 +1,19 @@
-# te-engage +config-item-list
+# te-engage +config_item_list
 
-> **前置条件:** 阅读 [`../../te-shared/SKILL.md`](../../te-shared/SKILL.md)
+> **Prerequisite:** Read [`../../te-shared/SKILL.md`](../../te-shared/SKILL.md)
 
-查询项目下的配置项列表。
+Query the list of config items in a project.
 
-映射命令: `te-cli te-engage +config-item-list`
+Mapped command: `ae-cli engage +config_item_list`
 
 ## Flags
 
-| Flag | 类型 | 必填 | 说明 |
+| Flag | Type | Required | Description |
 |------|------|------|------|
-| `--project-id` / `-p` | number | 是 | 项目 ID |
+| `--project_id` / `-p` | number | Yes | Project ID |
 
-## 示例
+## Examples
 
 ```bash
-te-cli te-engage +config-item-list --project-id 1
+ae-cli engage +config_item_list --project_id 1
 ```

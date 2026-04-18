@@ -1,4 +1,4 @@
-# te_audience +create_cluster (Create Cluster)
+# analysis_audience +create_cluster (Create Cluster)
 
 > **Prerequisite:** Read [`../te-shared/SKILL.md`](../../te-shared/SKILL.md)
 
@@ -6,7 +6,7 @@ Domain: **Cluster Management**
 
 ## Use Cases
 - Prerequisite helper: first call `+get_cluster_definition_schema` to obtain the `definition` structure, then call this tool.
-- When building a real `definition`, you must supplement it with real project metadata: first call `te_meta +list_events` and `te_meta +list_properties`, then fill in event names/property names.
+- When building a real `definition`, you must supplement it with real project metadata: first call `analysis_meta +list_events` and `analysis_meta +list_properties`, then fill in event names/property names.
 - Create a user cluster definition. Supports the condition and sql cluster types. Returns cluster information without cluster members.
 
 ## Required Prerequisites (MUST)
@@ -19,20 +19,20 @@ Domain: **Cluster Management**
 ## Prerequisite Call Chain (Required for Building Definition)
 1. Read `get-cluster-definition-schema.md` to understand the input and output structure of `+get_cluster_definition_schema`.
 2. Obtain the schema structure (by cluster type):
-   `te-cli te_audience +get_cluster_definition_schema --cluster_type condition`
+   `ae-cli analysis_audience +get_cluster_definition_schema --cluster_type condition`
 3. Read `list-events.md` to understand the parameters and return structure of `+list_events`.
 4. Get the event list (for `event_name` and other fields):
-   `te-cli te_meta +list_events --project_id 1`
+   `ae-cli analysis_meta +list_events --project_id 1`
 5. Read `list-properties.md` to understand the parameters and return structure of `+list_properties`.
 6. Get the property list (for property filters, grouping, and comparison fields):
-   `te-cli te_meta +list_properties --project_id 1`
+   `ae-cli analysis_meta +list_properties --project_id 1`
 7. Build `definition` based on the schema + metadata, then call `+create_cluster`.
 
 ## Commands
 ```bash
-te-cli te_audience +create_cluster --project_id 1 --cluster_name demo --display_name demo --definition '{}'
-te-cli te_audience +create_cluster --project_id 1 --cluster_name demo --display_name demo --type condition --definition '{}' --zone_offset 8 --entity_id 1001
-te-cli te_audience +create_cluster --dry-run
+ae-cli analysis_audience +create_cluster --project_id 1 --cluster_name demo --display_name demo --definition '{}'
+ae-cli analysis_audience +create_cluster --project_id 1 --cluster_name demo --display_name demo --type condition --definition '{}' --zone_offset 8 --entity_id 1001
+ae-cli analysis_audience +create_cluster --dry-run
 ```
 
 ## Parameters
@@ -42,7 +42,7 @@ te-cli te_audience +create_cluster --dry-run
 | `--cluster_name` | Yes | Cluster name. Must start with a letter and contain only letters, digits, and underscores. Length: 1-80 |
 | `--display_name` | Yes | Cluster display name. Length: 1-80 |
 | `--type` | No | Cluster type. Supported values: condition and sql. Default: condition |
-| `--definition` | Yes | Cluster definition JSON. MUST call `+get_cluster_definition_schema` first to learn the exact structure, then use `te_meta +list_events` / `te_meta +list_properties` to fill valid event/property names from the target project. |
+| `--definition` | Yes | Cluster definition JSON. MUST call `+get_cluster_definition_schema` first to learn the exact structure, then use `analysis_meta +list_events` / `analysis_meta +list_properties` to fill valid event/property names from the target project. |
 | `--zone_offset` | No | Optional time zone offset for cluster computation. Valid range: -12 to 14 (supports decimals like 5.5). If the user does not specify a timezone, omit this parameter. When a timezone is specified, call get_project_config first to check whether the project supports time zones (timeZoneEnabled) and available values (availableTimeZones). |
 | `--entity_id` | No | Optional entity ID for cluster definition. Use list_entities to query available entities. |
 
@@ -61,5 +61,5 @@ te-cli te_audience +create_cluster --dry-run
 - If the result after writing is not as expected, immediately re-read the corresponding list/get interfaces and compare before and after.
 
 ## Recommended Chain
-- +get_cluster_definition_schema -> te_meta +list_events -> te_meta +list_properties -> +create_cluster
+- +get_cluster_definition_schema -> analysis_meta +list_events -> analysis_meta +list_properties -> +create_cluster
 - +list_clusters -> +get_clusters_by_name -> +update_cluster

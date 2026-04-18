@@ -1,62 +1,62 @@
-# te-engage +task-data-detail
+# te-engage +task_data_detail
 
-> **前置条件:** 阅读 [`../../te-shared/SKILL.md`](../../te-shared/SKILL.md)
+> **Prerequisite:** Read [`../../te-shared/SKILL.md`](../../te-shared/SKILL.md)
 
-查询任务详细数据报表。
+Query the task detailed data report.
 
-映射命令: `te-cli te-engage +task-data-detail`
+Mapped command: `ae-cli engage +task_data_detail`
 
 ## Flags
 
-| Flag | 类型 | 必填 | 说明 |
+| Flag | Type | Required | Description |
 |------|------|------|------|
-| `--project-id` / `-p` | number | 是 | 项目 ID |
-| `--task-id` | string | 是 | 任务 ID |
-| `--task-type` | string | 是 | 任务类型：`normal` 或 `trigger` |
-| `--detail-type` | string | 是 | 明细类型 |
-| `--start-time` | string | 是 | 开始日期 |
-| `--end-time` | string | 是 | 结束日期 |
-| `--request-id` | string | 否 | 查询 requestId |
-| `--push-language-code` | string | 否 | 推送语言代码 |
-| `--task-instance-id` | string | 否 | 任务实例 ID |
-| `--data-dim-type` | string | 否 | 数据维度类型 |
-| `--retention-type` | string | 否 | 留存类型 |
-| `--data-view-type` | number | 否 | 触发任务视图类型 |
-| `--show-time-zone` | string | 否 | 展示时区偏移 |
+| `--project_id` / `-p` | number | Yes | Project ID |
+| `--task_id` | string | Yes | task ID |
+| `--task_type` | string | Yes | task type: `normal` or `trigger` |
+| `--detail_type` | string | Yes | detail type |
+| `--start_time` | string | Yes | Start date |
+| `--end_time` | string | Yes | End date |
+| `--request_id` | string | No | Query requestId |
+| `--push_language_code` | string | No | push language code |
+| `--task_instance_id` | string | No | task instance ID |
+| `--data_dim_type` | string | No | data dimension type |
+| `--retention_type` | string | No | retention type |
+| `--data_view_type` | number | No | Trigger task view type |
+| `--show_time_zone` | string | No | display timezone offset |
 
-## 枚举说明
+## Enum Notes
 
-### `--task-type`
+### `--task_type`
 
-- `normal`: 普通任务
-- `trigger`: 触发式任务
+- `normal`: normal task
+- `trigger`: trigger task
 
-### `--detail-type`
+### `--detail_type`
 
-- `time`: 按时间维度查看
-- `instance`: 按执行实例查看
-- `instance_daily`: 查看单个实例的逐日明细
+- `time`: view by time
+- `instance`: view by instance
+- `instance_daily`: view day-by-day details for a single instance
 
-### `--data-dim-type`
+### `--data_dim_type`
 
-- `uv`: 按去重用户数统计
-- `pv`: 按事件/次数统计
+- `uv`: count by unique users
+- `pv`: count by events/occurrences
 
-### `--retention-type`
+### `--retention_type`
 
-- `retention`: 留存分析
-- `lost`: 流失分析
+- `retention`: retention analysis
+- `lost`: churn analysis
 
-### `--data-view-type`
+### `--data_view_type`
 
-仅在 `--task-type trigger` 且 `--detail-type time` 时有效：
+Only valid when `--task_type` is `trigger` and `--detail_type` is `time`:
 
-- `2`: 日期视图
-- `3`: 触发视图
+- `2`: date view
+- `3`: trigger view
 
-### `--push-language-code`
+### `--push_language_code`
 
-常见值包括：
+Common values include:
 
 - `default`
 - `en`
@@ -65,17 +65,17 @@
 - `ja`
 - `ko`
 
-## 参数约束
+## Parameter Constraints
 
-- `--task-type trigger` 时，`--detail-type` 只能是 `time`。
-- `--detail-type instance_daily` 时，必须传 `--task-instance-id`。
-- `--start-time`、`--end-time` 使用 `yyyy-MM-dd`。
+- When `--task_type` is `trigger`, `--detail_type` can only be `time`.
+- When `--detail_type` is `instance_daily`, you must include `--task_instance_id`.
+- `--start_time`、`--end_time` use `yyyy-MM-dd`.
 
-## 示例
+## Examples
 
 ```bash
-te-cli te-engage +task-data-detail \
-  --project-id 1 --task-id task_123 \
-  --task-type normal --detail-type time \
-  --start-time 2026-04-01 --end-time 2026-04-07
+ae-cli engage +task_data_detail \
+  --project_id 1 --task_id task_123 \
+  --task_type normal --detail_type time \
+  --start_time 2026-04-01 --end_time 2026-04-07
 ```

@@ -1,43 +1,43 @@
-# te-engage +task-metric-detail
+# te-engage +task_metric_detail
 
-> **前置条件:** 阅读 [`../../te-shared/SKILL.md`](../../te-shared/SKILL.md)
+> **Prerequisite:** Read [`../../te-shared/SKILL.md`](../../te-shared/SKILL.md)
 
-查询任务指标导向的明细报表。
+Query the metric-oriented detail report for a task.
 
-映射命令: `te-cli te-engage +task-metric-detail`
+Mapped command: `ae-cli engage +task_metric_detail`
 
 ## Flags
 
-| Flag | 类型 | 必填 | 说明 |
+| Flag | Type | Required | Description |
 |------|------|------|------|
-| `--project-id` / `-p` | number | 是 | 项目 ID |
-| `--task-id` | string | 是 | 任务 ID |
-| `--task-type` | string | 是 | 任务类型：`normal` 或 `trigger` |
-| `--start-time` | string | 是 | 开始日期 |
-| `--end-time` | string | 是 | 结束日期 |
-| `--request-id` | string | 否 | 查询 requestId |
-| `--push-language-code` | string | 否 | 推送语言代码 |
-| `--metric-id-list` | json | 否 | 指标 ID JSON 数组 |
-| `--group-type` | number | 否 | 分组类型 |
-| `--show-time-zone` | string | 否 | 展示时区偏移 |
+| `--project_id` / `-p` | number | Yes | Project ID |
+| `--task_id` | string | Yes | task ID |
+| `--task_type` | string | Yes | task type: `normal` or `trigger` |
+| `--start_time` | string | Yes | Start date |
+| `--end_time` | string | Yes | End date |
+| `--request_id` | string | No | query requestId |
+| `--push_language_code` | string | No | push language code |
+| `--metric_id_list` | json | No | metric ID JSON array |
+| `--group_type` | number | No | group type |
+| `--show_time_zone` | string | No | Display timezone offset |
 
-## 枚举说明
+## Enum Notes
 
-### `--task-type`
+### `--task_type`
 
-- `normal`: 普通任务
-- `trigger`: 触发式任务
+- `normal`: normal task
+- `trigger`: trigger task
 
-### `--group-type`
+### `--group_type`
 
-- `1`: 按批次分组
-- `2`: 按日期分组
-- `3`: 按触发分组
-- `4`: 按实验效果分组
+- `1`: group by batch
+- `2`: group by date
+- `3`: group by trigger
+- `4`: group by experiment result
 
-### `--push-language-code`
+### `--push_language_code`
 
-常见值包括：
+Common values include:
 
 - `default`
 - `en`
@@ -46,11 +46,11 @@
 - `ja`
 - `ko`
 
-## 示例
+## Examples
 
 ```bash
-te-cli te-engage +task-metric-detail \
-  --project-id 1 --task-id task_123 --task-type normal \
-  --start-time 2026-04-01 --end-time 2026-04-07 \
-  --metric-id-list '["metric_1"]'
+ae-cli engage +task_metric_detail \
+  --project_id 1 --task_id task_123 --task_type normal \
+  --start_time 2026-04-01 --end_time 2026-04-07 \
+  --metric_id_list '["metric_1"]'
 ```

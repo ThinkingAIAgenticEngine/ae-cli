@@ -1,4 +1,4 @@
-# te_analysis +create_alert (Create Alert)
+# analysis +create_alert (Create Alert)
 
 > **Prerequisite:** Read [`../te-shared/SKILL.md`](../../te-shared/SKILL.md)
 
@@ -16,13 +16,13 @@ Domain: **Metadata queries**
 
 ## Prerequisite call chain (required for constructing definition)
 1. Read `get-alert-definition-schema.md` to understand the return structure of `+get_alert_definition_schema`.
-2. Call `ae-cli te_analysis +get_alert_definition_schema` to get the schema.
+2. Call `ae-cli analysis +get_alert_definition_schema` to get the schema.
 3. Build `definition` from the schema, then call `+create_alert`.
 
 ## Command
 ```bash
-ae-cli te_analysis +create_alert --project_id 1 --definition '{}'
-ae-cli te_analysis +create_alert --dry-run
+ae-cli analysis +create_alert --project_id 1 --definition '{}'
+ae-cli analysis +create_alert --dry-run
 ```
 
 ## Parameters

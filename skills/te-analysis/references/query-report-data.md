@@ -1,4 +1,4 @@
-# te_analysis +query_report_data (query data by report)
+# analysis +query_report_data (query data by report)
 
 > **Prerequisite:** Read [`../te-shared/SKILL.md`](../../te-shared/SKILL.md)
 
@@ -20,17 +20,17 @@ Domain: **Report Management**
 - Do not generate final `filters` / `group_by` until the above docs have been read and the prerequisite commands have been called.
 
 ## Prerequisite Call Chain (required for building filters/group_by)
-1. Read `get-filter-schema.md`, then call `ae-cli te_analysis +get_filter_schema` to get the filter structure.
-2. Read `get-groupby-schema.md`, then call `ae-cli te_analysis +get_groupby_schema` to get the grouping structure.
-3. Read `list-events.md`, then call `ae-cli te_meta +list_events --project_id 1`.
-4. Read `list-properties.md`, then call `ae-cli te_meta +list_properties --project_id 1`.
+1. Read `get-filter-schema.md`, then call `ae-cli analysis +get_filter_schema` to get the filter structure.
+2. Read `get-groupby-schema.md`, then call `ae-cli analysis +get_groupby_schema` to get the grouping structure.
+3. Read `list-events.md`, then call `ae-cli analysis_meta +list_events --project_id 1`.
+4. Read `list-properties.md`, then call `ae-cli analysis_meta +list_properties --project_id 1`.
 5. Build `filters` / `group_by` based on the schema and metadata, then call `+query_report_data`.
 
 ## Commands
 ```bash
-ae-cli te_analysis +query_report_data --project_id 1 --report_ids '[1001]'
-ae-cli te_analysis +query_report_data --project_id 1 --report_ids '[1001]' --filters '{}' --group_by '[]' --request_id demo --use_cache true --start_date 2026-04-08 --end_date 2026-04-08 --time_granularity day --timeout_minutes 8
-ae-cli te_analysis +query_report_data --dry-run
+ae-cli analysis +query_report_data --project_id 1 --report_ids '[1001]'
+ae-cli analysis +query_report_data --project_id 1 --report_ids '[1001]' --filters '{}' --group_by '[]' --request_id demo --use_cache true --start_date 2026-04-08 --end_date 2026-04-08 --time_granularity day --timeout_minutes 8
+ae-cli analysis +query_report_data --dry-run
 ```
 
 ## Parameters
@@ -38,8 +38,8 @@ ae-cli te_analysis +query_report_data --dry-run
 |---|---|---|
 | `--project_id` / `-p` | Yes | Project ID |
 | `--report_ids` | Yes | List of report IDs |
-| `--filters` | No | Optional filter JSON. If provided, MUST follow `+get_filter_schema`, and referenced fields must come from `te_meta +list_properties` in the same `project_id`. |
-| `--group_by` | No | Optional group-by JSON array. If provided, MUST follow `+get_groupby_schema`, and referenced fields must come from `te_meta +list_properties` in the same `project_id`. |
+| `--filters` | No | Optional filter JSON. If provided, MUST follow `+get_filter_schema`, and referenced fields must come from `analysis_meta +list_properties` in the same `project_id`. |
+| `--group_by` | No | Optional group-by JSON array. If provided, MUST follow `+get_groupby_schema`, and referenced fields must come from `analysis_meta +list_properties` in the same `project_id`. |
 | `--request_id` | No | Optional unique request ID. Generated automatically if omitted. |
 | `--use_cache` | No | Whether to use cache. Default: true |
 | `--start_date` | No | Optional start date in yyyy-MM-dd format |
@@ -61,5 +61,5 @@ ae-cli te_analysis +query_report_data --dry-run
 - If the query times out or the result is abnormal, first reduce the time range/grouping dimensions, then split the query to locate the issue.
 
 ## Recommended Chaining
-- +get_filter_schema -> +get_groupby_schema -> te_meta +list_events -> te_meta +list_properties -> +query_report_data
+- +get_filter_schema -> +get_groupby_schema -> analysis_meta +list_events -> analysis_meta +list_properties -> +query_report_data
 - +list_reports -> +get_report_definition -> +query_report_data

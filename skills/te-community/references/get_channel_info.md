@@ -1,21 +1,21 @@
 # te-community get_channel_info
 
-> **前置条件:** 阅读 [`../te-shared/SKILL.md`](../te-shared/SKILL.md)
+> **Prerequisite:** Read [`../te-shared/SKILL.md`](../te-shared/SKILL.md)
 
-获取社区空间的有效渠道列表，包含渠道 ID 和名称。**这是多数需要 `--channel-id` / `--channel-id-list` 的命令的前置步骤**：先在此拿到真实渠道 ID，再带参调用 `search_posts`、`get_post_detail`、`get_comments_summary`、`get_livestream_list` 等（以各命令 reference 为准）。
+Get the list of valid channels for the community space, including channel IDs and names. **This is the prerequisite step for most commands that require `--channel-id` / `--channel-id-list`: First get the real channel ID here, and then call `search_posts`, `get_post_detail`, `get_comments_summary`, `get_livestream_list`, etc. with parameters (subject to the reference of each command).
 
-映射命令: `te-cli community get_channel_info`
+Mapping command: `ae-cli community get_channel_info`
 
 ## Flags
 
-| Flag | 类型 | 必填 | 说明 |
+| Flag | Type | Required | Description |
 |------|------|------|------|
-| `--space-id` | number | 是 | 社区空间 ID |
-| `--game-id` | number | 是 | 游戏/空间标识 |
+| `--space-id` | number | yes | community space ID |
+| `--game-id` | number | yes | game/space ID |
 
-## 示例
+## Example
 
 ```bash
-# 获取渠道列表
-te-cli community get_channel_info --space-id 1 --game-id 1
+# Get channel list
+ae-cli community get_channel_info --space-id 1 --game-id 1
 ```

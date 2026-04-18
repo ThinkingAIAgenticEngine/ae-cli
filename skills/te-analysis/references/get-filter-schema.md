@@ -1,4 +1,4 @@
-# te_analysis +get_filter_schema (get filter schema)
+# analysis +get_filter_schema (get filter schema)
 
 > **Prerequisite:** Read [`../te-shared/SKILL.md`](../../te-shared/SKILL.md)
 
@@ -13,8 +13,8 @@ Domain: **Schema Queries**
 
 ## Commands
 ```bash
-te-cli te_analysis +get_filter_schema
-te-cli te_analysis +get_filter_schema --dry-run
+ae-cli analysis +get_filter_schema
+ae-cli analysis +get_filter_schema --dry-run
 ```
 
 ## Parameters

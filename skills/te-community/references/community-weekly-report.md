@@ -1,84 +1,85 @@
 # te-community community-weekly-report
 
-> **前置条件:** 阅读 [`../te-shared/SKILL.md`](../te-shared/SKILL.md)
+> **Prerequisite:** Read [`../te-shared/SKILL.md`](../te-shared/SKILL.md)
 
-社区运营周度总结：汇总统揽一周数据，重点基于"每日摘要"串联本周核心发酵事件，输出《社区运营周度总结报告》。
+Community Operation Weekly Summary: Summarize a week's data, focus on the "Daily Summary" to connect the core escalating discussion events of the week, and output a "Community Operations Weekly Summary Report."
 
-触发场景: 当用户要求"生成周报"、"社区运营周报"或"周度总结"时触发。
+Trigger: Use this when the user asks for "generate weekly report", "community operation weekly report", "weekly summary" and "review of the past week".
 
-## 分析流程
+## Roles and Goals
 
-1. **确定时间参数**：默认过去 7 天
-2. **调用 MCP 工具**：
-   - `get_overview_metrics`：获取周度概览指标
-   - `get_daily_summary`：获取每日舆情与内容摘要
-   - `get_sentiment_overview`：获取全盘情感分布
-   - `get_comments_summary`：获取评论趋势分析
-   - `get_risk_content`：获取合规风控趋势
-   - `get_hot_topics`：获取榜单话题
+You are "Director of Community Operations + Senior Data Analyst". The goal is not to write a chronological narrative, but to restore the weekly evolution chain of "event-emotion-platform" and give executable suggestions.
 
-## 时间推演与参数构造规则
+## Time deduction rules
 
-1. **用户明确指定**：如果用户的话语中包含了明确的日期，请严格按照用户指定的日期范围提取
-2. **用户未明确指定（默认兜底）**：如果用户只说"生成周报"或"写个周度总结"，**请立即获取当前系统时间，自动以"过去 7 天"作为查询周期**（即：`endTime` 为昨日，`startTime` 为 `endTime` 往前推 7 天）。**绝对不允许因为缺少时间参数而中断工作流去反问用户**
+1. The user clearly gives the date: query strictly according to the user scope.
+2. The user does not provide a date: automatically retrieve the past 7 days (`endTime=yesterday`, `startTime=endTime-7d`).
+3. Don’t interrupt the process due to lack of time.
 
-## 核心约束
+## Required tool chain
 
-- **时间参数强推演**：优先执行时间推演规则，绝不允许因为用户没说时间就反问用户
-- **全链路工具调用**：绝不允许跳过工具直接编造周报
-- **拒绝流水账流水线**：第三部分"本周核心大事件"**严禁写成"周一摘要...周二摘要...周三摘要..."的日记形式**，必须将相关的每日事件合并为一个"大事件"，梳理其脉络
-- **预警与风控严格隔离**：Bug修复、剧情吃书、游戏设计不满等属于"社区预警"；黑产、广告、敏感言论、代充等属于"合规风控"
+1. `get_overview_metrics` (weekly total and channel distribution)
+2. `get_daily_summary` (daily context, weekly report core input)
+3. `get_sentiment_overview` (sentiment structure)
+4. `get_comments_summary` (emotion changes on the comment side)
+5. `get_risk_content` (compliance risk control)
+6. `get_hot_topics` (hotspot assisted verification)
 
-## 输出结构
+## Output structure (must be complete)
 
-### 一、报告核心内容摘要
-- **本周定调**：一句话总结本周社区态势
-- **热门关键词**：高频词汇
+1. **Core summary of the report**: Setting the tone for this week + hot keywords
+2. **Overview indicator board**: total volume, sentiment distribution, channel matrix (table)
+3. **Core Events**: Extract 2-3 events and write down the escalation path and focus demands.
+4. **Platform Insights**: Discussion styles and core differences across different channels
+5. **Early Warning and Risk Control** (two independent tables)
+- Early warning: Bug/mechanism/plot/experience issues
+- Risk control: black/gray-market activity/advertising/sensitive violations/flamebait/content designed to provoke conflict, etc.
+6. **Action suggestions for next week**: Problem closed loop, distribution strategy, monitoring focus
 
-### 二、概览统计指标
+### 2. Overview of statistical indicators
 
-| 指标类别 | 数据 | 周环比 |
+| Indicator categories | Data | Weekly |
 |---------|------|--------|
-| 大盘总内容数 | 具体数值 | ↑/↓ X% |
-| 整体情感分布 | 正面/中性/负面占比 | 变化趋势 |
-| 渠道声量分布矩阵 | 各渠道数据 | 渠道对比 |
+| Total content of the market | Specific values ​​| ↑/↓ X% |
+| Overall sentiment distribution | Positive/neutral/negative proportion | Changing trends |
+| Channel volume distribution matrix | Data of each channel | Channel comparison |
 
-### 三、本周核心大事件与舆情脉络洞察
+### 3. Insights into this week’s core events and sentiment context
 
-**本周核心舆情大事件追踪**：
-- **大事件一**：[事件名称]
-  - **发酵脉络**：[时间线梳理]
-  - **舆论焦点/诉求**：[核心观点]
+**Tracking of core sentiment events this week**:
+- **Big Event 1**: [Event Name]
+- **Fermentation context**: [Timeline review]
+- **Public Opinion Focus/Demand**: [Core Viewpoint]
 
-**用户评论与情感动态演变**：
-- 情感趋势分析
+**User comments and emotional dynamic evolution**:
+- Sentiment trend analysis
 
-### 四、各平台的深度洞察
-横向对比不同社媒平台的调性差异
+### 4. In-depth insights into each platform
+Horizontally compare the tone differences of different social media platforms
 
-### 五、社区预警与安全风控
+### 5. Community early warning and safety risk control
 
-**⚠️ 预警信息**
+**⚠️ Early warning information**
 
-| 预警等级 | 预警触发项 | 社区蔓延度 | 核心表现 | 建议跟进动作 |
+| Warning level | Warning trigger items | Community spread | Core performance | Suggested follow-up actions |
 |---------|-----------|-----------|---------|-------------|
-| 高/中/低 | 具体问题 | 影响范围 | 具体表现 | 处理建议 |
+| High/medium/low | Specific problems | Scope of impact | Specific performance | Handling suggestions |
 
-**🛡️ 安全合规与风控拦截**
+**🛡️ Security compliance and risk control interception**
 
-| 风控等级 | 违规类型 | 发现渠道 | 违规行为事实 | 处置建议 |
+| Risk control level | Violation type | Discovery channels | Violation facts | Disposal suggestions |
 |---------|---------|---------|-------------|---------|
-| 严重/一般 | 违规类型 | 渠道名称 | 具体事实 | 处理建议 |
+| Serious/General | Violation type | Channel name | Specific facts | Handling suggestions |
 
-### 六、运营建议与下周规划
-- 短期建议
-- 下周关注重点
+### 6. Operation suggestions and planning for next week
+- short term advice
+- Focus on next week
 
-## 示例
+## Example
 
 ```bash
-# 用户输入示例
-"生成周报"
-"上周的社区运营周报"
-"周度总结"
+# User input example
+"Generate weekly report"
+"Last week's community operations weekly report"
+"Weekly Summary"
 ```

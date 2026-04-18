@@ -1,24 +1,24 @@
 import type { Command } from '../../framework/types.js';
 import { buildMcpDryRun, executeMcpCommand } from '../utils.js';
 
-const serviceName = 'te-engage_setting';
+const serviceName = 'engage_setting';
 const toolName = 'update_channel_status';
 
 function buildArgs(ctx: any): Record<string, any> {
   return {
-    projectId: ctx.num('project-id'),
-    channelId: ctx.str('channel-id'),
+    projectId: ctx.num('project_id'),
+    channelId: ctx.str('channel_id'),
     status: ctx.num('status'),
   };
 }
 
 export const updateChannelStatus: Command = {
-  service: 'te-engage',
-  command: '+update-channel-status',
+  service: 'engage',
+  command: '+update_channel_status',
   description: 'Update engage channel status.',
   flags: [
-    { name: 'project-id', type: 'number', required: true, alias: 'p', desc: 'Project ID' },
-    { name: 'channel-id', type: 'string', required: true, desc: 'Channel ID' },
+    { name: 'project_id', type: 'number', required: true, alias: 'p', desc: 'Project ID' },
+    { name: 'channel_id', type: 'string', required: true, desc: 'Channel ID' },
     { name: 'status', type: 'number', required: true, desc: 'Channel status' },
   ],
   risk: 'write',

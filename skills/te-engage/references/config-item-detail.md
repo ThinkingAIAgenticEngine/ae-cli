@@ -1,19 +1,19 @@
-# te-engage +config-item-detail
+# te-engage +config_item_detail
 
-> **前置条件:** 阅读 [`../../te-shared/SKILL.md`](../../te-shared/SKILL.md)
+> **Prerequisite:** Read [`../../te-shared/SKILL.md`](../../te-shared/SKILL.md)
 
-查询配置项详情。
+Query config item details.
 
-映射命令: `te-cli te-engage +config-item-detail`
+Mapped command: `ae-cli engage +config_item_detail`
 
 ## Flags
 
-| Flag | 类型 | 必填 | 说明 |
+| Flag | Type | Required | Description |
 |------|------|------|------|
-| `--project-id` / `-p` | number | 是 | 项目 ID |
-| `--config-id` | string | 是 | 配置项 ID |
+| `--project_id` / `-p` | number | Yes | Project ID |
+| `--config_id` | string | Yes | config item ID |
 
-## 返回值里的常见枚举
+## Common enums in the response
 
 ### `channelType`
 
@@ -23,8 +23,8 @@
 - `4`: `WECHAT`
 - `5`: `DOU_YIN`
 
-## 示例
+## Examples
 
 ```bash
-te-cli te-engage +config-item-detail --project-id 1 --config-id cfg_123
+ae-cli engage +config_item_detail --project_id 1 --config_id cfg_123
 ```

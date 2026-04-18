@@ -1,4 +1,4 @@
-# te_meta +create_virtual_property (Create Virtual Property)
+# analysis_meta +create_virtual_property (Create Virtual Property)
 
 > **Prerequisite:** Read [`../te-shared/SKILL.md`](../../te-shared/SKILL.md)
 
@@ -23,18 +23,18 @@ Domain: **Metadata Query**
 - Do not submit the final SQL and event-association configuration until the above docs have been read and the prerequisite commands have been run.
 
 ## Prerequisite Call Chain (required for building SQL and relations)
-1. Read `list-properties.md`, then run `te-cli te_meta +list_properties --project_id 1` to get the available properties.
+1. Read `list-properties.md`, then run `ae-cli analysis_meta +list_properties --project_id 1` to get the available properties.
 2. Use `--table_type` to determine the SQL field source (event or user scope).
 3. Write `--sql_expression` using only fields confirmed in the previous step; the expression must conform to Trino syntax.
-4. If `--sql_event_relation_type=relation_by_setting`, read `list-events.md`, then run `te-cli te_meta +list_events --project_id 1` to get the available events and build `--related_events`.
+4. If `--sql_event_relation_type=relation_by_setting`, read `list-events.md`, then run `ae-cli analysis_meta +list_events --project_id 1` to get the available events and build `--related_events`.
 5. Call `+create_virtual_property` to create the virtual property.
 6. Example `sql_expression`: `property_a + property_b` or `CASE WHEN status = 1 THEN 'active' ELSE 'inactive' END`.
 
 ## Command
 ```bash
-te-cli te_meta +create_virtual_property --project_id 1 --property_name '#vp@demo' --table_type event --select_type string --sql_expression 'event_name' --sql_event_relation_type relation_default
-te-cli te_meta +create_virtual_property --project_id 1 --property_name '#vp@demo' --property_desc demo --table_type event --select_type string --sql_expression "CASE WHEN status = 1 THEN 'active' ELSE 'inactive' END" --sql_event_relation_type relation_by_setting --related_events '[{"eventName":"purchase"}]' --property_remark demo
-te-cli te_meta +create_virtual_property --dry-run
+ae-cli analysis_meta +create_virtual_property --project_id 1 --property_name '#vp@demo' --table_type event --select_type string --sql_expression 'event_name' --sql_event_relation_type relation_default
+ae-cli analysis_meta +create_virtual_property --project_id 1 --property_name '#vp@demo' --property_desc demo --table_type event --select_type string --sql_expression "CASE WHEN status = 1 THEN 'active' ELSE 'inactive' END" --sql_event_relation_type relation_by_setting --related_events '[{"eventName":"purchase"}]' --property_remark demo
+ae-cli analysis_meta +create_virtual_property --dry-run
 ```
 
 ## Parameters
@@ -45,9 +45,9 @@ te-cli te_meta +create_virtual_property --dry-run
 | `--property_desc` | No | Display name/description |
 | `--table_type` | Yes | Table type. event: create virtual event property(virtual property generated based on event or user properties), user: create virtual user property(virtual property generated based on user properties) |
 | `--select_type` | Yes | Data type: string, number, bool, datetime |
-| `--sql_expression` | Yes | SQL expression for computing the property. MUST be built from fields confirmed by `te_meta +list_properties` in the same `project_id`, and MUST conform to Trino syntax (for example, columns starting with '#' or containing '@' should be double-quoted). |
+| `--sql_expression` | Yes | SQL expression for computing the property. MUST be built from fields confirmed by `analysis_meta +list_properties` in the same `project_id`, and MUST conform to Trino syntax (for example, columns starting with '#' or containing '@' should be double-quoted). |
 | `--sql_event_relation_type` | Yes | Type of associating attributes with events, relation_default: auto; relation_always: all events; relation_by_setting: specified events |
-| `--related_events` | No | Optional JSON array of related events. When `sql_event_relation_type=relation_by_setting`, this field is required and event names MUST come from `te_meta +list_events` in the same `project_id`. |
+| `--related_events` | No | Optional JSON array of related events. When `sql_event_relation_type=relation_by_setting`, this field is required and event names MUST come from `analysis_meta +list_events` in the same `project_id`. |
 | `--property_remark` | No | Optional property remark |
 
 ## Decision Rules

@@ -1,4 +1,4 @@
-# te_analysis +list_reports (List Reports)
+# analysis +list_reports (List Reports)
 
 > **Prerequisite:** Read [`../te-shared/SKILL.md`](../../te-shared/SKILL.md)
 
@@ -10,9 +10,9 @@ Domain: **Report management**
 
 ## Command
 ```bash
-ae-cli te_analysis +list_reports --project_id 1
-ae-cli te_analysis +list_reports --project_id 1 --query demo
-ae-cli te_analysis +list_reports --dry-run
+ae-cli analysis +list_reports --project_id 1
+ae-cli analysis +list_reports --project_id 1 --query demo
+ae-cli analysis +list_reports --dry-run
 ```
 
 ## Parameters

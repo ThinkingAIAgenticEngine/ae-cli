@@ -1,4 +1,4 @@
-# te_audience +get_tags_by_name (Locate Tags by Name)
+# analysis_audience +get_tags_by_name (Locate Tags by Name)
 
 > **Prerequisite:** Read [`../te-shared/SKILL.md`](../../te-shared/SKILL.md)
 
@@ -9,8 +9,8 @@ Domain: **Tag Management**
 
 ## Commands
 ```bash
-te-cli te_audience +get_tags_by_name --project_id 1 --names '["demo"]'
-te-cli te_audience +get_tags_by_name --dry-run
+ae-cli analysis_audience +get_tags_by_name --project_id 1 --names '["demo"]'
+ae-cli analysis_audience +get_tags_by_name --dry-run
 ```
 
 ## Parameters

@@ -1,72 +1,72 @@
 # te-community community-analyzing-official-content
 
-> **前置条件:** 阅读 [`../te-shared/SKILL.md`](../te-shared/SKILL.md)
+> **Prerequisite:** Read [`../te-shared/SKILL.md`](../te-shared/SKILL.md)
 
-官方内容分析：分析指定游戏在社区模块中近期发布的官方内容，按照既定分类进行梳理和总结。
+Official content analysis: Analyze recently published official content for a specified game in the community module, then classify and summarize it using the predefined categories.
 
-触发场景: 当用户希望了解近期指定游戏的官方发布内容时使用此技能。
+Trigger scenario: Use this skill when the user wants to know the official release content of the specified game in the near future.
 
-## 分析流程
+## Analysis process
 
-1. **确认分析时间**：获取开始日期和结束日期（建议不超过 30 天）
-2. **查询官方内容**：调用 `search_posts` 并设置 `official: true` 参数
-3. **内容分类分析**：按游戏公告、社区活动、联动、宣传物料四个类别分类
-4. **格式化输出**：生成结构化的官方内容分析报告
+1. **Confirm analysis time**: Get the start date and end date (recommended not to exceed 30 days)
+2. **Query official content**: Call `search_posts` and set the `official: true` parameter
+3. **Content Classification Analysis**: Classified by four categories: game announcements, community activities, linkages, and promotional materials
+4. **Formatted output**: Generate a structured official content analysis report
 
-## 执行流程
+## Execution process
 
-**步骤 1：确认分析时间**
-- **如果用户已指定分析时间**：记录时间范围（开始时间、结束时间），进入步骤 2
-- **如果用户未指定分析时间**：告知用户提供以下信息后再进行接下来的操作：
-  - 分析的开始日期
-  - 分析的结束日期
-- ⚠️ 时间范围建议不超过 30 天，以确保查询效率和内容可读性
+**Step 1: Confirm analysis time**
+- **If the user has specified the analysis time**: Record the time range (start time, end time) and enter step 2
+- **If the user does not specify the analysis time**: Inform the user to provide the following information before proceeding:
+- Start date of analysis
+- The end date of the analysis
+- ⚠️ The time range is recommended to be no more than 30 days to ensure query efficiency and content readability
 
-**步骤 2：查询官方内容**
-使用 `search_posts` 工具查询指定时间范围内的官方发布内容。
-- 调用参数：`gameId`, `startTime`, `endTime`, `official: true`, `pagerHeader`
-- 重点记录话题总数、渠道分布及每个帖子的时间戳
+**Step 2: Check official content**
+Use the `search_posts` tool to query official published content within a specified time range.
+- Calling parameters: `gameId`, `startTime`, `endTime`, `official: true`, `pagerHeader`
+- Focus on recording the total number of topics, channel distribution and timestamp of each post
 
-**步骤 3：内容分类与分析**
-按照以下四个类别进行分类分析
+**Step 3: Content Classification and Analysis**
+Classification analysis according to the following four categories
 
-## 内容分类标准
+## Content classification criteria
 
-| 类别 | 定义 | 需要提取的信息 |
+| Category | Definition | Information to be extracted |
 |------|------|----------------|
-| **游戏公告** | 游戏新版本、新活动等游戏内新内容的公告与介绍 | 活动/版本/新卡池内容、游戏要素、持续时间（常驻活动返回"常驻"） |
-| **社区活动** | 促进玩家在社区发帖、回帖、创作的活动，一般有实物奖励或社区头衔 | 发布平台、活动要求、持续时间、奖励内容 |
-| **联动** | 宣布游戏外联动活动的公告 | 联动品牌/IP、联动时间、联动形式（游戏内联动归属游戏公告） |
-| **宣传物料** | 一般的宣传物料（图片、漫画、角色语录等） | 相关角色/内容、物料形式 |
+| **Game Announcement** | Announcement and introduction of new game content such as new versions and new activities | Activity/version/new card pool content, game elements, duration (resident activities return to "Resident") |
+| **Community Activities** | Activities that promote players to post, reply, and create in the community, usually with physical rewards or community titles | Publishing platform, activity requirements, duration, and reward content |
+| **Linkage** | Announcement of linkage activities outside the game | Linkage brand/IP, linkage time, linkage form (in-game linkage ownership game announcement) |
+| **Promotional Materials** | General promotional materials (pictures, comics, character quotes, etc.) | Related characters/content, material form |
 
-## 跨平台合并规则
+## Cross-platform merge rules
 
-- **游戏公告、联动、宣传物料**：如果同一内容在多个平台发布且内容一致，则合并为一条，在总结中注明"多平台发布"
-- **社区活动**：每个平台单独列出，不进行合并（因为不同平台的活动规则可能不同）
+- **Game announcements, linkages, and promotional materials**: If the same content is released on multiple platforms and the content is consistent, merge it into one, and indicate "multi-platform release" in the summary
+- **Community Activities**: Each platform is listed separately and is not merged (because the activity rules of different platforms may be different)
 
-## 输出结构
+## Output structure
 
-### 一、分析概要
-- **游戏**：游戏名称
-- **分析时间**：开始日期 - 结束日期
-- **官方内容总数**：总数量
+### 1. Analysis summary
+- **Game**: Game name
+- **Analysis time**: start date - end date
+- **TOTAL OFFICIAL CONTENT**: Total quantity
 
-### 二、游戏公告
-内容列表（按时间排序）
+### 2. Game Announcement
+Contents list (sorted by time)
 
-### 三、社区活动
-内容列表（按平台和时间排序）
+### 3. Community activities
+Content list (sorted by platform and time)
 
-### 四、联动
-内容列表（按时间排序）
+### 4. Linkage
+Contents list (sorted by time)
 
-### 五、宣传物料
-内容列表（按时间排序）
+### 5. Promotional materials
+Contents list (sorted by time)
 
-## 示例
+## Example
 
 ```bash
-# 用户输入示例
-"分析一下最近一周的官方发布内容"
-"帮我梳理下这个月的官方公告"
+# User input example
+"Analyze the official releases of the past week"
+"Help me sort out this month's official announcements"
 ```

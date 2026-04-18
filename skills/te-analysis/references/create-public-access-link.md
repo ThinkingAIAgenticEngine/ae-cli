@@ -1,4 +1,4 @@
-# te_analysis +create_public_access_link (create public access link)
+# analysis +create_public_access_link (create public access link)
 
 > **Prerequisite:** Read [`../te-shared/SKILL.md`](../../te-shared/SKILL.md)
 
@@ -11,9 +11,9 @@ Domain: **Dashboard Management**
 
 ## Commands
 ```bash
-te-cli te_analysis +create_public_access_link --project_id 1 --resource_type dashboard --resource_id 1 --access_controls '{}' --effective_at "2026-04-09 10:00:00" --expires_at "2026-04-10 10:00:00"
-te-cli te_analysis +create_public_access_link --project_id 1 --company_id 1 --resource_type dashboard --resource_id 1 --access_controls '{}' --remark demo --effective_at "2026-04-09 10:00:00" --expires_at "2026-04-10 10:00:00"
-te-cli te_analysis +create_public_access_link --dry-run
+ae-cli analysis +create_public_access_link --project_id 1 --resource_type dashboard --resource_id 1 --access_controls '{}' --effective_at "2026-04-09 10:00:00" --expires_at "2026-04-10 10:00:00"
+ae-cli analysis +create_public_access_link --project_id 1 --company_id 1 --resource_type dashboard --resource_id 1 --access_controls '{}' --remark demo --effective_at "2026-04-09 10:00:00" --expires_at "2026-04-10 10:00:00"
+ae-cli analysis +create_public_access_link --dry-run
 ```
 
 ## Parameters

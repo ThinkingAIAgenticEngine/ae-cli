@@ -1,82 +1,85 @@
 # te-community community-daily-report
 
-> **前置条件:** 阅读 [`../te-shared/SKILL.md`](../te-shared/SKILL.md)
+> **Prerequisite:** Read [`../te-shared/SKILL.md`](../te-shared/SKILL.md)
 
-每日快报：生成单日大盘、突发舆情与安全合规风控的短平快《用户运营每日快报》，支持环比对比（T-1 与 T-2）。
+Daily brief: Generate a concise "User Operations Daily Brief" covering daily macro trends, breaking sentiment signals, and safety/compliance risks, with T-1 vs T-2 comparison.
 
-触发场景: 当用户要求"生成日报"、"昨日战报"或"每日舆情总结"时触发。
+Trigger: Use this when the user asks for "generate daily report", "yesterday's battle report" or "daily sentiment summary".
 
-## 分析流程
+## Roles and Goals
 
-1. **确定时间参数**：目标日(T-1)和对比日(T-2)
-2. **调用 MCP 工具**：
-   - `get_overview_metrics`（两次）：获取 T-1 和 T-2 的发帖/反馈总数，计算环比涨跌幅
-   - `get_sentiment_overview`：获取目标日情感分布
-   - `get_daily_summary`：获取目标日核心事件摘要
-   - `search_posts`：搜索目标日高热度话题原帖
-   - `get_post_detail` + `get_comments_summary`：提取真实用户原话
-   - `get_risk_content`：获取安全合规风控数据
+You are the "User Operations Director + Public Opinion Monitoring Expert". The core task is to quickly answer three things:
+1) Whether the overall trend on the target date rose or fell relative to the previous day; 2) What is the most important focus of sentiment on the day; 3) Are there any risks that need to be dealt with immediately?
 
-## 时间推演与动态话术规则
+## Time deduction and speech rules
 
-1. **用户明确指定日期**（如："出一下3月17日的日报"）：
-   - 目标日为指定日期，对比日自动推算为前一天
-   - **话术红线**：报告正文中**绝对禁止出现"今日"、"昨日"、"前天"等相对时间代词**，必须使用具体日期或客观代词（如："当日声量激增"、"对比上日"）
-2. **用户未明确指定日期**（如只说"生成日报"）：
-   - 立即获取当前系统时间，**自动以"昨天"作为目标日(T-1)**，前天为对比日(T-2)
-   - 此时允许在报告中自然使用"昨日大盘"、"今日重点"等常规表述
+1. **The user clearly specifies the date** (for example: "Publish the daily report on March 17"):
+- The target date is the specified date, and the comparison date is automatically calculated as the previous day.
+- **Red line of speech**: In the text of the report, relative time pronouns such as "today", "yesterday" and "the day before yesterday" are absolutely prohibited**, and specific dates or objective pronouns must be used (such as: "Surge in volume on that day", "Compared to the previous day")
+2. **The user did not explicitly specify the date** (such as only saying "generate daily report"):
+- Automatically use yesterday as the target day (T-1) and the day before yesterday as the comparison day (T-2)
+- Allows the use of relative terms such as "yesterday/today's highlights"
 
-## 核心约束
+## Required tool chain
 
-- **极简主义，拒绝长篇**：重点描述"增量信息"和"突发异常"
-- **预警与风控的绝对隔离**：产品Bug、UI吐槽、活动反馈归为"业务体验"；黑产、涉政、黄赌毒、违规广告写进"合规风控"
-- **用户原声绝对真实**：必须 100% 来源于真实文本，**绝对禁止捏造或臆想用户发言**
+1. `get_overview_metrics` (called twice: T-1 and T-2)
+2. `get_sentiment_overview` (target day sentiment distribution)
+3. `get_daily_summary` (target day event summary)
+4. `search_posts` (locating core hot posts)
+5. `get_post_detail` + `get_comments_summary` (extract the real original sound)
+6. `get_risk_content` (compliance risk)
 
-## 输出结构
+## Core Constraints
 
-### 一、核心概览
-- **摘要总览**：一句话概括当日核心事件
-- **数据概览**：关键指标环比变化
-- **当日热词**：高频关键词
+- **Minimalism, rejecting long forms**: focus on describing "incremental information" and "sudden anomalies"
+- **Absolute isolation of early warning and risk control**: Product bugs, UI complaints, and event feedback are classified as "Business Experience"; illegal products, politics, pornography, gambling and drugs, and illegal advertising are written into "Compliance Risk Control"
+- **The original voice of the user is absolutely authentic**: it must be 100% derived from real text, **It is absolutely prohibited to fabricate or conjecture what the user said**
 
-### 二、单日核心看板
+## Output structure
 
-| 指标类别 | 数据 | 环比变化 |
+### 1. Core Overview
+- **Summary Overview**: Summarize the core events of the day in one sentence
+- **Data Overview**: Month-on-month changes in key indicators
+- **Hot words of the day**: high-frequency keywords
+
+### 2. Single-day core dashboard
+
+| Indicator categories | Data | Month-on-month changes |
 |---------|------|---------|
-| 大盘总声量 | 具体数值 | ↑/↓ X% |
-| 当日情感大盘 | 正面/中性/负面占比 | 变化趋势 |
-| 主力声量阵地 | 各渠道分布 | 渠道对比 |
+| Total sound volume of the market | Specific value | ↑/↓ X% |
+| Sentiment of the day | Positive/neutral/negative proportion | Changing trends |
+| Main volume position | Distribution of various channels | Channel comparison |
 
-### 三、核心焦点与用户洞察
+### 3. Core Focus and User Insights
 
-**核心焦点**：
-- 焦点一：[事件描述]
-  - **用户反馈**：[反馈总结]
-  - **典型原声**：「[真实用户评论]」
+**Core Focus**:
+- Focus 1: [Event Description]
+- **User Feedback**: [Feedback Summary]
+- **Typical original voice**: "[Real user comments]"
 
-**用户情绪总结**
+**User Sentiment Summary**
 
-| 情绪倾向 | 主要触发点 | 可能的影响 |
+| Emotional Tendencies | Main Trigger Points | Possible Impact |
 |---------|-----------|-----------|
-| 正面/负面/中性 | 具体原因 | 影响分析 |
+| Positive/Negative/Neutral | Specific reasons | Impact analysis |
 
-### 四、风控提示与运营建议
+### 4. Risk control tips and operational suggestions
 
-**安全合规风控**
+**Safety Compliance Risk Control**
 
-| 风控类型 | 发现数量 | 主要表现 | 处置建议 |
+| Risk control type | Number of findings | Main performance | Disposal suggestions |
 |---------|---------|---------|---------|
-| 具体类型 | 数量 | 具体表现 | 处理建议 |
+| Specific type | Quantity | Specific performance | Treatment suggestions |
 
-### 五、运营建议与未来节点建议
-- 短期建议
-- 中长期关注点
+### 5. Operation suggestions and future node suggestions
+- short term advice
+- Mid- to long-term focus
 
-## 示例
+## Example
 
 ```bash
-# 用户输入示例
-"生成日报"
-"出一下3月17日的日报"
-"昨日战报"
+# User input example
+"Generate daily report"
+"Publish the daily report for March 17th"
+"Yesterday's Battle Report"
 ```

@@ -1,68 +1,68 @@
 # te-community community-activity-analysis
 
-> **前置条件:** 阅读 [`../te-shared/SKILL.md`](../te-shared/SKILL.md)
+> **Prerequisite:** Read [`../te-shared/SKILL.md`](../te-shared/SKILL.md)
 
-活动专项运营洞察分析：深度评估游戏内活动或营销事件的曝光效果、社区口碑、二创生态及长尾影响，输出标准的《活动专项运营洞察报告》。
+Event-specific operation insight analysis: In-depth evaluation of the exposure effect, community reputation, second-generation ecology and long-tail impact of in-game activities or marketing events, and output a standard "Event-Specific Operation Insight Report".
 
-触发场景: 当用户要求"分析某活动"、"生成活动复盘"、"看下XX活动的反馈"或"评估营销效果"时。
+Trigger scenario: When the user asks to "analyze a certain activity", "generate activity review", "see feedback from XX activity" or "evaluate marketing effectiveness".
 
-## 分析流程
+## Analysis process
 
-1. **大盘与趋势摸底**：调用 `get_overview_metrics` 和 `get_daily_summary` 获取活动前后整体声量与情感大盘
-2. **话题与热搜下钻**：调用 `get_hot_topics` 和 `get_topic_detail` 深度分析特定话题的情感分布
-3. **口碑与痛痒点拆解**：调用 `get_sentiment_overview` 分析正负面高频关键词
-4. **定点爆破取证**：调用 `search_posts` -> `get_post_detail` -> `get_comments_summary` 获取真实玩家案例
-5. **风控与红线排查**：调用 `get_risk_content` 排查合规风险内容
+1. **Basic market and trend analysis**: Call `get_overview_metrics` and `get_daily_summary` to obtain the overall volume and sentiment before and after the event
+2. **Drill down on topics and hot searches**: Call `get_hot_topics` and `get_topic_detail` to deeply analyze the sentiment distribution of a specific topic
+3. **Word-of-mouth and pain points deep-dive analysis of**: Call `get_sentiment_overview` to analyze positive and negative high-frequency keywords
+4. **Fixed-point blasting evidence collection**: Call `search_posts` -> `get_post_detail` -> `get_comments_summary` to obtain real player cases
+5. **Risk Control and Red Line Checking**: Call `get_risk_content` to check compliance risk content
 
-## 核心约束
+## Core Constraints
 
-- **拒绝假大空**：必须写出具体原因，并附上帖子或评论原声佐证
-- **严格区分预警与风控**：
-  - 预警（Alerts）：游戏内体验问题（机制Bug、数值设计不合理、剧情吃书）
-  - 风控（Risk Control）：触碰现实底线的社区安全问题（引战谩骂、黑产交易、内鬼解包泄露）
+- **Reject false claims**: You must write down the specific reasons and attach supporting posts or comments.
+- **Strictly distinguish between early warning and risk control**:
+- Early Warning: Event experience issues (mechanism, bugs, rewards, liveliness)
+- Risk control: Risks of violations (black/gray-market activity, leaks, wars, advertising, etc.)
 
-## 输出结构
+## Output structure
 
-### 一、活动概况与核心数据
-- 活动定调
-- 核心声量与曝光指标（含表格）
+### 1. Activity overview and core data
+- Set the tone for the event
+- Core sound volume and exposure indicators (including tables)
 
-### 二、社区反馈与舆情痛亮点洞察
-- **活动高光与亮点**（含典型原声支撑）
-- **核心槽点与体验痛点**（含典型原声支撑）
+### 2. Insights into community feedback and sentiment highlights
+- **Activity Highlights and Highlights** (with typical acoustic support)
+- **Core slots and experience pain points** (including typical original sound support)
 
-### 三、内容传播与二创生态挖掘
-- 核心出圈话题/梗文化
-- 二创产出潜力盘点
+### 3. Content dissemination and secondary innovation ecological mining
+- Core out-of-circle topics/meme culture
+- Inventory of secondary innovation output potential
 
-### 四、对社区生态的影响
-- 活跃度拉动效应
-- 玩家结构/流派演变
+### 4. Impact on community ecology
+-Activity pulling effect
+- Player structure/genre evolution
 
-### 五、对运营策略的启示与优化建议
-- 后续活动设计避坑
-- 长尾期营销抓手
-- 直播/宣发侧复盘
+### 5. Inspiration and optimization suggestions for operational strategies
+- Design pitfalls in follow-up activities
+- Long-tail marketing strategies
+- Livestream/publicity side review
 
-### 六、活动预警与合规风控
+### 6. Activity warning and compliance risk control
 
-**⚠️ 活动舆情与体验预警**
+**⚠️ Event sentiment and experience warning**
 
-| 预警等级 | 预警触发项 | 社区蔓延度 | 核心表现 | 建议跟进动作 |
+| Warning level | Warning trigger items | Community spread | Core performance | Suggested follow-up actions |
 |---------|-----------|-----------|---------|-------------|
-| 高/中/低 | 具体问题 | 影响范围 | 具体表现 | 处理建议 |
+| High/medium/low | Specific problems | Scope of impact | Specific performance | Handling suggestions |
 
-**⛔ 社区合规与风控拦截**
+**⛔ Community compliance and risk control interception**
 
-| 风控等级 | 违规类型 | 发现渠道 | 违规行为事实 | 处置建议 |
+| Risk control level | Violation type | Discovery channels | Violation facts | Disposal suggestions |
 |---------|---------|---------|-------------|---------|
-| 严重/一般 | 违规类型 | 渠道名称 | 具体事实 | 处理建议 |
+| Serious/General | Violation type | Channel name | Specific facts | Handling suggestions |
 
-## 示例
+## Example
 
 ```bash
-# 用户输入示例
-"帮我分析一下某某活动活动的反馈"
-"生成半周年庆典的活动复盘报告"
-"评估一下这次营销活动的效果"
+# User input example
+"Help me analyze the feedback on such and such activities"
+"Generate an activity review report for the half-anniversary celebration"
+"Evaluate the effectiveness of this marketing campaign"
 ```

@@ -1,4 +1,4 @@
-# te_analysis +get_report_definition (read report definition)
+# analysis +get_report_definition (read report definition)
 
 > **Prerequisite:** Read [`../te-shared/SKILL.md`](../../te-shared/SKILL.md)
 
@@ -11,8 +11,8 @@ Domain: **Report Management**
 
 ## Commands
 ```bash
-te-cli te_analysis +get_report_definition --project_id 1 --report_id 1
-te-cli te_analysis +get_report_definition --dry-run
+ae-cli analysis +get_report_definition --project_id 1 --report_id 1
+ae-cli analysis +get_report_definition --dry-run
 ```
 
 ## Parameters

@@ -1,23 +1,23 @@
 # te-community get_livestream_analysis
 
-> **前置条件:** 阅读 [`../te-shared/SKILL.md`](../te-shared/SKILL.md)
+> **Prerequisite:** Read [`../te-shared/SKILL.md`](../te-shared/SKILL.md)
 
-AI 生成的单场直播分析报告：亮点时段（带指标与 AI 解读）与情感观点。
+AI-generated single livestream analysis report: highlight periods (with indicators and AI interpretation) and emotional views.
 
-映射命令: `te-cli community get_livestream_analysis`
+Mapping command: `ae-cli community get_livestream_analysis`
 
 ## Flags
 
-| Flag | 类型 | 必填 | 说明 |
+| Flag | Type | Required | Description |
 |------|------|------|------|
-| `--space-id` | number | 是 | 社区空间 ID |
-| `--game-id` | number | 是 | 游戏/空间标识 |
-| `--stream-id` | string | 是 | 直播场次 ID，来自 `get_livestream_list` 的 streamId |
+| `--space-id` | number | yes | community space ID |
+| `--game-id` | number | yes | game/space ID |
+| `--stream-id` | string | Yes | Livestream session ID, streamId from `get_livestream_list` |
 
-## 示例
+## Example
 
 ```bash
-te-cli community get_livestream_analysis \
+ae-cli community get_livestream_analysis \
   --space-id 1 --game-id 1 \
   --stream-id <stream-id>
 ```

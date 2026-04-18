@@ -1,4 +1,4 @@
-# te-common resource link completion (call te_common +get_resource_url)
+# te-common resource link completion (call analysis_common +get_resource_url)
 
 > **Prerequisite:** Read [`../../te-shared/SKILL.md`](../../te-shared/SKILL.md)
 
@@ -16,8 +16,8 @@ Domain: **cross-module post-write constraint**
 
 ## Command
 ```bash
-te-cli te_common +get_resource_url --project_id 1 --resource_type dashboard --resource_id 1
-te-cli te_common +get_resource_url --dry-run
+ae-cli analysis_common +get_resource_url --project_id 1 --resource_type dashboard --resource_id 1
+ae-cli analysis_common +get_resource_url --dry-run
 ```
 
 ## Parameters
@@ -28,5 +28,5 @@ te-cli te_common +get_resource_url --dry-run
 | `--resource_id` | Yes | Numeric resource ID |
 
 ## Recommended Chaining
-- `+create_*` -> `te_common +get_resource_url`
-- `+update_*` -> `te_common +get_resource_url`
+- `+create_*` -> `analysis_common +get_resource_url`
+- `+update_*` -> `analysis_common +get_resource_url`

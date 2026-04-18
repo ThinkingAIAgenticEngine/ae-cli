@@ -1,5 +1,6 @@
 import fs from 'fs';
 import path from 'path';
+import { safeReadJsonFile } from './json-utils.js';
 
 const CONFIG_DIR = path.join(process.env.HOME || '', '.ae-cli');
 const CONFIG_FILE = path.join(CONFIG_DIR, 'config.json');
@@ -20,7 +21,7 @@ function ensureDir(): void {
 export function loadConfig(): TeConfig {
   try {
     if (fs.existsSync(CONFIG_FILE)) {
-      const raw = JSON.parse(fs.readFileSync(CONFIG_FILE, 'utf-8'));
+      const raw = safeReadJsonFile(CONFIG_FILE);
       // Migrate from old format (defaultHost without protocol)
       if (raw.defaultHost && !raw.activeHost) {
         const migrated = migrateConfig(raw);
@@ -29,7 +30,10 @@ export function loadConfig(): TeConfig {
       }
       return raw;
     }
-  } catch {}
+  } catch (err: any) {
+    // 如果配置文件损坏，返回空配置
+    console.error(`Error loading config: ${err.message}`);
+  }
   return { activeHost: '', hosts: {} };
 }
 

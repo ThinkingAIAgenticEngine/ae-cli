@@ -1,4 +1,4 @@
-# te_analysis +update_dashboard (update dashboard)
+# analysis +update_dashboard (update dashboard)
 
 > **Prerequisite:** Read [`../te-shared/SKILL.md`](../../te-shared/SKILL.md)
 
@@ -16,9 +16,9 @@ Domain: **Dashboard Management**
 
 ## Commands
 ```bash
-ae-cli te_analysis +update_dashboard --project_id 1 --dashboard_id 1
-ae-cli te_analysis +update_dashboard --project_id 1 --dashboard_id 1 --dashboard_name demo --report_ids '[1001]' --member_authorities '{"1001":"READ"}'
-ae-cli te_analysis +update_dashboard --dry-run
+ae-cli analysis +update_dashboard --project_id 1 --dashboard_id 1
+ae-cli analysis +update_dashboard --project_id 1 --dashboard_id 1 --dashboard_name demo --report_ids '[1001]' --member_authorities '{"1001":"READ"}'
+ae-cli analysis +update_dashboard --dry-run
 ```
 
 ## Parameters

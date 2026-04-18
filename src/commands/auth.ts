@@ -1,5 +1,6 @@
 import { Command } from 'commander';
 import { getToken, clearToken, setTokenManual, getAuthStatus, resolveHost } from '../core/auth.js';
+import { loadConfig, saveConfig } from '../core/config.js';
 import { printOutput, printError } from '../framework/output.js';
 
 export function registerAuth(program: Command): void {
@@ -32,6 +33,17 @@ export function registerAuth(program: Command): void {
       if (!host) {
         printError('config', 'No TE host configured.', 'Run: ae-cli config set-host');
         process.exit(1);
+      }
+      // 确保 host 存在于配置中
+      const config = loadConfig();
+      if (!config.hosts[host]) {
+        config.hosts[host] = { label: host };
+        if (!config.activeHost) {
+          config.activeHost = host;
+        }
+        saveConfig(config);
+        process.stderr.write(`[ae-cli] Config saved for ${host}\n`);
+        printOutput({ saved: true, config }, program.opts().format || 'json');
       }
       setTokenManual(token, host);
       process.stderr.write(`[ae-cli] Token saved for ${host}\n`);

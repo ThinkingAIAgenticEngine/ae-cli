@@ -1,24 +1,24 @@
-# te-engage +add-approver
+# te-engage +add_approver
 
-> **前置条件:** 阅读 [`../../te-shared/SKILL.md`](../../te-shared/SKILL.md)
+> **Prerequisite:** Read [`../../te-shared/SKILL.md`](../../te-shared/SKILL.md)
 
-批量添加审批人。
+Batch add approvers.
 
-映射命令: `te-cli te-engage +add-approver`
+Mapped command: `ae-cli engage +add_approver`
 
 ## Flags
 
-| Flag | 类型 | 必填 | 说明 |
+| Flag | Type | Required | Description |
 |------|------|------|------|
-| `--project-id` / `-p` | number | 是 | 项目 ID |
-| `--approvers` | json | 是 | 审批人 open ID JSON 数组 |
+| `--project_id` / `-p` | number | Yes | Project ID |
+| `--approvers` | json | Yes | approver open ID JSON array |
 
-## 安全约束
+## Safety Constraints
 
-此命令为 **写操作**，会修改项目审批人配置。
+This command is a **write operation** and and modifies the project approver configuration.
 
-## 示例
+## Examples
 
 ```bash
-te-cli te-engage +add-approver --project-id 1 --approvers '["ou_xxx","ou_yyy"]'
+ae-cli engage +add_approver --project_id 1 --approvers '["ou_xxx","ou_yyy"]'
 ```

@@ -1,19 +1,19 @@
-# te-engage +flow-list
+# te-engage +flow_list
 
-> **前置条件:** 阅读 [`../../te-shared/SKILL.md`](../../te-shared/SKILL.md)
+> **Prerequisite:** Read [`../../te-shared/SKILL.md`](../../te-shared/SKILL.md)
 
-查询流程列表。
+Query the flow list.
 
-映射命令: `te-cli te-engage +flow-list`
+Mapped command: `ae-cli engage +flow_list`
 
 ## Flags
 
-| Flag | 类型 | 必填 | 说明 |
+| Flag | Type | Required | Description |
 |------|------|------|------|
-| `--project-id` / `-p` | number | 是 | 项目 ID |
+| `--project_id` / `-p` | number | Yes | Project ID |
 
-## 示例
+## Examples
 
 ```bash
-te-cli te-engage +flow-list --project-id 1
+ae-cli engage +flow_list --project_id 1
 ```

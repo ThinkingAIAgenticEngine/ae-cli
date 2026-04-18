@@ -1,4 +1,4 @@
-# te_meta +create_project_mark_time (Create Project Date Marker)
+# analysis_meta +create_project_mark_time (Create Project Date Marker)
 
 > **Prerequisite:** Read [`../te-shared/SKILL.md`](../../te-shared/SKILL.md)
 
@@ -10,9 +10,9 @@ Domain: **Project Configuration**
 
 ## Command
 ```bash
-te-cli te_meta +create_project_mark_time --project_id 1 --marked_at '2026-04-09 10:00' --content demo
-te-cli te_meta +create_project_mark_time --project_id 1 --marked_at '2026-04-09 10:00' --zone_offset 8 --content demo --is_visible 1
-te-cli te_meta +create_project_mark_time --dry-run
+ae-cli analysis_meta +create_project_mark_time --project_id 1 --marked_at '2026-04-09 10:00' --content demo
+ae-cli analysis_meta +create_project_mark_time --project_id 1 --marked_at '2026-04-09 10:00' --zone_offset 8 --content demo --is_visible 1
+ae-cli analysis_meta +create_project_mark_time --dry-run
 ```
 
 ## Parameters

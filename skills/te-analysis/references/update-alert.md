@@ -1,4 +1,4 @@
-# te_analysis +update_alert (Update Alert)
+# analysis +update_alert (Update Alert)
 
 > **Prerequisite:** Read [`../te-shared/SKILL.md`](../../te-shared/SKILL.md)
 
@@ -16,13 +16,13 @@ Domain: **Metadata queries**
 
 ## Prerequisite call chain (required for updating definition)
 1. Read `get-alert-definition-schema.md` to understand the return structure of `+get_alert_definition_schema`.
-2. Call `te-cli te_analysis +get_alert_definition_schema` to get the schema.
+2. Call `ae-cli analysis +get_alert_definition_schema` to get the schema.
 3. Build a new `definition` from the schema, then call `+update_alert`.
 
 ## Command
 ```bash
-te-cli te_analysis +update_alert --project_id 1 --alert_id 1 --definition '{}'
-te-cli te_analysis +update_alert --dry-run
+ae-cli analysis +update_alert --project_id 1 --alert_id 1 --definition '{}'
+ae-cli analysis +update_alert --dry-run
 ```
 
 ## Parameters

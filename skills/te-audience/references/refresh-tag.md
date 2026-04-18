@@ -1,4 +1,4 @@
-# te_audience +refresh_tag (Trigger Tag Recompute)
+# analysis_audience +refresh_tag (Trigger Tag Recompute)
 
 > **Prerequisite:** Read [`../te-shared/SKILL.md`](../../te-shared/SKILL.md)
 
@@ -9,8 +9,8 @@ Domain: **Tag Management**
 
 ## Commands
 ```bash
-te-cli te_audience +refresh_tag --project_id 1 --tag_name demo
-te-cli te_audience +refresh_tag --dry-run
+ae-cli analysis_audience +refresh_tag --project_id 1 --tag_name demo
+ae-cli analysis_audience +refresh_tag --dry-run
 ```
 
 ## Parameters

@@ -1,4 +1,4 @@
-# te_analysis +query_adhoc (Ad Hoc Analysis Execution)
+# analysis +query_adhoc (Ad Hoc Analysis Execution)
 
 > **Prerequisite:** Read [`../te-shared/SKILL.md`](../../te-shared/SKILL.md)
 
@@ -6,7 +6,7 @@ Domain: **Model analysis**
 
 ## Use Cases
 - Precondition helper: call `+get_analysis_query_schema` to get the structure before using this tool.
-- When constructing a real `qp`, you must supplement it with real project metadata; first call `te_meta +list_events` and `te_meta +list_properties`.
+- When constructing a real `qp`, you must supplement it with real project metadata; first call `analysis_meta +list_events` and `analysis_meta +list_properties`.
 - Event analysis: metrics such as event trigger counts, user counts, sums, averages, and more.
 - Retention analysis: metrics such as user churn and retention.
 - Funnel analysis: metrics such as multi-step conversion.
@@ -29,16 +29,16 @@ Domain: **Model analysis**
 
 ## Prerequisite call chain (required for constructing qp)
 1. First determine `--model_type`.
-2. Read `get-analysis-query-schema.md`, then call `te-cli te_analysis +get_analysis_query_schema --model_type <model_type>` to get the structure.
-3. Read `list-events.md`, then call `te-cli te_meta +list_events --project_id 1` to get the available events.
-4. Read `list-properties.md`, then call `te-cli te_meta +list_properties --project_id 1` to get the available properties.
+2. Read `get-analysis-query-schema.md`, then call `ae-cli analysis +get_analysis_query_schema --model_type <model_type>` to get the structure.
+3. Read `list-events.md`, then call `ae-cli analysis_meta +list_events --project_id 1` to get the available events.
+4. Read `list-properties.md`, then call `ae-cli analysis_meta +list_properties --project_id 1` to get the available properties.
 5. Build `qp` from the schema + metadata, then call `+query_adhoc`.
 
 ## Command
 ```bash
-te-cli te_analysis +query_adhoc --project_id 1 --model_type event --qp '{}'
-te-cli te_analysis +query_adhoc --project_id 1 --model_type event --qp '{}' --zone_offset 8 --request_id demo --use_cache true --is_sort_by_columns true --resolve_recent_day true --timeout_minutes 8
-te-cli te_analysis +query_adhoc --dry-run
+ae-cli analysis +query_adhoc --project_id 1 --model_type event --qp '{}'
+ae-cli analysis +query_adhoc --project_id 1 --model_type event --qp '{}' --zone_offset 8 --request_id demo --use_cache true --is_sort_by_columns true --resolve_recent_day true --timeout_minutes 8
+ae-cli analysis +query_adhoc --dry-run
 ```
 
 ## Parameters
@@ -46,7 +46,7 @@ te-cli te_analysis +query_adhoc --dry-run
 |---|---|---|
 | `--project_id` / `-p` | Yes | Project ID used to identify the analysis project |
 | `--model_type` | Yes | Model type. Supported values: event, retention, funnel, distribution, attribution, heat_map, interval, path, rank_list, prop_analysis, sql. |
-| `--qp` | Yes | Query parameter JSON. MUST call `+get_analysis_query_schema` first, and use event/property metadata from `te_meta +list_events` / `te_meta +list_properties` in the same `project_id`. |
+| `--qp` | Yes | Query parameter JSON. MUST call `+get_analysis_query_schema` first, and use event/property metadata from `analysis_meta +list_events` / `analysis_meta +list_properties` in the same `project_id`. |
 | `--request_id` | No | Optional unique request ID used for tracking and deduplication. Generated automatically if omitted. |
 | `--use_cache` | No | Whether to use result cache. Default: true |
 | `--zone_offset` | No | Time zone offset in hours. For example, UTC+8 is 8 and UTC-5 is -5 |
@@ -67,5 +67,5 @@ te-cli te_analysis +query_adhoc --dry-run
 - If the query times out or results are abnormal, first narrow the time range / grouping dimensions, then split the subqueries to locate the issue.
 
 ## Recommended chaining
-- +get_analysis_query_schema -> te_meta +list_events -> te_meta +list_properties -> +query_adhoc
+- +get_analysis_query_schema -> analysis_meta +list_events -> analysis_meta +list_properties -> +query_adhoc
 - +list_events -> +list_properties -> +query_adhoc -> +drilldown_users -> +drilldown_user_events

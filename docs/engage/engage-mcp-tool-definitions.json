@@ -1,0 +1,1817 @@
+[
+  {
+    "serverName":"engage-mcp-config",
+    "category":"query",
+    "name":"config_item_trigger_report",
+    "description":"Query the publish and trigger trend report for a config item. \r\nUse this tool when you need time-range report data for one config item, a template slice under that config item, or a strategy slice under that config item. This tool returns data report content, not config item metadata. \r\nRequest tracking rule: `requestId` should be a UUID string so it is globally unique. If you do not provide it, the system generates one automatically. If you later need to cancel this query through the corresponding cancellation capability, you must reuse the same `requestId` that was actually used for this query. \r\nSlice rules: leave both `templateIdList` and `strategyIdList` empty to query at config-item level; pass `templateIdList` to narrow the report to one or more templates; pass `strategyIdList` to narrow the report to one or more strategies. \r\nReturn shape: `ConfigItemTriggerDataResponseDTO`, with top-level `resultGenerateTime` and nested `data` containing the trigger/report payload.",
+    "arguments":[
+      {
+        "description":"Project ID that owns the config item and scopes the query.",
+        "name":"projectId",
+        "primaryType":"integer",
+        "required":true,
+        "requiredSpecified":true,
+        "schema":"{\n  \"$schema\" : \"https://json-schema.org/draft/2020-12/schema\",\n  \"type\" : \"integer\",\n  \"format\" : \"int32\",\n  \"additionalProperties\" : false\n}"
+      },
+      {
+        "description":"Config item ID to query.",
+        "name":"configId",
+        "primaryType":"string",
+        "required":true,
+        "requiredSpecified":true,
+        "schema":"{\n  \"$schema\" : \"https://json-schema.org/draft/2020-12/schema\",\n  \"type\" : \"string\",\n  \"additionalProperties\" : false\n}"
+      },
+      {
+        "description":"Optional request identifier for this query. Use a UUID string and keep it globally unique across queries. If omitted, the system generates a UUID automatically. If you later need to cancel this query, you must use the same `requestId` that was actually used for this query.",
+        "name":"requestId",
+        "primaryType":"string",
+        "required":false,
+        "requiredSpecified":true,
+        "schema":"{\n  \"$schema\" : \"https://json-schema.org/draft/2020-12/schema\",\n  \"type\" : \"string\",\n  \"additionalProperties\" : false\n}"
+      },
+      {
+        "description":"Template ID list used to narrow the report to specific templates under the config item. Leave it empty when you want config-level data or strategy-level data. Do not pass this together with a non-empty `strategyIdList`. Blank items are ignored.",
+        "name":"templateIdList",
+        "primaryType":"array",
+        "required":false,
+        "requiredSpecified":true,
+        "schema":"{\n  \"$schema\" : \"https://json-schema.org/draft/2020-12/schema\",\n  \"type\" : \"array\",\n  \"items\" : {\n    \"type\" : \"string\"\n  },\n  \"additionalProperties\" : false\n}"
+      },
+      {
+        "description":"Strategy ID list used to narrow the report to specific strategies under the config item. Leave it empty when you want config-level data or template-level data. Do not pass this together with a non-empty `templateIdList`. Blank items are ignored.",
+        "name":"strategyIdList",
+        "primaryType":"array",
+        "required":false,
+        "requiredSpecified":true,
+        "schema":"{\n  \"$schema\" : \"https://json-schema.org/draft/2020-12/schema\",\n  \"type\" : \"array\",\n  \"items\" : {\n    \"type\" : \"string\"\n  },\n  \"additionalProperties\" : false\n}"
+      },
+      {
+        "description":"Start date in `yyyy-MM-dd` format.",
+        "name":"startTime",
+        "primaryType":"string",
+        "required":true,
+        "requiredSpecified":true,
+        "schema":"{\n  \"$schema\" : \"https://json-schema.org/draft/2020-12/schema\",\n  \"type\" : \"string\",\n  \"additionalProperties\" : false\n}"
+      },
+      {
+        "description":"End date in `yyyy-MM-dd` format. It should be the same as or later than `startTime`.",
+        "name":"endTime",
+        "primaryType":"string",
+        "required":true,
+        "requiredSpecified":true,
+        "schema":"{\n  \"$schema\" : \"https://json-schema.org/draft/2020-12/schema\",\n  \"type\" : \"string\",\n  \"additionalProperties\" : false\n}"
+      },
+      {
+        "description":"Display timezone offset in hours, for example `8.0` or `-5.0`. Pass the business reporting timezone when the query should not use the current user context timezone.",
+        "name":"showTimeZone",
+        "primaryType":"number",
+        "required":false,
+        "requiredSpecified":true,
+        "schema":"{\n  \"$schema\" : \"https://json-schema.org/draft/2020-12/schema\",\n  \"type\" : \"number\",\n  \"format\" : \"double\",\n  \"additionalProperties\" : false\n}"
+      },
+      {
+        "description":"Internal trigger-report calculation switch. Supported values: `true` or `false`. Use `true` only when you explicitly need the internal analysis-report query path. Default: if omitted, the MCP layer uses `false`.",
+        "name":"analyzeReportInternalQuery",
+        "primaryType":"boolean",
+        "required":false,
+        "requiredSpecified":true,
+        "schema":"{\n  \"$schema\" : \"https://json-schema.org/draft/2020-12/schema\",\n  \"type\" : \"boolean\",\n  \"additionalProperties\" : false\n}"
+      }
+    ]
+  },
+  {
+    "serverName":"engage-mcp-config",
+    "category":"query",
+    "name":"config_item_analysis_report",
+    "description":"Query the analysis report for a config item. \r\nUse this tool when you need analysis report metrics for one config item, a template slice, or a strategy slice. This tool returns report data, not config item metadata. \r\nRequest tracking rule: `requestId` should be a UUID string so it is globally unique. If you do not provide it, the system generates one automatically. If you later need to cancel this query through the corresponding cancellation capability, you must reuse the same `requestId` that was actually used for this query. \r\nSlice rules: leave both `templateIdList` and `strategyIdList` empty to query at config-item level; pass `templateIdList` to narrow the report to one or more templates; pass `strategyIdList` to narrow the report to one or more strategies. \r\nReturn shape: `ConfigItemAnalyzeResDTO`, with top-level `resultGenerateTime` and nested `data` containing the analysis report payload.",
+    "arguments":[
+      {
+        "description":"Project ID that owns the config item and scopes the query.",
+        "name":"projectId",
+        "primaryType":"integer",
+        "required":true,
+        "requiredSpecified":true,
+        "schema":"{\n  \"$schema\" : \"https://json-schema.org/draft/2020-12/schema\",\n  \"type\" : \"integer\",\n  \"format\" : \"int32\",\n  \"additionalProperties\" : false\n}"
+      },
+      {
+        "description":"Config item ID to query.",
+        "name":"configId",
+        "primaryType":"string",
+        "required":true,
+        "requiredSpecified":true,
+        "schema":"{\n  \"$schema\" : \"https://json-schema.org/draft/2020-12/schema\",\n  \"type\" : \"string\",\n  \"additionalProperties\" : false\n}"
+      },
+      {
+        "description":"Optional request identifier for this query. Use a UUID string and keep it globally unique across queries. If omitted, the system generates a UUID automatically. If you later need to cancel this query, you must use the same `requestId` that was actually used for this query.",
+        "name":"requestId",
+        "primaryType":"string",
+        "required":false,
+        "requiredSpecified":true,
+        "schema":"{\n  \"$schema\" : \"https://json-schema.org/draft/2020-12/schema\",\n  \"type\" : \"string\",\n  \"additionalProperties\" : false\n}"
+      },
+      {
+        "description":"Template ID list used to narrow the report to specific templates under the config item. Leave it empty when you want config-level data or strategy-level data. Do not pass this together with a non-empty `strategyIdList`. Blank items are ignored.",
+        "name":"templateIdList",
+        "primaryType":"array",
+        "required":false,
+        "requiredSpecified":true,
+        "schema":"{\n  \"$schema\" : \"https://json-schema.org/draft/2020-12/schema\",\n  \"type\" : \"array\",\n  \"items\" : {\n    \"type\" : \"string\"\n  },\n  \"additionalProperties\" : false\n}"
+      },
+      {
+        "description":"Strategy ID list used to narrow the report to specific strategies under the config item. Leave it empty when you want config-level data or template-level data. Do not pass this together with a non-empty `templateIdList`. Blank items are ignored.",
+        "name":"strategyIdList",
+        "primaryType":"array",
+        "required":false,
+        "requiredSpecified":true,
+        "schema":"{\n  \"$schema\" : \"https://json-schema.org/draft/2020-12/schema\",\n  \"type\" : \"array\",\n  \"items\" : {\n    \"type\" : \"string\"\n  },\n  \"additionalProperties\" : false\n}"
+      },
+      {
+        "description":"Start date in `yyyy-MM-dd` format.",
+        "name":"startTime",
+        "primaryType":"string",
+        "required":true,
+        "requiredSpecified":true,
+        "schema":"{\n  \"$schema\" : \"https://json-schema.org/draft/2020-12/schema\",\n  \"type\" : \"string\",\n  \"additionalProperties\" : false\n}"
+      },
+      {
+        "description":"End date in `yyyy-MM-dd` format. It should be the same as or later than `startTime`.",
+        "name":"endTime",
+        "primaryType":"string",
+        "required":true,
+        "requiredSpecified":true,
+        "schema":"{\n  \"$schema\" : \"https://json-schema.org/draft/2020-12/schema\",\n  \"type\" : \"string\",\n  \"additionalProperties\" : false\n}"
+      },
+      {
+        "description":"Display timezone offset in hours, for example `8.0` or `-5.0`. Pass the business reporting timezone when the query should not use the current user context timezone.",
+        "name":"showTimeZone",
+        "primaryType":"number",
+        "required":false,
+        "requiredSpecified":true,
+        "schema":"{\n  \"$schema\" : \"https://json-schema.org/draft/2020-12/schema\",\n  \"type\" : \"number\",\n  \"format\" : \"double\",\n  \"additionalProperties\" : false\n}"
+      }
+    ]
+  },
+  {
+    "serverName":"engage-mcp-config",
+    "category":"query",
+    "name":"config_item_strategy_comparison",
+    "description":"Query the strategy comparison report under one config item. \r\nUse this tool when the question is about relative performance across multiple strategies under the same config item. This tool is for side-by-side strategy comparison, not for config item metadata lookup. \r\nRequest tracking rule: `requestId` should be a UUID string so it is globally unique. If you do not provide it, the system generates one automatically. If you later need to cancel this query through the corresponding cancellation capability, you must reuse the same `requestId` that was actually used for this query. \r\nReturn shape: `ConfigItemCompareResDTO`, with top-level `resultGenerateTime` and nested `data` containing the strategy comparison payload.",
+    "arguments":[
+      {
+        "description":"Project ID that owns the config item and scopes the query.",
+        "name":"projectId",
+        "primaryType":"integer",
+        "required":true,
+        "requiredSpecified":true,
+        "schema":"{\n  \"$schema\" : \"https://json-schema.org/draft/2020-12/schema\",\n  \"type\" : \"integer\",\n  \"format\" : \"int32\",\n  \"additionalProperties\" : false\n}"
+      },
+      {
+        "description":"Config item ID to query.",
+        "name":"configId",
+        "primaryType":"string",
+        "required":true,
+        "requiredSpecified":true,
+        "schema":"{\n  \"$schema\" : \"https://json-schema.org/draft/2020-12/schema\",\n  \"type\" : \"string\",\n  \"additionalProperties\" : false\n}"
+      },
+      {
+        "description":"Optional request identifier for this query. Use a UUID string and keep it globally unique across queries. If omitted, the system generates a UUID automatically. If you later need to cancel this query, you must use the same `requestId` that was actually used for this query.",
+        "name":"requestId",
+        "primaryType":"string",
+        "required":false,
+        "requiredSpecified":true,
+        "schema":"{\n  \"$schema\" : \"https://json-schema.org/draft/2020-12/schema\",\n  \"type\" : \"string\",\n  \"additionalProperties\" : false\n}"
+      },
+      {
+        "description":"Strategy ID list to compare under the same config item. Pass at least two non-blank strategy IDs when you want a meaningful side-by-side comparison. Blank items are ignored.",
+        "name":"strategyIdList",
+        "primaryType":"array",
+        "required":true,
+        "requiredSpecified":true,
+        "schema":"{\n  \"$schema\" : \"https://json-schema.org/draft/2020-12/schema\",\n  \"type\" : \"array\",\n  \"items\" : {\n    \"type\" : \"string\"\n  },\n  \"additionalProperties\" : false\n}"
+      },
+      {
+        "description":"Display timezone offset in hours, for example `8.0` or `-5.0`. Pass the business reporting timezone when the query should not use the current user context timezone.",
+        "name":"showTimeZone",
+        "primaryType":"number",
+        "required":false,
+        "requiredSpecified":true,
+        "schema":"{\n  \"$schema\" : \"https://json-schema.org/draft/2020-12/schema\",\n  \"type\" : \"number\",\n  \"format\" : \"double\",\n  \"additionalProperties\" : false\n}"
+      }
+    ]
+  },
+  {
+    "serverName":"engage-mcp-config",
+    "category":"query",
+    "name":"config_item_list",
+    "description":"Query config item list, returns all configuration items \r\nunder the specified project. \r\nReturns a list of ConfigItemListDTO objects, each containing: \r\nprojectId (Integer): Project ID; \r\nconfigId (String): Config item unique identifier; \r\nconfigName (String): Config item display name; \r\nconfigRemark (String): Config item remark/description; \r\nbusinessType (String): Config item business type; \r\nchannelId (String): Bound channel ID; \r\nchannelName (String): Bound channel name; \r\nchannelType (Integer): Bound channel type - Enum: 1=WEBHOOK, 2=APP_PUSH, 3=CLIENT_PUSH, 4=WECHAT, 5=DOU_YIN; \r\ncreateTime (Date): Creation timestamp (yyyy-MM-dd HH:mm:ss); \r\nupdateTime (Date): Last update timestamp (yyyy-MM-dd HH:mm:ss); \r\ncreator (String): Creator name; \r\nmodifier (String): Last modifier name; \r\ngroupId (Integer): Bound group ID; \r\ngroupName (String): Bound group name; \r\ngroupType (String): Group type; \r\ngroupAvatarType (String): Group avatar type; \r\ngroupAvatar (String): Group avatar icon; \r\navatarType (String): Config item avatar type; \r\navatar (String): Config item avatar icon.",
+    "arguments":[
+      {
+        "description":"Project ID",
+        "name":"projectId",
+        "primaryType":"integer",
+        "required":true,
+        "requiredSpecified":true,
+        "schema":"{\n  \"$schema\" : \"https://json-schema.org/draft/2020-12/schema\",\n  \"type\" : \"integer\",\n  \"format\" : \"int32\",\n  \"additionalProperties\" : false\n}"
+      }
+    ]
+  },
+  {
+    "serverName":"engage-mcp-config",
+    "category":"query",
+    "name":"config_item_detail",
+    "description":"Query detailed information of a config item by config \r\nID. Returns a ConfigItemDetailDTO object containing: \r\nprojectId (Integer): Project ID; \r\nconfigId (String): Config item unique identifier; \r\nconfigName (String): Config item display name; \r\nconfigRemark (String): Config item remark/description; \r\nbusinessType (String): Config item business type; \r\nchannelId (String): Bound channel ID; \r\nchannelName (String): Bound channel name; \r\nchannelType (Integer): Bound channel type - Enum: 1=WEBHOOK, 2=APP_PUSH, 3=CLIENT_PUSH, 4=WECHAT, 5=DOU_YIN; \r\ngroupId (Integer): Bound group ID; \r\ngroupName (String): Bound group name; \r\ngroupType (String): Group type; \r\ngroupAvatarType (String): Group avatar type; \r\ngroupAvatar (String): Group avatar icon; \r\navatarType (String): Config item avatar type; \r\navatar (String): Config item avatar icon; \r\nhasStrategy (Boolean): Whether the config item has strategies; \r\nhasRunningStrategy (Boolean): Whether has running or publishing strategies; \r\ncreateTime (Date): Creation timestamp (yyyy-MM-dd HH:mm:ss); \r\nupdateTime (Date): Last update timestamp (yyyy-MM-dd HH:mm:ss); \r\ncreator (String): Creator name; \r\nmodifier (String): Last modifier name.",
+    "arguments":[
+      {
+        "description":"Project ID",
+        "name":"projectId",
+        "primaryType":"integer",
+        "required":true,
+        "requiredSpecified":true,
+        "schema":"{\n  \"$schema\" : \"https://json-schema.org/draft/2020-12/schema\",\n  \"type\" : \"integer\",\n  \"format\" : \"int32\",\n  \"additionalProperties\" : false\n}"
+      },
+      {
+        "description":"Config item ID",
+        "name":"configId",
+        "primaryType":"string",
+        "required":true,
+        "requiredSpecified":true,
+        "schema":"{\n  \"$schema\" : \"https://json-schema.org/draft/2020-12/schema\",\n  \"type\" : \"string\",\n  \"additionalProperties\" : false\n}"
+      }
+    ]
+  },
+  {
+    "serverName":"engage-mcp-config",
+    "category":"delete",
+    "name":"config_item",
+    "description":"Delete a config item by config ID. \r\nPrerequisites: config item must not have any publishing strategies. \r\nReturns true if deletion is successful, false if deletion fails or config item has publishing strategies.",
+    "arguments":[
+      {
+        "description":"Project ID",
+        "name":"projectId",
+        "primaryType":"integer",
+        "required":true,
+        "requiredSpecified":true,
+        "schema":"{\n  \"$schema\" : \"https://json-schema.org/draft/2020-12/schema\",\n  \"type\" : \"integer\",\n  \"format\" : \"int32\",\n  \"additionalProperties\" : false\n}"
+      },
+      {
+        "description":"Config item ID",
+        "name":"configId",
+        "primaryType":"string",
+        "required":true,
+        "requiredSpecified":true,
+        "schema":"{\n  \"$schema\" : \"https://json-schema.org/draft/2020-12/schema\",\n  \"type\" : \"string\",\n  \"additionalProperties\" : false\n}"
+      },
+      {
+        "description":"User open ID (operator)",
+        "name":"openId",
+        "primaryType":"string",
+        "required":true,
+        "requiredSpecified":true,
+        "schema":"{\n  \"$schema\" : \"https://json-schema.org/draft/2020-12/schema\",\n  \"type\" : \"string\",\n  \"additionalProperties\" : false\n}"
+      }
+    ]
+  },
+  {
+    "serverName":"engage-mcp-config",
+    "category":"copy",
+    "name":"config_template",
+    "description":"Copy one template from a source config item to a target config item. \r\nThis tool will also ensure referenced global params and dependent single-select custom tables are copied to the target project/config when needed. \r\nParameters: \r\n- sourceProjectId: Source project ID; \r\n- sourceConfigId: Source config item ID; \r\n- sourceTemplateId: Source template ID to copy; \r\n- projectId: Target project ID; \r\n- configId: Target config item ID. \r\nReturns true if the copy succeeds, false if the source template does not exist or the copy operation fails.",
+    "arguments":[
+      {
+        "description":"Source project ID",
+        "name":"sourceProjectId",
+        "primaryType":"integer",
+        "required":true,
+        "requiredSpecified":true,
+        "schema":"{\n  \"$schema\" : \"https://json-schema.org/draft/2020-12/schema\",\n  \"type\" : \"integer\",\n  \"format\" : \"int32\",\n  \"additionalProperties\" : false\n}"
+      },
+      {
+        "description":"Source config item ID",
+        "name":"sourceConfigId",
+        "primaryType":"string",
+        "required":true,
+        "requiredSpecified":true,
+        "schema":"{\n  \"$schema\" : \"https://json-schema.org/draft/2020-12/schema\",\n  \"type\" : \"string\",\n  \"additionalProperties\" : false\n}"
+      },
+      {
+        "description":"Source template ID to copy",
+        "name":"sourceTemplateId",
+        "primaryType":"string",
+        "required":true,
+        "requiredSpecified":true,
+        "schema":"{\n  \"$schema\" : \"https://json-schema.org/draft/2020-12/schema\",\n  \"type\" : \"string\",\n  \"additionalProperties\" : false\n}"
+      },
+      {
+        "description":"Target project ID",
+        "name":"projectId",
+        "primaryType":"integer",
+        "required":true,
+        "requiredSpecified":true,
+        "schema":"{\n  \"$schema\" : \"https://json-schema.org/draft/2020-12/schema\",\n  \"type\" : \"integer\",\n  \"format\" : \"int32\",\n  \"additionalProperties\" : false\n}"
+      },
+      {
+        "description":"Target config item ID",
+        "name":"configId",
+        "primaryType":"string",
+        "required":true,
+        "requiredSpecified":true,
+        "schema":"{\n  \"$schema\" : \"https://json-schema.org/draft/2020-12/schema\",\n  \"type\" : \"string\",\n  \"additionalProperties\" : false\n}"
+      }
+    ]
+  },
+  {
+    "serverName":"engage-mcp-config",
+    "category":"query",
+    "name":"strategy_list",
+    "description":"Query Hermes config strategy list, returns all strategies under the specified project and config. \r\nReturns a list of ConfigStrategyListDTO objects with the following fields: \r\nprojectId (Integer): Project ID; \r\nconfigId (String): Config ID; \r\nstrategyId (String): Strategy ID; \r\nstrategyUuid (String): Strategy UUID; \r\nstrategyName (String): Strategy name; \r\nstrategyRemark (String): Strategy remark; \r\ntemplateId (String): Template ID; \r\ntemplateName (String): Template name; \r\nstatus (Integer): Strategy status - Enum: 0=DRAFT, 1=ONLINE, 2=SUSPEND, 3=OFFLINE; \r\nstatusName (String): Status display name; \r\nmappingStatus (Integer): Mapping status - Enum: 0=DRAFT, 1=APPROVE(pending approval), 2=DENY(rejected), 3=REGISTERING, 4=REGISTER_FAIL, 5=WAITING(pending execution), 6=ONLINE, 7=SUSPEND(paused), 8=OFFLINE(ended); \r\nmappingStatusName (String): Mapping status display name; \r\ntriggerType (Integer): Publish type - Enum: 0=SCHEDULED_SINGLE, 1=SCHEDULED_RECURRING, 2=MANUAL; \r\nactualOnlineTime (String): Actual online time; \r\nstrategyStartTime (Date): Strategy start time (yyyy-MM-dd HH:mm); \r\nstrategyEndTime (Date): Strategy end time (yyyy-MM-dd HH:mm); \r\neffectStartTime (String): Effect cycle start time; \r\neffectEndTime (String): Effect cycle end time; \r\ntzOffset (Double): Timezone offset (hours), default 8.0; \r\nlastModificationTime (Date): Last modification time; \r\ncreateTime (Date): Creation time; \r\nupdateTime (Date): Update time; \r\ncreator (String): Creator name; \r\ncreatorLoginName (String): Creator login name; \r\nmodifier (String): Modifier name; \r\nsubVersion (ConfigStrategyListDTO): New version info (same structure as ConfigStrategyListDTO); \r\ntipsList (List<TipInfoDTO>): Tip messages list; \r\napprovalMsg (String): Approval message/reason; \r\nversionType (Integer): Version type - Enum: 0=history version, 1=current version, 2=update content version; \r\ntopTime (Date): Pinned/sticky time.",
+    "arguments":[
+      {
+        "description":"Project ID",
+        "name":"projectId",
+        "primaryType":"integer",
+        "required":true,
+        "requiredSpecified":true,
+        "schema":"{\n  \"$schema\" : \"https://json-schema.org/draft/2020-12/schema\",\n  \"type\" : \"integer\",\n  \"format\" : \"int32\",\n  \"additionalProperties\" : false\n}"
+      },
+      {
+        "description":"Config ID",
+        "name":"configId",
+        "primaryType":"string",
+        "required":false,
+        "requiredSpecified":true,
+        "schema":"{\n  \"$schema\" : \"https://json-schema.org/draft/2020-12/schema\",\n  \"type\" : \"string\",\n  \"additionalProperties\" : false\n}"
+      },
+      {
+        "description":"Strategy UUID list",
+        "name":"strategyUuidList",
+        "primaryType":"array",
+        "required":false,
+        "requiredSpecified":true,
+        "schema":"{\n  \"$schema\" : \"https://json-schema.org/draft/2020-12/schema\",\n  \"type\" : \"array\",\n  \"items\" : {\n    \"type\" : \"string\"\n  },\n  \"additionalProperties\" : false\n}"
+      }
+    ]
+  },
+  {
+    "serverName":"engage-mcp-config",
+    "category":"query",
+    "name":"strategy_detail",
+    "description":"Query Hermes config strategy detail information, including strategy basic information, target cluster, content, and publish settings. \r\nReturns a ConfigStrategyDetailDTO object with the following fields: \r\nprojectId (Integer): Project ID; \r\nconfigId (String): Config ID; \r\nstrategyId (String): Strategy ID; \r\nstrategyUuid (String): Strategy UUID; \r\nstrategyName (String): Strategy name; \r\nstrategyRemark (String): Strategy remark; \r\ntemplateId (String): Template ID; \r\ntemplateName (String): Template name; \r\nstatus (Integer): Strategy status - Enum: 0=DRAFT, 1=ONLINE, 2=SUSPEND, 3=OFFLINE; \r\nstatusName (String): Status display name; \r\nmappingStatus (Integer): Mapping status - Enum: 0=DRAFT, 1=APPROVE, 2=DENY, 3=REGISTERING, 4=REGISTER_FAIL, 5=WAITING, 6=ONLINE, 7=SUSPEND, 8=OFFLINE; \r\nmappingStatusName (String): Mapping status display name; \r\ntzOffset (Double): Timezone offset (hours), default 8.0; \r\ncreateTime (Date): Creation time; \r\nupdateTime (Date): Update time; \r\ncreator (String): Creator name; \r\ncreatorLoginName (String): Creator login name; \r\nmodifier (String): Modifier name; \r\napprover (String): Approver name; \r\napprovalMsg (String): Approval message/reason; \r\ntargetClusterType (Integer): Target cluster type - Enum: 0=ALL_USERS, 1=CUSTOM_CLUSTER, 2=SINGLE_USER; \r\nclusterUserNum (Long): Target audience size; \r\nclusterUserRefreshTime (Date): Audience refresh time (yyyy-MM-dd HH:mm:ss); \r\ntargetClusterQp (String): Target cluster query expression; \r\nrealtime (Integer): Cluster type - 0=physical cluster, 1=virtual cluster; \r\nclusterRefresh (Double): Cluster refresh interval in hours (0.5/1/2/3/6/.../24); \r\nclusterRefreshTime (String): Daily refresh time for 24-hour cluster update (HH:mm:ss format); \r\nenvConfig (String): Environment configuration; \r\ncontent (String): Strategy content (JSON string); \r\nstrategyTemplateConfig (String): Strategy template configuration (JSON string); \r\ntriggerCrontab (String): Cron expression for recurring triggers; \r\ntriggerType (Integer): Trigger type - Enum: 0=SCHEDULED_SINGLE, 1=SCHEDULED_RECURRING, 2=MANUAL; \r\nstrategyStartTime (Date): Strategy start time (yyyy-MM-dd HH:mm); \r\nstrategyEndTime (Date): Strategy end time (yyyy-MM-dd HH:mm); \r\nactualOnlineTime (String): Actual online time (yyyy-MM-dd HH:mm); \r\nonlineTime (String): Planned online time (0=manual, null=not set, yyyy-MM-dd HH:mm); \r\nofflineTime (String): Planned offline time (1=permanent, null=not set, yyyy-MM-dd HH:mm); \r\neffectTime (Date): Effect time; \r\neffectStartTime (String): Effect cycle start time; \r\neffectEndTime (String): Effect cycle end time; \r\ndistributeTaskStatus (Integer): Distribute task status; \r\nversionType (Integer): Version type - Enum: 0=history version, 1=current version, 2=update content version; \r\nisPush (Boolean): Whether pushed; \r\nchannelType (Integer): Channel type - Enum: 1=WEBHOOK, 2=APP_PUSH, 3=CLIENT_PUSH, 4=WECHAT, 5=DOU_YIN.",
+    "arguments":[
+      {
+        "description":"Project ID",
+        "name":"projectId",
+        "primaryType":"integer",
+        "required":true,
+        "requiredSpecified":true,
+        "schema":"{\n  \"$schema\" : \"https://json-schema.org/draft/2020-12/schema\",\n  \"type\" : \"integer\",\n  \"format\" : \"int32\",\n  \"additionalProperties\" : false\n}"
+      },
+      {
+        "description":"Config ID",
+        "name":"configId",
+        "primaryType":"string",
+        "required":true,
+        "requiredSpecified":true,
+        "schema":"{\n  \"$schema\" : \"https://json-schema.org/draft/2020-12/schema\",\n  \"type\" : \"string\",\n  \"additionalProperties\" : false\n}"
+      },
+      {
+        "description":"Strategy UUID",
+        "name":"strategyUuid",
+        "primaryType":"string",
+        "required":true,
+        "requiredSpecified":true,
+        "schema":"{\n  \"$schema\" : \"https://json-schema.org/draft/2020-12/schema\",\n  \"type\" : \"string\",\n  \"additionalProperties\" : false\n}"
+      }
+    ]
+  },
+  {
+    "serverName":"engage-mcp-config",
+    "category":"batch",
+    "name":"manage_strategy",
+    "description":"Batch manage Hermes config strategies with one unified tool. \r\nSupported actions: online, offline, suspend, delete, approve, deny, cancel. \r\nParameter rules: \r\n- strategyUuidList is used for online/offline/suspend/delete; \r\n- strategyList and optional reason are used for approve/deny/cancel; \r\n- online: strategies mapping status must be pending approval or draft; \r\n- offline: strategies mapping status must be online or suspend; \r\n- suspend: strategies mapping status must be online; \r\n- delete: strategies mapping status must not be running; \r\n- approve/deny/cancel: strategies mapping status must be pending approval. \r\nReturns a ConfigStrategyBatchOpResultDTO object containing successCount, failCount, errorMsg, and strategyUuidList.",
+    "arguments":[
+      {
+        "description":"Project ID",
+        "name":"projectId",
+        "primaryType":"integer",
+        "required":true,
+        "requiredSpecified":true,
+        "schema":"{\n  \"$schema\" : \"https://json-schema.org/draft/2020-12/schema\",\n  \"type\" : \"integer\",\n  \"format\" : \"int32\",\n  \"additionalProperties\" : false\n}"
+      },
+      {
+        "description":"Config ID",
+        "name":"configId",
+        "primaryType":"string",
+        "required":true,
+        "requiredSpecified":true,
+        "schema":"{\n  \"$schema\" : \"https://json-schema.org/draft/2020-12/schema\",\n  \"type\" : \"string\",\n  \"additionalProperties\" : false\n}"
+      },
+      {
+        "description":"Action type, supported values: online, offline, suspend, delete, approve, deny, cancel",
+        "name":"action",
+        "primaryType":"string",
+        "required":true,
+        "requiredSpecified":true,
+        "schema":"{\n  \"$schema\" : \"https://json-schema.org/draft/2020-12/schema\",\n  \"type\" : \"string\",\n  \"additionalProperties\" : false\n}"
+      },
+      {
+        "description":"Strategy UUID list, used for online/offline/suspend/delete",
+        "name":"strategyUuidList",
+        "primaryType":"array",
+        "required":false,
+        "requiredSpecified":true,
+        "schema":"{\n  \"$schema\" : \"https://json-schema.org/draft/2020-12/schema\",\n  \"type\" : \"array\",\n  \"items\" : {\n    \"type\" : \"string\"\n  },\n  \"additionalProperties\" : false\n}"
+      },
+      {
+        "description":"Strategy approval list, used for approve/deny/cancel",
+        "name":"strategyList",
+        "primaryType":"array",
+        "required":false,
+        "requiredSpecified":true,
+        "schema":"{\n  \"$schema\" : \"https://json-schema.org/draft/2020-12/schema\",\n  \"type\" : \"array\",\n  \"items\" : {\n    \"type\" : \"object\",\n    \"properties\" : {\n      \"reason\" : {\n        \"type\" : \"string\",\n        \"description\" : \"Reason for this strategy review item\"\n      },\n      \"strategyUuid\" : {\n        \"type\" : \"string\",\n        \"description\" : \"Strategy UUID\"\n      }\n    },\n    \"required\" : [ \"strategyUuid\" ]\n  },\n  \"additionalProperties\" : false\n}"
+      },
+      {
+        "description":"Reason for the approval decision",
+        "name":"reason",
+        "primaryType":"string",
+        "required":false,
+        "requiredSpecified":true,
+        "schema":"{\n  \"$schema\" : \"https://json-schema.org/draft/2020-12/schema\",\n  \"type\" : \"string\",\n  \"additionalProperties\" : false\n}"
+      }
+    ]
+  },
+  {
+    "serverName":"engage-mcp-flow",
+    "category":"query",
+    "name":"flow_node_overview_report",
+    "description":"Query the node-level overview report for all nodes in a flow canvas. \r\nRequest tracking rule: `requestId` should be a UUID string so it is globally unique. If you do not provide it, the system generates one automatically. If you later need to cancel this query through the corresponding cancellation capability, you must reuse the same `requestId` that was actually used for this query. \r\nUse this tool for cross-node comparison inside one flow version. It returns all-node overview data rather than detail for one node.",
+    "arguments":[
+      {
+        "description":"Project ID that owns the flow and scopes the query.",
+        "name":"projectId",
+        "primaryType":"integer",
+        "required":true,
+        "requiredSpecified":true,
+        "schema":"{\n  \"$schema\" : \"https://json-schema.org/draft/2020-12/schema\",\n  \"type\" : \"integer\",\n  \"format\" : \"int32\",\n  \"additionalProperties\" : false\n}"
+      },
+      {
+        "description":"Flow ID. You may omit it if `flowUuid` is provided.",
+        "name":"flowId",
+        "primaryType":"string",
+        "required":false,
+        "requiredSpecified":true,
+        "schema":"{\n  \"$schema\" : \"https://json-schema.org/draft/2020-12/schema\",\n  \"type\" : \"string\",\n  \"additionalProperties\" : false\n}"
+      },
+      {
+        "description":"Flow UUID of the target flow version. You may omit it if `flowId` is provided.",
+        "name":"flowUuid",
+        "primaryType":"string",
+        "required":false,
+        "requiredSpecified":true,
+        "schema":"{\n  \"$schema\" : \"https://json-schema.org/draft/2020-12/schema\",\n  \"type\" : \"string\",\n  \"additionalProperties\" : false\n}"
+      },
+      {
+        "description":"Optional request identifier for this query. Use a UUID string and keep it globally unique across queries. If omitted, the system generates a UUID automatically. If you later need to cancel this query, you must use the same `requestId` that was actually used for this query.",
+        "name":"requestId",
+        "primaryType":"string",
+        "required":false,
+        "requiredSpecified":true,
+        "schema":"{\n  \"$schema\" : \"https://json-schema.org/draft/2020-12/schema\",\n  \"type\" : \"string\",\n  \"additionalProperties\" : false\n}"
+      },
+      {
+        "description":"Optional push content language code used to scope the report to a specific language version of the push copy. This is useful when the flow uses multilingual push content. Use Hermes push-language codes such as `default`, `en`, `zh-Hans`, `zh-Hant`, `ja`, or `ko`. If omitted, the MCP layer passes `null`, which means querying data across all languages.",
+        "name":"pushLanguageCode",
+        "primaryType":"string",
+        "required":false,
+        "requiredSpecified":true,
+        "schema":"{\n  \"$schema\" : \"https://json-schema.org/draft/2020-12/schema\",\n  \"type\" : \"string\",\n  \"additionalProperties\" : false\n}"
+      },
+      {
+        "description":"Data dimension type used by the report. Supported values are exactly: `uv` for unique-user counting and `pv` for occurrence/event counting. Default: if omitted, the MCP layer uses `uv`.",
+        "name":"dataDimType",
+        "primaryType":"string",
+        "required":false,
+        "requiredSpecified":true,
+        "schema":"{\n  \"$schema\" : \"https://json-schema.org/draft/2020-12/schema\",\n  \"type\" : \"string\",\n  \"additionalProperties\" : false\n}"
+      },
+      {
+        "description":"Start date in `yyyy-MM-dd` format.",
+        "name":"startTime",
+        "primaryType":"string",
+        "required":true,
+        "requiredSpecified":true,
+        "schema":"{\n  \"$schema\" : \"https://json-schema.org/draft/2020-12/schema\",\n  \"type\" : \"string\",\n  \"additionalProperties\" : false\n}"
+      },
+      {
+        "description":"End date in `yyyy-MM-dd` format. It should be the same as or later than `startTime`.",
+        "name":"endTime",
+        "primaryType":"string",
+        "required":true,
+        "requiredSpecified":true,
+        "schema":"{\n  \"$schema\" : \"https://json-schema.org/draft/2020-12/schema\",\n  \"type\" : \"string\",\n  \"additionalProperties\" : false\n}"
+      },
+      {
+        "description":"Display timezone offset for report rendering. Recommended format is `8.0` or `-5.0`. If omitted, the backend uses the current user context timezone.",
+        "name":"showTimeZone",
+        "primaryType":"string",
+        "required":false,
+        "requiredSpecified":true,
+        "schema":"{\n  \"$schema\" : \"https://json-schema.org/draft/2020-12/schema\",\n  \"type\" : \"string\",\n  \"additionalProperties\" : false\n}"
+      }
+    ]
+  },
+  {
+    "serverName":"engage-mcp-flow",
+    "category":"query",
+    "name":"flow_process_report",
+    "description":"Query the process-level report for a flow canvas. \r\nUse this tool for flow-wide process analytics rather than node drill-down. \r\nRequest tracking rule: `requestId` should be a UUID string so it is globally unique. If you do not provide it, the system generates one automatically. If you later need to cancel this query through the corresponding cancellation capability, you must reuse the same `requestId` that was actually used for this query. \r\nSupported `reportType` values are exactly: `overview`, `detail`, `exit_detail`, and `push_detail`. \r\n`overview` returns the high-level process summary. `detail` returns the standard process detail report. `exit_detail` returns exit-reason detail. `push_detail` returns push-detail data. \r\nReturn shape: `FlowProcessReportMcpResponseDTO`. `overview` uses `overviewReport`; the other report types use `detailReport`.",
+    "arguments":[
+      {
+        "description":"Project ID that owns the flow and scopes the query.",
+        "name":"projectId",
+        "primaryType":"integer",
+        "required":true,
+        "requiredSpecified":true,
+        "schema":"{\n  \"$schema\" : \"https://json-schema.org/draft/2020-12/schema\",\n  \"type\" : \"integer\",\n  \"format\" : \"int32\",\n  \"additionalProperties\" : false\n}"
+      },
+      {
+        "description":"Flow ID. Use this when querying the current logical flow identity. You may omit it if `flowUuid` is provided.",
+        "name":"flowId",
+        "primaryType":"string",
+        "required":false,
+        "requiredSpecified":true,
+        "schema":"{\n  \"$schema\" : \"https://json-schema.org/draft/2020-12/schema\",\n  \"type\" : \"string\",\n  \"additionalProperties\" : false\n}"
+      },
+      {
+        "description":"Flow UUID of a specific flow canvas version. Use this when version-level precision matters. You may omit it if `flowId` is sufficient.",
+        "name":"flowUuid",
+        "primaryType":"string",
+        "required":false,
+        "requiredSpecified":true,
+        "schema":"{\n  \"$schema\" : \"https://json-schema.org/draft/2020-12/schema\",\n  \"type\" : \"string\",\n  \"additionalProperties\" : false\n}"
+      },
+      {
+        "description":"Optional request identifier for this query. Use a UUID string and keep it globally unique across queries. If omitted, the system generates a UUID automatically. If you later need to cancel this query, you must use the same `requestId` that was actually used for this query.",
+        "name":"requestId",
+        "primaryType":"string",
+        "required":false,
+        "requiredSpecified":true,
+        "schema":"{\n  \"$schema\" : \"https://json-schema.org/draft/2020-12/schema\",\n  \"type\" : \"string\",\n  \"additionalProperties\" : false\n}"
+      },
+      {
+        "description":"Optional push content language code used to scope the report to a specific language version of the push copy. This is useful when the flow uses multilingual push content. Use Hermes push-language codes such as `default`, `en`, `zh-Hans`, `zh-Hant`, `ja`, or `ko`. If omitted, the MCP layer passes `null`, which means querying data across all languages.",
+        "name":"pushLanguageCode",
+        "primaryType":"string",
+        "required":false,
+        "requiredSpecified":true,
+        "schema":"{\n  \"$schema\" : \"https://json-schema.org/draft/2020-12/schema\",\n  \"type\" : \"string\",\n  \"additionalProperties\" : false\n}"
+      },
+      {
+        "description":"Process report type selector. Supported values are exactly: `overview`, `detail`, `exit_detail`, `push_detail`.",
+        "name":"reportType",
+        "primaryType":"string",
+        "required":true,
+        "requiredSpecified":true,
+        "schema":"{\n  \"$schema\" : \"https://json-schema.org/draft/2020-12/schema\",\n  \"type\" : \"string\",\n  \"additionalProperties\" : false\n}"
+      },
+      {
+        "description":"Data dimension type used by the report. Supported values are exactly: `uv` for unique-user counting and `pv` for occurrence/event counting. Default: if omitted, the MCP layer uses `uv`.",
+        "name":"dataDimType",
+        "primaryType":"string",
+        "required":false,
+        "requiredSpecified":true,
+        "schema":"{\n  \"$schema\" : \"https://json-schema.org/draft/2020-12/schema\",\n  \"type\" : \"string\",\n  \"additionalProperties\" : false\n}"
+      },
+      {
+        "description":"Start date in `yyyy-MM-dd` format. Required when `reportType` is `detail`, `exit_detail`, or `push_detail`. For `overview`, you may omit both `startTime` and `endTime`, or provide both together.",
+        "name":"startTime",
+        "primaryType":"string",
+        "required":false,
+        "requiredSpecified":true,
+        "schema":"{\n  \"$schema\" : \"https://json-schema.org/draft/2020-12/schema\",\n  \"type\" : \"string\",\n  \"additionalProperties\" : false\n}"
+      },
+      {
+        "description":"End date in `yyyy-MM-dd` format. It should be the same as or later than `startTime`. Required when `reportType` is `detail`, `exit_detail`, or `push_detail`. For `overview`, you may omit both `startTime` and `endTime`, or provide both together.",
+        "name":"endTime",
+        "primaryType":"string",
+        "required":false,
+        "requiredSpecified":true,
+        "schema":"{\n  \"$schema\" : \"https://json-schema.org/draft/2020-12/schema\",\n  \"type\" : \"string\",\n  \"additionalProperties\" : false\n}"
+      },
+      {
+        "description":"Display timezone offset for report rendering. Recommended format is `8.0` or `-5.0`. If omitted, the backend uses the current user context timezone.",
+        "name":"showTimeZone",
+        "primaryType":"string",
+        "required":false,
+        "requiredSpecified":true,
+        "schema":"{\n  \"$schema\" : \"https://json-schema.org/draft/2020-12/schema\",\n  \"type\" : \"string\",\n  \"additionalProperties\" : false\n}"
+      }
+    ]
+  },
+  {
+    "serverName":"engage-mcp-flow",
+    "category":"query",
+    "name":"flow_node_detail_report",
+    "description":"Query the detailed report for one node in a flow canvas. \r\nRequest tracking rule: `requestId` should be a UUID string so it is globally unique. If you do not provide it, the system generates one automatically. If you later need to cancel this query through the corresponding cancellation capability, you must reuse the same `requestId` that was actually used for this query. \r\nUse this tool for node drill-down after identifying a target node. It returns one-node detail data rather than all-node overview.",
+    "arguments":[
+      {
+        "description":"Project ID that owns the flow and scopes the query.",
+        "name":"projectId",
+        "primaryType":"integer",
+        "required":true,
+        "requiredSpecified":true,
+        "schema":"{\n  \"$schema\" : \"https://json-schema.org/draft/2020-12/schema\",\n  \"type\" : \"integer\",\n  \"format\" : \"int32\",\n  \"additionalProperties\" : false\n}"
+      },
+      {
+        "description":"Flow ID. You may omit it if `flowUuid` is provided.",
+        "name":"flowId",
+        "primaryType":"string",
+        "required":false,
+        "requiredSpecified":true,
+        "schema":"{\n  \"$schema\" : \"https://json-schema.org/draft/2020-12/schema\",\n  \"type\" : \"string\",\n  \"additionalProperties\" : false\n}"
+      },
+      {
+        "description":"Flow UUID of the target flow version. You may omit it if `flowId` is provided.",
+        "name":"flowUuid",
+        "primaryType":"string",
+        "required":false,
+        "requiredSpecified":true,
+        "schema":"{\n  \"$schema\" : \"https://json-schema.org/draft/2020-12/schema\",\n  \"type\" : \"string\",\n  \"additionalProperties\" : false\n}"
+      },
+      {
+        "description":"Optional request identifier for this query. Use a UUID string and keep it globally unique across queries. If omitted, the system generates a UUID automatically. If you later need to cancel this query, you must use the same `requestId` that was actually used for this query.",
+        "name":"requestId",
+        "primaryType":"string",
+        "required":false,
+        "requiredSpecified":true,
+        "schema":"{\n  \"$schema\" : \"https://json-schema.org/draft/2020-12/schema\",\n  \"type\" : \"string\",\n  \"additionalProperties\" : false\n}"
+      },
+      {
+        "description":"Optional push content language code used to scope the report to a specific language version of the push copy. This is useful when the flow uses multilingual push content. Use Hermes push-language codes such as `default`, `en`, `zh-Hans`, `zh-Hant`, `ja`, or `ko`. If omitted, the MCP layer passes `null`, which means querying data across all languages.",
+        "name":"pushLanguageCode",
+        "primaryType":"string",
+        "required":false,
+        "requiredSpecified":true,
+        "schema":"{\n  \"$schema\" : \"https://json-schema.org/draft/2020-12/schema\",\n  \"type\" : \"string\",\n  \"additionalProperties\" : false\n}"
+      },
+      {
+        "description":"Node UUID to drill into. This parameter is required for a true node-level detail query.",
+        "name":"nodeUuid",
+        "primaryType":"string",
+        "required":true,
+        "requiredSpecified":true,
+        "schema":"{\n  \"$schema\" : \"https://json-schema.org/draft/2020-12/schema\",\n  \"type\" : \"string\",\n  \"additionalProperties\" : false\n}"
+      },
+      {
+        "description":"Branch ID for branch-aware nodes. Provide it when the node has multiple branches and you want one branch specifically. Leave it empty for non-branch nodes.",
+        "name":"branchId",
+        "primaryType":"string",
+        "required":false,
+        "requiredSpecified":true,
+        "schema":"{\n  \"$schema\" : \"https://json-schema.org/draft/2020-12/schema\",\n  \"type\" : \"string\",\n  \"additionalProperties\" : false\n}"
+      },
+      {
+        "description":"Indicator name used by some node detail views, for example user-detail or segment-oriented indicator labels. Leave it empty when the target node detail route does not require a specific indicator.",
+        "name":"indicatorName",
+        "primaryType":"string",
+        "required":false,
+        "requiredSpecified":true,
+        "schema":"{\n  \"$schema\" : \"https://json-schema.org/draft/2020-12/schema\",\n  \"type\" : \"string\",\n  \"additionalProperties\" : false\n}"
+      },
+      {
+        "description":"Data dimension type used by the report. Supported values are exactly: `uv` for unique-user counting and `pv` for occurrence/event counting. Default: if omitted, the MCP layer uses `uv`.",
+        "name":"dataDimType",
+        "primaryType":"string",
+        "required":false,
+        "requiredSpecified":true,
+        "schema":"{\n  \"$schema\" : \"https://json-schema.org/draft/2020-12/schema\",\n  \"type\" : \"string\",\n  \"additionalProperties\" : false\n}"
+      },
+      {
+        "description":"Start date in `yyyy-MM-dd` format.",
+        "name":"startTime",
+        "primaryType":"string",
+        "required":true,
+        "requiredSpecified":true,
+        "schema":"{\n  \"$schema\" : \"https://json-schema.org/draft/2020-12/schema\",\n  \"type\" : \"string\",\n  \"additionalProperties\" : false\n}"
+      },
+      {
+        "description":"End date in `yyyy-MM-dd` format. It should be the same as or later than `startTime`.",
+        "name":"endTime",
+        "primaryType":"string",
+        "required":true,
+        "requiredSpecified":true,
+        "schema":"{\n  \"$schema\" : \"https://json-schema.org/draft/2020-12/schema\",\n  \"type\" : \"string\",\n  \"additionalProperties\" : false\n}"
+      },
+      {
+        "description":"Display timezone offset for report rendering. Recommended format is `8.0` or `-5.0`. If omitted, the backend uses the current user context timezone.",
+        "name":"showTimeZone",
+        "primaryType":"string",
+        "required":false,
+        "requiredSpecified":true,
+        "schema":"{\n  \"$schema\" : \"https://json-schema.org/draft/2020-12/schema\",\n  \"type\" : \"string\",\n  \"additionalProperties\" : false\n}"
+      }
+    ]
+  },
+  {
+    "serverName":"engage-mcp-flow",
+    "category":"query",
+    "name":"flow_ab_split_node_report",
+    "description":"Query the report for one AB split node in a flow canvas. \r\nThis tool is for AB split node analytics inside a flow, not for standalone experiment management. Use it when you need branch-level performance data for an AB split node. \r\nRequest tracking rule: `requestId` should be a UUID string so it is globally unique. If you do not provide it, the system generates one automatically. If you later need to cancel this query through the corresponding cancellation capability, you must reuse the same `requestId` that was actually used for this query. \r\nSupported `reportType` values are exactly: `overview` and `detail`. `overview` returns the summary comparison across AB branches. `detail` returns the detailed branch report table for the AB split node. \r\nReturn shape: `FlowAbTestReportMcpResponseDTO`. `overview` uses `overviewReport`; `detail` uses `detailReport`.",
+    "arguments":[
+      {
+        "description":"Project ID that owns the flow and scopes the query.",
+        "name":"projectId",
+        "primaryType":"integer",
+        "required":true,
+        "requiredSpecified":true,
+        "schema":"{\n  \"$schema\" : \"https://json-schema.org/draft/2020-12/schema\",\n  \"type\" : \"integer\",\n  \"format\" : \"int32\",\n  \"additionalProperties\" : false\n}"
+      },
+      {
+        "description":"Flow ID. You may omit it if `flowUuid` is provided.",
+        "name":"flowId",
+        "primaryType":"string",
+        "required":false,
+        "requiredSpecified":true,
+        "schema":"{\n  \"$schema\" : \"https://json-schema.org/draft/2020-12/schema\",\n  \"type\" : \"string\",\n  \"additionalProperties\" : false\n}"
+      },
+      {
+        "description":"Flow UUID of the target flow version. You may omit it if `flowId` is provided.",
+        "name":"flowUuid",
+        "primaryType":"string",
+        "required":false,
+        "requiredSpecified":true,
+        "schema":"{\n  \"$schema\" : \"https://json-schema.org/draft/2020-12/schema\",\n  \"type\" : \"string\",\n  \"additionalProperties\" : false\n}"
+      },
+      {
+        "description":"Optional request identifier for this query. Use a UUID string and keep it globally unique across queries. If omitted, the system generates a UUID automatically. If you later need to cancel this query, you must use the same `requestId` that was actually used for this query.",
+        "name":"requestId",
+        "primaryType":"string",
+        "required":false,
+        "requiredSpecified":true,
+        "schema":"{\n  \"$schema\" : \"https://json-schema.org/draft/2020-12/schema\",\n  \"type\" : \"string\",\n  \"additionalProperties\" : false\n}"
+      },
+      {
+        "description":"Optional push content language code used to scope the report to a specific language version of the push copy. This is useful when the flow uses multilingual push content. Use Hermes push-language codes such as `default`, `en`, `zh-Hans`, `zh-Hant`, `ja`, or `ko`. If omitted, the MCP layer passes `null`, which means querying data across all languages.",
+        "name":"pushLanguageCode",
+        "primaryType":"string",
+        "required":false,
+        "requiredSpecified":true,
+        "schema":"{\n  \"$schema\" : \"https://json-schema.org/draft/2020-12/schema\",\n  \"type\" : \"string\",\n  \"additionalProperties\" : false\n}"
+      },
+      {
+        "description":"AB split node report type selector. Supported values are exactly: `overview` and `detail`.",
+        "name":"reportType",
+        "primaryType":"string",
+        "required":true,
+        "requiredSpecified":true,
+        "schema":"{\n  \"$schema\" : \"https://json-schema.org/draft/2020-12/schema\",\n  \"type\" : \"string\",\n  \"additionalProperties\" : false\n}"
+      },
+      {
+        "description":"AB split node UUID to drill into.",
+        "name":"nodeUuid",
+        "primaryType":"string",
+        "required":true,
+        "requiredSpecified":true,
+        "schema":"{\n  \"$schema\" : \"https://json-schema.org/draft/2020-12/schema\",\n  \"type\" : \"string\",\n  \"additionalProperties\" : false\n}"
+      },
+      {
+        "description":"Indicator UUID inside the AB split node. Provide it when the node exposes multiple indicators and you want one indicator specifically. Leave it empty otherwise.",
+        "name":"indicatorsUuid",
+        "primaryType":"string",
+        "required":false,
+        "requiredSpecified":true,
+        "schema":"{\n  \"$schema\" : \"https://json-schema.org/draft/2020-12/schema\",\n  \"type\" : \"string\",\n  \"additionalProperties\" : false\n}"
+      },
+      {
+        "description":"Start date in `yyyy-MM-dd` format.",
+        "name":"startTime",
+        "primaryType":"string",
+        "required":true,
+        "requiredSpecified":true,
+        "schema":"{\n  \"$schema\" : \"https://json-schema.org/draft/2020-12/schema\",\n  \"type\" : \"string\",\n  \"additionalProperties\" : false\n}"
+      },
+      {
+        "description":"End date in `yyyy-MM-dd` format. It should be the same as or later than `startTime`.",
+        "name":"endTime",
+        "primaryType":"string",
+        "required":true,
+        "requiredSpecified":true,
+        "schema":"{\n  \"$schema\" : \"https://json-schema.org/draft/2020-12/schema\",\n  \"type\" : \"string\",\n  \"additionalProperties\" : false\n}"
+      },
+      {
+        "description":"Display timezone offset for report rendering. Recommended format is `8.0` or `-5.0`. If omitted, the backend uses the current user context timezone.",
+        "name":"showTimeZone",
+        "primaryType":"string",
+        "required":false,
+        "requiredSpecified":true,
+        "schema":"{\n  \"$schema\" : \"https://json-schema.org/draft/2020-12/schema\",\n  \"type\" : \"string\",\n  \"additionalProperties\" : false\n}"
+      }
+    ]
+  },
+  {
+    "serverName":"engage-mcp-flow",
+    "category":"query",
+    "name":"flow_detail",
+    "description":"Query Hermes flow detail information, including flow basic information, node configuration, edge connections, and channel information. \r\nReturns a FlowDetailResDTO object with the following fields: \r\nprojectId (Integer): Project ID;flowId (String): Flow ID; \r\nflowUuid (String): Flow UUID; \r\nflowName (String): Flow name; \r\nflowDesc (String): Flow description; \r\nstatus (Integer): Flow status - Enum: 0=DRAFT, 1=WAITING(pending execution), 2=RUNNING, 3=PENDING(paused), 4=COMPLETE(ended); \r\nmappingStatus (Integer): Flow mapping status - Enum: 0=DRAFT, 1=APPROVE(pending approval), 2=DENY(rejected), 3=REGISTERING, 4=REGISTER_FAIL, 5=WAITING, 6=RUNNING, 7=PENDING(paused), 8=COMPLETE(ended); \r\ntzOffset (Double): Timezone offset in hours (default 8.0); \r\ncompletionIndicators (String): Primary goal configuration; currentFlowCompletionIndicators (String): Current version goal configuration; \r\nversion (String): Version string; \r\nversionType (Integer): Version type - Enum: 0=history version, 1=current version, 2=update content version, 3=new version, 4=test version; \r\ngroupId (Integer): Group ID; \r\nuiConfig (String): Frontend UI layout configuration (JSON string); \r\ncreator (String): Creator name; \r\ncreatorLoginName (String): Creator login name; \r\nmodifier (String): Modifier name; \r\ncreateTime (Date): Creation time; \r\nupdateTime (Date): Update time; \r\nlastModifiedTime (Date): Last modification time; \r\nentryTriggerType (Integer): Entry node trigger type - Enum: 0=scheduled single trigger, 1=scheduled recurring trigger, 2=event trigger; \r\nhasData (Boolean): Whether the flow has data; \r\nallVersionHasData (Boolean): Whether any version has data; \r\neffectEndTime (Date): Version instance end time; \r\nnodeList (List<FlowAddNodeReqDTO>): Node list - each node contains \r\nid (String): Node UUID; \r\nnodeId (String): Node ID; \r\nname (String): Node display name; \r\ndesc (String): Node description; \r\ntype (String): Node type - e.g., single_trigger, repeat_trigger, event_trigger, feature_judge, event_judge, message_push, wechat_push, webhook_push, config_push, tag, time_control, feature_split_flow, event_split_flow, trigger_prop_split_flow, percent_split_flow, ab_split_flow, race_split_flow, exit_flow; \r\nconfig (String): Node business configuration (JSON string); \r\nuiConfig (String): Frontend UI layout configuration (JSON string); \r\nedgeList (List<FlowAddEdgeReqDTO>): Edge connection list - each edge contains \r\nedgeId (String): Edge ID; \r\nsource (String): Upstream node UUID; \r\nsourceBranchId (String): Upstream node branch ID (for conditional judgment nodes); \r\ntarget (String): Downstream node UUID; \r\nconfig (String): Edge business configuration (JSON string); \r\nuiConfig (String): Frontend UI layout configuration (JSON string).",
+    "arguments":[
+      {
+        "description":"Project ID",
+        "name":"projectId",
+        "primaryType":"integer",
+        "required":true,
+        "requiredSpecified":true,
+        "schema":"{\n  \"$schema\" : \"https://json-schema.org/draft/2020-12/schema\",\n  \"type\" : \"integer\",\n  \"format\" : \"int32\",\n  \"additionalProperties\" : false\n}"
+      },
+      {
+        "description":"Flow UUID",
+        "name":"flowUuid",
+        "primaryType":"string",
+        "required":true,
+        "requiredSpecified":true,
+        "schema":"{\n  \"$schema\" : \"https://json-schema.org/draft/2020-12/schema\",\n  \"type\" : \"string\",\n  \"additionalProperties\" : false\n}"
+      }
+    ]
+  },
+  {
+    "serverName":"engage-mcp-flow",
+    "category":"modify",
+    "name":"flow_base_info",
+    "description":"Modify basic information of flow canvas (name, description, group), does not involve node structure changes. \r\nReturns whether modification is successful.",
+    "arguments":[
+      {
+        "description":"Project ID",
+        "name":"projectId",
+        "primaryType":"integer",
+        "required":true,
+        "requiredSpecified":true,
+        "schema":"{\n  \"$schema\" : \"https://json-schema.org/draft/2020-12/schema\",\n  \"type\" : \"integer\",\n  \"format\" : \"int32\",\n  \"additionalProperties\" : false\n}"
+      },
+      {
+        "description":"Flow UUID",
+        "name":"flowUuid",
+        "primaryType":"string",
+        "required":true,
+        "requiredSpecified":true,
+        "schema":"{\n  \"$schema\" : \"https://json-schema.org/draft/2020-12/schema\",\n  \"type\" : \"string\",\n  \"additionalProperties\" : false\n}"
+      },
+      {
+        "description":"New flow name, maximum 80 characters",
+        "name":"flowName",
+        "primaryType":"string",
+        "required":false,
+        "requiredSpecified":true,
+        "schema":"{\n  \"$schema\" : \"https://json-schema.org/draft/2020-12/schema\",\n  \"type\" : \"string\",\n  \"additionalProperties\" : false\n}"
+      },
+      {
+        "description":"New flow description, maximum 200 characters",
+        "name":"flowDesc",
+        "primaryType":"string",
+        "required":false,
+        "requiredSpecified":true,
+        "schema":"{\n  \"$schema\" : \"https://json-schema.org/draft/2020-12/schema\",\n  \"type\" : \"string\",\n  \"additionalProperties\" : false\n}"
+      },
+      {
+        "description":"Group ID",
+        "name":"groupId",
+        "primaryType":"integer",
+        "required":false,
+        "requiredSpecified":true,
+        "schema":"{\n  \"$schema\" : \"https://json-schema.org/draft/2020-12/schema\",\n  \"type\" : \"integer\",\n  \"format\" : \"int32\",\n  \"additionalProperties\" : false\n}"
+      }
+    ]
+  },
+  {
+    "serverName":"engage-mcp-flow",
+    "category":"batch",
+    "name":"manage_flow",
+    "description":"Batch manage Hermes flows with one unified tool. \r\nSupported actions: approve, deny, cancel, pause, recover, end. \r\nParameter rules: \r\n- flowList and optional reason are used for approve/deny/cancel; \r\n- pauseFlowList is used for pause; \r\n- flowIdList is used for recover/end; \r\n- approve/deny/cancel: flows mapping status must be pending approval; \r\n- pause: flows mapping status must be waiting or running; \r\n- recover: flows mapping status must be pending; \r\n- end: flows mapping status must not be draft. \r\nReturns a FlowBatchOpResultDTO object containing successCount, failCount, errorMsg, and flowUuidList.",
+    "arguments":[
+      {
+        "description":"Project ID",
+        "name":"projectId",
+        "primaryType":"integer",
+        "required":true,
+        "requiredSpecified":true,
+        "schema":"{\n  \"$schema\" : \"https://json-schema.org/draft/2020-12/schema\",\n  \"type\" : \"integer\",\n  \"format\" : \"int32\",\n  \"additionalProperties\" : false\n}"
+      },
+      {
+        "description":"Action type, supported values: approve, deny, cancel, pause, recover, end",
+        "name":"action",
+        "primaryType":"string",
+        "required":true,
+        "requiredSpecified":true,
+        "schema":"{\n  \"$schema\" : \"https://json-schema.org/draft/2020-12/schema\",\n  \"type\" : \"string\",\n  \"additionalProperties\" : false\n}"
+      },
+      {
+        "description":"Flow approval list, used for approve/deny/cancel",
+        "name":"flowList",
+        "primaryType":"array",
+        "required":false,
+        "requiredSpecified":true,
+        "schema":"{\n  \"$schema\" : \"https://json-schema.org/draft/2020-12/schema\",\n  \"type\" : \"array\",\n  \"items\" : {\n    \"type\" : \"object\",\n    \"properties\" : {\n      \"flowUuid\" : {\n        \"type\" : \"string\",\n        \"description\" : \"Flow UUID\"\n      },\n      \"reason\" : {\n        \"type\" : \"string\",\n        \"description\" : \"Reason for this flow review item\"\n      }\n    },\n    \"required\" : [ \"flowUuid\" ]\n  },\n  \"additionalProperties\" : false\n}"
+      },
+      {
+        "description":"Flow pause list, used for pause",
+        "name":"pauseFlowList",
+        "primaryType":"array",
+        "required":false,
+        "requiredSpecified":true,
+        "schema":"{\n  \"$schema\" : \"https://json-schema.org/draft/2020-12/schema\",\n  \"type\" : \"array\",\n  \"items\" : {\n    \"type\" : \"object\",\n    \"properties\" : {\n      \"flowId\" : {\n        \"type\" : \"string\",\n        \"description\" : \"Flow ID\"\n      },\n      \"flowInstanceProcessType\" : {\n        \"type\" : \"integer\",\n        \"format\" : \"int32\",\n        \"description\" : \"Flow instance process type (1: normal, 2: force exit)\"\n      }\n    },\n    \"required\" : [ \"flowId\" ]\n  },\n  \"additionalProperties\" : false\n}"
+      },
+      {
+        "description":"Flow ID list, used for recover/end",
+        "name":"flowIdList",
+        "primaryType":"array",
+        "required":false,
+        "requiredSpecified":true,
+        "schema":"{\n  \"$schema\" : \"https://json-schema.org/draft/2020-12/schema\",\n  \"type\" : \"array\",\n  \"items\" : {\n    \"type\" : \"string\"\n  },\n  \"additionalProperties\" : false\n}"
+      },
+      {
+        "description":"Reason for the approval decision",
+        "name":"reason",
+        "primaryType":"string",
+        "required":false,
+        "requiredSpecified":true,
+        "schema":"{\n  \"$schema\" : \"https://json-schema.org/draft/2020-12/schema\",\n  \"type\" : \"string\",\n  \"additionalProperties\" : false\n}"
+      }
+    ]
+  },
+  {
+    "serverName":"engage-mcp-flow",
+    "category":"query",
+    "name":"flow_node_config_schema",
+    "description":"Query node config schema for save_flow/save_submit_flow. \r\nReturns type-specific schema, required fields, conditional rules, enum definitions, and three kinds of examples: minimal_valid, full_valid, common_invalid. \r\nUse this tool before constructing node.config to reduce invalid requests. \r\nInput: nodeType (required). Returns the schema for that node type only to avoid returning an oversized payload.",
+    "arguments":[
+      {
+        "description":"Optional node type filter, e.g., single_trigger, message_push, event_split_flow",
+        "name":"nodeType",
+        "primaryType":"string",
+        "required":true,
+        "requiredSpecified":true,
+        "schema":"{\n  \"$schema\" : \"https://json-schema.org/draft/2020-12/schema\",\n  \"type\" : \"string\",\n  \"additionalProperties\" : false\n}"
+      }
+    ]
+  },
+  {
+    "serverName":"engage-mcp-flow",
+    "category":"validate",
+    "name":"flow_node_config",
+    "description":"Validate one node.config before save_flow/save_submit_flow. \r\nThis tool performs local static validation against query_flow_node_config_schema and selected runtime-aligned rules. \r\nIt returns whether the config is valid, normalizedConfigObject, error list, and warnings for checks that still depend on live channel/template data. \r\nUse operationMode=save_flow or save_submit_flow so mode-specific required fields can be validated.",
+    "arguments":[
+      {
+        "description":"Node type, e.g., single_trigger, message_push, event_split_flow",
+        "name":"nodeType",
+        "primaryType":"string",
+        "required":true,
+        "requiredSpecified":true,
+        "schema":"{\n  \"$schema\" : \"https://json-schema.org/draft/2020-12/schema\",\n  \"type\" : \"string\",\n  \"additionalProperties\" : false\n}"
+      },
+      {
+        "description":"Node config JSON string. The top-level value must be a JSON object string.",
+        "name":"config",
+        "primaryType":"string",
+        "required":true,
+        "requiredSpecified":true,
+        "schema":"{\n  \"$schema\" : \"https://json-schema.org/draft/2020-12/schema\",\n  \"type\" : \"string\",\n  \"additionalProperties\" : false\n}"
+      },
+      {
+        "description":"Validation mode: save_flow or save_submit_flow",
+        "name":"operationMode",
+        "primaryType":"string",
+        "required":true,
+        "requiredSpecified":true,
+        "schema":"{\n  \"$schema\" : \"https://json-schema.org/draft/2020-12/schema\",\n  \"type\" : \"string\",\n  \"additionalProperties\" : false\n}"
+      }
+    ]
+  },
+  {
+    "serverName":"engage-mcp-flow",
+    "category":"batch",
+    "name":"delete_flow",
+    "description":"Batch delete Hermes flows. \r\nPrerequisites: flows mapping status must not be running. \r\nReturns a FlowBatchOpResultDTO object containing: \r\nsuccessCount (Integer): Number of successfully deleted flows; \r\nfailCount (Integer): Number of flows that failed to delete; \r\nerrorMsg (String): Error message (if any); \r\nflowUuidList (List<String>): List of flow UUIDs that were processed successfully.",
+    "arguments":[
+      {
+        "description":"Project ID",
+        "name":"projectId",
+        "primaryType":"integer",
+        "required":true,
+        "requiredSpecified":true,
+        "schema":"{\n  \"$schema\" : \"https://json-schema.org/draft/2020-12/schema\",\n  \"type\" : \"integer\",\n  \"format\" : \"int32\",\n  \"additionalProperties\" : false\n}"
+      },
+      {
+        "description":"Flow UUID list",
+        "name":"flowUuidList",
+        "primaryType":"array",
+        "required":true,
+        "requiredSpecified":true,
+        "schema":"{\n  \"$schema\" : \"https://json-schema.org/draft/2020-12/schema\",\n  \"type\" : \"array\",\n  \"items\" : {\n    \"type\" : \"string\"\n  },\n  \"additionalProperties\" : false\n}"
+      }
+    ]
+  },
+  {
+    "serverName":"engage-mcp-flow",
+    "category":"query",
+    "name":"flow_list",
+    "description":"Query Hermes flow canvas list, returns all automated outreach processes under the project. \r\nReturns a list of FlowListResDTO objects with the following fields: \r\nprojectId (Integer): Project ID; \r\nflowId (String): Flow ID; \r\nflowUuid (String): Flow UUID (unique identifier); \r\nflowName (String): Flow name; \r\nflowDesc (String): Flow description; \r\nstatus (Integer): Flow status; \r\nmappingStatus (Integer): Flow mapping status - Enum: 0=DRAFT, 1=APPROVE(pending approval), 2=DENY(rejected), 3=REGISTERING, 4=REGISTER_FAIL, 5=WAITING(pending execution), 6=RUNNING, 7=PENDING(paused), 8=COMPLETE(ended); \r\ntzOffset (Double): Timezone offset (hours), default 8.0; \r\nversionType (Integer): Version type - Enum: 0=history version, 1=current version, 2=update content version, 3=new version, 4=test version; \r\nversionNum (Integer): Version count; \r\ngroupId (Integer): Group ID (default 0); \r\ngroupName (String): Group name; \r\nentryTriggerType (Integer): Entry node trigger type - Enum: 0=scheduled single trigger, 1=scheduled recurring trigger, 2=event trigger; \r\nentryStartTime (String): Entry node start time; \r\nentryEndTime (String): Entry node end time; \r\nflowEndTime (Date): Flow canvas end time; \r\ncreator (String): Creator name; \r\ncreatorLoginName (String): Creator login name; \r\nmodifier (String): Modifier name; \r\ncreateTime (Date): Creation time; \r\nupdateTime (Date): Update time; \r\nlastModifiedTime (Date): Last modification time; \r\ntips (List<TipsDetailDTO>): Tip messages list; \r\napprovalMsg (String): Approval message/reason; \r\ntopTime (Date): Pinned/sticky time; \r\nworkingDays (Integer): Elapsed running days; \r\nplanDays (Integer): Planned duration in days; \r\nsubVersion (FlowListResDTO): New version info (same structure as FlowListResDTO); \r\nchannelList (List<FlowListChannelListDTO>): Channel list used by flow - contains channelType (Integer): Channel type, channelNameList (List<String>): Channel name list.",
+    "arguments":[
+      {
+        "description":"Project ID",
+        "name":"projectId",
+        "primaryType":"integer",
+        "required":true,
+        "requiredSpecified":true,
+        "schema":"{\n  \"$schema\" : \"https://json-schema.org/draft/2020-12/schema\",\n  \"type\" : \"integer\",\n  \"format\" : \"int32\",\n  \"additionalProperties\" : false\n}"
+      }
+    ]
+  },
+  {
+    "serverName":"engage-mcp-flow",
+    "category":"save",
+    "name":"flow",
+    "description":"Create or update flow canvas draft, returns flow UUID (flowUuid). If validation fails, returns structured validation details including valid/errors/warnings/nodeResults. \r\nRecommended workflow for AI caller: first call query_flow_node_config_schema to get type-specific config schema, then call save_flow. \r\nInput object: req (FlowSaveReqDTO). \r\nMode selection (important): \r\n- create: do NOT pass flowUuid and parentFlowUuid; \r\n- new_version: pass parentFlowUuid (base version flowUuid), do NOT pass flowUuid. If versionType is omitted, MCP defaults it to 3 (new version); \r\n- update_draft: pass flowUuid (draft flowUuid to update), do NOT pass parentFlowUuid. If the draft already exists, MCP will reuse its saved versionType when versionType is omitted. \r\nCommon required fields: projectId, flowName, nodeList, edgeList. \r\nGraph constraints: \r\n- each node.id must be unique in nodeList; \r\n- edge.source and edge.target must refer to existing node.id; \r\n- edgeList must form a directed acyclic graph (DAG); do not create cycles. \r\n- flow should include exactly one entry node and at least one exit_flow node; \r\n- each exit_flow node must have exactly one incoming edge and no outgoing edges; \r\n- sourceBranchId is only needed for branch/judge node outgoing edges. \r\nFor push node channelId fields (such as message_push, webhook_push, wechat_push), call query_channel_list first and use a valid channelId from that tool. \r\nFor time-unit related enum fields, always pass lowercase enum values such as day/hour/minute/week/month; do not pass uppercase values like DAY or MINUTE. \r\nconfig fields: node.config and edge.config are JSON strings (not JSON objects). \r\nMinimal create example: \r\n{\"req\":{\"projectId\":1,\"flowName\":\"Welcome Flow\",\"nodeList\":[{\"id\":\"node_1\",\"type\":\"single_trigger\",\"config\":\"{}\"},{\"id\":\"node_2\",\"type\":\"exit_flow\",\"config\":\"{}\"}],\"edgeList\":[{\"source\":\"node_1\",\"target\":\"node_2\"}]}}.",
+    "arguments":[
+      {
+        "description":"Project ID",
+        "name":"projectId",
+        "primaryType":"integer",
+        "required":true,
+        "requiredSpecified":true,
+        "schema":"{\n  \"$schema\" : \"https://json-schema.org/draft/2020-12/schema\",\n  \"type\" : \"integer\",\n  \"format\" : \"int32\",\n  \"additionalProperties\" : false\n}"
+      },
+      {
+        "description":"Create flow request parameters",
+        "name":"req",
+        "primaryType":"object",
+        "required":true,
+        "requiredSpecified":true,
+        "schema":"{\n  \"$schema\" : \"https://json-schema.org/draft/2020-12/schema\",\n  \"type\" : \"object\",\n  \"properties\" : {\n    \"edgeList\" : {\n      \"description\" : \"Edge connection list (required). Each edge.source/edge.target must reference existing node.id\",\n      \"type\" : \"array\",\n      \"items\" : {\n        \"type\" : \"object\",\n        \"properties\" : {\n          \"config\" : {\n            \"type\" : \"string\",\n            \"description\" : \"Edge business config as JSON string (optional). If omitted, default routing behavior is used\"\n          },\n          \"edgeId\" : {\n            \"type\" : \"string\",\n            \"description\" : \"Edge ID (optional), unique identifier within the canvas, e.g., edge_001\"\n          },\n          \"source\" : {\n            \"type\" : \"string\",\n            \"description\" : \"Upstream node ID (required), must match an existing node.id\"\n          },\n          \"sourceBranchId\" : {\n            \"type\" : \"string\",\n            \"description\" : \"Upstream branch ID (optional). Use when source node is a branch/judge node and edge needs a specific branch\"\n          },\n          \"target\" : {\n            \"type\" : \"string\",\n            \"description\" : \"Downstream node ID (required), must match an existing node.id\"\n          }\n        },\n        \"required\" : [ \"source\", \"target\" ],\n        \"description\" : \"Edge connection list (required). Each edge.source/edge.target must reference existing node.id\"\n      }\n    },\n    \"flowDesc\" : {\n      \"type\" : \"string\",\n      \"description\" : \"Flow description, maximum 200 characters(required)\"\n    },\n    \"flowName\" : {\n      \"type\" : \"string\",\n      \"description\" : \"Flow name (required), maximum 80 characters\"\n    },\n    \"flowUuid\" : {\n      \"type\" : \"string\",\n      \"description\" : \"Draft flow UUID. Use only for update_draft mode. Mutually exclusive with parentFlowUuid\"\n    },\n    \"groupId\" : {\n      \"type\" : \"integer\",\n      \"format\" : \"int32\",\n      \"description\" : \"Group ID, default 0\"\n    },\n    \"nodeList\" : {\n      \"description\" : \"Node list (required). It must be non-empty and include exactly one entry node (single_trigger, repeat_trigger, or event_trigger) plus at least one exit_flow node. Each node.id is a request-local identifier used by edge.source/edge.target references, not a persisted database nodeUuid, and it must be unique within this request. Each node.config must be a JSON string whose top-level value is a JSON object that matches node.type. For branch/judge/split nodes, branch IDs referenced by edge.sourceBranchId must be defined inside node.config. Call query_flow_node_config_schema with the target node type before constructing node.config.\",\n      \"type\" : \"array\",\n      \"items\" : {\n        \"type\" : \"object\",\n        \"properties\" : {\n          \"config\" : {\n            \"type\" : \"string\",\n            \"description\" : \"Node business config as JSON string (required). This field must be a stringified JSON object, not a raw JSON object, array, or plain string. Example: \\\"{}\\\" or \\\"{\\\\\\\"key\\\\\\\":\\\\\\\"value\\\\\\\"}\\\". The schema must match node.type. For judge/push/split nodes, branch IDs used later by edge.sourceBranchId must be declared here first. Build this field from query_flow_node_config_schema for the same node type.\"\n          },\n          \"desc\" : {\n            \"type\" : \"string\",\n            \"description\" : \"Node description (optional). This affects readability only and does not change execution semantics.\"\n          },\n          \"id\" : {\n            \"type\" : \"string\",\n            \"description\" : \"Node ID (required), request-local unique identifier in this canvas, e.g., node_001. This value is referenced by edge.source and edge.target, and is not the persisted database nodeUuid.\"\n          },\n          \"name\" : {\n            \"type\" : \"string\",\n            \"description\" : \"Node display name (required). This affects readability only and does not change execution semantics.\"\n          },\n          \"type\" : {\n            \"type\" : \"string\",\n            \"description\" : \"Node type (required). Supported entry node types are single_trigger, repeat_trigger, and event_trigger; the full canvas must contain exactly one of them. Common node types include feature_judge, event_judge, message_push, wechat_push, webhook_push, time_control, feature_split_flow, event_split_flow, ab_split_flow, and exit_flow.\"\n          }\n        },\n        \"required\" : [ \"config\", \"id\", \"name\", \"type\" ],\n        \"description\" : \"Node list (required). It must be non-empty and include exactly one entry node (single_trigger, repeat_trigger, or event_trigger) plus at least one exit_flow node. Each node.id is a request-local identifier used by edge.source/edge.target references, not a persisted database nodeUuid, and it must be unique within this request. Each node.config must be a JSON string whose top-level value is a JSON object that matches node.type. For branch/judge/split nodes, branch IDs referenced by edge.sourceBranchId must be defined inside node.config. Call query_flow_node_config_schema with the target node type before constructing node.config.\"\n      }\n    },\n    \"parentFlowUuid\" : {\n      \"type\" : \"string\",\n      \"description\" : \"Base version flow UUID. Use only for new_version mode. Mutually exclusive with flowUuid\"\n    },\n    \"projectId\" : {\n      \"type\" : \"integer\",\n      \"format\" : \"int32\",\n      \"description\" : \"Project ID (required)\"\n    },\n    \"tzOffset\" : {\n      \"type\" : \"number\",\n      \"format\" : \"double\",\n      \"description\" : \"Timezone offset in hours, default 8.0 (example: 8.0, -5.0)\"\n    },\n    \"versionType\" : {\n      \"type\" : \"integer\",\n      \"format\" : \"int32\",\n      \"description\" : \"Version type enum: 1=current version, 2=update content version, 3=new version, 4=test version\"\n    }\n  },\n  \"required\" : [ \"edgeList\", \"flowDesc\", \"flowName\", \"nodeList\", \"projectId\" ],\n  \"additionalProperties\" : false\n}"
+      }
+    ]
+  },
+  {
+    "serverName":"engage-mcp-setting",
+    "category":"query",
+    "name":"channel_list",
+    "description":"Query channel list, returns channel information under the project (including channel ID, name, type, type Chinese name, status, provider, configuration, creation time, update time, etc.). \r\nReturns a list of ChannelListResDTO objects, each containing: \r\nprojectId (Integer): Project ID; \r\nchannelId (String): Channel unique identifier; \r\nchannelName (String): Channel display name; \r\nchannelType (Integer): Channel type - Enum: 1=WEBHOOK, 2=APP_PUSH, 3=CLIENT_PUSH, 4=WECHAT, 5=DOU_YIN; \r\nchannelTypeName (String): Channel type display name; \r\nchannelSubBizType (String): Channel business sub-type - Enum: webhook, fcm, aurora, apns, client, wechat_mini_game, dou_yin_recommended_game_card; \r\nchannelStatus (Integer): Channel status - Enum: 0=disabled, 1=enabled; \r\nprovider (String): Service provider name; \r\nconfig (String): Channel configuration (JSON string); \r\ncreateTime (Date): Creation timestamp (yyyy-MM-dd HH:mm:ss); \r\nupdateTime (Date): Last update timestamp (yyyy-MM-dd HH:mm:ss); \r\ncreatorId (String): Creator user ID; \r\nmodifierId (String): Last modifier user ID; \r\nchannelValidityStatus (String): Channel validity status.",
+    "arguments":[
+      {
+        "description":"Project ID",
+        "name":"projectId",
+        "primaryType":"integer",
+        "required":true,
+        "requiredSpecified":true,
+        "schema":"{\n  \"$schema\" : \"https://json-schema.org/draft/2020-12/schema\",\n  \"type\" : \"integer\",\n  \"format\" : \"int32\",\n  \"additionalProperties\" : false\n}"
+      },
+      {
+        "description":"Channel business sub-type list (corresponding to ChannelSubBizTypeEnum subType: webhook, fcm, aurora, apns, client, wechat_mini_game, dou_yin_recommended_game_card)",
+        "name":"providerList",
+        "primaryType":"array",
+        "required":false,
+        "requiredSpecified":true,
+        "schema":"{\n  \"$schema\" : \"https://json-schema.org/draft/2020-12/schema\",\n  \"type\" : \"array\",\n  \"items\" : {\n    \"type\" : \"string\"\n  },\n  \"additionalProperties\" : false\n}"
+      },
+      {
+        "description":"Channel status (enum, 0: disabled, 1: enabled)",
+        "name":"channelStatus",
+        "primaryType":"integer",
+        "required":false,
+        "requiredSpecified":true,
+        "schema":"{\n  \"$schema\" : \"https://json-schema.org/draft/2020-12/schema\",\n  \"type\" : \"integer\",\n  \"format\" : \"int32\",\n  \"additionalProperties\" : false\n}"
+      }
+    ]
+  },
+  {
+    "serverName":"engage-mcp-setting",
+    "category":"query",
+    "name":"channel_detail",
+    "description":"Query detailed information of a channel by channel ID. \r\nReturns a ChannelDetailResDTO object containing: \r\nprojectId (Integer): Project ID; \r\nchannelId (String): Channel unique identifier; \r\nchannelName (String): Channel display name; \r\npushIdType (String): Push ID type field name; \r\npushIdTypeName (String): Push ID type field display name; \r\nchannelStatus (Integer): Channel status - Enum: 0=disabled, 1=enabled; \r\ncreateTime (Date): Creation timestamp (yyyy-MM-dd HH:mm:ss); \r\ncreator (String): Creator name; \r\nconfig (String): Channel configuration (JSON string); \r\nruleId (String): Fatigue limit rule ID; \r\nenableChannelTouchLimits (Boolean): Whether fatigue limit is enabled; \r\nruleDef (String): Channel fatigue rule definition (JSON string); \r\nenableTouchEvent (Integer): Touch funnel switch; \r\ntouchEventSource (String): Touch event source; \r\neventDeliveryName (String): Actual delivery event name; \r\neventDeliveryStatus (Integer): Actual delivery event status; \r\nhasEventDeliveryAlarm (Boolean): Whether actual delivery event unavailable alarm is triggered; \r\neventClickName (String): Click push event name; \r\neventClickStatus (Integer): Click push event status; \r\nhasEventClickAlarm (Boolean): Whether click push event unavailable alarm is triggered; \r\nchannelBizType (String): Channel business type; \r\nchannelSubBizType (String): Channel business sub-type; \r\nchannelType (Integer): Channel type; \r\nchannelValidityStatus (String): Channel validity status; \r\nchannelValidityStatusLevel (Integer): Channel validity status level; \r\nchannelValidityStatusName (String): Channel validity status name; \r\nexpireTime (Date): Expire time (yyyy-MM-dd HH:mm:ss); \r\nnotRealAvailableUserParamList (List<String>): Real-time unavailable custom parameters.",
+    "arguments":[
+      {
+        "description":"Project ID",
+        "name":"projectId",
+        "primaryType":"integer",
+        "required":true,
+        "requiredSpecified":true,
+        "schema":"{\n  \"$schema\" : \"https://json-schema.org/draft/2020-12/schema\",\n  \"type\" : \"integer\",\n  \"format\" : \"int32\",\n  \"additionalProperties\" : false\n}"
+      },
+      {
+        "description":"Channel ID",
+        "name":"channelId",
+        "primaryType":"string",
+        "required":true,
+        "requiredSpecified":true,
+        "schema":"{\n  \"$schema\" : \"https://json-schema.org/draft/2020-12/schema\",\n  \"type\" : \"string\",\n  \"additionalProperties\" : false\n}"
+      }
+    ]
+  },
+  {
+    "serverName":"engage-mcp-setting",
+    "category":"update",
+    "name":"channel_status",
+    "description":"Update channel status (enable or disable). \r\nReturns true if update is successful, false if update fails.",
+    "arguments":[
+      {
+        "description":"Project ID",
+        "name":"projectId",
+        "primaryType":"integer",
+        "required":true,
+        "requiredSpecified":true,
+        "schema":"{\n  \"$schema\" : \"https://json-schema.org/draft/2020-12/schema\",\n  \"type\" : \"integer\",\n  \"format\" : \"int32\",\n  \"additionalProperties\" : false\n}"
+      },
+      {
+        "description":"Channel ID",
+        "name":"channelId",
+        "primaryType":"string",
+        "required":true,
+        "requiredSpecified":true,
+        "schema":"{\n  \"$schema\" : \"https://json-schema.org/draft/2020-12/schema\",\n  \"type\" : \"string\",\n  \"additionalProperties\" : false\n}"
+      },
+      {
+        "description":"Channel status - Enum: 0=disabled, 1=enabled",
+        "name":"status",
+        "primaryType":"integer",
+        "required":true,
+        "requiredSpecified":true,
+        "schema":"{\n  \"$schema\" : \"https://json-schema.org/draft/2020-12/schema\",\n  \"type\" : \"integer\",\n  \"format\" : \"int32\",\n  \"additionalProperties\" : false\n}"
+      }
+    ]
+  },
+  {
+    "serverName":"engage-mcp-setting",
+    "category":"delete",
+    "name":"channel",
+    "description":"Delete a channel by channel ID. \r\nPrerequisites: channel must be in disabled status before deletion. \r\nReturns true if deletion is successful, false if deletion fails or channel is not in disabled status.",
+    "arguments":[
+      {
+        "description":"Project ID",
+        "name":"projectId",
+        "primaryType":"integer",
+        "required":true,
+        "requiredSpecified":true,
+        "schema":"{\n  \"$schema\" : \"https://json-schema.org/draft/2020-12/schema\",\n  \"type\" : \"integer\",\n  \"format\" : \"int32\",\n  \"additionalProperties\" : false\n}"
+      },
+      {
+        "description":"Channel ID",
+        "name":"channelId",
+        "primaryType":"string",
+        "required":true,
+        "requiredSpecified":true,
+        "schema":"{\n  \"$schema\" : \"https://json-schema.org/draft/2020-12/schema\",\n  \"type\" : \"string\",\n  \"additionalProperties\" : false\n}"
+      }
+    ]
+  },
+  {
+    "serverName":"engage-mcp-setting",
+    "category":"add",
+    "name":"channel",
+    "description":"Create a new channel. \r\nInput parameters: \r\nreq (ChannelNewDTO): Channel creation request object. Fields in req: \r\nprojectId (Integer): Project ID in request body. The final effective value is the top-level projectId parameter. \r\nchannelType (Integer): Channel type. \r\nchannelSubBizType (String): Channel business sub-type, such as webhook, fcm, aurora, apns, client, wechat_mini_game, dou_yin_recommended_game_card. \r\nchannelName (String): Channel display name. \r\npushIdType (String): Field name used as push target ID. \r\nconfig (String): Channel configuration JSON string. \r\nenableTouchEvent (Integer): Touch funnel switch. \r\ntouchEventSource (String): Touch event source. \r\neventDeliveryName (String): Actual delivery event name. \r\neventClickName (String): Click event name. \r\nReturns a ChannelNewResponseDTO object containing: \r\nchannelId (String): New channel ID.",
+    "arguments":[
+      {
+        "description":"Project ID",
+        "name":"projectId",
+        "primaryType":"integer",
+        "required":true,
+        "requiredSpecified":true,
+        "schema":"{\n  \"$schema\" : \"https://json-schema.org/draft/2020-12/schema\",\n  \"type\" : \"integer\",\n  \"format\" : \"int32\",\n  \"additionalProperties\" : false\n}"
+      },
+      {
+        "description":"Channel creation request object",
+        "name":"req",
+        "primaryType":"object",
+        "required":true,
+        "requiredSpecified":true,
+        "schema":"{\n  \"$schema\" : \"https://json-schema.org/draft/2020-12/schema\",\n  \"type\" : \"object\",\n  \"properties\" : {\n    \"channelName\" : {\n      \"type\" : \"string\"\n    },\n    \"channelSubBizType\" : {\n      \"type\" : \"string\"\n    },\n    \"channelType\" : {\n      \"type\" : \"integer\",\n      \"format\" : \"int32\"\n    },\n    \"config\" : {\n      \"type\" : \"string\"\n    },\n    \"enableTouchEvent\" : {\n      \"type\" : \"integer\",\n      \"format\" : \"int32\"\n    },\n    \"eventClickName\" : {\n      \"type\" : \"string\"\n    },\n    \"eventDeliveryName\" : {\n      \"type\" : \"string\"\n    },\n    \"projectId\" : {\n      \"type\" : \"integer\",\n      \"format\" : \"int32\"\n    },\n    \"pushIdType\" : {\n      \"type\" : \"string\"\n    },\n    \"touchEventSource\" : {\n      \"type\" : \"string\"\n    }\n  },\n  \"required\" : [ \"channelName\", \"channelSubBizType\", \"channelType\", \"config\", \"enableTouchEvent\", \"eventClickName\", \"eventDeliveryName\", \"projectId\", \"pushIdType\", \"touchEventSource\" ],\n  \"additionalProperties\" : false\n}"
+      }
+    ]
+  },
+  {
+    "serverName":"engage-mcp-setting",
+    "category":"query",
+    "name":"whitelist_list",
+    "description":"Query whitelist list by project ID, returns all whitelists under the specified project. \r\nReturns a list of WhitelistSimpleDTO objects, each containing: \r\nprojectId (Integer): Project ID; \r\nwhitelistId (String): Whitelist unique identifier; \r\nentityId (String): Entity ID (user ID); \r\nnoteName (String): Note name for the whitelist entry; \r\nsourceInfo (String): Source information (column name and value); \r\ncreatorId (String): Creator user open ID; \r\ncreatorName (String): Creator user name; \r\nmodifierId (String): Last modifier user open ID; \r\ncreateTime (Date): Creation timestamp (yyyy-MM-dd HH:mm:ss); \r\nupdateTime (Date): Last update timestamp (yyyy-MM-dd HH:mm:ss).",
+    "arguments":[
+      {
+        "description":"Project ID",
+        "name":"projectId",
+        "primaryType":"integer",
+        "required":true,
+        "requiredSpecified":true,
+        "schema":"{\n  \"$schema\" : \"https://json-schema.org/draft/2020-12/schema\",\n  \"type\" : \"integer\",\n  \"format\" : \"int32\",\n  \"additionalProperties\" : false\n}"
+      }
+    ]
+  },
+  {
+    "serverName":"engage-mcp-setting",
+    "category":"batch",
+    "name":"add_approver",
+    "description":"Batch add approvers to the specified project. The approvers must have operation product permissions (project owner + operation role). \r\nReturns true if addition is successful. \r\nConstraints: \r\n- Maximum 10 approvers can be added per request; \r\n- Approvers must have Hermes operation permissions; \r\n- Duplicate approvers will be filtered automatically.",
+    "arguments":[
+      {
+        "description":"Project ID",
+        "name":"projectId",
+        "primaryType":"integer",
+        "required":true,
+        "requiredSpecified":true,
+        "schema":"{\n  \"$schema\" : \"https://json-schema.org/draft/2020-12/schema\",\n  \"type\" : \"integer\",\n  \"format\" : \"int32\",\n  \"additionalProperties\" : false\n}"
+      },
+      {
+        "description":"Approver open ID list",
+        "name":"approvers",
+        "primaryType":"array",
+        "required":true,
+        "requiredSpecified":true,
+        "schema":"{\n  \"$schema\" : \"https://json-schema.org/draft/2020-12/schema\",\n  \"type\" : \"array\",\n  \"items\" : {\n    \"type\" : \"string\"\n  },\n  \"additionalProperties\" : false\n}"
+      }
+    ]
+  },
+  {
+    "serverName":"engage-mcp-setting",
+    "category":"query",
+    "name":"approver_list",
+    "description":"Query approver list by project ID, returns all approvers under the specified project. \r\nReturns a list of ApproverDTO objects, each containing: \r\nid (Integer): Primary key ID; \r\nprojectId (Integer): Project ID; \r\napprover (String): Approver user open ID; \r\napproverName (String): Approver user name; \r\nloginName (String): Approver login name; \r\ncreator (String): Creator user open ID; \r\ncreatorName (String): Creator user name; \r\ncreateTime (Date): Creation timestamp (yyyy-MM-dd HH:mm:ss); \r\nupdateTime (Date): Last update timestamp (yyyy-MM-dd HH:mm:ss).",
+    "arguments":[
+      {
+        "description":"Project ID",
+        "name":"projectId",
+        "primaryType":"integer",
+        "required":true,
+        "requiredSpecified":true,
+        "schema":"{\n  \"$schema\" : \"https://json-schema.org/draft/2020-12/schema\",\n  \"type\" : \"integer\",\n  \"format\" : \"int32\",\n  \"additionalProperties\" : false\n}"
+      }
+    ]
+  },
+  {
+    "serverName":"engage-mcp-setting",
+    "category":"query",
+    "name":"cluster_qp_skill",
+    "description":"Query the mix-cluster QP skill definition for node audience conditions. This tool returns skill content, not the final QP JSON string. Use the returned skill to generate a valid targetClusterQp JSON string for fields such as targetClusterQp in single_trigger, repeat_trigger, event_trigger, feature_judge, and feature_split_flow.",
+    "arguments":[]
+  },
+  {
+    "serverName":"engage-mcp-setting",
+    "category":"cancel",
+    "name":"query_by_request_id",
+    "description":"Cancel one running data query by requestId. Use this tool when a previously started report query is no longer needed, such as when the caller timed out or the user changed direction. Returns `true` when the cancellation signal was sent, and `false` when the requestId is not found.",
+    "arguments":[
+      {
+        "description":"Query requestId to cancel. It must be the same requestId used when the data query was started.",
+        "name":"requestId",
+        "primaryType":"string",
+        "required":true,
+        "requiredSpecified":true,
+        "schema":"{\n  \"$schema\" : \"https://json-schema.org/draft/2020-12/schema\",\n  \"type\" : \"string\",\n  \"additionalProperties\" : false\n}"
+      }
+    ]
+  },
+  {
+    "serverName":"engage-mcp-setting",
+    "category":"query",
+    "name":"config_channel_detail",
+    "description":"Query detailed information of a config channel by channel ID. \r\nReturns a ConfigChannelDetailResDTO object containing: \r\nchannelId (String): Channel unique identifier; \r\nchannelName (String): Channel display name; \r\nchannelType (Integer): Channel type - Enum: 0=WEBHOOK, 1=CLIENT; \r\nchannelStatus (Integer): Channel status - Enum: 1=enabled, 2=disabled; \r\ncreateTime (Date): Creation timestamp (yyyy-MM-dd HH:mm:ss); \r\nupdateTime (Date): Last update timestamp (yyyy-MM-dd HH:mm:ss); \r\ncreator (String): Creator name; \r\nupdater (String): Last modifier name; \r\nconfig (String): Channel configuration (JSON string).",
+    "arguments":[
+      {
+        "description":"Project ID",
+        "name":"projectId",
+        "primaryType":"integer",
+        "required":true,
+        "requiredSpecified":true,
+        "schema":"{\n  \"$schema\" : \"https://json-schema.org/draft/2020-12/schema\",\n  \"type\" : \"integer\",\n  \"format\" : \"int32\",\n  \"additionalProperties\" : false\n}"
+      },
+      {
+        "description":"Channel ID",
+        "name":"channelId",
+        "primaryType":"string",
+        "required":true,
+        "requiredSpecified":true,
+        "schema":"{\n  \"$schema\" : \"https://json-schema.org/draft/2020-12/schema\",\n  \"type\" : \"string\",\n  \"additionalProperties\" : false\n}"
+      }
+    ]
+  },
+  {
+    "serverName":"engage-mcp-setting",
+    "category":"query",
+    "name":"config_channel_list",
+    "description":"Query config channel list, returns all config channels under the specified project. \r\nReturns a list of ConfigChannelRespDTO objects, each containing: \r\nid (Integer): Primary key ID; \r\nchannelId (String): Channel unique identifier; \r\nchannelName (String): Channel display name; \r\nchannelType (Integer): Channel type - Enum: 0=WEBHOOK, 1=CLIENT; \r\nchannelStatus (Integer): Channel status - Enum: 1=enabled, 2=disabled; \r\ncreateTime (Date): Creation timestamp (yyyy-MM-dd HH:mm:ss); \r\nupdateTime (Date): Last update timestamp (yyyy-MM-dd HH:mm:ss); \r\ncreator (String): Creator name; \r\nupdater (String): Last modifier name.",
+    "arguments":[
+      {
+        "description":"Project ID",
+        "name":"projectId",
+        "primaryType":"integer",
+        "required":true,
+        "requiredSpecified":true,
+        "schema":"{\n  \"$schema\" : \"https://json-schema.org/draft/2020-12/schema\",\n  \"type\" : \"integer\",\n  \"format\" : \"int32\",\n  \"additionalProperties\" : false\n}"
+      },
+      {
+        "description":"Channel type - Enum: 0=WEBHOOK, 1=CLIENT (optional, filter by type if provided)",
+        "name":"channelType",
+        "primaryType":"integer",
+        "required":false,
+        "requiredSpecified":true,
+        "schema":"{\n  \"$schema\" : \"https://json-schema.org/draft/2020-12/schema\",\n  \"type\" : \"integer\",\n  \"format\" : \"int32\",\n  \"additionalProperties\" : false\n}"
+      }
+    ]
+  },
+  {
+    "serverName":"engage-mcp-setting",
+    "category":"delete",
+    "name":"config_channel",
+    "description":"Delete a config channel by channel ID. \r\nPrerequisites: config channel must be in disabled status before deletion. \r\nReturns true if deletion is successful, false if deletion fails or channel is not in disabled status.",
+    "arguments":[
+      {
+        "description":"Project ID",
+        "name":"projectId",
+        "primaryType":"integer",
+        "required":true,
+        "requiredSpecified":true,
+        "schema":"{\n  \"$schema\" : \"https://json-schema.org/draft/2020-12/schema\",\n  \"type\" : \"integer\",\n  \"format\" : \"int32\",\n  \"additionalProperties\" : false\n}"
+      },
+      {
+        "description":"Channel ID",
+        "name":"channelId",
+        "primaryType":"string",
+        "required":true,
+        "requiredSpecified":true,
+        "schema":"{\n  \"$schema\" : \"https://json-schema.org/draft/2020-12/schema\",\n  \"type\" : \"string\",\n  \"additionalProperties\" : false\n}"
+      }
+    ]
+  },
+  {
+    "serverName":"engage-mcp-setting",
+    "category":"update",
+    "name":"config_channel_status",
+    "description":"Update config channel status (enable or disable). \r\nReturns true if update is successful, false if update fails.",
+    "arguments":[
+      {
+        "description":"Project ID",
+        "name":"projectId",
+        "primaryType":"integer",
+        "required":true,
+        "requiredSpecified":true,
+        "schema":"{\n  \"$schema\" : \"https://json-schema.org/draft/2020-12/schema\",\n  \"type\" : \"integer\",\n  \"format\" : \"int32\",\n  \"additionalProperties\" : false\n}"
+      },
+      {
+        "description":"Channel ID",
+        "name":"channelId",
+        "primaryType":"string",
+        "required":true,
+        "requiredSpecified":true,
+        "schema":"{\n  \"$schema\" : \"https://json-schema.org/draft/2020-12/schema\",\n  \"type\" : \"string\",\n  \"additionalProperties\" : false\n}"
+      },
+      {
+        "description":"Channel status - Enum: 1=enabled, 2=disabled",
+        "name":"channelStatus",
+        "primaryType":"integer",
+        "required":true,
+        "requiredSpecified":true,
+        "schema":"{\n  \"$schema\" : \"https://json-schema.org/draft/2020-12/schema\",\n  \"type\" : \"integer\",\n  \"format\" : \"int32\",\n  \"additionalProperties\" : false\n}"
+      }
+    ]
+  },
+  {
+    "serverName":"engage-mcp-task",
+    "category":"query",
+    "name":"task_data_overview",
+    "description":"Query the high-level data overview for one operation task. \r\nThis tool returns funnel-style summary data, not task configuration metadata. Use it when you need the headline performance stages for one task before drilling into detailed reports. \r\nRequest tracking rule: `requestId` should be a UUID string so it is globally unique. If you do not provide it, the system generates one automatically. If you later need to cancel this query through the corresponding cancellation capability, you must reuse the same `requestId` that was actually used for this query. \r\nRouting rules: `taskType=normal` uses the standard task overview route for scheduled or manual tasks; `taskType=trigger` uses the triggered-task funnel route for event-driven tasks. \r\nReturn shape: `TaskOverviewMcpResponseDTO` with `dataList` and `resultGenerateTime`. Each item in `dataList` has `key` and `value`. \r\nThe stage keys in `dataList` are produced by the backend route and differ by task type. In practice, normal-task overview keys and trigger-task funnel keys are not guaranteed to be identical, so callers should parse by returned `key` values instead of assuming one fixed stage set.",
+    "arguments":[
+      {
+        "description":"Project ID that owns the task and scopes the query.",
+        "name":"projectId",
+        "primaryType":"integer",
+        "required":true,
+        "requiredSpecified":true,
+        "schema":"{\n  \"$schema\" : \"https://json-schema.org/draft/2020-12/schema\",\n  \"type\" : \"integer\",\n  \"format\" : \"int32\",\n  \"additionalProperties\" : false\n}"
+      },
+      {
+        "description":"Task ID to query. Use a standard operation task ID when `taskType=normal`, and a triggered task ID when `taskType=trigger`.",
+        "name":"taskId",
+        "primaryType":"string",
+        "required":true,
+        "requiredSpecified":true,
+        "schema":"{\n  \"$schema\" : \"https://json-schema.org/draft/2020-12/schema\",\n  \"type\" : \"string\",\n  \"additionalProperties\" : false\n}"
+      },
+      {
+        "description":"Optional request identifier for this query. Use a UUID string and keep it globally unique across queries. If omitted, the system generates a UUID automatically. If you later need to cancel this query, you must use the same `requestId` that was actually used for this query.",
+        "name":"requestId",
+        "primaryType":"string",
+        "required":false,
+        "requiredSpecified":true,
+        "schema":"{\n  \"$schema\" : \"https://json-schema.org/draft/2020-12/schema\",\n  \"type\" : \"string\",\n  \"additionalProperties\" : false\n}"
+      },
+      {
+        "description":"Optional push content language code used to scope the report to a specific language version of the push copy. This is useful when the task has multilingual content. Use Hermes push-language codes such as `default`, `en`, `zh-Hans`, `zh-Hant`, `ja`, or `ko`. If omitted, the MCP layer passes `null`, which means querying data across all languages.",
+        "name":"pushLanguageCode",
+        "primaryType":"string",
+        "required":false,
+        "requiredSpecified":true,
+        "schema":"{\n  \"$schema\" : \"https://json-schema.org/draft/2020-12/schema\",\n  \"type\" : \"string\",\n  \"additionalProperties\" : false\n}"
+      },
+      {
+        "description":"Task type selector. Supported values are exactly: `normal` for scheduled or manual operation tasks, `trigger` for event-triggered operation tasks. This parameter decides which backend overview logic is used.",
+        "name":"taskType",
+        "primaryType":"string",
+        "required":true,
+        "requiredSpecified":true,
+        "schema":"{\n  \"$schema\" : \"https://json-schema.org/draft/2020-12/schema\",\n  \"type\" : \"string\",\n  \"additionalProperties\" : false\n}"
+      },
+      {
+        "description":"Data dimension type. Supported values are exactly: `uv` for unique-user counting and `pv` for occurrence/event counting. Default: if omitted, the MCP layer uses `uv`. This parameter is passed to the normal-task overview route. The trigger-task overview route does not use this field, so it can be omitted when `taskType=trigger`.",
+        "name":"dataDimType",
+        "primaryType":"string",
+        "required":false,
+        "requiredSpecified":true,
+        "schema":"{\n  \"$schema\" : \"https://json-schema.org/draft/2020-12/schema\",\n  \"type\" : \"string\",\n  \"additionalProperties\" : false\n}"
+      },
+      {
+        "description":"Display timezone offset for report rendering. Recommended format is `8.0` or `-5.0`. If omitted, the backend uses the current user context timezone.",
+        "name":"showTimeZone",
+        "primaryType":"string",
+        "required":false,
+        "requiredSpecified":true,
+        "schema":"{\n  \"$schema\" : \"https://json-schema.org/draft/2020-12/schema\",\n  \"type\" : \"string\",\n  \"additionalProperties\" : false\n}"
+      }
+    ]
+  },
+  {
+    "serverName":"engage-mcp-task",
+    "category":"query",
+    "name":"task_data_detail",
+    "description":"Query the detailed data report for one operation task. \r\nThis tool returns report data, not task configuration metadata. Use it when you need date-level, execution-instance-level, or single-instance-daily detail after reviewing the task overview. \r\nRequest tracking rule: `requestId` should be a UUID string so it is globally unique. If you do not provide it, the system generates one automatically. If you later need to cancel this query through the corresponding cancellation capability, you must reuse the same `requestId` that was actually used for this query. \r\nRouting rules: \r\n- `taskType=normal`: supported `detailType` values are `time`, `instance`, and `instance_daily`; \r\n- `taskType=trigger`: only `detailType=time` is supported, and you can further control the trigger report layout with `dataViewType`. \r\nReturn shape: `TaskDataResponseDTO`, with top-level `resultGenerateTime` and nested `data`. The nested `data` object contains report axes and values, including fields such as `x`, `xTag`, `y`, and `z`.",
+    "arguments":[
+      {
+        "description":"Project ID that owns the task and scopes the query.",
+        "name":"projectId",
+        "primaryType":"integer",
+        "required":true,
+        "requiredSpecified":true,
+        "schema":"{\n  \"$schema\" : \"https://json-schema.org/draft/2020-12/schema\",\n  \"type\" : \"integer\",\n  \"format\" : \"int32\",\n  \"additionalProperties\" : false\n}"
+      },
+      {
+        "description":"Task ID to query. Use a standard operation task ID when `taskType=normal`, and a triggered task ID when `taskType=trigger`.",
+        "name":"taskId",
+        "primaryType":"string",
+        "required":true,
+        "requiredSpecified":true,
+        "schema":"{\n  \"$schema\" : \"https://json-schema.org/draft/2020-12/schema\",\n  \"type\" : \"string\",\n  \"additionalProperties\" : false\n}"
+      },
+      {
+        "description":"Optional request identifier for this query. Use a UUID string and keep it globally unique across queries. If omitted, the system generates a UUID automatically. If you later need to cancel this query, you must use the same `requestId` that was actually used for this query.",
+        "name":"requestId",
+        "primaryType":"string",
+        "required":false,
+        "requiredSpecified":true,
+        "schema":"{\n  \"$schema\" : \"https://json-schema.org/draft/2020-12/schema\",\n  \"type\" : \"string\",\n  \"additionalProperties\" : false\n}"
+      },
+      {
+        "description":"Optional push content language code used to scope the report to a specific language version of the push copy. This is useful when the task has multilingual content. Use Hermes push-language codes such as `default`, `en`, `zh-Hans`, `zh-Hant`, `ja`, or `ko`. If omitted, the MCP layer passes `null`, which means querying data across all languages.",
+        "name":"pushLanguageCode",
+        "primaryType":"string",
+        "required":false,
+        "requiredSpecified":true,
+        "schema":"{\n  \"$schema\" : \"https://json-schema.org/draft/2020-12/schema\",\n  \"type\" : \"string\",\n  \"additionalProperties\" : false\n}"
+      },
+      {
+        "description":"Task type selector. Supported values are exactly: `normal` for scheduled or manual operation tasks, `trigger` for event-triggered operation tasks.",
+        "name":"taskType",
+        "primaryType":"string",
+        "required":true,
+        "requiredSpecified":true,
+        "schema":"{\n  \"$schema\" : \"https://json-schema.org/draft/2020-12/schema\",\n  \"type\" : \"string\",\n  \"additionalProperties\" : false\n}"
+      },
+      {
+        "description":"Detail mode selector. Supported values are exactly: `time`, `instance`, `instance_daily`. Rules: when `taskType=normal`, all three values are supported; when `taskType=trigger`, only `time` is supported.",
+        "name":"detailType",
+        "primaryType":"string",
+        "required":true,
+        "requiredSpecified":true,
+        "schema":"{\n  \"$schema\" : \"https://json-schema.org/draft/2020-12/schema\",\n  \"type\" : \"string\",\n  \"additionalProperties\" : false\n}"
+      },
+      {
+        "description":"Task instance ID for a single execution batch. This parameter is required only when `detailType=instance_daily`. For `time`, `instance`, or any trigger-task query, leave it empty.",
+        "name":"taskInstanceId",
+        "primaryType":"string",
+        "required":false,
+        "requiredSpecified":true,
+        "schema":"{\n  \"$schema\" : \"https://json-schema.org/draft/2020-12/schema\",\n  \"type\" : \"string\",\n  \"additionalProperties\" : false\n}"
+      },
+      {
+        "description":"Start date in `yyyy-MM-dd` format. The report includes data from this date.",
+        "name":"startTime",
+        "primaryType":"string",
+        "required":true,
+        "requiredSpecified":true,
+        "schema":"{\n  \"$schema\" : \"https://json-schema.org/draft/2020-12/schema\",\n  \"type\" : \"string\",\n  \"additionalProperties\" : false\n}"
+      },
+      {
+        "description":"End date in `yyyy-MM-dd` format. It should be the same as or later than `startTime`.",
+        "name":"endTime",
+        "primaryType":"string",
+        "required":true,
+        "requiredSpecified":true,
+        "schema":"{\n  \"$schema\" : \"https://json-schema.org/draft/2020-12/schema\",\n  \"type\" : \"string\",\n  \"additionalProperties\" : false\n}"
+      },
+      {
+        "description":"Data dimension type used by the report. Supported values are exactly: `uv` for unique-user counting and `pv` for occurrence/event counting. Default: if omitted, the MCP layer uses `uv`.",
+        "name":"dataDimType",
+        "primaryType":"string",
+        "required":false,
+        "requiredSpecified":true,
+        "schema":"{\n  \"$schema\" : \"https://json-schema.org/draft/2020-12/schema\",\n  \"type\" : \"string\",\n  \"additionalProperties\" : false\n}"
+      },
+      {
+        "description":"Retention mode selector. Supported values are exactly: `retention` for conversion-style retention and `lost` for churn/loss-style retention. Leave it empty when retention analysis is not needed.",
+        "name":"retentionType",
+        "primaryType":"string",
+        "required":false,
+        "requiredSpecified":true,
+        "schema":"{\n  \"$schema\" : \"https://json-schema.org/draft/2020-12/schema\",\n  \"type\" : \"string\",\n  \"additionalProperties\" : false\n}"
+      },
+      {
+        "description":"Triggered-task detail view type. This parameter is used only when `taskType=trigger` and `detailType=time`. Supported values are exactly: `2` for date view and `3` for trigger view. Default: if omitted in a trigger-task detail query, the MCP layer uses `2`. Leave it empty for normal-task detail queries.",
+        "name":"dataViewType",
+        "primaryType":"integer",
+        "required":false,
+        "requiredSpecified":true,
+        "schema":"{\n  \"$schema\" : \"https://json-schema.org/draft/2020-12/schema\",\n  \"type\" : \"integer\",\n  \"format\" : \"int32\",\n  \"additionalProperties\" : false\n}"
+      },
+      {
+        "description":"Display timezone offset for report rendering. Recommended format is `8.0` or `-5.0`. If omitted, the backend uses the current user context timezone.",
+        "name":"showTimeZone",
+        "primaryType":"string",
+        "required":false,
+        "requiredSpecified":true,
+        "schema":"{\n  \"$schema\" : \"https://json-schema.org/draft/2020-12/schema\",\n  \"type\" : \"string\",\n  \"additionalProperties\" : false\n}"
+      }
+    ]
+  },
+  {
+    "serverName":"engage-mcp-task",
+    "category":"query",
+    "name":"task_metric_detail",
+    "description":"Query the metric-oriented detail report for one operation task. \r\nUse this tool when you want a table organized around metric definitions and grouping dimensions rather than the default task detail report layout. \r\nRequest tracking rule: `requestId` should be a UUID string so it is globally unique. If you do not provide it, the system generates one automatically. If you later need to cancel this query through the corresponding cancellation capability, you must reuse the same `requestId` that was actually used for this query. \r\nRouting rules: `taskType=normal` uses the standard task metric route; `taskType=trigger` uses the triggered-task metric route. \r\nReturn shape: `MetricDataDetailResponseDTO`, with top-level `resultGenerateTime` and nested `data`. The nested `data` object contains metric report fields including `x`, `headers`, `total`, `values`, `metricMap`, `expGroupList`, `z`, and `horseRaceInstanceIdList`.",
+    "arguments":[
+      {
+        "description":"Project ID that owns the task and scopes the query.",
+        "name":"projectId",
+        "primaryType":"integer",
+        "required":true,
+        "requiredSpecified":true,
+        "schema":"{\n  \"$schema\" : \"https://json-schema.org/draft/2020-12/schema\",\n  \"type\" : \"integer\",\n  \"format\" : \"int32\",\n  \"additionalProperties\" : false\n}"
+      },
+      {
+        "description":"Task ID to query. Use a standard operation task ID when `taskType=normal`, and a triggered task ID when `taskType=trigger`.",
+        "name":"taskId",
+        "primaryType":"string",
+        "required":true,
+        "requiredSpecified":true,
+        "schema":"{\n  \"$schema\" : \"https://json-schema.org/draft/2020-12/schema\",\n  \"type\" : \"string\",\n  \"additionalProperties\" : false\n}"
+      },
+      {
+        "description":"Optional request identifier for this query. Use a UUID string and keep it globally unique across queries. If omitted, the system generates a UUID automatically. If you later need to cancel this query, you must use the same `requestId` that was actually used for this query.",
+        "name":"requestId",
+        "primaryType":"string",
+        "required":false,
+        "requiredSpecified":true,
+        "schema":"{\n  \"$schema\" : \"https://json-schema.org/draft/2020-12/schema\",\n  \"type\" : \"string\",\n  \"additionalProperties\" : false\n}"
+      },
+      {
+        "description":"Optional push content language code used to scope the report to a specific language version of the push copy. This is useful when the task has multilingual content. Use Hermes push-language codes such as `default`, `en`, `zh-Hans`, `zh-Hant`, `ja`, or `ko`. If omitted, the MCP layer passes `null`, which means querying data across all languages.",
+        "name":"pushLanguageCode",
+        "primaryType":"string",
+        "required":false,
+        "requiredSpecified":true,
+        "schema":"{\n  \"$schema\" : \"https://json-schema.org/draft/2020-12/schema\",\n  \"type\" : \"string\",\n  \"additionalProperties\" : false\n}"
+      },
+      {
+        "description":"Task type selector. Supported values are exactly: `normal` for scheduled or manual operation tasks, `trigger` for event-triggered operation tasks.",
+        "name":"taskType",
+        "primaryType":"string",
+        "required":true,
+        "requiredSpecified":true,
+        "schema":"{\n  \"$schema\" : \"https://json-schema.org/draft/2020-12/schema\",\n  \"type\" : \"string\",\n  \"additionalProperties\" : false\n}"
+      },
+      {
+        "description":"Start date in `yyyy-MM-dd` format.",
+        "name":"startTime",
+        "primaryType":"string",
+        "required":true,
+        "requiredSpecified":true,
+        "schema":"{\n  \"$schema\" : \"https://json-schema.org/draft/2020-12/schema\",\n  \"type\" : \"string\",\n  \"additionalProperties\" : false\n}"
+      },
+      {
+        "description":"End date in `yyyy-MM-dd` format. It should be the same as or later than `startTime`.",
+        "name":"endTime",
+        "primaryType":"string",
+        "required":true,
+        "requiredSpecified":true,
+        "schema":"{\n  \"$schema\" : \"https://json-schema.org/draft/2020-12/schema\",\n  \"type\" : \"string\",\n  \"additionalProperties\" : false\n}"
+      },
+      {
+        "description":"List of metric setting IDs to query. Pass specific metric setting IDs when you want a controlled metric subset. Blank items are ignored. Pass `null` or an empty list to let the backend choose its default metric set.",
+        "name":"metricIdList",
+        "primaryType":"array",
+        "required":false,
+        "requiredSpecified":true,
+        "schema":"{\n  \"$schema\" : \"https://json-schema.org/draft/2020-12/schema\",\n  \"type\" : \"array\",\n  \"items\" : {\n    \"type\" : \"string\"\n  },\n  \"additionalProperties\" : false\n}"
+      },
+      {
+        "description":"Metric grouping mode. Supported values are exactly: `1` for batch grouping, `2` for date grouping, `3` for trigger grouping, `4` for experiment-effect grouping. Default: if omitted, the MCP layer uses `1`.",
+        "name":"groupType",
+        "primaryType":"integer",
+        "required":false,
+        "requiredSpecified":true,
+        "schema":"{\n  \"$schema\" : \"https://json-schema.org/draft/2020-12/schema\",\n  \"type\" : \"integer\",\n  \"format\" : \"int32\",\n  \"additionalProperties\" : false\n}"
+      },
+      {
+        "description":"Display timezone offset for report rendering. Recommended format is `8.0` or `-5.0`. If omitted, the backend uses the current user context timezone.",
+        "name":"showTimeZone",
+        "primaryType":"string",
+        "required":false,
+        "requiredSpecified":true,
+        "schema":"{\n  \"$schema\" : \"https://json-schema.org/draft/2020-12/schema\",\n  \"type\" : \"string\",\n  \"additionalProperties\" : false\n}"
+      }
+    ]
+  },
+  {
+    "serverName":"engage-mcp-task",
+    "category":"query",
+    "name":"task_experiment_report",
+    "description":"Query the experiment report for one operation task. \r\nUse this tool only when the task has experiment groups and you need experiment-specific performance data. This tool does not return task configuration metadata. \r\nRequest tracking rule: `requestId` should be a UUID string so it is globally unique. If you do not provide it, the system generates one automatically. If you later need to cancel this query through the corresponding cancellation capability, you must reuse the same `requestId` that was actually used for this query. \r\nRouting rules: `taskType=normal` uses the standard task experiment route; `taskType=trigger` uses the triggered-task experiment route. \r\nReport modes: `reportType=overview` returns the summary comparison across experiment groups; `reportType=detail` returns the detailed experiment table. \r\nReturn shape: `TaskExpReportMcpResponseDTO`. Overview mode mainly uses `overviewData`, `successUser`, and `resultGenerateTime`. Detail mode mainly uses `detailData` and `resultGenerateTime`. The response also echoes `taskType` and `reportType` for easier downstream routing.",
+    "arguments":[
+      {
+        "description":"Project ID that owns the task and scopes the query.",
+        "name":"projectId",
+        "primaryType":"integer",
+        "required":true,
+        "requiredSpecified":true,
+        "schema":"{\n  \"$schema\" : \"https://json-schema.org/draft/2020-12/schema\",\n  \"type\" : \"integer\",\n  \"format\" : \"int32\",\n  \"additionalProperties\" : false\n}"
+      },
+      {
+        "description":"Task ID to query. Use a standard operation task ID when `taskType=normal`, and a triggered task ID when `taskType=trigger`.",
+        "name":"taskId",
+        "primaryType":"string",
+        "required":true,
+        "requiredSpecified":true,
+        "schema":"{\n  \"$schema\" : \"https://json-schema.org/draft/2020-12/schema\",\n  \"type\" : \"string\",\n  \"additionalProperties\" : false\n}"
+      },
+      {
+        "description":"Optional request identifier for this query. Use a UUID string and keep it globally unique across queries. If omitted, the system generates a UUID automatically. If you later need to cancel this query, you must use the same `requestId` that was actually used for this query.",
+        "name":"requestId",
+        "primaryType":"string",
+        "required":false,
+        "requiredSpecified":true,
+        "schema":"{\n  \"$schema\" : \"https://json-schema.org/draft/2020-12/schema\",\n  \"type\" : \"string\",\n  \"additionalProperties\" : false\n}"
+      },
+      {
+        "description":"Optional push content language code used to scope the report to a specific language version of the push copy. This is useful when the task has multilingual content. Use Hermes push-language codes such as `default`, `en`, `zh-Hans`, `zh-Hant`, `ja`, or `ko`. If omitted, the MCP layer passes `null`, which means querying data across all languages.",
+        "name":"pushLanguageCode",
+        "primaryType":"string",
+        "required":false,
+        "requiredSpecified":true,
+        "schema":"{\n  \"$schema\" : \"https://json-schema.org/draft/2020-12/schema\",\n  \"type\" : \"string\",\n  \"additionalProperties\" : false\n}"
+      },
+      {
+        "description":"Task type selector. Supported values are exactly: `normal` for scheduled or manual operation tasks, `trigger` for event-triggered operation tasks.",
+        "name":"taskType",
+        "primaryType":"string",
+        "required":true,
+        "requiredSpecified":true,
+        "schema":"{\n  \"$schema\" : \"https://json-schema.org/draft/2020-12/schema\",\n  \"type\" : \"string\",\n  \"additionalProperties\" : false\n}"
+      },
+      {
+        "description":"Experiment report type selector. Supported values are exactly: `overview` for high-level experiment group comparison and `detail` for the detailed experiment table.",
+        "name":"reportType",
+        "primaryType":"string",
+        "required":true,
+        "requiredSpecified":true,
+        "schema":"{\n  \"$schema\" : \"https://json-schema.org/draft/2020-12/schema\",\n  \"type\" : \"string\",\n  \"additionalProperties\" : false\n}"
+      },
+      {
+        "description":"Start date in `yyyy-MM-dd` format.",
+        "name":"startTime",
+        "primaryType":"string",
+        "required":true,
+        "requiredSpecified":true,
+        "schema":"{\n  \"$schema\" : \"https://json-schema.org/draft/2020-12/schema\",\n  \"type\" : \"string\",\n  \"additionalProperties\" : false\n}"
+      },
+      {
+        "description":"End date in `yyyy-MM-dd` format. It should be the same as or later than `startTime`.",
+        "name":"endTime",
+        "primaryType":"string",
+        "required":true,
+        "requiredSpecified":true,
+        "schema":"{\n  \"$schema\" : \"https://json-schema.org/draft/2020-12/schema\",\n  \"type\" : \"string\",\n  \"additionalProperties\" : false\n}"
+      }
+    ]
+  },
+  {
+    "serverName":"engage-mcp-task",
+    "category":"query",
+    "name":"task_detail",
+    "description":"Get detailed information for a specific Hermes operation task by task ID. \r\nReturns a complete OperationTaskDTO object with all task configuration and status information. \r\nReturns an OperationTaskDTO object containing: \r\ntaskId (String): Unique task identifier; \r\ntaskName (String): Task display name; \r\ntaskDesc (String): Task description; \r\nprojectId (Integer): Project ID; \r\nstatus (Integer): Task status - Enum: 0=DRAFT (draft, not submitted), 1=WORKING (task is running), 2=PENDING (task paused), 3=COMPLETE (task completed/ended); \r\nstatusName (String): Status display name; \r\nmappingStatus (Integer): Mapping status - Enum: 0=DRAFT (draft, not submitted), 1=WORKING (task is running), 2=PENDING (task paused), 3=COMPLETE (task completed/ended), 4=APPROVE (awaiting approval), 5=DENY (approval rejected); \r\nmappingStatusName (String): Mapping status display name; \r\nchannelType (Integer): Channel type - Enum: 1=WEBHOOK (HTTP webhook callback), 2=APP_PUSH (mobile app push notification), 3=CLIENT_PUSH (client-side push), 4=WECHAT (WeChat official account message), 5=DOU_YIN (Douyin/TikTok message); \r\nchannelId (String): Channel ID; \r\nchannelName (String): Channel name; \r\nchannelTemplateId (String): Channel template ID; \r\nchannelTemplateTitle (String): Template title; \r\nchannelTemplateStatus (Integer): Template status; \r\ntriggerType (Integer): Trigger type - Enum: 0=SCHEDULED_SINGLE (one-time scheduled), 1=SCHEDULED_RECURRING (repeating scheduled), 2=MANUAL (manual trigger), 3=TRIGGER_COMPLETE_A (triggered when A completes), 4=TRIGGER_COMPLETE_A_THEN_B (A then B), 5=TRIGGER_COMPLETE_A_NOT_B (A but not B), 6=CUSTOM_TRIGGER (custom condition); \r\nstartDate (String): Start time (yyyy-MM-dd HH:mm:ss); \r\nendDate (String): End time (yyyy-MM-dd HH:mm:ss); \r\ntriggerTime (String): Single trigger time (yyyy-MM-dd HH:mm); \r\ntriggerCrontab (String): Cron expression for recurring triggers; \r\nplanNum (Long): Planned trigger count; \r\nclusterUserNum (Long): Target audience size; \r\nclusterUserRefreshTime (Date): Audience refresh time; \r\ngroupContentList (List<GroupContentDTO>): Push content configuration list; \r\nclusterKey (String): Target audience key; \r\nclusterDisplayName (String): Target audience display name; \r\ncompletionIndicatorDef (String): Goal/Completion metric configuration; \r\nfrequencyLimits (String): Frequency limit rules; \r\nenableChannelTouchLimits (Boolean): Whether channel fatigue control is enabled; \r\nchannelTouchLimitsRuleDef (String): Channel fatigue control rules; \r\ncreator (String): Creator name; \r\ncreatorLoginName (String): Creator login name; \r\nmodifier (String): Last modifier name; \r\napprover (String): Approver name; \r\napprovalMsg (String): Approval message/reason; \r\ngroupId (Integer): Group ID; \r\ngroupName (String): Group name; \r\nactivityId (String): Associated activity ID; \r\nactivityName (String): Activity name; \r\ntopicId (String): Topic ID; \r\nsceneId (String): Scene ID; \r\nsceneName (String): Scene name; \r\nexpConfig (OperationTaskExpDTO): Experiment configuration; \r\nqp (String): Custom audience query expression; \r\ntriggerRule (String): Trigger rule query expression; \r\ndoNotDisturb (String): Do-not-disturb settings; \r\npushDelay (String): Push delay configuration; \r\ntimeoutControl (String): Timeout control settings; \r\nwhitelistList (List<String>): Task whitelist; \r\nlastModifiedTime (Date): Last modification time; \r\nlastTaskPushFailReason (String): Last push failure reason; \r\nhasPushRecord (Boolean): Whether push records exist; \r\nhasPushData (Boolean): Whether push data exists; \r\nisTaskAlreadyTrigger (Boolean): Whether task already triggered; \r\nisTaskAlreadyExec (Boolean): Whether task already executed; \r\nlastTriggerNum (Long): Recent trigger count; \r\nisTop (Boolean): Whether pinned; \r\nworkingDays (Integer): Elapsed running days; \r\nplanDays (Integer): Planned duration in days; \r\ntzOffset (Double): Task timezone offset; \r\ndistributeTaskStatus (Integer): Distributed task status; \r\nmetricMap (Map<String, List<HermesMetricResDTO>>): Effect metrics configuration; \r\nrealtime (Integer): Cluster type - 0=physical cluster, 1=virtual cluster; \r\nclusterRefresh (Double): Cluster refresh interval in hours (0.5/1/2/3/6/.../24); \r\nclusterRefreshTime (String): Daily refresh time for 24-hour cluster update (HH:mm:ss format); \r\ntriggerMixQpVersion (String): Trigger mixed cluster version for 4.2/4.3 compatibility; \r\nclientQp (String): Client-side conditions; \r\nisOccasionUp (Boolean): Whether scene value update is enabled.",
+    "arguments":[
+      {
+        "description":"Project ID",
+        "name":"projectId",
+        "primaryType":"integer",
+        "required":true,
+        "requiredSpecified":true,
+        "schema":"{\n  \"$schema\" : \"https://json-schema.org/draft/2020-12/schema\",\n  \"type\" : \"integer\",\n  \"format\" : \"int32\",\n  \"additionalProperties\" : false\n}"
+      },
+      {
+        "description":"Task ID",
+        "name":"taskId",
+        "primaryType":"string",
+        "required":true,
+        "requiredSpecified":true,
+        "schema":"{\n  \"$schema\" : \"https://json-schema.org/draft/2020-12/schema\",\n  \"type\" : \"string\",\n  \"additionalProperties\" : false\n}"
+      }
+    ]
+  },
+  {
+    "serverName":"engage-mcp-task",
+    "category":"query",
+    "name":"task_list",
+    "description":"Paginated query for Hermes operation task list, returns all push tasks under the specified project. \r\nThis method supports optional filtering by status, trigger type, channel type, creator, group, experiment configuration, and activity association. \r\nPagination parameters: pageNum (Integer): page number (default 1), pageSize (Integer): page size (default 20). \r\nReturns an OperationTaskResponseDTO object containing: \r\npagerResult (PagerResultDTO): Pagination metadata including pageNum (Integer): current page number, pageSize (Integer): items per page, totalCount (Long): total items count; \r\noperationTaskDTOS (List<OperationTaskDTO>): List of task objects, each containing: \r\ntaskId (String): Unique task identifier; \r\ntaskName (String): Task display name; \r\ntaskDesc (String): Task description; \r\nprojectId (Integer): Project ID; \r\nstatus (Integer): Task status - Enum: 0=DRAFT, 1=WORKING, 2=PENDING, 3=COMPLETE; \r\nstatusName (String): Status display name; \r\nmappingStatus (Integer): Mapping status - Enum: 0=DRAFT, 1=WORKING, 2=PENDING, 3=COMPLETE, 4=APPROVE, 5=DENY; \r\nmappingStatusName (String): Mapping status display name; \r\nchannelType (Integer): Channel type - Enum: 1=WEBHOOK, 2=APP_PUSH, 3=CLIENT_PUSH, 4=WECHAT, 5=DOU_YIN; \r\nchannelId (String): Channel ID; \r\nchannelName (String): Channel name; \r\ntriggerType (Integer): Trigger type - Enum: 0=SCHEDULED_SINGLE, 1=SCHEDULED_RECURRING, 2=MANUAL, 3=TRIGGER_COMPLETE_A, 4=TRIGGER_COMPLETE_A_THEN_B, 5=TRIGGER_COMPLETE_A_NOT_B, 6=CUSTOM_TRIGGER; \r\nstartDate (String): Task start time (yyyy-MM-dd HH:mm:ss); \r\nendDate (String): Task end time (yyyy-MM-dd HH:mm:ss); \r\nplanNum (Long): Planned trigger count; \r\nclusterUserNum (Long): Target audience size; \r\ncreator (String): Creator name; \r\ncreatorLoginName (String): Creator login name; \r\nmodifier (String): Last modifier name; \r\ngroupId (Integer): Group ID; \r\ngroupName (String): Group name; \r\nactivityId (String): Associated activity ID; \r\nactivityName (String): Activity name; \r\nexpConfig (OperationTaskExpDTO): Experiment configuration; \r\napprovalMsg (String): Approval message/reason; \r\nlastModifiedTime (Date): Last modification time; \r\nisTop (Boolean): Whether pinned; \r\nworkingDays (Integer): Elapsed running days; \r\nplanDays (Integer): Planned duration in days.",
+    "arguments":[
+      {
+        "description":"Project ID",
+        "name":"projectId",
+        "primaryType":"integer",
+        "required":true,
+        "requiredSpecified":true,
+        "schema":"{\n  \"$schema\" : \"https://json-schema.org/draft/2020-12/schema\",\n  \"type\" : \"integer\",\n  \"format\" : \"int32\",\n  \"additionalProperties\" : false\n}"
+      },
+      {
+        "description":"Query request parameters",
+        "name":"req",
+        "primaryType":"object",
+        "required":true,
+        "requiredSpecified":true,
+        "schema":"{\n  \"$schema\" : \"https://json-schema.org/draft/2020-12/schema\",\n  \"type\" : \"object\",\n  \"properties\" : {\n    \"belongActivity\" : {\n      \"type\" : \"integer\",\n      \"format\" : \"int32\",\n      \"description\" : \"Belong activity filter: 0=all, 1=has activity, 2=no activity\"\n    },\n    \"channelType\" : {\n      \"type\" : \"integer\",\n      \"format\" : \"int32\",\n      \"description\" : \"Channel type: 1=webhook, 2=app_push, 3=client_push, 4=wechat, 5=dou_yin\"\n    },\n    \"creator\" : {\n      \"type\" : \"string\",\n      \"description\" : \"Creator ID (user open_id)\"\n    },\n    \"expReleaseStatusList\" : {\n      \"description\" : \"Experiment release status list: 0=not released, 1=released\",\n      \"type\" : \"array\",\n      \"items\" : {\n        \"type\" : \"integer\",\n        \"format\" : \"int32\",\n        \"description\" : \"Experiment release status list: 0=not released, 1=released\"\n      }\n    },\n    \"expStatusList\" : {\n      \"description\" : \"Experiment status list: 0=not created, 1=created\",\n      \"type\" : \"array\",\n      \"items\" : {\n        \"type\" : \"integer\",\n        \"format\" : \"int32\",\n        \"description\" : \"Experiment status list: 0=not created, 1=created\"\n      }\n    },\n    \"expTypeList\" : {\n      \"description\" : \"Experiment type list: 0=normal, 1=orthogonal\",\n      \"type\" : \"array\",\n      \"items\" : {\n        \"type\" : \"integer\",\n        \"format\" : \"int32\",\n        \"description\" : \"Experiment type list: 0=normal, 1=orthogonal\"\n      }\n    },\n    \"fuzzyField\" : {\n      \"type\" : \"string\",\n      \"description\" : \"Fuzzy query field for task ID or name\"\n    },\n    \"groupId\" : {\n      \"type\" : \"integer\",\n      \"format\" : \"int32\",\n      \"description\" : \"Group ID\"\n    },\n    \"mappingStatus\" : {\n      \"type\" : \"integer\",\n      \"format\" : \"int32\",\n      \"description\" : \"Mapping status: 0=draft, 1=in progress, 2=paused, 3=ended, 4=approving, 5=denied\"\n    },\n    \"pageNum\" : {\n      \"type\" : \"integer\",\n      \"format\" : \"int32\",\n      \"description\" : \"Page number, starting from 1\"\n    },\n    \"pageSize\" : {\n      \"type\" : \"integer\",\n      \"format\" : \"int32\",\n      \"description\" : \"Page size, default 20\"\n    },\n    \"projectId\" : {\n      \"type\" : \"integer\",\n      \"format\" : \"int32\",\n      \"description\" : \"Project ID\"\n    },\n    \"triggerType\" : {\n      \"type\" : \"integer\",\n      \"format\" : \"int32\",\n      \"description\" : \"Trigger type: 0=scheduled-single, 1=scheduled-recurring, 2=manual, 3=trigger-complete A, 4=trigger-complete A then B, 5=trigger-complete A but not B, 6=custom trigger\"\n    }\n  },\n  \"required\" : [ \"projectId\" ],\n  \"additionalProperties\" : false\n}"
+      }
+    ]
+  },
+  {
+    "serverName":"engage-mcp-task",
+    "category":"get",
+    "name":"task_stats",
+    "description":"Get statistics for Hermes operation tasks (including task status statistics). \r\nReturns a StatusStatisticsResponseDTO object containing: \r\nprojectId (Integer): Project ID; \r\ndraft (Integer): Draft task count; \r\nwaiting (Integer): Waiting (pending approval) task count; \r\nworking (Integer): Running task count; \r\npending (Integer): Paused task count; \r\ncomplete (Integer): Completed/ended task count; \r\napprove (Integer): Approved task count; \r\ndeny (Integer): Rejected task count.",
+    "arguments":[
+      {
+        "description":"Project ID",
+        "name":"projectId",
+        "primaryType":"integer",
+        "required":true,
+        "requiredSpecified":true,
+        "schema":"{\n  \"$schema\" : \"https://json-schema.org/draft/2020-12/schema\",\n  \"type\" : \"integer\",\n  \"format\" : \"int32\",\n  \"additionalProperties\" : false\n}"
+      },
+      {
+        "description":"Query request parameters",
+        "name":"req",
+        "primaryType":"object",
+        "required":true,
+        "requiredSpecified":true,
+        "schema":"{\n  \"$schema\" : \"https://json-schema.org/draft/2020-12/schema\",\n  \"type\" : \"object\",\n  \"properties\" : {\n    \"belongActivity\" : {\n      \"type\" : \"integer\",\n      \"format\" : \"int32\",\n      \"description\" : \"Belong activity filter: 0=all, 1=has activity, 2=no activity\"\n    },\n    \"channelType\" : {\n      \"type\" : \"integer\",\n      \"format\" : \"int32\",\n      \"description\" : \"Channel type: 1=webhook, 2=app_push, 3=client_push, 4=wechat, 5=dou_yin\"\n    },\n    \"creator\" : {\n      \"type\" : \"string\",\n      \"description\" : \"Creator ID (user open_id)\"\n    },\n    \"expReleaseStatusList\" : {\n      \"description\" : \"Experiment release status list: 0=not released, 1=released\",\n      \"type\" : \"array\",\n      \"items\" : {\n        \"type\" : \"integer\",\n        \"format\" : \"int32\",\n        \"description\" : \"Experiment release status list: 0=not released, 1=released\"\n      }\n    },\n    \"expStatusList\" : {\n      \"description\" : \"Experiment status list: 0=not created, 1=created\",\n      \"type\" : \"array\",\n      \"items\" : {\n        \"type\" : \"integer\",\n        \"format\" : \"int32\",\n        \"description\" : \"Experiment status list: 0=not created, 1=created\"\n      }\n    },\n    \"expTypeList\" : {\n      \"description\" : \"Experiment type list: 0=normal, 1=orthogonal\",\n      \"type\" : \"array\",\n      \"items\" : {\n        \"type\" : \"integer\",\n        \"format\" : \"int32\",\n        \"description\" : \"Experiment type list: 0=normal, 1=orthogonal\"\n      }\n    },\n    \"fuzzyField\" : {\n      \"type\" : \"string\",\n      \"description\" : \"Fuzzy query field for task ID or name\"\n    },\n    \"groupId\" : {\n      \"type\" : \"integer\",\n      \"format\" : \"int32\",\n      \"description\" : \"Group ID\"\n    },\n    \"mappingStatus\" : {\n      \"type\" : \"integer\",\n      \"format\" : \"int32\",\n      \"description\" : \"Mapping status: 0=draft, 1=in progress, 2=paused, 3=ended, 4=approving, 5=denied\"\n    },\n    \"pageNum\" : {\n      \"type\" : \"integer\",\n      \"format\" : \"int32\",\n      \"description\" : \"Page number, starting from 1\"\n    },\n    \"pageSize\" : {\n      \"type\" : \"integer\",\n      \"format\" : \"int32\",\n      \"description\" : \"Page size, default 20\"\n    },\n    \"projectId\" : {\n      \"type\" : \"integer\",\n      \"format\" : \"int32\",\n      \"description\" : \"Project ID\"\n    },\n    \"triggerType\" : {\n      \"type\" : \"integer\",\n      \"format\" : \"int32\",\n      \"description\" : \"Trigger type: 0=scheduled-single, 1=scheduled-recurring, 2=manual, 3=trigger-complete A, 4=trigger-complete A then B, 5=trigger-complete A but not B, 6=custom trigger\"\n    }\n  },\n  \"required\" : [ \"projectId\" ],\n  \"additionalProperties\" : false\n}"
+      }
+    ]
+  },
+  {
+    "serverName":"engage-mcp-task",
+    "category":"manage",
+    "name":"task",
+    "description":"Manage Hermes operation tasks with one unified tool. \r\nSupported actions: send, pause, end, approve, deny, cancel. \r\nCommon required parameters: projectId, taskId, action. \r\nParameter rules: \r\n- reason is used only for review actions approve/deny/cancel, and ignored for send/pause/end; \r\n- send: task trigger type must be manual and mapping status must be waiting; \r\n- pause: task mapping status must be working; \r\n- end: task mapping status must be working or pending; \r\n- approve/deny/cancel: task mapping status must be pending approve. \r\nReturns true if the action succeeds, false if the operation fails or the task state is invalid.",
+    "arguments":[
+      {
+        "description":"Project ID",
+        "name":"projectId",
+        "primaryType":"integer",
+        "required":true,
+        "requiredSpecified":true,
+        "schema":"{\n  \"$schema\" : \"https://json-schema.org/draft/2020-12/schema\",\n  \"type\" : \"integer\",\n  \"format\" : \"int32\",\n  \"additionalProperties\" : false\n}"
+      },
+      {
+        "description":"Task ID",
+        "name":"taskId",
+        "primaryType":"string",
+        "required":true,
+        "requiredSpecified":true,
+        "schema":"{\n  \"$schema\" : \"https://json-schema.org/draft/2020-12/schema\",\n  \"type\" : \"string\",\n  \"additionalProperties\" : false\n}"
+      },
+      {
+        "description":"Action type, supported values: send, pause, end, approve, deny, cancel",
+        "name":"action",
+        "primaryType":"string",
+        "required":true,
+        "requiredSpecified":true,
+        "schema":"{\n  \"$schema\" : \"https://json-schema.org/draft/2020-12/schema\",\n  \"type\" : \"string\",\n  \"additionalProperties\" : false\n}"
+      },
+      {
+        "description":"Reason for review actions. Required for approve/deny/cancel when a reason is needed; ignored for send/pause/end",
+        "name":"reason",
+        "primaryType":"string",
+        "required":false,
+        "requiredSpecified":true,
+        "schema":"{\n  \"$schema\" : \"https://json-schema.org/draft/2020-12/schema\",\n  \"type\" : \"string\",\n  \"additionalProperties\" : false\n}"
+      }
+    ]
+  }
+]

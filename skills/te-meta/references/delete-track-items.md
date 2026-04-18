@@ -1,4 +1,4 @@
-# te_meta +delete_track_items (Delete Track Program Items)
+# analysis_meta +delete_track_items (Delete Track Program Items)
 
 > **Prerequisite:** Read [`../te-shared/SKILL.md`](../../te-shared/SKILL.md)
 
@@ -10,8 +10,8 @@ Domain: **Project Configuration**
 
 ## Command
 ```bash
-te-cli te_meta +delete_track_items --project_id 1 --delete_data '{}'
-te-cli te_meta +delete_track_items --dry-run
+ae-cli analysis_meta +delete_track_items --project_id 1 --delete_data '{}'
+ae-cli analysis_meta +delete_track_items --dry-run
 ```
 
 ## Parameters

@@ -1,6 +1,6 @@
 {
   "name": "@thinkingai/ae-cli",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "CLI tool for ThinkingAI AgenticEngine (AE) analytics platform",
   "type": "module",
   "bin": {

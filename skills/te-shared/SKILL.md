@@ -40,11 +40,11 @@ ae-cli auth logout
 
 ```bash
 # Specify host
-te-cli auth login --host ta-staging.example.com
-te-cli auth set-token <token> --host ta-staging.example.com
+ae-cli auth login --host ta-staging.example.com
+ae-cli auth set-token <token> --host ta-staging.example.com
 
 # Configure default host
-te-cli config set defaultHost ta-staging.example.com
+ae-cli config set defaultHost ta-staging.example.com
 ```
 
 ## Global Parameters
@@ -73,13 +73,13 @@ All commands support the following global parameters:
 ### Table
 
 ```bash
-te-cli te_meta +list_events --project_id <YOUR_PROJECT_ID> --format table
+ae-cli analysis_meta +list_events --project_id <YOUR_PROJECT_ID> --format table
 ```
 
 ### jq Filtering
 
 ```bash
-te-cli te_meta +list_events --project_id <YOUR_PROJECT_ID> --jq '.'
+ae-cli analysis_meta +list_events --project_id <YOUR_PROJECT_ID> --jq '.'
 ```
 
 ## Error Handling
@@ -108,8 +108,8 @@ Exit code: success `0`, error `1`.
 ## Command Structure
 
 ```bash
-te-cli <domain> +<command> [flags]
-te-cli api <METHOD> <PATH> [--params] [--data]
+ae-cli <domain> +<command> [flags]
+ae-cli api <METHOD> <PATH> [--params] [--data]
 ```
 
-Domains: `te_analysis` (analysis), `te_audience` (audience), `te_meta` (metadata), `te_common` (common), `operation` (operations)
+Domains: `analysis` (analysis), `analysis_audience` (audience), `analysis_meta` (metadata), `analysis_common` (common), `operation` (operations)

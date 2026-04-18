@@ -1,37 +1,37 @@
-# te-engage +manage-task
+# te-engage +manage_task
 
-> **前置条件:** 阅读 [`../../te-shared/SKILL.md`](../../te-shared/SKILL.md)
+> **Prerequisite:** Read [`../../te-shared/SKILL.md`](../../te-shared/SKILL.md)
 
-执行任务生命周期动作，例如发送、暂停、结束或审批。
+Perform task lifecycle actions such as send, pause, end, or review.
 
-映射命令: `te-cli te-engage +manage-task`
+Mapped command: `ae-cli engage +manage_task`
 
 ## Flags
 
-| Flag | 类型 | 必填 | 说明 |
+| Flag | Type | Required | Description |
 |------|------|------|------|
-| `--project-id` / `-p` | number | 是 | 项目 ID |
-| `--task-id` | string | 是 | 任务 ID |
-| `--action` | string | 是 | 操作类型 |
-| `--reason` | string | 否 | 审批类操作原因 |
+| `--project_id` / `-p` | number | Yes | Project ID |
+| `--task_id` | string | Yes | task ID |
+| `--action` | string | Yes | action type |
+| `--reason` | string | No | reason for review actions |
 
-## 枚举说明
+## Enum Notes
 
 ### `--action`
 
-- `send`: 立即发送，通常用于手动触发且处于 waiting 状态的任务
-- `pause`: 暂停运行中的任务
-- `end`: 结束运行中或暂停中的任务
-- `approve`: 审批通过
-- `deny`: 审批拒绝
-- `cancel`: 撤销审批
+- `send`: send immediately, typically for manually triggered tasks in the waiting state
+- `pause`: pause a running task
+- `end`: end a running or paused task
+- `approve`: review approved
+- `deny`: review denied
+- `cancel`: cancel review
 
-## 安全约束
+## Safety Constraints
 
-此命令为 **写操作**，会改变任务状态。
+This command is a **write operation** and and changes the task status.
 
-## 示例
+## Examples
 
 ```bash
-te-cli te-engage +manage-task --project-id 1 --task-id task_123 --action pause
+ae-cli engage +manage_task --project_id 1 --task_id task_123 --action pause
 ```

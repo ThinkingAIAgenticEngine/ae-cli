@@ -2,6 +2,7 @@ import WebSocket from 'ws';
 import { randomBytes } from 'crypto';
 import { getToken, clearToken, resolveHost } from './auth.js';
 import { extractHostname } from './config.js';
+import { safeJsonParse } from './json-utils.js';
 
 function genRequestId(prefix: string): string {
   const rand = randomBytes(4).toString('base64url').slice(0, 8);
@@ -59,7 +60,7 @@ async function request(
     return request(method, modulePath, params, body, false, resolvedHost);
   }
 
-  const data = await resp.json();
+  const data = safeJsonParse(await resp.text());
 
   if (data.return_code === -1001 && retry) {
     clearToken(resolvedHost);
@@ -117,7 +118,7 @@ async function wsQueryOnce(
 
     ws.on('message', (raw: Buffer) => {
       try {
-        const msg = JSON.parse(raw.toString());
+        const msg = safeJsonParse(raw.toString());
         if (Array.isArray(msg) && msg.length >= 2) {
           const data = msg[1];
           if (data.requestId === requestId && data.progress === 100) {

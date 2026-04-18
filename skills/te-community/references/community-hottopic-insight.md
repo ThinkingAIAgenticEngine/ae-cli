@@ -1,120 +1,114 @@
 # te-community community-hottopic-insight
 
-> **前置条件:** 阅读 [`../te-shared/SKILL.md`](../te-shared/SKILL.md)
+> * * Prerequisites: * * Read [`../te-shared/SKILL.md'] (../te-shared/SKILL.md)
 
-话题分析：自动调用 MCP 工具收集语料，智能识别行业属性，输出包含核心摘要、舆情概览及事件脉络、核心热点讨论、情绪切片、社媒渠道洞察及运营建议的结构化《舆情分析》。
+Topic analysis: Automatically collect corpus, intelligently identify industry attributes, and output a structured Topic Analysis that includes a core summary, an overview of sentiment and the context of events, core hot discussions, sentiment slices, social media channel insights, and operational recommendations.
 
-触发场景: 当用户要求"分析话题"、"生成话题分析报告"或"话题分析"时触发。
+Triggering scenario: Triggered when the user requests "Analyze topic", "Generate topic analysis report" or "Topic analysis".
 
-## 分析流程
+# # Analysis process
 
-1. **`get_hot_topics`**：获取话题信息（topicId, startTime, endTime）
-2. **`search_posts`**：根据话题 ID 搜索相关帖子，**重点记录帖子的发布时间、总数量及各渠道分布情况**
-3. **`get_post_detail`**：抓取高热度内容详情（最多 10 条）
+1. * * `get_hot_topics` * *: Get topic information (topicId, startTime, endTime)
+2. * * `search_posts` * *: Search related posts by topic ID, * * Focus on recording the time, total number and distribution of posts by channel * *
+3. * * `get_post_detail` * *: Grab high-profile content details (up to 10)
 
-## 实体提取与参数推演
+# # Entity and Time Rules
 
-- 必须从用户输入中提取【话题名称】
-- 若用户未提供，须追问核心分析对象
-- 若用户未明确指定时间，**自动以当前系统时间往前推 7-14 天作为查询周期**
+- [Topic name] must be extracted from user input
+- If the user does not provide it, the user must ask the core analysis object
+- If the user does not specify a specific time, * * the current system time is automatically pushed forward by 7-14 days as the query cycle * *
 
-## 核心要求
+Core Requirements
 
-- **动态脉络溯源真实性**：必须强依赖于帖子的真实发布时间
-- **必须清晰梳理出"时间-事件-话题-情绪"的演变链条**
-- 按时间排序，提取"什么时间发生了什么事，当时大家主要在讨论什么，情绪是怎样的"
-- 如果抓不到时间戳，请如实说明"因数据限制无法生成精确时间线"，严禁捏造虚假发展史
+- * * Dynamic traceability authenticity * *: must be strongly dependent on the post's real publishing time
+- * * Evolutionary chains of "Time - Events - Topics - Emotions" must be clearly identified * *
+- In chronological order, extract "what happened at what time, what was mainly discussed at that time, what was the emotion"
+- If you can't catch the timestamp, please truthfully explain that "due to data limitations, it is impossible to generate an accurate timeline", and it is strictly forbidden to fabricate a false history of development
 
-## 输出结构
+# # Output structure
 
-**⚠️ 强制要求：必须严格按照以下六个部分的结构输出报告，不得省略任何部分，不得改变顺序或格式。**
+* *⚠️ Mandatory: The report must be output in strict accordance with the structure of the following six parts, no parts may be omitted, and the order or format may not be changed. * *
 
-### 一、核心内容摘要
-- 事件概述：用一句话概括大家到底在讨论什么事情
-- 舆情演变定调：如"经历了从前期正面期待到上线后因数值问题口碑崩盘的剧烈反转"
+# # # I. Summary of Core Content
+- Event Overview: Summarize what everyone is talking about in one sentence
+- The evolution of sentiment: such as "experienced a sharp reversal from the positive expectation of the previous period to the collapse of the reputation of the factor value problem after the launch"
 
-### 二、舆情数据概览与动态演变脉络
+# # # II. Overview of Public Opinion Data and Dynamic Evolution
 
-**📊 舆情量级统计**：
-- 当前话题总内容数
-- 各渠道内容数概况
-- 总体情绪占比
+* * Quantitative📊 sentiment statistics * *:
+- Total number of current topics
+- Overview of the number of content in each channel
+- Overall Sentiment Ratio
 
-**🔥 热度变化趋势**：描述热度走势
+* * Trends in🔥 popularity * *: Describe popularity trends
 
-**⏳ 动态舆情演变脉络（🔴 核心必须项，不得省略）**：
-- **`[MM-DD]` | 阶段一：[阶段命名，如：前瞻预热期 - 期待拉满]**
-  - **触发节点**：[当时发生了什么，如：官方放出实机演示PV]
-  - **核心聚焦**：[玩家在聊什么，如：动作流畅度、美术建模精美]
-  - **情绪走向**：[如：🟢 极高正面期待，玩家好评为主]
-- **`[MM-DD]` | 阶段二：[阶段命名，如：实装/新剧情上线]**
-  - **触发节点**：[如：更新后发现核心机制被暗改]
-  - **核心聚焦**：[如：控诉官方虚假宣传、要求退定金]
-  - **情绪走向**：[如：🔴 情绪急转直下，负面吐槽爆发]
-- **`[MM-DD]` | 阶段三：[阶段命名，如：当前现状/官方回应]**
-  - **触发节点**：[如：官方发布致歉蓝贴说明]
-  - **核心聚焦**：[如：针对补偿方案是否合理展开拉锯战]
-  - **情绪走向**：[如：🟡 负面情绪略有缓和，转向观望求证]
+* * * Dynamic Public Opinion Evolution Vein (🔴Core must be itemized, not omitted) * *:
+- * * `[MM-DD]` | Phase 1: [Phase naming, e.g. prospective warm-up period - expecting to be full] * *
+- * * Trigger Node * *: [What happened at that time, ex: the official release of the live demo PV]
+- * * Core Focus * *: [What players are talking about, e.g., motion fluency, fine art modeling]
+- * * Emotional direction * *: [ex:🟢 extremely positive expectations, players are highly rated]
+- * * `[MM-DD]` | Phase 2: [Phase name, e.g. live/new story launch] * *
+- * * Trigger Node * *: [ex: Core mechanism was tampered with after update]
+- * * Core Focus * *: [ex: Accusation of official misinformation, request for refund of deposit]
+- * * Emotional direction * *🔴: [ex: Negative outburst]
+- * * `[MM-DD]` | Phase 3: [Phase Naming, e.g. Current Status/Official Response] * *
+- * * Trigger Node * *: [ex: official apology blue sticker description]
+- * * Core Focus * *: [ex: Is the compensation plan justified in a tug-of-war?]
+- * * Emotional direction * *: [ex:🟡 Negative emotions ease slightly, turn to wait and see for confirmation]
 
-*注：阶段数量根据实际抓取到的事件发酵过程增减*
+* Note: The number of stages increases or decreases according to the actual discussion escalation process *
 
-### 三、核心热点讨论汇总
-不分情绪，客观提炼出当前声量最大、争议最集中的 2-3 个核心具体议题
+# # # III. Summary of Core Hotspot Discussions
+Objectively distill the 2-3 core specific issues that are currently the loudest and most controversial, regardless of emotions
 
-### 四、情绪切片与观点解析
+# # # IV. Emotional Slicing and Opinion Analysis
 
-**🔴 负向情绪切片**
-- **焦点议题**：[具体议题]
-- **高频词云**：[关键词列表]
-- **典型玩家原声**：
-  - 「[真实评论1]」
-  - 「[真实评论2]」
+* *🔴 Negative Emotional Slice * *
+- * * Focus Issue * *: [Specific Issue]
+- * * High frequency word cloud * *: [keyword list]
+- * * Typical Player Soundtrack * *:
+- "[True Comment 1]"
+- "[True Comment 2]"
 
-**🟡 中立情绪切片**
-- **焦点议题**：[具体议题]
-- **高频词云**：[关键词列表]
-- **典型玩家原声**：
-  - 「[真实评论1]」
-  - 「[真实评论2]」
+* *🟡 Neutral Emotion Slice * *
+- * * Focus Issue * *: [Specific Issue]
+- * * High frequency word cloud * *: [keyword list]
+- * * Typical Player Soundtrack * *:
+- "[True Comment 1]"
+- "[True Comment 2]"
 
-**🟢 正向情绪切片**
-- **焦点议题**：[具体议题]
-- **高频词云**：[关键词列表]
-- **典型玩家原声**：
-  - 「[真实评论1]」
-  - 「[真实评论2]」
+* *🟢 Positive Emotional Slice * *
+- * * Focus Issue * *: [Specific Issue]
+- * * High frequency word cloud * *: [keyword list]
+- * * Typical Player Soundtrack * *:
+- "[True Comment 1]"
+- "[True Comment 2]"
 
-**⚠️ 注意：玩家原声必须使用「」引用真实评论，严禁捏造。**
+* *⚠️ Note: The player's soundtrack must use "" to quote authentic reviews, and fabrication is strictly forbidden. * *
 
-### 五、各社媒平台内容洞察
-横向对比不同渠道的详细数据与舆论特征
+# # # V. Content insights across social media platforms
+Compare of detailed data from different channels and characteristics of sentiment
 
-### 六、行业视角的运营与应对建议
+# # # VI. Suggestions for Operation and Response from an Industry Perspective
 
-**⚡ 紧急干预（应对危机的灭火策略）**
-- 风险评估：[具体风险]
-- 建议动作：[具体措施]
+* *⚡ Emergency Intervention (Firefighting Strategies for Crisis Response) * *
+- Risk Assessment: [Specific Risks]
+- Suggested action: [Specific action]
 
-**🚀 顺势引导（运营促活的放大策略）**
-- 机会点识别：[具体机会]
-- 建议策略：[具体策略]
+* 🚀 * Homeostasis (amplification strategy for operational activation) * *
+- Opportunity Point Identification: [Specific Opportunity]
+- Suggested Tactics: [Specific Tactics]
 
-## 用户输入示例
+# # User input example
 
 ```bash
-"分析一下#全新UI界面改版#这个话题"
-"生成XX版本综合评价话题的分析报告"
-"帮我分析XX话题"
+"Analyze the topic of # new UI redesign #"
+"Generate the analysis report for the XX version of the comprehensive review topic"
+"Analyze XX topics for me"
 ```
 
-## 执行检查清单
+# # Execute Checklist
 
-在生成报告前，必须确认：
-- [ ] 已调用 `get_hot_topics` 获取话题信息
-- [ ] 已调用 `search_posts` 获取帖子列表（记录发布时间）
-- [ ] 已调用 `get_post_detail` 获取高热度内容详情
-- [ ] 报告包含完整的六个部分
-- [ ] 第二部分包含"动态舆情演变脉络"（按时间线）
-- [ ] 第四部分包含三个情绪切片（正面/中立/负面）
-- [ ] 所有玩家原声都用「」引用真实评论
-- [ ] 第六部分分为"紧急干预"和"顺势引导"两部分
+- Typical soundtracks must be traced back to real posts/comments.
+- Channel insights must reflect platform differences, not just data.
+- Suggestions are divided into “emergency intervention” and “homeopathic guidance”.

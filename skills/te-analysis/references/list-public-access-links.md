@@ -1,4 +1,4 @@
-# te_analysis +list_public_access_links (public link search)
+# analysis +list_public_access_links (public link search)
 
 > **Prerequisite:** Read [`../te-shared/SKILL.md`](../../te-shared/SKILL.md)
 
@@ -10,8 +10,8 @@ Domain: **Dashboard Management**
 
 ## Commands
 ```bash
-te-cli te_analysis +list_public_access_links --project_id 1
-te-cli te_analysis +list_public_access_links --dry-run
+ae-cli analysis +list_public_access_links --project_id 1
+ae-cli analysis +list_public_access_links --dry-run
 ```
 
 ## Parameters

@@ -1,22 +1,22 @@
-# te-engage +flow-node-config-schema
+# te-engage +flow_node_config_schema
 
-> **前置条件:** 阅读 [`../../te-shared/SKILL.md`](../../te-shared/SKILL.md)
+> **Prerequisite:** Read [`../../te-shared/SKILL.md`](../../te-shared/SKILL.md)
 
-查询某类流程节点的配置 schema。
+Query the configuration schema for a flow node type.
 
-映射命令: `te-cli te-engage +flow-node-config-schema`
+Mapped command: `ae-cli engage +flow_node_config_schema`
 
 ## Flags
 
-| Flag | 类型 | 必填 | 说明 |
+| Flag | Type | Required | Description |
 |------|------|------|------|
-| `--node-type` | string | 是 | 节点类型 |
+| `--node_type` | string | Yes | node type |
 
-## 枚举说明
+## Enum Notes
 
-### `--node-type`
+### `--node_type`
 
-常见节点类型包括：
+Common node types include:
 
 - `single_trigger`
 - `repeat_trigger`
@@ -37,8 +37,8 @@
 - `race_split_flow`
 - `exit_flow`
 
-## 示例
+## Examples
 
 ```bash
-te-cli te-engage +flow-node-config-schema --node-type message_push
+ae-cli engage +flow_node_config_schema --node_type message_push
 ```

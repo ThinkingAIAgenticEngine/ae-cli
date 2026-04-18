@@ -1,4 +1,4 @@
-# te_analysis +query_dashboard_report_data (Batch Query Dashboard Report Data)
+# analysis +query_dashboard_report_data (Batch Query Dashboard Report Data)
 
 > **Prerequisite:** Read [`../te-shared/SKILL.md`](../../te-shared/SKILL.md)
 
@@ -18,16 +18,16 @@ Domain: **Dashboard management**
 - Do not generate the final `filters` until the documentation review and prerequisite command calls are complete.
 
 ## Prerequisite call chain (required for constructing filters)
-1. Read `get-filter-schema.md`, then call `te-cli te_analysis +get_filter_schema` to get the filter structure.
-2. Read `list-events.md`, then call `te-cli te_meta +list_events --project_id 1`.
-3. Read `list-properties.md`, then call `te-cli te_meta +list_properties --project_id 1`.
+1. Read `get-filter-schema.md`, then call `ae-cli analysis +get_filter_schema` to get the filter structure.
+2. Read `list-events.md`, then call `ae-cli analysis_meta +list_events --project_id 1`.
+3. Read `list-properties.md`, then call `ae-cli analysis_meta +list_properties --project_id 1`.
 4. Build `filters` from the schema + metadata, then call `+query_dashboard_report_data`.
 
 ## Command
 ```bash
-te-cli te_analysis +query_dashboard_report_data --project_id 1 --dashboard_id 1
-te-cli te_analysis +query_dashboard_report_data --project_id 1 --dashboard_id 1 --filters '{}' --start_date 2026-04-08 --end_date 2026-04-08 --time_granularity day --use_cache true --report_ids '[1001]'
-te-cli te_analysis +query_dashboard_report_data --dry-run
+ae-cli analysis +query_dashboard_report_data --project_id 1 --dashboard_id 1
+ae-cli analysis +query_dashboard_report_data --project_id 1 --dashboard_id 1 --filters '{}' --start_date 2026-04-08 --end_date 2026-04-08 --time_granularity day --use_cache true --report_ids '[1001]'
+ae-cli analysis +query_dashboard_report_data --dry-run
 ```
 
 ## Parameters
@@ -35,7 +35,7 @@ te-cli te_analysis +query_dashboard_report_data --dry-run
 |---|---|---|
 | `--project_id` / `-p` | Yes | Project ID |
 | `--dashboard_id` / `-d` | Yes | Dashboard ID |
-| `--filters` | No | Optional filter JSON. If provided, MUST follow `+get_filter_schema`, and referenced fields must come from `te_meta +list_properties` in the same `project_id`. |
+| `--filters` | No | Optional filter JSON. If provided, MUST follow `+get_filter_schema`, and referenced fields must come from `analysis_meta +list_properties` in the same `project_id`. |
 | `--start_date` | No | Optional start date. Format: yyyy-MM-dd |
 | `--end_date` | No | Optional end date. Format: yyyy-MM-dd |
 | `--time_granularity` | No | Optional time granularity used to override the report default. Supported values: minute, minute5, minute10, hour, day, week, month, quarter, year, total. |
@@ -56,5 +56,5 @@ te-cli te_analysis +query_dashboard_report_data --dry-run
 - If the query times out or results are abnormal, first narrow the time range / grouping dimensions, then split the subqueries to locate the issue.
 
 ## Recommended chaining
-- +get_filter_schema -> te_meta +list_events -> te_meta +list_properties -> +query_dashboard_report_data
+- +get_filter_schema -> analysis_meta +list_events -> analysis_meta +list_properties -> +query_dashboard_report_data
 - +list_dashboards -> +query_dashboard_detail -> +query_dashboard_report_data

@@ -1,27 +1,27 @@
-# te-engage +config-channel-list
+# te-engage +config_channel_list
 
-> **前置条件:** 阅读 [`../../te-shared/SKILL.md`](../../te-shared/SKILL.md)
+> **Prerequisite:** Read [`../../te-shared/SKILL.md`](../../te-shared/SKILL.md)
 
-查询配置通道列表。
+Query the config channel list.
 
-映射命令: `te-cli te-engage +config-channel-list`
+Mapped command: `ae-cli engage +config_channel_list`
 
 ## Flags
 
-| Flag | 类型 | 必填 | 说明 |
+| Flag | Type | Required | Description |
 |------|------|------|------|
-| `--project-id` / `-p` | number | 是 | 项目 ID |
-| `--channel-type` | number | 否 | 配置通道类型 |
+| `--project_id` / `-p` | number | Yes | Project ID |
+| `--channel_type` | number | No | config channel type |
 
-## 枚举说明
+## Enum Notes
 
-### `--channel-type`
+### `--channel_type`
 
 - `0`: `WEBHOOK`
 - `1`: `CLIENT`
 
-## 示例
+## Examples
 
 ```bash
-te-cli te-engage +config-channel-list --project-id 1
+ae-cli engage +config_channel_list --project_id 1
 ```

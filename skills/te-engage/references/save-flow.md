@@ -1,67 +1,67 @@
-# te-engage `+save-flow`
+# te-engage `+save_flow`
 
-创建或更新流程画布草稿。
+Create or update a flow canvas draft.
 
-映射命令：`te-cli te-engage +save-flow`
+Mapped command: `ae-cli engage +save_flow`
 
-这份文档目标不是只解释 `save_flow` 接口本身，而是提供一条**从用户需求到 CLI 入参**的完整路径：
+This document is not only meant to explain the `save_flow` interface itself. It provides a complete path **from user requirements to CLI arguments**:
 
-1. 先做意图识别
-2. 再把意图映射成流程画布 `req`
-3. 最后调用 CLI 提交
+1. Identify intent first
+2. Then map the intent to the flow canvas `req`
+3. Finally submit through the CLI
 
 ---
 
-## 1. 总原则
+## 1. General Principles
 
-`+save-flow` 直接接收的不是自然语言，也不是模糊业务描述，而是**最终可提交的流程画布请求体**。
+`+save_flow` does not accept natural language or vague business descriptions directly. It accepts the **final flow canvas request payload that is ready to submit**.
 
-因此，必须先把用户需求整理成一个统一的中间意图结构，再根据映射规则生成：
+Therefore, you must first organize user requirements into a unified intermediate intent structure, and then generate the payload according to the mapping rules:
 
 - `flowName`
 - `flowDesc`
 - `nodeList`
 - `edgeList`
-- 以及可选的 `groupId`、`tzOffset`、`flowUuid`、`parentFlowUuid`、`versionType`
+- and optional `groupId`、`tzOffset`、`flowUuid`、`parentFlowUuid`、`versionType`
 
-最终再用 CLI 调用：
+Then call the CLI:
 
 ```bash
-te-cli te-engage +save-flow --project-id <projectId> --req '<req-json>'
+ae-cli engage +save_flow --project_id <projectId> --req '<req-json>'
 ```
 
 ---
 
-## 2. 工作流
+## 2. Workflow
 
-推荐按下面 5 步执行：
+Use the following five-step workflow:
 
-1. 从用户输入中识别流程意图，生成统一的意图 JSON。
-2. 调用 `te-cli te_audience +get_cluster_definition_schema --cluster_type condition`，拿到 condition cluster definition schema，用于后续拼装条件相关字段。
-3. 调用 `te-cli te-engage +channel-list --project-id <projectId>`，拿到项目下可用通道，为触达节点匹配真实 `channelId`。
-4. 将意图 JSON 映射成最终 `req`：`flowName`、`flowDesc`、`nodeList`、`edgeList`。
-5. 调用 `te-cli te-engage +save-flow --project-id <projectId> --req '<req-json>'` 提交。
+1. Identify the flow intent from the user input and produce a unified intent JSON.
+2. Run `ae-cli te_audience +get_cluster_definition_schema --cluster_type condition` to obtain the condition cluster definition schema for assembling condition-related fields later.
+3. Run `ae-cli engage +channel_list --project_id <projectId>` to get the available channels in the project and match real `channelId` values for touchpoint nodes.
+4. Map the intent JSON to the final `req`: `flowName`, `flowDesc`, `nodeList`, and `edgeList`.
+5. Run `ae-cli engage +save_flow --project_id <projectId> --req '<req-json>'` to submit.
 
 ---
 
-## 3. 第一步：意图识别
+## 3. Step One: Intent Identification
 
-### 3.1 必须先确认的信息
+### 3.1 Information That Must Be Confirmed First
 
-在生成任何 `req` 之前，至少要确认这 4 类信息：
+Before generating any `req`, confirm at least these four categories of information:
 
-| 信息 | 说明 |
+| Item | Description |
 |---|---|
-| 业务场景 | 这是一个什么流程，比如新用户激活、流失召回、付费转化 |
-| 目标用户 | 谁能进入流程，比如最近 14 天未登录用户、今日注册用户 |
-| 触达方式 | 用什么渠道触达，比如 Push、微信订阅、Webhook |
-| 分流条件 | 是否需要分组处理；如果需要，要知道按什么条件分组 |
+| business scenario | What kind of flow this is, for example new-user activation, churn win-back, or paid conversion |
+| target users | Who can enter the flow, for example users inactive for the last 14 days or users registered today |
+| touchpoint method | Which channel will be used for outreach, for example Push, WeChat subscription, or Webhook |
+| branching conditions | Whether grouped handling is needed; if so, which conditions define the groups |
 
-如果这 4 类信息有缺失，不要直接构建 `req`。
+If any of these four categories is missing, do not build `req` directly.
 
-### 3.2 意图识别输出格式
+### 3.2 Intent Output Format
 
-先把用户需求整理成如下意图 JSON。这个 JSON 是中间表示，不是最终 `save_flow.req`。
+First organize the user requirement into the following intent JSON. This JSON is an intermediate representation, not the final `save_flow.req`.
 
 ```json
 {
@@ -86,7 +86,7 @@ te-cli te-engage +save-flow --project-id <projectId> --req '<req-json>'
     {
       "nid": "n1",
       "node_type": "<split|judge|action|wait|end>",
-      "type": "<具体节点语义类型>",
+      "type": "<specific semantic node type>",
       "name": "<string|null>",
       "content": "<string|null>",
       "channel_name": "<string|null>",
@@ -117,64 +117,64 @@ te-cli te-engage +save-flow --project-id <projectId> --req '<req-json>'
 }
 ```
 
-### 3.3 字段含义
+### 3.3 Field Meaning
 
 - `entry`
-  描述用户如何进入流程。
+  Describes how users enter the flow.
 - `nodes`
-  描述业务语义节点，还不是最终画布节点。
+  Describes business-semantic nodes; they are not yet final canvas nodes.
 - `edges`
-  描述业务语义上的连接关系。
+  Describes the connection relationships at the business-semantics level.
 - `channel_name`
-  先保留为语义字段，后面再去项目通道列表里匹配真实 `channelId`。
+  Keep it as a semantic field first, then match a real `channelId` from the project channel list later.
 - `branches`
-  只描述分支语义；后面落地到 `node.config.branchList` 和 `edge.sourceBranchId`。
+  Only describes branch semantics; later it will be materialized into `node.config.branchList` and `edge.sourceBranchId`.
 
 ---
 
-## 4. 第二步：前置 CLI 查询
+## 4. Step Two: Required CLI Queries
 
-### 4.1 查询 cluster definition schema
+### 4.1 Query the Cluster Definition Schema
 
-调用：
-
-```bash
-te-cli te_audience +get_cluster_definition_schema --cluster_type condition
-```
-
-作用：
-- 为条件节点、分群节点、入口节点准备 QP 构造依据
-- 帮助生成 `targetClusterQp`
-- 帮助生成 `triggerRule.events`
-
-这一步不是直接返回最终节点，而是提供“怎样把条件表达成 QP / 事件条件”的规则基础。
-
-### 4.2 查询项目通道
-
-调用：
+Run:
 
 ```bash
-te-cli te-engage +channel-list --project-id <projectId>
+ae-cli te_audience +get_cluster_definition_schema --cluster_type condition
 ```
 
-作用：
-- 获取项目下可用通道
-- 根据意图中的 `channel_name` 为触达节点匹配真实 `channelId`
-- 根据通道类型判断是 `message_push`、`wechat_push` 还是 `webhook_push`
+Purpose:
+- Prepare the basis for building QP for condition nodes, audience nodes, and entry nodes
+- Help generate `targetClusterQp`
+- Help generate `triggerRule.events`
 
-如果 `channel_name` 没有精确匹配，应优先：
+This step does not return final nodes directly. It provides the rule foundation for expressing conditions as QP or event conditions.
 
-1. 名称精确匹配
-2. 名称关键词匹配
-3. 按节点类型兜底匹配通道类型
+### 4.2 Query Project Channels
+
+Run:
+
+```bash
+ae-cli engage +channel_list --project_id <projectId>
+```
+
+Purpose:
+- Get the available channels in the project
+- Match a real `channelId` for touchpoint nodes based on `channel_name` in the intent
+- Determine whether the node should be `message_push`, `wechat_push`, or `webhook_push` based on the channel type
+
+If `channel_name` does not have an exact match, use this priority:
+
+1. exact name match
+2. name keyword match
+3. fallback match by node type and channel type
 
 ---
 
-## 5. 第三步：把意图映射成 `req`
+## 5. Step Three: Map the Intent to `req`
 
-### 5.1 `req` 顶层结构
+### 5.1 Top-Level `req` Structure
 
-最终传给 `--req` 的对象结构如下：
+The object passed to `--req` should have the following structure:
 
 ```json
 {
@@ -190,104 +190,104 @@ te-cli te-engage +channel-list --project-id <projectId>
 }
 ```
 
-说明：
-- `projectId` 不需要手写进 `--req`，CLI 会从 `--project-id` 自动注入
-- `flowUuid` 和 `parentFlowUuid` 互斥
-- 创建新草稿时，这两个字段都不传
+Notes:
+- `projectId` does not need to be written into `--req` manually; the CLI injects it from `--project_id`
+- `flowUuid` and `parentFlowUuid` are mutually exclusive
+- When creating a new draft, neither of these fields should be provided
 
-### 5.2 顶层字段来源
+### 5.2 Sources of Top-Level Fields
 
-| `req` 字段 | 来源 |
+| `req` Field | Source |
 |---|---|
-| `flowName` | 意图 `flow_name` |
-| `flowDesc` | 意图 `flow_desc`，没有就给空串或简短描述 |
-| `groupId` | 默认 `0`，除非业务要求指定分组 |
-| `tzOffset` | 用户时区或项目默认时区，常见为 `8` |
-| `nodeList` | 由意图 `entry` + `nodes` 映射生成 |
-| `edgeList` | 由意图 `edges` 和分支结构生成 |
+| `flowName` | Intent field `flow_name` |
+| `flowDesc` | Intent field `flow_desc`; use an empty string or a short description if absent |
+| `groupId` | Default `0`, unless the business requirement specifies a group |
+| `tzOffset` | User timezone or project default timezone; a common value is `8` |
+| `nodeList` | Generated from intent `entry` plus `nodes` |
+| `edgeList` | Generated from intent `edges` and branch structure |
 
 ---
 
-## 6. 第四步：意图节点到画布节点的映射
+## 6. Step Four: Map Intent Nodes to Canvas Nodes
 
-### 6.1 入口节点映射
+### 6.1 Entry Node Mapping
 
-| 意图 `entry.type` | 画布节点 `type` |
+| Intent `entry.type` | Canvas node `type` |
 |---|---|
 | `single_trigger` | `single_trigger` |
 | `repeat_trigger` | `repeat_trigger` |
 | `event_trigger` | `event_trigger` |
 
-入口节点始终要成为 `nodeList` 中唯一的入口节点。
+The entry node must always be the only entry node in `nodeList`.
 
-### 6.2 业务节点映射
+### 6.2 Business Node Mapping
 
-| 意图节点语义 | 画布节点 `type` |
+| Intent-node semantic meaning | Canvas node `type` |
 |---|---|
-| 行为分流 | `event_split_flow` |
-| 特征分流 | `feature_split_flow` |
-| A/B 分流 | `ab_split_flow` |
-| 行为判断 | `event_judge` |
-| 特征判断 | `feature_judge` |
-| Push 触达 | `message_push` |
-| 微信触达 | `wechat_push` |
-| Webhook / 其他外部触达 | `webhook_push` |
-| 等待 | `time_control` |
-| 结束 | `exit_flow` |
+| Behavioral split | `event_split_flow` |
+| Feature split | `feature_split_flow` |
+| A/B split | `ab_split_flow` |
+| Behavioral judgment | `event_judge` |
+| Feature judgment | `feature_judge` |
+| Push touchpoint | `message_push` |
+| WeChat touchpoint | `wechat_push` |
+| Webhook / other external touchpoint | `webhook_push` |
+| Wait | `time_control` |
+| End | `exit_flow` |
 
-### 6.3 条件字段映射
+### 6.3 Condition Field Mapping
 
-条件类语义不能直接原样放进 `req`，要按下面方式落地：
+Condition-related semantics cannot be copied into `req` as-is. They must be materialized in the following way:
 
-| 语义类型 | 目标字段 |
+| Semantic type | Target field |
 |---|---|
-| 受众分群条件 | `targetClusterQp` |
-| 特征判断条件 | `targetClusterQp` |
-| 特征分流分支条件 | `targetClusterQp` |
-| 事件触发条件 | `triggerRule[].events[]` |
-| 行为判断条件 | `triggerRule[].events[]` |
-| 行为分流分支条件 | `triggerRule[].events[]` |
+| Audience segmentation condition | `targetClusterQp` |
+| Feature judgment condition | `targetClusterQp` |
+| Feature split branch condition | `targetClusterQp` |
+| Event trigger condition | `triggerRule[].events[]` |
+| Behavioral judgment condition | `triggerRule[].events[]` |
+| Behavioral split branch condition | `triggerRule[].events[]` |
 
-简单理解：
-- “按人群 / 属性判断”的，多数落到 `targetClusterQp`
-- “按事件是否发生 / 发生几次判断”的，多数落到 `triggerRule.events`
+In short:
+- Conditions that judge by audience or property usually map to `targetClusterQp`
+- Conditions that judge whether an event happened, or how many times it happened, usually map to `triggerRule.events`
 
-### 6.4 触达节点映射
+### 6.4 Touchpoint Node Mapping
 
-动作语义节点里的这些字段：
+These fields inside action-semantic nodes:
 
 - `channel_name`
 - `content`
 - `languages`
 
-需要落地到 push 节点 `config`：
+need to be materialized into the push-node `config`:
 
-- `channel_name` -> 匹配成真实 `channelId`
-- `content` -> 放进 `contentList`
-- `languages` -> 决定是否生成多语言 `contentList`
+- `channel_name` -> match to a real `channelId`
+- `content` -> place into `contentList`
+- `languages` -> determine whether multilingual `contentList` entries should be generated
 
 ---
 
-## 7. 第五步：`nodeList` 怎么写
+## 7. Step Five: How to Build `nodeList`
 
-`nodeList` 中每一项结构如下：
+Each item in `nodeList` has the following structure:
 
-| 字段 | 类型 | 必填 | 说明 |
+| Field | Type | Required | Description |
 |---|---|---|---|
-| `id` | string | 是 | 请求内唯一节点 ID |
-| `name` | string | 是 | 节点显示名 |
-| `type` | string | 是 | 节点类型 |
-| `config` | string | 是 | **JSON 字符串**，顶层必须是 JSON 对象 |
-| `desc` | string | 否 | 节点描述 |
+| `id` | string | Yes | Unique node ID within the request |
+| `name` | string | Yes | Display name of the node |
+| `type` | string | Yes | Node type |
+| `config` | string | Yes | **JSON string** whose top level must be a JSON object |
+| `desc` | string | No | Node description |
 
-### 7.1 最关键的规则
+### 7.1 Most Important Rules
 
-1. `config` 必须是字符串，不是对象。
-2. `node.id` 必须唯一。
-3. 分支节点、判断节点里会被 `edge.sourceBranchId` 用到的 branchId，必须先定义在 `config` 里。
-4. 所有路径最终都要落到 `exit_flow`。
+1. `config` must be a string, not an object.
+2. `node.id` must be unique.
+3. Any `branchId` later referenced by `edge.sourceBranchId` in split or judgment nodes must be defined in `config` first.
+4. Every path must eventually end at `exit_flow`.
 
-### 7.2 常见节点类型
+### 7.2 Common Node Types
 
 - `single_trigger`
 - `repeat_trigger`
@@ -303,12 +303,12 @@ te-cli te-engage +channel-list --project-id <projectId>
 - `time_control`
 - `exit_flow`
 
-### 7.3 示例：最简单节点
+### 7.3 Example: Simplest Node
 
 ```json
 {
   "id": "node_1",
-  "name": "定时单次进入",
+  "name": "One-Time Scheduled Entry",
   "type": "single_trigger",
   "config": {
     "triggerTime": "2026-04-10 06:35",
@@ -317,9 +317,9 @@ te-cli te-engage +channel-list --project-id <projectId>
 }
 ```
 
-### 7.4 常用 `config` 模板
+### 7.4 Common `config` Templates
 
-下面这些模板是“直接拼 `req`”时最该优先参考的部分。使用时先按对象构造，再整体 `JSON.stringify` 放进 `nodeList[].config`。
+The templates below are the most important references when you assemble `req` directly. Build them as objects first, then wrap them with `JSON.stringify` before placing them into `nodeList[].config`.
 
 #### `repeat_trigger`
 
@@ -341,10 +341,10 @@ te-cli te-engage +channel-list --project-id <projectId>
 }
 ```
 
-规则：
+Rules: 
 - `entry.segment` -> `targetClusterQp`
 - `entry.schedule` -> `crontab`
-- 常见默认值可用 `0 00 09 * * ?`
+- Common default value: `0 00 09 * * ?`
 
 #### `event_trigger`
 
@@ -376,14 +376,14 @@ te-cli te-engage +channel-list --project-id <projectId>
     "enableMultEntry": false,
     "disableConcurrentEntry": false
   },
-  "targetClusterQp": "<JSON.stringify(qp) 或 null>"
+  "targetClusterQp": "<JSON.stringify(qp) or null>"
 }
 ```
 
-规则：
+Rules: 
 - `entry.trigger_event` -> `triggerRule[0].events`
-- `entry.segment` 存在时再生成 `targetClusterQp`
-- 没有 `segment` 时，`targetClusterQp` 可为 `null`
+- Generate `targetClusterQp` only when `entry.segment` exists
+- When `segment` is absent, `targetClusterQp` may be `null`
 
 #### `event_split_flow`
 
@@ -399,7 +399,7 @@ te-cli te-engage +channel-list --project-id <projectId>
         {
           "delayTimeSymbol": "<minute|hour|day>",
           "delayTime": "<number>",
-          "eventTriggerType": "<0 或 -1>",
+          "eventTriggerType": "<0 or -1>",
           "zoneoffset": 8,
           "events": []
         }
@@ -409,11 +409,11 @@ te-cli te-engage +channel-list --project-id <projectId>
 }
 ```
 
-规则：
-- `branch.condition` 是行为条件时，落到 `triggerRule[].events[]`
+Rules: 
+- When `branch.condition` is an event condition, map it to `triggerRule[].events[]`
 - `time_limit` -> `delayTimeSymbol` + `delayTime`
-- “发生”用 `0`，“未发生”用 `-1`
-- 兜底分支只保留：
+- Use `0` for happened and `-1` for not happened
+- For the fallback branch, keep only: 
 
 ```json
 {
@@ -442,9 +442,9 @@ te-cli te-engage +channel-list --project-id <projectId>
 }
 ```
 
-规则：
-- 属性 / 标签条件 -> `targetClusterQp`
-- 兜底分支同样只保留 `branchId` + `branchType: 2`
+Rules: 
+- Property or tag condition -> `targetClusterQp`
+- For the fallback branch, also keep only `branchId` plus `branchType: 2`
 
 #### `ab_split_flow`
 
@@ -453,14 +453,14 @@ te-cli te-engage +channel-list --project-id <projectId>
   "branchList": [
     {
       "branchId": "<branchId>",
-      "branchName": "对照组",
+      "branchName": "Control Group",
       "branchType": 1,
       "order": 1,
       "percentageInExperiment": 34
     },
     {
       "branchId": "<branchId>",
-      "branchName": "实验组 A",
+      "branchName": "Experiment Group A",
       "branchType": 2,
       "order": 2,
       "percentageInExperiment": 33
@@ -471,9 +471,9 @@ te-cli te-engage +channel-list --project-id <projectId>
 }
 ```
 
-规则：
-- 用户没给比例时可均分
-- 3 组时可用 `34/33/33`
+Rules: 
+- If the user does not provide percentages, you may split them evenly
+- For three groups, you can use `34/33/33`
 
 #### `event_judge`
 
@@ -494,10 +494,10 @@ te-cli te-engage +channel-list --project-id <projectId>
 }
 ```
 
-规则：
+Rules: 
 - `node.event` -> `triggerRule[].events[]`
 - `wait_time` -> `delayTimeSymbol` + `delayTime`
-- 未指定等待时长时，可默认 `30 minute`
+- If no wait duration is specified, you may default to `30 minute`
 
 #### `feature_judge`
 
@@ -530,21 +530,21 @@ te-cli te-engage +channel-list --project-id <projectId>
 }
 ```
 
-规则：
-- `channel_name` -> 匹配真实 `channelId`
-- `content` -> 优先填入最像“正文 / 内容 / 消息”的参数
-- 当参数 `type = TEXT` 时，额外补：
+Rules: 
+- `channel_name` -> match a real `channelId`
+- `content` -> fill the parameter that best matches body text, content, or message
+- When the parameter `type = TEXT`, also add: 
 
 ```json
 {
-  "config": "[{\"type\":\"paragraph\",\"children\":[{\"text\":\"<与 value 相同>\"}]}]"
+  "config": "[{\"type\":\"paragraph\",\"children\":[{\"text\":\"<same as value>\"}]}]"
 }
 ```
 
-多语言规则：
-- 第一条始终是 `"pushLanguageCode": "default"`
-- 后续按 `languages` 生成其他语言版本
-- 每种语言的 `content[]` 结构相同，只替换 `value`
+Multilingual Rules:
+- The first entry must always use `"pushLanguageCode": "default"`
+- Generate additional language versions according to `languages`
+- Each language uses the same `content[]` structure; only `value` changes
 
 #### `wechat_push`
 
@@ -562,7 +562,7 @@ te-cli te-engage +channel-list --project-id <projectId>
           "type": "STRING",
           "required": true,
           "paramType": 2,
-          "name": "语言",
+          "name": "Language",
           "value": "default"
         },
         {
@@ -570,7 +570,7 @@ te-cli te-engage +channel-list --project-id <projectId>
           "type": "STRING",
           "required": true,
           "paramType": 2,
-          "name": "跳转页面",
+          "name": "Destination Page",
           "value": ""
         },
         {
@@ -578,7 +578,7 @@ te-cli te-engage +channel-list --project-id <projectId>
           "type": "STRING",
           "required": true,
           "paramType": 2,
-          "name": "版本",
+          "name": "Version",
           "value": ""
         }
       ]
@@ -598,14 +598,14 @@ te-cli te-engage +channel-list --project-id <projectId>
 }
 ```
 
-常见解析：
-- `30分钟` -> `minute` + `30`
-- `2小时` -> `hour` + `2`
-- `1天` -> `day` + `1`
+Common parsing examples: 
+- `30 minutes` -> `minute` + `30`
+- `2 hours` -> `hour` + `2`
+- `1 day` -> `day` + `1`
 
 #### `exit_flow`
 
-最小可用 `config`：
+Minimum usable `config`: 
 
 ```json
 {}
@@ -613,19 +613,19 @@ te-cli te-engage +channel-list --project-id <projectId>
 
 ---
 
-## 8. 第六步：`edgeList` 怎么写
+## 8. Step Six: How to Build `edgeList`
 
-`edgeList` 中每一项结构如下：
+Each item in `edgeList` has the following structure:
 
-| 字段 | 类型 | 必填 | 说明 |
+| Field | Type | Required | Description |
 |---|---|---|---|
-| `source` | string | 是 | 上游节点 ID |
-| `target` | string | 是 | 下游节点 ID |
-| `edgeId` | string | 否 | 连线 ID |
-| `sourceBranchId` | string | 否 | 分支/判断节点出边时使用 |
-| `config` | string | 否 | JSON 字符串 |
+| `source` | string | Yes | upstream node ID |
+| `target` | string | Yes | downstream node ID |
+| `edgeId` | string | No | edge ID |
+| `sourceBranchId` | string | No | used for edges leaving split or judgment nodes |
+| `config` | string | No | JSON string |
 
-### 8.1 普通连线
+### 8.1 Regular Edges
 
 ```json
 {
@@ -634,7 +634,7 @@ te-cli te-engage +channel-list --project-id <projectId>
 }
 ```
 
-### 8.2 分支连线
+### 8.2 Branch Edges
 
 ```json
 {
@@ -644,55 +644,55 @@ te-cli te-engage +channel-list --project-id <projectId>
 }
 ```
 
-### 8.3 最关键的规则
+### 8.3 Most Important Rules
 
-1. `source` 和 `target` 必须引用真实存在的 `node.id`
-2. 只有分支节点 / 判断节点的出边才需要 `sourceBranchId`
-3. 图必须是 DAG，不能有环
-4. 分支节点的 `sourceBranchId` 必须来自对应节点 `config` 里已经声明过的 branchId
+1. `source` and `target` must reference existing `node.id` values
+2. Only edges leaving split or judgment nodes need `sourceBranchId`
+3. The graph must be a DAG and cannot contain cycles
+4. For split nodes, `sourceBranchId` must come from a branchId already declared in the corresponding node `config`
 
-### 8.4 标准出边规则
+### 8.4 Standard Outgoing-Edge Rules
 
-| 节点类型 | 出边数 | `sourceBranchId` 规则 |
+| node type | Number of outgoing edges | `sourceBranchId` rule |
 |---|---|---|
-| `single_trigger` / `repeat_trigger` / `event_trigger` | 1 | 不传 |
-| `event_split_flow` / `feature_split_flow` / `ab_split_flow` | 每分支 1 条 | 对应 `branchList[].branchId` |
-| `event_judge` / `feature_judge` | 2 | 分别使用 `meetBranchId` / `notMeetBranchId` |
-| `message_push` / `wechat_push` / `webhook_push` / `time_control` | 1 | 不传 |
-| `exit_flow` | 0 | 不传 |
+| `single_trigger` / `repeat_trigger` / `event_trigger` | 1 | do not provide |
+| `event_split_flow` / `feature_split_flow` / `ab_split_flow` | one per branch | use the corresponding `branchList[].branchId` |
+| `event_judge` / `feature_judge` | 2 | use `meetBranchId` and `notMeetBranchId` respectively |
+| `message_push` / `wechat_push` / `webhook_push` / `time_control` | 1 | do not provide |
+| `exit_flow` | 0 | do not provide |
 
 ---
 
-## 9. 第七步：图约束检查
+## 9. Step Seven: Graph Constraint Checks
 
-在提交前必须自检：
+Before submitting, you must self-check:
 
-1. `nodeList` 非空
-2. 入口节点必须且只能有一个
-3. 至少有一个 `exit_flow`
-4. 每个 `exit_flow` 恰好一条入边，且没有出边
-5. 每个 `node.id` 唯一
-6. 每条边引用的节点都存在
-7. 整张图无环
+1. `nodeList` is not empty
+2. There must be exactly one entry node
+3. There must be at least one `exit_flow`
+4. Each `exit_flow` must have exactly one incoming edge and no outgoing edges
+5. Each `node.id` must be unique
+6. Every edge must reference existing nodes
+7. The entire graph must be acyclic
 
-如果分流节点使用 `splitFlowType = 2`，还要额外保证：
-- 不同分支后续路径不要再次汇合到同一个节点
-- 每条分支应独立走到自己的 `exit_flow`
+If a split node uses `splitFlowType = 2`, also ensure:
+- Paths from different branches must not converge again into the same node
+- Each branch should independently lead to its own `exit_flow`
 
 ---
 
-## 10. 第八步：CLI 提交
+## 10. Step Eight: CLI Submission
 
-### 10.1 顶层 flags
+### 10.1 Top-Level Flags
 
-| Flag | 类型 | 必填 | 说明 |
+| Flag | Type | Required | Description |
 |---|---|---|---|
-| `--project-id` / `-p` | number | 是 | 项目 ID |
-| `--req` | json | 是 | 最终请求体对象 |
+| `--project_id` / `-p` | number | Yes | Project ID |
+| `--req` | json | Yes | final request-body object |
 
-### 10.2 CLI 实际提交结构
+### 10.2 Actual CLI Submission Structure
 
-CLI 会把输入整理成：
+The CLI will organize the input as:
 
 ```json
 {
@@ -704,15 +704,15 @@ CLI 会把输入整理成：
 }
 ```
 
-也就是说：
-- 顶层 `projectId` 来自 `--project-id`
-- `req.projectId` 也会由 CLI 自动注入
+In other words:
+- The top-level `projectId` comes from `--project_id`
+- `req.projectId` is also injected automatically by the CLI
 
-### 10.3 最小可用示例
+### 10.3 Minimum Working Example
 
 ```bash
-te-cli te-engage +save-flow \
-  --project-id 1 \
+ae-cli engage +save_flow \
+  --project_id 1 \
   --req '{
     "flowName": "Welcome Flow",
     "flowDesc": "New user welcome flow",
@@ -721,13 +721,13 @@ te-cli te-engage +save-flow \
     "nodeList": [
       {
         "id": "node_1",
-        "name": "进入流程",
+        "name": "Enter Flow",
         "type": "single_trigger",
         "config": "{}"
       },
       {
         "id": "node_2",
-        "name": "结束",
+        "name": "End",
         "type": "exit_flow",
         "config": "{}"
       }
@@ -741,57 +741,58 @@ te-cli te-engage +save-flow \
   }'
 ```
 
-### 10.4 创建成功后的输出要求
+### 10.4 Output Requirements After Successful Creation
 
-前置条件：
-- 创建流程画布成功，返回了新创建的流程画布 `flowUuid`
+Prerequisite:
+- The flow canvas was created successfully and returned the new canvas `flowUuid`
 
-成功时必须：
-- 向用户展示创建结果，至少包含画布名称等关键信息
-- 必须输出一个**可点击的 Markdown 链接**
+On success, you must:
+- Show the creation result to the user, including at least key information such as the canvas name
+- Output a **clickable Markdown link**
 
-链接生成规则：
-- 使用标准 Markdown 链接语法，禁止放在代码块中
-- URL 必须以 `/#/` 开头，禁止添加域名或任何域名占位符
-- 将 `save_flow` 返回的 `flowUuid` 和本次创建使用的 `projectId` 替换到 URL 中
+Link-generation Rules:
+- Use standard Markdown link syntax and do not place it inside a code block
+- The URL must start with `/#/`
+- Do not add a domain name or any domain placeholder
+- Replace the `flowUuid` returned by `save_flow` and the `projectId` used for this creation into the URL
 
-输出模板：
+Output template:
 
-[点击查看画布](/#/hermes/flow/detail?flowUuid=<替换为实际flowUuid>&currentProjectId=<替换为实际projectId>)
+[Open Canvas](/#/hermes/flow/detail?flowUuid=<replace-with-actual-flowUuid>&currentProjectId=<replace-with-actual-projectId>)
 
-正确示例：
+Correct example:
 
-[点击查看画布](/#/hermes/flow/detail?flowUuid=0006_831135755&currentProjectId=1)
+[Open Canvas](/#/hermes/flow/detail?flowUuid=0006_831135755&currentProjectId=1)
 
-常见错误：
-- `❌ {域名}/#/hermes/flow/...`：不要加域名占位符
-- `❌` 把链接放在代码块 ````` 中：代码块内的链接不可点击
-- `❌ /#/hermes/flow/detail?flowUuid=...`：不要输出纯文本 URL，必须使用 `[文字](URL)` 格式
+Common mistakes:
+- `❌ {domain}/#/hermes/flow/...`: do not add a domain placeholder
+- `❌` putting the link inside a code block ````` : links inside code blocks are not clickable
+- `❌ /#/hermes/flow/detail?flowUuid=...`: do not output a plain-text URL; you must use the `[text](URL)` format
 
-### 10.5 创建失败后的输出要求
+### 10.5 Output Requirements After Failed Creation
 
-失败时必须：
-- 输出完整请求体 JSON，供用户调试
-- 明确说明失败原因
+On failure, you must:
+- Output the complete request-body JSON for debugging
+- Clearly describe the failure reason
 
-建议输出结构：
+Suggested output structure:
 
 ```json
 {
-  "projectId": "<实际 projectId>",
+  "projectId": "<actual projectId>",
   "req": {
-    "...": "完整 save_flow 请求体"
+    "...": "complete save_flow request body"
   }
 }
 ```
 
 ---
 
-## 11. 最容易写错的地方
+## 11. Most Common Mistakes
 
-### 11.1 `--req` 是对象，但 `node.config` / `edge.config` 是字符串
+### 11.1 `--req` Is an Object, but `node.config` / `edge.config` Are Strings
 
-正确：
+Correct:
 
 ```json
 {
@@ -802,7 +803,7 @@ te-cli te-engage +save-flow \
 }
 ```
 
-错误：
+Incorrect:
 
 ```json
 {
@@ -813,9 +814,9 @@ te-cli te-engage +save-flow \
 }
 ```
 
-### 11.2 时间单位必须小写
+### 11.2 Time Units Must Be Lowercase
 
-像 `time_control` 里，应使用：
+Inside `time_control`, use:
 
 - `day`
 - `hour`
@@ -823,48 +824,48 @@ te-cli te-engage +save-flow \
 - `week`
 - `month`
 
-不要写成 `DAY`、`HOUR`、`MINUTE`。
+Do not write `DAY`, `HOUR`, or `MINUTE`.
 
-### 11.3 不要凭空写 `channelId`
+### 11.3 Do Not Invent `channelId`
 
-`message_push`、`wechat_push`、`webhook_push` 这类节点的 `channelId`，必须来自：
+For node types such as `message_push`, `wechat_push`, and `webhook_push`, `channelId` must come from:
 
 ```bash
-te-cli te-engage +channel-list --project-id <projectId>
+ae-cli engage +channel_list --project_id <projectId>
 ```
 
-### 11.4 分支 ID 必须先定义再引用
+### 11.4 Define branch IDs Before Referencing Them
 
-如果某条边用了：
+If an edge uses:
 
 ```json
 { "sourceBranchId": "branch_a" }
 ```
 
-那么 `"branch_a"` 必须已经存在于对应上游节点的 `config` 中。
+then `"branch_a"` must already exist in the corresponding upstream node `config`.
 
-### 11.5 `targetClusterQp` 本身通常也是字符串
+### 11.5 `targetClusterQp` Is Usually Also a String
 
-虽然 `targetClusterQp` 出现在节点 `config` 的 JSON 对象里，但它的值通常也不是原始对象，而是 QP 对象再做一次 `JSON.stringify` 后的字符串。
+Although `targetClusterQp` appears inside the JSON object of node `config`, its value is usually not a raw object. It is typically the QP object converted into a string with `JSON.stringify`.
 
-示意：
+Illustration:
 
 ```json
 { "targetClusterQp": "{\"totalCFilter\":{\"relation\":\"1\",\"filts\":[]}}" }
 ```
 
-### 11.6 `TEXT` 参数的富文本 `config` 也必须是字符串
+### 11.6 Rich-Text `config` for `TEXT` Parameters Must Also Be a String
 
-push 参数如果是 `TEXT`，它内部那个富文本 `config` 不是对象，而是字符串化 JSON。这个点很容易漏。
+If a push parameter uses `TEXT`, the inner rich-text `config` must not be an object. It must be stringified JSON. This is easy to miss.
 
-### 11.7 `splitFlowType = 2` 时不要让分支重新汇合
+### 11.7 Do Not Merge Branches Again When `splitFlowType = 2`
 
-“满足条件即进入”表示用户可能同时进入多个分支，这时后续路径不要共用同一个节点，否则语义容易冲突。
+"Enter whenever conditions are met" means users may enter multiple branches at the same time. In that case, later paths should not share the same downstream node, otherwise the semantics easily conflict.
 
 ---
 
-## 12. 一句话总结
+## 12. One-Sentence Summary
 
-要稳定构建 `+save-flow` 的入参，不能直接从自然语言跳到 `req`，而应该遵循这条链路：
+To build `+save_flow` input parameters reliably, do not jump directly from natural language to `req`. Follow this path instead:
 
-**用户需求 -> 意图 JSON -> schema / 通道补全 -> `nodeList` / `edgeList` -> `te-cli te-engage +save-flow`。**
+**User requirement -> intent JSON -> schema and channel completion -> `nodeList` / `edgeList` -> `ae-cli engage +save_flow`.**

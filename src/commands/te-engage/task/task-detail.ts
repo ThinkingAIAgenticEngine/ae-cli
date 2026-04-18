@@ -1,23 +1,23 @@
 import type { Command, RuntimeContext } from '../../framework/types.js';
 import { buildMcpDryRun, executeMcpCommand } from '../utils.js';
 
-const serviceName = 'te-engage_task';
+const serviceName = 'engage_task';
 const toolName = 'query_task_detail';
 
 function buildArgs(ctx: RuntimeContext): Record<string, any> {
   return {
-    projectId: ctx.num('project-id'),
-    taskId: ctx.str('task-id'),
+    projectId: ctx.num('project_id'),
+    taskId: ctx.str('task_id'),
   };
 }
 
 export const taskDetail: Command = {
-  service: 'te-engage',
-  command: '+task-detail',
+  service: 'engage',
+  command: '+task_detail',
   description: 'Get detailed information for one task.',
   flags: [
-    { name: 'project-id', type: 'number', required: true, alias: 'p', desc: 'Project ID' },
-    { name: 'task-id', type: 'string', required: true, desc: 'Task ID' },
+    { name: 'project_id', type: 'number', required: true, alias: 'p', desc: 'Project ID' },
+    { name: 'task_id', type: 'string', required: true, desc: 'Task ID' },
   ],
   risk: 'read',
   dryRun: (ctx) => buildMcpDryRun(ctx, serviceName, toolName, buildArgs(ctx)),

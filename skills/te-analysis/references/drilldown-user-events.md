@@ -1,4 +1,4 @@
-# te_analysis +drilldown_user_events (Single-User Event Sequence Drilldown)
+# analysis +drilldown_user_events (Single-User Event Sequence Drilldown)
 
 > **Prerequisite:** Read [`../te-shared/SKILL.md`](../../te-shared/SKILL.md)
 
@@ -25,14 +25,14 @@ Domain: **Model analysis**
 ## Prerequisite call chain (required for executing single-user event drilldown)
 1. First execute `+drilldown_users` and obtain the target user and drilldown context.
 2. Confirm the `user_id`, candidate events, and target discrete time points from the previous step result.
-3. If additional property display is needed, first call `te_meta +list_properties --project_id 1` to verify property names.
+3. If additional property display is needed, first call `analysis_meta +list_properties --project_id 1` to verify property names.
 4. Call `+drilldown_user_events` to query the event sequence.
 
 ## Command
 ```bash
-te-cli te_analysis +drilldown_user_events --project_id 1 --user_id u_123 --event_names '["login"]' --target_dates '["2026-04-08 00:00:00"]'
-te-cli te_analysis +drilldown_user_events --project_id 1 --user_id u_123 --event_names '["login"]' --target_dates '["2026-04-08 00:00:00"]' --zone_offset 8 --use_cache true --page_num 1 --page_size 100
-te-cli te_analysis +drilldown_user_events --dry-run
+ae-cli analysis +drilldown_user_events --project_id 1 --user_id u_123 --event_names '["login"]' --target_dates '["2026-04-08 00:00:00"]'
+ae-cli analysis +drilldown_user_events --project_id 1 --user_id u_123 --event_names '["login"]' --target_dates '["2026-04-08 00:00:00"]' --zone_offset 8 --use_cache true --page_num 1 --page_size 100
+ae-cli analysis +drilldown_user_events --dry-run
 ```
 
 ## Parameters
@@ -40,7 +40,7 @@ te-cli te_analysis +drilldown_user_events --dry-run
 |---|---|---|
 | `--project_id` / `-p` | Yes | Project ID |
 | `--user_id` | Yes | User ID from drilldown_users. It must come from drilldown_users and must not be guessed. |
-| `--event_names` | Yes | JSON array of event names. Values should come from upstream drilldown context or `te_meta +list_events` in the same `project_id`. |
+| `--event_names` | Yes | JSON array of event names. Values should come from upstream drilldown context or `analysis_meta +list_events` in the same `project_id`. |
 | `--target_dates` | Yes | JSON array of discrete target dates from upstream drilldown context. Not a start/end range. |
 | `--zone_offset` | No | Time zone offset. For example, UTC+8 is 8 |
 | `--properties` | No | Optional event properties JSON array |

@@ -1,19 +1,19 @@
-# te-engage +channel-detail
+# te-engage +channel_detail
 
-> **前置条件:** 阅读 [`../../te-shared/SKILL.md`](../../te-shared/SKILL.md)
+> **Prerequisite:** Read [`../../te-shared/SKILL.md`](../../te-shared/SKILL.md)
 
-查询单个 Engage 渠道详情。
+Query the details of a single Engage channel.
 
-映射命令: `te-cli te-engage +channel-detail`
+Mapped command: `ae-cli engage +channel_detail`
 
 ## Flags
 
-| Flag | 类型 | 必填 | 说明 |
+| Flag | Type | Required | Description |
 |------|------|------|------|
-| `--project-id` / `-p` | number | 是 | 项目 ID |
-| `--channel-id` | string | 是 | 渠道 ID |
+| `--project_id` / `-p` | number | Yes | Project ID |
+| `--channel_id` | string | Yes | channel ID |
 
-## 返回值里的常见枚举
+## Common enums in the response
 
 ### `channelStatus`
 
@@ -30,7 +30,7 @@
 
 ### `channelSubBizType`
 
-常见值包括：
+Common values include:
 
 - `webhook`
 - `fcm`
@@ -42,11 +42,11 @@
 
 ### `enableTouchEvent`
 
-- `0`: 关闭触达漏斗
-- `1`: 开启触达漏斗
+- `0`: disable the touch funnel
+- `1`: enable the touch funnel
 
-## 示例
+## Examples
 
 ```bash
-te-cli te-engage +channel-detail --project-id 1 --channel-id <channel-id>
+ae-cli engage +channel_detail --project_id 1 --channel_id <channel_id>
 ```

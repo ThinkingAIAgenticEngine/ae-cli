@@ -1,71 +1,71 @@
 # te-community community-character-analysis
 
-> **前置条件:** 阅读 [`../te-shared/SKILL.md`](../te-shared/SKILL.md)
+> **Prerequisite:** Read [`../te-shared/SKILL.md`](../te-shared/SKILL.md)
 
-角色专项深度分析：深度剖析特定游戏角色的社区生态、玩家情感动因、核心诉求，输出结构化的《角色专项深度分析报告》。
+Role-specific in-depth analysis: In-depth diagnosis for a single role, instead of regular daily/weekly reports, the "Role-specific in-depth analysis report" is output.
 
-触发场景: 当用户要求"深度分析某角色"、"角色舆情洞察"、"拆解某角色讨论情况"时触发。
+Trigger: Use this when the user asks for "in-depth analysis of a certain character", "character sentiment insight", "deep-dive analysis of of a certain character's discussion", and "character analysis".
 
-## 分析流程
+## Analysis process
 
-1. **`get_sentiment_overview`**：获取该角色在正负面讨论下的核心词云，定调当前总体口碑
-2. **`get_hot_topics`**：确认该角色是否在社区形成了聚集性的热门话题
-3. **`search_posts`**：以"角色名 + 核心争议词"搜索近期高热帖子
-4. **`get_post_detail` & `get_comments_summary`**：提取帖子核心观点和评论区情感反馈
+1. **`get_sentiment_overview`**: Get the core word cloud of the character under positive and negative discussions to set the tone of the current overall reputation
+2. **`get_hot_topics`**: Confirm whether the character has formed a hot topic in the community
+3. **`search_posts`**: Search for recent hot posts using "character name + core controversial words"
+4. **`get_post_detail` & `get_comments_summary`**: Extract the core views of the post and emotional feedback in the comment area
 
-## 实体提取与推演规则
+## Entity extraction and deduction rules
 
-- 必须从用户输入中提取【核心分析角色】（如"角色"、"角色A"）
-- 如果用户没说，请明确追问"请问您希望深度分析哪位角色？"
-- 若用户未指定时间，**自动以当前系统时间往前推 7-14 天作为查询周期**
+- [Core Analysis Role] must be extracted from user input (such as "Role", "Role A")
+- If the user doesn't say anything, please clearly ask "Which character do you want to analyze in depth?"
+- If the user does not specify a time, **automatically push forward 7-14 days from the current system time as the query period**
 
-## 核心约束
+## Core Constraints
 
-- **拒绝假大空**：必须写出"为什么觉得低（对比了谁？什么输出环境？机制哪里卡手？）"，并附上具体帖子或评论原声佐证
-- **严格区分预警与风控**：
-  - 预警（Alerts）：游戏内体验问题（机制Bug、数值设计不合理、剧情吃书崩坏）
-  - 风控（Risk Control）：触碰现实底线的社区安全问题（涉及该角色的引战谩骂、黑产交易、内鬼解包泄露）
+- **Reject fake claims**: Must explain "why" and give evidence of posts/comments.
+- **Strictly distinguish between early warning and risk control**:
+- Alerts: experience risks (mechanics, numerical values, plot, art, performance)
+-Risk Control: risk of violation (causing war, illegal production, leakage, rumors)
 
-## 输出结构
+## Output structure
 
-### 一、角色当前生态与社区印象
-用一段极具洞察力的文字，概括该角色目前在玩家心智中的真实定位
+### 1. Character’s current ecology and community impression
+Use a very insightful paragraph to summarize the character’s current true position in the player’s mind.
 
-### 二、讨论热度与情感画像矩阵
+### 2. Discussion popularity and emotional portrait matrix
 
-| 维度 | 数据/描述 |
+| Dimensions | Data/Description |
 |------|----------|
-| 情感基本盘 | 正面/中性/负面占比 |
-| 舆论主阵地 | 主要讨论渠道 |
-| 高频词共现 | 核心关键词 |
+| Emotional fundamentals | Positive/neutral/negative ratio |
+| Main forum for sentiment | Main discussion channel |
+| High frequency word co-occurrence | Core keywords |
 
-### 三、玩家核心诉求与焦点深度拆解
+### 3. In-depth deep-dive analysis of of players’ core needs and focus
 
-**✨ 核心价值与高光体验**
-- **玩家心声提炼**：[总结]
-- **典型原声/支撑案例**：「[真实评论]」
+**✨ Core Values ​​and Highlight Experience**
+- **Extraction of player voices**: [Summary]
+- **Typical original voice/support case**: "[Real comments]"
 
-**🧨 核心痛点剖析**
-- **深层诉求拆解**：[分析]
-- **典型原声/支撑案例**：「[真实评论]」
+**🧨 Analysis of core pain points**
+- **Dismantling of deep demands**: [Analysis]
+- **Typical original voice/support case**: "[Real comments]"
 
-### 四、运营策略
-- **舆论风向引导**：具体建议
-- **版本/优化前瞻规划**：改进方向
+### 4. Operation strategy
+- **Public Opinion Direction Guidance**: Specific Suggestions
+- **Version/Optimization Forward Planning**: Direction for improvement
 
-### 五、预警内容
+### 5. Warning content
 
-**⚠️ 预警内容**
+**⚠️ Warning content**
 
-| 危险等级 | 预警触发项 | 社区蔓延度 | 核心表现 | 建议跟进动作 |
+| Danger level | Warning triggers | Community spread | Core performance | Suggested follow-up actions |
 |---------|-----------|-----------|---------|-------------|
-| 高/中/低 | 具体问题 | 影响范围 | 具体表现 | 处理建议 |
+| High/medium/low | Specific problems | Scope of impact | Specific performance | Handling suggestions |
 
-## 示例
+## Example
 
 ```bash
-# 用户输入示例
-"深度分析一下角色这个角色"
-"帮我拆解角色A的讨论情况"
-"分析下XX角色的舆情"
+# User input example
+"A deep analysis of the role"
+"Help me break down the discussion of character A"
+"Analyze the sentiment of XX character"
 ```

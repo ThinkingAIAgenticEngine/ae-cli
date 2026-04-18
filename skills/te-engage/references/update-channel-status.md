@@ -1,32 +1,32 @@
-# te-engage +update-channel-status
+# te-engage +update_channel_status
 
-> **前置条件:** 阅读 [`../../te-shared/SKILL.md`](../../te-shared/SKILL.md)
+> **Prerequisite:** Read [`../../te-shared/SKILL.md`](../../te-shared/SKILL.md)
 
-更新 Engage 渠道状态。
+Update the status of an Engage channel.
 
-映射命令: `te-cli te-engage +update-channel-status`
+Mapped command: `ae-cli engage +update_channel_status`
 
 ## Flags
 
-| Flag | 类型 | 必填 | 说明 |
+| Flag | Type | Required | Description |
 |------|------|------|------|
-| `--project-id` / `-p` | number | 是 | 项目 ID |
-| `--channel-id` | string | 是 | 渠道 ID |
-| `--status` | number | 是 | 渠道状态 |
+| `--project_id` / `-p` | number | Yes | Project ID |
+| `--channel_id` | string | Yes | channel ID |
+| `--status` | number | Yes | channel status |
 
-## 枚举说明
+## Enum Notes
 
 ### `--status`
 
 - `0`: disabled
 - `1`: enabled
 
-## 安全约束
+## Safety Constraints
 
-此命令为 **写操作**，执行前应确认用户明确希望变更渠道状态。
+This command is a **write operation** and Before executing, confirm that the user explicitly wants to change the channel status.
 
-## 示例
+## Examples
 
 ```bash
-te-cli te-engage +update-channel-status --project-id 1 --channel-id <channel-id> --status 1
+ae-cli engage +update_channel_status --project_id 1 --channel_id <channel_id> --status 1
 ```

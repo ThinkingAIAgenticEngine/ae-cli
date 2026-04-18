@@ -40,22 +40,22 @@ for (const file of commandFiles) {
 
 const commandSet = new Set(commands);
 if (commandSet.size !== commands.length) {
-  fail('duplicate te_common command names found in source files');
+  fail('duplicate analysis_common command names found in source files');
 }
 
 const EXPECTED_COUNT = 2;
 if (commands.length !== EXPECTED_COUNT) {
-  fail(`te_common tool count mismatch: expected ${EXPECTED_COUNT}, got ${commands.length}`);
+  fail(`analysis_common tool count mismatch: expected ${EXPECTED_COUNT}, got ${commands.length}`);
 }
 
-const help = spawnSync('npx', ['tsx', 'src/index.ts', 'te_common', '--help'], {
+const help = spawnSync('npx', ['tsx', 'src/index.ts', 'analysis_common', '--help'], {
   cwd: ROOT,
   encoding: 'utf-8',
 });
 
 if (help.status !== 0) {
   process.stderr.write(help.stderr || '');
-  fail('failed to run te_common --help');
+  fail('failed to run analysis_common --help');
 }
 
 for (const tool of commands) {
@@ -65,4 +65,4 @@ for (const tool of commands) {
   }
 }
 
-console.log(`OK: verified ${commands.length} te_common tools are registered and aligned.`);
+console.log(`OK: verified ${commands.length} analysis_common tools are registered and aligned.`);

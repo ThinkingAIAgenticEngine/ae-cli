@@ -1,38 +1,38 @@
-# te-engage +task-stats
+# te-engage +task_stats
 
-> **前置条件:** 阅读 [`../../te-shared/SKILL.md`](../../te-shared/SKILL.md)
+> **Prerequisite:** Read [`../../te-shared/SKILL.md`](../../te-shared/SKILL.md)
 
-查询任务状态统计。
+Query task status statistics.
 
-映射命令: `te-cli te-engage +task-stats`
+Mapped command: `ae-cli engage +task_stats`
 
 ## Flags
 
-| Flag | 类型 | 必填 | 说明 |
+| Flag | Type | Required | Description |
 |------|------|------|------|
-| `--project-id` / `-p` | number | 是 | 项目 ID |
-| `--req` | json | 是 | 统计条件 JSON 对象 |
+| `--project_id` / `-p` | number | Yes | Project ID |
+| `--req` | json | Yes | statistics-condition JSON object |
 
-## `--req` 对象字段
+## `--req` Object Fields
 
-`+task-stats` 的 `--req` 结构与 `+task-list` 基本一致，常见字段包括：
+The `--req` structure of `+task_stats` is broadly the same as `+task_list`, and common fields include:
 
-| 字段 | 类型 | 必填 | 说明 |
+| Field | Type | Required | Description |
 |------|------|------|------|
-| `mappingStatus` | number | 否 | 状态过滤 |
-| `triggerType` | number | 否 | 触发类型过滤 |
-| `channelType` | number | 否 | 渠道类型过滤 |
-| `groupId` | number | 否 | 分组 ID |
-| `creator` | string | 否 | 创建人 open_id |
-| `fuzzyField` | string | 否 | 任务 ID 或任务名模糊搜索 |
-| `belongActivity` | number | 否 | 是否关联活动过滤 |
-| `expStatusList` | array | 否 | 实验状态列表 |
-| `expReleaseStatusList` | array | 否 | 实验发布状态列表 |
-| `expTypeList` | array | 否 | 实验类型列表 |
+| `mappingStatus` | number | No | status filter |
+| `triggerType` | number | No | trigger type filter |
+| `channelType` | number | No | channel type filter |
+| `groupId` | number | No | group ID |
+| `creator` | string | No | creator open_id |
+| `fuzzyField` | string | No | fuzzy search by task ID or task name |
+| `belongActivity` | number | No | activity association filter |
+| `expStatusList` | array | No | experiment status list |
+| `expReleaseStatusList` | array | No | experiment release status list |
+| `expTypeList` | array | No | experiment type list |
 
-`projectId` 会由 CLI 自动补入 `--req`。
+`projectId` is automatically injected into `--req` by the CLI.
 
-## 枚举说明
+## Enum Notes
 
 ### `req.mappingStatus`
 
@@ -63,27 +63,27 @@
 
 ### `req.belongActivity`
 
-- `0`: 全部
-- `1`: 已关联活动
-- `2`: 未关联活动
+- `0`: all
+- `1`: activity linked
+- `2`: activity not linked
 
 ### `req.expStatusList[]`
 
-- `0`: 未创建实验
-- `1`: 已创建实验
+- `0`: experiment not created
+- `1`: experiment created
 
 ### `req.expReleaseStatusList[]`
 
-- `0`: 未发布实验
-- `1`: 已发布实验
+- `0`: experiment not released
+- `1`: experiment released
 
 ### `req.expTypeList[]`
 
 - `0`: normal
 - `1`: orthogonal
 
-## 示例
+## Examples
 
 ```bash
-te-cli te-engage +task-stats --project-id 1 --req '{"pageNum":1,"pageSize":20}'
+ae-cli engage +task_stats --project_id 1 --req '{"pageNum":1,"pageSize":20}'
 ```

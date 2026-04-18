@@ -8,23 +8,23 @@ PROJECT_ID="${PROJECT_ID:-1}"
 FLOW_UUID="${FLOW_UUID:-flow_uuid_123}"
 
 echo "[dry-run] flow list"
-node dist/index.js --dry-run te-engage +flow-list --project-id "$PROJECT_ID"
+node dist/index.js --dry-run engage +flow_list --project_id "$PROJECT_ID"
 
 echo "[dry-run] flow detail"
-node dist/index.js --dry-run te-engage +flow-detail --project-id "$PROJECT_ID" --flow-uuid "$FLOW_UUID"
+node dist/index.js --dry-run engage +flow_detail --project_id "$PROJECT_ID" --flow_uuid "$FLOW_UUID"
 
 echo "[dry-run] flow node config schema"
-node dist/index.js --dry-run te-engage +flow-node-config-schema --node-type message_push
+node dist/index.js --dry-run engage +flow_node_config_schema --node_type message_push
 
 echo "[dry-run] flow process report"
-node dist/index.js --dry-run te-engage +flow-process-report --project-id "$PROJECT_ID" --flow-uuid "$FLOW_UUID" --report-type overview
+node dist/index.js --dry-run engage +flow_process_report --project_id "$PROJECT_ID" --flow_uuid "$FLOW_UUID" --report_type overview
 
 echo "[dry-run] save flow"
-node dist/index.js --dry-run te-engage +save-flow --project-id "$PROJECT_ID" --req '{"flowName":"demo flow","flowDesc":"demo","nodeList":[{"id":"node_1","name":"entry","type":"single_trigger","config":"{}"},{"id":"node_2","name":"exit","type":"exit_flow","config":"{}"}],"edgeList":[{"source":"node_1","target":"node_2"}]}'
+node dist/index.js --dry-run engage +save_flow --project_id "$PROJECT_ID" --req '{"flowName":"demo flow","flowDesc":"demo","nodeList":[{"id":"node_1","name":"entry","type":"single_trigger","config":"{}"},{"id":"node_2","name":"exit","type":"exit_flow","config":"{}"}],"edgeList":[{"source":"node_1","target":"node_2"}]}'
 
 echo "[dry-run] manage flow"
-node dist/index.js --dry-run te-engage +manage-flow --project-id "$PROJECT_ID" --action end --flow-id-list '["flow_id_1"]'
+node dist/index.js --dry-run engage +manage_flow --project_id "$PROJECT_ID" --action end --flow_id_list '["flow_id_1"]'
 
 # Real call examples:
-# node dist/index.js te-engage +flow-list --project-id "$PROJECT_ID"
-# node dist/index.js te-engage +flow-detail --project-id "$PROJECT_ID" --flow-uuid "$FLOW_UUID"
+# node dist/index.js engage +flow_list --project_id "$PROJECT_ID"
+# node dist/index.js engage +flow_detail --project_id "$PROJECT_ID" --flow_uuid "$FLOW_UUID"

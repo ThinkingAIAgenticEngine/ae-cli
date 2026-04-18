@@ -5,7 +5,7 @@ description: "TE metadata and tracking-plan governance: event/property managemen
 metadata:
   requires:
     bins: ["ae-cli"]
-  cliHelp: "ae-cli te_meta --help"
+  cliHelp: "ae-cli analysis_meta --help"
 ---
 
 # te-meta
@@ -27,7 +27,7 @@ When the user needs "metadata governance and project configuration" capabilities
 
 ## Command Format
 
-`ae-cli te_meta +<tool_name> [options]`
+`ae-cli analysis_meta +<tool_name> [options]`
 
 ## Tool Groups (20)
 
@@ -60,10 +60,10 @@ When the user needs "metadata governance and project configuration" capabilities
 ## Quick Verification
 
 ```bash
-ae-cli te_meta --help
-npm run verify:te-meta-tools
+ae-cli analysis_meta --help
+npm run verify:analysis-meta-tools
 # Example: use dry-run to preview the request (replace project_id with your actual project ID)
-ae-cli te_meta +list_events --project_id <YOUR_PROJECT_ID> --dry-run
+ae-cli analysis_meta +list_events --project_id <YOUR_PROJECT_ID> --dry-run
 ```
 
 ## Reference Docs

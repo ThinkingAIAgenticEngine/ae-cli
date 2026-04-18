@@ -1,4 +1,4 @@
-# te_meta +list_project_users (Read Project Member List)
+# analysis_meta +list_project_users (Read Project Member List)
 
 > **Prerequisite:** Read [`../te-shared/SKILL.md`](../../te-shared/SKILL.md)
 
@@ -10,8 +10,8 @@ Domain: **Project Configuration**
 
 ## Command
 ```bash
-te-cli te_meta +list_project_users --project_id 1
-te-cli te_meta +list_project_users --dry-run
+ae-cli analysis_meta +list_project_users --project_id 1
+ae-cli analysis_meta +list_project_users --dry-run
 ```
 
 ## Parameters

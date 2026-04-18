@@ -4,7 +4,7 @@ version: 1.0.0
 description: "TE cross-module common constraints: define the post-write flow after create/update operations (resource link completion, output conventions, failure fallback). Triggered when requirements involve shared rules across te-analysis/te-meta/te-audience."
 metadata:
   requires:
-    bins: ["te-cli"]
+    bins: ["ae-cli"]
 ---
 
 # te-common
@@ -126,7 +126,7 @@ If the ID cannot be extracted or link generation fails, you must explain the fai
 
 1. Execute the main write-operation command.
 2. Extract `project_id`, `resource_type`, `resource_id` from the input or return value.
-3. Call `te-cli te_common +get_resource_url --project_id <id> --resource_type <type> --resource_id <id>`.
+3. Call `ae-cli analysis_common +get_resource_url --project_id <id> --resource_type <type> --resource_id <id>`.
 4. Output the main result + `markdown_link` (clickable) / `raw_url`.
 
 ## Unified Command Entry

@@ -1,4 +1,4 @@
-# te_meta +delete_project_mark_times (Delete Project Mark Times)
+# analysis_meta +delete_project_mark_times (Delete Project Mark Times)
 
 > **Prerequisite:** Read [`../te-shared/SKILL.md`](../../te-shared/SKILL.md)
 
@@ -9,8 +9,8 @@ Domain: **Project Configuration**
 
 ## Commands
 ```bash
-te-cli te_meta +delete_project_mark_times --project_id 1 --mark_time_ids '[]'
-te-cli te_meta +delete_project_mark_times --dry-run
+ae-cli analysis_meta +delete_project_mark_times --project_id 1 --mark_time_ids '[]'
+ae-cli analysis_meta +delete_project_mark_times --dry-run
 ```
 
 ## Parameters

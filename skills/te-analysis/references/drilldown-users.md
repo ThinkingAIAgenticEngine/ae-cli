@@ -1,4 +1,4 @@
-# te_analysis +drilldown_users (drill down analysis results to users)
+# analysis +drilldown_users (drill down analysis results to users)
 
 > **Prerequisite:** Read [`../te-shared/SKILL.md`](../../te-shared/SKILL.md)
 
@@ -29,9 +29,9 @@ Domain: **Model Analysis**
 
 ## Commands
 ```bash
-ae-cli te_analysis +drilldown_users --project_id 1 --model_type event --qp '{}'
-ae-cli te_analysis +drilldown_users --project_id 1 --model_type retention --qp '{}' --drilldown_date 2026-04-08 --drilldown_groups '[]' --event_index 8 --is_lost true --retention_days 8 --is_churned_user true --funnel_step 8 --interval demo --distribution_bucket 8 --compare_index 8 --include_total true --relation_val demo
-ae-cli te_analysis +drilldown_users --dry-run
+ae-cli analysis +drilldown_users --project_id 1 --model_type event --qp '{}'
+ae-cli analysis +drilldown_users --project_id 1 --model_type retention --qp '{}' --drilldown_date 2026-04-08 --drilldown_groups '[]' --event_index 8 --is_lost true --retention_days 8 --is_churned_user true --funnel_step 8 --interval demo --distribution_bucket 8 --compare_index 8 --include_total true --relation_val demo
+ae-cli analysis +drilldown_users --dry-run
 ```
 
 ## Parameters

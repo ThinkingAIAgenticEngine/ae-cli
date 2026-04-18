@@ -2,6 +2,7 @@ import fs from 'fs';
 import path from 'path';
 import { getToken } from './auth.js';
 import { getActiveHost, getConfigDir } from './config.js';
+import { safeJsonParse, safeReadJsonFile } from './json-utils.js';
 
 const MCP_PROTOCOL_VERSION = '2025-11-25';
 const JSONRPC_VERSION = '2.0';
@@ -25,13 +26,13 @@ export interface McpServiceMapping {
  */
 const serviceMappingMap = new Map<string, McpServiceMapping>();
 
-// 注册 te_analysis 服务映射
-registerMcpMapping('te_analysis', {
+// 注册 analysis 服务映射
+registerMcpMapping('analysis', {
   componentName: 'analysis',
   mappingPath: 'analysis'
 });
 
-// 注册 te_analysis_extend 服务映射（te_analysis 域下的扩展工具路由使用）
+// 注册 te_analysis_extend 服务映射（analysis 域下的扩展工具路由使用）
 registerMcpMapping('te_analysis_extend', {
   componentName: 'analysis',
   mappingPath: 'analysis-extend'
@@ -127,7 +128,7 @@ type McpTokenStore = Record<string, string>;
 function loadMcpTokenStore(): McpTokenStore {
   try {
     if (fs.existsSync(MCP_TOKEN_FILE)) {
-      return JSON.parse(fs.readFileSync(MCP_TOKEN_FILE, 'utf-8'));
+      return safeReadJsonFile(MCP_TOKEN_FILE);
     }
   } catch {}
   return {};
@@ -158,7 +159,7 @@ async function generateMcpToken(hostUrl: string): Promise<string> {
     throw new Error(`MCP token generate HTTP error: ${resp.status} ${resp.statusText}`);
   }
 
-  const data = await resp.json();
+  const data = safeJsonParse(await resp.text());
 
   if (data.return_code !== 0) {
     throw new Error(`MCP token generate error: ${data.return_message || 'unknown'} (code: ${data.return_code})`);
@@ -240,7 +241,7 @@ async function mcpRequest(
     'Content-Type': 'application/json',
     'Accept': 'application/json, text/event-stream',
     'mcp-protocol-version': MCP_PROTOCOL_VERSION,
-    'mcp-token': token
+    'mcp-token': token,
   };
 
   const resp = await fetch(url, {
@@ -253,7 +254,7 @@ async function mcpRequest(
     throw new Error(`MCP HTTP error: ${resp.status} ${resp.statusText}`);
   }
 
-  const data = await resp.json();
+  const data = safeJsonParse(await resp.text());
 
   // JSON-RPC 错误检查
   if (data.error) {
@@ -322,7 +323,7 @@ export function parseMcpResult(result: McpToolResult): any {
   if (result.content.length > 0 && result.content[0].type === 'text') {
     const text = result.content[0].text || '';
     try {
-      return JSON.parse(text);
+      return safeJsonParse(text);
     } catch {
       return text;
     }

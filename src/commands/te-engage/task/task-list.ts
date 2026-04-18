@@ -1,25 +1,25 @@
 import type { Command, RuntimeContext } from '../../framework/types.js';
 import { buildMcpDryRun, executeMcpCommand, readRequiredJsonObject } from '../utils.js';
 
-const serviceName = 'te-engage_task';
+const serviceName = 'engage_task';
 const toolName = 'query_task_list';
 
 function buildArgs(ctx: RuntimeContext): Record<string, any> {
   return {
-    projectId: ctx.num('project-id'),
+    projectId: ctx.num('project_id'),
     req: {
-      projectId: ctx.num('project-id'),
+      projectId: ctx.num('project_id'),
       ...readRequiredJsonObject(ctx, 'req'),
     },
   };
 }
 
 export const taskList: Command = {
-  service: 'te-engage',
-  command: '+task-list',
+  service: 'engage',
+  command: '+task_list',
   description: 'Query the paginated task list.',
   flags: [
-    { name: 'project-id', type: 'number', required: true, alias: 'p', desc: 'Project ID' },
+    { name: 'project_id', type: 'number', required: true, alias: 'p', desc: 'Project ID' },
     { name: 'req', type: 'json', required: true, desc: 'Task list request as JSON object' },
   ],
   risk: 'read',

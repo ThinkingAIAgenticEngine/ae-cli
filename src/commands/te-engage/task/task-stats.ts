@@ -1,25 +1,25 @@
 import type { Command, RuntimeContext } from '../../framework/types.js';
 import { buildMcpDryRun, executeMcpCommand, readRequiredJsonObject } from '../utils.js';
 
-const serviceName = 'te-engage_task';
+const serviceName = 'engage_task';
 const toolName = 'get_task_stats';
 
 function buildArgs(ctx: RuntimeContext): Record<string, any> {
   return {
-    projectId: ctx.num('project-id'),
+    projectId: ctx.num('project_id'),
     req: {
-      projectId: ctx.num('project-id'),
+      projectId: ctx.num('project_id'),
       ...readRequiredJsonObject(ctx, 'req'),
     },
   };
 }
 
 export const taskStats: Command = {
-  service: 'te-engage',
-  command: '+task-stats',
+  service: 'engage',
+  command: '+task_stats',
   description: 'Get status statistics for tasks.',
   flags: [
-    { name: 'project-id', type: 'number', required: true, alias: 'p', desc: 'Project ID' },
+    { name: 'project_id', type: 'number', required: true, alias: 'p', desc: 'Project ID' },
     { name: 'req', type: 'json', required: true, desc: 'Task stats request as JSON object' },
   ],
   risk: 'read',

@@ -2,6 +2,7 @@ import * as readline from 'readline';
 import type { Command, RuntimeContext, GlobalOptions, OutputFormat } from './types.js';
 import { printOutput, printError } from './output.js';
 import { getActiveHost } from '../core/config.js';
+import { safeJsonParse } from '../core/json-utils.js';
 
 export async function runCommand(cmd: Command, opts: Record<string, any>, globalOpts: GlobalOptions): Promise<void> {
   try {
@@ -85,7 +86,7 @@ function createRuntimeContext(cmd: Command, opts: Record<string, any>, globalOpt
       if (val === undefined || val === null) return undefined;
       if (typeof val === 'object') return val;
       try {
-        return JSON.parse(String(val));
+        return safeJsonParse(String(val));
       } catch {
         printError('validation', `Invalid JSON for --${name}: ${val}`);
         process.exit(1);

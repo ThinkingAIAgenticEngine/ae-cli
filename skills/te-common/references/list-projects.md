@@ -1,4 +1,4 @@
-# te_common +list_projects (view projects accessible to the current user)
+# analysis_common +list_projects (view projects accessible to the current user)
 
 > **Prerequisite:** Read [`../te-shared/SKILL.md`](../../te-shared/SKILL.md)
 
@@ -15,8 +15,8 @@ Domain: **project discovery / cross-module pre-query**
 
 ## Command
 ```bash
-te-cli te_common +list_projects
-te-cli te_common +list_projects --dry-run
+ae-cli analysis_common +list_projects
+ae-cli analysis_common +list_projects --dry-run
 ```
 
 ## Parameters

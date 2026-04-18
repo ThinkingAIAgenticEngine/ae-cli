@@ -1,32 +1,32 @@
-# te-engage +update-config-channel-status
+# te-engage +update_config_channel_status
 
-> **前置条件:** 阅读 [`../../te-shared/SKILL.md`](../../te-shared/SKILL.md)
+> **Prerequisite:** Read [`../../te-shared/SKILL.md`](../../te-shared/SKILL.md)
 
-更新配置通道状态。
+Update the status of a config channel.
 
-映射命令: `te-cli te-engage +update-config-channel-status`
+Mapped command: `ae-cli engage +update_config_channel_status`
 
 ## Flags
 
-| Flag | 类型 | 必填 | 说明 |
+| Flag | Type | Required | Description |
 |------|------|------|------|
-| `--project-id` / `-p` | number | 是 | 项目 ID |
-| `--channel-id` | string | 是 | 配置通道 ID |
-| `--channel-status` | number | 是 | 配置通道状态 |
+| `--project_id` / `-p` | number | Yes | Project ID |
+| `--channel_id` | string | Yes | config channel ID |
+| `--channel_status` | number | Yes | config channel status |
 
-## 枚举说明
+## Enum Notes
 
-### `--channel-status`
+### `--channel_status`
 
 - `1`: enabled
 - `2`: disabled
 
-## 安全约束
+## Safety Constraints
 
-此命令为 **写操作**，会修改配置通道状态。
+This command is a **write operation** and and modifies the config channel status.
 
-## 示例
+## Examples
 
 ```bash
-te-cli te-engage +update-config-channel-status --project-id 1 --channel-id <channel-id> --channel-status 1
+ae-cli engage +update_config_channel_status --project_id 1 --channel_id <channel_id> --channel_status 1
 ```

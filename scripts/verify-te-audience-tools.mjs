@@ -40,22 +40,22 @@ for (const file of commandFiles) {
 
 const commandSet = new Set(commands);
 if (commandSet.size !== commands.length) {
-  fail('duplicate te_audience command names found in source files');
+  fail('duplicate analysis_audience command names found in source files');
 }
 
 const EXPECTED_COUNT = 14;
 if (commands.length !== EXPECTED_COUNT) {
-  fail(`te_audience tool count mismatch: expected ${EXPECTED_COUNT}, got ${commands.length}`);
+  fail(`analysis_audience tool count mismatch: expected ${EXPECTED_COUNT}, got ${commands.length}`);
 }
 
-const help = spawnSync('npx', ['tsx', 'src/index.ts', 'te_audience', '--help'], {
+const help = spawnSync('npx', ['tsx', 'src/index.ts', 'analysis_audience', '--help'], {
   cwd: ROOT,
   encoding: 'utf-8',
 });
 
 if (help.status !== 0) {
   process.stderr.write(help.stderr || '');
-  fail('failed to run te_audience --help');
+  fail('failed to run analysis_audience --help');
 }
 
 for (const tool of commands) {
@@ -65,4 +65,4 @@ for (const tool of commands) {
   }
 }
 
-console.log(`OK: verified ${commands.length} te_audience tools are registered and aligned.`);
+console.log(`OK: verified ${commands.length} analysis_audience tools are registered and aligned.`);

@@ -1,4 +1,4 @@
-# te_analysis +create_result_cluster (create result cluster)
+# analysis +create_result_cluster (create result cluster)
 
 > **Prerequisite:** Read [`../te-shared/SKILL.md`](../../te-shared/SKILL.md)
 
@@ -27,9 +27,9 @@ Domain: **Model Analysis**
 
 ## Commands
 ```bash
-te-cli te_analysis +create_result_cluster --project_id 1 --cluster_name demo --model_type event --qp '{}'
-te-cli te_analysis +create_result_cluster --project_id 1 --cluster_name demo --display_name demo --model_type event --qp '{}' --zone_offset 8 --drilldown_date 2026-04-08 --drilldown_groups '[]' --event_index 8 --is_lost true --retention_days 8 --is_churned_user true --funnel_step 8 --interval demo --distribution_bucket 8 --compare_index 8 --include_total true --relation_val demo
-te-cli te_analysis +create_result_cluster --dry-run
+ae-cli analysis +create_result_cluster --project_id 1 --cluster_name demo --model_type event --qp '{}'
+ae-cli analysis +create_result_cluster --project_id 1 --cluster_name demo --display_name demo --model_type event --qp '{}' --zone_offset 8 --drilldown_date 2026-04-08 --drilldown_groups '[]' --event_index 8 --is_lost true --retention_days 8 --is_churned_user true --funnel_step 8 --interval demo --distribution_bucket 8 --compare_index 8 --include_total true --relation_val demo
+ae-cli analysis +create_result_cluster --dry-run
 ```
 
 ## Parameters

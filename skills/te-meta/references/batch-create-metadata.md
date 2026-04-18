@@ -1,4 +1,4 @@
-# te_meta +batch_create_metadata (Batch Create Metadata)
+# analysis_meta +batch_create_metadata (Batch Create Metadata)
 
 > **Prerequisite:** Read [`../te-shared/SKILL.md`](../../te-shared/SKILL.md)
 
@@ -9,9 +9,9 @@ Domain: **Metadata Query**
 
 ## Commands
 ```bash
-te-cli te_meta +batch_create_metadata --project_id 1
-te-cli te_meta +batch_create_metadata --project_id 1 --events '[{"eventName":"purchase"}]' --event_properties '[{"propName":"price","selectType":"number"}]' --user_properties '[{"propName":"vip_level","selectType":"string"}]'
-te-cli te_meta +batch_create_metadata --dry-run
+ae-cli analysis_meta +batch_create_metadata --project_id 1
+ae-cli analysis_meta +batch_create_metadata --project_id 1 --events '[{"eventName":"purchase"}]' --event_properties '[{"propName":"price","selectType":"number"}]' --user_properties '[{"propName":"vip_level","selectType":"string"}]'
+ae-cli analysis_meta +batch_create_metadata --dry-run
 ```
 
 ## Parameters

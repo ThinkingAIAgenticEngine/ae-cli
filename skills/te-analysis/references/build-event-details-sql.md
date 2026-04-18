@@ -1,4 +1,4 @@
-# te_analysis +build_event_details_sql (generate event detail SQL)
+# analysis +build_event_details_sql (generate event detail SQL)
 
 > **Prerequisite:** Read [`../te-shared/SKILL.md`](../../te-shared/SKILL.md)
 
@@ -17,16 +17,16 @@ Domain: **Event Detail SQL Queries**
 - Do not generate final `filters` / `properties` until the above docs have been read and the prerequisite commands have been called.
 
 ## Prerequisite Call Chain (required for filters/properties)
-1. Read `get-filter-schema.md`, then call `te-cli te_analysis +get_filter_schema` to get the filter structure.
-2. Read `list-events.md`, then call `te-cli te_meta +list_events --project_id 1` to confirm available event names.
-3. Read `list-properties.md`, then call `te-cli te_meta +list_properties --project_id 1` to get available properties.
+1. Read `get-filter-schema.md`, then call `ae-cli analysis +get_filter_schema` to get the filter structure.
+2. Read `list-events.md`, then call `ae-cli analysis_meta +list_events --project_id 1` to confirm available event names.
+3. Read `list-properties.md`, then call `ae-cli analysis_meta +list_properties --project_id 1` to get available properties.
 4. Build `filters` / `properties` based on the schema and metadata, then call `+build_event_details_sql`.
 
 ## Commands
 ```bash
-te-cli te_analysis +build_event_details_sql --project_id 1 --event_name login --start_time '2026-04-08 00:00:00' --end_time '2026-04-08 23:59:59'
-te-cli te_analysis +build_event_details_sql --project_id 1 --event_name login --relative_date_range 0-7 --filters '{}' --properties '{}' --sort_by time --sort_order desc --limit 100 --zone_offset 8
-te-cli te_analysis +build_event_details_sql --dry-run
+ae-cli analysis +build_event_details_sql --project_id 1 --event_name login --start_time '2026-04-08 00:00:00' --end_time '2026-04-08 23:59:59'
+ae-cli analysis +build_event_details_sql --project_id 1 --event_name login --relative_date_range 0-7 --filters '{}' --properties '{}' --sort_by time --sort_order desc --limit 100 --zone_offset 8
+ae-cli analysis +build_event_details_sql --dry-run
 ```
 
 ## Parameters
@@ -37,8 +37,8 @@ te-cli te_analysis +build_event_details_sql --dry-run
 | `--start_time` | No | Start time. Format: yyyy-MM-dd HH:mm:ss |
 | `--end_time` | No | End time. Format: yyyy-MM-dd HH:mm:ss |
 | `--relative_date_range` | No | Optional relative date range in m-n format. For example, 0-7 means the most recent 7 days including today. Use either this field or start_time/end_time. |
-| `--filters` | No | Optional filter JSON. If provided, MUST follow `+get_filter_schema`, and referenced fields must come from `te_meta +list_properties` in the same `project_id`. |
-| `--properties` | No | Optional display properties JSON, for example `[{"columnName":"#user_id","tableType":"0"},{"columnName":"device_id","tableType":"0"}]`. If provided, property names should come from `te_meta +list_properties` in the same `project_id`. |
+| `--filters` | No | Optional filter JSON. If provided, MUST follow `+get_filter_schema`, and referenced fields must come from `analysis_meta +list_properties` in the same `project_id`. |
+| `--properties` | No | Optional display properties JSON, for example `[{"columnName":"#user_id","tableType":"0"},{"columnName":"device_id","tableType":"0"}]`. If provided, property names should come from `analysis_meta +list_properties` in the same `project_id`. |
 | `--sort_by` | No | Optional sort field |
 | `--sort_order` | No | Optional sort order. Supported values: asc and desc |
 | `--limit` | No | Optional result limit. Default: 100 |
@@ -57,5 +57,5 @@ te-cli te_analysis +build_event_details_sql --dry-run
 - If `Invalid JSON` appears, first check the required filter schema fields, then verify that the event name/property name comes from metadata queried in the same `project_id`.
 
 ## Recommended Chaining
-- +get_filter_schema -> te_meta +list_events -> te_meta +list_properties -> +build_event_details_sql
+- +get_filter_schema -> analysis_meta +list_events -> analysis_meta +list_properties -> +build_event_details_sql
 - +query_entity_details -> +query_event_details -> +build_event_details_sql

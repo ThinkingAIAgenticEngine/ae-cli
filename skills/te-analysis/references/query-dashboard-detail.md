@@ -1,4 +1,4 @@
-# te_analysis +query_dashboard_detail (read dashboard structure)
+# analysis +query_dashboard_detail (read dashboard structure)
 
 > **Prerequisite:** Read [`../te-shared/SKILL.md`](../../te-shared/SKILL.md)
 
@@ -13,8 +13,8 @@ Domain: **Dashboard Management**
 
 ## Commands
 ```bash
-te-cli te_analysis +query_dashboard_detail --project_id 1 --dashboard_id 1
-te-cli te_analysis +query_dashboard_detail --dry-run
+ae-cli analysis +query_dashboard_detail --project_id 1 --dashboard_id 1
+ae-cli analysis +query_dashboard_detail --dry-run
 ```
 
 ## Parameters

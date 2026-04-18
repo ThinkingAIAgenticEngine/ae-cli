@@ -3,6 +3,7 @@ import { httpGet, httpPost } from '../core/client.js';
 import { resolveHost } from '../core/auth.js';
 import { printOutput, printError } from '../framework/output.js';
 import type { OutputFormat } from '../framework/types.js';
+import { safeJsonParse } from '../core/json-utils.js';
 
 export function registerApi(program: CommanderCommand): void {
   program
@@ -28,13 +29,13 @@ export function registerApi(program: CommanderCommand): void {
         let body: any = undefined;
 
         if (opts.params) {
-          try { params = JSON.parse(opts.params); } catch {
+          try { params = safeJsonParse(opts.params); } catch {
             printError('validation', `Invalid JSON for --params: ${opts.params}`);
             process.exit(1);
           }
         }
         if (opts.data) {
-          try { body = JSON.parse(opts.data); } catch {
+          try { body = safeJsonParse(opts.data); } catch {
             printError('validation', `Invalid JSON for --data: ${opts.data}`);
             process.exit(1);
           }

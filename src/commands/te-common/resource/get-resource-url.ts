@@ -48,7 +48,7 @@ function normalizeResourceUrlFields(node: unknown, host: string): void {
 }
 
 export const getResourceUrl: Command = {
-  service: 'te_common',
+  service: 'analysis_common',
   command: '+get_resource_url',
   description: 'Generate a clickable Markdown link for a resource by ID and type (absolute URL)',
   flags: [
@@ -59,7 +59,7 @@ export const getResourceUrl: Command = {
   risk: 'read',
   dryRun: (ctx) => ({
     method: 'tools/call',
-    url: resolveMcpUrl(ctx.mcpUrl(), ctx.host(), 'te_analysis'),
+    url: resolveMcpUrl(ctx.mcpUrl(), ctx.host(), 'analysis'),
     body: {
       name: 'get_resource_url',
       arguments: {
@@ -70,7 +70,7 @@ export const getResourceUrl: Command = {
     },
   }),
   execute: async (ctx) => {
-    const url = resolveMcpUrl(ctx.mcpUrl(), ctx.host(), 'te_analysis');
+    const url = resolveMcpUrl(ctx.mcpUrl(), ctx.host(), 'analysis');
     const result = await callMcpTool(
       url,
       'get_resource_url',

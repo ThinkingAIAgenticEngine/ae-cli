@@ -1,19 +1,19 @@
-# te-engage +flow-detail
+# te-engage +flow_detail
 
-> **前置条件:** 阅读 [`../../te-shared/SKILL.md`](../../te-shared/SKILL.md)
+> **Prerequisite:** Read [`../../te-shared/SKILL.md`](../../te-shared/SKILL.md)
 
-查询流程详情。
+Query flow details.
 
-映射命令: `te-cli te-engage +flow-detail`
+Mapped command: `ae-cli engage +flow_detail`
 
 ## Flags
 
-| Flag | 类型 | 必填 | 说明 |
+| Flag | Type | Required | Description |
 |------|------|------|------|
-| `--project-id` / `-p` | number | 是 | 项目 ID |
-| `--flow-uuid` | string | 是 | Flow UUID |
+| `--project_id` / `-p` | number | Yes | Project ID |
+| `--flow_uuid` | string | Yes | Flow UUID |
 
-## 返回值里的常见枚举
+## Common enums in the response
 
 ### `status`
 
@@ -37,21 +37,21 @@
 
 ### `versionType`
 
-- `0`: history version，历史版本
-- `1`: current version，当前版本
-- `2`: update content version，更新内容版本
-- `3`: new version，新版本
-- `4`: test version，测试版本
+- `0`: history version
+- `1`: current version
+- `2`: update-content version
+- `3`: new version
+- `4`: test version
 
 ### `entryTriggerType`
 
-- `0`: scheduled single trigger，单次定时触发
-- `1`: scheduled recurring trigger，周期定时触发
-- `2`: event trigger，事件触发
+- `0`: scheduled single trigger
+- `1`: scheduled recurring trigger
+- `2`: event trigger
 
 ### `nodeList[].type`
 
-常见节点类型包括：
+Common node types include:
 
 - `single_trigger`
 - `repeat_trigger`
@@ -72,8 +72,8 @@
 - `race_split_flow`
 - `exit_flow`
 
-## 示例
+## Examples
 
 ```bash
-te-cli te-engage +flow-detail --project-id 1 --flow-uuid flow_uuid_123
+ae-cli engage +flow_detail --project_id 1 --flow_uuid flow_uuid_123
 ```

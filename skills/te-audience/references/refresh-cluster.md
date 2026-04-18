@@ -1,4 +1,4 @@
-# te_audience +refresh_cluster (Trigger Cluster Recompute)
+# analysis_audience +refresh_cluster (Trigger Cluster Recompute)
 
 > **Prerequisite:** Read [`../te-shared/SKILL.md`](../../te-shared/SKILL.md)
 
@@ -9,8 +9,8 @@ Domain: **Cluster Management**
 
 ## Commands
 ```bash
-te-cli te_audience +refresh_cluster --project_id 1 --cluster_name demo
-te-cli te_audience +refresh_cluster --dry-run
+ae-cli analysis_audience +refresh_cluster --project_id 1 --cluster_name demo
+ae-cli analysis_audience +refresh_cluster --dry-run
 ```
 
 ## Parameters

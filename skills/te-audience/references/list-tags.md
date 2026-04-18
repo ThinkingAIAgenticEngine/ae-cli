@@ -1,4 +1,4 @@
-# te_audience +list_tags (Tag Search)
+# analysis_audience +list_tags (Tag Search)
 
 > **Prerequisite:** Read [`../te-shared/SKILL.md`](../../te-shared/SKILL.md)
 
@@ -9,9 +9,9 @@ Domain: **Tag Management**
 
 ## Commands
 ```bash
-te-cli te_audience +list_tags --project_id 1
-te-cli te_audience +list_tags --project_id 1 --query demo
-te-cli te_audience +list_tags --dry-run
+ae-cli analysis_audience +list_tags --project_id 1
+ae-cli analysis_audience +list_tags --project_id 1 --query demo
+ae-cli analysis_audience +list_tags --dry-run
 ```
 
 ## Parameters

@@ -1,4 +1,4 @@
-# te_meta +save_track_items (Save Track Program Items)
+# analysis_meta +save_track_items (Save Track Program Items)
 
 > **Prerequisite:** Read [`../te-shared/SKILL.md`](../../te-shared/SKILL.md)
 
@@ -10,8 +10,8 @@ Domain: **Project Configuration**
 
 ## Command
 ```bash
-te-cli te_meta +save_track_items --project_id 1 --track_data '{}'
-te-cli te_meta +save_track_items --dry-run
+ae-cli analysis_meta +save_track_items --project_id 1 --track_data '{}'
+ae-cli analysis_meta +save_track_items --dry-run
 ```
 
 ## Parameters

@@ -1,4 +1,4 @@
-# te_meta +list_events (Event Metadata Discovery)
+# analysis_meta +list_events (Event Metadata Discovery)
 
 > **Prerequisite:** Read [`../te-shared/SKILL.md`](../../te-shared/SKILL.md)
 
@@ -10,9 +10,9 @@ Domain: **Metadata Query**
 
 ## Commands
 ```bash
-ae-cli te_meta +list_events --project_id 1
-ae-cli te_meta +list_events --project_id 1 --query demo
-ae-cli te_meta +list_events --dry-run
+ae-cli analysis_meta +list_events --project_id 1
+ae-cli analysis_meta +list_events --project_id 1 --query demo
+ae-cli analysis_meta +list_events --dry-run
 ```
 
 ## Parameters

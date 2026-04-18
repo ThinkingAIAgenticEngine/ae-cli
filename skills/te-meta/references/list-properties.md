@@ -1,4 +1,4 @@
-# te_meta +list_properties (Property Metadata Discovery)
+# analysis_meta +list_properties (Property Metadata Discovery)
 
 > **Prerequisite:** Read [`../te-shared/SKILL.md`](../../te-shared/SKILL.md)
 
@@ -10,9 +10,9 @@ Domain: **Metadata Query**
 
 ## Commands
 ```bash
-te-cli te_meta +list_properties --project_id 1
-te-cli te_meta +list_properties --project_id 1 --scope event --event_name purchase --query demo
-te-cli te_meta +list_properties --dry-run
+ae-cli analysis_meta +list_properties --project_id 1
+ae-cli analysis_meta +list_properties --project_id 1 --scope event --event_name purchase --query demo
+ae-cli analysis_meta +list_properties --dry-run
 ```
 
 ## Parameters

@@ -12,10 +12,10 @@ interface CreateMcpCommandConfig {
 
 export function createMcpCommand(config: CreateMcpCommandConfig): Command {
   const toolName = config.command.slice(1);
-  const mcpService = config.mcpService || 'te_analysis';
+  const mcpService = config.mcpService || 'analysis';
 
   return {
-    service: 'te_audience',
+    service: 'analysis_audience',
     command: config.command,
     description: config.description,
     flags: config.flags,

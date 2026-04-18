@@ -1,5 +1,6 @@
 import fs from 'fs';
 import path from 'path';
+import { safeReadJsonFile } from './json-utils.js';
 import { execFileSync } from 'node:child_process';
 import { getConfigDir, getActiveHost, extractHostname } from './config.js';
 
@@ -35,7 +36,7 @@ function loadAllTokens(): TokenStore {
     // Migrate from legacy ~/.te-mcp/tokens.json
     const legacyTokens = path.join(LEGACY_DIR, 'tokens.json');
     if (fs.existsSync(legacyTokens) && !fs.existsSync(TOKENS_FILE)) {
-      const data = JSON.parse(fs.readFileSync(legacyTokens, 'utf-8'));
+      const data = safeReadJsonFile(legacyTokens);
       // Migrate keys to full URLs
       const migrated: TokenStore = {};
       for (const [key, val] of Object.entries(data)) {
@@ -47,7 +48,7 @@ function loadAllTokens(): TokenStore {
       return migrated;
     }
     if (fs.existsSync(TOKENS_FILE)) {
-      const data = JSON.parse(fs.readFileSync(TOKENS_FILE, 'utf-8'));
+      const data = safeReadJsonFile(TOKENS_FILE);
       // Check if any keys need URL migration
       let needsMigration = false;
       const migrated: TokenStore = {};

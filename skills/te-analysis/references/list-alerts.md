@@ -1,4 +1,4 @@
-# te_analysis +list_alerts (alert strategy search)
+# analysis +list_alerts (alert strategy search)
 
 > **Prerequisite:** Read [`../te-shared/SKILL.md`](../../te-shared/SKILL.md)
 
@@ -10,9 +10,9 @@ Domain: **Metadata Lookup**
 
 ## Commands
 ```bash
-te-cli te_analysis +list_alerts --project_id 1
-te-cli te_analysis +list_alerts --project_id 1 --query demo
-te-cli te_analysis +list_alerts --dry-run
+ae-cli analysis +list_alerts --project_id 1
+ae-cli analysis +list_alerts --project_id 1 --query demo
+ae-cli analysis +list_alerts --dry-run
 ```
 
 ## Parameters

@@ -1,4 +1,4 @@
-# te_meta +get_project_config (Read Project Analysis Configuration)
+# analysis_meta +get_project_config (Read Project Analysis Configuration)
 
 > **Prerequisite:** Read [`../te-shared/SKILL.md`](../../te-shared/SKILL.md)
 
@@ -10,8 +10,8 @@ Domain: **Project Configuration**
 
 ## Command
 ```bash
-te-cli te_meta +get_project_config --project_id 1
-te-cli te_meta +get_project_config --dry-run
+ae-cli analysis_meta +get_project_config --project_id 1
+ae-cli analysis_meta +get_project_config --dry-run
 ```
 
 ## Parameters

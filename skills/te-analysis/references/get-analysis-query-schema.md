@@ -1,10 +1,10 @@
-# te_analysis +get_analysis_query_schema (Get Analysis Query Schema)
+# analysis +get_analysis_query_schema (Get Analysis Query Schema)
 
 > **Prerequisite:** Read [`../te-shared/SKILL.md`](../../te-shared/SKILL.md)
 
 Domain: **Model schema queries**
 
-- This is the documentation for the `+get_analysis_query_schema` command; read it before running `ae-cli te_analysis +get_analysis_query_schema`.
+- This is the documentation for the `+get_analysis_query_schema` command; read it before running `ae-cli analysis +get_analysis_query_schema`.
 - Get the query schema for the specified analysis model type. Different model types use different schema structures. This tool returns field definitions and examples.
 
 ## Use Cases
@@ -16,8 +16,8 @@ Domain: **Model schema queries**
 
 ## Command
 ```bash
-ae-cli te_analysis +get_analysis_query_schema --model_type event
-ae-cli te_analysis +get_analysis_query_schema --model_type event --dry-run
+ae-cli analysis +get_analysis_query_schema --model_type event
+ae-cli analysis +get_analysis_query_schema --model_type event --dry-run
 ```
 
 ## Parameters

@@ -1,4 +1,4 @@
-# te_analysis +get_groupby_schema (Get Group-By Schema)
+# analysis +get_groupby_schema (Get Group-By Schema)
 
 > **Prerequisite:** Read [`../te-shared/SKILL.md`](../../te-shared/SKILL.md)
 
@@ -13,8 +13,8 @@ Domain: **Schema queries**
 
 ## Command
 ```bash
-te-cli te_analysis +get_groupby_schema
-te-cli te_analysis +get_groupby_schema --dry-run
+ae-cli analysis +get_groupby_schema
+ae-cli analysis +get_groupby_schema --dry-run
 ```
 
 ## Parameters

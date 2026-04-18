@@ -1,4 +1,4 @@
-# te_analysis +get_alert (view alert definition)
+# analysis +get_alert (view alert definition)
 
 > **Prerequisite:** Read [`../te-shared/SKILL.md`](../../te-shared/SKILL.md)
 
@@ -9,8 +9,8 @@ Domain: **Metadata Lookup**
 
 ## Commands
 ```bash
-te-cli te_analysis +get_alert --project_id 1 --alert_id 1
-te-cli te_analysis +get_alert --dry-run
+ae-cli analysis +get_alert --project_id 1 --alert_id 1
+ae-cli analysis +get_alert --dry-run
 ```
 
 ## Parameters

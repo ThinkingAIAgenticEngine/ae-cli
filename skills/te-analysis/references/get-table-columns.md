@@ -1,4 +1,4 @@
-# te_analysis +get_table_columns (Read Underlying Table Columns)
+# analysis +get_table_columns (Read Underlying Table Columns)
 
 > **Prerequisite:** Read [`../te-shared/SKILL.md`](../../te-shared/SKILL.md)
 
@@ -14,8 +14,8 @@ Domain: **Model analysis**
 
 ## Command
 ```bash
-te-cli te_analysis +get_table_columns --project_id 1 --catalog demo --schema demo --table demo
-te-cli te_analysis +get_table_columns --dry-run
+ae-cli analysis +get_table_columns --project_id 1 --catalog demo --schema demo --table demo
+ae-cli analysis +get_table_columns --dry-run
 ```
 
 ## Parameters

@@ -1,4 +1,4 @@
-# te_meta +list_entities (Entity Search)
+# analysis_meta +list_entities (Entity Search)
 
 > **Prerequisite:** Read [`../te-shared/SKILL.md`](../../te-shared/SKILL.md)
 
@@ -10,9 +10,9 @@ Domain: **Entity Query**
 
 ## Command
 ```bash
-ae-cli te_meta +list_entities --project_id 1
-ae-cli te_meta +list_entities --project_id 1 --event_name demo
-ae-cli te_meta +list_entities --dry-run
+ae-cli analysis_meta +list_entities --project_id 1
+ae-cli analysis_meta +list_entities --project_id 1 --event_name demo
+ae-cli analysis_meta +list_entities --dry-run
 ```
 
 ## Parameters

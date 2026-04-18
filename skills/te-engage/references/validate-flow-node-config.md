@@ -1,24 +1,24 @@
-# te-engage +validate-flow-node-config
+# te-engage +validate_flow_node_config
 
-> **前置条件:** 阅读 [`../../te-shared/SKILL.md`](../../te-shared/SKILL.md)
+> **Prerequisite:** Read [`../../te-shared/SKILL.md`](../../te-shared/SKILL.md)
 
-在保存流程前校验单个节点配置。
+Validate a single node configuration before saving a flow.
 
-映射命令: `te-cli te-engage +validate-flow-node-config`
+Mapped command: `ae-cli engage +validate_flow_node_config`
 
 ## Flags
 
-| Flag | 类型 | 必填 | 说明 |
+| Flag | Type | Required | Description |
 |------|------|------|------|
-| `--node-type` | string | 是 | 节点类型 |
-| `--config` | string | 是 | 节点配置 JSON 字符串 |
-| `--operation-mode` | string | 是 | 校验模式 |
+| `--node_type` | string | Yes | node type |
+| `--config` | string | Yes | node config JSON string |
+| `--operation_mode` | string | Yes | validation mode |
 
-## 枚举说明
+## Enum Notes
 
-### `--node-type`
+### `--node_type`
 
-常见节点类型包括：
+Common node types include:
 
 - `single_trigger`
 - `repeat_trigger`
@@ -39,14 +39,14 @@
 - `race_split_flow`
 - `exit_flow`
 
-### `--operation-mode`
+### `--operation_mode`
 
 - `save_flow`
 - `save_submit_flow`
 
-## 示例
+## Examples
 
 ```bash
-te-cli te-engage +validate-flow-node-config \
-  --node-type message_push --operation-mode save_flow --config '{}'
+ae-cli engage +validate_flow_node_config \
+  --node_type message_push --operation_mode save_flow --config '{}'
 ```

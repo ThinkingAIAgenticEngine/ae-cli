@@ -1,25 +1,25 @@
-# te-engage +delete-config-item
+# te-engage +delete_config_item
 
-> **前置条件:** 阅读 [`../../te-shared/SKILL.md`](../../te-shared/SKILL.md)
+> **Prerequisite:** Read [`../../te-shared/SKILL.md`](../../te-shared/SKILL.md)
 
-删除配置项。
+Delete a config item.
 
-映射命令: `te-cli te-engage +delete-config-item`
+Mapped command: `ae-cli engage +delete_config_item`
 
 ## Flags
 
-| Flag | 类型 | 必填 | 说明 |
+| Flag | Type | Required | Description |
 |------|------|------|------|
-| `--project-id` / `-p` | number | 是 | 项目 ID |
-| `--config-id` | string | 是 | 配置项 ID |
-| `--open-id` | string | 是 | 操作人 open ID |
+| `--project_id` / `-p` | number | Yes | Project ID |
+| `--config_id` | string | Yes | config item ID |
+| `--open_id` | string | Yes | operator open ID |
 
-## 安全约束
+## Safety Constraints
 
-此命令为 **写操作**，会删除配置项。
+This command is a **write operation** and deletes a config item.
 
-## 示例
+## Examples
 
 ```bash
-te-cli te-engage +delete-config-item --project-id 1 --config-id cfg_123 --open-id ou_xxx
+ae-cli engage +delete_config_item --project_id 1 --config_id cfg_123 --open_id ou_xxx
 ```

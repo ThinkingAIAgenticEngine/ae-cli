@@ -1,4 +1,4 @@
-# te_analysis +create_dashboard (create dashboard)
+# analysis +create_dashboard (create dashboard)
 
 > **Prerequisite:** Read [`../te-shared/SKILL.md`](../../te-shared/SKILL.md)
 
@@ -12,9 +12,9 @@ Domain: **Dashboard Management**
 
 ## Commands
 ```bash
-ae-cli te_analysis +create_dashboard --project_id 1 --dashboard_name demo
-ae-cli te_analysis +create_dashboard --project_id 1 --dashboard_name demo --space_id 1 --folder_id 1 --initial_report_id 1 --note_title demo --note_content demo --note_style '{}'
-ae-cli te_analysis +create_dashboard --project_id 1 --dashboard_name demo --dry-run
+ae-cli analysis +create_dashboard --project_id 1 --dashboard_name demo
+ae-cli analysis +create_dashboard --project_id 1 --dashboard_name demo --space_id 1 --folder_id 1 --initial_report_id 1 --note_title demo --note_content demo --note_style '{}'
+ae-cli analysis +create_dashboard --project_id 1 --dashboard_name demo --dry-run
 ```
 
 ## Parameters

@@ -1,4 +1,4 @@
-# te_analysis +create_report (Create Report)
+# analysis +create_report (Create Report)
 
 > **Prerequisite:** Read [`../te-shared/SKILL.md`](../../te-shared/SKILL.md)
 
@@ -6,7 +6,7 @@ Domain: **Report management**
 
 ## Use Cases
 - Precondition helper: call `+get_analysis_query_schema` to get the structure before using this tool.
-- When constructing a real `analysis_query`, you must supplement it with real project metadata; first call `te_meta +list_events` and `te_meta +list_properties`.
+- When constructing a real `analysis_query`, you must supplement it with real project metadata; first call `analysis_meta +list_events` and `analysis_meta +list_properties`.
 - Create and persist a new report definition. Returns the new report ID and name without querying data or modifying existing reports.
 
 ## Mandatory prerequisites (MUST)
@@ -18,16 +18,16 @@ Domain: **Report management**
 
 ## Prerequisite call chain (required for constructing analysis_query)
 1. First determine `--model_type`.
-2. Read `get-analysis-query-schema.md`, then call `te-cli te_analysis +get_analysis_query_schema --model_type <model_type>` to get the structure.
-3. Read `list-events.md`, then call `te-cli te_meta +list_events --project_id 1`.
-4. Read `list-properties.md`, then call `te-cli te_meta +list_properties --project_id 1`.
+2. Read `get-analysis-query-schema.md`, then call `ae-cli analysis +get_analysis_query_schema --model_type <model_type>` to get the structure.
+3. Read `list-events.md`, then call `ae-cli analysis_meta +list_events --project_id 1`.
+4. Read `list-properties.md`, then call `ae-cli analysis_meta +list_properties --project_id 1`.
 5. Build `analysis_query` from the schema + metadata, then call `+create_report`.
 
 ## Command
 ```bash
-te-cli te_analysis +create_report --project_id 1 --report_name demo --model_type event --analysis_query '{}'
-te-cli te_analysis +create_report --project_id 1 --report_name demo --model_type event --analysis_query '{}' --description demo --cache_seconds 8 --query_duration_ms 8 --dashboard_ids '[]'
-te-cli te_analysis +create_report --dry-run
+ae-cli analysis +create_report --project_id 1 --report_name demo --model_type event --analysis_query '{}'
+ae-cli analysis +create_report --project_id 1 --report_name demo --model_type event --analysis_query '{}' --description demo --cache_seconds 8 --query_duration_ms 8 --dashboard_ids '[]'
+ae-cli analysis +create_report --dry-run
 ```
 
 ## Parameters
@@ -36,7 +36,7 @@ te-cli te_analysis +create_report --dry-run
 | `--project_id` / `-p` | Yes | Project ID |
 | `--report_name` | Yes | Report name. Length: 1-80 characters |
 | `--model_type` | Yes | Report model type. Supported values: event, retention, funnel, prop_analysis, path, distribution, sql, interval, attribution |
-| `--analysis_query` | Yes | Report analysis query JSON. MUST call `+get_analysis_query_schema` first, and use event/property metadata from `te_meta +list_events` / `te_meta +list_properties` in the same `project_id`. |
+| `--analysis_query` | Yes | Report analysis query JSON. MUST call `+get_analysis_query_schema` first, and use event/property metadata from `analysis_meta +list_events` / `analysis_meta +list_properties` in the same `project_id`. |
 | `--description` | No | Optional report description |
 | `--cache_seconds` | No | Optional cache duration in seconds |
 | `--query_duration_ms` | No | Optional query duration in milliseconds |
@@ -56,5 +56,5 @@ te-cli te_analysis +create_report --dry-run
 - If the result after writing does not match expectations, immediately read back the corresponding list/get interface to compare before and after.
 
 ## Recommended chaining
-- +get_analysis_query_schema -> te_meta +list_events -> te_meta +list_properties -> +create_report
+- +get_analysis_query_schema -> analysis_meta +list_events -> analysis_meta +list_properties -> +create_report
 - +list_reports -> +get_report_definition -> +query_report_data

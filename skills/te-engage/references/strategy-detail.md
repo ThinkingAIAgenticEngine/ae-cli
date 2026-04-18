@@ -1,20 +1,20 @@
-# te-engage +strategy-detail
+# te-engage +strategy_detail
 
-> **前置条件:** 阅读 [`../../te-shared/SKILL.md`](../../te-shared/SKILL.md)
+> **Prerequisite:** Read [`../../te-shared/SKILL.md`](../../te-shared/SKILL.md)
 
-查询单个策略详情。
+Query the details of a single strategy.
 
-映射命令: `te-cli te-engage +strategy-detail`
+Mapped command: `ae-cli engage +strategy_detail`
 
 ## Flags
 
-| Flag | 类型 | 必填 | 说明 |
+| Flag | Type | Required | Description |
 |------|------|------|------|
-| `--project-id` / `-p` | number | 是 | 项目 ID |
-| `--config-id` | string | 是 | 配置项 ID |
-| `--strategy-uuid` | string | 是 | 策略 UUID |
+| `--project_id` / `-p` | number | Yes | Project ID |
+| `--config_id` | string | Yes | config item ID |
+| `--strategy_uuid` | string | Yes | strategy UUID |
 
-## 返回值里的常见枚举
+## Common enums in the response
 
 ### `status`
 
@@ -43,8 +43,8 @@
 
 ### `realtime`
 
-- `0`: physical cluster，物理人群
-- `1`: virtual cluster，虚拟人群
+- `0`: physical cluster, physical audience
+- `1`: virtual cluster, virtual audience
 
 ### `triggerType`
 
@@ -54,9 +54,9 @@
 
 ### `versionType`
 
-- `0`: history version，历史版本
-- `1`: current version，当前版本
-- `2`: update content version，更新内容版本
+- `0`: history version
+- `1`: current version
+- `2`: update-content version
 
 ### `channelType`
 
@@ -66,8 +66,8 @@
 - `4`: `WECHAT`
 - `5`: `DOU_YIN`
 
-## 示例
+## Examples
 
 ```bash
-te-cli te-engage +strategy-detail --project-id 1 --config-id cfg_123 --strategy-uuid uuid_123
+ae-cli engage +strategy_detail --project_id 1 --config_id cfg_123 --strategy_uuid uuid_123
 ```

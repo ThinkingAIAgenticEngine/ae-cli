@@ -1,24 +1,24 @@
-# te-engage +delete-flow
+# te-engage +delete_flow
 
-> **前置条件:** 阅读 [`../../te-shared/SKILL.md`](../../te-shared/SKILL.md)
+> **Prerequisite:** Read [`../../te-shared/SKILL.md`](../../te-shared/SKILL.md)
 
-批量删除流程。
+Batch delete flows.
 
-映射命令: `te-cli te-engage +delete-flow`
+Mapped command: `ae-cli engage +delete_flow`
 
 ## Flags
 
-| Flag | 类型 | 必填 | 说明 |
+| Flag | Type | Required | Description |
 |------|------|------|------|
-| `--project-id` / `-p` | number | 是 | 项目 ID |
-| `--flow-uuid-list` | json | 是 | Flow UUID JSON 数组 |
+| `--project_id` / `-p` | number | Yes | Project ID |
+| `--flow_uuid_list` | json | Yes | Flow UUID JSON array |
 
-## 安全约束
+## Safety Constraints
 
-此命令为 **写操作**，会删除流程。
+This command is a **write operation** and and deletes flows.
 
-## 示例
+## Examples
 
 ```bash
-te-cli te-engage +delete-flow --project-id 1 --flow-uuid-list '["flow_uuid_1"]'
+ae-cli engage +delete_flow --project_id 1 --flow_uuid_list '["flow_uuid_1"]'
 ```

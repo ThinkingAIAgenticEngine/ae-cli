@@ -1,24 +1,24 @@
-# te-engage +delete-channel
+# te-engage +delete_channel
 
-> **前置条件:** 阅读 [`../../te-shared/SKILL.md`](../../te-shared/SKILL.md)
+> **Prerequisite:** Read [`../../te-shared/SKILL.md`](../../te-shared/SKILL.md)
 
-删除 Engage 渠道。
+Delete an Engage channel.
 
-映射命令: `te-cli te-engage +delete-channel`
+Mapped command: `ae-cli engage +delete_channel`
 
 ## Flags
 
-| Flag | 类型 | 必填 | 说明 |
+| Flag | Type | Required | Description |
 |------|------|------|------|
-| `--project-id` / `-p` | number | 是 | 项目 ID |
-| `--channel-id` | string | 是 | 渠道 ID |
+| `--project_id` / `-p` | number | Yes | Project ID |
+| `--channel_id` | string | Yes | channel ID |
 
-## 安全约束
+## Safety Constraints
 
-此命令为 **写操作**，执行前应确认该渠道允许删除。
+This command is a **write operation** and Before executing, confirm that this channel is allowed to be deleted.
 
-## 示例
+## Examples
 
 ```bash
-te-cli te-engage +delete-channel --project-id 1 --channel-id <channel-id>
+ae-cli engage +delete_channel --project_id 1 --channel_id <channel_id>
 ```

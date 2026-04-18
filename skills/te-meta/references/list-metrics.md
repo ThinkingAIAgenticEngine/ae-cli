@@ -1,4 +1,4 @@
-# te_meta +list_metrics (Metric Search)
+# analysis_meta +list_metrics (Metric Search)
 
 > **Prerequisite:** Read [`../te-shared/SKILL.md`](../../te-shared/SKILL.md)
 
@@ -10,9 +10,9 @@ Domain: **Metadata Query**
 
 ## Command
 ```bash
-ae-cli te_meta +list_metrics --project_id 1
-ae-cli te_meta +list_metrics --project_id 1 --query demo
-ae-cli te_meta +list_metrics --dry-run
+ae-cli analysis_meta +list_metrics --project_id 1
+ae-cli analysis_meta +list_metrics --project_id 1 --query demo
+ae-cli analysis_meta +list_metrics --dry-run
 ```
 
 ## Parameters

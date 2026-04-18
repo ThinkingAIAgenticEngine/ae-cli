@@ -1,4 +1,4 @@
-# te_analysis +create_or_update_dashboard_note (Maintain Dashboard Note)
+# analysis +create_or_update_dashboard_note (Maintain Dashboard Note)
 
 > **Prerequisite:** Read [`../te-shared/SKILL.md`](../../te-shared/SKILL.md)
 
@@ -10,9 +10,9 @@ Domain: **Dashboard management**
 
 ## Command
 ```bash
-te-cli te_analysis +create_or_update_dashboard_note --project_id 1 --dashboard_id 1 --note_title demo
-te-cli te_analysis +create_or_update_dashboard_note --project_id 1 --dashboard_id 1 --note_id 1 --note_title demo --description demo --ui_config '{}'
-te-cli te_analysis +create_or_update_dashboard_note --dry-run
+ae-cli analysis +create_or_update_dashboard_note --project_id 1 --dashboard_id 1 --note_title demo
+ae-cli analysis +create_or_update_dashboard_note --project_id 1 --dashboard_id 1 --note_id 1 --note_title demo --description demo --ui_config '{}'
+ae-cli analysis +create_or_update_dashboard_note --dry-run
 ```
 
 ## Parameters

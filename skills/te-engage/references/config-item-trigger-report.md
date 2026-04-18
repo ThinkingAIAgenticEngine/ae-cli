@@ -1,42 +1,42 @@
-# te-engage +config-item-trigger-report
+# te-engage +config_item_trigger_report
 
-> **前置条件:** 阅读 [`../../te-shared/SKILL.md`](../../te-shared/SKILL.md)
+> **Prerequisite:** Read [`../../te-shared/SKILL.md`](../../te-shared/SKILL.md)
 
-查询配置项的发布与触发趋势报表。
+Query the publish and trigger trend report for a config item.
 
-映射命令: `te-cli te-engage +config-item-trigger-report`
+Mapped command: `ae-cli engage +config_item_trigger_report`
 
 ## Flags
 
-| Flag | 类型 | 必填 | 说明 |
+| Flag | Type | Required | Description |
 |------|------|------|------|
-| `--project-id` / `-p` | number | 是 | 项目 ID |
-| `--config-id` | string | 是 | 配置项 ID |
-| `--start-time` | string | 是 | 开始日期 |
-| `--end-time` | string | 是 | 结束日期 |
-| `--request-id` | string | 否 | 查询 requestId |
-| `--template-id-list` | json | 否 | 模板 ID JSON 数组 |
-| `--strategy-id-list` | json | 否 | 策略 ID JSON 数组 |
-| `--show-time-zone` | number | 否 | 展示时区偏移 |
-| `--analyze-report-internal-query` | boolean | 否 | 内部分析开关 |
+| `--project_id` / `-p` | number | Yes | Project ID |
+| `--config_id` | string | Yes | config item ID |
+| `--start_time` | string | Yes | Start date |
+| `--end_time` | string | Yes | End date |
+| `--request_id` | string | No | query requestId |
+| `--template_id_list` | json | No | template ID JSON array |
+| `--strategy_id_list` | json | No | strategy ID JSON array |
+| `--show_time_zone` | number | No | display timezone offset |
+| `--analyze_report_internal_query` | boolean | No | internal analysis switch |
 
-## 枚举说明
+## Enum Notes
 
-### `--analyze-report-internal-query`
+### `--analyze_report_internal_query`
 
-- `true`: 使用内部 analysis-report 查询路径
-- `false`: 使用默认查询路径
+- `true`: use the internal analysis-report query path
+- `false`: use the default query path
 
-## 参数约束
+## Parameter Constraints
 
-- `--template-id-list` 和 `--strategy-id-list` 不能同时传。
-- 两者都不传时，查询配置项级别数据。
-- `--start-time`、`--end-time` 使用 `yyyy-MM-dd`。
+- `--template_id_list` and `--strategy_id_list` cannot be used together.
+- If neither is provided, query config-item-level data.
+- `--start_time`、`--end_time` use `yyyy-MM-dd`.
 
-## 示例
+## Examples
 
 ```bash
-te-cli te-engage +config-item-trigger-report \
-  --project-id 1 --config-id cfg_123 \
-  --start-time 2026-04-01 --end-time 2026-04-07
+ae-cli engage +config_item_trigger_report \
+  --project_id 1 --config_id cfg_123 \
+  --start_time 2026-04-01 --end_time 2026-04-07
 ```

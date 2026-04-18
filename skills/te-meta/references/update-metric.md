@@ -1,4 +1,4 @@
-# te_meta +update_metric (Update Metric)
+# analysis_meta +update_metric (Update Metric)
 
 > **Prerequisite:** Read [`../te-shared/SKILL.md`](../../te-shared/SKILL.md)
 
@@ -18,16 +18,16 @@ Domain: **Metadata Query**
 
 ## Prerequisite Call Chain (Required for Updating events/params)
 1. Determine `--model_type` first (`event` / `retention`).
-2. Read `get-analysis-query-schema.md`, then call `te-cli te_analysis +get_analysis_query_schema --model_type <event|retention>` to get the structure.
-3. Read `list-events.md`, then call `te-cli te_meta +list_events --project_id 1`.
-4. Read `list-properties.md`, then call `te-cli te_meta +list_properties --project_id 1`.
+2. Read `get-analysis-query-schema.md`, then call `ae-cli analysis +get_analysis_query_schema --model_type <event|retention>` to get the structure.
+3. Read `list-events.md`, then call `ae-cli analysis_meta +list_events --project_id 1`.
+4. Read `list-properties.md`, then call `ae-cli analysis_meta +list_properties --project_id 1`.
 5. Build the new `events` / `params` from the schema + metadata, then execute `+update_metric`.
 
 ## Commands
 ```bash
-te-cli te_meta +update_metric --project_id 1 --metric_id 1 --name demo --display_name demo --model_type event --events '[]'
-te-cli te_meta +update_metric --project_id 1 --metric_id 1 --name demo --display_name demo --remark demo --model_type event --events '[]' --params '{}'
-te-cli te_meta +update_metric --dry-run
+ae-cli analysis_meta +update_metric --project_id 1 --metric_id 1 --name demo --display_name demo --model_type event --events '[]'
+ae-cli analysis_meta +update_metric --project_id 1 --metric_id 1 --name demo --display_name demo --remark demo --model_type event --events '[]' --params '{}'
+ae-cli analysis_meta +update_metric --dry-run
 ```
 
 ## Parameters
@@ -39,8 +39,8 @@ te-cli te_meta +update_metric --dry-run
 | `--display_name` | Yes | Metric display name |
 | `--remark` | No | Optional metric remark |
 | `--model_type` | Yes | Metric model type. Currently supports event and retention. |
-| `--events` | Yes | Metric event JSON. MUST follow `+get_analysis_query_schema` for the selected `model_type`, and use fields validated by `te_meta +list_events` / `te_meta +list_properties` in the same `project_id`. |
-| `--params` | No | Metric params JSON. If provided, MUST follow the schema from `+get_analysis_query_schema` and use project metadata from `te_meta +list_events` / `te_meta +list_properties`. |
+| `--events` | Yes | Metric event JSON. MUST follow `+get_analysis_query_schema` for the selected `model_type`, and use fields validated by `analysis_meta +list_events` / `analysis_meta +list_properties` in the same `project_id`. |
+| `--params` | No | Metric params JSON. If provided, MUST follow the schema from `+get_analysis_query_schema` and use project metadata from `analysis_meta +list_events` / `analysis_meta +list_properties`. |
 
 ## Decision Rules
 - `events` / `params` must not be handwritten by intuition alone: they must satisfy both the schema structure and the project's real metadata constraints.
@@ -57,5 +57,5 @@ te-cli te_meta +update_metric --dry-run
 - If the result after writing does not match expectations, immediately reread the corresponding list/get interfaces for before-and-after comparison.
 
 ## Recommended Chaining
-- +get_analysis_query_schema -> te_meta +list_events -> te_meta +list_properties -> +update_metric
+- +get_analysis_query_schema -> analysis_meta +list_events -> analysis_meta +list_properties -> +update_metric
 - +list_metrics -> +get_metric -> +update_metric

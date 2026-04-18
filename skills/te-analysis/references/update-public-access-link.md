@@ -1,4 +1,4 @@
-# te_analysis +update_public_access_link (Update Public Access Link)
+# analysis +update_public_access_link (Update Public Access Link)
 
 > **Prerequisite:** Read [`../te-shared/SKILL.md`](../../te-shared/SKILL.md)
 
@@ -10,9 +10,9 @@ Domain: **Dashboard management**
 
 ## Command
 ```bash
-ae-cli te_analysis +update_public_access_link --project_id 1 --link_id 1 --access_controls '{}' --effective_at "2026-04-09 10:00:00" --expires_at "2026-04-10 10:00:00"
-ae-cli te_analysis +update_public_access_link --project_id 1 --company_id 1 --link_id 1 --access_controls '{}' --remark demo --effective_at "2026-04-09 10:00:00" --expires_at "2026-04-10 10:00:00"
-ae-cli te_analysis +update_public_access_link --dry-run
+ae-cli analysis +update_public_access_link --project_id 1 --link_id 1 --access_controls '{}' --effective_at "2026-04-09 10:00:00" --expires_at "2026-04-10 10:00:00"
+ae-cli analysis +update_public_access_link --project_id 1 --company_id 1 --link_id 1 --access_controls '{}' --remark demo --effective_at "2026-04-09 10:00:00" --expires_at "2026-04-10 10:00:00"
+ae-cli analysis +update_public_access_link --dry-run
 ```
 
 ## Parameters

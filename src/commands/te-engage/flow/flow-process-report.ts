@@ -1,56 +1,56 @@
 import type { Command, RuntimeContext } from '../../framework/types.js';
 import { buildMcpDryRun, executeMcpCommand, hasFlag, readOptionalString, requireAllowedValue, requireOneOfFlags } from '../utils.js';
 
-const serviceName = 'te-engage_flow';
+const serviceName = 'engage_flow';
 const toolName = 'query_flow_process_report';
 
 function buildArgs(ctx: RuntimeContext): Record<string, any> {
   const args: Record<string, any> = {
-    projectId: ctx.num('project-id'),
-    reportType: ctx.str('report-type'),
+    projectId: ctx.num('project_id'),
+    reportType: ctx.str('report_type'),
   };
-  const flowId = readOptionalString(ctx, 'flow-id');
+  const flowId = readOptionalString(ctx, 'flow_id');
   if (flowId) args.flowId = flowId;
-  const flowUuid = readOptionalString(ctx, 'flow-uuid');
+  const flowUuid = readOptionalString(ctx, 'flow_uuid');
   if (flowUuid) args.flowUuid = flowUuid;
-  const requestId = readOptionalString(ctx, 'request-id');
+  const requestId = readOptionalString(ctx, 'request_id');
   if (requestId) args.requestId = requestId;
-  const pushLanguageCode = readOptionalString(ctx, 'push-language-code');
+  const pushLanguageCode = readOptionalString(ctx, 'push_language_code');
   if (pushLanguageCode) args.pushLanguageCode = pushLanguageCode;
-  const dataDimType = readOptionalString(ctx, 'data-dim-type');
+  const dataDimType = readOptionalString(ctx, 'data_dim_type');
   if (dataDimType) args.dataDimType = dataDimType;
-  const startTime = readOptionalString(ctx, 'start-time');
+  const startTime = readOptionalString(ctx, 'start_time');
   if (startTime) args.startTime = startTime;
-  const endTime = readOptionalString(ctx, 'end-time');
+  const endTime = readOptionalString(ctx, 'end_time');
   if (endTime) args.endTime = endTime;
-  const showTimeZone = readOptionalString(ctx, 'show-time-zone');
+  const showTimeZone = readOptionalString(ctx, 'show_time_zone');
   if (showTimeZone) args.showTimeZone = showTimeZone;
   return args;
 }
 
 export const flowProcessReport: Command = {
-  service: 'te-engage',
-  command: '+flow-process-report',
+  service: 'engage',
+  command: '+flow_process_report',
   description: 'Query the process-level report for a flow.',
   flags: [
-    { name: 'project-id', type: 'number', required: true, alias: 'p', desc: 'Project ID' },
-    { name: 'report-type', type: 'string', required: true, desc: 'Report type' },
-    { name: 'flow-id', type: 'string', required: false, desc: 'Flow ID' },
-    { name: 'flow-uuid', type: 'string', required: false, desc: 'Flow UUID' },
-    { name: 'request-id', type: 'string', required: false, desc: 'Request ID' },
-    { name: 'push-language-code', type: 'string', required: false, desc: 'Push language code' },
-    { name: 'data-dim-type', type: 'string', required: false, desc: 'Data dimension type' },
-    { name: 'start-time', type: 'string', required: false, desc: 'Start date' },
-    { name: 'end-time', type: 'string', required: false, desc: 'End date' },
-    { name: 'show-time-zone', type: 'string', required: false, desc: 'Timezone offset' },
+    { name: 'project_id', type: 'number', required: true, alias: 'p', desc: 'Project ID' },
+    { name: 'report_type', type: 'string', required: true, desc: 'Report type' },
+    { name: 'flow_id', type: 'string', required: false, desc: 'Flow ID' },
+    { name: 'flow_uuid', type: 'string', required: false, desc: 'Flow UUID' },
+    { name: 'request_id', type: 'string', required: false, desc: 'Request ID' },
+    { name: 'push_language_code', type: 'string', required: false, desc: 'Push language code' },
+    { name: 'data_dim_type', type: 'string', required: false, desc: 'Data dimension type' },
+    { name: 'start_time', type: 'string', required: false, desc: 'Start date' },
+    { name: 'end_time', type: 'string', required: false, desc: 'End date' },
+    { name: 'show_time_zone', type: 'string', required: false, desc: 'Timezone offset' },
   ],
   risk: 'read',
   validate: (ctx) => {
-    const reportType = ctx.str('report-type');
-    requireAllowedValue(reportType, ['overview', 'detail', 'exit_detail', 'push_detail'], 'report-type');
-    requireOneOfFlags(ctx, ['flow-id', 'flow-uuid']);
-    if (['detail', 'exit_detail', 'push_detail'].includes(reportType) && (!hasFlag(ctx, 'start-time') || !hasFlag(ctx, 'end-time'))) {
-      throw new Error('Flags --start-time and --end-time are required for detail, exit_detail, and push_detail reports');
+    const reportType = ctx.str('report_type');
+    requireAllowedValue(reportType, ['overview', 'detail', 'exit_detail', 'push_detail'], 'report_type');
+    requireOneOfFlags(ctx, ['flow_id', 'flow_uuid']);
+    if (['detail', 'exit_detail', 'push_detail'].includes(reportType) && (!hasFlag(ctx, 'start_time') || !hasFlag(ctx, 'end_time'))) {
+      throw new Error('Flags --start_time and --end_time are required for detail, exit_detail, and push_detail reports');
     }
   },
   dryRun: (ctx) => buildMcpDryRun(ctx, serviceName, toolName, buildArgs(ctx)),

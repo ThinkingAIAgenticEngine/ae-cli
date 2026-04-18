@@ -1,4 +1,4 @@
-# te_audience +update_tag (Update Tag)
+# analysis_audience +update_tag (Update Tag)
 
 > **Prerequisite:** Read [`../te-shared/SKILL.md`](../../te-shared/SKILL.md)
 
@@ -6,7 +6,7 @@ Domain: **Tag Management**
 
 ## Use Cases
 - Prerequisite helper: first call `+get_tag_definition_schema` to get the structure, then call this tool.
-- When updating `definition`, you must first supplement it with real project metadata; at minimum, first call `te_meta +list_events` and `te_meta +list_properties`.
+- When updating `definition`, you must first supplement it with real project metadata; at minimum, first call `analysis_meta +list_events` and `analysis_meta +list_properties`.
 - Update a user tag definition. Supports updating the display name, remark, type, and tag definition. Updating only the display name or remark does not trigger recomputation.
 
 ## Required Prerequisites (MUST only when updating definition)
@@ -18,16 +18,16 @@ Domain: **Tag Management**
 
 ## Prerequisite Call Chain (run only when updating definition)
 1. First determine `--type` (condition / metric / first_last / sql).
-2. Read `get-tag-definition-schema.md`, then call `te-cli te_audience +get_tag_definition_schema` to obtain the structure.
-3. Read `list-events.md`, then call `te-cli te_meta +list_events --project_id 1`.
-4. Read `list-properties.md`, then call `te-cli te_meta +list_properties --project_id 1`.
+2. Read `get-tag-definition-schema.md`, then call `ae-cli analysis_audience +get_tag_definition_schema` to obtain the structure.
+3. Read `list-events.md`, then call `ae-cli analysis_meta +list_events --project_id 1`.
+4. Read `list-properties.md`, then call `ae-cli analysis_meta +list_properties --project_id 1`.
 5. Build the new `definition` based on the schema + metadata, then run `+update_tag`.
 
 ## Commands
 ```bash
-te-cli te_audience +update_tag --project_id 1 --tag_name demo --display_name "Demo v2"
-te-cli te_audience +update_tag --project_id 1 --tag_name demo --type condition --definition '{}' --zone_offset 8
-te-cli te_audience +update_tag --dry-run
+ae-cli analysis_audience +update_tag --project_id 1 --tag_name demo --display_name "Demo v2"
+ae-cli analysis_audience +update_tag --project_id 1 --tag_name demo --type condition --definition '{}' --zone_offset 8
+ae-cli analysis_audience +update_tag --dry-run
 ```
 
 ## Parameters
@@ -38,7 +38,7 @@ te-cli te_audience +update_tag --dry-run
 | `--display_name` | No | New tag display name. Length: 1-80 |
 | `--remark` | No | New tag remark |
 | `--type` | No | New tag type. Supported values: condition, metric, first_last, sql |
-| `--definition` | No | New tag definition JSON. If provided, MUST call `+get_tag_definition_schema` first, then fill valid event/property names from `te_meta` metadata commands in the same `project_id`. |
+| `--definition` | No | New tag definition JSON. If provided, MUST call `+get_tag_definition_schema` first, then fill valid event/property names from `analysis_meta` metadata commands in the same `project_id`. |
 | `--zone_offset` | No | Optional time zone offset for tag computation. Valid range: -12 to 14 (supports decimals like 5.5). |
 
 ## Decision Rules
@@ -56,5 +56,5 @@ te-cli te_audience +update_tag --dry-run
 - If the result after writing is not as expected, immediately re-read the corresponding list/get interfaces and compare before and after.
 
 ## Recommended Chain
-- +get_tag_definition_schema -> te_meta +list_events -> te_meta +list_properties -> +update_tag
+- +get_tag_definition_schema -> analysis_meta +list_events -> analysis_meta +list_properties -> +update_tag
 - +list_tags -> +get_tags_by_name -> +update_tag

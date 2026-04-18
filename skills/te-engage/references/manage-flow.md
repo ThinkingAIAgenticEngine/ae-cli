@@ -1,45 +1,45 @@
-# te-engage +manage-flow
+# te-engage +manage_flow
 
-> **前置条件:** 阅读 [`../../te-shared/SKILL.md`](../../te-shared/SKILL.md)
+> **Prerequisite:** Read [`../../te-shared/SKILL.md`](../../te-shared/SKILL.md)
 
-批量管理流程状态或审批动作。
+Batch manage flow status or review actions.
 
-映射命令: `te-cli te-engage +manage-flow`
+Mapped command: `ae-cli engage +manage_flow`
 
 ## Flags
 
-| Flag | 类型 | 必填 | 说明 |
+| Flag | Type | Required | Description |
 |------|------|------|------|
-| `--project-id` / `-p` | number | 是 | 项目 ID |
-| `--action` | string | 是 | 操作类型 |
-| `--flow-list` | json | 否 | 审批列表 JSON 数组 |
-| `--pause-flow-list` | json | 否 | 暂停列表 JSON 数组 |
-| `--flow-id-list` | json | 否 | Flow ID JSON 数组 |
-| `--reason` | string | 否 | 审批原因 |
+| `--project_id` / `-p` | number | Yes | Project ID |
+| `--action` | string | Yes | action type |
+| `--flow_list` | json | No | Review list JSON array |
+| `--pause_flow_list` | json | No | pause list JSON array |
+| `--flow_id_list` | json | No | Flow ID JSON array |
+| `--reason` | string | No | review reason |
 
-## 枚举说明
+## Enum Notes
 
 ### `--action`
 
-- `approve`: 审批通过，需配合 `--flow-list`
-- `deny`: 审批拒绝，需配合 `--flow-list`
-- `cancel`: 撤销审批，需配合 `--flow-list`
-- `pause`: 暂停流程，需配合 `--pause-flow-list`
-- `recover`: 恢复流程，需配合 `--flow-id-list`
-- `end`: 结束流程，需配合 `--flow-id-list`
+- `approve`: review approved, requires `--flow_list`
+- `deny`: review denied, requires `--flow_list`
+- `cancel`: cancel review, requires `--flow_list`
+- `pause`: pause flow, requires `--pause_flow_list`
+- `recover`: resume flow, requires `--flow_id_list`
+- `end`: end flow, requires `--flow_id_list`
 
-## JSON 参数说明
+## JSON Parameter Notes
 
-### `--flow-list`
+### `--flow_list`
 
-用于 `approve`、`deny`、`cancel` 这类审批动作。数组元素为对象：
+Used for review actions such as `approve`, `deny`, and `cancel`. Each array item is an object:
 
-| 字段 | 类型 | 必填 | 说明 |
+| Field | Type | Required | Description |
 |------|------|------|------|
-| `flowUuid` | string | 是 | Flow UUID |
-| `reason` | string | 否 | 单条审批原因 |
+| `flowUuid` | string | Yes | Flow UUID |
+| `reason` | string | No | per-item review reason |
 
-示例：
+Examples: 
 
 ```json
 [
@@ -47,21 +47,21 @@
 ]
 ```
 
-### `--pause-flow-list`
+### `--pause_flow_list`
 
-用于 `pause` 动作。数组元素为对象：
+Used for the `pause` action. Each array item is an object:
 
-| 字段 | 类型 | 必填 | 说明 |
+| Field | Type | Required | Description |
 |------|------|------|------|
-| `flowId` | string | 是 | Flow ID |
-| `flowInstanceProcessType` | number | 否 | 流程实例处理方式 |
+| `flowId` | string | Yes | Flow ID |
+| `flowInstanceProcessType` | number | No | flow instance processing mode |
 
-`flowInstanceProcessType` 枚举：
+`flowInstanceProcessType` enum:
 
-- `1`: normal，正常暂停
-- `2`: force exit，强制退出实例
+- `1`: normal, normal pause
+- `2`: force exit, force-exit the instance
 
-示例：
+Examples: 
 
 ```json
 [
@@ -69,26 +69,26 @@
 ]
 ```
 
-### `--flow-id-list`
+### `--flow_id_list`
 
-用于 `recover`、`end` 这类按 ID 批量操作的场景：
+Used for batch operations by ID such as `recover` and `end`:
 
 ```json
 ["flow_id_1", "flow_id_2"]
 ```
 
-## 安全约束
+## Safety Constraints
 
-此命令为 **写操作**，会改变流程状态。
+This command is a **write operation** and changes the flow status.
 
-不同 `action` 需要的参数不同：
+Different `action` values require different parameters:
 
-- `approve` / `deny` / `cancel`：必须传 `--flow-list`
-- `pause`：必须传 `--pause-flow-list`
-- `recover` / `end`：必须传 `--flow-id-list`
+- `approve` / `deny` / `cancel`: must include `--flow_list`
+- `pause`: must include `--pause_flow_list`
+- `recover` / `end`: must include `--flow_id_list`
 
-## 示例
+## Examples
 
 ```bash
-te-cli te-engage +manage-flow --project-id 1 --action end --flow-id-list '["flow_id_1"]'
+ae-cli engage +manage_flow --project_id 1 --action end --flow_id_list '["flow_id_1"]'
 ```

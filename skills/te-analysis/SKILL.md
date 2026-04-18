@@ -5,13 +5,13 @@ description: "TE analysis query and visualization: report (report) and dashboard
 metadata:
   requires:
     bins: ["ae-cli"]
-  cliHelp: "ae-cli te_analysis --help"
+  cliHelp: "ae-cli analysis --help"
 ---
 
 # te-analysis
 
 > **CRITICAL - Before starting, you MUST first read [`../te-shared/SKILL.md`](../te-shared/SKILL.md)**: authentication, host configuration, global parameters, and write-operation confirmation rules are all documented there.
-> **CRITICAL - For write operations marked with ⚠️, after a successful execution you MUST first read and follow the "post-write link completion" constraint in [`../te-common/SKILL.md`](../te-common/SKILL.md). You MUST call `te_common +get_resource_url` to complete the link-completion loop.**
+> **CRITICAL - For write operations marked with ⚠️, after a successful execution you MUST first read and follow the "post-write link completion" constraint in [`../te-common/SKILL.md`](../te-common/SKILL.md). You MUST call `analysis_common +get_resource_url` to complete the link-completion loop.**
 > **CRITICAL - For all commands that require `project_id`, you MUST follow `te-common`'s `PROJECT_ID_GATE` (stop if missing and confirm with the user).**
 > **CRITICAL - Before running any `+<tool_name>` command, you MUST first read the corresponding reference document `./references/<tool-name>.md`.** For example: before running `+get_analysis_query_schema`, you must first read [`./references/get-analysis-query-schema.md`](./references/get-analysis-query-schema.md)
 
@@ -44,7 +44,7 @@ When the user requests the following, switch to the corresponding skill:
 
 ## Parameters and Conventions
 
-- Command format: `ae-cli te_analysis +<tool_name> [options]`
+- Command format: `ae-cli analysis +<tool_name> [options]`
 - CLI flags use underscores: `--project_id`
 - MCP parameters map automatically to camelCase: `projectId`
 - Pass JSON parameters directly as JSON strings: `'{}'`, `'[1,2]'`
@@ -60,15 +60,15 @@ When the user requests the following, switch to the corresponding skill:
 - `+update_alert` ([doc](./references/update-alert.md))
 
 ### Reports and Dashboards (13)
-- `+create_report` ([doc](./references/create-report.md)) ⚠️ write operation, after it succeeds you MUST call `te_common +get_resource_url` to complete the link-completion loop
+- `+create_report` ([doc](./references/create-report.md)) ⚠️ write operation, after it succeeds you MUST call `analysis_common +get_resource_url` to complete the link-completion loop
 - `+get_report_definition` ([doc](./references/get-report-definition.md))
 - `+list_reports` ([doc](./references/list-reports.md))
 - `+query_report_data` ([doc](./references/query-report-data.md))
-- `+create_dashboard` ([doc](./references/create-dashboard.md)) ⚠️ write operation, after it succeeds you MUST call `te_common +get_resource_url` to complete the link-completion loop
+- `+create_dashboard` ([doc](./references/create-dashboard.md)) ⚠️ write operation, after it succeeds you MUST call `analysis_common +get_resource_url` to complete the link-completion loop
 - `+list_dashboards` ([doc](./references/list-dashboards.md))
 - `+query_dashboard_detail` ([doc](./references/query-dashboard-detail.md))
 - `+query_dashboard_report_data` ([doc](./references/query-dashboard-report-data.md))
-- `+update_dashboard` ([doc](./references/update-dashboard.md)) ⚠️ write operation, after it succeeds you MUST call `te_common +get_resource_url` to complete the link-completion loop
+- `+update_dashboard` ([doc](./references/update-dashboard.md)) ⚠️ write operation, after it succeeds you MUST call `analysis_common +get_resource_url` to complete the link-completion loop
 - `+create_or_update_dashboard_note` ([doc](./references/create-or-update-dashboard-note.md))
 - `+list_public_access_links` ([doc](./references/list-public-access-links.md))
 - `+create_public_access_link` ([doc](./references/create-public-access-link.md))
@@ -78,7 +78,7 @@ When the user requests the following, switch to the corresponding skill:
 - `+query_adhoc` ([doc](./references/query-adhoc.md))
 - `+drilldown_users` ([doc](./references/drilldown-users.md))
 - `+drilldown_user_events` ([doc](./references/drilldown-user-events.md))
-- `+create_result_cluster` ([doc](./references/create-result-cluster.md)) ⚠️ write operation, after it succeeds you MUST call `te_common +get_resource_url` to complete the link-completion loop
+- `+create_result_cluster` ([doc](./references/create-result-cluster.md)) ⚠️ write operation, after it succeeds you MUST call `analysis_common +get_resource_url` to complete the link-completion loop
 - `+load_filters` ([doc](./references/load-filters.md))
 - `+get_table_columns` ([doc](./references/get-table-columns.md))
 
@@ -96,10 +96,10 @@ When the user requests the following, switch to the corresponding skill:
 ## Quick Verification
 
 ```bash
-ae-cli te_analysis --help
-npm run verify:te-analysis-tools
+ae-cli analysis --help
+npm run verify:analysis-tools
 # Example: use dry-run to preview the request (replace project_id with your actual project ID)
-ae-cli te_analysis +query_adhoc --project_id <YOUR_PROJECT_ID> --model_type event --qp "{}" --dry-run
+ae-cli analysis +query_adhoc --project_id <YOUR_PROJECT_ID> --model_type event --qp "{}" --dry-run
 ```
 
 ## Reference Docs

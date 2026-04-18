@@ -1,4 +1,4 @@
-# te_meta +get_track_program (Read Tracking Plan Baseline)
+# analysis_meta +get_track_program (Read Tracking Plan Baseline)
 
 > **Prerequisite:** Read [`../te-shared/SKILL.md`](../../te-shared/SKILL.md)
 
@@ -10,8 +10,8 @@ Domain: **Project Configuration**
 
 ## Commands
 ```bash
-te-cli te_meta +get_track_program --project_id 1
-te-cli te_meta +get_track_program --dry-run
+ae-cli analysis_meta +get_track_program --project_id 1
+ae-cli analysis_meta +get_track_program --dry-run
 ```
 
 ## Parameters

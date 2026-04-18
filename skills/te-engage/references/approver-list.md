@@ -1,19 +1,19 @@
-# te-engage +approver-list
+# te-engage +approver_list
 
-> **前置条件:** 阅读 [`../../te-shared/SKILL.md`](../../te-shared/SKILL.md)
+> **Prerequisite:** Read [`../../te-shared/SKILL.md`](../../te-shared/SKILL.md)
 
-查询项目审批人列表。
+Query the project approver list.
 
-映射命令: `te-cli te-engage +approver-list`
+Mapped command: `ae-cli engage +approver_list`
 
 ## Flags
 
-| Flag | 类型 | 必填 | 说明 |
+| Flag | Type | Required | Description |
 |------|------|------|------|
-| `--project-id` / `-p` | number | 是 | 项目 ID |
+| `--project_id` / `-p` | number | Yes | Project ID |
 
-## 示例
+## Examples
 
 ```bash
-te-cli te-engage +approver-list --project-id 1
+ae-cli engage +approver_list --project_id 1
 ```

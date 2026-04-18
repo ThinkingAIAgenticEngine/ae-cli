@@ -1,37 +1,37 @@
 # te-community get_post_detail
 
-> **前置条件:** 阅读 [`../te-shared/SKILL.md`](../te-shared/SKILL.md)
+> **Prerequisite:** Read [`../te-shared/SKILL.md`](../te-shared/SKILL.md)
 
-获取帖子/视频的完整详情，包括正文、媒体、弹幕、情感、关键词、话题、标签值和评论分页。
+Get complete details of the post/video, including text, media, comments, emotions, keywords, topics, tag values ​​and comment pagination.
 
-映射命令: `te-cli community get_post_detail`
+Mapping command: `ae-cli community get_post_detail`
 
 ## Flags
 
-| Flag | 类型 | 必填 | 说明 |
+| Flag | Type | Required | Description |
 |------|------|------|------|
-| `--space-id` | number | 是 | 社区空间 ID |
-| `--game-id` | number | 是 | 游戏/空间标识 |
-| `--channel-id` | number | 是 | 渠道 ID |
-| `--uuid` | string | 是 | 内容 UUID |
-| `--resource-type` | number | 是 | 资源类型：0帖子、1视频 |
-| `--danmu-order-by` | number | 否 | 弹幕排序：0时间戳desc、1发布时间desc |
-| `--danmu-page-num` | number | 否 | 弹幕页码，从 1 开始 |
-| `--danmu-page-size` | number | 否 | 弹幕每页条数 |
-| `--reply-order-by` | number | 否 | 评论排序：0发布时间desc、1发布时间asc |
-| `--reply-page-num` | number | 否 | 评论页码，从 1 开始 |
-| `--reply-page-size` | number | 否 | 评论每页条数 |
+| `--space-id` | number | yes | community space ID |
+| `--game-id` | number | yes | game/space ID |
+| `--channel-id` | number | yes | channel ID |
+| `--uuid` | string | yes | content UUID |
+| `--resource-type` | number | Yes | Resource type: `0` for posts, `1` for videos |
+| `--danmu-order-by` | number | No | Danmu sorting: 0 timestamp desc, 1 release time desc |
+| `--danmu-page-num` | number | No | Danmu page number, starting from 1 |
+| `--danmu-page-size` | number | No | Number of danmaku messages per page |
+| `--reply-order-by` | number | No | Comment sorting: 0 release time desc, 1 release time asc |
+| `--reply-page-num` | number | no | Comment page number, starting from 1 |
+| `--reply-page-size` | number | No | Number of comments per page |
 
-## 示例
+## Example
 
 ```bash
-# 获取帖子详情
-te-cli community get_post_detail \
+# Get post details
+ae-cli community get_post_detail \
   --space-id 1 --game-id 1 \
   --channel-id 1 --uuid <uuid> --resource-type 0
 
-# 获取视频详情并分页评论
-te-cli community get_post_detail \
+# Get video details and page comments
+ae-cli community get_post_detail \
   --space-id 1 --game-id 1 \
   --channel-id 1 --uuid <uuid> --resource-type 1 \
   --reply-page-num 1 --reply-page-size 20

@@ -1,4 +1,4 @@
-# te_analysis +list_dashboards (List Dashboards)
+# analysis +list_dashboards (List Dashboards)
 
 > **Prerequisite:** Read [`../te-shared/SKILL.md`](../../te-shared/SKILL.md)
 
@@ -10,9 +10,9 @@ Domain: **Dashboard management**
 
 ## Command
 ```bash
-ae-cli te_analysis +list_dashboards --project_id 1
-ae-cli te_analysis +list_dashboards --project_id 1 --query demo
-ae-cli te_analysis +list_dashboards --dry-run
+ae-cli analysis +list_dashboards --project_id 1
+ae-cli analysis +list_dashboards --project_id 1 --query demo
+ae-cli analysis +list_dashboards --dry-run
 ```
 
 ## Parameters

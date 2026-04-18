@@ -1,4 +1,4 @@
-# te_analysis +load_filters (load filter candidate values)
+# analysis +load_filters (load filter candidate values)
 
 > **Prerequisite:** Read [`../te-shared/SKILL.md`](../../te-shared/SKILL.md)
 
@@ -14,9 +14,9 @@ Domain: **Model Analysis**
 
 ## Commands
 ```bash
-te-cli te_analysis +load_filters --project_id 1 --quot demo --table_type event
-te-cli te_analysis +load_filters --project_id 1 --quot demo --table_type event --event_name demo --inputdata demo --zone_offset 8 --cluster_date_policy SPECIFIED --specified_cluster_date 2026-04-08 --is_report true
-te-cli te_analysis +load_filters --dry-run
+ae-cli analysis +load_filters --project_id 1 --quot demo --table_type event
+ae-cli analysis +load_filters --project_id 1 --quot demo --table_type event --event_name demo --inputdata demo --zone_offset 8 --cluster_date_policy SPECIFIED --specified_cluster_date 2026-04-08 --is_report true
+ae-cli analysis +load_filters --dry-run
 ```
 
 ## Parameters

@@ -1,4 +1,4 @@
-# te_audience +list_clusters (Cluster Search)
+# analysis_audience +list_clusters (Cluster Search)
 
 > **Prerequisite:** Read [`../te-shared/SKILL.md`](../../te-shared/SKILL.md)
 
@@ -9,9 +9,9 @@ Domain: **Cluster Management**
 
 ## Commands
 ```bash
-te-cli te_audience +list_clusters --project_id 1
-te-cli te_audience +list_clusters --project_id 1 --query demo
-te-cli te_audience +list_clusters --dry-run
+ae-cli analysis_audience +list_clusters --project_id 1
+ae-cli analysis_audience +list_clusters --project_id 1 --query demo
+ae-cli analysis_audience +list_clusters --dry-run
 ```
 
 ## Parameters

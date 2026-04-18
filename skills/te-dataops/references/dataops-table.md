@@ -1,122 +1,122 @@
 ---
 name: dataops-table
 version: 1.0.0
-description: "数据表与视图管理：搜索表、查看表详情、创建物理表/视图、批量创建关联视图。触发关键词：建表、创建表、视图、数据字典、表详情、关联视图、linkview、datatable、DDL。"
+description: "Data table and view management: search tables, view table details, create physical tables/views, batch create linked views. Trigger keywords: create table, table creation, view, data dictionary, table details, linked view, linkview, datatable, DDL."
 metadata:
   requires:
-    bins: ["te-cli"]
+    bins: ["ae-cli"]
 ---
 
-# DataOps 数据表与视图管理
+# DataOps Data Table and View Management
 
-> **前置条件:** 阅读 [`te-dataops/SKILL.md`](../SKILL.md) 了解通用规则。
+> **Prerequisites:** Read [`te-dataops/SKILL.md`](../SKILL.md) for general rules.
 
-使用 `dataops_datatable` 子命令管理数据表。
+Use the `dataops_datatable` subcommand to manage data tables.
 
-**核心规则：**
-- 空间任务表的创建/修改/删除**必须用 dataops_datatable**，禁止用 dataops_ide
-- 创建前先确认同名表不存在
-- 创建视图或数据表时，按照 **Trino DDL 规范**生成 DDL
-- 任务表先创建 DEV 环境，再创建 PROD 环境（可同时创建）
+**Core Rules:**
+- Creating/modifying/deleting workspace task tables **must use dataops_datatable**, prohibited to use dataops_ide
+- Confirm no table with the same name exists before creation
+- When creating views or data tables, generate DDL according to **Trino DDL specifications**
+- Create task tables in DEV environment first, then PROD environment (can create simultaneously)
 
 ---
 
-## 工作流 A：搜索并查看表信息
+## Workflow A: Search and View Table Information
 
 ```bash
-# 在数据字典中搜索表（按表名/说明模糊匹配）
-te-cli dataops_datatable +dict_search_tables --spaceCode "${spaceCode}" --search "user" --maxResults 20
+# Search tables in data dictionary (fuzzy match by table name/description)
+ae-cli dataops_datatable +dict_search_tables --spaceCode "${spaceCode}" --search "user" --maxResults 20
 
-# 获取表的详细信息（字段、DDL、数据血缘）
-te-cli dataops_datatable +get_table_detail --spaceCode "${spaceCode}" --tableName "dwd_user_info"
+# Get detailed table information (fields, DDL, data lineage)
+ae-cli dataops_datatable +get_table_detail --spaceCode "${spaceCode}" --tableName "dwd_user_info"
 
-# 分页查询空间已注册的表列表
-te-cli dataops_datatable +list_tables_by_page --spaceCode "${spaceCode}" --search "user" --pageNum 1 --pageSize 20
+# Paginated query of registered tables in workspace
+ae-cli dataops_datatable +list_tables_by_page --spaceCode "${spaceCode}" --search "user" --pageNum 1 --pageSize 20
 
-# 按仓库维度获取表层级结构（repo→catalog→schema→tables）
-te-cli dataops_datatable +struct_by_repo --spaceCode "${spaceCode}"
+# Get table hierarchy by repository dimension (repo→catalog→schema→tables)
+ae-cli dataops_datatable +struct_by_repo --spaceCode "${spaceCode}"
 
-# 搜索系统表（事件表、用户表、维度表）
-te-cli dataops_datatable +list_system_tables --spaceCode "${spaceCode}" --projectName "my_project"
+# Search system tables (event tables, user tables, dimension tables)
+ae-cli dataops_datatable +list_system_tables --spaceCode "${spaceCode}" --projectName "my_project"
 ```
 
 ---
 
-## 工作流 B：创建物理表
+## Workflow B: Create Physical Table
 
 ```bash
-# Step 1: 确认同名表不存在
-te-cli dataops_datatable +dict_search_tables --spaceCode "${spaceCode}" --search "dwd_user_info"
+# Step 1: Confirm no table with same name exists
+ae-cli dataops_datatable +dict_search_tables --spaceCode "${spaceCode}" --search "dwd_user_info"
 
-# Step 2: 创建 DEV 环境的物理表（DDL 需遵循 Trino 规范）
-te-cli dataops_datatable +create_table --spaceCode "${spaceCode}" \
+# Step 2: Create physical table in DEV environment (DDL must follow Trino specifications)
+ae-cli dataops_datatable +create_table --spaceCode "${spaceCode}" \
   --ddl "CREATE TABLE dwd_user_info (user_id VARCHAR, user_name VARCHAR, age INTEGER) WITH (format = 'ORC')" \
   --repoCode "te_etl" --catalog "hive" --schema "ws_default_dev" --confirmed true
 
-# Step 3: 创建 PROD 环境的物理表（同样 DDL，schema 改为 product 库）
-te-cli dataops_datatable +create_table --spaceCode "${spaceCode}" \
+# Step 3: Create physical table in PROD environment (same DDL, change schema to product database)
+ae-cli dataops_datatable +create_table --spaceCode "${spaceCode}" \
   --ddl "CREATE TABLE dwd_user_info (user_id VARCHAR, user_name VARCHAR, age INTEGER) WITH (format = 'ORC')" \
   --repoCode "te_etl" --catalog "hive" --schema "ws_default_product" --confirmed true
 ```
 
 ---
 
-## 工作流 C：创建视图
+## Workflow C: Create View
 
 ```bash
-# Step 1: 确认同名视图不存在
-te-cli dataops_datatable +dict_search_tables --spaceCode "${spaceCode}" --search "v_user_info"
+# Step 1: Confirm no view with same name exists
+ae-cli dataops_datatable +dict_search_tables --spaceCode "${spaceCode}" --search "v_user_info"
 
-# Step 2: 创建视图（未指定视图名时默认用 v_${来源表名}）
-te-cli dataops_datatable +create_view --spaceCode "${spaceCode}" \
+# Step 2: Create view (defaults to v_${source_table_name} if view name not specified)
+ae-cli dataops_datatable +create_view --spaceCode "${spaceCode}" \
   --ddl "CREATE VIEW v_user_info AS SELECT user_id, user_name FROM hive.ws_default_dev.dwd_user_info" \
   --repoCode "te_etl" --catalog "hive" --schema "ws_default_dev" --confirmed true
 ```
 
 ---
 
-## 工作流 D：批量创建直连视图
+## Workflow D: Batch Create Linked Views
 
 ```bash
-# Step 1: 列出可用于创建关联视图的源表
-te-cli dataops_datatable +linkview_list_source_tables --spaceCode "${spaceCode}" \
+# Step 1: List source tables available for creating linked views
+ae-cli dataops_datatable +linkview_list_source_tables --spaceCode "${spaceCode}" \
   --srcRepoCode "te_etl" --srcCatalog "hive" --srcSchema "ws_default_hidden"
 
-# Step 2: 批量创建直连视图（异步执行）
-te-cli dataops_datatable +batch_create --spaceCode "${spaceCode}" \
+# Step 2: Batch create linked views (async execution)
+ae-cli dataops_datatable +batch_create --spaceCode "${spaceCode}" \
   --srcRepoCode "te_etl" --srcCatalog "hive" --srcSchema "ws_default_hidden" \
   --processType 2 --batchCreationMode 1 --owner "${ownerOpenId}" \
   --viewInfos '[{"viewName":"v_orders","srcTableName":"ta_event_123","srcTableType":"TABLE"}]' \
   --confirmed true
 
-# Step 3: 轮询批量创建状态（建议 3-5 秒间隔）
+# Step 3: Poll batch creation status (recommend 3-5 second interval)
 # status: WAIT / RUNNING / SUCCESS / STOP
-te-cli dataops_datatable +linkview_get_batch_status --spaceCode "${spaceCode}" --batchId "${batchId}"
+ae-cli dataops_datatable +linkview_get_batch_status --spaceCode "${spaceCode}" --batchId "${batchId}"
 
-# 查看历史批量创建记录
-te-cli dataops_datatable +list_batches --spaceCode "${spaceCode}"
+# View historical batch creation records
+ae-cli dataops_datatable +list_batches --spaceCode "${spaceCode}"
 ```
 
 ---
 
-## 命令速查
+## Command Quick Reference
 
-| 命令 | 用途 | 关键 Flags |
-|------|------|-----------|
-| `+dict_search_tables` | 数据字典搜索 | `--spaceCode` `--search` `--maxResults` |
-| `+get_table_detail` | 表详情 | `--spaceCode` `--tableName` |
-| `+list_tables_by_page` | 分页列表 | `--spaceCode` `--search` `--pageNum` `--pageSize` |
-| `+struct_by_repo` | 按仓库层级 | `--spaceCode` `--search` |
-| `+list_system_tables` | 系统表列表 | `--spaceCode` `--projectId`/`--projectName` `--pageNum` `--pageSize` |
-| `+create_table` | 创建物理表 | `--spaceCode` `--ddl` `--repoCode` `--catalog` `--schema` `--confirmed` |
-| `+create_view` | 创建视图 | `--spaceCode` `--ddl` `--repoCode` `--catalog` `--schema` `--confirmed` |
-| `+batch_create` | 批量创建视图 | `--spaceCode` `--srcRepoCode` `--srcCatalog` `--srcSchema` `--processType` `--batchCreationMode` `--owner` `--viewInfos` `--confirmed` |
-| `+linkview_get_batch_status` | 批量创建状态 | `--spaceCode` `--batchId` |
-| `+list_batches` | 历史批量记录 | `--spaceCode` `--status` |
+| Command | Purpose | Key Flags |
+|---------|---------|-----------|
+| `+dict_search_tables` | Data dictionary search | `--spaceCode` `--search` `--maxResults` |
+| `+get_table_detail` | Table details | `--spaceCode` `--tableName` |
+| `+list_tables_by_page` | Paginated list | `--spaceCode` `--search` `--pageNum` `--pageSize` |
+| `+struct_by_repo` | By repository hierarchy | `--spaceCode` `--search` |
+| `+list_system_tables` | System table list | `--spaceCode` `--projectId`/`--projectName` `--pageNum` `--pageSize` |
+| `+create_table` | Create physical table | `--spaceCode` `--ddl` `--repoCode` `--catalog` `--schema` `--confirmed` |
+| `+create_view` | Create view | `--spaceCode` `--ddl` `--repoCode` `--catalog` `--schema` `--confirmed` |
+| `+batch_create` | Batch create views | `--spaceCode` `--srcRepoCode` `--srcCatalog` `--srcSchema` `--processType` `--batchCreationMode` `--owner` `--viewInfos` `--confirmed` |
+| `+linkview_get_batch_status` | Batch creation status | `--spaceCode` `--batchId` |
+| `+list_batches` | Historical batch records | `--spaceCode` `--status` |
 
-## 参数说明
+## Parameter Notes
 
-- **schema 命名**: DEV 环境用 `ws_${spaceCode}_dev`，PROD 环境用 `ws_${spaceCode}_product`
-- **processType**: `1`=仅 DEV | `2`=DEV+PROD
-- **batchCreationMode**: `1`=全量同步 | `2`=失败重试
-- **表名规则**: `^[a-z][0-9a-z_]{0,127}$`
+- **schema naming**: DEV environment uses `ws_${spaceCode}_dev`, PROD environment uses `ws_${spaceCode}_product`
+- **processType**: `1`=DEV only | `2`=DEV+PROD
+- **batchCreationMode**: `1`=full sync | `2`=retry failures
+- **Table name rule**: `^[a-z][0-9a-z_]{0,127}$`
