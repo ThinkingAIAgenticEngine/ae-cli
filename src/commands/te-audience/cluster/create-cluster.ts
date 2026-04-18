@@ -1,0 +1,25 @@
+import { createMcpCommand, optionalBoolean, optionalJson, optionalJsonString, optionalNumber, optionalString, requiredJsonString } from '../shared.js';
+
+export const createCluster = createMcpCommand({
+  command: '+create_cluster',
+  description: 'Create a user cluster definition',
+  flags: [
+    { name: 'project_id', type: 'number', required: true, desc: 'Project ID', alias: 'p' },
+    { name: 'cluster_name', type: 'string', required: true, desc: 'Cluster name. Must start with a letter and contain only letters, digits, and underscores. Length: 1-80' },
+    { name: 'display_name', type: 'string', required: true, desc: 'Cluster display name. Length: 1-80' },
+    { name: 'type', type: 'string', required: false, desc: 'Cluster type: condition/sql. Default: condition' },
+    { name: 'definition', type: 'json', required: true, desc: 'Cluster definition JSON. See +get_cluster_definition_schema' },
+    { name: 'zone_offset', type: 'number', required: false, desc: 'Optional time zone offset, valid range: -12 to 14' },
+    { name: 'entity_id', type: 'number', required: false, desc: 'Optional entity ID. Use te_meta +list_entities to query' },
+  ],
+  risk: 'write',
+  buildArgs: (ctx) => ({
+      projectId: ctx.num('project_id'),
+      clusterName: ctx.str('cluster_name'),
+      displayName: ctx.str('display_name'),
+      type: optionalString(ctx, 'type'),
+      definition: requiredJsonString(ctx, 'definition'),
+      zoneOffset: optionalNumber(ctx, 'zone_offset'),
+      entityId: optionalNumber(ctx, 'entity_id'),
+    }),
+});

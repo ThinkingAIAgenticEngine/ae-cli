@@ -1,0 +1,420 @@
+[
+	{
+		"serverName":"community-mcp-analysis",
+		"name":"get_channel_info",
+		"description":"Valid channel list for a community space (channel id and name). Use channel_id in other MCP tools.",
+		"arguments":[
+			{
+				"description":"Identifier of the community space. SpaceId",
+				"name":"spaceId",
+				"primaryType":"integer",
+				"required":true,
+				"requiredSpecified":true,
+				"schema":"{\n  \"$schema\" : \"https://json-schema.org/draft/2020-12/schema\",\n  \"type\" : \"integer\",\n  \"format\" : \"int64\",\n  \"additionalProperties\" : false\n}"
+			},
+			{
+				"name":"param",
+				"primaryType":"object",
+				"required":true,
+				"requiredSpecified":true,
+				"schema":"{\n  \"$schema\" : \"https://json-schema.org/draft/2020-12/schema\",\n  \"type\" : \"object\",\n  \"properties\" : {\n    \"gameId\" : {\n      \"type\" : \"integer\",\n      \"format\" : \"int64\",\n      \"description\" : \"Identifier of the community space. SpaceId\"\n    }\n  },\n  \"required\" : [ \"gameId\" ],\n  \"additionalProperties\" : false\n}"
+			}
+		]
+	},
+	{
+		"serverName":"community-mcp-analysis",
+		"name":"get_overview_metrics",
+		"description":"Overall community metrics in a date range: post/reply counts, sentiment counts, per-channel breakdown (concrete counts, not ratios). Useful for automated daily digests.",
+		"arguments":[
+			{
+				"description":"Identifier of the community space. SpaceId",
+				"name":"spaceId",
+				"primaryType":"integer",
+				"required":true,
+				"requiredSpecified":true,
+				"schema":"{\n  \"$schema\" : \"https://json-schema.org/draft/2020-12/schema\",\n  \"type\" : \"integer\",\n  \"format\" : \"int64\",\n  \"additionalProperties\" : false\n}"
+			},
+			{
+				"name":"param",
+				"primaryType":"object",
+				"required":true,
+				"requiredSpecified":true,
+				"schema":"{\n  \"$schema\" : \"https://json-schema.org/draft/2020-12/schema\",\n  \"type\" : \"object\",\n  \"properties\" : {\n    \"channelIdList\" : {\n      \"description\" : \"Channel IDs from get_channel_info (channelId).\",\n      \"type\" : \"array\",\n      \"items\" : {\n        \"type\" : \"integer\",\n        \"format\" : \"int64\",\n        \"description\" : \"Channel IDs from get_channel_info (channelId).\"\n      }\n    },\n    \"endTime\" : {\n      \"type\" : \"string\",\n      \"format\" : \"date-time\",\n      \"description\" : \"Statistics range end (inclusive). Format: yyyy-MM-dd.\"\n    },\n    \"gameId\" : {\n      \"type\" : \"integer\",\n      \"format\" : \"int64\",\n      \"description\" : \"Identifier of the community space. SpaceId\"\n    },\n    \"startTime\" : {\n      \"type\" : \"string\",\n      \"format\" : \"date-time\",\n      \"description\" : \"Statistics range start (inclusive). Format: yyyy-MM-dd.\"\n    }\n  },\n  \"required\" : [ \"endTime\", \"gameId\", \"startTime\" ],\n  \"additionalProperties\" : false\n}"
+			}
+		]
+	},
+	{
+		"serverName":"community-mcp-analysis",
+		"name":"get_sentiment_overview",
+		"description":"Sentiment distribution and hot-keyword overview: top keywords per sentiment with trends, plus overall keyword ranking. Use to gauge mood and spot emerging topics.",
+		"arguments":[
+			{
+				"description":"Identifier of the community space. SpaceId",
+				"name":"spaceId",
+				"primaryType":"integer",
+				"required":true,
+				"requiredSpecified":true,
+				"schema":"{\n  \"$schema\" : \"https://json-schema.org/draft/2020-12/schema\",\n  \"type\" : \"integer\",\n  \"format\" : \"int64\",\n  \"additionalProperties\" : false\n}"
+			},
+			{
+				"name":"param",
+				"primaryType":"object",
+				"required":true,
+				"requiredSpecified":true,
+				"schema":"{\n  \"$schema\" : \"https://json-schema.org/draft/2020-12/schema\",\n  \"type\" : \"object\",\n  \"properties\" : {\n    \"channelIdList\" : {\n      \"description\" : \"Channel IDs from get_channel_info (channelId).\",\n      \"type\" : \"array\",\n      \"items\" : {\n        \"type\" : \"integer\",\n        \"format\" : \"int64\",\n        \"description\" : \"Channel IDs from get_channel_info (channelId).\"\n      }\n    },\n    \"endTime\" : {\n      \"type\" : \"string\",\n      \"format\" : \"date-time\",\n      \"description\" : \"Statistics range end (inclusive). Format: yyyy-MM-dd.\"\n    },\n    \"gameId\" : {\n      \"type\" : \"integer\",\n      \"format\" : \"int64\",\n      \"description\" : \"Identifier of the community space. SpaceId\"\n    },\n    \"isMerged\" : {\n      \"type\" : \"boolean\",\n      \"description\" : \"Whether to aggregate merged keywords.\"\n    },\n    \"limit\" : {\n      \"type\" : \"integer\",\n      \"format\" : \"int32\",\n      \"description\" : \"Max number of keywords to return.\"\n    },\n    \"startTime\" : {\n      \"type\" : \"string\",\n      \"format\" : \"date-time\",\n      \"description\" : \"Statistics range start (inclusive). Format: yyyy-MM-dd.\"\n    }\n  },\n  \"required\" : [ \"endTime\", \"gameId\", \"startTime\" ],\n  \"additionalProperties\" : false\n}"
+			}
+		]
+	},
+	{
+		"serverName":"community-mcp-analysis",
+		"name":"get_tag_trends",
+		"description":"Daily tag trends: given tagCode and date range, returns counts and time series per tag value.",
+		"arguments":[
+			{
+				"description":"Identifier of the community space. SpaceId",
+				"name":"spaceId",
+				"primaryType":"integer",
+				"required":true,
+				"requiredSpecified":true,
+				"schema":"{\n  \"$schema\" : \"https://json-schema.org/draft/2020-12/schema\",\n  \"type\" : \"integer\",\n  \"format\" : \"int64\",\n  \"additionalProperties\" : false\n}"
+			},
+			{
+				"name":"param",
+				"primaryType":"object",
+				"required":true,
+				"requiredSpecified":true,
+				"schema":"{\n  \"$schema\" : \"https://json-schema.org/draft/2020-12/schema\",\n  \"type\" : \"object\",\n  \"properties\" : {\n    \"channelIdList\" : {\n      \"description\" : \"Channel IDs from get_channel_info.\",\n      \"type\" : \"array\",\n      \"items\" : {\n        \"type\" : \"integer\",\n        \"format\" : \"int64\",\n        \"description\" : \"Channel IDs from get_channel_info.\"\n      }\n    },\n    \"endTime\" : {\n      \"type\" : \"string\",\n      \"format\" : \"date-time\",\n      \"description\" : \"Statistics range end (inclusive). Format: yyyy-MM-dd.\"\n    },\n    \"gameId\" : {\n      \"type\" : \"integer\",\n      \"format\" : \"int64\",\n      \"description\" : \"Identifier of the community space. SpaceId\"\n    },\n    \"startTime\" : {\n      \"type\" : \"string\",\n      \"format\" : \"date-time\",\n      \"description\" : \"Statistics range start (inclusive). Format: yyyy-MM-dd.\"\n    },\n    \"tagCode\" : {\n      \"type\" : \"string\",\n      \"description\" : \"Tag code (tagCode) from get_corpus_tags.\"\n    }\n  },\n  \"required\" : [ \"gameId\", \"tagCode\" ],\n  \"additionalProperties\" : false\n}"
+			}
+		]
+	},
+	{
+		"serverName":"community-mcp-content",
+		"name":"get_risk_content",
+		"description":"List content flagged as risk/moderation items; filter by risk type and time. For agents that poll new risk items or alert ops. Optional trend aggregates.",
+		"arguments":[
+			{
+				"description":"Identifier of the community space. SpaceId",
+				"name":"spaceId",
+				"primaryType":"integer",
+				"required":true,
+				"requiredSpecified":true,
+				"schema":"{\n  \"$schema\" : \"https://json-schema.org/draft/2020-12/schema\",\n  \"type\" : \"integer\",\n  \"format\" : \"int64\",\n  \"additionalProperties\" : false\n}"
+			},
+			{
+				"name":"param",
+				"primaryType":"object",
+				"required":true,
+				"requiredSpecified":true,
+				"schema":"{\n  \"$schema\" : \"https://json-schema.org/draft/2020-12/schema\",\n  \"type\" : \"object\",\n  \"properties\" : {\n    \"endTime\" : {\n      \"type\" : \"string\",\n      \"format\" : \"date-time\",\n      \"description\" : \"Risk content publish time upper bound. Format: yyyy-MM-dd.\"\n    },\n    \"gameId\" : {\n      \"type\" : \"integer\",\n      \"format\" : \"int64\",\n      \"description\" : \"Identifier of the community space. SpaceId\"\n    },\n    \"includeTrends\" : {\n      \"type\" : \"boolean\",\n      \"description\" : \"Whether to include trend aggregates in the response.\"\n    },\n    \"pagerHeader\" : {\n      \"type\" : \"object\",\n      \"properties\" : {\n        \"orderBy\" : {\n          \"type\" : \"integer\",\n          \"format\" : \"int32\",\n          \"description\" : \"Sort: 0 publish time desc.\"\n        },\n        \"pageNum\" : {\n          \"type\" : \"integer\",\n          \"format\" : \"int64\",\n          \"description\" : \"Page number, starting at 1.\"\n        },\n        \"pageSize\" : {\n          \"type\" : \"integer\",\n          \"format\" : \"int64\",\n          \"description\" : \"Page size.\"\n        }\n      },\n      \"description\" : \"Pagination.\"\n    },\n    \"riskCodes\" : {\n      \"description\" : \"Risk type code list.\",\n      \"type\" : \"array\",\n      \"items\" : {\n        \"type\" : \"integer\",\n        \"format\" : \"int64\",\n        \"description\" : \"Risk type code list.\"\n      }\n    },\n    \"searchWord\" : {\n      \"type\" : \"string\",\n      \"description\" : \"Keyword search; fuzzy match on body text.\"\n    },\n    \"startTime\" : {\n      \"type\" : \"string\",\n      \"format\" : \"date-time\",\n      \"description\" : \"Risk content publish time lower bound. Format: yyyy-MM-dd.\"\n    }\n  },\n  \"required\" : [ \"endTime\", \"gameId\", \"startTime\" ],\n  \"additionalProperties\" : false\n}"
+			}
+		]
+	},
+	{
+		"serverName":"community-mcp-content",
+		"name":"get_corpus_tags",
+		"description":"List corpus tags (tagId, tagCode, tagName, inferenceType) to pick tagCode for filters.",
+		"arguments":[
+			{
+				"description":"Identifier of the community space. SpaceId",
+				"name":"spaceId",
+				"primaryType":"integer",
+				"required":true,
+				"requiredSpecified":true,
+				"schema":"{\n  \"$schema\" : \"https://json-schema.org/draft/2020-12/schema\",\n  \"type\" : \"integer\",\n  \"format\" : \"int64\",\n  \"additionalProperties\" : false\n}"
+			},
+			{
+				"name":"param",
+				"primaryType":"object",
+				"required":true,
+				"requiredSpecified":true,
+				"schema":"{\n  \"$schema\" : \"https://json-schema.org/draft/2020-12/schema\",\n  \"type\" : \"object\",\n  \"properties\" : {\n    \"gameId\" : {\n      \"type\" : \"integer\",\n      \"format\" : \"int64\",\n      \"description\" : \"Identifier of the community space. SpaceId\"\n    }\n  },\n  \"required\" : [ \"gameId\" ],\n  \"additionalProperties\" : false\n}"
+			}
+		]
+	},
+	{
+		"serverName":"community-mcp-content",
+		"name":"get_comment_tag_analysis",
+		"description":"Comment tag analysis: for a tagCode, counts and trends per tag value over time.",
+		"arguments":[
+			{
+				"description":"Identifier of the community space. SpaceId",
+				"name":"spaceId",
+				"primaryType":"integer",
+				"required":true,
+				"requiredSpecified":true,
+				"schema":"{\n  \"$schema\" : \"https://json-schema.org/draft/2020-12/schema\",\n  \"type\" : \"integer\",\n  \"format\" : \"int64\",\n  \"additionalProperties\" : false\n}"
+			},
+			{
+				"name":"param",
+				"primaryType":"object",
+				"required":true,
+				"requiredSpecified":true,
+				"schema":"{\n  \"$schema\" : \"https://json-schema.org/draft/2020-12/schema\",\n  \"type\" : \"object\",\n  \"properties\" : {\n    \"channelId\" : {\n      \"type\" : \"integer\",\n      \"format\" : \"int64\",\n      \"description\" : \"Channel ID from search_posts results.\"\n    },\n    \"endTime\" : {\n      \"type\" : \"string\",\n      \"format\" : \"date-time\",\n      \"description\" : \"Comment publish time upper bound. Format: yyyy-MM-dd.\"\n    },\n    \"gameId\" : {\n      \"type\" : \"integer\",\n      \"format\" : \"int64\",\n      \"description\" : \"Identifier of the community space. SpaceId\"\n    },\n    \"resourceType\" : {\n      \"type\" : \"integer\",\n      \"format\" : \"int32\",\n      \"description\" : \"Resource type: 0 post, 1 video.\"\n    },\n    \"startTime\" : {\n      \"type\" : \"string\",\n      \"format\" : \"date-time\",\n      \"description\" : \"Comment publish time lower bound; defaults to this post's publishTime from search_posts/get_post_detail.\"\n    },\n    \"tagCode\" : {\n      \"type\" : \"string\",\n      \"description\" : \"Tag code (tagCode) from get_corpus_tags.\"\n    },\n    \"uuid\" : {\n      \"type\" : \"string\",\n      \"description\" : \"Content UUID from search_posts results.\"\n    }\n  },\n  \"required\" : [ \"channelId\", \"gameId\", \"resourceType\", \"tagCode\", \"uuid\" ],\n  \"additionalProperties\" : false\n}"
+			}
+		]
+	},
+	{
+		"serverName":"community-mcp-content",
+		"name":"get_comments_summary",
+		"description":"Comment analytics summary for a post: sentiment mix and time trends. Aggregate stats only—no raw comment list.",
+		"arguments":[
+			{
+				"description":"Identifier of the community space. SpaceId",
+				"name":"spaceId",
+				"primaryType":"integer",
+				"required":true,
+				"requiredSpecified":true,
+				"schema":"{\n  \"$schema\" : \"https://json-schema.org/draft/2020-12/schema\",\n  \"type\" : \"integer\",\n  \"format\" : \"int64\",\n  \"additionalProperties\" : false\n}"
+			},
+			{
+				"name":"param",
+				"primaryType":"object",
+				"required":true,
+				"requiredSpecified":true,
+				"schema":"{\n  \"$schema\" : \"https://json-schema.org/draft/2020-12/schema\",\n  \"type\" : \"object\",\n  \"properties\" : {\n    \"channelId\" : {\n      \"type\" : \"integer\",\n      \"format\" : \"int64\",\n      \"description\" : \"Channel ID from search_posts results.\"\n    },\n    \"endTime\" : {\n      \"type\" : \"string\",\n      \"format\" : \"date-time\",\n      \"description\" : \"Comment publish time upper bound. Format: yyyy-MM-dd.\"\n    },\n    \"gameId\" : {\n      \"type\" : \"integer\",\n      \"format\" : \"int64\",\n      \"description\" : \"Identifier of the community space. SpaceId\"\n    },\n    \"startTime\" : {\n      \"type\" : \"string\",\n      \"format\" : \"date-time\",\n      \"description\" : \"Comment publish time lower bound; defaults to this post's publishTime from search_posts/get_post_detail.\"\n    },\n    \"uuid\" : {\n      \"type\" : \"string\",\n      \"description\" : \"Content UUID from search_posts results.\"\n    }\n  },\n  \"required\" : [ \"channelId\", \"gameId\", \"uuid\" ],\n  \"additionalProperties\" : false\n}"
+			}
+		]
+	},
+	{
+		"serverName":"community-mcp-content",
+		"name":"get_post_detail",
+		"description":"Full detail for one post/video: body, media, subtitles, danmu, sentiment, keywords, topics, tag values, and comment pager.",
+		"arguments":[
+			{
+				"description":"Identifier of the community space. SpaceId",
+				"name":"spaceId",
+				"primaryType":"integer",
+				"required":true,
+				"requiredSpecified":true,
+				"schema":"{\n  \"$schema\" : \"https://json-schema.org/draft/2020-12/schema\",\n  \"type\" : \"integer\",\n  \"format\" : \"int64\",\n  \"additionalProperties\" : false\n}"
+			},
+			{
+				"name":"param",
+				"primaryType":"object",
+				"required":true,
+				"requiredSpecified":true,
+				"schema":"{\n  \"$schema\" : \"https://json-schema.org/draft/2020-12/schema\",\n  \"type\" : \"object\",\n  \"properties\" : {\n    \"channelId\" : {\n      \"type\" : \"integer\",\n      \"format\" : \"int64\",\n      \"description\" : \"Channel ID.\"\n    },\n    \"danmuPagerHeader\" : {\n      \"type\" : \"object\",\n      \"properties\" : {\n        \"orderBy\" : {\n          \"type\" : \"integer\",\n          \"format\" : \"int32\",\n          \"description\" : \"Sort: 0 video timestamp desc, 1 publish time desc.\"\n        },\n        \"pageNum\" : {\n          \"type\" : \"integer\",\n          \"format\" : \"int64\",\n          \"description\" : \"Page number, starting at 1.\"\n        },\n        \"pageSize\" : {\n          \"type\" : \"integer\",\n          \"format\" : \"int64\",\n          \"description\" : \"Page size.\"\n        }\n      },\n      \"description\" : \"Pagination for danmu; only applies to video.\"\n    },\n    \"gameId\" : {\n      \"type\" : \"integer\",\n      \"format\" : \"int64\",\n      \"description\" : \"Identifier of the community space. SpaceId\"\n    },\n    \"replyPagerHeader\" : {\n      \"type\" : \"object\",\n      \"properties\" : {\n        \"orderBy\" : {\n          \"type\" : \"integer\",\n          \"format\" : \"int32\",\n          \"description\" : \"Sort: 0 publish time desc, 1 publish time asc.\"\n        },\n        \"pageNum\" : {\n          \"type\" : \"integer\",\n          \"format\" : \"int64\",\n          \"description\" : \"Page number, starting at 1.\"\n        },\n        \"pageSize\" : {\n          \"type\" : \"integer\",\n          \"format\" : \"int64\",\n          \"description\" : \"Page size.\"\n        }\n      },\n      \"description\" : \"Pagination for comments.\"\n    },\n    \"resourceType\" : {\n      \"type\" : \"integer\",\n      \"format\" : \"int32\",\n      \"description\" : \"Resource type: 0 post, 1 video.\"\n    },\n    \"uuid\" : {\n      \"type\" : \"string\",\n      \"description\" : \"Content UUID (unique id).\"\n    }\n  },\n  \"required\" : [ \"channelId\", \"gameId\", \"resourceType\", \"uuid\" ],\n  \"additionalProperties\" : false\n}"
+			}
+		]
+	},
+	{
+		"serverName":"community-mcp-content",
+		"name":"search_posts",
+		"description":"Search social posts/videos/feeds in a community space. Filter by channel, keywords, sentiment, corpus tagFilters (see params; use get_corpus_tags for tagCode/inferenceType), time range, etc.Each row includes tags (tagCode, tagName, inferenceType, values) plus title, summary, platform, author, publish time, sentiment, keywords, engagement.",
+		"arguments":[
+			{
+				"description":"Identifier of the community space. SpaceId",
+				"name":"spaceId",
+				"primaryType":"integer",
+				"required":true,
+				"requiredSpecified":true,
+				"schema":"{\n  \"$schema\" : \"https://json-schema.org/draft/2020-12/schema\",\n  \"type\" : \"integer\",\n  \"format\" : \"int64\",\n  \"additionalProperties\" : false\n}"
+			},
+			{
+				"name":"param",
+				"primaryType":"object",
+				"required":true,
+				"requiredSpecified":true,
+				"schema":"{\n  \"$schema\" : \"https://json-schema.org/draft/2020-12/schema\",\n  \"type\" : \"object\",\n  \"properties\" : {\n    \"channelIdList\" : {\n      \"description\" : \"Channel IDs from get_channel_info (channelId).\",\n      \"type\" : \"array\",\n      \"items\" : {\n        \"type\" : \"integer\",\n        \"format\" : \"int64\",\n        \"description\" : \"Channel IDs from get_channel_info (channelId).\"\n      }\n    },\n    \"endTime\" : {\n      \"type\" : \"string\",\n      \"format\" : \"date-time\",\n      \"description\" : \"Content publish time upper bound. Format: yyyy-MM-dd.\"\n    },\n    \"gameId\" : {\n      \"type\" : \"integer\",\n      \"format\" : \"int64\",\n      \"description\" : \"Identifier of the community space. SpaceId\"\n    },\n    \"keywords\" : {\n      \"description\" : \"Keyword filter list.\",\n      \"type\" : \"array\",\n      \"items\" : {\n        \"type\" : \"string\",\n        \"description\" : \"Keyword filter list.\"\n      }\n    },\n    \"official\" : {\n      \"type\" : \"boolean\",\n      \"description\" : \"If true, only official accounts.\"\n    },\n    \"pagerHeader\" : {\n      \"type\" : \"object\",\n      \"properties\" : {\n        \"orderBy\" : {\n          \"type\" : \"integer\",\n          \"format\" : \"int32\",\n          \"description\" : \"Sort: 0 publish time desc, 1 weight desc, 2 publish time asc, 3 reply count desc, 4 heat desc.\"\n        },\n        \"pageNum\" : {\n          \"type\" : \"integer\",\n          \"format\" : \"int64\",\n          \"description\" : \"Page number, starting at 1.\"\n        },\n        \"pageSize\" : {\n          \"type\" : \"integer\",\n          \"format\" : \"int64\",\n          \"description\" : \"Page size.\"\n        }\n      },\n      \"description\" : \"Pagination and sort.\"\n    },\n    \"resourceType\" : {\n      \"description\" : \"Resource types: 0 post, 1 video.\",\n      \"type\" : \"array\",\n      \"items\" : {\n        \"type\" : \"integer\",\n        \"format\" : \"int32\",\n        \"description\" : \"Resource types: 0 post, 1 video.\"\n      }\n    },\n    \"searchMode\" : {\n      \"type\" : \"integer\",\n      \"format\" : \"int32\",\n      \"description\" : \"Search mode: 0 tokenized (default), 1 exact substring (e.g. \\\"#tag\\\" matches only posts containing that full string), 2 author name.\"\n    },\n    \"searchWord\" : {\n      \"type\" : \"string\",\n      \"description\" : \"Full-text query; used together with searchMode.\"\n    },\n    \"sentimentTypes\" : {\n      \"description\" : \"Sentiment filter: 0 negative, 1 positive, 2 neutral.\",\n      \"type\" : \"array\",\n      \"items\" : {\n        \"type\" : \"integer\",\n        \"format\" : \"int32\",\n        \"description\" : \"Sentiment filter: 0 negative, 1 positive, 2 neutral.\"\n      }\n    },\n    \"startTime\" : {\n      \"type\" : \"string\",\n      \"format\" : \"date-time\",\n      \"description\" : \"Content publish time lower bound. Format: yyyy-MM-dd.\"\n    },\n    \"tagFilters\" : {\n      \"description\" : \"Corpus tag filters.\",\n      \"type\" : \"array\",\n      \"items\" : {\n        \"type\" : \"object\",\n        \"properties\" : {\n          \"calcuSymbol\" : {\n            \"type\" : \"string\",\n            \"description\" : \"Comparison operator code. label: C04 (has value), C05 (no value) only; score: C00 eq, C01 ne, C02 lt, C020 lte, C03 gt, C030 gte, C04 has value, C05 no value, C06 closed interval.\"\n          },\n          \"ftv\" : {\n            \"description\" : \"Filter value; parsed server-side as a JSON array. score C00/C01/C02/C020/C03/C030: single-element array e.g. [\\\"0.35\\\"]; C06: at least two elements [\\\"min\\\",\\\"max\\\"]; label C04/C05: ftv not required.\"\n          },\n          \"inferenceType\" : {\n            \"type\" : \"string\",\n            \"description\" : \"Inference type from get_corpus_tags; filtering supports only label and score.\"\n          },\n          \"tagCode\" : {\n            \"type\" : \"string\",\n            \"description\" : \"Tag code; same as tagCode from get_corpus_tags.\"\n          },\n          \"tagName\" : {\n            \"type\" : \"string\",\n            \"description\" : \"Tag name; same as tagName from get_corpus_tags.\"\n          }\n        },\n        \"required\" : [ \"calcuSymbol\", \"ftv\", \"inferenceType\", \"tagCode\", \"tagName\" ],\n        \"description\" : \"Corpus tag filters.\"\n      }\n    },\n    \"topicIdList\" : {\n      \"description\" : \"Topic IDs to filter; use topicId from get_hot_topics.\",\n      \"type\" : \"array\",\n      \"items\" : {\n        \"type\" : \"string\",\n        \"description\" : \"Topic IDs to filter; use topicId from get_hot_topics.\"\n      }\n    }\n  },\n  \"required\" : [ \"endTime\", \"gameId\", \"startTime\" ],\n  \"additionalProperties\" : false\n}"
+			}
+		]
+	},
+	{
+		"serverName":"community-mcp-content",
+		"name":"get_livestream_overview",
+		"description":"Livestream overview trends: active rooms, session count, interactions, and streamed duration.",
+		"arguments":[
+			{
+				"description":"Identifier of the community space. SpaceId",
+				"name":"spaceId",
+				"primaryType":"integer",
+				"required":true,
+				"requiredSpecified":true,
+				"schema":"{\n  \"$schema\" : \"https://json-schema.org/draft/2020-12/schema\",\n  \"type\" : \"integer\",\n  \"format\" : \"int64\",\n  \"additionalProperties\" : false\n}"
+			},
+			{
+				"name":"param",
+				"primaryType":"object",
+				"required":true,
+				"requiredSpecified":true,
+				"schema":"{\n  \"$schema\" : \"https://json-schema.org/draft/2020-12/schema\",\n  \"type\" : \"object\",\n  \"properties\" : {\n    \"endTime\" : {\n      \"type\" : \"string\",\n      \"format\" : \"date-time\",\n      \"description\" : \"Statistics range end (inclusive). Format: yyyy-MM-dd.\"\n    },\n    \"gameId\" : {\n      \"type\" : \"integer\",\n      \"format\" : \"int64\",\n      \"description\" : \"Identifier of the community space. SpaceId\"\n    },\n    \"startTime\" : {\n      \"type\" : \"string\",\n      \"format\" : \"date-time\",\n      \"description\" : \"Statistics range start (inclusive). Format: yyyy-MM-dd.\"\n    }\n  },\n  \"required\" : [ \"gameId\" ],\n  \"additionalProperties\" : false\n}"
+			}
+		]
+	},
+	{
+		"serverName":"community-mcp-content",
+		"name":"get_livestream_rooms",
+		"description":"Search live rooms by time range and channels; returns room list with stats.",
+		"arguments":[
+			{
+				"description":"Identifier of the community space. SpaceId",
+				"name":"spaceId",
+				"primaryType":"integer",
+				"required":true,
+				"requiredSpecified":true,
+				"schema":"{\n  \"$schema\" : \"https://json-schema.org/draft/2020-12/schema\",\n  \"type\" : \"integer\",\n  \"format\" : \"int64\",\n  \"additionalProperties\" : false\n}"
+			},
+			{
+				"name":"param",
+				"primaryType":"object",
+				"required":true,
+				"requiredSpecified":true,
+				"schema":"{\n  \"$schema\" : \"https://json-schema.org/draft/2020-12/schema\",\n  \"type\" : \"object\",\n  \"properties\" : {\n    \"channelIdList\" : {\n      \"description\" : \"Channel ID list.\",\n      \"type\" : \"array\",\n      \"items\" : {\n        \"type\" : \"integer\",\n        \"format\" : \"int64\",\n        \"description\" : \"Channel ID list.\"\n      }\n    },\n    \"endTime\" : {\n      \"type\" : \"string\",\n      \"format\" : \"date-time\",\n      \"description\" : \"Statistics range end (inclusive). Format: yyyy-MM-dd.\"\n    },\n    \"gameId\" : {\n      \"type\" : \"integer\",\n      \"format\" : \"int64\",\n      \"description\" : \"Identifier of the community space. SpaceId\"\n    },\n    \"startTime\" : {\n      \"type\" : \"string\",\n      \"format\" : \"date-time\",\n      \"description\" : \"Statistics range start (inclusive). Format: yyyy-MM-dd.\"\n    }\n  },\n  \"required\" : [ \"gameId\" ],\n  \"additionalProperties\" : false\n}"
+			}
+		]
+	},
+	{
+		"serverName":"community-mcp-content",
+		"name":"get_livestream_room_metrics",
+		"description":"Core metrics and yearly calendar for one room: overview KPIs plus daily streamed-duration calendar.",
+		"arguments":[
+			{
+				"description":"Identifier of the community space. SpaceId",
+				"name":"spaceId",
+				"primaryType":"integer",
+				"required":true,
+				"requiredSpecified":true,
+				"schema":"{\n  \"$schema\" : \"https://json-schema.org/draft/2020-12/schema\",\n  \"type\" : \"integer\",\n  \"format\" : \"int64\",\n  \"additionalProperties\" : false\n}"
+			},
+			{
+				"name":"param",
+				"primaryType":"object",
+				"required":true,
+				"requiredSpecified":true,
+				"schema":"{\n  \"$schema\" : \"https://json-schema.org/draft/2020-12/schema\",\n  \"type\" : \"object\",\n  \"properties\" : {\n    \"channelId\" : {\n      \"type\" : \"integer\",\n      \"format\" : \"int64\",\n      \"description\" : \"Channel ID from get_livestream_rooms.\"\n    },\n    \"gameId\" : {\n      \"type\" : \"integer\",\n      \"format\" : \"int64\",\n      \"description\" : \"Identifier of the community space. SpaceId\"\n    },\n    \"roomId\" : {\n      \"type\" : \"string\",\n      \"description\" : \"Live room ID (roomId) from get_livestream_rooms.\"\n    },\n    \"year\" : {\n      \"type\" : \"string\",\n      \"description\" : \"Calendar year (yyyy).\"\n    }\n  },\n  \"required\" : [ \"channelId\", \"gameId\", \"roomId\" ],\n  \"additionalProperties\" : false\n}"
+			}
+		]
+	},
+	{
+		"serverName":"community-mcp-content",
+		"name":"get_livestream_list",
+		"description":"List live sessions for a room in a time range (stream records).",
+		"arguments":[
+			{
+				"description":"Identifier of the community space. SpaceId",
+				"name":"spaceId",
+				"primaryType":"integer",
+				"required":true,
+				"requiredSpecified":true,
+				"schema":"{\n  \"$schema\" : \"https://json-schema.org/draft/2020-12/schema\",\n  \"type\" : \"integer\",\n  \"format\" : \"int64\",\n  \"additionalProperties\" : false\n}"
+			},
+			{
+				"name":"param",
+				"primaryType":"object",
+				"required":true,
+				"requiredSpecified":true,
+				"schema":"{\n  \"$schema\" : \"https://json-schema.org/draft/2020-12/schema\",\n  \"type\" : \"object\",\n  \"properties\" : {\n    \"channelId\" : {\n      \"type\" : \"integer\",\n      \"format\" : \"int64\",\n      \"description\" : \"Channel ID from get_livestream_rooms.\"\n    },\n    \"endTime\" : {\n      \"type\" : \"string\",\n      \"format\" : \"date-time\",\n      \"description\" : \"Statistics range end (inclusive). Format: yyyy-MM-dd.\"\n    },\n    \"gameId\" : {\n      \"type\" : \"integer\",\n      \"format\" : \"int64\",\n      \"description\" : \"Identifier of the community space. SpaceId\"\n    },\n    \"roomId\" : {\n      \"type\" : \"string\",\n      \"description\" : \"Live room ID (roomId) from get_livestream_rooms.\"\n    },\n    \"startTime\" : {\n      \"type\" : \"string\",\n      \"format\" : \"date-time\",\n      \"description\" : \"Statistics range start (inclusive). Format: yyyy-MM-dd.\"\n    }\n  },\n  \"required\" : [ \"gameId\" ],\n  \"additionalProperties\" : false\n}"
+			}
+		]
+	},
+	{
+		"serverName":"community-mcp-content",
+		"name":"get_livestream_detail",
+		"description":"One live session detail: interaction leaderboards and paginated interaction feed.",
+		"arguments":[
+			{
+				"description":"Identifier of the community space. SpaceId",
+				"name":"spaceId",
+				"primaryType":"integer",
+				"required":true,
+				"requiredSpecified":true,
+				"schema":"{\n  \"$schema\" : \"https://json-schema.org/draft/2020-12/schema\",\n  \"type\" : \"integer\",\n  \"format\" : \"int64\",\n  \"additionalProperties\" : false\n}"
+			},
+			{
+				"name":"param",
+				"primaryType":"object",
+				"required":true,
+				"requiredSpecified":true,
+				"schema":"{\n  \"$schema\" : \"https://json-schema.org/draft/2020-12/schema\",\n  \"type\" : \"object\",\n  \"properties\" : {\n    \"activityType\" : {\n      \"description\" : \"Activity type codes to filter details: 0 danmu, 1 gift, 2 superchat, 3 premium.\",\n      \"type\" : \"array\",\n      \"items\" : {\n        \"type\" : \"integer\",\n        \"format\" : \"int32\",\n        \"description\" : \"Activity type codes to filter details: 0 danmu, 1 gift, 2 superchat, 3 premium.\"\n      }\n    },\n    \"anchorTime\" : {\n      \"type\" : \"string\",\n      \"format\" : \"date-time\",\n      \"description\" : \"Anchor time for interactions. Format: yyyy-MM-dd HH:mm.\"\n    },\n    \"gameId\" : {\n      \"type\" : \"integer\",\n      \"format\" : \"int64\",\n      \"description\" : \"Identifier of the community space. SpaceId\"\n    },\n    \"pagerHeader\" : {\n      \"type\" : \"object\",\n      \"properties\" : {\n        \"orderBy\" : {\n          \"type\" : \"integer\",\n          \"format\" : \"int32\",\n          \"description\" : \"Sort: 0 interaction time desc, 1 interaction time asc.\"\n        },\n        \"pageNum\" : {\n          \"type\" : \"integer\",\n          \"format\" : \"int64\",\n          \"description\" : \"Page number, starting at 1.\"\n        },\n        \"pageSize\" : {\n          \"type\" : \"integer\",\n          \"format\" : \"int64\",\n          \"description\" : \"Page size.\"\n        }\n      },\n      \"description\" : \"Pagination.\"\n    },\n    \"searchWord\" : {\n      \"type\" : \"string\",\n      \"description\" : \"Keyword to filter interaction detail rows.\"\n    },\n    \"streamId\" : {\n      \"type\" : \"string\",\n      \"description\" : \"Live session ID (streamId) from get_livestream_list.\"\n    }\n  },\n  \"required\" : [ \"gameId\", \"streamId\" ],\n  \"additionalProperties\" : false\n}"
+			}
+		]
+	},
+	{
+		"serverName":"community-mcp-content",
+		"name":"get_livestream_analysis",
+		"description":"AI-generated live session analysis report: highlight moments (time slices with metrics and AI insights) and sentiment opinions.",
+		"arguments":[
+			{
+				"description":"Identifier of the community space. SpaceId",
+				"name":"spaceId",
+				"primaryType":"integer",
+				"required":true,
+				"requiredSpecified":true,
+				"schema":"{\n  \"$schema\" : \"https://json-schema.org/draft/2020-12/schema\",\n  \"type\" : \"integer\",\n  \"format\" : \"int64\",\n  \"additionalProperties\" : false\n}"
+			},
+			{
+				"name":"param",
+				"primaryType":"object",
+				"required":true,
+				"requiredSpecified":true,
+				"schema":"{\n  \"$schema\" : \"https://json-schema.org/draft/2020-12/schema\",\n  \"type\" : \"object\",\n  \"properties\" : {\n    \"gameId\" : {\n      \"type\" : \"integer\",\n      \"format\" : \"int64\",\n      \"description\" : \"Identifier of the community space. SpaceId\"\n    },\n    \"streamId\" : {\n      \"type\" : \"string\",\n      \"description\" : \"Live session ID (streamId) from get_livestream_list.\"\n    }\n  },\n  \"required\" : [ \"gameId\", \"streamId\" ],\n  \"additionalProperties\" : false\n}"
+			}
+		]
+	},
+	{
+		"serverName":"community-mcp-hot",
+		"name":"get_daily_summary",
+		"description":"Daily community summary for a given date: hot topic rankings and highlighted opinions (positive/negative). Core tool for agents to build structured digests.",
+		"arguments":[
+			{
+				"description":"Identifier of the community space. SpaceId",
+				"name":"spaceId",
+				"primaryType":"integer",
+				"required":true,
+				"requiredSpecified":true,
+				"schema":"{\n  \"$schema\" : \"https://json-schema.org/draft/2020-12/schema\",\n  \"type\" : \"integer\",\n  \"format\" : \"int64\",\n  \"additionalProperties\" : false\n}"
+			},
+			{
+				"name":"param",
+				"primaryType":"object",
+				"required":true,
+				"requiredSpecified":true,
+				"schema":"{\n  \"$schema\" : \"https://json-schema.org/draft/2020-12/schema\",\n  \"type\" : \"object\",\n  \"properties\" : {\n    \"date\" : {\n      \"type\" : \"string\",\n      \"format\" : \"date-time\",\n      \"description\" : \"Summary date. Format: yyyy-MM-dd.\"\n    },\n    \"gameId\" : {\n      \"type\" : \"integer\",\n      \"format\" : \"int64\",\n      \"description\" : \"Identifier of the community space. SpaceId\"\n    }\n  },\n  \"required\" : [ \"date\", \"gameId\" ],\n  \"additionalProperties\" : false\n}"
+			}
+		]
+	},
+	{
+		"serverName":"community-mcp-hot",
+		"name":"get_hot_topics",
+		"description":"Hot topics leaderboard over a time range.",
+		"arguments":[
+			{
+				"description":"Identifier of the community space. SpaceId",
+				"name":"spaceId",
+				"primaryType":"integer",
+				"required":true,
+				"requiredSpecified":true,
+				"schema":"{\n  \"$schema\" : \"https://json-schema.org/draft/2020-12/schema\",\n  \"type\" : \"integer\",\n  \"format\" : \"int64\",\n  \"additionalProperties\" : false\n}"
+			},
+			{
+				"name":"param",
+				"primaryType":"object",
+				"required":true,
+				"requiredSpecified":true,
+				"schema":"{\n  \"$schema\" : \"https://json-schema.org/draft/2020-12/schema\",\n  \"type\" : \"object\",\n  \"properties\" : {\n    \"endTime\" : {\n      \"type\" : \"string\",\n      \"format\" : \"date-time\",\n      \"description\" : \"Topic statistics range end (inclusive). Format: yyyy-MM-dd.\"\n    },\n    \"gameId\" : {\n      \"type\" : \"integer\",\n      \"format\" : \"int64\",\n      \"description\" : \"Identifier of the community space. SpaceId\"\n    },\n    \"orderBy\" : {\n      \"type\" : \"integer\",\n      \"format\" : \"int32\",\n      \"description\" : \"Sort: 0 by topic heat desc, 1 by topic start time desc.\"\n    },\n    \"startTime\" : {\n      \"type\" : \"string\",\n      \"format\" : \"date-time\",\n      \"description\" : \"Topic statistics range start (inclusive). Format: yyyy-MM-dd.\"\n    }\n  },\n  \"required\" : [ \"gameId\" ],\n  \"additionalProperties\" : false\n}"
+			}
+		]
+	},
+	{
+		"serverName":"community-mcp-hot",
+		"name":"get_topic_detail",
+		"description":"Deep stats for one topic in a range: content/reply totals, sentiment (POSITIVE/NEGATIVE/NEUTRAL), per-channel daily trends, hot keywords. Prefer topicId from get_hot_topics.",
+		"arguments":[
+			{
+				"description":"Identifier of the community space. SpaceId",
+				"name":"spaceId",
+				"primaryType":"integer",
+				"required":true,
+				"requiredSpecified":true,
+				"schema":"{\n  \"$schema\" : \"https://json-schema.org/draft/2020-12/schema\",\n  \"type\" : \"integer\",\n  \"format\" : \"int64\",\n  \"additionalProperties\" : false\n}"
+			},
+			{
+				"name":"param",
+				"primaryType":"object",
+				"required":true,
+				"requiredSpecified":true,
+				"schema":"{\n  \"$schema\" : \"https://json-schema.org/draft/2020-12/schema\",\n  \"type\" : \"object\",\n  \"properties\" : {\n    \"endTime\" : {\n      \"type\" : \"string\",\n      \"format\" : \"date-time\",\n      \"description\" : \"Statistics end date. Format: yyyy-MM-dd. Prefer topic endTime from get_hot_topics.\"\n    },\n    \"gameId\" : {\n      \"type\" : \"integer\",\n      \"format\" : \"int64\",\n      \"description\" : \"Identifier of the community space. SpaceId\"\n    },\n    \"startTime\" : {\n      \"type\" : \"string\",\n      \"format\" : \"date-time\",\n      \"description\" : \"Statistics start date. Format: yyyy-MM-dd. Prefer topic startTime from get_hot_topics.\"\n    },\n    \"topicId\" : {\n      \"type\" : \"string\",\n      \"description\" : \"Topic ID from get_hot_topics (topicId).\"\n    }\n  },\n  \"required\" : [ \"endTime\", \"gameId\", \"startTime\", \"topicId\" ],\n  \"additionalProperties\" : false\n}"
+			}
+		]
+	}
+]

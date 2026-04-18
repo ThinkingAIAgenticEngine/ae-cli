@@ -1,0 +1,27 @@
+import { createMcpCommand, optionalBoolean, optionalJson, optionalJsonString, optionalNumber, optionalString, requiredJsonString } from '../shared.js';
+
+export const buildEntityDetailsSql = createMcpCommand({
+  command: '+build_entity_details_sql',
+  description: 'Build the SQL for an entity details query. The parameters are the same as query_entity_details, but this tool returns SQL instead of query results.',
+  flags: [
+    { name: 'project_id', type: 'number', required: true, desc: 'Project ID', alias: 'p' },
+    { name: 'entity_id', type: 'number', required: false, desc: 'Optional entity ID used in multi-entity scenarios. If omitted, the default user entity is used.' },
+    { name: 'definition', type: 'json', required: true, desc: 'Cluster definition JSON. See +get_cluster_definition_schema for the structure.' },
+    { name: 'properties', type: 'json', required: false, desc: 'Optional display properties JSON' },
+    { name: 'sort_by', type: 'string', required: false, desc: 'Optional sort field' },
+    { name: 'sort_order', type: 'string', required: false, desc: 'Optional sort order. Supported values: asc and desc' },
+    { name: 'limit', type: 'number', required: false, desc: 'Optional result limit. Default: 1000, maximum: 10000' },
+    { name: 'zone_offset', type: 'number', required: false, desc: 'Time zone offset. For example, UTC+8 is 8' },
+  ],
+  risk: 'read',
+  buildArgs: (ctx) => ({
+      projectId: ctx.num('project_id'),
+      entityId: optionalNumber(ctx, 'entity_id'),
+      definition: requiredJsonString(ctx, 'definition'),
+      properties: optionalJsonString(ctx, 'properties'),
+      sortBy: optionalString(ctx, 'sort_by'),
+      sortOrder: optionalString(ctx, 'sort_order'),
+      limit: optionalNumber(ctx, 'limit'),
+      zoneOffset: optionalNumber(ctx, 'zone_offset'),
+    }),
+});

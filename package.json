@@ -1,0 +1,53 @@
+{
+  "name": "@thinking-ai/ae-cli",
+  "version": "1.0.1",
+  "description": "CLI tool for ThinkingAI AgenticEngine (AE) analytics platform",
+  "type": "module",
+  "bin": {
+    "ae-cli": "bin/ae-cli.js"
+  },
+  "main": "dist/index.js",
+  "files": [
+    "bin/",
+    "dist/",
+    "skills/",
+    "README.md"
+  ],
+  "scripts": {
+    "dev": "tsx src/index.ts",
+    "build": "tsup src/index.ts --format esm --outDir dist",
+    "verify:te-analysis-tools": "node scripts/verify-te-analysis-tools.mjs",
+    "verify:te-audience-tools": "node scripts/verify-te-audience-tools.mjs",
+    "verify:te-meta-tools": "node scripts/verify-te-meta-tools.mjs",
+    "verify:te-common-tools": "node scripts/verify-te-common-tools.mjs",
+    "prepublishOnly": "npm run build",
+    "start": "node dist/index.js",
+    "test": "npx tsx src/index.ts --help"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/ThinkingAIAgenticEngine/ae-cli.git"
+  },
+  "keywords": [
+    "thinkingengine",
+    "analytics",
+    "cli"
+  ],
+  "author": "ThinkingAI",
+  "license": "MIT",
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "dependencies": {
+    "cli-table3": "^0.6.5",
+    "commander": "^12.1.0",
+    "ws": "^8.18.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "@types/ws": "^8.5.0",
+    "tsup": "^8.0.0",
+    "tsx": "^4.0.0",
+    "typescript": "^5.5.0"
+  }
+}
