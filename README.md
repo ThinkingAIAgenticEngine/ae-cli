@@ -7,7 +7,7 @@ CLI tool for ThinkingAI AgenticEngine (AE) platform. Designed for both AI Agent 
 **Step 1: Install ae-cli**
 
 ```bash
-npm install -g @thinking-ai/ae-cli
+npm install -g @thinkingai/ae-cli
 ```
 
 **Step 2: Install AI Agent Skills**
@@ -21,7 +21,7 @@ This installs 8 skill packages into your AI coding agent (Claude Code, Trae, Cur
 To update:
 
 ```bash
-npm cache clean --force && npm install -g @thinking-ai/ae-cli
+npm cache clean --force && npm install -g @thinkingai/ae-cli
 npx skills add ThinkingAIAgenticEngine/ae-cli -g -y
 ```
 

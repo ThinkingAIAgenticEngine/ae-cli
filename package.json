@@ -1,5 +1,5 @@
 {
-  "name": "@thinking-ai/ae-cli",
+  "name": "@thinkingai/ae-cli",
   "version": "1.0.1",
   "description": "CLI tool for ThinkingAI AgenticEngine (AE) analytics platform",
   "type": "module",
