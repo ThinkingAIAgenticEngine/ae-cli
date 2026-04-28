@@ -2,12 +2,12 @@
 
 ## 定位
 
-`ae-cli` 是面向 **ThinkingEngine（TE）** 分析平台的命令行工具，同时为人类用户与 AI Agent 设计：统一封装 TE 后台能力，通过域名（service）与子命令暴露，并配套可安装的 Agent Skills。
+`ae-cli` 是面向 **ThinkingAI（AE）** 分析平台的命令行工具，同时为人类用户与 AI Agent 设计：统一封装 AE 后台能力，通过域名（service）与子命令暴露，并配套可安装的 Agent Skills。
 
 ## 核心目标
 
-- 提供可脚本化、可组合的 TE 数据与运营能力访问（元数据、分析 SQL/报表、人群、运营任务、社区等）。
-- 支持多 TE Host：按 URL 隔离配置与 token，交互式 `config` 管理主机与登录状态。
+- 提供可脚本化、可组合的 AE 数据与运营能力访问（元数据、分析 SQL/报表、人群、运营任务、社区等）。
+- 支持多 AE Host：按 URL 隔离配置与 token，交互式 `config` 管理主机与登录状态。
 - 输出可机器解析（默认 JSON）或可阅读（`--format table`），可选 `--jq` 过滤。
 - 将命令契约同步到 `skills/` 下的多包 Skill，便于 Cursor / Claude Code 等调用。
 

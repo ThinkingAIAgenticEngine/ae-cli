@@ -96,7 +96,7 @@ resolveMcpUrl(undefined, 'http://host', 'unknown_service')
 
 ### MCP Token 获取流程
 
-1. 使用 TE Token 调用 `/v1/ta/mcp/token/generate` 接口
+1. 使用 AE Token 调用 `/v1/ta/mcp/token/generate` 接口
 2. 获取返回的 `userSecret` 作为 MCP Token
 3. Token 缓存至 `~/.ae-cli/mcp-tokens.json`（按 host 存储）
 

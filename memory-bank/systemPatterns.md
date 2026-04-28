@@ -10,14 +10,14 @@
 ## 横切能力
 
 - **配置与鉴权**：`core/config.ts`、`core/auth.ts`；`commands/auth.ts`、`commands/config.ts` 单独注册到根 program。
-- **HTTP**：`core/client.ts` 等综合调用 TE API（具体以各命令实现为准）。
+- **HTTP**：`core/client.ts` 等综合调用 AE API（具体以各命令实现为准）。
 - **原始 API**：`api/raw.ts` 提供贴近 REST 的 `ae-cli api` 能力。
 - **MCP**：`core/mcp.ts` 用于注册与 MCP 后端的映射；`community` 等在 `index` 中调用 `registerMcpMappings`（如 `community_content` / `community_analysis` / `community_hot`）。
 
 ## Skills 布局
 
 - 每个 skill 包：`skills/<name>/SKILL.md` + `references/*.md`（单命令深度说明）。
-- 与代码域对应关系示例：`te-meta` ↔ `meta`，`te-analysis` ↔ `analysis`，`te-audience` ↔ `audience`，`te-operation` ↔ `operation`，`te-community` ↔ `community`，`te-shared` 为共享前置。
+- 与代码域对应关系示例：`te-meta` ↔ `meta`，`ae-analysis` ↔ `analysis`，`te-audience` ↔ `audience`，`te-operation` ↔ `operation`，`ae-community` ↔ `community`，`ae-shared` 为共享前置。
 
 ## 命名与扩展
 

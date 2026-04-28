@@ -1,3 +1,6 @@
+
+[中文版](./README.zh.md) | [English](./README.md)
+
 # ae-cli
 
 CLI tool for ThinkingAI AgenticEngine (AE) platform. Designed for both AI Agent and human use.
@@ -16,7 +19,7 @@ npm install -g @thinkingai/ae-cli
 npx skills add ThinkingAIAgenticEngine/ae-cli -g -y
 ```
 
-This installs 8 skill packages into your AI coding agent (Claude Code, Trae, Cursor, etc.), enabling the agent to understand and call ae-cli commands.
+This installs 4 skill packages into your AI coding agent (Claude Code, Trae, Cursor, etc.), enabling the agent to understand and call ae-cli commands.
 
 To update:
 
@@ -33,11 +36,11 @@ ae-cli config
 ```
 
 The `config` command opens an interactive terminal UI:
-- First run: prompts you to add a TE host URL and label, then auto-authenticates
+- First run: prompts you to add a AE host URL and label, then auto-authenticates
 - Subsequent runs: shows all configured hosts, lets you switch, edit, delete, or add new ones
 
 ```
-TE Host Manager  (↑↓ select · Enter switch · e edit label · d delete · a add · q quit)
+AE Host Manager  (↑↓ select · Enter switch · e edit label · d delete · a add · q quit)
 
 ❯ ● Production  https://ta.thinkingdata.cn  ✓
   ○ Staging     https://ta-staging.example.com:8080  ✗
@@ -49,7 +52,7 @@ After selecting a host, ae-cli automatically checks if the token is valid. If no
 ## Usage
 
 ```bash
-# TE meta domain (metadata and governance)
+# AE meta domain (metadata and governance)
 ae-cli analysis_meta +list_events --project_id 1
 
 # Table output
@@ -61,7 +64,7 @@ ae-cli api GET /v1/ta/event/catalog/listEvent --params '{"projectId": 1}'
 
 ## Authentication
 
-Authentication is handled per-host. Each TE host URL maintains its own token.
+Authentication is handled per-host. Each AE host URL maintains its own token.
 
 ```bash
 # Auto-login for active host (macOS, extracts token from Chrome)
@@ -96,7 +99,7 @@ ae-cli auth logout
 
 | Option | Description | Default |
 |--------|-------------|---------|
-| `--host <url>` | Override active TE host URL | from config |
+| `--host <url>` | Override active AE host URL | from config |
 | `--format <json\|table>` | Output format | json |
 | `--jq <expr>` | Filter expression | - |
 | `--dry-run` | Preview request | false |
@@ -104,51 +107,34 @@ ae-cli auth logout
 
 ## Skills
 
-8 AI Agent skill packages are included in the `skills/` directory:
+5 AI Agent skill packages are included in the `skills/` directory:
 
 | Skill | Description |
 |-------|-------------|
-| `te-shared` | Authentication, configuration, global options |
-| `te-analysis` | Alerts, reports, dashboards, ad-hoc/drilldown, entity details, analysis schema |
-| `te-audience` | Cluster and tag lifecycle management |
-| `te-meta` | Metadata governance, project config, tracking plan, and resource link operations |
-| `te-engage` | Hermes Engage MCP: channels, tasks, configs, flows, strategies |
-| `te-dataops` | Data warehouse management, task flows, IDE queries, integration, operations |
-| `te-community` | Community analysis: posts, comments, topics, livestreams |
-| `te-common` | Cross-module constraints: project ID gate, resource link completion |
+| `ae-analysis` | Unified analysis skill: analysis + audience + metadata + common constraints (project gate/resource links) |
+| `ae-engage` | Hermes Engage MCP: channels, tasks, configs, flows, strategies |
+| `ae-dataops` | Data warehouse management, task flows, IDE queries, integration, operations |
+| `ae-community` | Community analysis: posts, comments, topics, livestreams |
 
 Install them with:
 
 ```bash
-npx skills add http://10.27.249.150:8888/te-ai/te-cli.git#release/6.0 te-ai/ae-cli -g -y
+npx skills add ThinkingAIAgenticEngine/ae-cli -g -y
 ```
 
 ## Skill Details
 
-### te-analysis (31 tools)
+### ae-analysis (67 tools)
 
-Analysis query and visualization capabilities:
+Unified AE analysis capabilities:
 - **Alerts**: view, create, update alert definitions
 - **Reports & Dashboards**: create, query, update reports and dashboards
 - **Model Analysis**: event analysis, retention analysis, funnel analysis, SQL analysis, user property analysis, distribution analysis, interval analysis, path analysis, attribution analysis
+- **Audience**: cluster and tag lifecycle management, plus definition schema tools
+- **Metadata Governance**: events/properties, metrics, virtual metadata, project config, tracking plans, mark times, entity catalog
+- **Common Constraints**: mandatory project ID gate and post-write resource-link completion
 - **Entity/Event Details**: query details, generate analysis SQL
 - **Schema Helpers**: analysis query schema, filter schema, groupby schema
-
-### te-audience (14 tools)
-
-Audience operations and targeting:
-- **Clusters**: create, update, query, member inspection, recomputation
-- **Tags**: create, update, query, member inspection, recomputation
-- **Schema Definitions**: cluster/tag definition schemas
-
-### te-meta (20 tools)
-
-Metadata and tracking-plan governance:
-- **Metadata Governance**: events/properties, metrics, virtual metadata
-- **Project Configuration**: project config, project users
-- **Tracking Plans**: track program management
-- **Mark Times**: date markers management
-- **Entity Catalog**: entity listing
 
 ### engage (40+ tools)
 
@@ -158,7 +144,7 @@ Hermes Engage MCP capabilities:
 - **Configs**: config items, strategies, strategy comparison, trigger/analysis reports
 - **Flows**: flow creation, node config, flow reports, flow validation
 
-### te-dataops (50+ tools)
+### ae-dataops (50+ tools)
 
 Data warehouse management:
 - **Repo Management**: spaces, catalogs, schemas, members
@@ -168,7 +154,7 @@ Data warehouse management:
 - **Integration**: datasource management, sync solutions, data synchronization
 - **Operations**: flow instances, task instances, backfill jobs
 
-### te-community (30+ tools)
+### ae-community (30+ tools)
 
 Community social media analysis:
 - **Posts**: search, detail, corpus tags
@@ -176,21 +162,6 @@ Community social media analysis:
 - **Topics**: hot topics, trends, daily summaries
 - **Livestreams**: rooms, sessions, analysis, metrics
 - **Advanced Analysis**: activity analysis, character analysis, weekly reports, release analysis
-
-### te-common (2 tools)
-
-Cross-module common constraints:
-- **Project ID Gate**: mandatory project verification before execution
-- **Resource Link Completion**: post-write link generation for dashboards, reports, metrics, alerts, clusters, tags
-
-## Development
-
-```bash
-git clone https://github.com/ThinkingAIAgenticEngine/ae-cli.git
-cd ae-cli
-npm install
-npx tsx src/index.ts --help
-```
 
 ## Architecture
 
@@ -214,7 +185,7 @@ src/
     ├── te-meta/
     ├── te-engage/
     ├── te-dataops/
-    ├── community/
+    ├── te-community/
     └── te-common/
 ```
 

@@ -1,13 +1,13 @@
-import { createMcpCommand, optionalBoolean, optionalJson, optionalJsonString, optionalNumber, optionalString, requiredJsonString } from '../shared.js';
+import { createMcpCommand, optionalBoolean, optionalJson, optionalJsonString, optionalNumber, optionalString } from '../shared.js';
 
 export const queryEventDetails = createMcpCommand({
   command: '+query_event_details',
-  description: 'Query event detail data. Supports time range, filters, display properties, sorting, and result limits.',
+  description: 'Query event detail data. Supports time range, filters, display properties, sorting, and result limits. Time can be specified via --relative_date_range OR (--start_time AND --end_time).',
   flags: [
     { name: 'project_id', type: 'number', required: true, desc: 'Project ID', alias: 'p' },
     { name: 'event_name', type: 'string', required: true, desc: 'Event name' },
-    { name: 'start_time', type: 'string', required: false, desc: 'Start time. Format: yyyy-MM-dd HH:mm:ss' },
-    { name: 'end_time', type: 'string', required: false, desc: 'End time. Format: yyyy-MM-dd HH:mm:ss' },
+    { name: 'start_time', type: 'string', required: false, desc: 'Start time. Format: yyyy-MM-dd HH:mm:ss. Required if not using relative_date_range.' },
+    { name: 'end_time', type: 'string', required: false, desc: 'End time. Format: yyyy-MM-dd HH:mm:ss. Required if not using relative_date_range.' },
     { name: 'relative_date_range', type: 'string', required: false, desc: 'Optional relative date range in m-n format. For example, 0-7 means the most recent 7 days including today. Use either this field or start_time/end_time.' },
     { name: 'filters', type: 'json', required: false, desc: 'Optional filter JSON. See +get_filter_schema for the structure.' },
     { name: 'properties', type: 'json', required: false, desc: 'Optional display properties JSON' },

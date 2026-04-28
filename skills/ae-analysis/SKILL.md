@@ -1,0 +1,229 @@
+---
+name: ae-analysis
+version: 3.0.0
+description: "AE/TE/ThinkingEngine/ThinkingAI ae-cli manual for analysis-side tasks in the AE system or analysis platform: reports, dashboards, alerts, ad hoc analysis, drilldown, audience clusters, tags, tag members, metrics and metric definitions, events, properties, virtual events, virtual properties, metadata, project configuration, tracking plans, event tracking, mark times, project lists, and resource links. Use when the user asks to query, create, update, refresh, inspect, troubleshoot, govern, or manage these AE analysis assets. Must use ae-cli, read the matching references/<tool_name>.md command manual before composing commands, and never guess command names, flags, JSON payloads, project_id, resource IDs, or parameter formats."
+metadata:
+  requires:
+    bins: ["ae-cli"]
+  cliHelp: "ae-cli --help"
+---
+
+# ae-analysis
+
+> **CRITICAL - This skill is self-contained.** Use the Global AE CLI Rules below; do not require a separate shared skill for analysis-side tasks.
+> **CRITICAL - For all commands that require `project_id`, you MUST satisfy `PROJECT_ID_GATE` first (no guessing): verify the project by ID/name with `analysis_common +list_projects` only when there is no valid project context yet, when the user switches project/host/environment, or when the supplied project is ambiguous. Reuse a project already verified in the same continuous conversation and same host/environment.**
+> **CRITICAL - For write operations in this skill, you MUST complete the post-write link loop when applicable:** after success and extractable `resource_id`, call `analysis_common +get_resource_url` and return the main result + resource link (or explicit link-failure reason).
+> **CRITICAL - Before running any `+<tool_name>` command, you MUST first read the corresponding `references/<tool_name>.md`.** The reference filename always equals the command name without the leading `+`, for example `+query_adhoc` -> `references/query_adhoc.md`.
+
+## Global AE CLI Rules
+
+AE CLI (`ae-cli`) is the command-line tool for the AE / TE / ThinkingEngine analysis platform. For AE analysis-side requests, prefer `ae-cli` and this skill's reference docs over model memory.
+
+Authentication priority:
+1. `TE_TOKEN` environment variable.
+2. Cached token in `~/.ae-cli/tokens.json`, usually valid for 20 hours.
+3. macOS Chrome token extraction via `ae-cli auth login`.
+
+Useful authentication commands:
+
+```bash
+ae-cli auth login
+ae-cli auth status
+ae-cli auth logout
+```
+
+Global parameters:
+
+| Parameter | Description |
+|---|---|
+| `--host <host>` | Target AE host. Use when the environment is not the default host. |
+| `--format <json|table>` | Output format. Default is JSON. |
+| `--jq <expr>` | jq filter expression for JSON output. |
+| `--dry-run` | Preview the request without executing it. |
+| `--yes` | Skip confirmation for write operations. Use only when the user intent is explicit or automation requires it. |
+
+Output and errors:
+- Successful commands return machine-readable JSON by default.
+- Failed commands return `{ "ok": false, "error": { "type": "...", "message": "...", "hint": "..." } }` and exit non-zero.
+- On auth/config errors, check `ae-cli auth status`, host configuration, and the target environment before retrying.
+
+Safety constraints:
+- Read commands can execute directly after required IDs and references are verified.
+- Write commands require explicit user intent and normally keep the confirmation prompt.
+- Use `--dry-run` before risky or complex writes.
+- Never invent command names, flags, JSON payloads, `project_id`, resource IDs, field names, event names, property names, metric definitions, or date formats. Read the matching command reference and discover real project metadata first.
+
+## When to Use
+
+Use `ae-analysis` for all AE analysis-side work below:
+
+- Domain `analysis`: alerts, reports/dashboards, ad-hoc model analysis, drilldown, entity/event details, schema helpers.
+- Domain `analysis_audience`: clusters/tags and definition schemas.
+- Domain `analysis_meta`: metadata governance, metrics, virtual metadata, project config, tracking plans, mark times, entity catalog.
+- Domain `analysis_common`: project listing and post-write resource links.
+
+If user intent is Engage/DataOps/Community, switch to `ae-engage` / `ae-dataops` / `ae-community`.
+
+## Command Format
+
+- `ae-cli analysis +<tool_name> [options]`
+- `ae-cli analysis_audience +<tool_name> [options]`
+- `ae-cli analysis_meta +<tool_name> [options]`
+- `ae-cli analysis_common +<tool_name> [options]`
+
+Conventions:
+- CLI flags use underscores, e.g. `--project_id`.
+- MCP params map automatically to camelCase.
+- JSON args pass as JSON string literals.
+- Write operations require confirmation unless `--yes`.
+
+## Mandatory Constraints
+
+### A. PROJECT_ID_GATE
+
+For any command requiring `project_id`:
+1. If the same continuous conversation already has a verified project context (`project_id`, project name when known, and host/environment), reuse it directly for follow-up commands.
+2. Call `analysis_common +list_projects` only when no verified project context exists, the user provides a new project ID/name, the user switches host/environment, the user asks to list projects, or the current project is ambiguous.
+3. Verify any new user-provided ID or name against returned projects before using it.
+4. If the user supplied an exact `project_id` and it uniquely matches one returned project in the intended host/environment, continue with that ID.
+5. If the project is missing, the name is ambiguous, the host/environment is unclear, or the supplied ID/name does not uniquely match, show candidate projects and stop for user choice.
+6. Do not use sample project IDs from reference docs as real IDs.
+7. When reusing verified project context, mention the reused `project_id` briefly if it helps the user understand why `+list_projects` was not called again.
+
+### B. Write-operation Post-link Completion
+
+When these writes succeed and `resource_id` is extractable, call `analysis_common +get_resource_url` and append link output:
+- `dashboard`: `+create_dashboard`, `+update_dashboard`
+- `report`: `+create_report`
+- `metric`: `+create_metric`, `+update_metric`
+- `alert`: `+create_alert`, `+update_alert`
+- `tag`: `+create_tag`, `+update_tag`
+- `cluster`: `+create_cluster`, `+create_result_cluster`, `+update_cluster`
+- `virtual_event`: `+create_virtual_event`
+- `event_virtual_prop` / `user_virtual_prop`: `+create_virtual_property`
+- `super_event` / `super_prop_event` / `super_prop_user`: `+batch_create_metadata`, `+batch_edit_metadata`
+
+Closed-loop check (must be explicit in result):
+- Write result
+- `resource_id` checked
+- `+get_resource_url` called or skipped (no ID)
+- Link completion status
+
+## Tool Groups (69)
+
+### analysis (31)
+
+Alerts (5):
+- `+get_alert_definition_schema` ([doc](references/get_alert_definition_schema.md))
+- `+list_alerts` ([doc](references/list_alerts.md))
+- `+get_alert` ([doc](references/get_alert.md))
+- `+create_alert` ([doc](references/create_alert.md))
+- `+update_alert` ([doc](references/update_alert.md))
+
+Reports and Dashboards (13):
+- `+create_report` ([doc](references/create_report.md))
+- `+get_report_definition` ([doc](references/get_report_definition.md))
+- `+list_reports` ([doc](references/list_reports.md))
+- `+query_report_data` ([doc](references/query_report_data.md))
+- `+create_dashboard` ([doc](references/create_dashboard.md))
+- `+list_dashboards` ([doc](references/list_dashboards.md))
+- `+query_dashboard_detail` ([doc](references/query_dashboard_detail.md))
+- `+query_dashboard_report_data` ([doc](references/query_dashboard_report_data.md))
+- `+update_dashboard` ([doc](references/update_dashboard.md))
+- `+create_or_update_dashboard_note` ([doc](references/create_or_update_dashboard_note.md))
+- `+list_public_access_links` ([doc](references/list_public_access_links.md))
+- `+create_public_access_link` ([doc](references/create_public_access_link.md))
+- `+update_public_access_link` ([doc](references/update_public_access_link.md))
+
+Model Analysis (6):
+- `+query_adhoc` ([doc](references/query_adhoc.md))
+- `+drilldown_users` ([doc](references/drilldown_users.md))
+- `+drilldown_user_events` ([doc](references/drilldown_user_events.md))
+- `+create_result_cluster` ([doc](references/create_result_cluster.md))
+- `+load_filters` ([doc](references/load_filters.md))
+- `+get_table_columns` ([doc](references/get_table_columns.md))
+
+Entity/Event Details (4):
+- `+query_entity_details` ([doc](references/query_entity_details.md))
+- `+query_event_details` ([doc](references/query_event_details.md))
+- `+build_entity_details_sql` ([doc](references/build_entity_details_sql.md))
+- `+build_event_details_sql` ([doc](references/build_event_details_sql.md))
+
+Schema (3):
+- `+get_analysis_query_schema` ([doc](references/get_analysis_query_schema.md))
+- `+get_filter_schema` ([doc](references/get_filter_schema.md))
+- `+get_groupby_schema` ([doc](references/get_groupby_schema.md))
+
+### analysis_audience (14)
+
+Clusters (6):
+- `+create_cluster` ([doc](references/create_cluster.md))
+- `+get_clusters_by_name` ([doc](references/get_clusters_by_name.md))
+- `+list_cluster_members` ([doc](references/list_cluster_members.md))
+- `+list_clusters` ([doc](references/list_clusters.md))
+- `+update_cluster` ([doc](references/update_cluster.md))
+- `+refresh_cluster` ([doc](references/refresh_cluster.md))
+
+Tags (6):
+- `+create_tag` ([doc](references/create_tag.md))
+- `+get_tags_by_name` ([doc](references/get_tags_by_name.md))
+- `+list_tag_members` ([doc](references/list_tag_members.md))
+- `+list_tags` ([doc](references/list_tags.md))
+- `+update_tag` ([doc](references/update_tag.md))
+- `+refresh_tag` ([doc](references/refresh_tag.md))
+
+Schema Definitions (2):
+- `+get_cluster_definition_schema` ([doc](references/get_cluster_definition_schema.md))
+- `+get_tag_definition_schema` ([doc](references/get_tag_definition_schema.md))
+
+### analysis_meta (20)
+
+Metadata and Governance (10):
+- `+list_events` ([doc](references/list_events.md))
+- `+list_properties` ([doc](references/list_properties.md))
+- `+list_metrics` ([doc](references/list_metrics.md))
+- `+get_metric` ([doc](references/get_metric.md))
+- `+create_metric` ([doc](references/create_metric.md))
+- `+update_metric` ([doc](references/update_metric.md))
+- `+batch_edit_metadata` ([doc](references/batch_edit_metadata.md))
+- `+batch_create_metadata` ([doc](references/batch_create_metadata.md))
+- `+create_virtual_event` ([doc](references/create_virtual_event.md))
+- `+create_virtual_property` ([doc](references/create_virtual_property.md))
+
+Project and Tracking (11):
+- `+get_project_config` ([doc](references/get_project_config.md))
+- `+list_project_users` ([doc](references/list_project_users.md))
+- `+get_track_program` ([doc](references/get_track_program.md))
+- `+save_track_items` ([doc](references/save_track_items.md))
+- `+delete_track_items` ([doc](references/delete_track_items.md))
+- `+generate_track_program` ([doc](references/generate_track_program.md))
+- `+generate_track_sdk_sample` ([doc](references/generate_track_sdk_sample.md))
+- `+create_project_mark_time` ([doc](references/create_project_mark_time.md))
+- `+update_project_mark_time` ([doc](references/update_project_mark_time.md))
+- `+list_project_mark_times` ([doc](references/list_project_mark_times.md))
+- `+delete_project_mark_times` ([doc](references/delete_project_mark_times.md))
+
+Entity Catalog (1):
+- `+list_entities` ([doc](references/list_entities.md))
+
+### analysis_common (2)
+
+- `+list_projects` ([doc](references/list_projects.md))
+- `+get_resource_url` ([doc](references/get_resource_url.md))
+
+## Quick Verification
+
+```bash
+ae-cli analysis --help
+ae-cli analysis_audience --help
+ae-cli analysis_meta --help
+ae-cli analysis_common --help
+npm run verify:analysis-tools
+npm run verify:analysis-audience-tools
+npm run verify:analysis-meta-tools
+npm run verify:analysis-common-tools
+```
+
+## Reference Docs
+
+See the unified `references/` directory (69 command docs total).

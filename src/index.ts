@@ -11,8 +11,8 @@ const program = new CommanderCommand();
 program
   .name('ae-cli')
   .version(version)
-  .description('CLI tool for ThinkingEngine (TE) analytics platform')
-  .option('--host <url>', 'Override active TE host URL (e.g., https://ta.thinkingdata.cn)')
+  .description('CLI tool for ThinkingAI (AE) analytics platform')
+  .option('--host <url>', 'Override active AE host URL (e.g., https://ta.thinkingdata.cn)')
   .option('--mcp-url <url>', 'Override MCP server URL (e.g., http://localhost/mcp/http/example)')
   .option('--format <format>', 'Output format: json | table', 'json')
   .option('--jq <expr>', 'jq filter expression')
@@ -43,7 +43,7 @@ async function loadCommands(): Promise<Command[]> {
     commands.push(...engage.default);
   } catch {}
   try {
-    const community = await import('./commands/community/index.js');
+    const community = await import('./commands/te-community/index.js');
     commands.push(...community.default);
   } catch {}
   try {

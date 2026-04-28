@@ -20,7 +20,7 @@ export function registerApi(program: CommanderCommand): void {
       const jq: string | undefined = globalOpts.jq;
 
       if (!host) {
-        printError('config', 'No TE host configured.', 'Run: ae-cli config set-host');
+        printError('config', 'No AE host configured.', 'Run: ae-cli config set-host');
         process.exit(1);
       }
 

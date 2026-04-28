@@ -1,7 +1,7 @@
 /**
  * Community CLI Commands Test Suite
  *
- * Tests all 18 community domain CLI commands with real API calls.
+ * Tests all 19 community domain CLI commands with real API calls.
  *
  * Run with: npx tsx tests/community.test.ts
  */
@@ -13,102 +13,107 @@ import { join } from 'path';
 const CLI_PATH = join(process.cwd(), 'dist', 'index.js');
 const DOMAIN = 'community';
 
-// Expected commands matching MCP tool names (category + name)
+// Expected commands matching CLI subcommand names (incl. + prefix) and JSON `name` field
 const EXPECTED_COMMANDS = [
-  // content (11)
-  'get_livestream_list',
-  'get_livestream_detail',
-  'get_post_detail',
-  'get_comments_summary',
-  'get_comment_tag_analysis',
-  'get_corpus_tags',
-  'get_risk_content',
-  'search_posts',
-  'get_livestream_overview',
-  'get_livestream_rooms',
-  'get_livestream_room_metrics',
+  // content (12)
+  '+get_livestream_list',
+  '+get_livestream_detail',
+  '+get_livestream_analysis',
+  '+get_post_detail',
+  '+get_comments_summary',
+  '+get_comment_tag_analysis',
+  '+get_corpus_tags',
+  '+get_risk_content',
+  '+search_posts',
+  '+get_livestream_overview',
+  '+get_livestream_rooms',
+  '+get_livestream_room_metrics',
   // analysis (4)
-  'get_channel_info',
-  'get_overview_metrics',
-  'get_sentiment_overview',
-  'get_tag_trends',
+  '+get_channel_info',
+  '+get_overview_metrics',
+  '+get_sentiment_overview',
+  '+get_tag_trends',
   // hot (3)
-  'get_daily_summary',
-  'get_hot_topics',
-  'get_topic_detail',
+  '+get_daily_summary',
+  '+get_hot_topics',
+  '+get_topic_detail',
 ];
 
 // CLI test cases with required arguments for real calls
 const CLI_TEST_CASES: Record<string, { args: string[]; desc: string }> = {
-  get_livestream_list: {
+  '+get_livestream_list': {
     args: ['--space-id', '1', '--game-id', '1'],
     desc: 'List live sessions',
   },
-  get_livestream_detail: {
+  '+get_livestream_detail': {
     args: ['--space-id', '1', '--game-id', '1', '--stream-id', 'test'],
     desc: 'Get livestream detail',
   },
-  get_post_detail: {
+  '+get_livestream_analysis': {
+    args: ['--space-id', '1', '--game-id', '1', '--stream-id', 'test'],
+    desc: 'Get livestream analysis',
+  },
+  '+get_post_detail': {
     args: ['--space-id', '1', '--game-id', '1', '--channel-id', '1', '--uuid', 'test-uuid', '--resource-type', '0'],
     desc: 'Get post detail',
   },
-  get_comments_summary: {
+  '+get_comments_summary': {
     args: ['--space-id', '1', '--game-id', '1', '--channel-id', '1', '--uuid', 'test-uuid'],
     desc: 'Get comments summary',
   },
-  get_comment_tag_analysis: {
+  '+get_comment_tag_analysis': {
     args: ['--space-id', '1', '--game-id', '1', '--channel-id', '1', '--uuid', 'test-uuid', '--resource-type', '0', '--tag-code', 'test'],
     desc: 'Get comment tag analysis',
   },
-  get_corpus_tags: {
+  '+get_corpus_tags': {
     args: ['--space-id', '1', '--game-id', '1'],
     desc: 'Get corpus tags',
   },
-  get_risk_content: {
+  '+get_risk_content': {
     args: ['--space-id', '1', '--game-id', '1', '--start-time', '2026-04-01', '--end-time', '2026-04-07'],
     desc: 'Get risk content',
   },
-  search_posts: {
+  '+search_posts': {
     args: ['--space-id', '1', '--game-id', '1', '--start-time', '2026-04-01', '--end-time', '2026-04-07'],
     desc: 'Search posts',
   },
-  get_livestream_overview: {
+  '+get_livestream_overview': {
     args: ['--space-id', '1', '--game-id', '1', '--start-time', '2026-04-01', '--end-time', '2026-04-07'],
     desc: 'Get livestream overview',
   },
-  get_livestream_rooms: {
+  '+get_livestream_rooms': {
     args: ['--space-id', '1', '--game-id', '1'],
     desc: 'Get livestream rooms',
   },
-  get_livestream_room_metrics: {
+  '+get_livestream_room_metrics': {
     args: ['--space-id', '1', '--game-id', '1', '--channel-id', '1', '--room-id', 'test-room'],
     desc: 'Get livestream room metrics',
   },
-  get_channel_info: {
+  '+get_channel_info': {
     args: ['--space-id', '1', '--game-id', '1'],
     desc: 'Get channel info',
   },
-  get_overview_metrics: {
+  '+get_overview_metrics': {
     args: ['--space-id', '1', '--game-id', '1', '--start-time', '2026-04-01', '--end-time', '2026-04-07'],
     desc: 'Get overview metrics',
   },
-  get_sentiment_overview: {
+  '+get_sentiment_overview': {
     args: ['--space-id', '1', '--game-id', '1', '--start-time', '2026-04-01', '--end-time', '2026-04-07'],
     desc: 'Get sentiment overview',
   },
-  get_tag_trends: {
+  '+get_tag_trends': {
     args: ['--space-id', '1', '--game-id', '1', '--tag-code', 'test'],
     desc: 'Get tag trends',
   },
-  get_daily_summary: {
+  '+get_daily_summary': {
     args: ['--space-id', '1', '--game-id', '1', '--date', '2026-04-01'],
     desc: 'Get daily summary',
   },
-  get_hot_topics: {
+  '+get_hot_topics': {
     args: ['--space-id', '1', '--game-id', '1'],
     desc: 'Get hot topics',
   },
-  get_topic_detail: {
+  '+get_topic_detail': {
     args: ['--space-id', '1', '--game-id', '1', '--topic-id', 'test', '--start-time', '2026-04-01', '--end-time', '2026-04-07'],
     desc: 'Get topic detail',
   },
@@ -185,10 +190,10 @@ for (const [cmd, testCase] of Object.entries(CLI_TEST_CASES)) {
 // Test 4: Commands with required flags
 console.log('\n\x1b[33m[Test 4]\x1b[0m Missing required flags');
 const missingRequiredCases = [
-  { cmd: 'get_risk_content', args: ['--space-id', '1', '--game-id', '1'], missing: '--start-time' },
-  { cmd: 'search_posts', args: ['--space-id', '1', '--game-id', '1'], missing: '--start-time' },
-  { cmd: 'get_overview_metrics', args: ['--space-id', '1', '--game-id', '1'], missing: '--start-time' },
-  { cmd: 'get_sentiment_overview', args: ['--space-id', '1', '--game-id', '1'], missing: '--start-time' },
+  { cmd: '+get_risk_content', args: ['--space-id', '1', '--game-id', '1'], missing: '--start-time' },
+  { cmd: '+search_posts', args: ['--space-id', '1', '--game-id', '1'], missing: '--start-time' },
+  { cmd: '+get_overview_metrics', args: ['--space-id', '1', '--game-id', '1'], missing: '--start-time' },
+  { cmd: '+get_sentiment_overview', args: ['--space-id', '1', '--game-id', '1'], missing: '--start-time' },
 ];
 for (const tc of missingRequiredCases) {
   const res = run(`${DOMAIN} ${tc.cmd}`, tc.args);
@@ -199,11 +204,17 @@ for (const tc of missingRequiredCases) {
 // Test 5: JSON definitions exist for all commands
 console.log('\n\x1b[33m[Test 5]\x1b[0m JSON definitions exist for all commands');
 try {
-  const jsonPath = join(process.cwd(), 'mcp2cli', 'community-mcp-tool-definitions.json');
+  const jsonPath = join(
+    process.cwd(),
+    'src',
+    'commands',
+    'te-community',
+    'community-mcp-tool-definitions.json',
+  );
   const jsonContent = readFileSync(jsonPath, 'utf-8');
   const definitions = JSON.parse(jsonContent);
 
-  const jsonToolNames = definitions.map((d: any) => `${d.category}_${d.name}`);
+  const jsonToolNames = definitions.map((d: { name: string }) => d.name);
   for (const cmd of EXPECTED_COMMANDS) {
     assert(jsonToolNames.includes(cmd), `Command "${cmd}" exists in JSON definitions`);
   }

@@ -13,17 +13,17 @@
 总计 **38 个工具**，按功能域分类：
 
 ### 1. 元数据查询 (Meta) - 2 个工具
-- `list_events` - 列出项目事件元数据
-- `list_properties` - 列出项目属性元数据（事件属性/用户属性）
+- `list_events` - 列出项目事件元数据（支持字段投影与分页）
+- `list_properties` - 列出项目属性元数据（事件属性/用户属性）（支持字段投影与分页）
 
 ### 2. 报告管理 (Report Management) - 4 个工具
-- `list_reports` - 列出项目所有报告
+- `list_reports` - 列出项目可访问报告（支持字段投影与分页）
 - `get_report_definition` - 获取报告定义详情
 - `query_report_data` - 查询报告数据
 - `create_report` - 创建新报告
 
 ### 3. 仪表盘管理 (Dashboard Management) - 5 个工具
-- `list_dashboards` - 列出项目所有仪表盘
+- `list_dashboards` - 列出项目可访问仪表盘（支持字段投影与分页）
 - `query_dashboard_detail` - 获取仪表盘详情
 - `query_dashboard_report_data` - 查询仪表盘报告数据
 - `create_dashboard` - 创建新仪表盘
@@ -61,7 +61,7 @@
 - `update_tag` - 更新标签
 
 ### 7. 实体查询 (Entity Query) - 5 个工具
-- `list_entities` - 列出实体列表
+- `list_entities` - 列出实体列表（支持字段投影与分页）
 - `query_entity_details` - 查询实体详情
 - `query_event_details` - 查询事件详情
 - `build_entity_details_sql` - 构建实体详情 SQL
@@ -81,33 +81,44 @@
 ### 10. 资源链接 (Resource Link) - 1 个工具
 - `get_resource_url` - 获取资源访问 URL
 
+> 说明：`list_alerts` 不在 `te-mcp-analysis`，属于 `analysis-extend` 服务（`te_analysis_extend`）。
+
 ## 工具详细信息
 
 ### 元数据查询工具
 
 #### list_events
-- **描述**: 列出项目事件元数据（生产环境已生效的系统元数据）
+- **描述**: 列出项目事件元数据（生产环境已生效的系统元数据）, 支持关键词过滤、字段投影和分页
 - **参数**:
   - `projectId` (Integer, required) - 项目 ID
   - `query` (String, optional) - 关键词过滤，模糊匹配事件名称、描述、AI 备注
+  - `fields` (List<String>, optional) - 返回字段列表；支持：`eventName` / `eventDesc` / `aiRemark` / `eventTag` / `remark`
+  - `limit` (Integer, optional) - 分页大小，默认 20，最大 50
+  - `offset` (Integer, optional) - 分页偏移，默认 0
 - **风险**: read
 
 #### list_properties
-- **描述**: 列出项目属性元数据（事件属性/用户属性）
+- **描述**: 列出项目属性元数据（事件属性/用户属性）, 支持关键词过滤、字段投影和分页
 - **参数**:
   - `projectId` (Integer, required) - 项目 ID
   - `scope` (String, optional) - 属性范围：event（事件属性）/ user（用户属性）
   - `eventName` (String, optional) - 事件名称，指定后仅返回该事件的属性
-  - `query` (String, optional) - 关键词过滤
+  - `query` (String, optional) - 关键词过滤， 模糊匹配属性名称、描述、AI 备注
+  - `fields` (List<String>, optional) - 返回字段列表；支持：`propName` / `propDesc` / `aiRemark` / `selectType` / `tableType` / `subTableType`
+  - `limit` (Integer, optional) - 分页大小，默认 20，最大 50
+  - `offset` (Integer, optional) - 分页偏移，默认 0
 - **风险**: read
 
 ### 报告管理工具
 
 #### list_reports
-- **描述**: 列出当前用户可访问的所有报告元数据
+- **描述**: 列出当前用户可访问的报告元数据，支持关键词过滤、字段投影和分页
 - **参数**:
   - `projectId` (Integer, required) - 项目 ID
-  - `query` (String, optional) - 关键词过滤
+  - `query` (String, optional) - 关键词过滤（模糊匹配报告名称、描述、AI 备注）
+  - `fields` (List<String>, optional) - 返回字段列表；支持：`reportId` / `reportName` / `reportDesc` / `reportModel` / `aiRemark`
+  - `limit` (Integer, optional) - 分页大小，默认 20，最大 50
+  - `offset` (Integer, optional) - 分页偏移，默认 0
 - **风险**: read
 
 #### get_report_definition
@@ -149,10 +160,13 @@
 ### 仪表盘管理工具
 
 #### list_dashboards
-- **描述**: 列出当前用户可访问的所有仪表盘元数据
+- **描述**: 列出当前用户可访问的仪表盘元数据，支持关键词过滤、字段投影和分页
 - **参数**:
   - `projectId` (Integer, required) - 项目 ID
-  - `query` (String, optional) - 关键词过滤
+  - `query` (String, optional) - 关键词过滤（模糊匹配仪表盘名称、AI 备注）
+  - `fields` (List<String>, optional) - 返回字段列表；支持：`dashboardId` / `dashboardName` / `aiRemark`
+  - `limit` (Integer, optional) - 分页大小，默认 20，最大 50
+  - `offset` (Integer, optional) - 分页偏移，默认 0
 - **风险**: read
 
 #### query_dashboard_detail
@@ -258,22 +272,29 @@
 - **参数**:
   - `projectId` (Integer, required) - 项目 ID
   - `query` (String, optional) - 关键词过滤
+  - `fields` (List<String>, optional) - 返回字段投影
+  - `limit` (Integer, optional) - 分页大小，默认 20，最大 50
+  - `offset` (Integer, optional) - 分页偏移，默认 0
 - **风险**: read
 
 #### get_clusters_by_name
 - **描述**: 按名称查询分群
 - **参数**:
   - `projectId` (Integer, required) - 项目 ID
-  - `clusterName` (String, required) - 分群名称
+  - `names` (List<String>, required) - 分群名称列表
 - **风险**: read
 
 #### list_cluster_members
 - **描述**: 列出分群成员
 - **参数**:
   - `projectId` (Integer, required) - 项目 ID
-  - `clusterId` (Long, required) - 分群 ID
-  - `page` (Integer, optional) - 页码
-  - `pageSize` (Integer, optional) - 每页大小
+  - `clusterName` (String, required) - 分群名称
+  - `propertyNames` (List<String>, optional) - 需要返回的用户属性
+  - `useCache` (Boolean, optional) - 是否使用缓存
+  - `query` (String, optional) - 关键词过滤
+  - `fields` (List<String>, optional) - 返回字段投影
+  - `limit` (Integer, optional) - 分页大小，默认 20，最大 50
+  - `offset` (Integer, optional) - 分页偏移，默认 0
 - **风险**: read
 
 #### create_cluster
@@ -281,9 +302,11 @@
 - **参数**:
   - `projectId` (Integer, required) - 项目 ID
   - `clusterName` (String, required) - 分群名称
-  - `displayName` (String, optional) - 显示名称
-  - `qp` (String, required) - 分群定义 JSON
-  - `zoneOffset` (Integer, optional) - 时区偏移
+  - `displayName` (String, required) - 显示名称
+  - `type` (String, optional) - 分群类型：condition/sql
+  - `definition` (String, required) - 分群定义 JSON
+  - `zoneOffset` (Double, optional) - 时区偏移
+  - `entityId` (Long, optional) - 实体 ID
 - **风险**: write
 
 #### create_result_cluster
@@ -302,9 +325,12 @@
 - **描述**: 更新分群
 - **参数**:
   - `projectId` (Integer, required) - 项目 ID
-  - `clusterId` (Long, required) - 分群 ID
+  - `clusterName` (String, required) - 分群名称
   - `displayName` (String, optional) - 显示名称
-  - `qp` (String, optional) - 分群定义 JSON
+  - `remark` (String, optional) - 备注
+  - `type` (String, optional) - 分群类型：condition/sql
+  - `definition` (String, optional) - 分群定义 JSON
+  - `zoneOffset` (Double, optional) - 时区偏移
 - **风险**: write
 
 ### 标签管理工具
@@ -314,22 +340,30 @@
 - **参数**:
   - `projectId` (Integer, required) - 项目 ID
   - `query` (String, optional) - 关键词过滤
+  - `fields` (List<String>, optional) - 返回字段投影
+  - `limit` (Integer, optional) - 分页大小，默认 20，最大 50
+  - `offset` (Integer, optional) - 分页偏移，默认 0
 - **风险**: read
 
 #### get_tags_by_name
 - **描述**: 按名称查询标签
 - **参数**:
   - `projectId` (Integer, required) - 项目 ID
-  - `tagName` (String, required) - 标签名称
+  - `names` (List<String>, required) - 标签名称列表
 - **风险**: read
 
 #### list_tag_members
 - **描述**: 列出标签成员
 - **参数**:
   - `projectId` (Integer, required) - 项目 ID
-  - `tagId` (Long, required) - 标签 ID
-  - `page` (Integer, optional) - 页码
-  - `pageSize` (Integer, optional) - 每页大小
+  - `tagName` (String, required) - 标签名称
+  - `snapshotDate` (String, optional) - 快照日期，格式 YYYY-MM-DD
+  - `propertyNames` (List<String>, optional) - 需要返回的用户属性
+  - `useCache` (Boolean, optional) - 是否使用缓存
+  - `query` (String, optional) - 关键词过滤
+  - `fields` (List<String>, optional) - 返回字段投影
+  - `limit` (Integer, optional) - 分页大小，默认 20，最大 50
+  - `offset` (Integer, optional) - 分页偏移，默认 0
 - **风险**: read
 
 #### create_tag
@@ -337,27 +371,35 @@
 - **参数**:
   - `projectId` (Integer, required) - 项目 ID
   - `tagName` (String, required) - 标签名称
-  - `displayName` (String, optional) - 显示名称
-  - `tagDefinition` (String, required) - 标签定义 JSON
-  - `zoneOffset` (Integer, optional) - 时区偏移
+  - `displayName` (String, required) - 显示名称
+  - `type` (String, optional) - 标签类型：condition/metric/first_last/sql
+  - `definition` (String, required) - 标签定义 JSON
+  - `zoneOffset` (Double, optional) - 时区偏移
+  - `entityId` (Long, optional) - 实体 ID
 - **风险**: write
 
 #### update_tag
 - **描述**: 更新标签
 - **参数**:
   - `projectId` (Integer, required) - 项目 ID
-  - `tagId` (Long, required) - 标签 ID
+  - `tagName` (String, required) - 标签名称
   - `displayName` (String, optional) - 显示名称
-  - `tagDefinition` (String, optional) - 标签定义 JSON
+  - `remark` (String, optional) - 备注
+  - `type` (String, optional) - 标签类型：condition/metric/first_last/sql
+  - `definition` (String, optional) - 标签定义 JSON
+  - `zoneOffset` (Double, optional) - 时区偏移
 - **风险**: write
 
 ### 实体查询工具
 
 #### list_entities
-- **描述**: 列出实体列表
+- **描述**: 列出实体列表, 支持关键词过滤、字段投影和分页
 - **参数**:
   - `projectId` (Integer, required) - 项目 ID
-  - `query` (String, optional) - 关键词过滤
+  - `query` (String, optional) - 关键词过滤 (模糊匹配实体名称, 数据库列名, 数据库列名描述)
+  - `fields` (List<String>, optional) - 返回字段列表；支持：`entityId` / `entityName` / `columnName` / `columnDesc` / `selectType`
+  - `limit` (Integer, optional) - 分页大小，默认 20，最大 50
+  - `offset` (Integer, optional) - 分页偏移，默认 0
 - **风险**: read
 
 #### query_entity_details
@@ -417,12 +459,18 @@
 
 #### get_cluster_definition_schema
 - **描述**: 获取分群定义 Schema
-- **参数**: 无
+- **参数**:
+  - `clusterType` (String, required) - 分群类型：condition/sql
+  - `responseMode` (String, optional) - 返回模式：base/examples/full
+  - `conditionSubtype` (String, optional) - 条件子类型：core/behavior_seq/all（仅 condition 有效）
 - **风险**: read
 
 #### get_tag_definition_schema
 - **描述**: 获取标签定义 Schema
-- **参数**: 无
+- **参数**:
+  - `type` (String, required) - 标签类型：condition/metric/first_last/sql
+  - `responseMode` (String, optional) - 返回模式：base/examples/full
+  - `conditionSubtype` (String, optional) - 条件子类型：core/behavior_seq/all（仅 condition 有效）
 - **风险**: read
 
 ### 项目配置工具

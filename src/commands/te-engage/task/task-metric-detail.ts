@@ -8,7 +8,6 @@ function buildArgs(ctx: RuntimeContext): Record<string, any> {
   const args: Record<string, any> = {
     projectId: ctx.num('project_id'),
     taskId: ctx.str('task_id'),
-    taskType: ctx.str('task_type'),
     startTime: ctx.str('start_time'),
     endTime: ctx.str('end_time'),
   };
@@ -32,7 +31,6 @@ export const taskMetricDetail: Command = {
   flags: [
     { name: 'project_id', type: 'number', required: true, alias: 'p', desc: 'Project ID' },
     { name: 'task_id', type: 'string', required: true, desc: 'Task ID' },
-    { name: 'task_type', type: 'string', required: true, desc: 'Task type: normal or trigger' },
     { name: 'start_time', type: 'string', required: true, desc: 'Start date' },
     { name: 'end_time', type: 'string', required: true, desc: 'End date' },
     { name: 'request_id', type: 'string', required: false, desc: 'Request ID' },
@@ -43,7 +41,6 @@ export const taskMetricDetail: Command = {
   ],
   risk: 'read',
   validate: (ctx) => {
-    requireAllowedValue(ctx.str('task_type'), ['normal', 'trigger'], 'task_type');
     readOptionalJsonArray(ctx, 'metric_id_list');
   },
   dryRun: (ctx) => buildMcpDryRun(ctx, serviceName, toolName, buildArgs(ctx)),

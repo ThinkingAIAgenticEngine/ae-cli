@@ -10,7 +10,7 @@
 
 ## 工具分类统计
 
-总计 **28 个工具**，按功能域分类：
+总计 **30 个工具**，按功能域分类：
 
 ### 1. 预警管理 (Alert Management) - 5 个工具
 - `get_alert_definition_schema` - 获取预警定义 schema
@@ -33,10 +33,12 @@
 - `create_metric` - 创建指标
 - `update_metric` - 更新指标
 
-### 5. 埋点方案管理 (Tracking Plan) - 3 个工具
+### 5. 埋点方案管理 (Tracking Plan) - 5 个工具
 - `get_track_program` - 查询埋点方案
 - `save_track_items` - 新增/更新埋点方案条目
 - `delete_track_items` - 删除埋点方案条目
+- `generate_track_program` - AI 生成埋点方案（异步）
+- `generate_track_sdk_sample` - 生成 SDK 示例代码（异步）
 
 ### 6. 标签与分群刷新 (Tag/Cluster Refresh) - 2 个工具
 - `refresh_tag` - 触发标签重算
@@ -208,6 +210,20 @@
 - **参数**:
   - `projectId` (Integer, required) - 项目 ID
   - `deleteData` (String, required) - 待删除条目 JSON
+- **风险**: write
+
+#### generate_track_program
+- **描述**: AI 生成埋点方案（异步，结果通过站内消息通知）
+- **参数**:
+  - `projectId` (Integer, required) - 项目 ID
+  - `formData` (Map<String,Object>, required) - 业务上下文 JSON，可选字段：account_system, revenue_model, core_gameplay, currency_system, main_entries, language, predefinedEvent, developmentCarrier
+- **风险**: write
+
+#### generate_track_sdk_sample
+- **描述**: 根据埋点方案生成 SDK 示例代码（异步，结果通过站内消息通知）
+- **参数**:
+  - `projectId` (Integer, required) - 项目 ID
+  - `sdkType` (List<String>, required) - SDK 类型列表，允许值：android-java, server-php, ios-swift, server-python, web-js, server-java, server-nodejs, wechat-miniapp, harmonyos-arkts, android-kotlin, unity-csharp, cocos-creator-ts, server-go, server-cpp, ios-objc
 - **风险**: write
 
 ### 标签与分群刷新工具

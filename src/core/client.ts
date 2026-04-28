@@ -68,7 +68,7 @@ async function request(
   }
 
   if (data.return_code !== 0 && data.return_code !== undefined) {
-    throw new Error(`TE API error: ${data.return_message || 'unknown'} (code: ${data.return_code})`);
+    throw new Error(`AE API error: ${data.return_message || 'unknown'} (code: ${data.return_code})`);
   }
 
   return data.data !== undefined ? data.data : data;

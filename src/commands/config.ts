@@ -7,7 +7,7 @@ import * as readline from 'readline';
 export function registerConfig(program: Command): void {
   program
     .command('config')
-    .description('Interactive TE host configuration manager')
+    .description('Interactive AE host configuration manager')
     .action(async () => {
       await runConfigUI(program);
     });
@@ -18,7 +18,7 @@ async function runConfigUI(program: Command): Promise<void> {
 
   // No hosts configured — first-time setup
   if (hosts.length === 0) {
-    process.stderr.write('\x1B[1m[ae-cli] No TE hosts configured. Let\'s add one.\x1B[0m\n\n');
+    process.stderr.write('\x1B[1m[ae-cli] No AE hosts configured. Let\'s add one.\x1B[0m\n\n');
     const newHost = await promptNewHost();
     if (!newHost) {
       process.stderr.write('Cancelled.\n');
@@ -152,7 +152,7 @@ async function promptNewHost(): Promise<{ url: string; label: string } | null> {
   const ask = (q: string): Promise<string> =>
     new Promise(resolve => rl.question(q, a => resolve(a.trim())));
 
-  const url = await ask('TE host URL (e.g., https://ta.thinkingdata.cn): ');
+  const url = await ask('AE host URL (e.g., https://ta.thinkingdata.cn): ');
   if (!url) { rl.close(); return null; }
   const label = await ask('Label: ');
   rl.close();

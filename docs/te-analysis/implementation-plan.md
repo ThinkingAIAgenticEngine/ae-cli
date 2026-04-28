@@ -407,7 +407,7 @@ export default commands;
 ### 任务 5.1：创建 Skill 文档结构
 
 ```
-skills/te-analysis/
+skills/ae-analysis/
 ├── SKILL.md                          # 域概述
 └── references/                       # 命令详细文档（38 个，文件名用中划线）
     ├── list-events.md
@@ -421,20 +421,20 @@ skills/te-analysis/
 
 ```yaml
 ---
-name: te-analysis
+name: ae-analysis
 version: 1.0.0
-description: "TE 分析核心服务：模型分析、报告管理、仪表盘管理、分群标签、元数据查询（38 个工具）"
+description: "AE 分析核心服务：模型分析、报告管理、仪表盘管理、分群标签、元数据查询（38 个工具）"
 metadata:
   requires:
     bins: ["ae-cli"]
   cliHelp: "ae-cli analysis --help"
 ---
 
-# TE Common Analysis Core
+# AE Common Analysis Core
 
 ## 概述
 
-TE 分析核心服务提供 38 个工具，涵盖：
+AE 分析核心服务提供 38 个工具，涵盖：
 
 - **元数据查询**（2 个）：事件、属性
 - **报告管理**（4 个）：列表、定义、数据查询、创建
@@ -520,7 +520,7 @@ ae-cli analysis +create_dashboard \
 
 所有命令支持以下全局参数：
 
-- `--host <url>` - 覆盖 TE 实例地址
+- `--host <url>` - 覆盖 AE 实例地址
 - `--format <json|table>` - 输出格式（默认 json）
 - `--jq <expr>` - jq 过滤表达式
 - `--dry-run` - 只显示请求详情，不执行
@@ -533,7 +533,7 @@ ae-cli analysis +create_dashboard \
 
 ### Reference 文档模板
 
-**文件**: `skills/te-analysis/references/list-events.md`
+**文件**: `skills/ae-analysis/references/list-events.md`
 
 ```markdown
 # list_events
@@ -665,7 +665,7 @@ describe('listEvents command', () => {
 # 测试 MCP 服务连接
 ae-cli analysis +list_events --project_id 123 --dry-run
 
-# 测试实际执行（需要有效的 TE Token）
+# 测试实际执行（需要有效的 AE Token）
 ae-cli analysis +list_events --project_id 123
 
 # 测试输出格式

@@ -2,7 +2,7 @@
 
 ## Overview
 
-将现有的 MCP TE Server v2（Node.js MCP 服务器，30 个工具）重构为 CLI 工具 `ae-cli`，供 AI Agent 和人类用户使用。同时生成配套的 skill 文档包，让 Agent 能够理解和调用 CLI 命令。
+将现有的 MCP AE Server v2（Node.js MCP 服务器，30 个工具）重构为 CLI 工具 `ae-cli`，供 AI Agent 和人类用户使用。同时生成配套的 skill 文档包，让 Agent 能够理解和调用 CLI 命令。
 
 **参考架构**: [lark-cli](https://github.com/larksuite/cli) 的声明式命令框架 + skill 文档模式
 **复用代码**: [mcp-te-server-v2](http://10.27.249.150:8888/te-ai/ae-cli.git) 的 API 调用层、认证逻辑、WebSocket 查询
@@ -12,7 +12,7 @@
 | 决策项 | 选择 | 理由 |
 |--------|------|------|
 | 语言 | Node.js / TypeScript | 最大化复用现有 MCP server 代码 |
-| 命令层级 | 两层：Shortcuts + Raw API | TE 无标准 OpenAPI spec，中间 service 层意义不大 |
+| 命令层级 | 两层：Shortcuts + Raw API | AE 无标准 OpenAPI spec，中间 service 层意义不大 |
 | 认证 | osascript + 手动 + 环境变量组合 | macOS 顺畅体验 + 跨平台/CI 兼容 |
 | Skill 划分 | 4 域 + shared | 与代码分组自然对齐，粒度适中 |
 | 输出格式 | JSON + Table + jq | Agent 用 JSON，人类用 Table，jq 灵活过滤 |
@@ -43,9 +43,9 @@ ae-cli/
 │   └── api/                        # Raw API 兜底命令
 │       └── raw.ts                  # ae-cli api <METHOD> <PATH> [--params] [--data]
 ├── skills/                         # AI Agent Skill 文档包
-│   ├── te-shared/SKILL.md
+│   ├── ae-shared/SKILL.md
 │   ├── te-meta/SKILL.md + references/
-│   ├── te-analysis/SKILL.md + references/
+│   ├── ae-analysis/SKILL.md + references/
 │   ├── te-audience/SKILL.md + references/
 │   └── te-operation/SKILL.md + references/
 ├── bin/
@@ -120,7 +120,7 @@ interface DryRunResult {
 ### Global Flags
 
 所有命令自动继承：
-- `--host <host>` — TE 实例地址，默认从配置读取
+- `--host <host>` — AE 实例地址，默认从配置读取
 - `--format <json|table>` — 输出格式，默认 json
 - `--jq <expr>` — jq 过滤表达式
 - `--dry-run` — 只显示请求详情，不执行
@@ -304,7 +304,7 @@ ae-cli api POST /v1/hermes/flow/save --data '{"projectId": 1, ...}'
 | 类型 | 场景 | hint |
 |------|------|------|
 | `auth` | token 过期/无效/未登录 | `Run: ae-cli auth login` |
-| `api` | TE API 返回错误 | 显示 TE 原始错误信息 |
+| `api` | AE API 返回错误 | 显示 AE 原始错误信息 |
 | `validation` | flag 缺失/类型错误 | `Missing required flag: --project-id` |
 | `config` | 配置未初始化 | `Run: ae-cli config init` |
 
@@ -318,12 +318,12 @@ ae-cli api POST /v1/hermes/flow/save --data '{"projectId": 1, ...}'
 
 ```
 skills/
-├── te-shared/
+├── ae-shared/
 │   └── SKILL.md              # 认证、配置、全局 flags、错误处理
 ├── te-meta/
 │   ├── SKILL.md              # 域概述 + 使用场景
 │   └── references/           # 每个命令一个 reference 文档
-├── te-analysis/
+├── ae-analysis/
 │   ├── SKILL.md
 │   └── references/
 ├── te-audience/
@@ -338,9 +338,9 @@ skills/
 
 ```yaml
 ---
-name: te-analysis
+name: ae-analysis
 version: 1.0.0
-description: "TE 分析查询：报告管理、仪表盘管理、SQL 查询、报告数据查询"
+description: "AE 分析查询：报告管理、仪表盘管理、SQL 查询、报告数据查询"
 metadata:
   requires:
     bins: ["ae-cli"]
@@ -348,7 +348,7 @@ metadata:
 ---
 ```
 
-内容包含：域概述、核心场景、常用示例、前置条件指向 `te-shared`。
+内容包含：域概述、核心场景、常用示例、前置条件指向 `ae-shared`。
 
 ### Reference Doc Format
 

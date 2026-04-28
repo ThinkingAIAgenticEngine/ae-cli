@@ -8,11 +8,11 @@ export function registerAuth(program: Command): void {
 
   auth
     .command('login')
-    .description('Login to TE (auto-extract token from Chrome on macOS)')
+    .description('Login to AE (auto-extract token from Chrome on macOS)')
     .action(async () => {
       const host = resolveHost(program.opts().host);
       if (!host) {
-        printError('config', 'No TE host configured.', 'Run: ae-cli config set-host');
+        printError('config', 'No AE host configured.', 'Run: ae-cli config set-host');
         process.exit(1);
       }
       try {
@@ -31,7 +31,7 @@ export function registerAuth(program: Command): void {
     .action((token: string) => {
       const host = resolveHost(program.opts().host);
       if (!host) {
-        printError('config', 'No TE host configured.', 'Run: ae-cli config set-host');
+        printError('config', 'No AE host configured.', 'Run: ae-cli config set-host');
         process.exit(1);
       }
       // 确保 host 存在于配置中
@@ -69,7 +69,7 @@ export function registerAuth(program: Command): void {
     .action(() => {
       const host = resolveHost(program.opts().host);
       if (!host) {
-        printError('config', 'No TE host configured.', 'Run: ae-cli config set-host');
+        printError('config', 'No AE host configured.', 'Run: ae-cli config set-host');
         process.exit(1);
       }
       clearToken(host);

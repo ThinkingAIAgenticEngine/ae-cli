@@ -2,7 +2,7 @@ import { createMcpCommand, optionalBoolean, optionalJson, optionalJsonString, op
 
 export const queryAdhoc = createMcpCommand({
   command: '+query_adhoc',
-  description: 'Run ad hoc analysis for event, retention, funnel, distribution, attribution, heat map, interval, path, rank list, property analysis, or SQL models',
+  description: 'Run ad hoc analysis for event, retention, funnel, distribution, attribution, heat map, interval, path, rank list, property analysis, or SQL models. Supports fields/limit/offset pagination.',
   flags: [
     { name: 'project_id', type: 'number', required: true, desc: 'Project ID', alias: 'p' },
     { name: 'model_type', type: 'string', required: true, desc: 'Model type. Supported values: event, retention, funnel, distribution, attribution, heat_map, interval, path, rank_list, prop_analysis, sql.' },
@@ -12,6 +12,9 @@ export const queryAdhoc = createMcpCommand({
     { name: 'zone_offset', type: 'number', required: false, desc: 'Time zone offset in hours. For example, UTC+8 is 8 and UTC-5 is -5' },
     { name: 'is_sort_by_columns', type: 'boolean', required: false, desc: 'Whether to sort query results by columns. Default: false' },
     { name: 'resolve_recent_day', type: 'boolean', required: false, desc: 'Whether to resolve relative time expressions such as last 7 days. Default: false' },
+    { name: 'fields', type: 'json', required: false, desc: 'Optional fields to return. Must match column names in result.' },
+    { name: 'limit', type: 'number', required: false, desc: 'Optional limit. Default: 20, maximum: 50.' },
+    { name: 'offset', type: 'number', required: false, desc: 'Optional offset. Default: 0.' },
     { name: 'timeout_minutes', type: 'number', required: false, desc: 'Query timeout in minutes. If omitted, 30 minutes is used.' },
   ],
   risk: 'read',
@@ -24,6 +27,9 @@ export const queryAdhoc = createMcpCommand({
       zoneOffset: optionalNumber(ctx, 'zone_offset'),
       isSortByColumns: optionalBoolean(ctx, 'is_sort_by_columns'),
       resolveRecentDay: optionalBoolean(ctx, 'resolve_recent_day'),
+      fields: optionalJson(ctx, 'fields'),
+      limit: optionalNumber(ctx, 'limit'),
+      offset: optionalNumber(ctx, 'offset'),
       timeoutMinutes: optionalNumber(ctx, 'timeout_minutes'),
     }),
 });

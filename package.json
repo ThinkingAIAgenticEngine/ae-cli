@@ -1,7 +1,7 @@
 {
   "name": "@thinkingai/ae-cli",
-  "version": "1.0.3",
-  "description": "CLI tool for ThinkingAI AgenticEngine (AE) analytics platform",
+  "version": "1.0.15",
+  "description": "CLI tool for ThinkingAI (AE) analytics platform",
   "type": "module",
   "bin": {
     "ae-cli": "bin/ae-cli.js"
@@ -33,7 +33,7 @@
     "analytics",
     "cli"
   ],
-  "author": "ThinkingAI",
+  "author": "ThinkingData",
   "license": "MIT",
   "engines": {
     "node": ">=18.0.0"

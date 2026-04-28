@@ -2,7 +2,7 @@ import { createMcpCommand, optionalBoolean, optionalJson, optionalJsonString, op
 
 export const drilldownUsers = createMcpCommand({
   command: '+drilldown_users',
-  description: 'Drill down to the user list for a specific data point in an existing analysis result. Use only after query_adhoc, query_report_data, or query_dashboard_report_data, and keep qp consistent with the source analysis.',
+  description: 'Drill down to the user list for a specific data point in an existing analysis result. Use only after query_adhoc, query_report_data, or query_dashboard_report_data, and keep qp consistent with the source analysis. Supports pagination with limit/offset.',
   flags: [
     { name: 'project_id', type: 'number', required: true, desc: 'Project ID', alias: 'p' },
     { name: 'model_type', type: 'string', required: true, desc: 'Model type used in the source analysis. Supported values: event, retention, funnel, distribution, attribution, heat_map, interval, path, rank_list, prop_analysis, sql.' },
@@ -22,6 +22,8 @@ export const drilldownUsers = createMcpCommand({
     { name: 'include_total', type: 'boolean', required: false, desc: 'Whether to query users from the total row. Default: false' },
     { name: 'relation_val', type: 'string', required: false, desc: 'Relation value used in relation analysis scenarios' },
     { name: 'use_cache', type: 'boolean', required: false, desc: 'Whether to use cache. Default: true' },
+    { name: 'limit', type: 'number', required: false, desc: 'Optional limit. Default: 20, maximum: 50.' },
+    { name: 'offset', type: 'number', required: false, desc: 'Optional offset. Default: 0.' },
     { name: 'timeout_minutes', type: 'number', required: false, desc: 'Query timeout in minutes. If omitted, 30 minutes is used.' },
   ],
   risk: 'read',
@@ -44,6 +46,8 @@ export const drilldownUsers = createMcpCommand({
       includeTotal: optionalBoolean(ctx, 'include_total'),
       relationVal: optionalString(ctx, 'relation_val'),
       useCache: optionalBoolean(ctx, 'use_cache'),
+      limit: optionalNumber(ctx, 'limit'),
+      offset: optionalNumber(ctx, 'offset'),
       timeoutMinutes: optionalNumber(ctx, 'timeout_minutes'),
     }),
 });

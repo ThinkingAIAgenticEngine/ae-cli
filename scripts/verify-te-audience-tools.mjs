@@ -29,8 +29,10 @@ function walk(dir) {
 walk(commandsDir);
 
 const commands = [];
+const fileContents = new Map();
 for (const file of commandFiles) {
   const content = fs.readFileSync(file, 'utf-8');
+  fileContents.set(file, content);
   const match = content.match(/command:\s*'\+([a-z0-9_]+)'/);
   if (!match) {
     fail(`cannot parse command from ${path.relative(ROOT, file)}`);
@@ -62,6 +64,29 @@ for (const tool of commands) {
   const token = `+${tool}`;
   if (!help.stdout.includes(token)) {
     fail(`help output missing command: ${token}`);
+  }
+}
+
+// Guard critical argument contracts for cluster/tag MCP tools.
+const requiredTokensByFile = {
+  'src/commands/te-audience/cluster/list-clusters.ts': ["name: 'query'", "name: 'fields'", "name: 'limit'", "name: 'offset'"],
+  'src/commands/te-audience/cluster/list-cluster-members.ts': ["name: 'query'", "name: 'fields'", "name: 'limit'", "name: 'offset'"],
+  'src/commands/te-audience/tag/list-tags.ts': ["name: 'query'", "name: 'fields'", "name: 'limit'", "name: 'offset'"],
+  'src/commands/te-audience/tag/list-tag-members.ts': ["name: 'query'", "name: 'fields'", "name: 'limit'", "name: 'offset'"],
+  'src/commands/te-audience/schema/get-cluster-definition-schema.ts': ["name: 'cluster_type'", "name: 'response_mode'", "name: 'condition_subtype'"],
+  'src/commands/te-audience/schema/get-tag-definition-schema.ts': ["name: 'type'", "name: 'response_mode'", "name: 'condition_subtype'"],
+};
+
+for (const [relPath, tokens] of Object.entries(requiredTokensByFile)) {
+  const absPath = path.join(ROOT, relPath);
+  const content = fileContents.get(absPath);
+  if (!content) {
+    fail(`missing required command file: ${relPath}`);
+  }
+  for (const token of tokens) {
+    if (!content.includes(token)) {
+      fail(`missing required audience arg contract "${token}" in ${relPath}`);
+    }
   }
 }
 

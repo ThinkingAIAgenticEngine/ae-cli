@@ -149,7 +149,7 @@ function extractTokenViaOsascript(hostUrl: string): { token: string | null; erro
 }
 
 async function requestTokenViaOsascript(hostUrl: string): Promise<string | null> {
-  process.stderr.write(`[ae-cli] No TE tab found in Chrome. Opening ${hostUrl} ...\n`);
+  process.stderr.write(`[ae-cli] No AE tab found in Chrome. Opening ${hostUrl} ...\n`);
   process.stderr.write(`[ae-cli] Please login, then your token will be captured automatically.\n`);
   try {
     const openScript = [
@@ -183,7 +183,7 @@ async function requestTokenViaOsascript(hostUrl: string): Promise<string | null>
 export async function getToken(hostUrl: string): Promise<string> {
   if (!hostUrl) {
     throw new Error(
-      `No TE host configured.\n` +
+      `No AE host configured.\n` +
       `Run: ae-cli config set-host`
     );
   }

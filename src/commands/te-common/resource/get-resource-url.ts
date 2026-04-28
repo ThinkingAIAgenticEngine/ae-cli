@@ -1,48 +1,13 @@
 import type { Command } from '../../../framework/types.js';
 import { callMcpTool, parseMcpResult, resolveMcpUrl } from '../../../core/mcp.js';
 
-function toAbsoluteUrl(host: string, candidate: string): string {
-  if (!candidate) return candidate;
-  if (/^https?:\/\//i.test(candidate)) return candidate;
-  const normalizedBase = host.replace(/\/+$/, '');
-  if (candidate.startsWith('/')) {
-    return `${normalizedBase}${candidate}`;
-  }
-  if (candidate.startsWith('#')) {
-    return `${normalizedBase}/${candidate}`;
-  }
-  return `${normalizedBase}/${candidate}`;
-}
-
-function patchMarkdownLink(link: string, absoluteUrl: string): string {
-  // Typical format: [text](url)
-  return link.replace(/\]\(([^)]+)\)$/, `](${absoluteUrl})`);
-}
-
-function normalizeResourceUrlFields(node: unknown, host: string): void {
+function normalizeResourceUrlFields(node: unknown): void {
   if (!node || typeof node !== 'object') return;
   const obj = node as Record<string, unknown>;
 
-  const rawUrl =
-    (typeof obj.raw_url === 'string' && obj.raw_url) ||
-    (typeof obj.rawUrl === 'string' && obj.rawUrl) ||
-    '';
-
-  if (rawUrl) {
-    const absoluteUrl = toAbsoluteUrl(host, rawUrl);
-    if (obj.raw_url !== undefined) obj.raw_url = absoluteUrl;
-    if (obj.rawUrl !== undefined) obj.rawUrl = absoluteUrl;
-    if (typeof obj.markdown_link === 'string') {
-      obj.markdown_link = patchMarkdownLink(obj.markdown_link, absoluteUrl);
-    }
-    if (typeof obj.markdownLink === 'string') {
-      obj.markdownLink = patchMarkdownLink(obj.markdownLink, absoluteUrl);
-    }
-  }
-
   for (const value of Object.values(obj)) {
     if (value && typeof value === 'object') {
-      normalizeResourceUrlFields(value, host);
+      normalizeResourceUrlFields(value);
     }
   }
 }
@@ -87,7 +52,7 @@ export const getResourceUrl: Command = {
       return parsed;
     }
 
-    normalizeResourceUrlFields(parsed, ctx.host());
+    normalizeResourceUrlFields(parsed);
     return parsed;
   },
 };

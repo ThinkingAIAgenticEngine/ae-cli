@@ -141,7 +141,7 @@ function saveMcpTokenStore(store: McpTokenStore): void {
 }
 
 /**
- * 通过 TE Token 调用 /v1/ta/mcp/token/generate 生成 MCP Token
+ * 通过 AE Token 调用 /v1/ta/mcp/token/generate 生成 MCP Token
  */
 async function generateMcpToken(hostUrl: string): Promise<string> {
   const teToken = await getToken(hostUrl);
@@ -242,6 +242,7 @@ async function mcpRequest(
     'Accept': 'application/json, text/event-stream',
     'mcp-protocol-version': MCP_PROTOCOL_VERSION,
     'mcp-token': token,
+    
   };
 
   const resp = await fetch(url, {

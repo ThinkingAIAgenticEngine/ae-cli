@@ -51,7 +51,7 @@ export async function runCommand(cmd: Command, opts: Record<string, any>, global
     const message = err.message || String(err);
     if (message.includes('token') || message.includes('auth') || message.includes('401') || message.includes('403')) {
       printError('auth', message, 'Run: ae-cli auth login');
-    } else if (message.includes('TE API error')) {
+    } else if (message.includes('AE API error')) {
       printError('api', message);
     } else {
       printError('api', message);

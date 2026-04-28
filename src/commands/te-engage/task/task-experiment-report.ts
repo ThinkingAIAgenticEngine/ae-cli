@@ -8,7 +8,6 @@ function buildArgs(ctx: RuntimeContext): Record<string, any> {
   const args: Record<string, any> = {
     projectId: ctx.num('project_id'),
     taskId: ctx.str('task_id'),
-    taskType: ctx.str('task_type'),
     reportType: ctx.str('report_type'),
     startTime: ctx.str('start_time'),
     endTime: ctx.str('end_time'),
@@ -27,7 +26,6 @@ export const taskExperimentReport: Command = {
   flags: [
     { name: 'project_id', type: 'number', required: true, alias: 'p', desc: 'Project ID' },
     { name: 'task_id', type: 'string', required: true, desc: 'Task ID' },
-    { name: 'task_type', type: 'string', required: true, desc: 'Task type: normal or trigger' },
     { name: 'report_type', type: 'string', required: true, desc: 'Report type: overview or detail' },
     { name: 'start_time', type: 'string', required: true, desc: 'Start date' },
     { name: 'end_time', type: 'string', required: true, desc: 'End date' },
@@ -36,7 +34,6 @@ export const taskExperimentReport: Command = {
   ],
   risk: 'read',
   validate: (ctx) => {
-    requireAllowedValue(ctx.str('task_type'), ['normal', 'trigger'], 'task_type');
     requireAllowedValue(ctx.str('report_type'), ['overview', 'detail'], 'report_type');
   },
   dryRun: (ctx) => buildMcpDryRun(ctx, serviceName, toolName, buildArgs(ctx)),

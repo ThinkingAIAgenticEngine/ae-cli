@@ -4,6 +4,8 @@ import { listProjectUsers } from './list-project-users.js';
 import { getTrackProgram } from './get-track-program.js';
 import { saveTrackItems } from './save-track-items.js';
 import { deleteTrackItems } from './delete-track-items.js';
+import { generateTrackProgram } from './generate-track-program.js';
+import { generateTrackSdkSample } from './generate-track-sdk-sample.js';
 import { createProjectMarkTime } from './create-project-mark-time.js';
 import { updateProjectMarkTime } from './update-project-mark-time.js';
 import { listProjectMarkTimes } from './list-project-mark-times.js';
@@ -15,6 +17,8 @@ const commands: Command[] = [
   getTrackProgram,
   saveTrackItems,
   deleteTrackItems,
+  generateTrackProgram,
+  generateTrackSdkSample,
   createProjectMarkTime,
   updateProjectMarkTime,
   listProjectMarkTimes,
