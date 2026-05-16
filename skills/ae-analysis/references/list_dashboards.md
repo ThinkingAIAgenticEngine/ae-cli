@@ -4,6 +4,10 @@
 
 Domain: **Dashboard management**
 
+## Constraints
+
+**Fuzzy Search Fallback:** If `--query` returns no results, retry with broader keywords (max 3 attempts), then fall back to full list. See [SKILL.md § C. FUZZY_SEARCH_FALLBACK](../SKILL.md#c-fuzzy_search_fallback).
+
 ## Use Cases
 - List dashboard metadata accessible to the current user in the project. Supports keyword filtering and returns dashboard IDs, names, descriptions, and related metadata, but not dashboard configuration or report data.
 - List dashboard metadata accessible to the current user in the project.

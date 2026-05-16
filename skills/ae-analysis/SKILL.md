@@ -52,6 +52,15 @@ Safety constraints:
 - Write commands require explicit user intent and normally keep the confirmation prompt.
 - Use `--dry-run` before risky or complex writes.
 - Never invent command names, flags, JSON payloads, `project_id`, resource IDs, field names, event names, property names, metric definitions, or date formats. Read the matching command reference and discover real project metadata first.
+- **NEVER fabricate or guess resource names** (reports, dashboards, events, properties, metrics, clusters, tags, alerts). Always use list commands to discover real resources first. If a resource is not found after fuzzy search and full list fallback, explicitly tell the user "resource not found" and stop - do not proceed with fabricated names.
+
+Language consistency:
+- **Input-output language matching**: Always respond in the same language as the user's input.
+  - User asks in Chinese → Respond in Chinese, including result interpretation and error messages
+  - User asks in English → Respond in English
+- **CLI output handling**: CLI returns JSON in English, but your interpretation and summary MUST match user's language
+- **Resource names**: Keep original resource names as-is (don't translate), but descriptions and explanations should match user's language
+- **Error messages**: Translate CLI error messages to user's language when presenting results
 
 ## When to Use
 
@@ -108,6 +117,55 @@ Closed-loop check (must be explicit in result):
 - `resource_id` checked
 - `+get_resource_url` called or skipped (no ID)
 - Link completion status
+
+### C. FUZZY_SEARCH_FALLBACK
+
+For list commands with `--query` parameter (list_reports, list_dashboards, list_events, list_clusters, list_tags, list_alerts, list_metrics):
+
+1. **First attempt**: Use `--query` with user-provided keyword for fuzzy search
+2. **If no results found**, retry up to 2 more times with:
+   - Broader keywords (remove modifiers, use root words)
+   - Alternative terms or synonyms
+3. **After 3 failed fuzzy attempts**, fall back to full list (omit `--query`)
+4. **Present full list** to user and ask them to identify the target resource
+5. **Never proceed** with operations on non-existent resources
+
+**Example workflow:**
+- User asks: "Find active user report"
+- Attempt 1: `--query "active user"` → no results
+- Attempt 2: `--query "active"` → no results
+- Attempt 3: `--query "user"` → no results
+- Fallback: list all reports, show to user, ask for selection
+
+### D. QUERY_EXISTING_FIRST
+
+Before executing ad-hoc queries (`query_adhoc`), MUST check for existing reports/dashboards first:
+
+**Mandatory workflow for data queries:**
+
+1. **Identify user intent** - Extract what metrics/dimensions/filters the user wants
+2. **Search existing reports** - Use `list_reports --query <keyword>` to find matching reports
+3. **Search existing dashboards** - Use `list_dashboards --query <keyword>` to find matching dashboards
+4. **If found** - Use `query_report_data` or `query_dashboard_report_data` to get data from existing assets
+5. **If not found** - Only then use `query_adhoc` for ad-hoc analysis
+
+**Rationale:**
+- **Performance**: Existing reports are pre-computed and faster
+- **Consistency**: Reports have business-defined metrics and calibrated logic
+- **Resource efficiency**: Avoid redundant computation
+- **Permissions**: Users may have report access but not ad-hoc query permissions
+
+**Example:**
+- User: "Query active users in last 7 days"
+- Step 1: `list_reports --query "active user"` → found "DAU Active Users Report"
+- Step 2: `query_report_data --report_id <id>` → return data
+- ❌ WRONG: Directly use `query_adhoc` without checking existing reports
+
+**Exceptions (when ad-hoc is acceptable):**
+- User explicitly requests "ad-hoc query" or "ad-hoc analysis"
+- User wants custom filters/groupings not available in existing reports
+- User is exploring data for new insights (exploratory analysis)
+- No matching reports found after search + fallback
 
 ## Tool Groups (69)
 

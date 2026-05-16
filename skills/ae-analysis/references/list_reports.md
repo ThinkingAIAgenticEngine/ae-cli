@@ -4,6 +4,10 @@
 
 Domain: **Report management**
 
+## Constraints
+
+**Fuzzy Search Fallback:** If `--query` returns no results, retry with broader keywords (max 3 attempts), then fall back to full list. See [SKILL.md § C. FUZZY_SEARCH_FALLBACK](../SKILL.md#c-fuzzy_search_fallback).
+
 ## Use Cases
 - List report metadata accessible to the current user in the project. Supports keyword filtering and returns report IDs, names, model types, update times, and related metadata, but not report definitions or analysis data.
 - List report metadata accessible to the current user in the project.

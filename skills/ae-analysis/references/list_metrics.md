@@ -4,6 +4,10 @@
 
 Domain: **Metadata Query**
 
+## Constraints
+
+**Fuzzy Search Fallback:** If `--query` returns no results, retry with broader keywords (max 3 attempts), then fall back to full list. See [SKILL.md § C. FUZZY_SEARCH_FALLBACK](../SKILL.md#c-fuzzy_search_fallback).
+
 ## Use Cases
 - List metric metadata in the project. Supports keyword filtering and returns metric IDs, names, display names, model types, remarks, and related metadata, but not metric calculation results.
 - Supports pagination with fields/limit/offset for payload governance.

@@ -1,6 +1,6 @@
 import { Command } from 'commander';
 import { loadConfig, addHost, setActiveHost, removeHost, updateHostLabel, listHosts, getConfigDir } from '../core/config.js';
-import { getAuthStatus, getToken } from '../core/auth.js';
+import { getAuthStatus, getToken, loadToken, validateToken, clearToken } from '../core/auth.js';
 import { printOutput } from '../framework/output.js';
 import * as readline from 'readline';
 
@@ -134,8 +134,20 @@ async function handleDeleteHost(url: string, label: string, isActive: boolean): 
 async function ensureAuth(hostUrl: string): Promise<void> {
   const status = getAuthStatus(hostUrl);
   if (status.authenticated) {
-    process.stderr.write(`\x1B[32m✓\x1B[0m Token valid for ${hostUrl}\n`);
-    return;
+    // 本地有 token，需要实际验证是否有效
+    const cached = loadToken(hostUrl);
+    if (cached && cached.token) {
+      process.stderr.write(`\x1B[2m[ae-cli] Validating token...\x1B[0m\n`);
+      const isValid = await validateToken(cached.token, hostUrl);
+      if (isValid) {
+        process.stderr.write(`\x1B[32m✓\x1B[0m Token valid for ${hostUrl}\n`);
+        return;
+      } else {
+        // Token 无效，清除缓存后再重新获取
+        clearToken(hostUrl);
+        process.stderr.write(`\x1B[33m!\x1B[0m Token expired or invalid. Re-authenticating...\n`);
+      }
+    }
   }
   process.stderr.write(`\n\x1B[33m!\x1B[0m No valid token for ${hostUrl}. Starting login...\n`);
   try {

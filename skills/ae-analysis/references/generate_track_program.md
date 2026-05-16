@@ -16,26 +16,26 @@ Domain: **Project Configuration**
 
 ## Commands
 ```bash
-ae-cli analysis_meta +generate_track_program --project_id <project_id> --form_data '{}'
+ae-cli analysis_meta +generate_track_program --project_id <project_id> --language <language> --form_data '{}'
 ae-cli analysis_meta +generate_track_program --dry-run
 ```
 
 ## Parameters
-| Parameter             | Required | Description                                                                                                                                                                                                                                                                                                                                                                            |
-|-----------------------|----------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| `--project_id` / `-p` | Yes      | Project ID                                                                                                                                                                                                                                                                                                                                                                             |
-| `--form_data`         | Yes      | Structured business context JSON object. Optional fields: account_system, revenue_model, core_gameplay, currency_system, main_entries, language, predefinedEvent (array of event names like install, start, close), developmentCarrier (array of platforms like Android, iOS, Unity, Cocos, Douyin Mini Game, WeChat Mini Game). All fields can be customized based on business needs. |
+| Parameter             | Required | Description                                                                                                                                                                                                                                                                                                                                                                              |
+|-----------------------|----------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `--project_id` / `-p` | Yes      | Project ID                                                                                                                                                                                                                                                                                                                                                                               |
+| `--language` / `-l`   | Yes      | Language code. Supported values: `zh-CN`, `en-US`, `ja-JP`, `ko-KR`                                                                                                                                                                                                                                                                                                                      |
+| `--form_data`         | Yes      | Structured business context JSON object. Optional fields for example: account_system, revenue_model, core_gameplay, currency_system, main_entries, predefinedEvent (array of event names like install, start, close), developmentCarrier (array of platforms like Android, iOS, Unity, Cocos, Douyin Mini Game, WeChat Mini Game). All fields can be customized based on business needs. |
 
 ## Decision Rules
 - **CRITICAL: Always call `+get_track_program` first to check existing tracking plan before generating.**
-- First run should only pass the required parameters (`--project_id`, `--form_data`).
+- First run should only pass the required parameters (`--project_id`, `--language`, `--form_data`).
 - Wrap JSON arguments in single quotes (for example `--form_data '{}'`) to avoid shell escaping issues.
 - This is an asynchronous operation; check in-site message center for generation results.
 - For cross-project troubleshooting, first confirm whether `--project_id` matches the current permissions and target environment.
 
 ## Next Steps After Failure
-- If required parameters are missing, fall back to the smallest runnable command and fill them in (focus on `--project_id` and `--form_data`).
-- If `FORM_DATA_REQUIRED_FIELDS_MISSING` occurs, ensure all required fields are provided: account_system, revenue_model, core_gameplay, currency_system, main_entries, language.
+- If required parameters are missing, fall back to the smallest runnable command and fill them in (focus on `--project_id`, `--language`, and `--form_data`).
 - If `Invalid JSON` occurs, validate with the smallest JSON structure first.
 
 ## Agent Response Flow

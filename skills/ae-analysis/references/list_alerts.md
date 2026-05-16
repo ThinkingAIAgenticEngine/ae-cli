@@ -4,6 +4,10 @@
 
 Domain: **Metadata Lookup**
 
+## Constraints
+
+**Fuzzy Search Fallback:** If `--query` returns no results, retry with broader keywords (max 3 attempts), then fall back to full list. See [SKILL.md § C. FUZZY_SEARCH_FALLBACK](../SKILL.md#c-fuzzy_search_fallback).
+
 ## Use Cases
 - List all alerts in the project. Supports keyword filtering by alert name. Returns a paginated list containing alerts array and pager result with total count.
 - List all alerts in the project.

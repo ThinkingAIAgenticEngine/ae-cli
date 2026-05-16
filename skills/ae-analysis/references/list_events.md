@@ -4,6 +4,10 @@
 
 Domain: **Metadata Query**
 
+## Constraints
+
+**Fuzzy Search Fallback:** If `--query` returns no results, retry with broader keywords (max 3 attempts), then fall back to full list. See [SKILL.md § C. FUZZY_SEARCH_FALLBACK](../SKILL.md#c-fuzzy_search_fallback).
+
 ## Use Cases
 - Read-only query for SYSTEM METADATA already effective in the project. Use for super events in production metadata. Do NOT use for tracking-plan metadata (bury/track program); that belongs to BuryProgramTool.
 - Read-only query for SYSTEM METADATA already effective in the project.

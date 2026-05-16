@@ -1,6 +1,6 @@
 import fs from 'fs';
 import path from 'path';
-import { safeReadJsonFile } from './json-utils.js';
+import { safeReadJsonFile, safeJsonParse } from './json-utils.js';
 import { execFileSync } from 'node:child_process';
 import { getConfigDir, getActiveHost, extractHostname } from './config.js';
 
@@ -29,6 +29,22 @@ function ensureDir(): void {
 export function resolveHost(hostOverride?: string): string {
   if (hostOverride) return hostOverride;
   return getActiveHost();
+}
+
+/**
+ * Validate token
+ * @param token
+ * @param hostUrl
+ */
+export async function validateToken(token: string, hostUrl: string): Promise<boolean> {
+  const url = `${hostUrl}/v1/oauth/checkToken?accessToken=${token}`;
+  try {
+    const resp = await fetch(url, { method: 'POST' });
+    const respJson = safeJsonParse(await resp.text());
+    return respJson?.return_code === 0;
+  } catch {
+    return false;
+  }
 }
 
 function loadAllTokens(): TokenStore {

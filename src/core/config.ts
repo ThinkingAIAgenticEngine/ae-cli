@@ -4,6 +4,8 @@ import { safeReadJsonFile } from './json-utils.js';
 
 const CONFIG_DIR = path.join(process.env.HOME || '', '.ae-cli');
 const CONFIG_FILE = path.join(CONFIG_DIR, 'config.json');
+const MCP_TOKENS_FILE = path.join(CONFIG_DIR, 'mcp-tokens.json');
+const FALLBACK_MCP_TOKEN_FILE = '/data/app/te_agent_ta/.ae-config/mcp-token.json';
 
 export interface HostEntry {
   label: string;
@@ -18,8 +20,44 @@ function ensureDir(): void {
   if (!fs.existsSync(CONFIG_DIR)) fs.mkdirSync(CONFIG_DIR, { recursive: true });
 }
 
+/**
+ * 从 fallback MCP token 文件迁移配置
+ * 返回迁移后的 MCP token store
+ */
+function migrateFromFallback(): Record<string, string> | null {
+  if (!fs.existsSync(FALLBACK_MCP_TOKEN_FILE) || fs.existsSync(MCP_TOKENS_FILE)) {
+    return null;
+  }
+
+  try {
+    const fallbackData = safeReadJsonFile(FALLBACK_MCP_TOKEN_FILE);
+    const tokenStore: Record<string, string> = {};
+
+    // 新格式：{ "url": "...", "mcp-token": "..." }
+    if (fallbackData && typeof fallbackData === 'object' && !Array.isArray(fallbackData)) {
+      const url = fallbackData.url as string;
+      const token = fallbackData['mcp-token'] as string;
+      if (url && token) {
+        tokenStore[url] = token;
+      }
+    }
+
+    if (Object.keys(tokenStore).length > 0) {
+      // 保存 MCP tokens
+      ensureDir();
+      fs.writeFileSync(MCP_TOKENS_FILE, JSON.stringify(tokenStore, null, 2));
+      return tokenStore;
+    }
+  } catch {}
+
+  return null;
+}
+
 export function loadConfig(): TeConfig {
   try {
+    // 先检查是否需要从 fallback 迁移
+    const migratedTokens = migrateFromFallback();
+
     if (fs.existsSync(CONFIG_FILE)) {
       const raw = safeReadJsonFile(CONFIG_FILE);
       // Migrate from old format (defaultHost without protocol)
@@ -29,6 +67,21 @@ export function loadConfig(): TeConfig {
         return migrated;
       }
       return raw;
+    }
+
+    // 如果有迁移的 tokens，创建对应的 config
+    if (migratedTokens && Object.keys(migratedTokens).length > 0) {
+      const hosts: Record<string, HostEntry> = {};
+      for (const url of Object.keys(migratedTokens)) {
+        hosts[url] = { label: url };
+        process.stderr.write(`[ae-cli] Added host: ${url}\n`);
+      }
+      const activeHost = Object.keys(migratedTokens)[0];
+      process.stderr.write(`[ae-cli] Active host set to: ${activeHost}\n`);
+      process.stderr.write(`[ae-cli] MCP tokens migrated from ${FALLBACK_MCP_TOKEN_FILE}\n`);
+      const config = { activeHost, hosts };
+      saveConfig(config);  // 保存到磁盘
+      return config;
     }
   } catch (err: any) {
     // 如果配置文件损坏，返回空配置

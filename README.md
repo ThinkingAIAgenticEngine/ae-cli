@@ -86,14 +86,18 @@ ae-cli auth logout
 
 | Domain | Commands | Description |
 |--------|----------|-------------|
-| `analysis` | 31 | Analysis workflows: alerts, reports, dashboards, ad-hoc/drilldown, clusters/tags, metadata/metrics, project tools, entity details, analysis schema |
-| `analysis_audience` | 14 | Audience operations: clusters, tags, and cluster/tag definition schema |
-| `analysis_meta` | 20 | Metadata governance: events/properties, metrics, virtual metadata, project config, tracking plan, mark times, resource links |
+| `analysis` | 30+ | Analysis workflows: alerts, reports, dashboards, ad-hoc/drilldown, entity/event details, analysis schema |
+| `analysis_audience` | 10+ | Audience operations: clusters, tags, and cluster/tag definition schema |
+| `analysis_meta` | 20+ | Metadata governance: events/properties, metrics, virtual metadata, project config, tracking plan, mark times, entity catalog |
 | `engage` | 40+ | Hermes Engage MCP: channels, tasks, configs, flows, strategies |
-| `te_dataops` | 50+ | Data warehouse management: repos, datatables, flows, IDE queries, integration, operations |
-| `te_community` | 30+ | Community analysis: posts search, sentiment analysis, topic trends, livestream data |
+| `dataops_repo` | 8 | Data warehouse repos: spaces, catalogs, schemas, members |
+| `dataops_datatable` | 10+ | Data tables: table creation, views, batch operations, data dictionary |
+| `dataops_flow` | 20+ | Task flows: flow creation, task nodes, scheduling, execution, monitoring |
+| `dataops_ide` | 10+ | IDE queries: metadata browsing, SQL execution, query management |
+| `dataops_integration` | 20+ | Data integration: datasource management, sync solutions, data synchronization |
+| `community` | 10+ | Community analysis: posts search, sentiment analysis, topic trends, livestream data |
 | `analysis_common` | 2 | Cross-module common constraints: resource link completion, project ID gate |
-| `operation` | 11 | Tasks, flows, channels, space navigation |
+| `auth` / `config` | 2 | Authentication and host configuration |
 
 ### Global Options
 
@@ -124,44 +128,39 @@ npx skills add ThinkingAIAgenticEngine/ae-cli -g -y
 
 ## Skill Details
 
-### ae-analysis (67 tools)
+### ae-analysis
 
 Unified AE analysis capabilities:
-- **Alerts**: view, create, update alert definitions
-- **Reports & Dashboards**: create, query, update reports and dashboards
-- **Model Analysis**: event analysis, retention analysis, funnel analysis, SQL analysis, user property analysis, distribution analysis, interval analysis, path analysis, attribution analysis
+- **Analysis**: alerts, reports, dashboards, ad-hoc/drilldown, entity/event details, analysis schema
 - **Audience**: cluster and tag lifecycle management, plus definition schema tools
-- **Metadata Governance**: events/properties, metrics, virtual metadata, project config, tracking plans, mark times, entity catalog
-- **Common Constraints**: mandatory project ID gate and post-write resource-link completion
-- **Entity/Event Details**: query details, generate analysis SQL
-- **Schema Helpers**: analysis query schema, filter schema, groupby schema
+- **Metadata**: events/properties, metrics, virtual metadata, project config, tracking plans, mark times
+- **Common**: mandatory project ID gate and post-write resource-link completion
 
-### engage (40+ tools)
+### engage
 
 Hermes Engage MCP capabilities:
-- **Channels**: channel management, config channels, approval management
-- **Tasks**: task list, task details, task data/metrics overview, experiment reports
-- **Configs**: config items, strategies, strategy comparison, trigger/analysis reports
-- **Flows**: flow creation, node config, flow reports, flow validation
+- **Channels**: channel management, config channels, approval, whitelist
+- **Tasks**: task list, details, data/metrics overview, experiment reports
+- **Configs**: config items, strategies, comparison, trigger/analysis reports
+- **Flows**: flow creation, node config, reports, validation
 
-### ae-dataops (50+ tools)
+### ae-dataops
 
 Data warehouse management:
 - **Repo Management**: spaces, catalogs, schemas, members
 - **Data Tables**: table creation, views, batch operations, data dictionary
 - **Task Flows**: flow creation, task nodes, scheduling, execution, monitoring
 - **IDE Queries**: metadata browsing, SQL execution, query management
-- **Integration**: datasource management, sync solutions, data synchronization
-- **Operations**: flow instances, task instances, backfill jobs
+- **Data Integration**: datasource management, sync solutions, data synchronization
 
-### ae-community (30+ tools)
+### ae-community
 
 Community social media analysis:
 - **Posts**: search, detail, corpus tags
 - **Comments**: sentiment analysis, tag analysis, summary
 - **Topics**: hot topics, trends, daily summaries
 - **Livestreams**: rooms, sessions, analysis, metrics
-- **Advanced Analysis**: activity analysis, character analysis, weekly reports, release analysis
+- **Channel Info**: channel overview metrics
 
 ## Architecture
 

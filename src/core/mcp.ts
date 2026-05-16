@@ -122,6 +122,7 @@ function genRequestId(): number {
 
 const MCP_TOKEN_FILE = path.join(getConfigDir(), 'mcp-tokens.json');
 const MCP_TOKEN_GENERATE_PATH = '/v1/ta/mcp/token/generate';
+const FALLBACK_MCP_TOKEN_FILE = '/data/app/te_agent_ta/.ae-config/mcp-token.json';
 
 type McpTokenStore = Record<string, string>;
 
@@ -138,6 +139,27 @@ function saveMcpTokenStore(store: McpTokenStore): void {
   const dir = getConfigDir();
   if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
   fs.writeFileSync(MCP_TOKEN_FILE, JSON.stringify(store, null, 2));
+}
+
+/**
+ * 从 fallback 文件获取 MCP token
+ */
+function getFallbackMcpToken(hostUrl: string): string | null {
+  try {
+    if (!fs.existsSync(FALLBACK_MCP_TOKEN_FILE)) {
+      return null;
+    }
+    const fallbackData = safeReadJsonFile(FALLBACK_MCP_TOKEN_FILE);
+    if (fallbackData && typeof fallbackData === 'object' && !Array.isArray(fallbackData)) {
+      const url = fallbackData.url as string;
+      const token = fallbackData['mcp-token'] as string;
+      // 只有 URL 匹配时才返回 token
+      if (url === hostUrl && token) {
+        return token;
+      }
+    }
+  } catch {}
+  return null;
 }
 
 /**
@@ -213,6 +235,64 @@ export function clearMcpToken(hostUrl?: string): void {
 }
 
 /**
+ * 手动设置 MCP Token
+ */
+export function setMcpTokenManual(token: string, hostUrl: string): void {
+  const store = loadMcpTokenStore();
+  store[hostUrl] = token;
+  saveMcpTokenStore(store);
+}
+
+/**
+ * 验证 MCP Token 是否有效
+ * 通过调用 tools/list 方法测试
+ */
+export async function validateMcpToken(token: string, hostUrl: string): Promise<boolean> {
+  const mapping = getMcpMapping('analysis');
+  const base = hostUrl.replace(/\/+$/, '');
+  const url = `${base}/mcp/${mapping.componentName}/http/${mapping.mappingPath}`;
+  const requestId = 1;
+
+  const body = {
+    jsonrpc: JSONRPC_VERSION,
+    id: requestId,
+    method: 'tools/list',
+    params: { _meta: { progressToken: requestId } },
+  };
+
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+    'Accept': 'application/json, text/event-stream',
+    'mcp-protocol-version': MCP_PROTOCOL_VERSION,
+    'mcp-token': token,
+    
+  };
+
+  try {
+    const resp = await fetch(url, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify(body),
+    });
+
+    if (!resp.ok) {
+      return false;
+    }
+
+    const data = safeJsonParse(await resp.text());
+    // JSON-RPC 错误表示 token 无效
+    if (data.error) {
+      return false;
+    }
+
+    // 有 tools 列表表示成功
+    return data.result?.tools !== undefined;
+  } catch {
+    return false;
+  }
+}
+
+/**
  * 发送 MCP HTTP 请求
  */
 async function mcpRequest(
@@ -221,7 +301,8 @@ async function mcpRequest(
   params: any = {},
   hostOverride?: string
 ): Promise<any> {
-  const token = await getMcpToken(hostOverride);
+  const hostUrl = hostOverride || getActiveHost();
+  const token = await getMcpToken(hostUrl);
   const requestId = genRequestId();
 
   // 添加 _meta.progressToken 到 params
@@ -250,6 +331,34 @@ async function mcpRequest(
     headers,
     body: JSON.stringify(body),
   });
+
+  // 403 表示 MCP token 过期或无效，尝试从 fallback 获取新 token
+  if (resp.status === 403) {
+    const fallbackToken = getFallbackMcpToken(hostUrl);
+    if (fallbackToken) {
+      // 更新缓存并重试
+      const store = loadMcpTokenStore();
+      store[hostUrl] = fallbackToken;
+      saveMcpTokenStore(store);
+      process.stderr.write(`[ae-cli] MCP token refreshed from fallback for ${hostUrl}\n`);
+
+      headers['mcp-token'] = fallbackToken;
+      const retryResp = await fetch(url, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify(body),
+      });
+      if (!retryResp.ok) {
+        throw new Error(`MCP HTTP error: ${retryResp.status} ${retryResp.statusText}`);
+      }
+      const retryData = safeJsonParse(await retryResp.text());
+      if (retryData.error) {
+        throw new Error(`MCP error: ${retryData.error.message || JSON.stringify(retryData.error)}`);
+      }
+      return retryData.result;
+    }
+    throw new Error(`MCP token expired or invalid. Please set a new MCP token: ae-cli auth set-mcp-token <token> --host ${hostUrl}`);
+  }
 
   if (!resp.ok) {
     throw new Error(`MCP HTTP error: ${resp.status} ${resp.statusText}`);

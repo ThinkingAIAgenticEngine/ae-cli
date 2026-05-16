@@ -2,6 +2,8 @@ import { Command } from 'commander';
 import { getToken, clearToken, setTokenManual, getAuthStatus, resolveHost } from '../core/auth.js';
 import { loadConfig, saveConfig } from '../core/config.js';
 import { printOutput, printError } from '../framework/output.js';
+import { validateToken } from '../core/auth.js';
+import { setMcpTokenManual, clearMcpToken, validateMcpToken } from '../core/mcp.js';
 
 export function registerAuth(program: Command): void {
   const auth = program.command('auth').description('Authentication management');
@@ -28,7 +30,7 @@ export function registerAuth(program: Command): void {
   auth
     .command('set-token <token>')
     .description('Manually set authentication token for active host')
-    .action((token: string) => {
+    .action(async (token: string) => {
       const host = resolveHost(program.opts().host);
       if (!host) {
         printError('config', 'No AE host configured.', 'Run: ae-cli config set-host');
@@ -45,9 +47,18 @@ export function registerAuth(program: Command): void {
         process.stderr.write(`[ae-cli] Config saved for ${host}\n`);
         printOutput({ saved: true, config }, program.opts().format || 'json');
       }
+
+      // 验证 token 是否有效
+      process.stderr.write(`[ae-cli] Validating token...\n`);
+      const isValid = await validateToken(token, host);
+      if (!isValid) {
+        process.stderr.write(`[ae-cli] Token validation failed\n`);
+        printError('auth', 'Invalid token', 'Please check your token and try again');
+        process.exit(1);
+      }
       setTokenManual(token, host);
-      process.stderr.write(`[ae-cli] Token saved for ${host}\n`);
-      printOutput({ saved: true, host }, program.opts().format || 'json');
+      process.stderr.write(`[ae-cli] Token verified and saved for ${host}\n`);
+      printOutput({ saved: true, host, verified: true }, program.opts().format || 'json');
     });
 
   auth
@@ -74,6 +85,63 @@ export function registerAuth(program: Command): void {
       }
       clearToken(host);
       process.stderr.write(`[ae-cli] Token cleared for ${host}\n`);
+      printOutput({ cleared: true, host }, program.opts().format || 'json');
+    });
+
+  auth
+    .command('set-mcp-token <token>')
+    .description('Manually set MCP token for a host')
+    .option('--host <host>', 'Target host URL (defaults to active host)')
+    .action(async (token: string, opts: Record<string, any>) => {
+      const host = opts.host || resolveHost(program.opts().host);
+      if (!host) {
+        printError('config', 'No AE host configured.', 'Use --host <url> or run: ae-cli config set-host');
+        process.exit(1);
+      }
+      // 确保 host 存在于配置中
+      const config = loadConfig();
+      if (!config.hosts[host]) {
+        config.hosts[host] = { label: host };
+        if (!config.activeHost) {
+          config.activeHost = host;
+        }
+        saveConfig(config);
+        process.stderr.write(`[ae-cli] Host config saved for ${host}\n`);
+      }
+
+      // 验证 MCP token 是否有效
+      process.stderr.write(`[ae-cli] Validating MCP token...\n`);
+      const isValid = await validateMcpToken(token, host);
+      if (!isValid) {
+        process.stderr.write(`[ae-cli] MCP token validation failed\n`);
+        printError('auth', 'Invalid MCP token', 'Please check your MCP token and try again');
+        process.exit(1);
+      }
+
+      setMcpTokenManual(token, host);
+      process.stderr.write(`[ae-cli] MCP token verified and saved for ${host}\n`);
+      printOutput({ saved: true, host, verified: true, type: 'mcp-token' }, program.opts().format || 'json');
+    });
+
+  auth
+    .command('clear-mcp-token')
+    .description('Clear stored MCP token for a host')
+    .option('--host <host>', 'Target host URL (defaults to active host)')
+    .option('--all', 'Clear MCP tokens for all hosts')
+    .action((opts: Record<string, any>) => {
+      if (opts.all) {
+        clearMcpToken();
+        process.stderr.write(`[ae-cli] All MCP tokens cleared\n`);
+        printOutput({ cleared: true, type: 'all-mcp-tokens' }, program.opts().format || 'json');
+        return;
+      }
+      const host = opts.host || resolveHost(program.opts().host);
+      if (!host) {
+        printError('config', 'No AE host configured.', 'Use --host <url> or run: ae-cli config set-host');
+        process.exit(1);
+      }
+      clearMcpToken(host);
+      process.stderr.write(`[ae-cli] MCP token cleared for ${host}\n`);
       printOutput({ cleared: true, host }, program.opts().format || 'json');
     });
 }

@@ -4,6 +4,16 @@
 
 Domain: **Model analysis**
 
+## Constraints
+
+**⚠️ QUERY_EXISTING_FIRST:** Before using ad-hoc query, you MUST first check for existing reports/dashboards with `list_reports` and `list_dashboards`. Only use `query_adhoc` if no matching reports found. See [SKILL.md § D. QUERY_EXISTING_FIRST](../SKILL.md#d-query_existing_first).
+
+**Quick check workflow:**
+1. `list_reports --query <keyword>` - search matching reports
+2. `list_dashboards --query <keyword>` - search matching dashboards
+3. If found → use `query_report_data` or `query_dashboard_report_data`
+4. If not found → only then use `query_adhoc`
+
 ## Use Cases
 - Precondition helper: call `+get_analysis_query_schema` to get the structure before using this tool.
 - When constructing a real `qp`, you must supplement it with real project metadata; first call `analysis_meta +list_events` and `analysis_meta +list_properties`.

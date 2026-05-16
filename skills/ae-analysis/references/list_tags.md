@@ -4,6 +4,10 @@
 
 Domain: **Tag Management**
 
+## Constraints
+
+**Fuzzy Search Fallback:** If `--query` returns no results, retry with broader keywords (max 3 attempts), then fall back to full list. See [SKILL.md § C. FUZZY_SEARCH_FALLBACK](../SKILL.md#c-fuzzy_search_fallback).
+
 ## Use Cases
 - List tag metadata accessible to the current user in the project.
 - Supports payload governance parameters: `query`, `fields`, `limit`, `offset`.

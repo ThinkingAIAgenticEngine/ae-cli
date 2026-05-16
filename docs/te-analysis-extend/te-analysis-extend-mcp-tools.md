@@ -216,7 +216,8 @@
 - **描述**: AI 生成埋点方案（异步，结果通过站内消息通知）
 - **参数**:
   - `projectId` (Integer, required) - 项目 ID
-  - `formData` (Map<String,Object>, required) - 业务上下文 JSON，可选字段：account_system, revenue_model, core_gameplay, currency_system, main_entries, language, predefinedEvent, developmentCarrier
+  - `language` (String, required) - 语言，允许值：zh-CN, en-US, ja-JP, ko-KR
+  - `formData` (Map<String,Object>, required) - 业务上下文 JSON，示例字段：account_system, revenue_model, core_gameplay, currency_system, main_entries, predefinedEvent, developmentCarrier
 - **风险**: write
 
 #### generate_track_sdk_sample
