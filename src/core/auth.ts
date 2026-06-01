@@ -164,6 +164,42 @@ function extractTokenViaOsascript(hostUrl: string): { token: string | null; erro
   }
 }
 
+/**
+ * 兜底：搜索 Chrome 所有 Tab 的 localStorage 中的 ACCESS_TOKEN。
+ * 用于处理登录后页面跳转到其他 URL（如 SSO 回调）导致原 hostname 匹配失败的情况。
+ */
+function extractTokenFromAllTabs(): { token: string | null; error: string | null } {
+  const lines = [
+    'tell application "Google Chrome"',
+    '  repeat with w in windows',
+    '    repeat with t in tabs of w',
+    '      try',
+    '        set tokenVal to execute t javascript "localStorage.getItem(\'ACCESS_TOKEN\')"',
+    '        if tokenVal is not null and tokenVal is not missing value and tokenVal is not "" then',
+    '          return tokenVal',
+    '        end if',
+    '      end try',
+    '    end repeat',
+    '  end repeat',
+    '  return "NO_TOKEN_FOUND"',
+    'end tell',
+  ];
+  try {
+    const args = lines.flatMap(line => ['-e', line]);
+    const result = execFileSync('osascript', args, { encoding: 'utf8', timeout: 10000 }).trim();
+    if (result === 'NO_TOKEN_FOUND' || !result || result === 'missing value') {
+      return { token: null, error: 'no_token' };
+    }
+    return { token: result.replace(/^["']|["']$/g, ''), error: null };
+  } catch (e: any) {
+    const msg = e.message || '';
+    if (msg.includes('not allowed') || msg.includes('assistive access') || msg.includes('(-1743)')) {
+      return { token: null, error: 'no_js_permission' };
+    }
+    return { token: null, error: 'no_tab' };
+  }
+}
+
 async function requestTokenViaOsascript(hostUrl: string): Promise<string | null> {
   process.stderr.write(`[ae-cli] No AE tab found in Chrome. Opening ${hostUrl} ...\n`);
   process.stderr.write(`[ae-cli] Please login, then your token will be captured automatically.\n`);
@@ -185,12 +221,17 @@ async function requestTokenViaOsascript(hostUrl: string): Promise<string | null>
   const deadline = Date.now() + OSASCRIPT_POLL_TIMEOUT_MS;
   while (Date.now() < deadline) {
     await new Promise(r => setTimeout(r, OSASCRIPT_POLL_INTERVAL_MS));
-    const { token, error } = extractTokenViaOsascript(hostUrl);
-    if (token) {
-      process.stderr.write(`[ae-cli] Token captured from Chrome for ${hostUrl}.\n`);
-      return token;
+    let result = extractTokenViaOsascript(hostUrl);
+    // hostname 匹配不到时兜底搜全 Tab（登录后页面跳转到其他 URL 如 SSO 回调）
+    if (result.error === 'no_tab') {
+      const fallback = extractTokenFromAllTabs();
+      if (fallback.token) result = fallback;
     }
-    if (error === 'no_js_permission') return null;
+    if (result.token) {
+      process.stderr.write(`[ae-cli] Token captured from Chrome for ${hostUrl}.\n`);
+      return result.token;
+    }
+    if (result.error === 'no_js_permission') return null;
   }
   process.stderr.write(`[ae-cli] Polling timed out after ${OSASCRIPT_POLL_TIMEOUT_MS / 1000}s.\n`);
   return null;
