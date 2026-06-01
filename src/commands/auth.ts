@@ -17,6 +17,18 @@ export function registerAuth(program: Command): void {
         printError('config', 'No AE host configured.', 'Run: ae-cli config set-host');
         process.exit(1);
       }
+
+      // 确保 host 存在于配置中（与 auth set-token 行为一致）
+      const config = loadConfig();
+      if (!config.hosts[host]) {
+        config.hosts[host] = { label: host };
+        if (!config.activeHost) {
+          config.activeHost = host;
+        }
+        saveConfig(config);
+        process.stderr.write(`[ae-cli] Config saved for ${host}\n`);
+      }
+
       try {
         const token = await getToken(host);
         process.stderr.write(`[ae-cli] Authenticated to ${host}\n`);

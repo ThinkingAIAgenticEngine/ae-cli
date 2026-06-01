@@ -82,6 +82,54 @@ export async function httpPost(modulePath: string, params: Record<string, any> =
   return request('POST', modulePath, params, body ?? {}, true, hostUrl);
 }
 
+export async function httpDelete(modulePath: string, params: Record<string, any> = {}, body?: any, hostUrl?: string): Promise<any> {
+  return request('DELETE', modulePath, params, body ?? null, true, hostUrl);
+}
+
+async function uploadRequest(
+  modulePath: string,
+  form: FormData,
+  params: Record<string, any> = {},
+  retry = true,
+  hostUrl?: string
+): Promise<any> {
+  const resolvedHost = resolveHost(hostUrl);
+  const token = await getToken(resolvedHost);
+  const url = buildUrl(resolvedHost, modulePath, params);
+  const headers: Record<string, string> = {
+    'Authorization': `bearer ${token}`,
+  };
+
+  const resp = await fetch(url, { method: 'POST', headers, body: form });
+
+  if ((resp.status === 401 || resp.status === 403) && retry) {
+    clearToken(resolvedHost);
+    return uploadRequest(modulePath, form, params, false, resolvedHost);
+  }
+
+  const data = safeJsonParse(await resp.text());
+
+  if (data.return_code === -1001 && retry) {
+    clearToken(resolvedHost);
+    return uploadRequest(modulePath, form, params, false, resolvedHost);
+  }
+
+  if (data.return_code !== 0 && data.return_code !== undefined) {
+    throw new Error(`AE API error: ${data.return_message || 'unknown'} (code: ${data.return_code})`);
+  }
+
+  return data.data !== undefined ? data.data : data;
+}
+
+export async function httpUpload(
+  modulePath: string,
+  form: FormData,
+  params: Record<string, any> = {},
+  hostUrl?: string
+): Promise<any> {
+  return uploadRequest(modulePath, form, params, true, hostUrl);
+}
+
 // WebSocket query
 async function wsQueryOnce(
   projectId: number,

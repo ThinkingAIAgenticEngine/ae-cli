@@ -1,6 +1,6 @@
 {
   "name": "@thinkingai/ae-cli",
-  "version": "1.0.20",
+  "version": "1.0.21",
   "description": "CLI tool for ThinkingAI (AE) analytics platform",
   "type": "module",
   "bin": {
@@ -44,10 +44,12 @@
     "cli-table3": "^0.6.5",
     "commander": "^12.1.0",
     "json-bigint": "^1.0.0",
+    "turndown": "^7.2.4",
     "ws": "^8.18.0"
   },
   "devDependencies": {
     "@types/node": "^22.0.0",
+    "@types/turndown": "^5.0.6",
     "@types/ws": "^8.5.0",
     "tsup": "^8.0.0",
     "tsx": "^4.0.0",
