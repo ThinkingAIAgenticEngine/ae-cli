@@ -2,10 +2,6 @@
 name: ae-analysis
 version: 3.0.0
 description: "AE/TE/ThinkingEngine/ThinkingAI ae-cli manual for analysis-side tasks in the AE system or analysis platform: reports, dashboards, alerts, ad hoc analysis, drilldown, audience clusters, tags, tag members, metrics and metric definitions, events, properties, virtual events, virtual properties, metadata, project configuration, tracking plans, event tracking, mark times, project lists, and resource links. Use when the user asks to query, create, update, refresh, inspect, troubleshoot, govern, or manage these AE analysis assets. Must use ae-cli, read the matching references/<tool_name>.md command manual before composing commands, and never guess command names, flags, JSON payloads, project_id, resource IDs, or parameter formats."
-metadata:
-  requires:
-    bins: ["ae-cli"]
-  cliHelp: "ae-cli --help"
 ---
 
 # ae-analysis
@@ -19,48 +15,22 @@ metadata:
 
 AE CLI (`ae-cli`) is the command-line tool for the AE / TE / ThinkingEngine analysis platform. For AE analysis-side requests, prefer `ae-cli` and this skill's reference docs over model memory.
 
-Authentication priority:
-1. `TE_TOKEN` environment variable.
-2. Cached token in `~/.ae-cli/tokens.json`, usually valid for 20 hours.
-3. macOS Chrome token extraction via `ae-cli auth login`.
-
-Useful authentication commands:
-
-```bash
-ae-cli auth login
-ae-cli auth status
-ae-cli auth logout
-```
-
 Global parameters:
 
 | Parameter | Description |
 |---|---|
-| `--host <host>` | Target AE host. Use when the environment is not the default host. |
-| `--format <json|table>` | Output format. Default is JSON. |
+| `--format <json\|table>` | Output format. Default is JSON. |
 | `--jq <expr>` | jq filter expression for JSON output. |
-| `--dry-run` | Preview the request without executing it. |
-| `--yes` | Skip confirmation for write operations. Use only when the user intent is explicit or automation requires it. |
 
 Output and errors:
 - Successful commands return machine-readable JSON by default.
 - Failed commands return `{ "ok": false, "error": { "type": "...", "message": "...", "hint": "..." } }` and exit non-zero.
-- On auth/config errors, check `ae-cli auth status`, host configuration, and the target environment before retrying.
 
 Safety constraints:
 - Read commands can execute directly after required IDs and references are verified.
 - Write commands require explicit user intent and normally keep the confirmation prompt.
-- Use `--dry-run` before risky or complex writes.
-- Never invent command names, flags, JSON payloads, `project_id`, resource IDs, field names, event names, property names, metric definitions, or date formats. Read the matching command reference and discover real project metadata first.
+- Never invent command names, flags, JSON payloads, `project_id`, resource IDs, field names, event names, property names, metric definitions, or date formats. For builder-supported ad-hoc models (`event`, `retention`, `funnel`, `prop_analysis`), do not pre-discover metadata; pass the user's event/property/metric wording to the matching QP builder and let the builder resolve metadata or return clarification. For non-builder/manual workflows, read the matching command reference and discover real project metadata first.
 - **NEVER fabricate or guess resource names** (reports, dashboards, events, properties, metrics, clusters, tags, alerts). Always use list commands to discover real resources first. If a resource is not found after fuzzy search and full list fallback, explicitly tell the user "resource not found" and stop - do not proceed with fabricated names.
-
-Language consistency:
-- **Input-output language matching**: Always respond in the same language as the user's input.
-  - User asks in Chinese → Respond in Chinese, including result interpretation and error messages
-  - User asks in English → Respond in English
-- **CLI output handling**: CLI returns JSON in English, but your interpretation and summary MUST match user's language
-- **Resource names**: Keep original resource names as-is (don't translate), but descriptions and explanations should match user's language
-- **Error messages**: Translate CLI error messages to user's language when presenting results
 
 ## When to Use
 
@@ -147,7 +117,7 @@ Before executing ad-hoc queries (`query_adhoc`), MUST check for existing reports
 2. **Search existing reports** - Use `list_reports --query <keyword>` to find matching reports
 3. **Search existing dashboards** - Use `list_dashboards --query <keyword>` to find matching dashboards
 4. **If found** - Use `query_report_data` or `query_dashboard_report_data` to get data from existing assets
-5. **If not found** - Only then use `query_adhoc` for ad-hoc analysis
+5. **If not found** - For QP builder-supported models (`event`, `retention`, `funnel`, `prop_analysis`), call the matching builder first and then call `query_adhoc` with builder `qp`; do not call schema or metadata tools between the report/dashboard miss and the builder. For all other `query_adhoc` models, use the legacy schema/metadata path.
 
 **Rationale:**
 - **Performance**: Existing reports are pre-computed and faster
@@ -167,9 +137,67 @@ Before executing ad-hoc queries (`query_adhoc`), MUST check for existing reports
 - User is exploring data for new insights (exploratory analysis)
 - No matching reports found after search + fallback
 
-## Tool Groups (69)
+### E. QP_BUILDER_SUPPORTED_MODELS_ONLY
 
-### analysis (31)
+QP builder supports exactly four ad-hoc model types: `event`, `retention`, `funnel`, and `prop_analysis`.
+
+For these four model types, QP builder is mandatory before `query_adhoc`. Do not handcraft QP from `get_analysis_query_schema`, examples, or prior knowledge.
+
+1. `event` -> `+build_event_analysis_qp`
+2. `retention` -> `+build_retention_analysis_qp`
+3. `funnel` -> `+build_funnel_analysis_qp`
+4. `prop_analysis` -> `+build_prop_analysis_qp`
+
+Builder-supported model routing is:
+1. Search existing reports/dashboards if `QUERY_EXISTING_FIRST` applies.
+2. If no existing asset is used, read the matching builder reference.
+3. Call the matching builder with complete required parameters.
+4. Call `query_adhoc` only when builder returns `status=generated`.
+
+Do not insert metadata/schema calls between steps 2 and 3 for builder-supported models. Specifically, do not call `get_analysis_query_schema`, `list_events`, `list_properties`, `list_metrics`, `get_metric`, or `get_report_definition` to prepare the builder payload. The builder resolves event/property/metric metadata internally and returns `need_clarification` when it cannot.
+
+Event metric shortcut:
+- If the user asks to query a saved/business metric through event analysis, pass the metric name/display name/remark directly as an event metric target: `--metrics '[{"event":"<metric name>"}]'`.
+- Do not call `analysis_meta +list_metrics` or `analysis_meta +get_metric` first just to expand the metric definition.
+- If the user provides an explicit formula, pass the formula and dependencies to `+build_event_analysis_qp`; do not convert it by reading schema or metric metadata first.
+
+Metric result vs metric metadata:
+- "Query metric result/value/trend over a time range" is an ad-hoc analysis request. Use report/dashboard search first when applicable, then builder -> `query_adhoc`.
+- "Inspect/search/update/create metric definition" is metadata/governance. Only then use `analysis_meta +list_metrics`, `+get_metric`, `+create_metric`, or `+update_metric`.
+
+For all other `query_adhoc` model types (`distribution`, `attribution`, `heat_map`, `interval`, `path`, `rank_list`, `sql`), QP builder is not supported. Use the legacy path: read `query_adhoc.md`, fetch schema/metadata as required, then construct QP manually according to the relevant schema.
+
+Execution rule:
+- If builder result `status=generated`, call `+query_adhoc` with the same `model_type` and the returned `qp`.
+- If builder returns non-generated status (`need_clarification`, `invalid_argument`, `unsupported_feature`, `validation_error`), stop and ask the user for clarification instead of calling `query_adhoc`.
+- Never bypass a failed builder by manually assembling QP for `event`, `retention`, `funnel`, or `prop_analysis`.
+
+Builder payload rules:
+- Before composing any builder JSON, read the matching builder reference doc. The builder references contain the required JSON shape and model-specific field differences.
+- CLI flag names use snake_case, but nested JSON keys use the service DTO field names in camelCase. Correct: `startTime`, `endTime`, `relationEventPropertyName`, `eventPropertyName`. Wrong: `start_date`, `start_time`, `relation_property`, `fieldName`.
+- Builder dry-run still requires the normal required flags. Do not run builder dry-run by itself.
+- Do not pass placeholder `{}` or `[]` for required nested structures except when intentionally checking CLI validation. Fill required inner fields before calling the command.
+- Use enum values exactly as documented. Examples: `mode=start_to_yesterday`, `operator=exists`, `relation=or`, `field.type=event_property`.
+- For `exists`, `not_exists`, `is_true`, and `is_false`, omit `values`. For `between`, provide exactly two values. For other value-based operators, provide a non-empty `values` array.
+- Builder tools do not execute the query and do not take `zone_offset`. Pass time zone to `+query_adhoc` with `--zone_offset` after the builder returns `status=generated`.
+- If the user's request lacks a required business element such as time range, event, metric, funnel window, property, or relation field, stop and ask for clarification. If the request supplies a name but it may be a metadata ambiguity, call the builder and let it return candidates. Do not invent names or handcraft QP.
+
+Supported builder chain:
+1. Read the builder reference for the target model.
+2. Build structured JSON from the user's request. Use user-provided event/property/metric names as-is; do not pre-query metadata for these names.
+3. Run the matching `+build_*_analysis_qp` command.
+4. If `status=generated`, call `+query_adhoc --model_type <same_model> --qp '<response.qp>'`.
+5. If status is not `generated`, report the structured error or ask the user for the missing information; do not continue to `query_adhoc`.
+
+Legacy query_adhoc chain:
+1. Use only for `distribution`, `attribution`, `heat_map`, `interval`, `path`, `rank_list`, or `sql`.
+2. Read `references/query_adhoc.md` and required schema/metadata references.
+3. Build QP manually from the documented schema and verified project metadata.
+4. Call `+query_adhoc`.
+
+## Tool Groups (73)
+
+### analysis (35)
 
 Alerts (5):
 - `+get_alert_definition_schema` ([doc](references/get_alert_definition_schema.md))
@@ -193,7 +221,11 @@ Reports and Dashboards (13):
 - `+create_public_access_link` ([doc](references/create_public_access_link.md))
 - `+update_public_access_link` ([doc](references/update_public_access_link.md))
 
-Model Analysis (6):
+Model Analysis (10):
+- `+build_event_analysis_qp` ([doc](references/build_event_analysis_qp.md))
+- `+build_retention_analysis_qp` ([doc](references/build_retention_analysis_qp.md))
+- `+build_funnel_analysis_qp` ([doc](references/build_funnel_analysis_qp.md))
+- `+build_prop_analysis_qp` ([doc](references/build_prop_analysis_qp.md))
 - `+query_adhoc` ([doc](references/query_adhoc.md))
 - `+drilldown_users` ([doc](references/drilldown_users.md))
 - `+drilldown_user_events` ([doc](references/drilldown_user_events.md))
@@ -284,4 +316,4 @@ npm run verify:analysis-common-tools
 
 ## Reference Docs
 
-See the unified `references/` directory (69 command docs total).
+See the unified `references/` directory (73 command docs total).

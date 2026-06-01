@@ -2,10 +2,6 @@
 name: ae-dataops
 version: 2.0.0
 description: "AE Data Development and Operations: Data warehouse management, flow orchestration, IDE queries, data integration, operations and backfill management"
-metadata:
-  requires:
-    bins: ["ae-cli"]
-  cliHelp: "ae-cli dataops_repo --help, ae-cli dataops_datatable --help, ae-cli dataops_flow --help, ae-cli dataops_ide --help, ae-cli dataops_integration --help, ae-cli dataops_operations --help"
 ---
 
 # ae-dataops
@@ -26,68 +22,27 @@ The AE Data Development and Operations domain provides capabilities for data war
 
 ---
 
+
 ## Global AE CLI Rules
 
-AE CLI (`ae-cli`) is the command-line tool for the AE data development and operations platform. For DataOps-side requests, prefer `ae-cli` and this skill's reference docs over model memory.
-
-Authentication priority:
-1. `TE_TOKEN` environment variable.
-2. Cached token in `~/.ae-cli/tokens.json`, usually valid for 20 hours.
-3. macOS Chrome token extraction via `ae-cli auth login`.
-
-Useful authentication commands:
-
-```bash
-ae-cli auth login
-ae-cli auth set-token <token>
-ae-cli auth status
-ae-cli auth logout
-```
-
-Multi-environment support:
-
-```bash
-# Specify host
-ae-cli auth login --host ta-staging.example.com
-ae-cli auth set-token <token> --host ta-staging.example.com
-
-# Configure default host
-ae-cli config set defaultHost ta-staging.example.com
-```
+AE CLI (`ae-cli`) is the command-line tool for the AE / TE / ThinkingEngine analysis platform. For AE analysis-side requests, prefer `ae-cli` and this skill's reference docs over model memory.
 
 Global parameters:
 
-| Parameter | Description | Default |
-|---|---|---|
-| `--host <host>` | Target AE instance address | defaultHost from config or ta.thinkingdata.cn |
-| `--format <json|table>` | Output format | json |
-| `--jq <expr>` | jq filter expression for JSON output | - |
-| `--dry-run` | Preview the request without executing it | false |
-| `--yes` | Skip confirmation for write operations | false |
+| Parameter | Description |
+|---|---|
+| `--format <json\|table>` | Output format. Default is JSON. |
+| `--jq <expr>` | jq filter expression for JSON output. |
 
-Output format:
-
-- JSON (default): `{ "ok": true, "data": { ... } }`
-- Table: `ae-cli dataops_flow +list_flows --spaceCode xxx --format table`
-- jq filtering: `ae-cli dataops_flow +list_flows --spaceCode xxx --jq '.'`
-
-Error handling:
-
-- Failed commands return `{ "ok": false, "error": { "type": "auth|api|validation|config", "message": "...", "hint": "..." } }` to stderr.
-- Exit code: success `0`, error `1`.
+Output and errors:
+- Successful commands return machine-readable JSON by default.
+- Failed commands return `{ "ok": false, "error": { "type": "...", "message": "...", "hint": "..." } }` and exit non-zero.
 
 Safety constraints:
-
-- Commands with `risk: read` execute directly.
-- Commands with `risk: write` require confirmation unless `--yes` is passed.
-- Use `--dry-run` to preview the request that will be sent.
-
-Command structure:
-
-```bash
-ae-cli <domain> +<command> [flags]
-ae-cli api <METHOD> <PATH> [--params] [--data]
-```
+- Read commands can execute directly after required IDs and references are verified.
+- Write commands require explicit user intent and normally keep the confirmation prompt.
+- Never invent command names, flags, JSON payloads, `project_id`, resource IDs, field names, event names, property names, metric definitions, or date formats. Read the matching command reference and discover real project metadata first.
+- **NEVER fabricate or guess resource names** (reports, dashboards, events, properties, metrics, clusters, tags, alerts). Always use list commands to discover real resources first. If a resource is not found after fuzzy search and full list fallback, explicitly tell the user "resource not found" and stop - do not proceed with fabricated names.
 
 Domains for DataOps: `dataops_repo`, `dataops_datatable`, `dataops_flow`, `dataops_ide`, `dataops_integration`, `dataops_operations`
 

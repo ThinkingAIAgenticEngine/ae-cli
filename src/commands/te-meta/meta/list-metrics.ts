@@ -2,7 +2,7 @@ import { createMcpCommand, optionalJson, optionalNumber, optionalString } from '
 
 export const listMetrics = createMcpCommand({
   command: '+list_metrics',
-  description: 'List metric metadata in the project. Query performs fuzzy matching on metricName, metricDesc, and metricRemark. Supports fields/limit/offset pagination.',
+  description: 'List metric metadata in the project. Use for metric metadata inspection/management, not as a pre-step for event/retention/funnel/prop_analysis ad-hoc builders. For event saved metric queries, pass the metric name directly to +build_event_analysis_qp in metrics[].event. Query performs fuzzy matching on metricName, metricDesc, and metricRemark. Supports fields/limit/offset pagination.',
   flags: [
     { name: 'project_id', type: 'number', required: true, alias: 'p', desc: 'Project ID' },
     { name: 'query', type: 'string', required: false, alias: 'q', desc: 'Optional keyword filter. Fuzzy match on metricName, metricDesc, metricRemark.' },

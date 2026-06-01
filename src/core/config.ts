@@ -25,10 +25,28 @@ function ensureDir(): void {
  * 返回迁移后的 MCP token store
  */
 function migrateFromFallback(): Record<string, string> | null {
+  // 只在 fallback 存在且 mcp-tokens.json 不存在时迁移
   if (!fs.existsSync(FALLBACK_MCP_TOKEN_FILE) || fs.existsSync(MCP_TOKENS_FILE)) {
     return null;
   }
+  return doMigrateFromFallback();
+}
 
+/**
+ * 强制从 fallback 更新 MCP token（无论 mcp-tokens.json 是否存在）
+ * 用于失败时的重试场景
+ */
+export function forceMigrateFromFallback(): Record<string, string> | null {
+  if (!fs.existsSync(FALLBACK_MCP_TOKEN_FILE)) {
+    return null;
+  }
+  return doMigrateFromFallback();
+}
+
+/**
+ * 实际执行迁移的逻辑
+ */
+function doMigrateFromFallback(): Record<string, string> | null {
   try {
     const fallbackData = safeReadJsonFile(FALLBACK_MCP_TOKEN_FILE);
     const tokenStore: Record<string, string> = {};
@@ -43,7 +61,7 @@ function migrateFromFallback(): Record<string, string> | null {
     }
 
     if (Object.keys(tokenStore).length > 0) {
-      // 保存 MCP tokens
+      // 保存 MCP tokens（覆盖或创建）
       ensureDir();
       fs.writeFileSync(MCP_TOKENS_FILE, JSON.stringify(tokenStore, null, 2));
       return tokenStore;

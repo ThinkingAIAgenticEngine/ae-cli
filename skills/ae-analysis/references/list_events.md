@@ -8,9 +8,11 @@ Domain: **Metadata Query**
 
 **Fuzzy Search Fallback:** If `--query` returns no results, retry with broader keywords (max 3 attempts), then fall back to full list. See [SKILL.md § C. FUZZY_SEARCH_FALLBACK](../SKILL.md#c-fuzzy_search_fallback).
 
+**Not a builder pre-step:** Do not call `+list_events` before builder-supported ad-hoc analysis (`event`, `retention`, `funnel`, `prop_analysis`). The matching QP builder resolves event names internally. If the builder returns MCP failure, stop and ask for clarification instead of using this command as a fallback.
+
 ## Use Cases
 - Read-only query for SYSTEM METADATA already effective in the project. Use for super events in production metadata. Do NOT use for tracking-plan metadata (bury/track program); that belongs to BuryProgramTool.
-- Read-only query for SYSTEM METADATA already effective in the project.
+- Read-only query for SYSTEM METADATA already effective in the project. Use when the user explicitly asks to inspect event metadata, not as a required preparation step for QP builder.
 
 ## Commands
 ```bash
@@ -30,6 +32,7 @@ ae-cli analysis_meta +list_events --dry-run
 | `--offset` / `-o` | No | Optional page offset. Default: 0. |
 ## Decision Rules
 - For the first run, pass only the required parameter (`--project_id`) to confirm the path works, then add optional parameters.
+- For builder-supported ad-hoc analysis, pass the user's event wording to the builder instead of pre-querying event metadata.
 - For cross-project troubleshooting, first confirm whether `--project_id` matches the current permissions and target environment.
 
 ## Next Steps After Failure

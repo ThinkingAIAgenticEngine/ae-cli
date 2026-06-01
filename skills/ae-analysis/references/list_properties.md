@@ -4,9 +4,13 @@
 
 Domain: **Metadata Query**
 
+## Constraints
+
+**Not a builder pre-step:** Do not call `+list_properties` before builder-supported ad-hoc analysis (`event`, `retention`, `funnel`, `prop_analysis`). The matching QP builder resolves property names internally. If the builder returns MCP failure, stop and ask for clarification instead of using this command as a fallback.
+
 ## Use Cases
 - Read-only query for SYSTEM METADATA properties already effective in the project. Supports event/user scope. Do NOT use for tracking-plan metadata (bury/track program); that belongs to BuryProgramTool.
-- Read-only query for SYSTEM METADATA properties already effective in the project.
+- Read-only query for SYSTEM METADATA properties already effective in the project. Use when the user explicitly asks to inspect property metadata, not as a required preparation step for QP builder.
 
 ## Commands
 ```bash
@@ -30,6 +34,7 @@ ae-cli analysis_meta +list_properties --dry-run
 
 ## Decision Rules
 - For the first run, pass only the required parameter (`--project_id`) to confirm the path works, then add optional parameters.
+- For builder-supported ad-hoc analysis, pass the user's property wording to the builder instead of pre-querying property metadata.
 - For cross-project troubleshooting, first confirm whether `--project_id` matches the current permissions and target environment.
 
 ## Next Steps After Failure

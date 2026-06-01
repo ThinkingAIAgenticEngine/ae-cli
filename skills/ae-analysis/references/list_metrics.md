@@ -8,10 +8,13 @@ Domain: **Metadata Query**
 
 **Fuzzy Search Fallback:** If `--query` returns no results, retry with broader keywords (max 3 attempts), then fall back to full list. See [SKILL.md § C. FUZZY_SEARCH_FALLBACK](../SKILL.md#c-fuzzy_search_fallback).
 
+**Not a builder pre-step:** Do not call `+list_metrics` before `+build_event_analysis_qp`, `+build_retention_analysis_qp`, `+build_funnel_analysis_qp`, or `+build_prop_analysis_qp` for normal ad-hoc analysis. Event builder resolves saved metric names internally when the metric name is passed in `metrics[].event`. If the builder fails, stop and ask for clarification instead of using this command as a fallback.
+
 ## Use Cases
 - List metric metadata in the project. Supports keyword filtering and returns metric IDs, names, display names, model types, remarks, and related metadata, but not metric calculation results.
 - Supports pagination with fields/limit/offset for payload governance.
 - Query performs fuzzy matching on metricName, metricDesc, and metricRemark.
+- Use this command for metric metadata management, metric editing, auditing, or when the user explicitly asks to inspect/search metric metadata. Do not use it merely to prepare a builder-supported ad-hoc query.
 
 ## Command
 ```bash
@@ -34,6 +37,7 @@ ae-cli analysis_meta +list_metrics --dry-run
 - First run should only pass the required parameter (`--project_id`), and add optional parameters only after the path is confirmed to work.
 - For pagination, use `--limit` and `--offset` together. Default limit is 20.
 - Use `--fields` to select specific columns for lighter response payloads.
+- For builder-supported ad-hoc analysis, do not search metrics here first. Pass the user-provided metric name directly to the builder.
 - For cross-project troubleshooting, first confirm whether `--project_id` matches the current permissions and target environment.
 
 ## Next Steps After Failure
@@ -43,3 +47,4 @@ ae-cli analysis_meta +list_metrics --dry-run
 
 ## Recommended Chaining
 - +list_metrics -> +create_metric -> +get_metric
+- For ad-hoc event metric query: +build_event_analysis_qp -> +query_adhoc

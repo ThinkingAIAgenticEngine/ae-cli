@@ -3,7 +3,7 @@ import { getToken, clearToken, setTokenManual, getAuthStatus, resolveHost } from
 import { loadConfig, saveConfig } from '../core/config.js';
 import { printOutput, printError } from '../framework/output.js';
 import { validateToken } from '../core/auth.js';
-import { setMcpTokenManual, clearMcpToken, validateMcpToken } from '../core/mcp.js';
+import { setMcpTokenManual, clearMcpToken, validateMcpToken, loadMcpTokenStore } from '../core/mcp.js';
 
 export function registerAuth(program: Command): void {
   const auth = program.command('auth').description('Authentication management');
@@ -64,14 +64,31 @@ export function registerAuth(program: Command): void {
   auth
     .command('status')
     .description('Show current authentication status')
-    .action(() => {
+    .action(async () => {
       const host = resolveHost(program.opts().host);
       if (!host) {
         printOutput({ authenticated: false, host: '(none)', hint: 'Run: ae-cli config set-host' }, program.opts().format || 'json');
         return;
       }
-      const status = getAuthStatus(host);
-      printOutput(status, program.opts().format || 'json');
+
+      // 检查 access token
+      const tokenStatus = getAuthStatus(host);
+      const hasValidToken = tokenStatus.authenticated;
+
+      // 检查 MCP token
+      const mcpStore = loadMcpTokenStore();
+      const cachedMcpToken = mcpStore[host];
+      let hasValidMcpToken = false;
+
+      if (cachedMcpToken) {
+        // 有缓存的 MCP token，验证是否有效
+        hasValidMcpToken = await validateMcpToken(cachedMcpToken, host);
+      }
+
+      // 任一有效则显示 authenticated: true
+      const authenticated = hasValidToken || hasValidMcpToken;
+
+      printOutput({ authenticated, host }, program.opts().format || 'json');
     });
 
   auth

@@ -8,6 +8,8 @@ Domain: **Dashboard management**
 
 **Fuzzy Search Fallback:** If `--query` returns no results, retry with broader keywords (max 3 attempts), then fall back to full list. See [SKILL.md § C. FUZZY_SEARCH_FALLBACK](../SKILL.md#c-fuzzy_search_fallback).
 
+**Builder failure is terminal:** For builder-supported ad-hoc analysis, this command may be used only in the initial `QUERY_EXISTING_FIRST` dashboard search. Do not call dashboard/report detail tools as a fallback after a QP builder returns non-generated status.
+
 ## Use Cases
 - List dashboard metadata accessible to the current user in the project. Supports keyword filtering and returns dashboard IDs, names, descriptions, and related metadata, but not dashboard configuration or report data.
 - List dashboard metadata accessible to the current user in the project.

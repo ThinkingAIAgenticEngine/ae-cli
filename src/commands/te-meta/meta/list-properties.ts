@@ -2,7 +2,7 @@ import { createMcpCommand, optionalBoolean, optionalJson, optionalJsonString, op
 
 export const listProperties = createMcpCommand({
   command: '+list_properties',
-  description: 'List properties in the project. Query performs fuzzy matching on propName, propDesc and aiRemark. Supports fields/limit/offset payload governance.',
+  description: 'List properties in the project. Use for explicit metadata inspection, not as a pre-step for event/retention/funnel/prop_analysis ad-hoc builders; the builders resolve property names internally. Query performs fuzzy matching on propName, propDesc and aiRemark. Supports fields/limit/offset payload governance.',
   flags: [
     { name: 'project_id', type: 'number', required: true, desc: 'Project ID', alias: 'p' },
     { name: 'scope', type: 'string', required: false, desc: 'Property scope: event or user' },

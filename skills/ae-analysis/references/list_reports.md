@@ -8,6 +8,8 @@ Domain: **Report management**
 
 **Fuzzy Search Fallback:** If `--query` returns no results, retry with broader keywords (max 3 attempts), then fall back to full list. See [SKILL.md § C. FUZZY_SEARCH_FALLBACK](../SKILL.md#c-fuzzy_search_fallback).
 
+**Builder failure is terminal:** For builder-supported ad-hoc analysis, this command may be used only in the initial `QUERY_EXISTING_FIRST` report search. Do not call `+list_reports` or `+get_report_definition` as a fallback after a QP builder returns non-generated status.
+
 ## Use Cases
 - List report metadata accessible to the current user in the project. Supports keyword filtering and returns report IDs, names, model types, update times, and related metadata, but not report definitions or analysis data.
 - List report metadata accessible to the current user in the project.

@@ -50,6 +50,10 @@ async function loadCommands(): Promise<Command[]> {
     const dataops = await import('./commands/te-dataops/index.js');
     commands.push(...dataops.default);
   } catch {}
+  try {
+    const teKb = await import('./commands/te-kb/index.js');
+    commands.push(...teKb.default);
+  } catch {}
   return commands;
 }
 

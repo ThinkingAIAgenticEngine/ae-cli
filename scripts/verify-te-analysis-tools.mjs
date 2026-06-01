@@ -43,7 +43,7 @@ if (coreSet.size !== coreCommands.length) {
   fail('duplicate core command names found in source files');
 }
 
-const EXPECTED_CORE_COUNT = 31;
+const EXPECTED_CORE_COUNT = 35;
 if (coreCommands.length !== EXPECTED_CORE_COUNT) {
   fail(`analysis tool count mismatch: expected ${EXPECTED_CORE_COUNT}, got ${coreCommands.length}`);
 }

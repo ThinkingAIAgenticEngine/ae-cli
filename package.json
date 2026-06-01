@@ -1,6 +1,6 @@
 {
   "name": "@thinkingai/ae-cli",
-  "version": "1.0.18",
+  "version": "1.0.20",
   "description": "CLI tool for ThinkingAI (AE) analytics platform",
   "type": "module",
   "bin": {
@@ -17,6 +17,7 @@
     "dev": "tsx src/index.ts",
     "build": "tsup src/index.ts --format esm --outDir dist",
     "verify:analysis-tools": "node scripts/verify-te-analysis-tools.mjs",
+    "verify:analysis-builder-dry-run": "node scripts/verify-te-analysis-builder-dry-run.mjs",
     "verify:analysis-audience-tools": "node scripts/verify-te-audience-tools.mjs",
     "verify:analysis-meta-tools": "node scripts/verify-te-meta-tools.mjs",
     "verify:analysis-common-tools": "node scripts/verify-te-common-tools.mjs",

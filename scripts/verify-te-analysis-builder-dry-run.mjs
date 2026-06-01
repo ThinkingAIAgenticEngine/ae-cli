@@ -1,0 +1,86 @@
+import { spawnSync } from 'child_process';
+
+const ROOT = process.cwd();
+
+function fail(message) {
+  console.error(`ERROR: ${message}`);
+  process.exit(1);
+}
+
+function runDryRun(command, args, requiredArgKeys) {
+  const cliArgs = [
+    'tsx',
+    'src/index.ts',
+    '--host', 'http://localhost',
+    '--dry-run',
+    'analysis',
+    command,
+    ...args,
+  ];
+
+  const result = spawnSync('npx', cliArgs, {
+    cwd: ROOT,
+    encoding: 'utf-8',
+  });
+
+  if (result.status !== 0) {
+    process.stderr.write(result.stderr || '');
+    process.stderr.write(result.stdout || '');
+    fail(`dry-run failed for analysis ${command}`);
+  }
+
+  let payload;
+  try {
+    payload = JSON.parse(result.stdout);
+  } catch {
+    fail(`dry-run output is not valid JSON for analysis ${command}`);
+  }
+
+  if (payload?.ok !== true) {
+    fail(`dry-run did not return ok=true for analysis ${command}`);
+  }
+
+  const data = payload.data;
+  if (data?.method !== 'tools/call') {
+    fail(`unexpected method for analysis ${command}: ${data?.method}`);
+  }
+
+  if (!String(data?.url || '').includes('/mcp/analysis/http/analysis')) {
+    fail(`unexpected dry-run url for analysis ${command}: ${data?.url}`);
+  }
+
+  if (data?.body?.name !== command.slice(1)) {
+    fail(`unexpected tool name for analysis ${command}: ${data?.body?.name}`);
+  }
+
+  for (const key of requiredArgKeys) {
+    if (data?.body?.arguments?.[key] === undefined) {
+      fail(`missing required argument '${key}' in dry-run output for analysis ${command}`);
+    }
+  }
+}
+
+runDryRun('+build_event_analysis_qp', [
+  '--project_id', '1',
+  '--time_range', '{"mode":"previous","unit":"day","value":7}',
+  '--metrics', '[{"event":"登录","aggregation":"user_count"}]',
+], ['projectId', 'timeRange', 'metrics']);
+
+runDryRun('+build_retention_analysis_qp', [
+  '--project_id', '1',
+  '--time_range', '{"mode":"previous","unit":"day","value":7}',
+  '--retention', '{"initialEvent":"登录","returnEvent":"支付","unitNum":7}',
+], ['projectId', 'timeRange', 'retention']);
+
+runDryRun('+build_funnel_analysis_qp', [
+  '--project_id', '1',
+  '--time_range', '{"mode":"previous","unit":"day","value":7}',
+  '--funnel', '{"steps":[{"event":"登录"},{"event":"支付"}]}',
+], ['projectId', 'timeRange', 'funnel']);
+
+runDryRun('+build_prop_analysis_qp', [
+  '--project_id', '1',
+  '--prop_analysis', '{"metric":{"aggregation":"user_count"}}',
+], ['projectId', 'propAnalysis']);
+
+console.log('OK: verified 4 analysis builder dry-run commands are executable and mapped correctly.');
