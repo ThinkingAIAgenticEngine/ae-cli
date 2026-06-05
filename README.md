@@ -60,6 +60,14 @@ ae-cli analysis_meta +list_events --project_id 1 --format table
 
 # Raw API call
 ae-cli api GET /v1/ta/event/catalog/listEvent --params '{"projectId": 1}'
+
+# Knowledge base (create → upload → compile → query)
+ae-cli kb +new --scope company --name engineering-handbook --description "Team docs"
+ae-cli kb +add --name engineering-handbook --files '["./docs/guide.md","https://example.com/page"]'
+ae-cli kb +schema --name engineering-handbook
+ae-cli kb +compile --name engineering-handbook
+ae-cli kb +query -q "How to configure sandbox?" \
+  --sources '[{"scope":"company","name":"engineering-handbook"}]'
 ```
 
 ## Authentication
@@ -97,7 +105,20 @@ ae-cli auth logout
 | `dataops_integration` | 20+ | Data integration: datasource management, sync solutions, data synchronization |
 | `community` | 10+ | Community analysis: posts search, sentiment analysis, topic trends, livestream data |
 | `analysis_common` | 2 | Cross-module common constraints: resource link completion, project ID gate |
+| `kb` | 7 | Knowledge base lifecycle: query / new / add (md/dir/url) / schema / compile / rm-source / remove |
 | `auth` / `config` | 2 | Authentication and host configuration |
+
+### kb
+
+Knowledge base lifecycle (`+new` → `+add` → `+schema` → `+compile` → `+query`):
+
+- **Create** (`+new`): `--scope personal|company`, `--name`, optional `--description`, `--tags`, `--project-id`, `--project-name`
+- **Upload** (`+add`): `--name`, `--files` JSON array (`.md` file, directory non-recursive scan, or http(s) URL with HTML-to-Markdown conversion)
+- **Schema** (`+schema`): `--name`, optional `--force`, `--model`
+- **Compile** (`+compile`): `--name`, `--mode incremental|full` (default: incremental)
+- **Query** (`+query`): `--query` / `-q`, `--sources` JSON refs e.g. `[{"scope":"company","name":"engineering-handbook"}]`
+- **Remove source** (`+rm-source`): `--name`, `--display-name`
+- **Remove KB** (`+remove`): `--name`
 
 ### Global Options
 
@@ -108,6 +129,7 @@ ae-cli auth logout
 | `--jq <expr>` | Filter expression | - |
 | `--dry-run` | Preview request | false |
 | `--yes` | Skip confirmation | false |
+| `--no-update-check` | Skip checking for newer ae-cli versions | false |
 
 ## Skills
 
@@ -185,7 +207,8 @@ src/
     ├── te-engage/
     ├── te-dataops/
     ├── te-community/
-    └── te-common/
+    ├── te-common/
+    └── te-kb/
 ```
 
 ## Verification Scripts

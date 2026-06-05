@@ -3,6 +3,7 @@ import { randomBytes } from 'crypto';
 import { getToken, clearToken, resolveHost } from './auth.js';
 import { extractHostname } from './config.js';
 import { safeJsonParse } from './json-utils.js';
+import { logger } from './logger.js';
 
 function genRequestId(prefix: string): string {
   const rand = randomBytes(4).toString('base64url').slice(0, 8);
@@ -55,12 +56,16 @@ async function request(
 
   const resp = await fetch(url, options);
 
+  const text = await resp.text();
+  const data = safeJsonParse(text);
+
+  // 记录请求和响应日志
+  logger.api(method, url, resp.status, body, data);
+
   if ((resp.status === 401 || resp.status === 403) && retry) {
     clearToken(resolvedHost);
     return request(method, modulePath, params, body, false, resolvedHost);
   }
-
-  const data = safeJsonParse(await resp.text());
 
   if (data.return_code === -1001 && retry) {
     clearToken(resolvedHost);
@@ -102,12 +107,16 @@ async function uploadRequest(
 
   const resp = await fetch(url, { method: 'POST', headers, body: form });
 
+  const text = await resp.text();
+  const data = safeJsonParse(text);
+
+  // 记录上传请求日志
+  logger.api('POST', url, resp.status, { upload: true }, data);
+
   if ((resp.status === 401 || resp.status === 403) && retry) {
     clearToken(resolvedHost);
     return uploadRequest(modulePath, form, params, false, resolvedHost);
   }
-
-  const data = safeJsonParse(await resp.text());
 
   if (data.return_code === -1001 && retry) {
     clearToken(resolvedHost);

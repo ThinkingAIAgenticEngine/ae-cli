@@ -8,17 +8,13 @@ HOST="${HOST:-https://example.com}"
 QUERY="${QUERY:-如何配置 sandbox 容器？}"
 SOURCES_DEFAULT='[{"scope":"company","name":"engineering-handbook"},{"scope":"system","name":"te-docs"}]'
 SOURCES="${SOURCES:-$SOURCES_DEFAULT}"
-MODEL_ID="${MODEL_ID:-AE-Auto}"
-MAX_TURNS="${MAX_TURNS:-6}"
 
 echo "[dry-run] kb +query (full payload, all flags supplied)"
 node dist/index.js --dry-run --host "$HOST" kb +query \
   --query "$QUERY" \
-  --sources "$SOURCES" \
-  --model-id "$MODEL_ID" \
-  --max-turns "$MAX_TURNS"
+  --sources "$SOURCES"
 
-echo "[dry-run] kb +query (short alias -q, defaults applied for model-id and max-turns)"
+echo "[dry-run] kb +query (short alias -q)"
 node dist/index.js --dry-run --host "$HOST" kb +query \
   -q "$QUERY" \
   --sources "$SOURCES"
@@ -27,13 +23,6 @@ echo "[dry-run] kb +query (single knowledge base)"
 node dist/index.js --dry-run --host "$HOST" kb +query \
   --query "$QUERY" \
   --sources '[{"scope":"system","name":"te-docs"}]'
-
-echo "[dry-run] kb +query (custom model and turns)"
-node dist/index.js --dry-run --host "$HOST" kb +query \
-  --query "$QUERY" \
-  --sources "$SOURCES" \
-  --model-id custom-model \
-  --max-turns 10
 
 echo "[validation] kb +query missing required --query (should fail)"
 if node dist/index.js --dry-run --host "$HOST" kb +query \

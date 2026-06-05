@@ -1,5 +1,6 @@
 import Table from 'cli-table3';
 import type { OutputFormat, OutputEnvelope } from './types.js';
+import { logger } from '../core/logger.js';
 
 const KNOWN_ARRAY_FIELDS = [
   'items', 'events', 'reports', 'dashboards', 'tags', 'clusters',
@@ -89,7 +90,10 @@ export function formatError(type: OutputEnvelope['error'] extends infer E ? E ex
 }
 
 export function printError(type: 'auth' | 'api' | 'validation' | 'config', message: string, hint?: string, code?: number): void {
-  process.stderr.write(formatError(type, message, hint, code) + '\n');
+  const formatted = formatError(type, message, hint, code);
+  process.stderr.write(formatted + '\n');
+  // 同时写入错误日志文件
+  logger.error(`[${type}] ${message}${hint ? ' | ' + hint : ''}`);
 }
 
 export function printOutput(data: any, format: OutputFormat, jqExpr?: string): void {

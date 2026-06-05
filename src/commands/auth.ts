@@ -4,6 +4,7 @@ import { loadConfig, saveConfig } from '../core/config.js';
 import { printOutput, printError } from '../framework/output.js';
 import { validateToken } from '../core/auth.js';
 import { setMcpTokenManual, clearMcpToken, validateMcpToken, loadMcpTokenStore } from '../core/mcp.js';
+import { logger } from '../core/logger.js';
 
 export function registerAuth(program: Command): void {
   const auth = program.command('auth').description('Authentication management');
@@ -26,11 +27,13 @@ export function registerAuth(program: Command): void {
           config.activeHost = host;
         }
         saveConfig(config);
+        logger.info(`Host config auto-saved for ${host}`);
         process.stderr.write(`[ae-cli] Config saved for ${host}\n`);
       }
 
       try {
         const token = await getToken(host);
+        logger.info(`Auth login successful for ${host}`);
         process.stderr.write(`[ae-cli] Authenticated to ${host}\n`);
         printOutput({ authenticated: true, host, token: token.slice(0, 8) + '...' }, program.opts().format || 'json');
       } catch (err: any) {
@@ -64,11 +67,13 @@ export function registerAuth(program: Command): void {
       process.stderr.write(`[ae-cli] Validating token...\n`);
       const isValid = await validateToken(token, host);
       if (!isValid) {
+        logger.warn(`Token validation failed for ${host}`);
         process.stderr.write(`[ae-cli] Token validation failed\n`);
         printError('auth', 'Invalid token', 'Please check your token and try again');
         process.exit(1);
       }
       setTokenManual(token, host);
+      logger.info(`Token manually set and validated for ${host}`);
       process.stderr.write(`[ae-cli] Token verified and saved for ${host}\n`);
       printOutput({ saved: true, host, verified: true }, program.opts().format || 'json');
     });

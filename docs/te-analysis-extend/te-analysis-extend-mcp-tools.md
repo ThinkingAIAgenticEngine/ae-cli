@@ -10,7 +10,7 @@
 
 ## 工具分类统计
 
-总计 **30 个工具**，按功能域分类：
+总计 **32 个工具**，按功能域分类：
 
 ### 1. 预警管理 (Alert Management) - 5 个工具
 - `get_alert_definition_schema` - 获取预警定义 schema
@@ -61,6 +61,12 @@
 - `update_project_mark_time` - 更新日期标注
 - `list_project_mark_times` - 列出日期标注
 - `delete_project_mark_times` - 删除日期标注
+
+### 11. 实体管理 (Entity Management) - 1 个工具
+- `create_entity` - 创建实体
+
+### 12. 空间管理 (Space Management) - 1 个工具
+- `create_space` - 创建空间
 
 ## 工具详细信息
 
@@ -349,6 +355,27 @@
 - **参数**:
   - `projectId` (Integer, required) - 项目 ID
   - `markTimeIds` (List<Integer>, required) - 标注 ID 列表
+- **风险**: write
+
+### 实体管理工具
+
+#### create_entity
+- **描述**: 创建实体，将事件属性或用户属性关联为一个分析维度
+- **参数**:
+  - `projectId` (Integer, required) - 项目 ID
+  - `entityName` (String, required) - 实体名称
+  - `columnName` (String, required) - 关联的属性列名
+  - `tableType` (Integer, required) - 表类型：`0` = 事件属性，`1` = 用户属性
+- **风险**: write
+
+### 空间管理工具
+
+#### create_space
+- **描述**: 在项目中创建空间，用于组织仪表盘和资产
+- **参数**:
+  - `projectId` (Integer, required) - 项目 ID
+  - `spaceName` (String, required) - 空间名称（1-64 字符）
+  - `spaceDesc` (String, optional) - 空间描述（最多 200 字符）
 - **风险**: write
 
 ## 来源文件

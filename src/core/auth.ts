@@ -3,6 +3,7 @@ import path from 'path';
 import { safeReadJsonFile, safeJsonParse } from './json-utils.js';
 import { execFileSync } from 'node:child_process';
 import { getConfigDir, getActiveHost, extractHostname } from './config.js';
+import { logger } from './logger.js';
 
 const TOKENS_FILE = path.join(getConfigDir(), 'tokens.json');
 const LEGACY_DIR = path.join(process.env.HOME || '', '.te-mcp');
@@ -109,6 +110,7 @@ export function saveToken(token: string, hostUrl: string): void {
   const tokens = loadAllTokens();
   tokens[hostUrl] = { token, updatedAt: new Date().toISOString() };
   saveAllTokens(tokens);
+  logger.info(`Token saved for ${hostUrl}`);
 }
 
 export function clearToken(hostUrl: string): void {
@@ -201,6 +203,7 @@ function extractTokenFromAllTabs(): { token: string | null; error: string | null
 }
 
 async function requestTokenViaOsascript(hostUrl: string): Promise<string | null> {
+  logger.info(`Opening Chrome to ${hostUrl} for token extraction`);
   process.stderr.write(`[ae-cli] No AE tab found in Chrome. Opening ${hostUrl} ...\n`);
   process.stderr.write(`[ae-cli] Please login, then your token will be captured automatically.\n`);
   try {
@@ -216,23 +219,35 @@ async function requestTokenViaOsascript(hostUrl: string): Promise<string | null>
     ];
     execFileSync('osascript', openScript.flatMap(line => ['-e', line]), { timeout: 5000 });
   } catch {
+    logger.warn(`Failed to open Chrome, user may need to open ${hostUrl} manually`);
     process.stderr.write(`[ae-cli] Could not open browser. Please open ${hostUrl} in Chrome manually.\n`);
   }
   const deadline = Date.now() + OSASCRIPT_POLL_TIMEOUT_MS;
+  let pollCount = 0;
   while (Date.now() < deadline) {
     await new Promise(r => setTimeout(r, OSASCRIPT_POLL_INTERVAL_MS));
+    pollCount++;
     let result = extractTokenViaOsascript(hostUrl);
     // hostname 匹配不到时兜底搜全 Tab（登录后页面跳转到其他 URL 如 SSO 回调）
     if (result.error === 'no_tab') {
       const fallback = extractTokenFromAllTabs();
-      if (fallback.token) result = fallback;
+      if (fallback.token) {
+        logger.info('Token captured via all-tabs fallback search');
+        result = fallback;
+      }
     }
     if (result.token) {
+      saveToken(result.token, hostUrl);
+      logger.info(`Token captured after ${pollCount} poll(s)`);
       process.stderr.write(`[ae-cli] Token captured from Chrome for ${hostUrl}.\n`);
       return result.token;
     }
-    if (result.error === 'no_js_permission') return null;
+    if (result.error === 'no_js_permission') {
+      logger.warn('Chrome JS permission denied during polling');
+      return null;
+    }
   }
+  logger.warn(`Token polling timed out after ${OSASCRIPT_POLL_TIMEOUT_MS / 1000}s (${pollCount} polls)`);
   process.stderr.write(`[ae-cli] Polling timed out after ${OSASCRIPT_POLL_TIMEOUT_MS / 1000}s.\n`);
   return null;
 }
@@ -247,16 +262,21 @@ export async function getToken(hostUrl: string): Promise<string> {
 
   // 1. Environment variable
   if (process.env.TE_TOKEN) {
+    logger.info('Using token from env:TE_TOKEN');
     return process.env.TE_TOKEN;
   }
 
   // 2. Cached token for this URL
   const cached = loadToken(hostUrl);
-  if (cached && cached.token) return cached.token;
+  if (cached && cached.token) {
+    logger.info(`Using cached token for ${hostUrl}`);
+    return cached.token;
+  }
 
   // 3. osascript extraction
   const { token: osascriptToken, error } = extractTokenViaOsascript(hostUrl);
   if (error === 'no_js_permission') {
+    logger.warn('Chrome JS Apple Events not enabled');
     throw new Error(
       `Chrome JavaScript from Apple Events is not enabled.\n` +
       `Enable it: Chrome menu → View → Developer → Allow JavaScript from Apple Events`

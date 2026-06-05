@@ -3,6 +3,7 @@ import path from 'path';
 import { getToken } from './auth.js';
 import { getActiveHost, getConfigDir, forceMigrateFromFallback } from './config.js';
 import { safeJsonParse, safeReadJsonFile } from './json-utils.js';
+import { logger } from './logger.js';
 
 const MCP_PROTOCOL_VERSION = '2025-11-25';
 const JSONRPC_VERSION = '2.0';
@@ -187,11 +188,13 @@ async function getMcpToken(hostOverride?: string): Promise<string> {
   }
 
   // 2. 缓存不存在，调用接口生成
+  logger.info(`Generating MCP token for ${hostUrl}`);
   const mcpToken = await generateMcpToken(hostUrl);
 
   // 3. 存储到缓存
   const updatedStore = { ...store, [hostUrl]: mcpToken };
   saveMcpTokenStore(updatedStore);
+  logger.info(`MCP token generated and cached for ${hostUrl}`);
 
   return mcpToken;
 }
@@ -219,6 +222,7 @@ export function setMcpTokenManual(token: string, hostUrl: string): void {
   const store = loadMcpTokenStore();
   store[hostUrl] = token;
   saveMcpTokenStore(store);
+  logger.info(`MCP token manually set for ${hostUrl}`);
 }
 
 /**
@@ -312,8 +316,10 @@ async function mcpRequest(
 
   // 任何错误都尝试从 fallback 获取新 token 并重试
   if (!resp.ok) {
+    logger.warn(`MCP request failed (HTTP ${resp.status}) for ${hostUrl}, trying fallback`);
     const migrated = forceMigrateFromFallback();
     if (migrated && migrated[hostUrl]) {
+      logger.info(`MCP token refreshed from fallback for ${hostUrl}`);
       process.stderr.write(`[ae-cli] MCP token refreshed from fallback for ${hostUrl}\n`);
 
       headers['mcp-token'] = migrated[hostUrl];
@@ -380,7 +386,12 @@ export async function callMcpTool(
     arguments: args,
   };
 
+  logger.info(`MCP tool call: ${toolName}`);
   const result = await mcpRequest(url, 'tools/call', params, hostOverride);
+
+  if (result.isError) {
+    logger.warn(`MCP tool call failed: ${toolName}`);
+  }
 
   return {
     content: result.content.map((item: any) => {

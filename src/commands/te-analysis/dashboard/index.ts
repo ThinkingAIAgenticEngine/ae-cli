@@ -8,6 +8,7 @@ import { createOrUpdateDashboardNote } from './create-or-update-dashboard-note.j
 import { listPublicAccessLinks } from './list-public-access-links.js';
 import { createPublicAccessLink } from './create-public-access-link.js';
 import { updatePublicAccessLink } from './update-public-access-link.js';
+import { createSpace } from './create-space.js';
 
 const commands: Command[] = [
   listDashboards,
@@ -19,6 +20,7 @@ const commands: Command[] = [
   listPublicAccessLinks,
   createPublicAccessLink,
   updatePublicAccessLink,
+  createSpace,
 ];
 
 export default commands;

@@ -2,9 +2,11 @@ import { Command as CommanderCommand } from 'commander';
 import { createRequire } from 'module';
 import { registerCommands } from './framework/register.js';
 import type { Command } from './framework/types.js';
+import { notifyIfUpdateAvailable } from './core/update-check.js';
 
 const require = createRequire(import.meta.url);
-const { version } = require('../package.json');
+const pkg = require('../package.json');
+const { version } = pkg;
 
 const program = new CommanderCommand();
 
@@ -17,7 +19,8 @@ program
   .option('--format <format>', 'Output format: json | table', 'json')
   .option('--jq <expr>', 'jq filter expression')
   .option('--dry-run', 'Show request details without executing', false)
-  .option('--yes', 'Skip confirmation for write operations', false);
+  .option('--yes', 'Skip confirmation for write operations', false)
+  .option('--no-update-check', 'Skip checking for newer ae-cli versions', false);
 
 // Import domain commands
 async function loadCommands(): Promise<Command[]> {
@@ -82,6 +85,8 @@ async function registerApiCommand(): Promise<void> {
 }
 
 async function main() {
+  notifyIfUpdateAvailable({ name: pkg.name, version: pkg.version });
+
   const commands = await loadCommands();
   registerCommands(program, commands);
   await registerAuthCommands();

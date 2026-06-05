@@ -60,6 +60,14 @@ ae-cli analysis_meta +list_events --project_id 1 --format table
 
 # 原始 API 调用
 ae-cli api GET /v1/ta/event/catalog/listEvent --params '{"projectId": 1}'
+
+# 知识库（新建 → 上传 → 编译 → 查询）
+ae-cli kb +new --scope company --name engineering-handbook --description "Team docs"
+ae-cli kb +add --name engineering-handbook --files '["./docs/guide.md","https://example.com/page"]'
+ae-cli kb +schema --name engineering-handbook
+ae-cli kb +compile --name engineering-handbook
+ae-cli kb +query -q "如何配置 sandbox 容器？" \
+  --sources '[{"scope":"company","name":"engineering-handbook"}]'
 ```
 
 ## 身份验证
@@ -97,7 +105,20 @@ ae-cli auth logout
 | `dataops_integration` | 20+ | 数据集成：数据源管理、同步方案、数据同步 |
 | `community` | 10+ | 社区分析：帖子搜索、情感分析、话题趋势、直播数据 |
 | `analysis_common` | 2 | 跨模块通用约束：资源链接补全、项目 ID 门控 |
+| `kb` | 7 | 知识库生命周期：查询 / 新建 / 添加源（md/目录/url）/ schema / 编译 / 删除源 / 删除 |
 | `auth` / `config` | 2 | 身份验证和主机配置 |
+
+### kb（知识库）
+
+知识库生命周期（`+new` → `+add` → `+schema` → `+compile` → `+query`）：
+
+- **新建** (`+new`)：`--scope personal|company`，`--name`，可选 `--description`、`--tags`、`--project-id`、`--project-name`
+- **上传源** (`+add`)：`--name`，`--files` JSON 数组（`.md` 文件、目录非递归扫描、或 http(s) URL 自动转 Markdown）
+- **生成 schema** (`+schema`)：`--name`，可选 `--force`、`--model`
+- **编译** (`+compile`)：`--name`，`--mode incremental|full`（默认 incremental）
+- **查询** (`+query`)：`--query` / `-q`，`--sources` JSON 引用，如 `[{"scope":"company","name":"engineering-handbook"}]`
+- **删除源** (`+rm-source`)：`--name`，`--display-name`
+- **删除知识库** (`+remove`)：`--name`
 
 ### 全局选项
 
@@ -108,6 +129,7 @@ ae-cli auth logout
 | `--jq <expr>` | 过滤表达式 | - |
 | `--dry-run` | 预览请求 | false |
 | `--yes` | 跳过确认 | false |
+| `--no-update-check` | 跳过 ae-cli 新版本检查 | false |
 
 ## Skills
 
@@ -185,7 +207,8 @@ src/
     ├── te-engage/
     ├── te-dataops/
     ├── te-community/
-    └── te-common/
+    ├── te-common/
+    └── te-kb/
 ```
 
 ## 验证脚本

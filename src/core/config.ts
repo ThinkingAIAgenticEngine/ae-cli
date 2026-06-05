@@ -1,6 +1,7 @@
 import fs from 'fs';
 import path from 'path';
 import { safeReadJsonFile } from './json-utils.js';
+import { logger } from './logger.js';
 
 const CONFIG_DIR = path.join(process.env.HOME || '', '.ae-cli');
 const CONFIG_FILE = path.join(CONFIG_DIR, 'config.json');
@@ -97,12 +98,14 @@ export function loadConfig(): TeConfig {
       const activeHost = Object.keys(migratedTokens)[0];
       process.stderr.write(`[ae-cli] Active host set to: ${activeHost}\n`);
       process.stderr.write(`[ae-cli] MCP tokens migrated from ${FALLBACK_MCP_TOKEN_FILE}\n`);
+      logger.info(`MCP tokens migrated from fallback: activeHost=${activeHost}, hosts=${Object.keys(hosts).length}`);
       const config = { activeHost, hosts };
       saveConfig(config);  // 保存到磁盘
       return config;
     }
   } catch (err: any) {
     // 如果配置文件损坏，返回空配置
+    logger.error(`Error loading config: ${err.message}`);
     console.error(`Error loading config: ${err.message}`);
   }
   return { activeHost: '', hosts: {} };
@@ -128,6 +131,7 @@ function migrateConfig(old: any): TeConfig {
 export function saveConfig(config: TeConfig): void {
   ensureDir();
   fs.writeFileSync(CONFIG_FILE, JSON.stringify(config, null, 2));
+  logger.info(`Config saved: activeHost=${config.activeHost}, hosts=${Object.keys(config.hosts).length}`);
 }
 
 export function getActiveHost(): string {
