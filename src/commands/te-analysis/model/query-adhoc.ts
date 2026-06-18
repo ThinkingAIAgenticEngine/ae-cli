@@ -1,4 +1,4 @@
-import { createMcpCommand, optionalBoolean, optionalJson, optionalJsonString, optionalNumber, optionalString, requiredJsonString } from '../shared.js';
+import { assertLimitWithinCap, assertSqlLimitConsistent, createMcpCommand, optionalBoolean, optionalJson, optionalJsonString, optionalNumber, optionalString, requiredJsonString, resolveSqlAwareLimit } from '../shared.js';
 
 export const queryAdhoc = createMcpCommand({
   command: '+query_adhoc',
@@ -13,11 +13,18 @@ export const queryAdhoc = createMcpCommand({
     { name: 'is_sort_by_columns', type: 'boolean', required: false, desc: 'Whether to sort query results by columns. Default: false' },
     { name: 'resolve_recent_day', type: 'boolean', required: false, desc: 'Whether to resolve relative time expressions such as last 7 days. If omitted, the service auto-resolves when qp.eventView.recentDay exists and start/end time is incomplete; otherwise it defaults to false.' },
     { name: 'fields', type: 'json', required: false, desc: 'Optional fields to return. Must match column names in result.' },
-    { name: 'limit', type: 'number', required: false, desc: 'Optional limit. Default: 20, maximum: 50.' },
+    { name: 'limit', type: 'number', required: false, desc: 'Optional limit. Default: 1000, maximum: 100000. For model_type=sql, either omit LIMIT in the SQL or keep it equal to --limit (the two must not differ).' },
     { name: 'offset', type: 'number', required: false, desc: 'Optional offset. Default: 0.' },
     { name: 'timeout_minutes', type: 'number', required: false, desc: 'Query timeout in minutes. If omitted, 30 minutes is used.' },
   ],
   risk: 'read',
+  validate: (ctx) => {
+    const limit = optionalNumber(ctx, 'limit');
+    assertLimitWithinCap(limit, 'limit');
+    if (ctx.str('model_type') === 'sql') {
+      assertSqlLimitConsistent(ctx.json('qp'), limit);
+    }
+  },
   buildArgs: (ctx) => ({
       projectId: ctx.num('project_id'),
       modelType: ctx.str('model_type'),
@@ -28,7 +35,7 @@ export const queryAdhoc = createMcpCommand({
       isSortByColumns: optionalBoolean(ctx, 'is_sort_by_columns'),
       resolveRecentDay: optionalBoolean(ctx, 'resolve_recent_day'),
       fields: optionalJson(ctx, 'fields'),
-      limit: optionalNumber(ctx, 'limit'),
+      limit: resolveSqlAwareLimit(optionalNumber(ctx, 'limit'), ctx.str('model_type'), ctx.json('qp')),
       offset: optionalNumber(ctx, 'offset'),
       timeoutMinutes: optionalNumber(ctx, 'timeout_minutes'),
     }),

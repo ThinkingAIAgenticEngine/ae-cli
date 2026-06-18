@@ -55,7 +55,7 @@ ae-cli analysis +drilldown_user_events --dry-run
 | `--entity_value` | No | Optional entity value for multi-entity scenarios |
 | `--use_cache` | No | Whether to use cache. Default: true |
 | `--page_num` | No | Start page number, default 1 |
-| `--page_size` | No | Page size, default 20, max 50 |
+| `--page_size` | No | Page size. Default: 1000, maximum: 100000 |
 | `--timeout_minutes` | No | Query timeout in minutes |
 
 ## Decision Rules

@@ -1,4 +1,4 @@
-import { createMcpCommand, optionalBoolean, optionalJson, optionalJsonString, optionalNumber, optionalString, requiredJsonString } from '../shared.js';
+import { assertLimitWithinCap, createMcpCommand, DEFAULT_QUERY_LIMIT, optionalBoolean, optionalJson, optionalJsonString, optionalNumber, optionalString, requiredJsonString } from '../shared.js';
 
 export const drilldownUsers = createMcpCommand({
   command: '+drilldown_users',
@@ -22,11 +22,14 @@ export const drilldownUsers = createMcpCommand({
     { name: 'include_total', type: 'boolean', required: false, desc: 'Whether to query users from the total row. Default: false' },
     { name: 'relation_val', type: 'string', required: false, desc: 'Relation value used in relation analysis scenarios' },
     { name: 'use_cache', type: 'boolean', required: false, desc: 'Whether to use cache. Default: true' },
-    { name: 'limit', type: 'number', required: false, desc: 'Optional limit. Default: 20, maximum: 50.' },
+    { name: 'limit', type: 'number', required: false, desc: 'Optional limit. Default: 1000, maximum: 100000.' },
     { name: 'offset', type: 'number', required: false, desc: 'Optional offset. Default: 0.' },
     { name: 'timeout_minutes', type: 'number', required: false, desc: 'Query timeout in minutes. If omitted, 30 minutes is used.' },
   ],
   risk: 'read',
+  validate: (ctx) => {
+    assertLimitWithinCap(optionalNumber(ctx, 'limit'), 'limit');
+  },
   buildArgs: (ctx) => ({
       projectId: ctx.num('project_id'),
       modelType: ctx.str('model_type'),
@@ -46,7 +49,7 @@ export const drilldownUsers = createMcpCommand({
       includeTotal: optionalBoolean(ctx, 'include_total'),
       relationVal: optionalString(ctx, 'relation_val'),
       useCache: optionalBoolean(ctx, 'use_cache'),
-      limit: optionalNumber(ctx, 'limit'),
+      limit: optionalNumber(ctx, 'limit') ?? DEFAULT_QUERY_LIMIT,
       offset: optionalNumber(ctx, 'offset'),
       timeoutMinutes: optionalNumber(ctx, 'timeout_minutes'),
     }),

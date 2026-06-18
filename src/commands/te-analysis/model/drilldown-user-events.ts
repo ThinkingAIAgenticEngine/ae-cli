@@ -1,4 +1,4 @@
-import { createMcpCommand, optionalBoolean, optionalJson, optionalJsonString, optionalNumber, optionalString, requiredJsonString } from '../shared.js';
+import { assertLimitWithinCap, createMcpCommand, DEFAULT_QUERY_LIMIT, optionalBoolean, optionalJson, optionalJsonString, optionalNumber, optionalString, requiredJsonString } from '../shared.js';
 
 export const drilldownUserEvents = createMcpCommand({
   command: '+drilldown_user_events',
@@ -21,10 +21,13 @@ export const drilldownUserEvents = createMcpCommand({
     { name: 'entity_value', type: 'string', required: false, desc: 'Optional entity value for multi-entity scenarios' },
     { name: 'use_cache', type: 'boolean', required: false, desc: 'Whether to use cache. Default: true' },
     { name: 'page_num', type: 'number', required: false, desc: 'Start page number. Default: 1' },
-    { name: 'page_size', type: 'number', required: false, desc: 'Page size. Default: 20, max: 50.' },
+    { name: 'page_size', type: 'number', required: false, desc: 'Page size. Default: 1000, maximum: 100000.' },
     { name: 'timeout_minutes', type: 'number', required: false, desc: 'Query timeout in minutes. If omitted, 30 minutes is used.' },
   ],
   risk: 'read',
+  validate: (ctx) => {
+    assertLimitWithinCap(optionalNumber(ctx, 'page_size'), 'page_size');
+  },
   buildArgs: (ctx) => ({
       projectId: ctx.num('project_id'),
       userId: ctx.str('user_id'),
@@ -43,7 +46,7 @@ export const drilldownUserEvents = createMcpCommand({
       entityValue: optionalString(ctx, 'entity_value'),
       useCache: optionalBoolean(ctx, 'use_cache'),
       pageNum: optionalNumber(ctx, 'page_num'),
-      pageSize: optionalNumber(ctx, 'page_size'),
+      pageSize: optionalNumber(ctx, 'page_size') ?? DEFAULT_QUERY_LIMIT,
       timeoutMinutes: optionalNumber(ctx, 'timeout_minutes'),
     }),
 });

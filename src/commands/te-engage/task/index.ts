@@ -1,5 +1,7 @@
 import type { Command } from '../../../framework/types.js';
+import { buildTaskSaveGuide } from './build-task-save-guide.js';
 import { manageTask } from './manage-task.js';
+import { saveTask } from './save-task.js';
 import { taskDataDetail } from './task-data-detail.js';
 import { taskDataOverview } from './task-data-overview.js';
 import { taskDetail } from './task-detail.js';
@@ -16,6 +18,8 @@ const commands: Command[] = [
   taskDetail,
   taskList,
   taskStats,
+  buildTaskSaveGuide,
+  saveTask,
   manageTask,
 ];
 

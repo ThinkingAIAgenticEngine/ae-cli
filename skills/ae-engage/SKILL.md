@@ -79,6 +79,12 @@ ae-cli engage +config_channel_list --project_id 1
 # Query the task list
 ae-cli engage +task_list --project_id 1 --req '{"pageNum":1,"pageSize":20}'
 
+# Build a save_task guide before composing the final req
+ae-cli engage +build_task_save_guide --project_id 1 --req '{"context":{"triggerType":2,"channelId":"channel_123"}}'
+
+# Save a task draft (create when req.taskId is omitted)
+ae-cli engage +save_task --project_id 1 --req '{"baseInfo":{"taskName":"Demo Task"},"channelConfig":{"channelType":1,"channelId":"channel_123","groupContentList":[{"contentList":[{"pushLanguageCode":"default","content":"[]"}]}]},"targetConfig":{"targetClusterType":3},"triggerConfig":{"triggerType":2},"controlConfig":{"completionIndicatorDef":{"completionIndicators":[]}}}'
+
 # Query task details
 ae-cli engage +task_detail --project_id 1 --task_id task_123
 
@@ -182,6 +188,8 @@ For more detailed generation rules, consult these references first:
 ```bash
 ae-cli --dry-run engage +channel_list --project_id 1
 ae-cli --dry-run engage +task_list --project_id 1 --req '{"pageNum":1,"pageSize":20}'
+ae-cli --dry-run engage +build_task_save_guide --project_id 1 --req '{}'
+ae-cli --dry-run engage +save_task --project_id 1 --req '{"baseInfo":{"taskName":"Demo Task"},"channelConfig":{"channelType":1,"channelId":"channel_123","groupContentList":[{"contentList":[{"pushLanguageCode":"default","content":"[]"}]}]},"targetConfig":{"targetClusterType":3},"triggerConfig":{"triggerType":2},"controlConfig":{"completionIndicatorDef":{"completionIndicators":[]}}}'
 ae-cli --dry-run engage +flow_list --project_id 1
 ```
 
@@ -190,6 +198,8 @@ ae-cli --dry-run engage +flow_list --project_id 1
 More detailed single-command guidance is available in the business-oriented `references/` directory:
 
 - `references/channel-list.md`
+- `references/build-task-save-guide.md`
+- `references/save-task.md`
 - `references/task-list.md`
 - `references/config-item-list.md`
 - `references/flow-list.md`
@@ -204,7 +214,7 @@ This split documentation structure is easier to extend later, because commands w
 
 ### task
 
-`+task_data_overview`, `+task_data_detail`, `+task_metric_detail`, `+task_experiment_report`, `+task_detail`, `+task_list`, `+task_stats`, `+manage_task`
+`+task_data_overview`, `+task_data_detail`, `+task_metric_detail`, `+task_experiment_report`, `+task_detail`, `+task_list`, `+task_stats`, `+build_task_save_guide`, `+save_task`, `+manage_task`
 
 ### config
 
@@ -225,4 +235,17 @@ The following commands are write operations. Confirm that the user intent is exp
 - Channels and config channels: `+add_channel`, `+delete_channel`, `+update_channel_status`, `+delete_config_channel`, `+update_config_channel_status`
 - Strategies and config items: `+delete_config_item`, `+copy_config_template`, `+manage_strategy`
 - Flows: `+save_flow`, `+modify_flow_base_info`, `+manage_flow`, `+delete_flow`
-- Tasks: `+manage_task`
+- Tasks: `+save_task`, `+manage_task`
+
+For task draft creation or update, use this workflow:
+
+1. `ae-cli engage +channel_list --project_id <projectId>`
+2. `ae-cli engage +build_task_save_guide --project_id <projectId> --req '{...}'`
+3. If the guide says QP-derived fields are needed, call `ae-cli analysis_audience +get_cluster_definition_schema --cluster_type condition`
+4. `ae-cli engage +save_task --project_id <projectId> --req '{...}'`
+
+`+build_task_save_guide` is a read-only helper. It returns scenario-specific required fields, channel content schema, unsupported combinations, examples, and a handoff template for `save_task`.
+
+`+save_task` only saves a draft. It does not submit approval, does not start sending, and does not trigger task execution. If `req.taskId` is omitted it creates a new draft; if `req.taskId` is present it updates an existing draft. Update mode only supports draft tasks, and omitted fields can inherit from the existing draft before validation.
+
+The audience schema query `ae-cli analysis_audience +get_cluster_definition_schema --cluster_type condition` is not a fixed preflight step. Call it only when the guide indicates that you must construct `targetConfig.qp`, `triggerConfig.triggerRule`, `clientConfig.clientQp`, or `completionIndicatorDef.event`.

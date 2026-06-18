@@ -6,6 +6,7 @@ import { getConfigDir, getActiveHost, extractHostname } from './config.js';
 import { logger } from './logger.js';
 
 const TOKENS_FILE = path.join(getConfigDir(), 'tokens.json');
+const MCP_TOKENS_FILE = path.join(getConfigDir(), 'mcp-tokens.json');
 const LEGACY_DIR = path.join(process.env.HOME || '', '.te-mcp');
 const TOKEN_TTL_MS = 20 * 60 * 60 * 1000; // 20 hours
 const OSASCRIPT_POLL_INTERVAL_MS = 2000;
@@ -17,6 +18,7 @@ interface TokenEntry {
 }
 
 type TokenStore = Record<string, TokenEntry>;
+type McpTokenStore = Record<string, string>;
 
 function ensureDir(): void {
   const dir = getConfigDir();
@@ -134,6 +136,27 @@ export function getAuthStatus(hostUrl: string): { authenticated: boolean; host: 
     return { authenticated: true, host: hostUrl, tokenAge: `${hours}h ago`, source: 'cache' };
   }
   return { authenticated: false, host: hostUrl };
+}
+
+function getCachedMcpToken(hostUrl: string): string | undefined {
+  try {
+    if (!fs.existsSync(MCP_TOKENS_FILE)) return undefined;
+    const store = safeReadJsonFile(MCP_TOKENS_FILE) as McpTokenStore;
+    const normalizedHost = hostUrl.replace(/\/+$/, '');
+
+    if (store[hostUrl]) return store[hostUrl];
+    if (store[normalizedHost]) return store[normalizedHost];
+
+    for (const [key, token] of Object.entries(store)) {
+      if (key.replace(/\/+$/, '') === normalizedHost) {
+        return token;
+      }
+    }
+
+    return undefined;
+  } catch {
+    return undefined;
+  }
 }
 
 function extractTokenViaOsascript(hostUrl: string): { token: string | null; error: string | null } {
@@ -273,7 +296,16 @@ export async function getToken(hostUrl: string): Promise<string> {
     return cached.token;
   }
 
-  // 3. osascript extraction
+  // 3. If an MCP token is already available, do not trigger browser login.
+  if (getCachedMcpToken(hostUrl)) {
+    logger.info(`MCP token exists for ${hostUrl}; skipping browser token extraction`);
+    throw new Error(
+      `MCP token already exists for ${hostUrl}; skipped browser login.\n` +
+      `Use an MCP-token aware command, or run: ae-cli auth set-token <token>`
+    );
+  }
+
+  // 4. osascript extraction
   const { token: osascriptToken, error } = extractTokenViaOsascript(hostUrl);
   if (error === 'no_js_permission') {
     logger.warn('Chrome JS Apple Events not enabled');
@@ -293,7 +325,7 @@ export async function getToken(hostUrl: string): Promise<string> {
     return osascriptToken;
   }
 
-  // 4. Open Chrome and poll
+  // 5. Open Chrome and poll
   const polledToken = await requestTokenViaOsascript(hostUrl);
   if (polledToken) {
     saveToken(polledToken, hostUrl);

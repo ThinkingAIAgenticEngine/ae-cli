@@ -68,6 +68,13 @@ ae-cli kb +schema --name engineering-handbook
 ae-cli kb +compile --name engineering-handbook
 ae-cli kb +query -q "如何配置 sandbox 容器？" \
   --sources '[{"scope":"company","name":"engineering-handbook"}]'
+
+# 面向外部 agent 的检索原语（读 index → grep 定位 → read 翻页）
+ae-cli kb +index --sources '[{"scope":"company","name":"engineering-handbook"}]'
+ae-cli kb +grep -q "sandbox 配置" \
+  --sources '[{"scope":"company","name":"engineering-handbook"}]'
+ae-cli kb +read --source '{"scope":"company","name":"engineering-handbook"}' \
+  --path "wiki/sandbox.md"
 ```
 
 ## 身份验证
@@ -105,20 +112,29 @@ ae-cli auth logout
 | `dataops_integration` | 20+ | 数据集成：数据源管理、同步方案、数据同步 |
 | `community` | 10+ | 社区分析：帖子搜索、情感分析、话题趋势、直播数据 |
 | `analysis_common` | 2 | 跨模块通用约束：资源链接补全、项目 ID 门控 |
-| `kb` | 7 | 知识库生命周期：查询 / 新建 / 添加源（md/目录/url）/ schema / 编译 / 删除源 / 删除 |
+| `agent` | 15 | Agent 平台资源管理：模型、MCP 服务、Skill、附件库的增删查和启停 |
+| `team` | 14 | AI Agent Team：团队管理（列表/创建/更新/删除/AI生成/模板/项目）和 TeamRun 执行（启动/监听/对话/回复/取消/结果/产物） |
+| `kb` | 10 | 知识库生命周期：查询 / 新建 / 添加源（md/目录/url）/ schema / 编译 / 删除源 / 删除；检索原语：index / grep / read |
 | `auth` / `config` | 2 | 身份验证和主机配置 |
 
 ### kb（知识库）
 
-知识库生命周期（`+new` → `+add` → `+schema` → `+compile` → `+query`）：
+知识库生命周期（`+new` → `+add` → `+schema` → `+compile` → `+status` → `+query`）：
 
 - **新建** (`+new`)：`--scope personal|company`，`--name`，可选 `--description`、`--tags`、`--project-id`、`--project-name`
 - **上传源** (`+add`)：`--name`，`--files` JSON 数组（`.md` 文件、目录非递归扫描、或 http(s) URL 自动转 Markdown）
 - **生成 schema** (`+schema`)：`--name`，可选 `--force`、`--model`
 - **编译** (`+compile`)：`--name`，`--mode incremental|full`（默认 incremental）
+- **查询状态** (`+status`)：`--name`
 - **查询** (`+query`)：`--query` / `-q`，`--sources` JSON 引用，如 `[{"scope":"company","name":"engineering-handbook"}]`
 - **删除源** (`+rm-source`)：`--name`，`--display-name`
 - **删除知识库** (`+remove`)：`--name`
+
+面向外部 agent 的检索原语（`+index` → `+grep` → `+read`）；均为确定性文件检索端点、服务端零 LLM 调用，让 agent（Claude Code / Codex / Cursor）像翻代码库一样探索知识库：
+
+- **索引** (`+index`)：可选 `--sources` JSON 引用（省略则列出全部可访问知识库），可选 `--locale`。返回每个知识库的元信息及其 `index.md` 导航地图。
+- **检索** (`+grep`)：`--query` / `-q`，可选 `--sources`、`--top-k`（1-50，默认 10）、`--locale`。返回命中行的路径、行号、面包屑与上下文片段。
+- **读取** (`+read`)：`--source` JSON 引用（精确指向一个知识库），`--path`（相对知识库根目录的页面路径），可选 `--offset` / `--limit`（行窗口）、`--locale`。返回页面全文或行窗口。
 
 ### 全局选项
 

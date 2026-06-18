@@ -57,6 +57,14 @@ async function loadCommands(): Promise<Command[]> {
     const teKb = await import('./commands/te-kb/index.js');
     commands.push(...teKb.default);
   } catch {}
+  try {
+    const teTeam = await import('./commands/te-team/index.js');
+    commands.push(...teTeam.default);
+  } catch {}
+  try {
+    const teAgent = await import('./commands/te-agent/index.js');
+    commands.push(...teAgent.default);
+  } catch {}
   return commands;
 }
 
@@ -84,6 +92,22 @@ async function registerApiCommand(): Promise<void> {
   } catch {}
 }
 
+// Register sync command (te-agent Skill / MCP push)
+async function registerSyncCommand(): Promise<void> {
+  try {
+    const { registerSync } = await import('./commands/sync/index.js');
+    registerSync(program);
+  } catch {}
+}
+
+// Register model command (te-agent settings.json model switch)
+async function registerModelCommand(): Promise<void> {
+  try {
+    const { registerModel } = await import('./commands/model/index.js');
+    registerModel(program);
+  } catch {}
+}
+
 async function main() {
   notifyIfUpdateAvailable({ name: pkg.name, version: pkg.version });
 
@@ -92,6 +116,8 @@ async function main() {
   await registerAuthCommands();
   await registerConfigCommands();
   await registerApiCommand();
+  await registerSyncCommand();
+  await registerModelCommand();
   program.parse();
 }
 

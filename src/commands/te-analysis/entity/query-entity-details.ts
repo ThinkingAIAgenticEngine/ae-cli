@@ -1,4 +1,4 @@
-import { createMcpCommand, optionalBoolean, optionalJson, optionalJsonString, optionalNumber, optionalString, requiredJsonString } from '../shared.js';
+import { assertLimitWithinCap, createMcpCommand, DEFAULT_QUERY_LIMIT, optionalBoolean, optionalJson, optionalJsonString, optionalNumber, optionalString, requiredJsonString } from '../shared.js';
 
 export const queryEntityDetails = createMcpCommand({
   command: '+query_entity_details',
@@ -10,11 +10,14 @@ export const queryEntityDetails = createMcpCommand({
     { name: 'properties', type: 'json', required: false, desc: 'Optional display properties JSON' },
     { name: 'sort_by', type: 'string', required: false, desc: 'Optional sort field' },
     { name: 'sort_order', type: 'string', required: false, desc: 'Optional sort order. Supported values: asc and desc' },
-    { name: 'limit', type: 'number', required: false, desc: 'Optional result limit. Default: 20, maximum: 50' },
+    { name: 'limit', type: 'number', required: false, desc: 'Optional result limit. Default: 1000, maximum: 100000' },
     { name: 'zone_offset', type: 'number', required: false, desc: 'Time zone offset. For example, UTC+8 is 8' },
     { name: 'use_cache', type: 'boolean', required: false, desc: 'Whether to use cache. Default: true' },
   ],
   risk: 'read',
+  validate: (ctx) => {
+    assertLimitWithinCap(optionalNumber(ctx, 'limit'), 'limit');
+  },
   buildArgs: (ctx) => ({
       projectId: ctx.num('project_id'),
       entityId: optionalNumber(ctx, 'entity_id'),
@@ -22,7 +25,7 @@ export const queryEntityDetails = createMcpCommand({
       properties: optionalJsonString(ctx, 'properties'),
       sortBy: optionalString(ctx, 'sort_by'),
       sortOrder: optionalString(ctx, 'sort_order'),
-      limit: optionalNumber(ctx, 'limit'),
+      limit: optionalNumber(ctx, 'limit') ?? DEFAULT_QUERY_LIMIT,
       zoneOffset: optionalNumber(ctx, 'zone_offset'),
       useCache: optionalBoolean(ctx, 'use_cache'),
     }),

@@ -68,6 +68,13 @@ ae-cli kb +schema --name engineering-handbook
 ae-cli kb +compile --name engineering-handbook
 ae-cli kb +query -q "How to configure sandbox?" \
   --sources '[{"scope":"company","name":"engineering-handbook"}]'
+
+# Retrieval primitives for external agents (read index → grep → read page)
+ae-cli kb +index --sources '[{"scope":"company","name":"engineering-handbook"}]'
+ae-cli kb +grep -q "sandbox config" \
+  --sources '[{"scope":"company","name":"engineering-handbook"}]'
+ae-cli kb +read --source '{"scope":"company","name":"engineering-handbook"}' \
+  --path "wiki/sandbox.md"
 ```
 
 ## Authentication
@@ -105,20 +112,28 @@ ae-cli auth logout
 | `dataops_integration` | 20+ | Data integration: datasource management, sync solutions, data synchronization |
 | `community` | 10+ | Community analysis: posts search, sentiment analysis, topic trends, livestream data |
 | `analysis_common` | 2 | Cross-module common constraints: resource link completion, project ID gate |
-| `kb` | 7 | Knowledge base lifecycle: query / new / add (md/dir/url) / schema / compile / rm-source / remove |
+| `team` | 14 | AI Agent Team: manage teams (list/create/update/delete/ai-generate/templates/projects) and execute TeamRuns (start/watch/chat/reply/cancel/result/artifacts) |
+| `kb` | 10 | Knowledge base lifecycle: query / new / add (md/dir/url) / schema / compile / rm-source / remove; retrieval primitives: index / grep / read |
 | `auth` / `config` | 2 | Authentication and host configuration |
 
 ### kb
 
-Knowledge base lifecycle (`+new` → `+add` → `+schema` → `+compile` → `+query`):
+Knowledge base lifecycle (`+new` → `+add` → `+schema` → `+compile` → `+status` → `+query`):
 
 - **Create** (`+new`): `--scope personal|company`, `--name`, optional `--description`, `--tags`, `--project-id`, `--project-name`
 - **Upload** (`+add`): `--name`, `--files` JSON array (`.md` file, directory non-recursive scan, or http(s) URL with HTML-to-Markdown conversion)
 - **Schema** (`+schema`): `--name`, optional `--force`, `--model`
 - **Compile** (`+compile`): `--name`, `--mode incremental|full` (default: incremental)
+- **Status** (`+status`): `--name`
 - **Query** (`+query`): `--query` / `-q`, `--sources` JSON refs e.g. `[{"scope":"company","name":"engineering-handbook"}]`
 - **Remove source** (`+rm-source`): `--name`, `--display-name`
 - **Remove KB** (`+remove`): `--name`
+
+Retrieval primitives for external agents (`+index` → `+grep` → `+read`); these are deterministic file-search endpoints with no server-side LLM, designed for agents (Claude Code / Codex / Cursor) to explore a KB the way they explore a codebase:
+
+- **Index** (`+index`): optional `--sources` JSON refs (omit to list all accessible KBs), optional `--locale`. Returns each KB's metadata plus its `index.md` navigation map.
+- **Grep** (`+grep`): `--query` / `-q`, optional `--sources`, `--top-k` (1-50, default 10), `--locale`. Returns matched lines with path, line number, breadcrumb and context snippet.
+- **Read** (`+read`): `--source` JSON ref (exactly one KB), `--path` (page path relative to the KB root), optional `--offset` / `--limit` (line window), `--locale`. Returns the full page or a line window.
 
 ### Global Options
 

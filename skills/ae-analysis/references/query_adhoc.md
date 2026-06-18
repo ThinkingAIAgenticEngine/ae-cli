@@ -95,7 +95,7 @@ ae-cli analysis +query_adhoc --project_id <project_id> --model_type <model_type>
 | `--is_sort_by_columns` | No | Whether to sort query results by columns. Default: false |
 | `--resolve_recent_day` | No | Whether to resolve relative time expressions such as "last 7 days". If omitted, service auto-resolves when `qp.eventView.recentDay` exists and `startTime`/`endTime` is incomplete; otherwise defaults to false. |
 | `--fields` | No | Optional fields to return. Must match column names in result. Invalid fields cause INVALID_FIELDS error. |
-| `--limit` | No | Optional limit. Default: 20, maximum: 50. |
+| `--limit` | No | Optional limit. Default: 1000, maximum: 100000. |
 | `--offset` | No | Optional offset. Default: 0. |
 | `--timeout_minutes` | No | Query timeout in minutes. If the query exceeds this time, it will be cancelled automatically. |
 
@@ -103,7 +103,8 @@ ae-cli analysis +query_adhoc --project_id <project_id> --model_type <model_type>
 - On the first run, start with only the required parameters (`--project_id`,`--model_type`,`--qp`), and add optional parameters after confirming the path works.
 - Do not call this command with placeholder QP such as `{}`. For builder-supported models, wait for builder `status=generated`; for non-builder models, build QP from verified schema/metadata first.
 - For builder-supported models, do not run metadata/schema lookup to "help" the builder. The builder is the metadata resolver.
-- For pagination, use `--limit` and `--offset` together. Default limit is 20.
+- For pagination, use `--limit` and `--offset` together. Default limit is 1000, maximum 100000.
+- For `model_type=sql`, use exactly one row limit: either put `LIMIT` in the SQL, or use `--limit`. If both are present they must be equal — `query_adhoc` rejects mismatched values to avoid silently sampled or duplicated results. When the SQL already has a trailing `LIMIT`, you may omit `--limit` and the SQL governs.
 - Use `--fields` to select specific columns for lighter response payloads.
 - `event`, `retention`, `funnel`, and `prop_analysis` must not manually craft QP with schema-first flow; call the builder and use the returned `qp`.
 - For non-builder models, `qp` must satisfy both schema structure and project metadata constraints.

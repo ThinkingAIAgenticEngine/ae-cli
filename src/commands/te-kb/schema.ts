@@ -1,4 +1,5 @@
 import type { Command, RuntimeContext } from '../../framework/types.js';
+import { kbApi } from '../../core/mcp-access.js';
 
 const API_PATH = '/agent/api/external/knowledge-bases/schema';
 
@@ -30,5 +31,5 @@ export const schema: Command = {
     url: `${ctx.host().replace(/\/$/, '')}${API_PATH}`,
     body: buildBody(ctx),
   }),
-  execute: async (ctx) => ctx.api('POST', API_PATH, {}, buildBody(ctx)),
+  execute: async (ctx) => kbApi(ctx, 'POST', API_PATH, {}, buildBody(ctx)),
 };

@@ -6,7 +6,7 @@ import { logger } from './logger.js';
 const CONFIG_DIR = path.join(process.env.HOME || '', '.ae-cli');
 const CONFIG_FILE = path.join(CONFIG_DIR, 'config.json');
 const MCP_TOKENS_FILE = path.join(CONFIG_DIR, 'mcp-tokens.json');
-const FALLBACK_MCP_TOKEN_FILE = '/data/app/te_agent_ta/.ae-config/mcp-token.json';
+const FALLBACK_MCP_TOKEN_FILE = '/home/ta/te_agent_ta/.ae-config/mcp-token.json';
 
 export interface HostEntry {
   label: string;

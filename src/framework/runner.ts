@@ -104,7 +104,7 @@ function createRuntimeContext(cmd: Command, opts: Record<string, any>, globalOpt
       if (method.toUpperCase() === 'GET') {
         return client.httpGet(path, params, ctx.host());
       } else {
-        return client.httpPost(path, params, data, ctx.host());
+        return client.httpRequest(method, path, params, data, ctx.host());
       }
     },
 

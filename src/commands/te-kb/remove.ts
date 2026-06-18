@@ -1,5 +1,5 @@
 import type { Command, RuntimeContext } from '../../framework/types.js';
-import { httpDelete } from '../../core/client.js';
+import { kbApi } from '../../core/mcp-access.js';
 
 const API_PATH = '/agent/api/external/knowledge-bases';
 
@@ -20,5 +20,5 @@ export const remove: Command = {
     url: `${ctx.host().replace(/\/$/, '')}${API_PATH}`,
     body: buildBody(ctx),
   }),
-  execute: async (ctx) => httpDelete(API_PATH, {}, buildBody(ctx), ctx.host()),
+  execute: async (ctx) => kbApi(ctx, 'DELETE', API_PATH, {}, buildBody(ctx)),
 };

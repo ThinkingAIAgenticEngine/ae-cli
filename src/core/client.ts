@@ -87,9 +87,14 @@ export async function httpPost(modulePath: string, params: Record<string, any> =
   return request('POST', modulePath, params, body ?? {}, true, hostUrl);
 }
 
+export async function httpRequest(method: string, modulePath: string, params: Record<string, any> = {}, body?: any, hostUrl?: string): Promise<any> {
+  return request(method.toUpperCase(), modulePath, params, body ?? {}, true, hostUrl);
+}
+
 export async function httpDelete(modulePath: string, params: Record<string, any> = {}, body?: any, hostUrl?: string): Promise<any> {
   return request('DELETE', modulePath, params, body ?? null, true, hostUrl);
 }
+
 
 async function uploadRequest(
   modulePath: string,

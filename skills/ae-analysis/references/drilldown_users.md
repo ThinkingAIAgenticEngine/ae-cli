@@ -55,14 +55,14 @@ ae-cli analysis +drilldown_users --dry-run
 | `--include_total` | No | Whether to query users from the total row. Default: false |
 | `--relation_val` | No | Relation value used in relation analysis scenarios |
 | `--use_cache` | No | Whether to use cache. Default: true |
-| `--limit` | No | Optional limit. Default: 20, maximum: 50. |
+| `--limit` | No | Optional limit. Default: 1000, maximum: 100000. |
 | `--offset` | No | Optional offset. Default: 0. |
 | `--timeout_minutes` | No | Query timeout in minutes. If the query exceeds this time, it will be cancelled automatically. |
 
 ## Decision Rules
 - Drilldown positioning parameters must come from upstream analysis results and must not be fabricated.
 - `qp` must not be rewritten or "simplified"; it should remain consistent with the source analysis.
-- For pagination, use `--limit` and `--offset` together. Default limit is 20.
+- For pagination, use `--limit` and `--offset` together. Default limit is 1000, maximum 100000.
 - For the first run, it is recommended to pass only the required parameters (`--project_id`, `--model_type`, `--qp`) and add optional parameters after confirming the chain works.
 - Wrap JSON parameters in single quotes (for example `--qp '{}'`, `--drilldown_groups '{}'`) to avoid shell escaping issues.
 - When dates/time ranges are involved, validate with a short range first and then expand gradually.

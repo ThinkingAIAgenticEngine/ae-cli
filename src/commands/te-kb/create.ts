@@ -1,7 +1,14 @@
 import type { Command, RuntimeContext } from '../../framework/types.js';
+import { kbApi } from '../../core/mcp-access.js';
 
 const API_PATH = '/agent/api/external/knowledge-bases/create';
 const VALID_SCOPES = new Set(['personal', 'company']);
+
+function getScope(ctx: RuntimeContext): string {
+  const scope = ctx.str('scope') || 'company';
+  validateScope(scope);
+  return scope;
+}
 
 function validateScope(scope: string): void {
   if (!VALID_SCOPES.has(scope)) {
@@ -27,7 +34,7 @@ function normalizeTags(raw: unknown): string[] | undefined {
 
 function buildBody(ctx: RuntimeContext): Record<string, unknown> {
   const body: Record<string, unknown> = {
-    scope: ctx.str('scope'),
+    scope: getScope(ctx),
     name: ctx.str('name'),
   };
 
@@ -51,7 +58,7 @@ export const create: Command = {
   command: '+new',
   description: 'Create a new knowledge.',
   flags: [
-    { name: 'scope', type: 'string', required: true, desc: 'Knowledge base scope: personal | company' },
+    { name: 'scope', type: 'string', required: false, default: 'company', desc: 'Knowledge base scope: personal | company (default: company)' },
     { name: 'name', type: 'string', required: true, desc: 'Knowledge base name (≤30 chars, unique per scope)' },
     { name: 'description', type: 'string', required: false, desc: 'Optional description (≤200 chars)' },
     { name: 'tags', type: 'json', required: false, desc: 'Optional JSON array of tags (max 2, each ≤15 chars). Example: \'["t1","t2"]\'' },
@@ -60,7 +67,7 @@ export const create: Command = {
   ],
   risk: 'write',
   validate: (ctx) => {
-    validateScope(ctx.str('scope'));
+    getScope(ctx);
     normalizeTags(ctx.json('tags'));
   },
   dryRun: (ctx) => ({
@@ -68,5 +75,5 @@ export const create: Command = {
     url: `${ctx.host().replace(/\/$/, '')}${API_PATH}`,
     body: buildBody(ctx),
   }),
-  execute: async (ctx) => ctx.api('POST', API_PATH, {}, buildBody(ctx)),
+  execute: async (ctx) => kbApi(ctx, 'POST', API_PATH, {}, buildBody(ctx)),
 };

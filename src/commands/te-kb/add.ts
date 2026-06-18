@@ -2,14 +2,34 @@ import { promises as fs } from 'fs';
 import * as path from 'path';
 import TurndownService from 'turndown';
 import type { Command, RuntimeContext } from '../../framework/types.js';
-import { httpUpload } from '../../core/client.js';
+import { kbUpload } from '../../core/mcp-access.js';
 
 const API_PATH = '/agent/api/external/knowledge-bases/sources/upload';
-const MD_EXT = new Set(['.md', '.markdown']);
+const SUPPORTED_EXTENSIONS = new Set([
+  '.md',
+  '.markdown',
+  '.txt',
+  '.csv',
+  '.pdf',
+  '.doc',
+  '.docx',
+  '.xls',
+  '.xlsx',
+  '.ppt',
+  '.pptx',
+  '.jpg',
+  '.jpeg',
+  '.png',
+  '.gif',
+  '.webp',
+  '.bmp',
+  '.svg',
+]);
 
 interface SourceFile {
   filename: string;
-  content: string;
+  content: BlobPart;
+  mimeType: string;
   origin: 'file' | 'dir' | 'url';
   source: string;
 }
@@ -42,13 +62,56 @@ function sanitizeFilename(name: string): string {
   return cleaned || 'document';
 }
 
+function getMimeType(filename: string): string {
+  const ext = path.extname(filename).toLowerCase();
+  switch (ext) {
+    case '.md':
+    case '.markdown':
+      return 'text/markdown';
+    case '.txt':
+      return 'text/plain';
+    case '.csv':
+      return 'text/csv';
+    case '.pdf':
+      return 'application/pdf';
+    case '.doc':
+      return 'application/msword';
+    case '.docx':
+      return 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
+    case '.xls':
+      return 'application/vnd.ms-excel';
+    case '.xlsx':
+      return 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+    case '.ppt':
+      return 'application/vnd.ms-powerpoint';
+    case '.pptx':
+      return 'application/vnd.openxmlformats-officedocument.presentationml.presentation';
+    case '.jpg':
+    case '.jpeg':
+      return 'image/jpeg';
+    case '.png':
+      return 'image/png';
+    case '.gif':
+      return 'image/gif';
+    case '.webp':
+      return 'image/webp';
+    case '.bmp':
+      return 'image/bmp';
+    case '.svg':
+      return 'image/svg+xml';
+    default:
+      return 'application/octet-stream';
+  }
+}
+
 async function readLocalFile(filePath: string): Promise<SourceFile> {
   const ext = path.extname(filePath).toLowerCase();
-  if (!MD_EXT.has(ext)) {
-    throw new Error(`Not a markdown file (only .md / .markdown allowed): ${filePath}`);
+  if (!SUPPORTED_EXTENSIONS.has(ext)) {
+    throw new Error(`Unsupported file extension (${ext || 'none'}): ${filePath}`);
   }
-  const content = await fs.readFile(filePath, 'utf8');
-  return { filename: path.basename(filePath), content, origin: 'file', source: filePath };
+  const content = await fs.readFile(filePath);
+  const filename = path.basename(filePath);
+  return { filename, content, mimeType: getMimeType(filename), origin: 'file', source: filePath };
 }
 
 async function readDirectory(dir: string): Promise<SourceFile[]> {
@@ -57,13 +120,13 @@ async function readDirectory(dir: string): Promise<SourceFile[]> {
   for (const entry of entries) {
     if (!entry.isFile()) continue;
     const ext = path.extname(entry.name).toLowerCase();
-    if (!MD_EXT.has(ext)) continue;
+    if (!SUPPORTED_EXTENSIONS.has(ext)) continue;
     const full = path.join(dir, entry.name);
-    const content = await fs.readFile(full, 'utf8');
-    files.push({ filename: entry.name, content, origin: 'dir', source: full });
+    const content = await fs.readFile(full);
+    files.push({ filename: entry.name, content, mimeType: getMimeType(entry.name), origin: 'dir', source: full });
   }
   if (files.length === 0) {
-    throw new Error(`No .md / .markdown files found in directory: ${dir}`);
+    throw new Error(`No supported files found in directory: ${dir}`);
   }
   return files;
 }
@@ -90,6 +153,7 @@ async function fetchAsMarkdown(rawUrl: string): Promise<SourceFile> {
   return {
     filename: deriveFilenameFromUrl(rawUrl),
     content: markdown,
+    mimeType: 'text/markdown',
     origin: 'url',
     source: rawUrl,
   };
@@ -128,7 +192,7 @@ async function collectFiles(ctx: RuntimeContext): Promise<SourceFile[]> {
   }
 
   if (collected.length === 0) {
-    throw new Error('No markdown files collected from the given inputs');
+    throw new Error('No supported files collected from the given inputs');
   }
 
   return dedupeByFilename(collected);
@@ -150,7 +214,7 @@ function buildForm(name: string, files: SourceFile[]): FormData {
   const form = new FormData();
   form.append('name', name);
   for (const f of files) {
-    form.append('files', new Blob([f.content], { type: 'text/markdown' }), f.filename);
+    form.append('files', new Blob([f.content], { type: f.mimeType }), f.filename);
   }
   return form;
 }
@@ -159,15 +223,15 @@ export const add: Command = {
   service: 'kb',
   command: '+add',
   description:
-    'Upload markdown sources to a knowledge. ' +
-    '--files accepts a JSON array; each entry can be a .md/.markdown file path, a directory path (all .md/.markdown inside, non-recursive), or an http(s) URL (HTML auto-converted to markdown).',
+    'Upload sources to a knowledge. ' +
+    '--files accepts a JSON array; each entry can be a supported file path, a directory path (supported files inside, non-recursive), or an http(s) URL (HTML auto-converted to markdown).',
   flags: [
     { name: 'name', type: 'string', required: true, desc: 'Knowledge base name' },
     {
       name: 'files',
       type: 'json',
       required: true,
-      desc: 'JSON array of strings. Each entry can be a .md/.markdown file path, a directory path, or an http(s) URL. Example: \'["./a.md","./docs","https://example.com/page"]\'',
+      desc: 'JSON array of strings. Each entry can be a supported file path, a directory path, or an http(s) URL. Example: \'["./a.md","./docs","https://example.com/page"]\'',
     },
   ],
   risk: 'write',
@@ -190,7 +254,7 @@ export const add: Command = {
     const name = ctx.str('name');
     const files = await collectFiles(ctx);
     const form = buildForm(name, files);
-    const result = await httpUpload(API_PATH, form, {}, ctx.host());
+    const result = await kbUpload(ctx, API_PATH, form);
     return {
       uploaded: files.map((f) => ({ filename: f.filename, origin: f.origin, source: f.source })),
       result,
