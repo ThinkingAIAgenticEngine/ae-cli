@@ -1,6 +1,5 @@
 # ae-engage +config_item_analysis_report
 
-> **Prerequisite:** Read [`../../ae-shared/SKILL.md`](../../ae-shared/SKILL.md)
 
 Query the config item analysis report.
 

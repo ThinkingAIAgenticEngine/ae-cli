@@ -1,6 +1,5 @@
 # ae-engage +manage_task
 
-> **Prerequisite:** Read [`../../ae-shared/SKILL.md`](../../ae-shared/SKILL.md)
 
 Perform task lifecycle actions such as send, pause, end, or review.
 

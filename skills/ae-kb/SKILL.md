@@ -20,6 +20,7 @@ ae-cli kb +<command> [options]
 - Do not invent knowledge base names, scopes, source display names, or JSON payloads. Ask the user or query known context when values are missing.
 - JSON flags must be valid JSON strings, usually wrapped in single quotes in shell commands.
 - Successful commands return JSON by default. Use `--format table` only when a table is easier for a human to scan.
+- `--host <url>` overrides the active AE host. It is available on every command and may be placed after the subcommand, e.g. `ae-cli kb +<command> --host <url>`.
 - For external-agent retrieval, prefer the deterministic flow `+index` -> `+grep` -> `+read`: inspect navigation, locate candidate pages, then open the exact page or line window.
 
 ## Commands

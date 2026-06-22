@@ -2,22 +2,22 @@
 /**
  * te-cli self-check scanner
  *
- * 多维度检测「新合并的 CLI 功能是否合理」。纯 Node（无新依赖），可重复执行。
+ * Multi-dimensional checks for "whether newly merged CLI features are sound". Pure Node (no new deps), idempotent.
  *
- * 用法：
- *   node self-check/scan.mjs                # 全量扫描
- *   node self-check/scan.mjs --since master # 聚焦相对 master 新增/改动的命令模块
- *   node self-check/scan.mjs --json         # 机器可读输出
+ * Usage:
+ *   node self-check/scan.mjs                # full scan
+ *   node self-check/scan.mjs --since master # focus on command modules added/changed relative to master
+ *   node self-check/scan.mjs --json         # machine-readable output
  *
- * 退出码：0 = 无 P1/P2；1 = 存在 P1（阻断性）问题。
+ * Exit codes: 0 = no P1/P2; 1 = P1 (blocking) issues found.
  *
- * 检测维度（见 SKILL.md）：
- *   D1 命令注册完整性     —— 新域是否在 src/index.ts 注册；MCP 域是否注册 mapping
- *   D2 业务域 ↔ skill 配对 —— 每个业务域是否有对应 skill；工具命令不应有
- *   D3 skill 文档覆盖      —— 命令 ↔ references/*.md 双向 diff（命名归一化）
- *   D4 skill 内部一致性    —— CRITICAL「+cmd→cmd.md」规则 vs 真实文件；链接失效
- *   D5 文档同步           —— README 是否覆盖所有域/命令；CHANGELOG/版本
- *   D6 工程健壮性         —— verify 脚本覆盖；typecheck 是否接入
+ * Check dimensions (see SKILL.md):
+ *   D1 command registration completeness  -- whether new domains are registered in src/index.ts; whether MCP domains have mapping registered
+ *   D2 business domain <-> skill pairing  -- whether each business domain has a corresponding skill; tool commands should not
+ *   D3 skill doc coverage                 -- command <-> references/*.md bidirectional diff (name normalization)
+ *   D4 skill internal consistency         -- CRITICAL "+cmd->cmd.md" rule vs actual files; broken links
+ *   D5 doc sync                           -- whether README covers all domains/commands; CHANGELOG/version
+ *   D6 engineering robustness             -- verify script coverage; whether typecheck is wired up
  */
 
 import fs from 'fs';
@@ -33,8 +33,8 @@ const SINCE = (() => {
 })();
 const JSON_OUT = args.includes('--json');
 
-// ---------- 配置：业务域 → skill 映射 ----------
-// 多个 te-* 命令目录可映射到同一个 skill（analysis 系列即如此）。
+// ---------- Config: business domain -> skill mapping ----------
+// Multiple te-* command directories can map to the same skill (as with the analysis series).
 const DOMAIN_TO_SKILL = {
   'te-analysis': 'ae-analysis',
   'te-meta': 'ae-analysis',
@@ -47,16 +47,16 @@ const DOMAIN_TO_SKILL = {
   'te-team': 'ae-team',
   'te-agent': 'ae-agent',
 };
-// 工具命令目录（不应有 skill，交互式/运维用途）。
+// Tool command directories (should not have a skill; used for interactive/ops purposes).
 const TOOL_DIRS = new Set(['sync', 'model']);
-// 采用「分组/内联文档」而非「逐命令 reference」策略的 skill：不对其报逐命令缺失。
+// Skills that use a "grouped/inline doc" strategy rather than per-command references: do not report per-command missing docs for these.
 const GROUPED_DOC_SKILLS = new Set(['ae-dataops', 'ae-kb']);
 
-// ---------- 结果收集 ----------
+// ---------- Result collection ----------
 const findings = []; // { level: 'P1'|'P2'|'P3'|'info', dim, msg }
 function add(level, dim, msg) { findings.push({ level, dim, msg }); }
 
-// ---------- 工具函数 ----------
+// ---------- Utility functions ----------
 function read(p) { try { return fs.readFileSync(p, 'utf-8'); } catch { return ''; } }
 function exists(p) { return fs.existsSync(p); }
 function listDir(p) { try { return fs.readdirSync(p); } catch { return []; } }
@@ -69,11 +69,16 @@ function walk(dir, out = []) {
   }
   return out;
 }
-// 命名归一化：统一下划线/连字符，用于跨命名风格比对（engage 下划线 vs reference 连字符）。
+// Name normalization: unify underscores/hyphens for cross-style comparison (engage underscore vs reference hyphen).
 const norm = (s) => s.replace(/[_-]/g, '').toLowerCase();
+function commandSkill(dir, command) {
+  const rel = path.relative(ROOT, command.file).split(path.sep).join('/');
+  const override = COMMAND_SKILL_OVERRIDES.find((item) => rel.startsWith(item.pathPrefix));
+  return override ? override.skill : DOMAIN_TO_SKILL[dir];
+}
 
-// ---------- 扫描命令源码 ----------
-// 返回 { domainDir -> { commands: [{name, risk, file}], services: Set } }
+// ---------- Scan command source ----------
+// Returns { domainDir -> { commands: [{name, risk, file}], services: Set } }
 function scanCommands() {
   const commandsRoot = path.join(ROOT, 'src/commands');
   const domains = {};
@@ -98,7 +103,7 @@ function scanCommands() {
   return domains;
 }
 
-// ---------- 找出变更的域（--since 模式）----------
+// ---------- Find changed domains (--since mode) ----------
 function changedDomains() {
   if (!SINCE) return null;
   let out = '';
@@ -107,7 +112,7 @@ function changedDomains() {
       cwd: ROOT, encoding: 'utf-8',
     });
   } catch (e) {
-    add('info', 'D0', `git diff --since ${SINCE} 失败：${e.message.split('\n')[0]}（退回全量扫描）`);
+    add('info', 'D0', `git diff --since ${SINCE} failed: ${e.message.split('\n')[0]} (falling back to full scan)`);
     return null;
   }
   const dirs = new Set();
@@ -118,40 +123,40 @@ function changedDomains() {
   return dirs;
 }
 
-// 收集全局已注册的 MCP mapping key：内置(mcp.ts) + 各域 registerMcpMapping(s)。
+// Collect all globally registered MCP mapping keys: built-in (mcp.ts) + per-domain registerMcpMapping(s).
 function collectRegisteredMcpKeys() {
   const keys = new Set();
   const mcpCore = read(path.join(ROOT, 'src/core/mcp.ts'));
-  // 内置：registerMcpMapping('analysis', {...})
+  // Built-in: registerMcpMapping('analysis', {...})
   for (const m of mcpCore.matchAll(/registerMcpMapping\(\s*'([a-z0-9_]+)'/g)) keys.add(m[1]);
-  // 各处：registerMcpMapping('x' 与 registerMcpMappings({ 'x': { componentName ... } })
+  // All locations: registerMcpMapping('x' and registerMcpMappings({ 'x': { componentName ... } })
   for (const f of walk(path.join(ROOT, 'src'))) {
     if (!f.endsWith('.ts')) continue;
     const c = read(f);
     for (const m of c.matchAll(/registerMcpMapping\(\s*'([a-z0-9_]+)'/g)) keys.add(m[1]);
-    // registerMcpMappings 对象内的每个 key（以 componentName 出现为锚点）
+    // Each key inside a registerMcpMappings object (anchored by componentName)
     for (const m of c.matchAll(/'([a-z0-9_]+)'\s*:\s*\{\s*componentName/g)) keys.add(m[1]);
   }
   return keys;
 }
 
-// 从一个域的源码里，静态提取真正用于 MCP 路由的 service name（仅字面量，变量传参不强求）。
+// Statically extract the service names actually used for MCP routing from a domain's source (literals only; variable-passed args are not required).
 function extractUsedMcpServices(info) {
   const used = new Set();
   for (const f of info.files) {
     const c = read(f);
-    // createMcpCommand({ mcpService: 'X' }) 显式值
+    // createMcpCommand({ mcpService: 'X' }) explicit value
     for (const m of c.matchAll(/mcpService:\s*'([a-z0-9_]+)'/g)) used.add(m[1]);
-    // shared.ts 工厂默认值：const mcpService = config.mcpService || 'X'
+    // shared.ts factory default: const mcpService = config.mcpService || 'X'
     for (const m of c.matchAll(/mcpService\s*\|\|\s*'([a-z0-9_]+)'/g)) used.add(m[1]);
-    // resolveMcpUrl(ctx.mcpUrl(), host, 'X') 直接字面量
+    // resolveMcpUrl(ctx.mcpUrl(), host, 'X') direct literal
     for (const m of c.matchAll(/resolveMcpUrl\([^,]+,[^,]+,\s*'([a-z0-9_]+)'\s*\)/g)) used.add(m[1]);
   }
   return used;
 }
 
 // ====================================================================
-// D1：命令注册完整性
+// D1: Command registration completeness
 // ====================================================================
 function checkRegistration(domains) {
   const indexTs = read(path.join(ROOT, 'src/index.ts'));
@@ -160,119 +165,121 @@ function checkRegistration(domains) {
   for (const [dir, info] of Object.entries(domains)) {
     if (info.commands.length === 0 && !TOOL_DIRS.has(dir)) continue;
 
-    // 1a. index.ts 是否 import 了该域（域 index.js 或工具命令注册）
+    // 1a. Check whether index.ts imports this domain (domain index.js or tool command registration)
     const imported = indexTs.includes(`./commands/${dir}/index.js`) ||
                      indexTs.includes(`./commands/${dir}/`);
     if (!imported) {
-      add('P1', 'D1', `域 '${dir}' 未在 src/index.ts 注册 —— 命令不会被加载`);
+      add('P1', 'D1', `domain '${dir}' is not registered in src/index.ts -- commands will not be loaded`);
     }
 
-    // 1b. 该域真正路由用到的 MCP service（字面量）是否都已注册 mapping。
-    //     注意：用的是路由层 service name（如 engage_config），而非 commander 分组名（engage）。
-    //     变量传参的 service 无法静态提取，宁可漏报不误报。
+    // 1b. Check whether all MCP services (literals) actually used for routing in this domain have registered mappings.
+    //     Note: uses the routing-layer service name (e.g. engage_config), not the commander group name (engage).
+    //     Services passed as variables cannot be statically extracted; prefer false negatives over false positives.
     const used = extractUsedMcpServices(info);
     for (const svc of used) {
       if (!registered.has(svc)) {
-        add('P1', 'D1', `MCP service '${svc}'（域 ${dir}）未注册 mapping —— buildMcpUrl 会抛错。请在域 index.ts 调 registerMcpMappings`);
+        add('P1', 'D1', `MCP service '${svc}' (domain ${dir}) has no registered mapping -- buildMcpUrl will throw. Call registerMcpMappings in the domain's index.ts`);
       }
     }
   }
 }
 
 // ====================================================================
-// D2：业务域 ↔ skill 配对
+// D2: Business domain <-> skill pairing
 // ====================================================================
 function checkPairing(domains, focus) {
   const skillsRoot = path.join(ROOT, 'skills');
   for (const [dir, info] of Object.entries(domains)) {
     if (focus && !focus.has(dir)) continue;
     if (info.commands.length === 0) {
-      if (TOOL_DIRS.has(dir)) add('info', 'D2', `工具命令 '${dir}' 无 skill（符合约定）`);
+      if (TOOL_DIRS.has(dir)) add('info', 'D2', `tool command '${dir}' has no skill (expected by convention)`);
       continue;
     }
     const skill = DOMAIN_TO_SKILL[dir];
     if (!skill) {
-      add('P2', 'D2', `业务域 '${dir}'（${info.commands.length} 命令）未配置 skill 映射 —— 请确认是否应有对应 skill`);
+      add('P2', 'D2', `business domain '${dir}' (${info.commands.length} commands) has no skill mapping configured -- confirm whether a corresponding skill is expected`);
       continue;
     }
     if (!exists(path.join(skillsRoot, skill, 'SKILL.md'))) {
-      add('P1', 'D2', `业务域 '${dir}' 指向的 skill '${skill}' 不存在`);
+      add('P1', 'D2', `skill '${skill}' referenced by business domain '${dir}' does not exist`);
     }
   }
 }
 
 // ====================================================================
-// D3 + D4：skill 文档覆盖 & 内部一致性
+// D3 + D4: Skill doc coverage & internal consistency
 // ====================================================================
 function checkSkills(domains, focus) {
   const skillsRoot = path.join(ROOT, 'skills');
-  // 反向聚合：skill -> 该 skill 覆盖的所有命令
+  // Reverse aggregate: skill -> all commands covered by that skill
   const skillCmds = {};
   for (const [dir, info] of Object.entries(domains)) {
-    const skill = DOMAIN_TO_SKILL[dir];
-    if (!skill) continue;
-    (skillCmds[skill] ||= []).push(...info.commands.map((c) => c.name));
+    for (const command of info.commands) {
+      const skill = commandSkill(dir, command);
+      if (!skill) continue;
+      (skillCmds[skill] ||= []).push(command.name);
+    }
   }
 
   for (const skill of listDir(skillsRoot)) {
     const sdir = path.join(skillsRoot, skill);
     if (!fs.statSync(sdir).isDirectory()) continue;
     const skillMd = read(path.join(sdir, 'SKILL.md'));
-    if (!skillMd) { add('P2', 'D4', `skill '${skill}' 缺少 SKILL.md`); continue; }
+    if (!skillMd) { add('P2', 'D4', `skill '${skill}' is missing SKILL.md`); continue; }
 
     const refFiles = listDir(path.join(sdir, 'references')).filter((f) => f.endsWith('.md'));
     const refNames = refFiles.map((f) => f.replace(/\.md$/, ''));
     const cmds = skillCmds[skill] || [];
 
-    // D3: 命令 → reference 覆盖（仅对逐命令文档型 skill）
-    // 用归一化匹配判断「是否存在对应文档」（create-team.md 可覆盖 +create）。
-    // 命名风格不一致本身不在 D3 报，交由 D4 的严格规则检查处理，避免重复告警。
+    // D3: command -> reference coverage (per-command doc skills only)
+    // Use normalized matching to determine whether a corresponding doc exists (create-team.md can cover +create).
+    // Naming style inconsistencies are not reported in D3; they are handled by D4's strict rule check to avoid duplicate warnings.
     if (!GROUPED_DOC_SKILLS.has(skill) && cmds.length > 0) {
       if (refNames.length === 0) {
-        add('P3', 'D3', `skill '${skill}' 无 references/ 目录，${cmds.length} 个命令文档全内联（与逐命令文档型 skill 风格不一致）`);
+        add('P3', 'D3', `skill '${skill}' has no references/ directory; ${cmds.length} command docs are all inline (inconsistent with per-command doc skill style)`);
       } else {
         const refSet = new Set(refNames.map(norm));
-        // 归一化后仍完全找不到任何对应文档，才算真·缺失
+        // Only a true miss if no corresponding doc can be found even after normalization
         const missing = cmds.filter((c) => {
           const n = norm(c);
           return ![...refSet].some((r) => r === n || r.includes(n) || n.includes(r));
         });
         if (missing.length) {
-          add('P2', 'D3', `skill '${skill}' 缺命令文档：${missing.map((c) => '+' + c).join(', ')}`);
+          add('P2', 'D3', `skill '${skill}' is missing command docs: ${missing.map((c) => '+' + c).join(', ')}`);
         }
       }
     }
 
-    // D4a: CRITICAL「filename = command name (去掉+)」规则一致性
+    // D4a: CRITICAL "filename = command name (strip +)" rule consistency
     const declaresExactRule = /reference filename equals the command name|references\/<command>\.md|references\/<tool_name>\.md/i.test(skillMd);
     if (declaresExactRule && refNames.length > 0) {
-      const refExact = new Set(refNames); // 不归一化，严格按规则
+      const refExact = new Set(refNames); // no normalization; strictly by rule
       const violators = cmds.filter((c) => !refExact.has(c));
       if (violators.length) {
         add('P1', 'D4',
-          `skill '${skill}' 顶部声明「+cmd → references/<cmd>.md」，但以下命令按此规则找不到文件：` +
-          violators.map((c) => `+${c}→${c}.md`).join(', ') +
-          `（实际文件名不一致，agent 会读空，导致瞎猜参数）`);
+          `skill '${skill}' declares "+cmd -> references/<cmd>.md" at the top, but the following commands have no file under that rule: ` +
+          violators.map((c) => `+${c}->${c}.md`).join(', ') +
+          ` (actual filenames are inconsistent; the agent will read nothing and guess parameters)`);
       }
     }
 
-    // D4b: SKILL.md 内引用的 references/*.md 链接是否都指向真实文件
+    // D4b: Check whether all references/*.md links in SKILL.md point to real files
     const linked = [...skillMd.matchAll(/references\/([a-z0-9_-]+)\.md/gi)].map((m) => m[1]);
     const refOnDisk = new Set(refNames);
     const deadLinks = [...new Set(linked)].filter((l) => !refOnDisk.has(l));
     if (deadLinks.length) {
-      add('P2', 'D4', `skill '${skill}' 存在失效文档链接：${deadLinks.map((l) => 'references/' + l + '.md').join(', ')}`);
+      add('P2', 'D4', `skill '${skill}' has broken doc links: ${deadLinks.map((l) => 'references/' + l + '.md').join(', ')}`);
     }
 
-    // D4c: frontmatter 基本字段
+    // D4c: frontmatter required fields
     if (!/^---[\s\S]*?name:\s*\S+[\s\S]*?description:\s*\S+[\s\S]*?---/m.test(skillMd)) {
-      add('P3', 'D4', `skill '${skill}' 的 SKILL.md frontmatter 缺 name/description`);
+      add('P3', 'D4', `skill '${skill}' SKILL.md frontmatter is missing name/description`);
     }
   }
 }
 
 // ====================================================================
-// D5：文档同步（README / CHANGELOG / 版本）
+// D5: Doc sync (README / CHANGELOG / version)
 // ====================================================================
 function checkDocs(domains) {
   const readme = read(path.join(ROOT, 'README.md'));
@@ -280,33 +287,33 @@ function checkDocs(domains) {
 
   for (const [dir, info] of Object.entries(domains)) {
     if (info.commands.length === 0) continue;
-    // 用 service 名在 README 命令表中查找
+    // Look up service name in the README command table
     for (const svc of info.services) {
       const inEn = readme.includes(svc);
       const inZh = readmeZh.includes(svc);
       if (!inEn && !inZh) {
-        add('P2', 'D5', `service '${svc}'（域 ${dir}）未出现在任一 README —— 用户文档滞后`);
+        add('P2', 'D5', `service '${svc}' (domain ${dir}) does not appear in either README -- user docs are out of date`);
       }
     }
   }
 
-  // 版本一致性
+  // Version consistency
   const pkg = JSON.parse(read(path.join(ROOT, 'package.json')) || '{}');
   const changelog = read(path.join(ROOT, 'CHANGELOG.md'));
   if (pkg.version && changelog && !changelog.includes(pkg.version)) {
-    add('P3', 'D5', `package.json 版本 ${pkg.version} 未出现在 CHANGELOG.md`);
+    add('P3', 'D5', `package.json version ${pkg.version} does not appear in CHANGELOG.md`);
   }
 }
 
 // ====================================================================
-// D6：工程健壮性（verify 脚本覆盖 / typecheck）
+// D6: Engineering robustness (verify script coverage / typecheck)
 // ====================================================================
 function checkEngineering(domains) {
   const pkg = JSON.parse(read(path.join(ROOT, 'package.json')) || '{}');
   const scripts = pkg.scripts || {};
   const verifyTargets = Object.keys(scripts).filter((k) => k.startsWith('verify:')).join(' ');
 
-  // 哪些域有 verify 覆盖（粗粒度：脚本名或脚本内容提及域关键字）
+  // Which domains have verify coverage (coarse-grained: script name or script content mentions domain keyword)
   const scriptsDir = path.join(ROOT, 'scripts');
   const scriptBlob = walk(scriptsDir).map(read).join('\n');
   for (const [dir, info] of Object.entries(domains)) {
@@ -314,17 +321,17 @@ function checkEngineering(domains) {
     const key = dir.replace(/^te-/, '');
     const covered = scriptBlob.includes(`te-${key}`) || verifyTargets.includes(key);
     if (!covered) {
-      add('P3', 'D6', `域 '${dir}'（${info.commands.length} 命令）无对应 verify 脚本`);
+      add('P3', 'D6', `domain '${dir}' (${info.commands.length} commands) has no corresponding verify script`);
     }
   }
 
   if (!Object.values(scripts).some((s) => /tsc\s+--noEmit|tsc -p|typecheck/.test(s))) {
-    add('P3', 'D6', `package.json 未接入类型检查（tsc --noEmit）—— 类型错误仅在 build 暴露`);
+    add('P3', 'D6', `package.json has no typecheck step (tsc --noEmit) -- type errors will only surface at build time`);
   }
 }
 
 // ====================================================================
-// 主流程
+// Main flow
 // ====================================================================
 const domains = scanCommands();
 const focus = changedDomains();
@@ -335,7 +342,7 @@ checkSkills(domains, focus);
 checkDocs(domains);
 checkEngineering(domains);
 
-// ---------- 输出 ----------
+// ---------- Output ----------
 const order = { P1: 0, P2: 1, P3: 2, info: 3 };
 findings.sort((a, b) => (order[a.level] - order[b.level]) || a.dim.localeCompare(b.dim));
 
@@ -344,19 +351,19 @@ if (JSON_OUT) {
 } else {
   const icon = { P1: '🔴', P2: '🟡', P3: '🟢', info: 'ℹ️ ' };
   const dimName = {
-    D0: '扫描', D1: '命令注册', D2: '域↔skill配对', D3: 'skill文档覆盖',
-    D4: 'skill一致性', D5: '文档同步', D6: '工程健壮性',
+    D0: 'scan', D1: 'command registration', D2: 'domain<->skill pairing', D3: 'skill doc coverage',
+    D4: 'skill consistency', D5: 'doc sync', D6: 'engineering robustness',
   };
-  console.log(`\n  te-cli self-check  ${SINCE ? `(--since ${SINCE}, 聚焦: ${[...focus].join(',') || '无变更命令域'})` : '(全量)'}\n`);
+  console.log(`\n  te-cli self-check  ${SINCE ? `(--since ${SINCE}, focus: ${[...focus].join(',') || 'no changed command domains'})` : '(full scan)'}\n`);
   const counts = { P1: 0, P2: 0, P3: 0, info: 0 };
   for (const f of findings) counts[f.level]++;
   if (findings.length === 0) {
-    console.log('  ✅ 未发现问题\n');
+    console.log('  ✅ No issues found\n');
   } else {
     for (const f of findings) {
       console.log(`  ${icon[f.level]} [${f.level}] ${f.dim} ${dimName[f.dim] || ''}: ${f.msg}`);
     }
-    console.log(`\n  汇总：🔴 P1=${counts.P1}  🟡 P2=${counts.P2}  🟢 P3=${counts.P3}  ℹ️ info=${counts.info}\n`);
+    console.log(`\n  Summary: 🔴 P1=${counts.P1}  🟡 P2=${counts.P2}  🟢 P3=${counts.P3}  ℹ️ info=${counts.info}\n`);
   }
 }
 

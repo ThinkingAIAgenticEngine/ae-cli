@@ -33,9 +33,13 @@ export function registerCommands(program: CommanderCommand, commands: Command[])
         }
       }
 
+      // 每个子命令都可在命令名之后接收 --host，覆盖程序级 --host（per-host 寻址用）
+      sub.option('--host <url>', 'Override active AE host URL for this command');
+
       // Wire action
       sub.action(async (opts: Record<string, any>) => {
         const globalOpts = extractGlobalOptions(program);
+        if (opts.host) globalOpts.host = opts.host;
         await runCommand(cmd, opts, globalOpts);
       });
     }

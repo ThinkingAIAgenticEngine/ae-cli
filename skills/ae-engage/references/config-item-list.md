@@ -1,6 +1,5 @@
 # ae-engage +config_item_list
 
-> **Prerequisite:** Read [`../../ae-shared/SKILL.md`](../../ae-shared/SKILL.md)
 
 Query the list of config items in a project.
 

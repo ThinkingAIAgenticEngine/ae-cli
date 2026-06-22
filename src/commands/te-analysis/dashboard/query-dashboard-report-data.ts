@@ -1,4 +1,4 @@
-import { createMcpCommand, optionalBoolean, optionalJson, optionalJsonString, optionalNumber, optionalString, requiredJsonString } from '../shared.js';
+import { clusterQueryFlags, createMcpCommand, optionalBoolean, optionalClusterQueryArgs, optionalJson, optionalJsonString, optionalNumber, optionalString, requiredJsonString } from '../shared.js';
 
 export const queryDashboardReportData = createMcpCommand({
   command: '+query_dashboard_report_data',
@@ -12,6 +12,7 @@ export const queryDashboardReportData = createMcpCommand({
     { name: 'time_granularity', type: 'string', required: false, desc: 'Optional time granularity used to override the report default. Supported values: minute, minute5, minute10, hour, day, week, month, quarter, year, total.' },
     { name: 'use_cache', type: 'boolean', required: false, desc: 'Whether to use cache. Default: true' },
     { name: 'report_ids', type: 'json', required: false, desc: 'Optional report IDs JSON array' },
+    ...clusterQueryFlags('Optional cluster query scope. Supported values: GLOBAL, SLAVE. Omit to follow dashboard configuration.'),
   ],
   risk: 'read',
   buildArgs: (ctx) => ({
@@ -23,5 +24,6 @@ export const queryDashboardReportData = createMcpCommand({
       timeGranularity: optionalString(ctx, 'time_granularity'),
       useCache: optionalBoolean(ctx, 'use_cache'),
       reportIds: optionalJson(ctx, 'report_ids'),
+      ...optionalClusterQueryArgs(ctx),
     }),
 });

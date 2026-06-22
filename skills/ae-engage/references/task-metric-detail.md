@@ -1,6 +1,5 @@
 # ae-engage +task_metric_detail
 
-> **Prerequisite:** Read [`../../ae-shared/SKILL.md`](../../ae-shared/SKILL.md)
 
 Query the metric-oriented detail report for a task.
 

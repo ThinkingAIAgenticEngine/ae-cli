@@ -1,6 +1,5 @@
 # ae-engage +config_channel_list
 
-> **Prerequisite:** Read [`../../ae-shared/SKILL.md`](../../ae-shared/SKILL.md)
 
 Query the config channel list.
 

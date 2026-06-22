@@ -4,12 +4,13 @@ import { printOutput, printError } from './output.js';
 import { getActiveHost } from '../core/config.js';
 import { safeJsonParse } from '../core/json-utils.js';
 import { logger } from '../core/logger.js';
+import { TeAgentCredentialsError } from '../core/te-agent-credentials.js';
 
 export async function runCommand(cmd: Command, opts: Record<string, any>, globalOpts: GlobalOptions): Promise<void> {
   try {
     const ctx = createRuntimeContext(cmd, opts, globalOpts);
 
-    // 记录命令执行日志
+    // Log command execution
     const cmdName = `${cmd.service} ${cmd.command}`;
     logger.command(cmdName, opts);
 
@@ -55,7 +56,10 @@ export async function runCommand(cmd: Command, opts: Record<string, any>, global
   } catch (err: any) {
     const message = err.message || String(err);
     logger.error(`Command failed: ${message}`);
-    if (message.includes('token') || message.includes('auth') || message.includes('401') || message.includes('403')) {
+    if (err instanceof TeAgentCredentialsError) {
+      // F-001 fix: forward hint to guide the user to configure credentials or log in
+      printError('config', message, err.hint);
+    } else if (message.includes('token') || message.includes('auth') || message.includes('401') || message.includes('403')) {
       printError('auth', message, 'Run: ae-cli auth login');
     } else if (message.includes('AE API error')) {
       printError('api', message);

@@ -1,9 +1,20 @@
 import fs from 'fs';
 import path from 'path';
 import { spawnSync } from 'child_process';
+import { getClusterInfoFilePath } from '../src/core/cluster-info.ts';
 
 const ROOT = process.cwd();
 const commandsDir = path.join(ROOT, 'src/commands/te-analysis');
+const clusterInfoFile = getClusterInfoFilePath();
+
+function isGlobalQueryModeEnabled() {
+  try {
+    const raw = JSON.parse(fs.readFileSync(clusterInfoFile, 'utf-8'));
+    return raw?.sw_cfg_enable_global_query === true;
+  } catch {
+    return false;
+  }
+}
 
 function fail(message) {
   console.error(`ERROR: ${message}`);
@@ -22,6 +33,7 @@ function walk(dir) {
     }
     if (!entry.name.endsWith('.ts')) continue;
     if (entry.name === 'index.ts' || entry.name === 'shared.ts') continue;
+    if (!isGlobalQueryModeEnabled() && p.includes(`${path.sep}global${path.sep}`)) continue;
     commandFiles.push(p);
   }
 }
@@ -43,7 +55,7 @@ if (coreSet.size !== coreCommands.length) {
   fail('duplicate core command names found in source files');
 }
 
-const EXPECTED_CORE_COUNT = 35;
+const EXPECTED_CORE_COUNT = isGlobalQueryModeEnabled() ? 37 : 36;
 if (coreCommands.length !== EXPECTED_CORE_COUNT) {
   fail(`analysis tool count mismatch: expected ${EXPECTED_CORE_COUNT}, got ${coreCommands.length}`);
 }

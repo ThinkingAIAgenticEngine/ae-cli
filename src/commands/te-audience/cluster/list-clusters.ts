@@ -2,7 +2,7 @@ import { createMcpCommand, optionalBoolean, optionalJson, optionalJsonString, op
 
 export const listClusters = createMcpCommand({
   command: '+list_clusters',
-  description: 'List cluster metadata with optional query/fields/limit/offset',
+  description: 'List user cohort/segment cluster metadata with optional query/fields/limit/offset.',
   flags: [
     { name: 'project_id', type: 'number', required: true, desc: 'Project ID', alias: 'p' },
     { name: 'query', type: 'string', required: false, desc: 'Keyword filter', alias: 'q' },

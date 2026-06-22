@@ -1,15 +1,15 @@
 /**
- * ae-cli model —— 交互选择并切换当前 PTY 工作空间的模型
+ * ae-cli model -- interactively select and switch the model for the current PTY workspace
  *
- * 拉 /api/sandbox/models 展示当前用户可见的 personal/company/system 模型；
- * 用户选择后，把当前 workspacePath + Model.id（CUID）提交给主应用，由主应用更新
- * Workspace.modelId 并统一生成 / 推送 settings.json。
+ * Fetches /api/sandbox/models to display the personal/company/system models visible to the current user;
+ * after the user selects one, submits the current workspacePath + Model.id (CUID) to the main app,
+ * which updates Workspace.modelId and generates/pushes settings.json.
  *
- * 鉴权：X-Sandbox-Id + X-Sandbox-Secret-Key，由 te-agent-client 注入。
+ * Auth: X-Sandbox-Id + X-Sandbox-Secret-Key, injected by te-agent-client.
  *
- * 安全：
- *   - SECRET_KEY / SANDBOX_SECRET_KEY 不打印；--verbose 模式下也仅输出 ***
- *   - apiKey 不返回 ae-cli，由主应用生成并通过沙箱内部接口推送 settings.json
+ * Security:
+ *   - SECRET_KEY / SANDBOX_SECRET_KEY are never printed; even in --verbose mode only *** is output
+ *   - apiKey is not returned to ae-cli; the main app generates and pushes it via the sandbox internal interface
  */
 
 import { Command } from 'commander';
@@ -34,11 +34,11 @@ export interface CurrentModelSelection {
 }
 
 /**
- * 从 settings.json 反推当前模型：
- * - personal/company 模型优先用 ANTHROPIC_CUSTOM_HEADERS 中的 model-id（Model.id）；
- * - system 模型没有 model-id，回退到顶层 model / env.ANTHROPIC_MODEL 的 provider modelId。
+ * Derive the current model from settings.json:
+ * - For personal/company models, prefer the model-id (Model.id) from ANTHROPIC_CUSTOM_HEADERS;
+ * - For system models (no model-id), fall back to the provider modelId from the top-level model / env.ANTHROPIC_MODEL.
  *
- * 返回值仅用于交互列表的当前项标记；缺失时两个字段均为 null。
+ * The return value is used only to mark the current item in the interactive list; both fields are null when absent.
  */
 export function readCurrentModelSelection(): CurrentModelSelection {
   const settingsPath = join(getClaudeConfigDir(), 'settings.json');
@@ -87,7 +87,7 @@ async function runModelPicker(): Promise<void> {
   const current = readCurrentModelSelection();
   const models = await getSandboxModels();
   if (models.length === 0) {
-    process.stderr.write('当前用户无可见模型\n');
+    process.stderr.write('No models visible to the current user\n');
     return;
   }
 
@@ -102,13 +102,13 @@ async function runModelPicker(): Promise<void> {
   });
 
   const picked = await promptSingleCheckboxSelect<SandboxModelSummary>({
-    title: '选择要使用的模型',
+    title: 'Select a model to use',
     items: sorted.map((model) => {
       const isCurrent = isCurrentModel(model, current);
       return {
         value: model,
         label: `${model.name}  ${model.scope}`,
-        hint: isCurrent ? '(当前)' : undefined,
+        hint: isCurrent ? '(current)' : undefined,
         preselected: isCurrent,
       };
     }),
@@ -116,13 +116,13 @@ async function runModelPicker(): Promise<void> {
 
   const workspace = getCurrentWorkspace();
   if (!workspace) {
-    process.stderr.write('请在 te-agent 工作空间目录内执行 ae-cli model\n');
+    process.stderr.write('Please run ae-cli model from within a te-agent workspace directory\n');
     process.exitCode = 1;
     return;
   }
 
   if (isCurrentModel(picked, current)) {
-    process.stdout.write('当前已使用该模型\n');
+    process.stdout.write('This model is already active\n');
     return;
   }
 
@@ -131,7 +131,7 @@ async function runModelPicker(): Promise<void> {
     modelId: picked.id,
   });
 
-  process.stdout.write(`已切换为 ${picked.name}\n`);
+  process.stdout.write(`Switched to ${picked.name}\n`);
 }
 
 export function registerModel(program: Command): void {
@@ -149,7 +149,7 @@ export function registerModel(program: Command): void {
 
 function handleError(err: unknown): void {
   if (err instanceof MultiselectCancelled) {
-    process.stderr.write('已取消\n');
+    process.stderr.write('Cancelled\n');
     return;
   }
   if (err instanceof TeAgentCredentialsError) {
@@ -159,7 +159,7 @@ function handleError(err: unknown): void {
     return;
   }
   if (err instanceof TeAgentApiError) {
-    process.stderr.write(`✗ 主应用错误（${err.status}${err.code ? ' ' + err.code : ''}）：${err.message}\n`);
+    process.stderr.write(`✗ Main app error (${err.status}${err.code ? ' ' + err.code : ''}): ${err.message}\n`);
     process.exitCode = 1;
     return;
   }

@@ -1,6 +1,5 @@
 # ae-engage +manage_strategy
 
-> **Prerequisite:** Read [`../../ae-shared/SKILL.md`](../../ae-shared/SKILL.md)
 
 Batch manage strategy status or review actions.
 

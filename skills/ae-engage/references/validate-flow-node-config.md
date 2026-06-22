@@ -1,6 +1,5 @@
 # ae-engage +validate_flow_node_config
 
-> **Prerequisite:** Read [`../../ae-shared/SKILL.md`](../../ae-shared/SKILL.md)
 
 Validate a single node configuration before saving a flow.
 

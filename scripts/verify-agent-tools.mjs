@@ -3,11 +3,11 @@
 /**
  * verify-agent-tools.mjs
  *
- * 验证 src/commands/te-agent/ 目录下的所有命令：
- * 1. 扫描 .ts 文件，正则提取 command name
- * 2. 去重检查
- * 3. 数量检查（EXPECTED_COUNT = 15）
- * 4. 运行 ae-cli agent --help 并验证所有命令名出现
+ * Verify all commands under src/commands/te-agent/:
+ * 1. Scan .ts files and extract command names via regex
+ * 2. Duplicate check
+ * 3. Count check (EXPECTED_COUNT = 15)
+ * 4. Run ae-cli agent --help and verify all command names appear
  */
 
 import { readFileSync, readdirSync, statSync } from 'node:fs';
@@ -29,7 +29,7 @@ function ok(msg) {
   console.log(`✓ ${msg}`);
 }
 
-// ─── Step 1: 扫描命令文件 ────────────────────────────────────
+// ─── Step 1: Scan command files ──────────────────────────────
 
 function scanCommands(dir) {
   const commands = [];
@@ -54,31 +54,31 @@ function scanCommands(dir) {
 }
 
 const commands = scanCommands(AGENT_DIR);
-ok(`扫描到 ${commands.length} 个命令`);
+ok(`Found ${commands.length} commands`);
 
-// ─── Step 2: 去重检查 ────────────────────────────────────────
+// ─── Step 2: Duplicate check ─────────────────────────────────
 
 const names = commands.map((c) => c.name);
 const uniqueNames = new Set(names);
 if (uniqueNames.size !== names.length) {
   const seen = new Set();
   for (const n of names) {
-    if (seen.has(n)) fail(`重复命令名：${n}`);
+    if (seen.has(n)) fail(`Duplicate command name: ${n}`);
     seen.add(n);
   }
 } else {
-  ok('无重复命令名');
+  ok('No duplicate command names');
 }
 
-// ─── Step 3: 数量检查 ────────────────────────────────────────
+// ─── Step 3: Count check ─────────────────────────────────────
 
 if (uniqueNames.size !== EXPECTED_COUNT) {
-  fail(`期望 ${EXPECTED_COUNT} 个命令，实际 ${uniqueNames.size} 个`);
+  fail(`Expected ${EXPECTED_COUNT} commands, found ${uniqueNames.size}`);
 } else {
-  ok(`命令数量 ${uniqueNames.size} = ${EXPECTED_COUNT}`);
+  ok(`Command count ${uniqueNames.size} = ${EXPECTED_COUNT}`);
 }
 
-// ─── Step 4: --help 输出验证 ─────────────────────────────────
+// ─── Step 4: --help output verification ──────────────────────
 
 try {
   const helpOutput = execSync(`npx tsx src/index.ts ${SERVICE} --help`, {
@@ -89,22 +89,22 @@ try {
   let allFound = true;
   for (const name of uniqueNames) {
     if (!helpOutput.includes(name)) {
-      fail(`--help 输出中缺少命令：${name}`);
+      fail(`Command missing from --help output: ${name}`);
       allFound = false;
     }
   }
   if (allFound) {
-    ok(`--help 输出包含全部 ${uniqueNames.size} 个命令`);
+    ok(`--help output contains all ${uniqueNames.size} commands`);
   }
 } catch (err) {
-  fail(`运行 --help 失败：${err.message}`);
+  fail(`Failed to run --help: ${err.message}`);
 }
 
-// ─── 汇总 ────────────────────────────────────────────────────
+// ─── Summary ─────────────────────────────────────────────────
 
 if (failed) {
-  console.error('\n✗ 验证失败');
+  console.error('\n✗ Verification failed');
   process.exit(1);
 } else {
-  console.log(`\n✓ 全部通过（${uniqueNames.size} 个命令）`);
+  console.log(`\n✓ All checks passed (${uniqueNames.size} commands)`);
 }

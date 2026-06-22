@@ -1,6 +1,5 @@
 # ae-engage +strategy_list
 
-> **Prerequisite:** Read [`../../ae-shared/SKILL.md`](../../ae-shared/SKILL.md)
 
 Query the strategy list.
 

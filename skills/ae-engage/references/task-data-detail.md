@@ -1,6 +1,5 @@
 # ae-engage +task_data_detail
 
-> **Prerequisite:** Read [`../../ae-shared/SKILL.md`](../../ae-shared/SKILL.md)
 
 Query the task detailed data report.
 

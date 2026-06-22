@@ -1,6 +1,5 @@
 # ae-engage +modify_flow_base_info
 
-> **Prerequisite:** Read [`../../ae-shared/SKILL.md`](../../ae-shared/SKILL.md)
 
 Modify the basic information of a flow canvas.
 

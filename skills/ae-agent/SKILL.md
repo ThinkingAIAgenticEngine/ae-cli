@@ -21,6 +21,7 @@ ae-cli agent +<command> [options]
 - Toggle operations on company/system resources only affect the current user's preference, not the global state.
 - JSON flags must be valid JSON strings, usually wrapped in single quotes in shell.
 - Successful commands return JSON by default. Use `--format table` when a table is easier to scan.
+- `--host <url>` overrides the active AE host. It is available on every command and may be placed after the subcommand, e.g. `ae-cli agent +<command> --host <url>`.
 
 ## Commands
 

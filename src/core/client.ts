@@ -4,6 +4,7 @@ import { getToken, clearToken, resolveHost } from './auth.js';
 import { extractHostname } from './config.js';
 import { safeJsonParse } from './json-utils.js';
 import { logger } from './logger.js';
+import { SecureStoreAuthError } from './secure-store.js';
 
 function genRequestId(prefix: string): string {
   const rand = randomBytes(4).toString('base64url').slice(0, 8);
@@ -59,12 +60,26 @@ async function request(
   const text = await resp.text();
   const data = safeJsonParse(text);
 
-  // 记录请求和响应日志
+  // Log request and response
   logger.api(method, url, resp.status, body, data);
 
-  if ((resp.status === 401 || resp.status === 403) && retry) {
-    clearToken(resolvedHost);
-    return request(method, modulePath, params, body, false, resolvedHost);
+  if (resp.status === 401) {
+    if (retry) {
+      clearToken(resolvedHost);
+      return request(method, modulePath, params, body, false, resolvedHost);
+    }
+    // F-010: token rejected even after re-fetch — session genuinely expired (lazy discovery; the access
+    // token is server-side sliding, so we only learn it's dead from a real 401). Surface as an auth error.
+    throw new SecureStoreAuthError(`Session expired or unauthorized for ${resolvedHost}. Please run: ae-cli auth login`);
+  }
+  if (resp.status === 403) {
+    // F-016: 403 is authenticated-but-forbidden (permission/scope denied), NOT an expired token.
+    // Do not clear the token or retry; surface the server's permission message.
+    const m =
+      data && typeof data === 'object' && typeof (data as any).error === 'string'
+        ? (data as any).error
+        : 'Permission denied';
+    throw new Error(m);
   }
 
   if (data.return_code === -1001 && retry) {
@@ -115,12 +130,23 @@ async function uploadRequest(
   const text = await resp.text();
   const data = safeJsonParse(text);
 
-  // 记录上传请求日志
+  // Log upload request
   logger.api('POST', url, resp.status, { upload: true }, data);
 
-  if ((resp.status === 401 || resp.status === 403) && retry) {
-    clearToken(resolvedHost);
-    return uploadRequest(modulePath, form, params, false, resolvedHost);
+  if (resp.status === 401) {
+    if (retry) {
+      clearToken(resolvedHost);
+      return uploadRequest(modulePath, form, params, false, resolvedHost);
+    }
+    throw new SecureStoreAuthError(`Session expired or unauthorized for ${resolvedHost}. Please run: ae-cli auth login`);
+  }
+  if (resp.status === 403) {
+    // F-016: 403 is permission-denied, not an expired token — surface the server message, don't clear the token.
+    const m =
+      data && typeof data === 'object' && typeof (data as any).error === 'string'
+        ? (data as any).error
+        : 'Permission denied';
+    throw new Error(m);
   }
 
   if (data.return_code === -1001 && retry) {

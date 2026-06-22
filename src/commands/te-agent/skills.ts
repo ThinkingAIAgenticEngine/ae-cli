@@ -1,10 +1,10 @@
 /**
- * ae-cli agent Skill 管理命令
+ * ae-cli agent Skill management commands
  *
- * +list-skills   — 列出 Skill
- * +add-skill     — 创建自定义 Skill（personal）
- * +del-skill     — 删除 personal Skill
- * +toggle-skill  — 启用/禁用 Skill
+ * +list-skills   — list Skills
+ * +add-skill     — create a custom Skill (personal)
+ * +del-skill     — delete a personal Skill
+ * +toggle-skill  — enable/disable a Skill
  */
 
 import type { Command } from '../../framework/types.js';
@@ -18,7 +18,7 @@ import {
 const BASE_PATH = '/api/sandbox/agent/skills';
 
 /**
- * 解析 instructions 参数：支持 @- 从 stdin 读取
+ * Resolve the instructions argument: supports @- to read from stdin
  */
 async function resolveInstructions(raw: string): Promise<string> {
   if (raw === '@-') {
@@ -27,7 +27,7 @@ async function resolveInstructions(raw: string): Promise<string> {
       chunks.push(chunk as Buffer);
     }
     const text = Buffer.concat(chunks).toString('utf8').trim();
-    if (!text) throw new Error('stdin 为空，无法读取 instructions');
+    if (!text) throw new Error('stdin is empty; cannot read instructions');
     return text;
   }
   return raw;
@@ -44,7 +44,7 @@ export const listSkills: Command = {
   validate: (ctx) => {
     const scope = ctx.str('scope');
     if (scope && !['personal', 'company', 'system'].includes(scope)) {
-      throw new Error('--scope 必须是 personal、company 或 system');
+      throw new Error('--scope must be personal, company, or system');
     }
   },
   dryRun: (ctx) => {
@@ -73,7 +73,7 @@ export const addSkill: Command = {
   validate: (ctx) => {
     const name = ctx.str('name');
     if (name.length < 1 || name.length > 80) {
-      throw new Error('--name 长度必须在 1-80 之间');
+      throw new Error('--name length must be between 1 and 80');
     }
   },
   dryRun: (ctx) => ({

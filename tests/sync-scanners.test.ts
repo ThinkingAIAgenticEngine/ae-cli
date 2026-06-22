@@ -1,7 +1,7 @@
 /**
- * ae-cli sync scanner 单测
+ * ae-cli sync scanner unit tests
  *
- * 运行方式：
+ * Run:
  *   npx tsx tests/sync-scanners.test.ts
  */
 
@@ -60,7 +60,7 @@ process.env.HOME = tmpRoot;
 process.stdout.write(`tmp: ${tmpRoot}\n`);
 
 try {
-  test('scanSkills 只扫描当前工作空间，并按 v2 manifest 跳过 company/system Skill', () => {
+  test('scanSkills only scans the current workspace and skips company/system skills per v2 manifest', () => {
     const otherWorkspaceSkillsRoot = join(
       tmpRoot,
       'workspaces',
@@ -97,7 +97,7 @@ try {
     assert.equal(describeSource(skills[0]), undefined);
   });
 
-  test('scanMcps 扫描当前 .mcp.json、workspace .claude/.claude.json、全局 ~/.claude.json', () => {
+  test('scanMcps scans current .mcp.json, workspace .claude/.claude.json, and global ~/.claude.json', () => {
     const currentWorkspace = join(tmpRoot, 'workspaces', 'wqa13');
     const currentWorkspaceClaudeRoot = join(currentWorkspace, '.claude');
     mkdirSync(currentWorkspaceClaudeRoot, { recursive: true });

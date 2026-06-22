@@ -1,14 +1,14 @@
 /**
- * 本地 Skill / MCP 扫描
+ * Local Skill / MCP scanner
  *
- * 扫描两类来源：
- *   - Skill：当前工作空间 .claude/skills/<slug>/SKILL.md
- *   - MCP：当前工作空间 .mcp.json
- *          当前工作空间 .claude/.claude.json 的当前项目 mcpServers
- *          全局 ~/.claude.json 的当前项目 mcpServers
+ * Scans two source types:
+ *   - Skill: current workspace .claude/skills/<slug>/SKILL.md
+ *   - MCP:   current workspace .mcp.json
+ *            current workspace .claude/.claude.json project mcpServers
+ *            global ~/.claude.json project mcpServers
  *
- * 软链：personal Skill 在沙箱里通常是软链到 ~/.te-agent/skills/personal/<slug>/，
- * 扫描时按"软链所在路径"展示，不去递归到目标，避免重复。
+ * Symlinks: personal Skills in the sandbox are usually symlinked to ~/.te-agent/skills/personal/<slug>/;
+ * during scanning we display the symlink path rather than recursing into the target, to avoid duplicates.
  */
 
 import { createHash } from 'node:crypto';
@@ -45,7 +45,7 @@ export interface McpCandidate {
   args?: string[];
   env?: Record<string, string>;
   headers?: Record<string, string>;
-  /** 标记 env 中是否包含敏感字段（TOKEN/SECRET/KEY），由命令层决定是否脱敏 */
+  /** Indicates whether env contains sensitive fields (TOKEN/SECRET/KEY); the command layer decides whether to redact them */
   hasSecrets: boolean;
 }
 
@@ -176,7 +176,7 @@ function parseMcpServers(
   for (const [slug, raw] of Object.entries(servers)) {
     if (!raw || typeof raw !== 'object') continue;
     if (options.filterScope && (raw._scope === 'system' || raw._scope === 'company')) continue;
-    // 兼容 type / transport 两种字段名
+    // Support both the type and transport field names
     const transport: 'http' | 'stdio' =
       raw.type === 'http' || raw.transport === 'http' || typeof raw.url === 'string'
         ? 'http'

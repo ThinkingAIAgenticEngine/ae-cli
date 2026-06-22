@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// 校验 CLAUDE.md 与 AGENTS.md 内容逐字一致，防止两份 agent 指南漂移。
+// Verify that CLAUDE.md and AGENTS.md are character-for-character identical, preventing drift between the two agent guides.
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
@@ -11,14 +11,14 @@ const contents = files.map((f) => {
   try {
     return { f, text: readFileSync(path.join(root, f), 'utf8') };
   } catch (err) {
-    console.error(`✗ 无法读取 ${f}: ${err.message}`);
+    console.error(`✗ Cannot read ${f}: ${err.message}`);
     process.exit(1);
   }
 });
 
 const [a, b] = contents;
 if (a.text === b.text) {
-  console.log('✓ CLAUDE.md 与 AGENTS.md 内容一致');
+  console.log('✓ CLAUDE.md and AGENTS.md are identical');
   process.exit(0);
 }
 
@@ -33,6 +33,6 @@ for (let i = 0; i < max; i += 1) {
   }
 }
 
-console.error(`✗ CLAUDE.md 与 AGENTS.md 不一致（首个差异在第 ${line} 行）`);
-console.error('  请同步两份文件后重试（把正本复制到另一份即可）。');
+console.error(`✗ CLAUDE.md and AGENTS.md differ (first difference at line ${line})`);
+console.error('  Please sync the two files and retry (copy the authoritative version over the other).');
 process.exit(1);

@@ -82,6 +82,7 @@ node self-check/scan.mjs --json
 
 `scan.mjs` 顶部有可调配置，新增模块时按需更新：
 - `DOMAIN_TO_SKILL`：业务域目录 → skill 名映射
+- `COMMAND_SKILL_OVERRIDES`：同一命令域内由 overlay skill 负责的命令路径 → skill 名映射
 - `TOOL_DIRS`：工具命令目录（豁免 skill 检查）
 - `GROUPED_DOC_SKILLS`：走分组/内联文档策略的 skill（豁免逐命令 reference 检查）
 

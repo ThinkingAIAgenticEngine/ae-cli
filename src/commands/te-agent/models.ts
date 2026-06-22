@@ -1,10 +1,10 @@
 /**
- * ae-cli agent 模型管理命令
+ * ae-cli agent model management commands
  *
- * +list-models  — 列出可见模型
- * +add-model    — 添加自定义模型（personal）
- * +del-model    — 删除 personal 模型
- * +toggle-model — 启用/禁用模型
+ * +list-models  — list visible models
+ * +add-model    — add a custom model (personal)
+ * +del-model    — delete a personal model
+ * +toggle-model — enable/disable a model
  */
 
 import type { Command } from '../../framework/types.js';
@@ -28,7 +28,7 @@ export const listModels: Command = {
   validate: (ctx) => {
     const scope = ctx.str('scope');
     if (scope && !['personal', 'company', 'system'].includes(scope)) {
-      throw new Error('--scope 必须是 personal、company 或 system');
+      throw new Error('--scope must be personal, company, or system');
     }
   },
   dryRun: (ctx) => {
@@ -59,7 +59,7 @@ export const addModel: Command = {
   risk: 'write',
   validate: (ctx) => {
     const baseUrl = ctx.str('baseUrl');
-    try { new URL(baseUrl); } catch { throw new Error('--base-url 必须是有效 URL'); }
+    try { new URL(baseUrl); } catch { throw new Error('--base-url must be a valid URL'); }
   },
   dryRun: (ctx) => ({
     method: 'POST',

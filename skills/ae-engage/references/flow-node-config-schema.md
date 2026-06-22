@@ -1,6 +1,5 @@
 # ae-engage +flow_node_config_schema
 
-> **Prerequisite:** Read [`../../ae-shared/SKILL.md`](../../ae-shared/SKILL.md)
 
 Query the configuration schema for a flow node type.
 

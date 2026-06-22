@@ -1,14 +1,15 @@
 /**
- * 终端多选交互
+ * Terminal multi-select interaction
  *
- * 改造自 src/commands/config.ts:186 的单选骨架。键位：
- *   ↑↓ / j k         移动光标
- *   space            切换当前项
- *   a / A            全选 / 全不选
- *   enter            确认（至少 1 项）
- *   q / esc / ctrl+c 取消
+ * Adapted from the single-select skeleton in src/commands/config.ts:186. Key bindings:
+ *   ↑↓ / j k         move cursor
+ *   space            toggle current item
+ *   a / A            select all / deselect all
+ *   enter            confirm (at least 1 item required)
+ *   q / esc / ctrl+c cancel
  *
- * 同分组项连续渲染，组首会输出标题行；非 TTY 环境直接抛错（CLI 无法静默勾选）。
+ * Items in the same group are rendered consecutively with a group header; non-TTY environments
+ * throw immediately (silent checkbox selection is not possible in a CLI).
  */
 
 export interface MultiselectItem<T> {
@@ -28,7 +29,7 @@ export interface SingleCheckboxItem<T> {
 
 export class MultiselectCancelled extends Error {
   constructor() {
-    super('用户取消选择');
+    super('Selection cancelled by user');
     this.name = 'MultiselectCancelled';
   }
 }
@@ -36,7 +37,7 @@ export class MultiselectCancelled extends Error {
 interface RenderRow<T> {
   kind: 'header' | 'item';
   groupLabel?: string;
-  itemIndex?: number; // 在 items 数组中的下标
+  itemIndex?: number; // index in the items array
   item?: MultiselectItem<T>;
 }
 
@@ -67,7 +68,7 @@ export function promptMultiselect<T>(opts: {
   const stdin = process.stdin;
   if (!stdin.isTTY) {
     return Promise.reject(
-      new Error('ae-cli sync 需要 TTY 才能进行多选；请在交互式终端中运行'),
+      new Error('ae-cli sync requires a TTY for multi-select; please run in an interactive terminal'),
     );
   }
 
@@ -86,14 +87,14 @@ export function promptMultiselect<T>(opts: {
   let renderCount = 0;
 
   function totalLines(): number {
-    return rows.length + 2; // 标题 + 空行 + 行
+    return rows.length + 2; // title + blank line + rows
   }
 
   function render() {
     if (renderCount > 0) {
       stderr.write(`\x1B[${totalLines()}A`);
     }
-    stderr.write(`${title}  (space 选择 · a 全选/全不选 · enter 确认 · q 取消)\x1B[K\n`);
+    stderr.write(`${title}  (space: select · a: select all/none · enter: confirm · q: cancel)\x1B[K\n`);
     stderr.write(`\x1B[K\n`);
     rows.forEach((row, ridx) => {
       if (row.kind === 'header') {
@@ -175,17 +176,18 @@ export function promptMultiselect<T>(opts: {
 }
 
 /**
- * 单选复选框交互（用于模型切换这类需要先空格选中、再回车确认的场景）。
+ * Single-item checkbox interaction (for scenarios like model switching where the user
+ * must first press space to select, then enter to confirm).
  */
 export function promptSingleCheckboxSelect<T>(opts: {
   title: string;
   items: SingleCheckboxItem<T>[];
 }): Promise<T> {
   const { title, items } = opts;
-  if (items.length === 0) return Promise.reject(new Error('无可选项'));
+  if (items.length === 0) return Promise.reject(new Error('No items to select'));
   const stderr = process.stderr;
   const stdin = process.stdin;
-  if (!stdin.isTTY) return Promise.reject(new Error('需要 TTY 才能进行单选'));
+  if (!stdin.isTTY) return Promise.reject(new Error('A TTY is required for single-select'));
 
   const preselectedIndex = items.findIndex((item) => item.preselected);
   let cursor = preselectedIndex >= 0 ? preselectedIndex : 0;
@@ -195,7 +197,7 @@ export function promptSingleCheckboxSelect<T>(opts: {
 
   function render() {
     if (renderCount > 0) stderr.write(`\x1B[${lines}A`);
-    stderr.write(`${title}  (space 选择 · enter 确认 · q 取消)\x1B[K\n`);
+    stderr.write(`${title}  (space: select · enter: confirm · q: cancel)\x1B[K\n`);
     stderr.write(`\x1B[K\n`);
     items.forEach((it, idx) => {
       const pointer = idx === cursor ? '\x1B[36m❯\x1B[0m' : ' ';
@@ -251,17 +253,17 @@ export function promptSingleCheckboxSelect<T>(opts: {
 }
 
 /**
- * 简单单选（用于 skills/mcp/both 这类小集合）。
+ * Simple single-select prompt (for small sets like skills/mcp/both).
  */
 export function promptSingleSelect<T>(opts: {
   title: string;
   items: { value: T; label: string }[];
 }): Promise<T> {
   const { title, items } = opts;
-  if (items.length === 0) return Promise.reject(new Error('无可选项'));
+  if (items.length === 0) return Promise.reject(new Error('No items to select'));
   const stderr = process.stderr;
   const stdin = process.stdin;
-  if (!stdin.isTTY) return Promise.reject(new Error('需要 TTY 才能进行单选'));
+  if (!stdin.isTTY) return Promise.reject(new Error('A TTY is required for single-select'));
 
   let cursor = 0;
   let renderCount = 0;

@@ -1,12 +1,10 @@
 ---
 name: ae-community
 version: 2.0.0
-description: "AE community analysis: post search, comment sentiment, topic trends, risky content, livestream data. Includes AE CLI authentication, global parameters, and safety rules (self-contained)."
+description: "AE community analysis: post search, comment sentiment, topic trends, risky content, livestream data."
 ---
 
 # ae-community
-
-> **CRITICAL - This skill is self-contained.** Use the Global AE CLI Rules below; do not require a separate shared skill for community-side tasks.
 
 The AE Community domain provides social data analysis: post/video search, comment analytics, sentiment and topics, risk monitoring, and livestream metrics. Commands run as **`ae-cli community +<subcommand>`** — every community subcommand uses the **`+` prefix**.
 
@@ -28,6 +26,7 @@ Global parameters:
 |---|---|
 | `--format <json\|table>` | Output format. Default is JSON. |
 | `--jq <expr>` | jq filter expression for JSON output. |
+| `--host <url>` | Override the active AE host. Available on every command and may be placed after the subcommand, e.g. `ae-cli community +<command> --host <url>`. |
 
 Output and errors:
 - Successful commands return machine-readable JSON by default.

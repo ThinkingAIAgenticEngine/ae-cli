@@ -1,6 +1,5 @@
 # ae-engage +delete_channel
 
-> **Prerequisite:** Read [`../../ae-shared/SKILL.md`](../../ae-shared/SKILL.md)
 
 Delete an Engage channel.
 

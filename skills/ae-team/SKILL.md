@@ -20,7 +20,7 @@ Global parameters:
 |---|---|
 | `--format <json\|table>` | Output format. Default is JSON. |
 | `--jq <expr>` | jq filter expression for JSON output. |
-| `--host <url>` | Override active AE host URL. |
+| `--host <url>` | Override the active AE host. Available on every command and may be placed after the subcommand, e.g. `ae-cli team +<command> --host <url>`. |
 | `--yes` | Skip confirmation for write operations. |
 | `--dry-run` | Show request details without executing. |
 

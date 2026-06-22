@@ -5,6 +5,8 @@ import dashboard from './dashboard/index.js';
 import model from './model/index.js';
 import entity from './entity/index.js';
 import schema from './schema/index.js';
+import global from './global/index.js';
+import { isGlobalQueryModeEnabled } from '../../core/cluster-info.js';
 
 const commands: Command[] = [
   ...meta,
@@ -13,6 +15,7 @@ const commands: Command[] = [
   ...model,
   ...entity,
   ...schema,
+  ...(isGlobalQueryModeEnabled() ? global : []),
 ];
 
 export default commands;

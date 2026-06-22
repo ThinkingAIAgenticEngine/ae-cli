@@ -6,7 +6,6 @@ description: "AE/TE/ThinkingEngine/ThinkingAI ae-cli manual for analysis-side ta
 
 # ae-analysis
 
-> **CRITICAL - This skill is self-contained.** Use the Global AE CLI Rules below; do not require a separate shared skill for analysis-side tasks.
 > **CRITICAL - For all commands that require `project_id`, you MUST satisfy `PROJECT_ID_GATE` first (no guessing): verify the project by ID/name with `analysis_common +list_projects` only when there is no valid project context yet, when the user switches project/host/environment, or when the supplied project is ambiguous. Reuse a project already verified in the same continuous conversation and same host/environment.**
 > **CRITICAL - For write operations in this skill, you MUST complete the post-write link loop when applicable:** after success and extractable `resource_id`, call `analysis_common +get_resource_url` and return the main result + resource link (or explicit link-failure reason).
 > **CRITICAL - Before running any `+<tool_name>` command, you MUST first read the corresponding `references/<tool_name>.md`.** The reference filename always equals the command name without the leading `+`, for example `+query_adhoc` -> `references/query_adhoc.md`.
@@ -21,6 +20,7 @@ Global parameters:
 |---|---|
 | `--format <json\|table>` | Output format. Default is JSON. |
 | `--jq <expr>` | jq filter expression for JSON output. |
+| `--host <url>` | Override the active AE host. Available on every command and may be placed after the subcommand, e.g. `ae-cli analysis +list_dashboards --host <url>`. |
 
 Output and errors:
 - Successful commands return machine-readable JSON by default.

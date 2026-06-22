@@ -31,12 +31,12 @@ export function updateSkillManifestForSource(
   slug: string,
 ): UpdateSkillManifestResult {
   if (!SKILL_SLUG_RE.test(slug)) {
-    throw new Error(`非法 Skill slug: ${slug}`);
+    throw new Error(`Invalid Skill slug: ${slug}`);
   }
 
   const sourceAbs = path.resolve(sourceDir);
   if (!statSync(sourceAbs).isDirectory()) {
-    throw new Error(`Skill 源路径不是目录: ${sourceDir}`);
+    throw new Error(`Skill source path is not a directory: ${sourceDir}`);
   }
 
   const manifestPath = path.join(path.dirname(sourceAbs), SKILL_MANIFEST_FILE);
@@ -64,15 +64,15 @@ export function copySkillPackageToTarget(args: {
   slug: string;
 }): CopySkillPackageResult {
   if (!SKILL_SLUG_RE.test(args.slug)) {
-    throw new Error(`非法 Skill slug: ${args.slug}`);
+    throw new Error(`Invalid Skill slug: ${args.slug}`);
   }
   if (!path.isAbsolute(args.targetRoot)) {
-    throw new Error(`skillTargetRoot 必须是绝对路径: ${args.targetRoot}`);
+    throw new Error(`skillTargetRoot must be an absolute path: ${args.targetRoot}`);
   }
 
   const sourceReal = realpathSync(args.sourceDir);
   if (!statSync(sourceReal).isDirectory()) {
-    throw new Error(`Skill 源路径不是目录: ${args.sourceDir}`);
+    throw new Error(`Skill source path is not a directory: ${args.sourceDir}`);
   }
 
   const targetDir = path.join(args.targetRoot, args.slug);

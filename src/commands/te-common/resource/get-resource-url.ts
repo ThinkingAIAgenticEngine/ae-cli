@@ -1,15 +1,37 @@
 import type { Command } from '../../../framework/types.js';
 import { callMcpTool, parseMcpResult, resolveMcpUrl } from '../../../core/mcp.js';
 
-function normalizeResourceUrlFields(node: unknown): void {
+/**
+ * F-015: the server returns resource links as RELATIVE paths, e.g.
+ *   raw_url:       "/#/panel/panel/3_10"
+ *   markdown_link: "[View Resource](/#/panel/panel/3_10)"
+ * In a local ae-cli / terminal context those are not clickable. Rewrite relative URL/link fields to
+ * absolute by prepending the AE host, so the user can click straight through to the resource.
+ */
+export function normalizeResourceUrlFields(node: unknown, host: string): void {
   if (!node || typeof node !== 'object') return;
   const obj = node as Record<string, unknown>;
 
-  for (const value of Object.values(obj)) {
-    if (value && typeof value === 'object') {
-      normalizeResourceUrlFields(value);
+  for (const [key, value] of Object.entries(obj)) {
+    if (typeof value === 'string') {
+      // Target URL/link fields (by name) and any value carrying the analysis SPA hash route marker.
+      if (/url|link/i.test(key) || value.includes('/#/')) {
+        obj[key] = absolutizeRelativeUrls(value, host);
+      }
+    } else if (value && typeof value === 'object') {
+      normalizeResourceUrlFields(value, host);
     }
   }
+}
+
+/** Prepend `host` to relative URLs in a string: bare paths ("/x") and markdown link targets ("](/x)"). */
+export function absolutizeRelativeUrls(s: string, host: string): string {
+  const base = host.replace(/\/+$/, '');
+  // markdown / parenthesized relative link targets: ](/path) -> ](base/path); skip protocol-relative "//".
+  s = s.replace(/\]\((\/(?!\/)[^)]*)\)/g, `](${base}$1)`);
+  // a whole-string relative path value: /path -> base/path (skip protocol-relative "//").
+  if (/^\/(?!\/)/.test(s)) s = base + s;
+  return s;
 }
 
 export const getResourceUrl: Command = {
@@ -52,7 +74,7 @@ export const getResourceUrl: Command = {
       return parsed;
     }
 
-    normalizeResourceUrlFields(parsed);
+    normalizeResourceUrlFields(parsed, ctx.host());
     return parsed;
   },
 };

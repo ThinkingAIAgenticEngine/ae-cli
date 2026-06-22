@@ -1,7 +1,7 @@
 /**
- * te-agent 内部鉴权凭证单测
+ * te-agent internal auth credentials unit tests
  *
- * 运行方式：
+ * Run:
  *   npx tsx tests/te-agent-credentials.test.ts
  */
 
@@ -61,7 +61,7 @@ const tmpRoot = mkdtempSync(join(tmpdir(), 'ae-cli-te-agent-credentials-'));
 process.stdout.write(`tmp: ${tmpRoot}\n`);
 
 try {
-  await test('仅 env 即可生成 sandbox 内部鉴权凭证', async () => {
+  await test('env vars alone are sufficient to generate sandbox internal auth credentials', async () => {
     await withEnv(
       {
         HOME: join(tmpRoot, 'env-only-home'),
@@ -83,7 +83,7 @@ try {
     );
   });
 
-  await test('credentials.json 可作为老镜像兜底', async () => {
+  await test('credentials.json serves as fallback for legacy images', async () => {
     const home = join(tmpRoot, 'legacy-home');
     mkdirSync(join(home, '.te-agent'), { recursive: true });
     writeFileSync(
@@ -116,7 +116,7 @@ try {
     );
   });
 
-  await test('持久化 .env 提供 SANDBOX_ID / SECRET_KEY', async () => {
+  await test('persistent .env provides SANDBOX_ID / SECRET_KEY', async () => {
     const runtimeRoot = join(tmpRoot, 'persistent-env-home');
     mkdirSync(runtimeRoot, { recursive: true });
     writeFileSync(
@@ -146,7 +146,7 @@ try {
     );
   });
 
-  await test('.env 覆盖 credentials.json，env 覆盖 .env', async () => {
+  await test('.env overrides credentials.json, and env overrides .env', async () => {
     const home = join(tmpRoot, 'env-priority-home');
     const runtimeRoot = join(tmpRoot, 'env-priority-runtime');
     mkdirSync(join(home, '.te-agent'), { recursive: true });
@@ -209,7 +209,7 @@ try {
     );
   });
 
-  await test('env 覆盖 credentials.json', async () => {
+  await test('env overrides credentials.json', async () => {
     const home = join(tmpRoot, 'override-home');
     mkdirSync(join(home, '.te-agent'), { recursive: true });
     writeFileSync(
@@ -245,7 +245,7 @@ try {
     );
   });
 
-  await test('model/sync client 均发送 X-Sandbox-Id + X-Sandbox-Secret-Key', async () => {
+  await test('model/sync clients both send X-Sandbox-Id + X-Sandbox-Secret-Key', async () => {
     const calls: Array<{ url: string; init: RequestInit }> = [];
     const prevFetch = globalThis.fetch;
     globalThis.fetch = (async (url: string | URL | Request, init?: RequestInit) => {
@@ -333,6 +333,147 @@ try {
     assert.equal(calls[3].url, 'http://te-claude.local/api/sandbox/sync/pull');
     assert.equal((calls[3].init.headers as Record<string, string>)['Content-Type'], 'application/json');
   });
+
+  // -------------------------------------------------------------------------
+  // Task 5 tests: user-token path (Bearer) + hint passthrough
+  // -------------------------------------------------------------------------
+
+  await test('user token present, no sandbox credentials (URL only) → request sends Authorization: bearer (no X-Sandbox-*)', async () => {
+    const calls: Array<{ url: string; init: RequestInit }> = [];
+    const prevFetch = globalThis.fetch;
+    globalThis.fetch = (async (url: string | URL | Request, init?: RequestInit) => {
+      calls.push({ url: String(url), init: init ?? {} });
+      return new Response(JSON.stringify({ models: [] }), { status: 200 });
+    }) as typeof fetch;
+
+    try {
+      await withEnv(
+        {
+          HOME: join(tmpRoot, 'bearer-test-home'),
+          // TE_CLAUDE_BASE_URL is set (provides URL), but no SANDBOX_ID / SECRET_KEY
+          TE_CLAUDE_BASE_URL: 'http://te-claude.local',
+          SANDBOX_ID: undefined,
+          SECRET_KEY: undefined,
+          SANDBOX_SECRET_KEY: undefined,
+          SANDBOX_RUNTIME_ROOT: join(tmpRoot, 'bearer-test-runtime-empty'),
+          // user token via TE_TOKEN (highest priority in auth.ts getToken)
+          TE_TOKEN: 'user-access-token-abc',
+        },
+        async () => {
+          const { getFromMainApp } = await loadClientModule();
+          await getFromMainApp('/api/sandbox/agent/models');
+        },
+      );
+    } finally {
+      globalThis.fetch = prevFetch;
+    }
+
+    assert.equal(calls.length, 1);
+    const headers = calls[0].init.headers as Record<string, string>;
+    assert.equal(headers['Authorization'], 'bearer user-access-token-abc', 'should send Authorization: bearer');
+    assert.equal(headers['X-Sandbox-Id'], undefined, 'should not send X-Sandbox-Id');
+    assert.equal(headers['X-Sandbox-Secret-Key'], undefined, 'should not send X-Sandbox-Secret-Key');
+    assert.equal(calls[0].url, 'http://te-claude.local/api/sandbox/agent/models');
+  });
+
+  await test('sandbox credentials present → still sends X-Sandbox-Id / X-Sandbox-Secret-Key (original path unchanged)', async () => {
+    const calls: Array<{ url: string; init: RequestInit }> = [];
+    const prevFetch = globalThis.fetch;
+    globalThis.fetch = (async (url: string | URL | Request, init?: RequestInit) => {
+      calls.push({ url: String(url), init: init ?? {} });
+      return new Response(JSON.stringify({ models: [] }), { status: 200 });
+    }) as typeof fetch;
+
+    try {
+      await withEnv(
+        {
+          HOME: join(tmpRoot, 'sandbox-path-home'),
+          TE_CLAUDE_BASE_URL: 'http://te-claude-sandbox.local',
+          SANDBOX_ID: 'sb-xyz',
+          SECRET_KEY: 'secret-xyz',
+          SANDBOX_SECRET_KEY: undefined,
+          TE_TOKEN: undefined,
+        },
+        async () => {
+          const { getFromMainApp } = await loadClientModule();
+          await getFromMainApp('/api/sandbox/agent/models');
+        },
+      );
+    } finally {
+      globalThis.fetch = prevFetch;
+    }
+
+    assert.equal(calls.length, 1);
+    const headers = calls[0].init.headers as Record<string, string>;
+    assert.equal(headers['X-Sandbox-Id'], 'sb-xyz', 'should send X-Sandbox-Id');
+    assert.equal(headers['X-Sandbox-Secret-Key'], 'secret-xyz', 'should send X-Sandbox-Secret-Key');
+    assert.equal(headers['Authorization'], undefined, 'should not send Authorization');
+  });
+
+  await test('both sandbox credentials and user token absent → error includes hint', async () => {
+    await withEnv(
+      {
+        HOME: join(tmpRoot, 'no-cred-home'),
+        TE_CLAUDE_BASE_URL: undefined,
+        SANDBOX_ID: undefined,
+        SECRET_KEY: undefined,
+        SANDBOX_SECRET_KEY: undefined,
+        SANDBOX_RUNTIME_ROOT: join(tmpRoot, 'no-cred-runtime-empty'),
+        TE_TOKEN: undefined,
+      },
+      async () => {
+        // TE_CLAUDE_BASE_URL missing → tryLoadTeAgentSandboxCredentials returns null
+        // → signRequest enters user-token path → getToken throws (no token)
+        // here we directly test that tryLoadTeAgentSandboxCredentials returns null
+        // and that loadTeAgentCredentials throws an error containing a hint
+        const { loadTeAgentCredentials, TeAgentCredentialsError: CredError } = await loadCredentialsModule();
+        let caught: any = null;
+        try {
+          loadTeAgentCredentials();
+        } catch (e) {
+          caught = e;
+        }
+        assert.ok(caught instanceof CredError, 'should throw TeAgentCredentialsError');
+        assert.ok(typeof caught.hint === 'string' && caught.hint.length > 0, 'hint should be non-empty');
+        assert.ok(caught.hint.includes('.env') || caught.hint.includes('credentials.json'), 'hint should include config path');
+      },
+    );
+  });
+
+  await test('tryLoadTeAgentSandboxCredentials: returns null with no credentials, returns object with credentials', async () => {
+    const { tryLoadTeAgentSandboxCredentials } = await loadCredentialsModule();
+
+    // no credentials
+    const nullResult = await withEnv(
+      {
+        HOME: join(tmpRoot, 'try-load-no-cred-home'),
+        TE_CLAUDE_BASE_URL: undefined,
+        SANDBOX_ID: undefined,
+        SECRET_KEY: undefined,
+        SANDBOX_SECRET_KEY: undefined,
+        SANDBOX_RUNTIME_ROOT: join(tmpRoot, 'try-load-no-cred-runtime'),
+      },
+      () => tryLoadTeAgentSandboxCredentials(),
+    );
+    assert.equal(nullResult, null, 'should return null when no credentials');
+
+    // full credentials present
+    const fullResult = await withEnv(
+      {
+        HOME: join(tmpRoot, 'try-load-full-cred-home'),
+        TE_CLAUDE_BASE_URL: 'http://te-claude.local',
+        SANDBOX_ID: 'sb-123',
+        SECRET_KEY: 'sk-abc',
+        SANDBOX_SECRET_KEY: undefined,
+      },
+      () => tryLoadTeAgentSandboxCredentials(),
+    );
+    assert.ok(fullResult !== null, 'should return non-null when credentials are present');
+    assert.equal(fullResult!.url, 'http://te-claude.local');
+    assert.equal(fullResult!.sandboxId, 'sb-123');
+    assert.equal(fullResult!.sandboxSecretKey, 'sk-abc');
+  });
+
 } finally {
   rmSync(tmpRoot, { recursive: true, force: true });
 }

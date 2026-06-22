@@ -1,6 +1,5 @@
 # ae-engage +update_channel_status
 
-> **Prerequisite:** Read [`../../ae-shared/SKILL.md`](../../ae-shared/SKILL.md)
 
 Update the status of an Engage channel.
 

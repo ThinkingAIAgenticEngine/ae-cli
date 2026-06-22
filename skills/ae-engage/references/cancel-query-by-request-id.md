@@ -1,6 +1,5 @@
 # ae-engage +cancel_query_by_request_id
 
-> **Prerequisite:** Read [`../../ae-shared/SKILL.md`](../../ae-shared/SKILL.md)
 
 Cancel a running data query by requestId.
 

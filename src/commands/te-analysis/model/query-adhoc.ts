@@ -1,4 +1,17 @@
-import { assertLimitWithinCap, assertSqlLimitConsistent, createMcpCommand, optionalBoolean, optionalJson, optionalJsonString, optionalNumber, optionalString, requiredJsonString, resolveSqlAwareLimit } from '../shared.js';
+import {
+  assertLimitWithinCap,
+  assertSqlLimitConsistent,
+  clusterQueryFlags,
+  createMcpCommand,
+  optionalBoolean,
+  optionalClusterQueryArgs,
+  optionalJson,
+  optionalJsonString,
+  optionalNumber,
+  optionalString,
+  requiredJsonString,
+  resolveSqlAwareLimit,
+} from '../shared.js';
 
 export const queryAdhoc = createMcpCommand({
   command: '+query_adhoc',
@@ -16,6 +29,7 @@ export const queryAdhoc = createMcpCommand({
     { name: 'limit', type: 'number', required: false, desc: 'Optional limit. Default: 1000, maximum: 100000. For model_type=sql, either omit LIMIT in the SQL or keep it equal to --limit (the two must not differ).' },
     { name: 'offset', type: 'number', required: false, desc: 'Optional offset. Default: 0.' },
     { name: 'timeout_minutes', type: 'number', required: false, desc: 'Query timeout in minutes. If omitted, 30 minutes is used.' },
+    ...clusterQueryFlags('Optional cluster query scope. Supported values: GLOBAL, SLAVE. Omit to query the current self cluster. SQL model analysis does not support this parameter.'),
   ],
   risk: 'read',
   validate: (ctx) => {
@@ -38,5 +52,6 @@ export const queryAdhoc = createMcpCommand({
       limit: resolveSqlAwareLimit(optionalNumber(ctx, 'limit'), ctx.str('model_type'), ctx.json('qp')),
       offset: optionalNumber(ctx, 'offset'),
       timeoutMinutes: optionalNumber(ctx, 'timeout_minutes'),
+      ...optionalClusterQueryArgs(ctx),
     }),
 });

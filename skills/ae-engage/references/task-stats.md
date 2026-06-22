@@ -1,6 +1,5 @@
 # ae-engage +task_stats
 
-> **Prerequisite:** Read [`../../ae-shared/SKILL.md`](../../ae-shared/SKILL.md)
 
 Query task status statistics.
 

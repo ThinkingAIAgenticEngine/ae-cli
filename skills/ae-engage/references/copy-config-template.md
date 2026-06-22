@@ -1,6 +1,5 @@
 # ae-engage +copy_config_template
 
-> **Prerequisite:** Read [`../../ae-shared/SKILL.md`](../../ae-shared/SKILL.md)
 
 Copy a template from the source config item to the target config item.
 

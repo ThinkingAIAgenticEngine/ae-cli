@@ -1,6 +1,5 @@
 # ae-engage +delete_config_channel
 
-> **Prerequisite:** Read [`../../ae-shared/SKILL.md`](../../ae-shared/SKILL.md)
 
 Delete a config channel.
 

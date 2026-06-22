@@ -1,6 +1,5 @@
 # ae-engage +delete_config_item
 
-> **Prerequisite:** Read [`../../ae-shared/SKILL.md`](../../ae-shared/SKILL.md)
 
 Delete a config item.
 

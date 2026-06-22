@@ -1,6 +1,5 @@
 # ae-engage +task_data_overview
 
-> **Prerequisite:** Read [`../../ae-shared/SKILL.md`](../../ae-shared/SKILL.md)
 
 Query the funnel-style task data overview.
 

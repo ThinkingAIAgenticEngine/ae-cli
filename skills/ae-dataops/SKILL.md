@@ -6,8 +6,6 @@ description: "AE Data Development and Operations: Data warehouse management, flo
 
 # ae-dataops
 
-> **CRITICAL - This skill is self-contained.** Use the Global AE CLI Rules below; do not require a separate shared skill for DataOps-side tasks.
-
 The AE Data Development and Operations domain provides capabilities for data warehouse management, flow orchestration, IDE SQL queries, data integration, operations and backfill management, including the following subcommands:
 
 | Subcommand | Responsibility | Corresponding Scenario Skill |
@@ -33,6 +31,7 @@ Global parameters:
 |---|---|
 | `--format <json\|table>` | Output format. Default is JSON. |
 | `--jq <expr>` | jq filter expression for JSON output. |
+| `--host <url>` | Override the active AE host. Available on every command and may be placed after the subcommand, e.g. `ae-cli dataops_ide +<command> --host <url>`. |
 
 Output and errors:
 - Successful commands return machine-readable JSON by default.

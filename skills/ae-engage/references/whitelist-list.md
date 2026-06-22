@@ -1,6 +1,5 @@
 # ae-engage +whitelist_list
 
-> **Prerequisite:** Read [`../../ae-shared/SKILL.md`](../../ae-shared/SKILL.md)
 
 Query the whitelist list in a project.
 

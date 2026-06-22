@@ -1,6 +1,5 @@
 # ae-engage +flow_process_report
 
-> **Prerequisite:** Read [`../../ae-shared/SKILL.md`](../../ae-shared/SKILL.md)
 
 Query the process-level report for a flow.
 

@@ -1,7 +1,7 @@
 /**
- * model 命令 helper 单测
+ * model command helper unit tests
  *
- * 运行方式：
+ * Run:
  *   npx tsx tests/model-index.test.ts
  */
 

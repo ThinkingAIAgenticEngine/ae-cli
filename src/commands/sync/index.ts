@@ -1,16 +1,16 @@
 /**
- * ae-cli sync —— 手动同步沙箱本地 Skill / MCP 与 te-claude 主应用
+ * ae-cli sync -- manually sync sandbox-local Skills / MCPs with the te-claude main app
  *
- * 流程：
- *   1. 读 /home/ta/te_agent_ta/.env（或 process.env）校验沙箱环境；
- *   2. 单选同步方向（工作空间 -> 主应用 / 主应用 -> 工作空间）；
- *   3. 单选资源类型（skills / mcp / both）；
- *   4. push 方向：扫描本地 → 多选 → 调 /api/sandbox/sync/push 更新 DB；
- *   5. pull 方向：拉主应用候选 → 多选 → 调 /api/sandbox/sync/pull 物化到 workspace；
- *   6. 表格输出每项结果（synced / failed）。
+ * Flow:
+ *   1. Read /home/ta/te_agent_ta/.env (or process.env) to validate the sandbox environment;
+ *   2. Single-select sync direction (workspace -> main app / main app -> workspace);
+ *   3. Single-select resource type (skills / mcp / both);
+ *   4. push direction: scan local -> multi-select -> call /api/sandbox/sync/push to update DB;
+ *   5. pull direction: fetch main-app candidates -> multi-select -> call /api/sandbox/sync/pull to materialize into workspace;
+ *   6. Render a table with the result of each item (synced / failed).
  *
- * 鉴权：X-Sandbox-Id + X-Sandbox-Secret-Key，由 te-agent-client 自动注入。
- * 范围：本期只同步 personal scope。company / system 由管理员通过其它路径维护。
+ * Auth: X-Sandbox-Id + X-Sandbox-Secret-Key, injected automatically by te-agent-client.
+ * Scope: this release syncs personal scope only. company / system are managed by admins via other paths.
  */
 
 import { Command } from 'commander';
@@ -133,10 +133,10 @@ function mcpToItem(m: McpCandidate, includeSecrets: boolean): PushMcpItem {
 async function selectSkills(): Promise<PushSkillItem[]> {
   const all = scanSkills();
   if (all.length === 0) {
-    process.stderr.write('未找到任何 Skill（扫描了当前工作空间 .claude/skills）\n');
+    process.stderr.write('No Skills found (scanned current workspace .claude/skills)\n');
     return [];
   }
-  // 按来源分组排序：先 global 后 workspace
+  // Sort by source group: global first, then workspace
   all.sort((a, b) => {
     if (a.source !== b.source) return a.source === 'global' ? -1 : 1;
     return a.slug.localeCompare(b.slug);
@@ -147,14 +147,14 @@ async function selectSkills(): Promise<PushSkillItem[]> {
     group: describeSource(s),
     hint: s.isSymlink ? '(symlink)' : undefined,
   }));
-  const picked = await promptMultiselect({ title: '选择要推送到主应用的 Skill', items });
+  const picked = await promptMultiselect({ title: 'Select Skills to push to the main app', items });
   return picked.map(skillToItem);
 }
 
 async function selectMcps(includeSecrets: boolean): Promise<PushMcpItem[]> {
   const all = scanMcps();
   if (all.length === 0) {
-    process.stderr.write('未找到任何 MCP（扫描了当前工作空间 .mcp.json / .claude/.claude.json 与全局 ~/.claude.json）\n');
+    process.stderr.write('No MCPs found (scanned current workspace .mcp.json / .claude/.claude.json and global ~/.claude.json)\n');
     return [];
   }
   all.sort((a, b) => {
@@ -165,9 +165,9 @@ async function selectMcps(includeSecrets: boolean): Promise<PushMcpItem[]> {
     value: m,
     label: m.slug,
     group: describeSource(m),
-    hint: m.hasSecrets && !includeSecrets ? '(env 已脱敏)' : undefined,
+    hint: m.hasSecrets && !includeSecrets ? '(env redacted)' : undefined,
   }));
-  const picked = await promptMultiselect({ title: '选择要推送到主应用的 MCP', items });
+  const picked = await promptMultiselect({ title: 'Select MCPs to push to the main app', items });
   return picked.map((m) => mcpToItem(m, includeSecrets));
 }
 
@@ -180,7 +180,7 @@ function renderResults(results: SyncResultRow[]) {
 
   const failed = results.filter((r) => r.status === 'failed').length;
   if (failed > 0) {
-    process.stderr.write(`\n✗ 有 ${failed} 项失败\n`);
+    process.stderr.write(`\n✗ ${failed} item(s) failed\n`);
   }
 }
 
@@ -198,7 +198,7 @@ async function selectPullResources(args: {
     return scopeDiff !== 0 ? scopeDiff : a.name.localeCompare(b.name);
   });
   if (all.length === 0) {
-    process.stderr.write(`${args.title} 无可同步候选\n`);
+    process.stderr.write(`${args.title}: no candidates available to sync\n`);
     return [];
   }
   const items: MultiselectItem<SandboxSyncPullCandidate>[] = all.map((candidate) => ({
@@ -222,7 +222,7 @@ function toHttpItems(items: Array<PushSkillItem | PushMcpItem>) {
 
 async function pushItems(kind: Kind, items: Array<PushSkillItem | PushMcpItem>): Promise<PushResult> {
   if (items.length === 0) return { results: [] };
-  // 接口 body 形态：{ kind, items: [...] }；client 已处理 sandbox internal auth
+  // Request body shape: { kind, items: [...] }; sandbox internal auth is handled by the client
   try {
     const resp = await postToMainApp<PushResult>('/api/sandbox/sync/push', {
       kind,
@@ -231,7 +231,7 @@ async function pushItems(kind: Kind, items: Array<PushSkillItem | PushMcpItem>):
     return { skillTargetRoot: resp.skillTargetRoot, results: resp.results ?? [] };
   } catch (err: unknown) {
     if (err instanceof TeAgentApiError) {
-      // 整批失败：把每项标记为 failed
+      // Entire batch failed: mark every item as failed
       return {
         results: items.map((it) => ({
           kind: it.kind,
@@ -254,7 +254,7 @@ function copySyncedSkillPackages(skillItems: PushSkillItem[], resp: PushResult):
     if (!item) continue;
     if (!resp.skillTargetRoot) {
       result.status = 'failed';
-      result.message = '主应用响应缺少 skillTargetRoot，无法复制 Skill package';
+      result.message = 'Main app response is missing skillTargetRoot; cannot copy Skill package';
       continue;
     }
     try {
@@ -265,11 +265,11 @@ function copySyncedSkillPackages(skillItems: PushSkillItem[], resp: PushResult):
       });
       updateSkillManifestForSource(item.dirPath, item.slug);
       if (copied.skipped) {
-        result.message = '源目录已是目标目录，跳过本地复制';
+        result.message = 'Source directory is already the target directory; local copy skipped';
       }
     } catch (err: unknown) {
       result.status = 'failed';
-      result.message = `本地复制失败：${(err as Error)?.message ?? String(err)}`;
+      result.message = `Local copy failed: ${(err as Error)?.message ?? String(err)}`;
     }
   }
 }
@@ -277,13 +277,13 @@ function copySyncedSkillPackages(skillItems: PushSkillItem[], resp: PushResult):
 async function selectDirection(optsDirection: string | undefined): Promise<Direction> {
   if (optsDirection === 'push' || optsDirection === 'pull') return optsDirection;
   if (optsDirection) {
-    throw new Error('--direction 仅支持 push 或 pull');
+    throw new Error('--direction must be push or pull');
   }
   return promptSingleSelect<Direction>({
-    title: '同步方向？',
+    title: 'Sync direction?',
     items: [
-      { value: 'push', label: '工作空间 -> 主应用' },
-      { value: 'pull', label: '主应用 -> 工作空间' },
+      { value: 'push', label: 'Workspace -> Main app' },
+      { value: 'pull', label: 'Main app -> Workspace' },
     ],
   });
 }
@@ -291,10 +291,10 @@ async function selectDirection(optsDirection: string | undefined): Promise<Direc
 async function selectKind(optsKind: string | undefined): Promise<ResourceKind> {
   if (optsKind === 'skill' || optsKind === 'mcp' || optsKind === 'both') return optsKind;
   if (optsKind) {
-    throw new Error('--kind 仅支持 skill、mcp 或 both');
+    throw new Error('--kind must be skill, mcp, or both');
   }
   return promptSingleSelect<ResourceKind>({
-    title: '同步哪类资源？',
+    title: 'Which resource type to sync?',
     items: [
       { value: 'skill', label: 'Skills' },
       { value: 'mcp', label: 'MCPs' },
@@ -308,11 +308,11 @@ async function runPush(kind: ResourceKind, includeSecrets: boolean): Promise<voi
   const mcpItems = kind !== 'skill' ? await selectMcps(includeSecrets) : [];
 
   if (skillItems.length === 0 && mcpItems.length === 0) {
-    process.stderr.write('未选择任何项，已退出\n');
+    process.stderr.write('Nothing selected, exiting\n');
     return;
   }
 
-  process.stderr.write(`推送 ${skillItems.length} 个 Skill / ${mcpItems.length} 个 MCP ...\n`);
+  process.stderr.write(`Pushing ${skillItems.length} Skill(s) / ${mcpItems.length} MCP(s) ...\n`);
 
   const allResults: SyncResultRow[] = [];
   if (skillItems.length > 0) {
@@ -339,7 +339,7 @@ function pullResultRows(resp: SandboxSyncPullResult): SyncResultRow[] {
 async function runPull(kind: ResourceKind): Promise<void> {
   const workspace = getCurrentWorkspace();
   if (!workspace) {
-    throw new Error('未识别当前工作空间，请在 /home/ta/workspaces/<workspace> 下执行');
+    throw new Error('Current workspace not recognized; please run from within /home/ta/workspaces/<workspace>');
   }
 
   const candidates = await getSandboxSyncPullCandidates({
@@ -349,24 +349,24 @@ async function runPull(kind: ResourceKind): Promise<void> {
   const skillItems =
     kind !== 'mcp'
       ? await selectPullResources({
-          title: '选择要同步到工作空间的 Skill',
+          title: 'Select Skills to sync to workspace',
           candidates: candidates.skills ?? [],
         })
       : [];
   const mcpItems =
     kind !== 'skill'
       ? await selectPullResources({
-          title: '选择要同步到工作空间的 MCP',
+          title: 'Select MCPs to sync to workspace',
           candidates: candidates.mcp ?? [],
         })
       : [];
 
   if (skillItems.length === 0 && mcpItems.length === 0) {
-    process.stderr.write('未选择任何项，已退出\n');
+    process.stderr.write('Nothing selected, exiting\n');
     return;
   }
 
-  process.stderr.write(`同步到工作空间 ${skillItems.length} 个 Skill / ${mcpItems.length} 个 MCP ...\n`);
+  process.stderr.write(`Syncing to workspace: ${skillItems.length} Skill(s) / ${mcpItems.length} MCP(s) ...\n`);
   const resp = await postSandboxSyncPull({
     workspacePath: workspace.name,
     kind,
@@ -392,7 +392,7 @@ export function registerSync(program: Command): void {
         else await runPull(kind);
       } catch (err: unknown) {
         if (err instanceof MultiselectCancelled) {
-          process.stderr.write('已取消\n');
+          process.stderr.write('Cancelled\n');
           return;
         }
         if (err instanceof TeAgentCredentialsError) {

@@ -1,6 +1,6 @@
 {
   "name": "@thinkingai/ae-cli",
-  "version": "1.0.27",
+  "version": "1.0.28",
   "description": "CLI tool for ThinkingAI (AE) analytics platform",
   "type": "module",
   "bin": {
@@ -16,13 +16,17 @@
   "scripts": {
     "dev": "tsx src/index.ts",
     "build": "tsup src/index.ts --format esm --outDir dist",
-    "verify:analysis-tools": "node scripts/verify-te-analysis-tools.mjs",
+    "verify:config": "node test/config-commands.test.mjs",
+    "verify:analysis-tools": "tsx scripts/verify-te-analysis-tools.mjs",
+    "verify:analysis-cluster-routing": "node scripts/verify-analysis-cluster-routing.mjs",
+    "verify:multi-cluster-mode": "node test/multi-cluster-mode.test.mjs",
     "verify:analysis-builder-dry-run": "node scripts/verify-te-analysis-builder-dry-run.mjs",
     "verify:analysis-audience-tools": "node scripts/verify-te-audience-tools.mjs",
     "verify:analysis-meta-tools": "node scripts/verify-te-meta-tools.mjs",
     "verify:analysis-common-tools": "node scripts/verify-te-common-tools.mjs",
     "verify:team-tools": "node scripts/verify-te-team-tools.mjs",
     "verify:agent-tools": "node scripts/verify-agent-tools.mjs",
+    "verify:self-check-overlay": "node test/self-check-overlay.test.mjs",
     "verify:update-check": "npx tsx test/update-check.test.mjs",
     "self-check": "node self-check/scan.mjs",
     "check:agents-docs": "node scripts/check-agents-docs-sync.mjs",

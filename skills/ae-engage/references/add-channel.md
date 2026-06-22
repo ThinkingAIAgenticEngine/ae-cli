@@ -1,6 +1,5 @@
 # ae-engage +add_channel
 
-> **Prerequisite:** Read [`../../ae-shared/SKILL.md`](../../ae-shared/SKILL.md)
 
 Create a new Engage channel.
 

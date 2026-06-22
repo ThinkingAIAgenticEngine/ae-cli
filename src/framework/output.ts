@@ -92,7 +92,7 @@ export function formatError(type: OutputEnvelope['error'] extends infer E ? E ex
 export function printError(type: 'auth' | 'api' | 'validation' | 'config', message: string, hint?: string, code?: number): void {
   const formatted = formatError(type, message, hint, code);
   process.stderr.write(formatted + '\n');
-  // 同时写入错误日志文件
+  // Also write to the error log file
   logger.error(`[${type}] ${message}${hint ? ' | ' + hint : ''}`);
 }
 

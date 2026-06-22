@@ -1,6 +1,5 @@
 # ae-engage +delete_flow
 
-> **Prerequisite:** Read [`../../ae-shared/SKILL.md`](../../ae-shared/SKILL.md)
 
 Batch delete flows.
 

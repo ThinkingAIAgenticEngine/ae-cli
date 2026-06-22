@@ -1,16 +1,24 @@
 import fs from 'fs';
 import path from 'path';
 import { safeReadJsonFile, safeJsonParse } from './json-utils.js';
-import { execFileSync } from 'node:child_process';
-import { getConfigDir, getActiveHost, extractHostname } from './config.js';
+import { getConfigDir, getActiveHost } from './config.js';
 import { logger } from './logger.js';
+import { getValidAccessToken, SecureStoreAuthError } from './secure-store.js';
 
 const TOKENS_FILE = path.join(getConfigDir(), 'tokens.json');
-const MCP_TOKENS_FILE = path.join(getConfigDir(), 'mcp-tokens.json');
+/** Legacy plaintext MCP token cache file (deprecated; automatically cleaned up on first run) */
+const LEGACY_MCP_TOKENS_FILE = path.join(getConfigDir(), 'mcp-tokens.json');
 const LEGACY_DIR = path.join(process.env.HOME || '', '.te-mcp');
-const TOKEN_TTL_MS = 20 * 60 * 60 * 1000; // 20 hours
-const OSASCRIPT_POLL_INTERVAL_MS = 2000;
-const OSASCRIPT_POLL_TIMEOUT_MS = 60000;
+
+// One-time cleanup of the legacy plaintext MCP token file at startup
+(function removeLegacyMcpTokens() {
+  try {
+    if (fs.existsSync(LEGACY_MCP_TOKENS_FILE)) {
+      fs.rmSync(LEGACY_MCP_TOKENS_FILE);
+      logger.info('auth: removed legacy mcp-tokens.json (plaintext MCP token file)');
+    }
+  } catch {}
+})();
 
 interface TokenEntry {
   token: string;
@@ -18,7 +26,6 @@ interface TokenEntry {
 }
 
 type TokenStore = Record<string, TokenEntry>;
-type McpTokenStore = Record<string, string>;
 
 function ensureDir(): void {
   const dir = getConfigDir();
@@ -40,9 +47,17 @@ export function resolveHost(hostOverride?: string): string {
  * @param hostUrl
  */
 export async function validateToken(token: string, hostUrl: string): Promise<boolean> {
-  const url = `${hostUrl}/v1/oauth/checkToken?accessToken=${token}`;
+  // F-013: the server's /v1/oauth/checkToken binds accessToken via @RequestParam (query/form), NOT a JSON body.
+  // A JSON body yields return_code -1008 ("参数(accessToken)为空") on both old and new servers, so set-token would
+  // reject even valid tokens. Send it as application/x-www-form-urlencoded: it binds to @RequestParam AND stays out
+  // of the URL/query (no token leak into access logs — the original reason a JSON body was used).
+  const url = `${hostUrl}/v1/oauth/checkToken`;
   try {
-    const resp = await fetch(url, { method: 'POST' });
+    const resp = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({ accessToken: token }).toString(),
+    });
     const respJson = safeJsonParse(await resp.text());
     return respJson?.return_code === 0;
   } catch {
@@ -92,19 +107,16 @@ function loadAllTokens(): TokenStore {
 function saveAllTokens(tokens: TokenStore): void {
   ensureDir();
   fs.writeFileSync(TOKENS_FILE, JSON.stringify(tokens, null, 2));
+  // Ensure only the current user can read/write (0600)
+  try { fs.chmodSync(TOKENS_FILE, 0o600); } catch {}
 }
 
 export function loadToken(hostUrl: string): { host: string; token: string; updatedAt: string } | null {
   const tokens = loadAllTokens();
   const entry = tokens[hostUrl];
   if (!entry || !entry.token) return null;
-  if (entry.updatedAt) {
-    const age = Date.now() - new Date(entry.updatedAt).getTime();
-    if (age > TOKEN_TTL_MS) {
-      clearToken(hostUrl);
-      return null;
-    }
-  }
+  // F-010: no client-side TTL — the token's real validity is server-authoritative. A stale token
+  // surfaces as a real 401 (lazy discovery) rather than being deleted on a fabricated 20h timer.
   return { host: hostUrl, token: entry.token, updatedAt: entry.updatedAt };
 }
 
@@ -138,204 +150,54 @@ export function getAuthStatus(hostUrl: string): { authenticated: boolean; host: 
   return { authenticated: false, host: hostUrl };
 }
 
-function getCachedMcpToken(hostUrl: string): string | undefined {
-  try {
-    if (!fs.existsSync(MCP_TOKENS_FILE)) return undefined;
-    const store = safeReadJsonFile(MCP_TOKENS_FILE) as McpTokenStore;
-    const normalizedHost = hostUrl.replace(/\/+$/, '');
-
-    if (store[hostUrl]) return store[hostUrl];
-    if (store[normalizedHost]) return store[normalizedHost];
-
-    for (const [key, token] of Object.entries(store)) {
-      if (key.replace(/\/+$/, '') === normalizedHost) {
-        return token;
-      }
-    }
-
-    return undefined;
-  } catch {
-    return undefined;
-  }
-}
-
-function extractTokenViaOsascript(hostUrl: string): { token: string | null; error: string | null } {
-  if (process.platform !== 'darwin') return { token: null, error: 'not_mac' };
-  const hostname = extractHostname(hostUrl);
-  const lines = [
-    'tell application "Google Chrome"',
-    '  repeat with w in windows',
-    '    repeat with t in tabs of w',
-    `      if URL of t contains "${hostname}" then`,
-    '        return execute t javascript "localStorage.getItem(\'ACCESS_TOKEN\')"',
-    '      end if',
-    '    end repeat',
-    '  end repeat',
-    '  return "NO_TAB_FOUND"',
-    'end tell',
-  ];
-  try {
-    const args = lines.flatMap(line => ['-e', line]);
-    const result = execFileSync('osascript', args, { encoding: 'utf8', timeout: 5000 }).trim();
-    if (result === 'NO_TAB_FOUND') return { token: null, error: 'no_tab' };
-    if (!result || result === 'missing value') return { token: null, error: 'no_token' };
-    return { token: result.replace(/^["']|["']$/g, ''), error: null };
-  } catch (e: any) {
-    const msg = e.message || '';
-    if (msg.includes('not allowed') || msg.includes('assistive access') || msg.includes('(-1743)')) {
-      return { token: null, error: 'no_js_permission' };
-    }
-    return { token: null, error: 'no_tab' };
-  }
-}
-
 /**
- * 兜底：搜索 Chrome 所有 Tab 的 localStorage 中的 ACCESS_TOKEN。
- * 用于处理登录后页面跳转到其他 URL（如 SSO 回调）导致原 hostname 匹配失败的情况。
+ * Get a valid access token. Priority order:
+ *   1. TE_TOKEN environment variable (CI / automation escape hatch)
+ *   2. Legacy tokens.json cache (written by set-token)
+ *   3. secure-store (written by device code flow; includes automatic refresh)
+ *
+ * Throws an error with guidance when no source can provide a token.
  */
-function extractTokenFromAllTabs(): { token: string | null; error: string | null } {
-  const lines = [
-    'tell application "Google Chrome"',
-    '  repeat with w in windows',
-    '    repeat with t in tabs of w',
-    '      try',
-    '        set tokenVal to execute t javascript "localStorage.getItem(\'ACCESS_TOKEN\')"',
-    '        if tokenVal is not null and tokenVal is not missing value and tokenVal is not "" then',
-    '          return tokenVal',
-    '        end if',
-    '      end try',
-    '    end repeat',
-    '  end repeat',
-    '  return "NO_TOKEN_FOUND"',
-    'end tell',
-  ];
-  try {
-    const args = lines.flatMap(line => ['-e', line]);
-    const result = execFileSync('osascript', args, { encoding: 'utf8', timeout: 10000 }).trim();
-    if (result === 'NO_TOKEN_FOUND' || !result || result === 'missing value') {
-      return { token: null, error: 'no_token' };
-    }
-    return { token: result.replace(/^["']|["']$/g, ''), error: null };
-  } catch (e: any) {
-    const msg = e.message || '';
-    if (msg.includes('not allowed') || msg.includes('assistive access') || msg.includes('(-1743)')) {
-      return { token: null, error: 'no_js_permission' };
-    }
-    return { token: null, error: 'no_tab' };
-  }
-}
-
-async function requestTokenViaOsascript(hostUrl: string): Promise<string | null> {
-  logger.info(`Opening Chrome to ${hostUrl} for token extraction`);
-  process.stderr.write(`[ae-cli] No AE tab found in Chrome. Opening ${hostUrl} ...\n`);
-  process.stderr.write(`[ae-cli] Please login, then your token will be captured automatically.\n`);
-  try {
-    const openScript = [
-      'tell application "Google Chrome"',
-      '  activate',
-      '  if (count of windows) > 0 then',
-      `    make new tab at end of tabs of window 1 with properties {URL:"${hostUrl}"}`,
-      '  else',
-      `    open location "${hostUrl}"`,
-      '  end if',
-      'end tell',
-    ];
-    execFileSync('osascript', openScript.flatMap(line => ['-e', line]), { timeout: 5000 });
-  } catch {
-    logger.warn(`Failed to open Chrome, user may need to open ${hostUrl} manually`);
-    process.stderr.write(`[ae-cli] Could not open browser. Please open ${hostUrl} in Chrome manually.\n`);
-  }
-  const deadline = Date.now() + OSASCRIPT_POLL_TIMEOUT_MS;
-  let pollCount = 0;
-  while (Date.now() < deadline) {
-    await new Promise(r => setTimeout(r, OSASCRIPT_POLL_INTERVAL_MS));
-    pollCount++;
-    let result = extractTokenViaOsascript(hostUrl);
-    // hostname 匹配不到时兜底搜全 Tab（登录后页面跳转到其他 URL 如 SSO 回调）
-    if (result.error === 'no_tab') {
-      const fallback = extractTokenFromAllTabs();
-      if (fallback.token) {
-        logger.info('Token captured via all-tabs fallback search');
-        result = fallback;
-      }
-    }
-    if (result.token) {
-      saveToken(result.token, hostUrl);
-      logger.info(`Token captured after ${pollCount} poll(s)`);
-      process.stderr.write(`[ae-cli] Token captured from Chrome for ${hostUrl}.\n`);
-      return result.token;
-    }
-    if (result.error === 'no_js_permission') {
-      logger.warn('Chrome JS permission denied during polling');
-      return null;
-    }
-  }
-  logger.warn(`Token polling timed out after ${OSASCRIPT_POLL_TIMEOUT_MS / 1000}s (${pollCount} polls)`);
-  process.stderr.write(`[ae-cli] Polling timed out after ${OSASCRIPT_POLL_TIMEOUT_MS / 1000}s.\n`);
-  return null;
-}
-
 export async function getToken(hostUrl: string): Promise<string> {
   if (!hostUrl) {
     throw new Error(
       `No AE host configured.\n` +
-      `Run: ae-cli config set-host`
+      `Run: ae-cli config set-host <url>`
     );
   }
 
-  // 1. Environment variable
+  // 1. Environment variable (CI / headless escape hatch)
   if (process.env.TE_TOKEN) {
     logger.info('Using token from env:TE_TOKEN');
     return process.env.TE_TOKEN;
   }
 
-  // 2. Cached token for this URL
+  // 2. Legacy tokens.json cache (compatible with set-token)
   const cached = loadToken(hostUrl);
   if (cached && cached.token) {
     logger.info(`Using cached token for ${hostUrl}`);
     return cached.token;
   }
 
-  // 3. If an MCP token is already available, do not trigger browser login.
-  if (getCachedMcpToken(hostUrl)) {
-    logger.info(`MCP token exists for ${hostUrl}; skipping browser token extraction`);
-    throw new Error(
-      `MCP token already exists for ${hostUrl}; skipped browser login.\n` +
-      `Use an MCP-token aware command, or run: ae-cli auth set-token <token>`
-    );
-  }
-
-  // 4. osascript extraction
-  const { token: osascriptToken, error } = extractTokenViaOsascript(hostUrl);
-  if (error === 'no_js_permission') {
-    logger.warn('Chrome JS Apple Events not enabled');
-    throw new Error(
-      `Chrome JavaScript from Apple Events is not enabled.\n` +
-      `Enable it: Chrome menu → View → Developer → Allow JavaScript from Apple Events`
-    );
-  }
-  if (error === 'not_mac') {
-    throw new Error(
-      `Auto token extraction is only available on macOS + Chrome.\n` +
-      `Use: ae-cli auth set-token <token>`
-    );
-  }
-  if (osascriptToken) {
-    saveToken(osascriptToken, hostUrl);
-    return osascriptToken;
-  }
-
-  // 5. Open Chrome and poll
-  const polledToken = await requestTokenViaOsascript(hostUrl);
-  if (polledToken) {
-    saveToken(polledToken, hostUrl);
-    return polledToken;
+  // 3. secure-store (device code flow; includes automatic refresh)
+  try {
+    const secureToken = await getValidAccessToken(hostUrl);
+    logger.info(`Using secure-store token for ${hostUrl}`);
+    return secureToken;
+  } catch (e: any) {
+    if (e instanceof SecureStoreAuthError) {
+      // secure-store has no token or refresh failed
+      logger.info(`secure-store: ${e.message}`);
+    } else {
+      logger.warn(`secure-store unexpected error: ${e.message}`);
+    }
   }
 
   throw new Error(
     `Cannot obtain token for ${hostUrl}.\n` +
     `Options:\n` +
-    `  1. ae-cli auth login (macOS + Chrome)\n` +
-    `  2. ae-cli auth set-token <token>`
+    `  1. ae-cli auth login   (device code flow, cross-platform)\n` +
+    `  2. ae-cli auth set-token <token>\n` +
+    `  3. export TE_TOKEN=<token>  (CI/headless)`
   );
 }

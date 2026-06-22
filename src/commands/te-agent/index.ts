@@ -1,7 +1,7 @@
 /**
- * ae-cli agent 命令域
+ * ae-cli agent command domain
  *
- * 统一导出模型、MCP、Skill、附件库四个模块的 15 个命令。
+ * Unified export of 15 commands across the four modules: models, MCP, Skills, and attachments.
  */
 
 import type { Command } from '../../framework/types.js';
@@ -11,13 +11,13 @@ import { listSkills, addSkill, delSkill, toggleSkill } from './skills.js';
 import { listAttachments, addAttachment, delAttachment } from './attachments.js';
 
 const commands: Command[] = [
-  // 模型管理
+  // Model management
   listModels, addModel, delModel, toggleModel,
-  // MCP 服务管理
+  // MCP server management
   listMcps, addMcp, delMcp, toggleMcp,
-  // Skill 管理
+  // Skill management
   listSkills, addSkill, delSkill, toggleSkill,
-  // 附件库管理
+  // Attachment library management
   listAttachments, addAttachment, delAttachment,
 ];
 

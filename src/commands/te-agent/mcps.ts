@@ -1,10 +1,10 @@
 /**
- * ae-cli agent MCP 服务管理命令
+ * ae-cli agent MCP server management commands
  *
- * +list-mcps   — 列出 MCP 服务
- * +add-mcp     — 添加 MCP 服务（personal）
- * +del-mcp     — 删除 personal MCP
- * +toggle-mcp  — 启用/禁用 MCP
+ * +list-mcps   — list MCP servers
+ * +add-mcp     — add an MCP server (personal)
+ * +del-mcp     — delete a personal MCP server
+ * +toggle-mcp  — enable/disable an MCP server
  */
 
 import type { Command } from '../../framework/types.js';
@@ -28,7 +28,7 @@ export const listMcps: Command = {
   validate: (ctx) => {
     const scope = ctx.str('scope');
     if (scope && !['personal', 'company', 'system'].includes(scope)) {
-      throw new Error('--scope 必须是 personal、company 或 system');
+      throw new Error('--scope must be personal, company, or system');
     }
   },
   dryRun: (ctx) => {
@@ -59,19 +59,19 @@ export const addMcp: Command = {
   validate: (ctx) => {
     const name = ctx.str('name');
     if (!/^[a-zA-Z][a-zA-Z0-9_-]*$/.test(name)) {
-      throw new Error('--name 必须以字母开头，仅包含字母、数字、_、-');
+      throw new Error('--name must start with a letter and contain only letters, digits, _, or -');
     }
     if (name.length < 2 || name.length > 64) {
-      throw new Error('--name 长度必须在 2-64 之间');
+      throw new Error('--name length must be between 2 and 64');
     }
-    try { new URL(ctx.str('url')); } catch { throw new Error('--url 必须是有效 URL'); }
-    // 协议白名单：拦截 file:// / ftp:// 等以及 SSRF 常用的非 http 协议
+    try { new URL(ctx.str('url')); } catch { throw new Error('--url must be a valid URL'); }
+    // Protocol allowlist: block file://, ftp://, and other non-HTTP protocols commonly used in SSRF
     if (!/^https?:\/\//i.test(ctx.str('url'))) {
-      throw new Error('--url 仅支持 http:// 或 https:// 协议');
+      throw new Error('--url only supports http:// or https:// protocols');
     }
     const transport = ctx.str('transport');
     if (transport && !['sse', 'http'].includes(transport)) {
-      throw new Error('--transport 必须是 sse 或 http');
+      throw new Error('--transport must be sse or http');
     }
   },
   dryRun: (ctx) => ({

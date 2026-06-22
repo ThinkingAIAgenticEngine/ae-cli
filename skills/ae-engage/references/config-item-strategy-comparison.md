@@ -1,6 +1,5 @@
 # ae-engage +config_item_strategy_comparison
 
-> **Prerequisite:** Read [`../../ae-shared/SKILL.md`](../../ae-shared/SKILL.md)
 
 Compare multiple strategies under the same config item.
 

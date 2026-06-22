@@ -4,7 +4,7 @@
 
 - **CLI**：`ae-cli` 多域命令（`meta`、`analysis`、`audience`、`operation`、`community`）、全局选项、`auth` / `config`、`api` 原始调用。
 - **社区域**：`src/commands/te-community/` 下多条子命令（列表见 `te-community/index.ts` 导出数组）；MCP 映射注册 `community_content`、`community_analysis`、`community_hot`。
-- **Skills**：`skills/ae-shared`、`te-meta`、`ae-analysis`、`te-audience`、`te-operation`、`ae-community` 及大量 `references`。
+- **Skills**：`ae-analysis`、`ae-community`、`ae-dataops`、`ae-engage`、`ae-kb`、`ae-team`、`ae-agent`、`ae-analysis-global` 及大量 `references`。
 - **构建**：`tsup` → `dist/`，`prepublishOnly` 触发 build。
 
 ## 待改进 / 已知不一致

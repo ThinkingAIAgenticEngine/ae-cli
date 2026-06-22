@@ -1,7 +1,7 @@
 /**
- * ae-cli 数据查询 limit 物理上限 / 双层 limit 守卫 单测
+ * ae-cli data query limit hard cap / dual-layer limit guard unit tests
  *
- * 运行方式：
+ * Run:
  *   npx tsx tests/query-limit.test.ts
  */
 

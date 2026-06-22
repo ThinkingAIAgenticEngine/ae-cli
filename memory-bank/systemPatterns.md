@@ -17,7 +17,7 @@
 ## Skills 布局
 
 - 每个 skill 包：`skills/<name>/SKILL.md` + `references/*.md`（单命令深度说明）。
-- 与代码域对应关系示例：`te-meta` ↔ `meta`，`ae-analysis` ↔ `analysis`，`te-audience` ↔ `audience`，`te-operation` ↔ `operation`，`ae-community` ↔ `community`，`ae-shared` 为共享前置。
+- 与代码域对应关系示例：`te-meta` ↔ `meta`，`ae-analysis` ↔ `analysis`，`te-audience` ↔ `audience`，`te-operation` ↔ `operation`，`ae-community` ↔ `community`。
 
 ## 命名与扩展
 

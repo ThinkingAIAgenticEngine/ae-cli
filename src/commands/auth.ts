@@ -3,23 +3,91 @@ import { getToken, clearToken, setTokenManual, getAuthStatus, resolveHost } from
 import { loadConfig, saveConfig } from '../core/config.js';
 import { printOutput, printError } from '../framework/output.js';
 import { validateToken } from '../core/auth.js';
-import { setMcpTokenManual, clearMcpToken, validateMcpToken, loadMcpTokenStore } from '../core/mcp.js';
+import { setMcpTokenManual, clearMcpToken, validateMcpToken } from '../core/mcp.js';
 import { logger } from '../core/logger.js';
+import {
+  runDeviceFlow,
+  authorizeDevice,
+  pollDeviceFlow,
+  buildVerificationUrl,
+  DeviceFlowUnsupportedError,
+  type DeviceTokenResponse,
+} from '../core/device-auth.js';
+import { save as secureStoreSave, load as secureStoreLoad, clear as secureStoreClear } from '../core/secure-store.js';
+
+/** Shared --host flag description (also available globally: ae-cli --host <url> auth <cmd>) */
+const HOST_OPTION_DESC = 'Override active AE host URL (e.g., https://ta.thinkingdata.cn)';
+
+type AuthHostOpts = { host?: string };
+
+function resolveAuthHost(program: Command, opts: AuthHostOpts): string {
+  return resolveHost(opts.host || program.opts().host);
+}
+
+/** Persist device-flow tokens to the encrypted secure store (shared by the full and split-flow resume paths). */
+function persistDeviceTokens(host: string, tokens: DeviceTokenResponse): void {
+  // C2: expires_in is a server heuristic in seconds (~72000 = 20h); sanity-check before use
+  const DEFAULT_EXPIRES_IN = 72000;
+  const MAX_EXPIRES_IN = 86400 * 365; // 1 year upper bound
+  let expiresInSeconds = tokens.expires_in ?? DEFAULT_EXPIRES_IN;
+  if (!Number.isFinite(expiresInSeconds) || expiresInSeconds <= 0 || expiresInSeconds > MAX_EXPIRES_IN) {
+    logger.warn(`auth login: expires_in=${tokens.expires_in} is out of range, falling back to ${DEFAULT_EXPIRES_IN}s`);
+    expiresInSeconds = DEFAULT_EXPIRES_IN;
+  }
+  const expiresAt = new Date(Date.now() + expiresInSeconds * 1000).toISOString();
+  // I1: refresh_token is optional (may be absent in dev-login); pass empty string when missing
+  // F-010: persist the (non-expiring) mcpToken as the durable credential so MCP-based commands stay logged in
+  secureStoreSave(host, {
+    accessToken: tokens.access_token,
+    refreshToken: tokens.refresh_token ?? '',
+    accessExpiresAt: expiresAt,
+    mcpToken: tokens.mcp_token ?? undefined,
+  });
+}
+
+/** Build the machine-readable login summary printed on success. */
+function loginSummary(host: string, tokens: DeviceTokenResponse) {
+  return {
+    authenticated: true,
+    host,
+    token: tokens.access_token.slice(0, 8) + '...',
+    mcpToken: tokens.mcp_token ? tokens.mcp_token.slice(0, 8) + '...' : null,
+  };
+}
+
+/**
+ * Resolve the base URL of te-claude (the Agent workbench).
+ * te-claude is mounted at the host's base path (NEXT_PUBLIC_BASE_PATH; AE deployment convention is /agent).
+ * The device code endpoints /api/auth/device/* are te-claude routes and must use the te-claude base,
+ * NOT the bare analysis-platform host (which hits the root SPA and returns an index.html 404).
+ * Priority: TE_CLAUDE_BASE_URL (full override) > host + TE_CLAUDE_BASE_PATH (default /agent).
+ */
+function resolveTeClaudeBase(host: string): string {
+  const override = process.env.TE_CLAUDE_BASE_URL;
+  if (override) return override.replace(/\/+$/, '');
+  const base = host.replace(/\/+$/, '');
+  const basePath = process.env.TE_CLAUDE_BASE_PATH || '/agent';
+  return base.endsWith(basePath) ? base : base + basePath;
+}
 
 export function registerAuth(program: Command): void {
   const auth = program.command('auth').description('Authentication management');
 
   auth
     .command('login')
-    .description('Login to AE (auto-extract token from Chrome on macOS)')
-    .action(async () => {
-      const host = resolveHost(program.opts().host);
+    .description('Log in to AE using the device code flow (cross-platform; --no-browser to print URL only)')
+    .option('--host <url>', HOST_OPTION_DESC)
+    .option('--no-browser', 'Do not auto-open the browser; only print the authorization URL (headless / Linux)')
+    .option('--no-wait', 'Request the device code and print the authorization URL as JSON, then exit without polling (for AI agents / split-flow). Resume with --device-code')
+    .option('--device-code <code>', 'Resume a split-flow login: poll for the given device code until authorized, then save the token')
+    .action(async (opts: { host?: string; browser: boolean; wait: boolean; deviceCode?: string }) => {
+      const host = resolveAuthHost(program, opts);
       if (!host) {
-        printError('config', 'No AE host configured.', 'Run: ae-cli config set-host');
+        printError('config', 'No AE host configured.', 'Run: ae-cli config set-host <url>');
         process.exit(1);
       }
 
-      // 确保 host 存在于配置中（与 auth set-token 行为一致）
+      // Ensure the host exists in the config
       const config = loadConfig();
       if (!config.hosts[host]) {
         config.hosts[host] = { label: host };
@@ -31,12 +99,56 @@ export function registerAuth(program: Command): void {
         process.stderr.write(`[ae-cli] Config saved for ${host}\n`);
       }
 
+      // opts.browser is false when the user passed --no-browser (commander default is true)
+      const noBrowser = !opts.browser;
+      const fmt = program.opts().format || 'json';
+      const teClaudeBase = resolveTeClaudeBase(host);
+      const emit = (msg: string) => process.stderr.write(`[ae-cli] ${msg}\n`);
+
       try {
-        const token = await getToken(host);
-        logger.info(`Auth login successful for ${host}`);
-        process.stderr.write(`[ae-cli] Authenticated to ${host}\n`);
-        printOutput({ authenticated: true, host, token: token.slice(0, 8) + '...' }, program.opts().format || 'json');
+        // Split-flow resume: poll only for the provided device code, then save (no re-authorize)
+        if (opts.deviceCode) {
+          const tokens = await pollDeviceFlow(teClaudeBase, opts.deviceCode, {}, emit);
+          persistDeviceTokens(host, tokens);
+          logger.info(`Device flow login successful for ${host} (resumed)`);
+          emit('Login successful! Token saved securely.');
+          printOutput(loginSummary(host, tokens), fmt);
+          return;
+        }
+
+        // Split-flow start: authorize only, print device code + URL as JSON, then exit without polling.
+        // opts.wait is false when the user passed --no-wait (commander default is true).
+        if (opts.wait === false) {
+          const authResp = await authorizeDevice(teClaudeBase);
+          printOutput(
+            {
+              device_code: authResp.device_code,
+              user_code: authResp.user_code,
+              verification_url: buildVerificationUrl(teClaudeBase, authResp.user_code),
+              interval: authResp.interval,
+              expires_in: authResp.expires_in,
+              next: `Open verification_url in a browser to authorize, then run: ae-cli auth login --device-code ${authResp.device_code}`,
+            },
+            fmt,
+          );
+          return;
+        }
+
+        // Full blocking flow (authorize + poll in one shot)
+        const tokens = await runDeviceFlow(teClaudeBase, { noBrowser }, emit);
+        persistDeviceTokens(host, tokens);
+        logger.info(`Device flow login successful for ${host}`);
+        emit('Login successful! Token saved securely.');
+        printOutput(loginSummary(host, tokens), fmt);
       } catch (err: any) {
+        if (err instanceof DeviceFlowUnsupportedError) {
+          printError(
+            'auth',
+            err.message,
+            'Use `ae-cli auth set-token <token>` to authenticate, or upgrade the AE server to a version that supports device login.',
+          );
+          process.exit(1);
+        }
         printError('auth', err.message);
         process.exit(1);
       }
@@ -44,14 +156,15 @@ export function registerAuth(program: Command): void {
 
   auth
     .command('set-token <token>')
-    .description('Manually set authentication token for active host')
-    .action(async (token: string) => {
-      const host = resolveHost(program.opts().host);
+    .description('Manually set authentication token for a host (--host or active host)')
+    .option('--host <url>', HOST_OPTION_DESC)
+    .action(async (token: string, opts: AuthHostOpts) => {
+      const host = resolveAuthHost(program, opts);
       if (!host) {
-        printError('config', 'No AE host configured.', 'Run: ae-cli config set-host');
+        printError('config', 'No AE host configured.', 'Run: ae-cli config set-host <url>');
         process.exit(1);
       }
-      // 确保 host 存在于配置中
+      // Ensure the host exists in the config
       const config = loadConfig();
       if (!config.hosts[host]) {
         config.hosts[host] = { label: host };
@@ -63,7 +176,7 @@ export function registerAuth(program: Command): void {
         printOutput({ saved: true, config }, program.opts().format || 'json');
       }
 
-      // 验证 token 是否有效
+      // Validate token
       process.stderr.write(`[ae-cli] Validating token...\n`);
       const isValid = await validateToken(token, host);
       if (!isValid) {
@@ -80,59 +193,73 @@ export function registerAuth(program: Command): void {
 
   auth
     .command('status')
-    .description('Show current authentication status')
-    .action(async () => {
-      const host = resolveHost(program.opts().host);
+    .description('Show authentication status for a host (--host or active host)')
+    .option('--host <url>', HOST_OPTION_DESC)
+    .action(async (opts: AuthHostOpts) => {
+      const host = resolveAuthHost(program, opts);
       if (!host) {
-        printOutput({ authenticated: false, host: '(none)', hint: 'Run: ae-cli config set-host' }, program.opts().format || 'json');
+        printOutput({ authenticated: false, host: '(none)', hint: 'Run: ae-cli config set-host <url>' }, program.opts().format || 'json');
         return;
       }
 
-      // 检查 access token
-      const tokenStatus = getAuthStatus(host);
-      const hasValidToken = tokenStatus.authenticated;
-
-      // 检查 MCP token
-      const mcpStore = loadMcpTokenStore();
-      const cachedMcpToken = mcpStore[host];
-      let hasValidMcpToken = false;
-
-      if (cachedMcpToken) {
-        // 有缓存的 MCP token，验证是否有效
-        hasValidMcpToken = await validateMcpToken(cachedMcpToken, host);
+      // Check secure-store first (written by the device code flow)
+      const secureEntry = secureStoreLoad(host);
+      if (secureEntry) {
+        // F-010: a stored credential means logged in. `accessExpiresAt` is a STATIC snapshot from login,
+        // but the server slides the access token on use, so it is advisory only — real validity is decided
+        // lazily (a command returns an auth error when the session is truly gone). The mcpToken is
+        // non-expiring, so MCP-based commands stay authenticated regardless of the static access expiry.
+        const pastStaticExpiry = new Date(secureEntry.accessExpiresAt).getTime() < Date.now();
+        printOutput(
+          {
+            authenticated: true,
+            host,
+            source: 'secure-store',
+            accessExpiresAt: secureEntry.accessExpiresAt,
+            accessExpiresAtNote: 'advisory: access token auto-slides on use server-side; re-login only if a command returns an auth error',
+            pastStaticExpiry,
+            hasMcpToken: !!secureEntry.mcpToken,
+          },
+          program.opts().format || 'json',
+        );
+        return;
       }
 
-      // 任一有效则显示 authenticated: true
-      const authenticated = hasValidToken || hasValidMcpToken;
+      // Fallback: check legacy access token cache (set-token / TE_TOKEN)
+      const tokenStatus = getAuthStatus(host);
+      const authenticated = tokenStatus.authenticated;
 
-      printOutput({ authenticated, host }, program.opts().format || 'json');
+      printOutput({ authenticated, host, source: tokenStatus.source ?? 'none' }, program.opts().format || 'json');
     });
 
   auth
     .command('logout')
-    .description('Clear stored token for active host')
-    .action(() => {
-      const host = resolveHost(program.opts().host);
+    .description('Clear stored token for a host (--host or active host)')
+    .option('--host <url>', HOST_OPTION_DESC)
+    .action((opts: AuthHostOpts) => {
+      const host = resolveAuthHost(program, opts);
       if (!host) {
-        printError('config', 'No AE host configured.', 'Run: ae-cli config set-host');
+        printError('config', 'No AE host configured.', 'Run: ae-cli config set-host <url>');
         process.exit(1);
       }
       clearToken(host);
+      // I2: also clear secure-store so device-code tokens are wiped on logout
+      secureStoreClear(host);
       process.stderr.write(`[ae-cli] Token cleared for ${host}\n`);
       printOutput({ cleared: true, host }, program.opts().format || 'json');
     });
 
   auth
     .command('set-mcp-token <token>')
-    .description('Manually set MCP token for a host')
-    .option('--host <host>', 'Target host URL (defaults to active host)')
-    .action(async (token: string, opts: Record<string, any>) => {
-      const host = opts.host || resolveHost(program.opts().host);
+    .description('Manually set MCP token for a host (--host or active host)')
+    .option('--host <url>', HOST_OPTION_DESC)
+    .action(async (token: string, opts: AuthHostOpts) => {
+      const host = resolveAuthHost(program, opts);
       if (!host) {
-        printError('config', 'No AE host configured.', 'Use --host <url> or run: ae-cli config set-host');
+        printError('config', 'No AE host configured.', 'Use --host <url> or run: ae-cli config set-host <url>');
         process.exit(1);
       }
-      // 确保 host 存在于配置中
+      // Ensure the host exists in the config
       const config = loadConfig();
       if (!config.hosts[host]) {
         config.hosts[host] = { label: host };
@@ -143,7 +270,7 @@ export function registerAuth(program: Command): void {
         process.stderr.write(`[ae-cli] Host config saved for ${host}\n`);
       }
 
-      // 验证 MCP token 是否有效
+      // Validate MCP token
       process.stderr.write(`[ae-cli] Validating MCP token...\n`);
       const isValid = await validateMcpToken(token, host);
       if (!isValid) {
@@ -159,19 +286,19 @@ export function registerAuth(program: Command): void {
 
   auth
     .command('clear-mcp-token')
-    .description('Clear stored MCP token for a host')
-    .option('--host <host>', 'Target host URL (defaults to active host)')
+    .description('Clear stored MCP token for a host (--host or active host; --all clears all)')
+    .option('--host <url>', HOST_OPTION_DESC)
     .option('--all', 'Clear MCP tokens for all hosts')
-    .action((opts: Record<string, any>) => {
+    .action((opts: AuthHostOpts & { all?: boolean }) => {
       if (opts.all) {
         clearMcpToken();
         process.stderr.write(`[ae-cli] All MCP tokens cleared\n`);
         printOutput({ cleared: true, type: 'all-mcp-tokens' }, program.opts().format || 'json');
         return;
       }
-      const host = opts.host || resolveHost(program.opts().host);
+      const host = resolveAuthHost(program, opts);
       if (!host) {
-        printError('config', 'No AE host configured.', 'Use --host <url> or run: ae-cli config set-host');
+        printError('config', 'No AE host configured.', 'Use --host <url> or run: ae-cli config set-host <url>');
         process.exit(1);
       }
       clearMcpToken(host);

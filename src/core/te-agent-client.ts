@@ -1,13 +1,18 @@
 /**
- * te-agent 主应用 HTTP 客户端
+ * te-agent main app HTTP client
  *
- * 与 src/core/client.ts（AE 平台 client）独立：鉴权用 X-Sandbox-Id + X-Sandbox-Secret-Key，host 来自
- * ~/.te-agent/credentials.json，不读 ~/.ae-cli/config.json。
+ * Auth header selection logic (priority high -> low):
+ *   1. Sandbox credentials complete (url + sandboxId + sandboxSecretKey) -> X-Sandbox-Id / X-Sandbox-Secret-Key
+ *   2. Sandbox credentials missing but user access token present (TE_TOKEN / tokens.json / secure-store)
+ *      -> Authorization: bearer <accessToken>; URL from sandbox url (if TE_CLAUDE_BASE_URL is configured)
+ *        or falls back to ae-cli activeHost (written by `ae-cli config set-host`)
+ *   3. Neither available -> throws TeAgentCredentialsError (with hint)
  *
- * 支持 ae-cli sync / model 等命令。
+ * Independent of src/core/client.ts (AE platform client). Supports ae-cli sync / model / agent commands.
  */
 
-import { loadTeAgentCredentials, TeAgentCredentialsError } from './te-agent-credentials.js';
+import { tryLoadTeAgentSandboxCredentials, loadTeAgentCredentials, TeAgentCredentialsError } from './te-agent-credentials.js';
+import { getActiveHost } from './config.js';
 
 export class TeAgentApiError extends Error {
   constructor(
@@ -27,13 +32,13 @@ interface SignedRequest {
   rawBody: string;
 }
 
-// 默认请求超时：常规接口 30s，文件上传放宽到 120s
+// Default request timeouts: 30s for regular endpoints, relaxed to 120s for file uploads
 const DEFAULT_TIMEOUT_MS = 30_000;
 const UPLOAD_TIMEOUT_MS = 120_000;
 
 /**
- * 带超时的 fetch 包装：超时后 abort 并抛 TeAgentApiError(code:TIMEOUT)，
- * 避免主应用响应慢或 TCP 半开时 CLI 无限挂起。
+ * Fetch wrapper with timeout: aborts and throws TeAgentApiError(code:TIMEOUT) on timeout,
+ * preventing the CLI from hanging indefinitely when the main app is slow or the TCP connection is half-open.
  */
 async function fetchWithTimeout(
   url: string,
@@ -46,26 +51,80 @@ async function fetchWithTimeout(
     return await fetch(url, { ...init, signal: controller.signal });
   } catch (err: any) {
     if (err?.name === 'AbortError') {
-      throw new TeAgentApiError(`请求超时（${timeoutMs}ms）：${url}`, 0, 'TIMEOUT');
+      throw new TeAgentApiError(`Request timed out (${timeoutMs}ms): ${url}`, 0, 'TIMEOUT');
     }
-    throw new TeAgentApiError(`网络请求失败：${err?.message ?? err}`, 0, 'NETWORK_ERROR');
+    throw new TeAgentApiError(`Network request failed: ${err?.message ?? err}`, 0, 'NETWORK_ERROR');
   } finally {
     clearTimeout(timer);
   }
 }
 
-function signRequest(method: 'GET' | 'POST' | 'DELETE' | 'PATCH', path: string, rawBody: string): SignedRequest {
-  const cred = loadTeAgentCredentials();
-  const { url: baseUrl, sandboxId, sandboxSecretKey } = cred.mainApp;
+/**
+ * Resolves the te-claude base URL (used as fallback for the user Bearer path).
+ * Priority: TE_CLAUDE_BASE_URL (full override) > activeHost + te-claude base path (default /agent).
+ * Consistent with device-code login: bare activeHost points to the root analytics platform SPA; te-claude lives under the /agent basePath.
+ */
+function teClaudeBaseFromActiveHost(): string | undefined {
+  const override = process.env.TE_CLAUDE_BASE_URL;
+  if (override) return override.replace(/\/+$/, '');
+  const h = getActiveHost();
+  if (!h) return undefined;
+  const base = h.replace(/\/+$/, '');
+  const bp = process.env.TE_CLAUDE_BASE_PATH || '/agent';
+  return base.endsWith(bp) ? base : base + bp;
+}
 
+/**
+ * Builds a signed request (including auth headers + URL).
+ *
+ * Auth header selection logic:
+ *   - Sandbox credentials complete -> X-Sandbox-Id / X-Sandbox-Secret-Key (preserves the in-sandbox path)
+ *   - Sandbox credentials missing but user token present -> Authorization: bearer <token> (out-of-sandbox path)
+ *   - Neither available -> throws TeAgentCredentialsError (with hint)
+ */
+async function signRequest(method: 'GET' | 'POST' | 'DELETE' | 'PATCH', path: string, rawBody: string): Promise<SignedRequest> {
+  const sandboxCred = tryLoadTeAgentSandboxCredentials();
+
+  // --- Sandbox path: credentials complete ---
+  if (sandboxCred && sandboxCred.sandboxId && sandboxCred.sandboxSecretKey) {
+    const headers: Record<string, string> = {
+      'X-Sandbox-Id': sandboxCred.sandboxId,
+      'X-Sandbox-Secret-Key': sandboxCred.sandboxSecretKey,
+    };
+    if (method === 'POST' || method === 'PATCH') {
+      headers['Content-Type'] = 'application/json';
+    }
+    return {
+      url: `${sandboxCred.url.replace(/\/$/, '')}${path}`,
+      headers,
+      rawBody,
+    };
+  }
+
+  // --- User Bearer path: sandbox credentials missing but user token present ---
+  // Dynamic import to avoid circular dependency (auth.ts -> config.ts already exists; load only when needed)
+  const { getToken } = await import('./auth.js');
+
+  // Determine base URL: prefer the sandbox url field (reuse even if sandbox Id/Key are missing but URL is present),
+  // otherwise fall back to the ae-cli-configured activeHost (set by the user via `ae-cli config set-host`).
+  const baseUrl = sandboxCred?.url || teClaudeBaseFromActiveHost();
+
+  if (!baseUrl) {
+    throw new TeAgentCredentialsError(
+      'Cannot determine the te-claude service URL',
+      'Run ae-cli config set-host <url> to configure the service URL, or execute inside a te-agent sandbox',
+    );
+  }
+
+  // Note: the API URL uses baseUrl (including /agent), but the token is retrieved under the bare activeHost —
+  // tokens are stored under the bare host at login time, and the refresh endpoint is at root /v1 (not under /agent).
+  const accessToken = await getToken(getActiveHost() || baseUrl);
   const headers: Record<string, string> = {
-    'X-Sandbox-Id': sandboxId,
-    'X-Sandbox-Secret-Key': sandboxSecretKey,
+    'Authorization': `bearer ${accessToken}`,
   };
   if (method === 'POST' || method === 'PATCH') {
     headers['Content-Type'] = 'application/json';
   }
-
   return {
     url: `${baseUrl.replace(/\/$/, '')}${path}`,
     headers,
@@ -85,6 +144,18 @@ async function parseResponse<T>(response: Response, defaultErrorPrefix: string):
   }
 
   if (!response.ok) {
+    if (response.status === 401) {
+      // F-010: session expired. The access token slides server-side on use, so a dead one is only
+      // discovered here via a 401 (lazy). Surface a clean re-login hint instead of a raw status.
+      // F-016: 403 is NOT handled here — it means authenticated-but-forbidden (e.g. deleting a
+      // company/system resource). Let it fall through to surface the server's permission message.
+      throw new TeAgentApiError(
+        `Session expired or unauthorized. Please run: ae-cli auth login`,
+        response.status,
+        'auth_expired',
+        parsed,
+      );
+    }
     const message =
       typeof parsed === 'object' && parsed && typeof parsed.error === 'string'
         ? parsed.error
@@ -100,14 +171,14 @@ async function parseResponse<T>(response: Response, defaultErrorPrefix: string):
 }
 
 /**
- * POST 到主应用，自动签名。返回解析后的 JSON。
+ * POST to the main app with automatic signing. Returns parsed JSON.
  *
- * @param path 主应用接口路径，如 /api/sandbox/sync/push
- * @param body 请求体（任意 JSON-serializable 对象）
+ * @param path Main app endpoint path, e.g. /api/sandbox/sync/push
+ * @param body Request body (any JSON-serializable object)
  */
 export async function postToMainApp<T = unknown>(path: string, body: unknown): Promise<T> {
   const rawBody = JSON.stringify(body);
-  const signed = signRequest('POST', path, rawBody);
+  const signed = await signRequest('POST', path, rawBody);
 
   const response = await fetchWithTimeout(signed.url, {
     method: 'POST',
@@ -115,26 +186,26 @@ export async function postToMainApp<T = unknown>(path: string, body: unknown): P
     body: signed.rawBody,
   });
 
-  return parseResponse<T>(response, '主应用返回');
+  return parseResponse<T>(response, 'Main app returned');
 }
 
 /**
- * GET 主应用，自动注入沙箱内部鉴权头。返回解析后的 JSON。
+ * GET from the main app with automatic sandbox auth header injection. Returns parsed JSON.
  *
- * @param path 主应用接口路径（含 query string），如 /api/sandbox/models?current=cuid
+ * @param path Main app endpoint path (including query string), e.g. /api/sandbox/models?current=cuid
  */
 export async function getFromMainApp<T = unknown>(path: string): Promise<T> {
-  const signed = signRequest('GET', path, '');
+  const signed = await signRequest('GET', path, '');
 
   const response = await fetchWithTimeout(signed.url, {
     method: 'GET',
     headers: signed.headers,
   });
 
-  return parseResponse<T>(response, '主应用返回');
+  return parseResponse<T>(response, 'Main app returned');
 }
 
-// --- 模型查询接口 ---
+// --- Model query endpoints ---
 
 export interface SandboxModelSummary {
   id: string;
@@ -196,9 +267,9 @@ export interface SandboxSyncPullResult {
 }
 
 /**
- * 拉取沙箱当前用户可见的模型列表。
+ * Fetches the list of models visible to the current sandbox user.
  *
- * @param currentModelId 当前 settings.json 顶层 model 命中的 Model.id（CUID），用于在响应里标记 isCurrent；可空
+ * @param currentModelId The Model.id (CUID) matched by the top-level model in settings.json, used to mark isCurrent in the response; may be null
  */
 export async function getSandboxModels(currentModelId?: string | null): Promise<SandboxModelSummary[]> {
   const qs = currentModelId ? `?current=${encodeURIComponent(currentModelId)}` : '';
@@ -207,7 +278,7 @@ export async function getSandboxModels(currentModelId?: string | null): Promise<
 }
 
 /**
- * 切换当前工作空间模型：主应用更新 Workspace.modelId，并重新生成 / 推送 settings.json。
+ * Switches the current workspace model: the main app updates Workspace.modelId and regenerates / pushes settings.json.
  */
 export async function postSandboxModelSelection(args: {
   workspacePath: string;
@@ -247,25 +318,25 @@ export async function postSandboxSyncPull(args: {
 }
 
 /**
- * DELETE 主应用资源，自动注入沙箱鉴权头。
+ * DELETE a main app resource with automatic sandbox auth header injection.
  */
 export async function deleteFromMainApp<T = unknown>(path: string): Promise<T> {
-  const signed = signRequest('DELETE', path, '');
+  const signed = await signRequest('DELETE', path, '');
 
   const response = await fetchWithTimeout(signed.url, {
     method: 'DELETE',
     headers: signed.headers,
   });
 
-  return parseResponse<T>(response, '主应用返回');
+  return parseResponse<T>(response, 'Main app returned');
 }
 
 /**
- * PATCH 主应用资源，自动签名。
+ * PATCH a main app resource with automatic signing.
  */
 export async function patchToMainApp<T = unknown>(path: string, body: unknown): Promise<T> {
   const rawBody = JSON.stringify(body);
-  const signed = signRequest('PATCH', path, rawBody);
+  const signed = await signRequest('PATCH', path, rawBody);
 
   const response = await fetchWithTimeout(signed.url, {
     method: 'PATCH',
@@ -273,32 +344,53 @@ export async function patchToMainApp<T = unknown>(path: string, body: unknown): 
     body: signed.rawBody,
   });
 
-  return parseResponse<T>(response, '主应用返回');
+  return parseResponse<T>(response, 'Main app returned');
 }
 
 /**
- * multipart/form-data 上传到主应用，自动注入沙箱鉴权头。
- * 不手动设置 Content-Type，让 fetch 自动添加 boundary。
+ * Upload multipart/form-data to the main app with automatic auth header injection (sandbox or user Bearer).
+ * Does not manually set Content-Type; lets fetch automatically add the boundary.
  */
 export async function uploadToMainApp<T = unknown>(path: string, formData: FormData): Promise<T> {
-  const cred = loadTeAgentCredentials();
-  const baseUrl = cred.mainApp.url.replace(/\/$/, '');
-  const url = `${baseUrl}${path}`;
+  // Reuse signRequest decision logic, but do not set Content-Type for uploads (fetch adds boundary automatically)
+  const sandboxCred = tryLoadTeAgentSandboxCredentials();
+
+  let baseUrl: string;
+  let authHeaders: Record<string, string>;
+
+  if (sandboxCred && sandboxCred.sandboxId && sandboxCred.sandboxSecretKey) {
+    // Sandbox path
+    baseUrl = sandboxCred.url.replace(/\/$/, '');
+    authHeaders = {
+      'X-Sandbox-Id': sandboxCred.sandboxId,
+      'X-Sandbox-Secret-Key': sandboxCred.sandboxSecretKey,
+    };
+  } else {
+    // User Bearer path
+    const { getToken } = await import('./auth.js');
+    baseUrl = (sandboxCred?.url || teClaudeBaseFromActiveHost() || '').replace(/\/$/, '');
+    if (!baseUrl) {
+      throw new TeAgentCredentialsError(
+        'Cannot determine the te-claude service URL',
+        'Run ae-cli config set-host <url> to configure the service URL, or execute inside a te-agent sandbox',
+      );
+    }
+    // Token is retrieved under the bare activeHost (see signRequest comment)
+    const accessToken = await getToken(getActiveHost() || baseUrl);
+    authHeaders = { 'Authorization': `bearer ${accessToken}` };
+  }
 
   const response = await fetchWithTimeout(
-    url,
+    `${baseUrl}${path}`,
     {
       method: 'POST',
-      headers: {
-        'X-Sandbox-Id': cred.mainApp.sandboxId,
-        'X-Sandbox-Secret-Key': cred.mainApp.sandboxSecretKey,
-      },
+      headers: authHeaders,
       body: formData,
     },
     UPLOAD_TIMEOUT_MS,
   );
 
-  return parseResponse<T>(response, '上传失败');
+  return parseResponse<T>(response, 'Upload failed');
 }
 
 export { TeAgentCredentialsError };

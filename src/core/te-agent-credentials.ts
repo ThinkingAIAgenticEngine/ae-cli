@@ -1,17 +1,18 @@
 /**
- * 沙箱凭证读取
+ * Sandbox credentials loader
  *
- * 优先级（高 → 低）：
- *   1. process.env（TE_CLAUDE_BASE_URL / SANDBOX_ID / SECRET_KEY）
- *   2. 持久化 .env（默认 /home/ta/te_agent_ta/.env，由 te-agent-sandbox 写入）
- *   3. ~/.te-agent/credentials.json（老镜像兼容兜底）
+ * Priority (high -> low):
+ *   1. process.env (TE_CLAUDE_BASE_URL / SANDBOX_ID / SECRET_KEY)
+ *   2. Persistent .env under sandbox runtime root (Linux: /home/ta/te_agent_ta/.env; macOS/Windows: ~/.env)
+ *   3. ~/.te-agent/credentials.json (legacy image compatibility fallback)
  *
- * ae-cli sync/model 命令依赖这些字段；不在沙箱内执行时直接报错引导。
+ * ae-cli sync/model commands depend on these fields; errors with guidance when not executed inside a sandbox.
  */
 
 import { readFileSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { join } from 'node:path';
+import { getSandboxRuntimeRoot } from './sandbox-runtime.js';
 
 export interface TeAgentCredentials {
   mainApp: {
@@ -25,10 +26,9 @@ function getCredentialsPath(): string {
   return join(process.env.HOME || homedir(), '.te-agent', 'credentials.json');
 }
 
-/** 与 te-agent-sandbox env-persist 保持一致 */
+/** Consistent with te-agent-sandbox env-persist */
 export function getPersistentEnvPath(): string {
-  const runtimeRoot = process.env.SANDBOX_RUNTIME_ROOT ?? '/home/ta/te_agent_ta';
-  return join(runtimeRoot, '.env');
+  return join(getSandboxRuntimeRoot(), '.env');
 }
 
 function parseDotEnv(raw: string): Record<string, string> {
@@ -55,8 +55,8 @@ function readPersistentEnv(): Record<string, string> | null {
   } catch (err: any) {
     if (err?.code === 'ENOENT') return null;
     throw new TeAgentCredentialsError(
-      `${envPath} 读取失败：${err?.message ?? err}`,
-      '请检查文件权限，或通过 TE_CLAUDE_BASE_URL / SANDBOX_ID / SECRET_KEY 注入运行时凭证',
+      `Failed to read ${envPath}: ${err?.message ?? err}`,
+      'Check file permissions, or inject runtime credentials via TE_CLAUDE_BASE_URL / SANDBOX_ID / SECRET_KEY',
     );
   }
 }
@@ -79,13 +79,13 @@ function readLegacyCredentials(): Record<string, any> | null {
     if (err?.code === 'ENOENT') return null;
     if (err instanceof SyntaxError) {
       throw new TeAgentCredentialsError(
-        `${credPath} 解析失败：${err.message}`,
-        '凭证文件可能已损坏；也可以通过 TE_CLAUDE_BASE_URL / SANDBOX_ID / SECRET_KEY 注入运行时凭证',
+        `Failed to parse ${credPath}: ${err.message}`,
+        'The credentials file may be corrupted; alternatively inject runtime credentials via TE_CLAUDE_BASE_URL / SANDBOX_ID / SECRET_KEY',
       );
     }
     throw new TeAgentCredentialsError(
-      `${credPath} 读取失败：${err?.message ?? err}`,
-      '请检查文件权限，或通过 TE_CLAUDE_BASE_URL / SANDBOX_ID / SECRET_KEY 注入运行时凭证',
+      `Failed to read ${credPath}: ${err?.message ?? err}`,
+      'Check file permissions, or inject runtime credentials via TE_CLAUDE_BASE_URL / SANDBOX_ID / SECRET_KEY',
     );
   }
 }
@@ -109,20 +109,20 @@ export function loadTeAgentCredentials(): TeAgentCredentials {
 
   if (typeof url !== 'string' || !url) {
     throw new TeAgentCredentialsError(
-      'TE_CLAUDE_BASE_URL 缺失',
-      `请在 te-agent 沙箱内执行，或配置 ${envPath} / ${credPath}`,
+      'TE_CLAUDE_BASE_URL is missing',
+      `Run inside a te-agent sandbox, or configure ${envPath} / ${credPath}`,
     );
   }
   if (typeof sandboxId !== 'string' || !sandboxId) {
     throw new TeAgentCredentialsError(
-      'SANDBOX_ID 缺失',
-      `请在 te-agent 沙箱内执行，或配置 ${envPath} / ${credPath}`,
+      'SANDBOX_ID is missing',
+      `Run inside a te-agent sandbox, or configure ${envPath} / ${credPath}`,
     );
   }
   if (typeof sandboxSecretKey !== 'string' || !sandboxSecretKey) {
     throw new TeAgentCredentialsError(
-      'SECRET_KEY 缺失',
-      `请在 te-agent 沙箱内执行，或配置 ${envPath} / ${credPath}`,
+      'SECRET_KEY is missing',
+      `Run inside a te-agent sandbox, or configure ${envPath} / ${credPath}`,
     );
   }
 
@@ -130,10 +130,54 @@ export function loadTeAgentCredentials(): TeAgentCredentials {
 }
 
 /**
- * 解析 ae-cli 写入 settings.json 的目标目录。
+ * Attempts to load sandbox credentials without requiring them to be present.
  *
- * 优先读取 PTY 注入的 CLAUDE_CONFIG_DIR（每工作空间私有 `<wp>/.claude/`）。
- * 缺失时回退到全局 `~/.claude`，用于沙箱外或非 PTY 场景。
+ * Return value meanings:
+ * - `{ url, sandboxId, sandboxSecretKey }` — Sandbox credentials are complete; the X-Sandbox path can be used.
+ * - `{ url, sandboxId: null, sandboxSecretKey: null }` — Only URL is present (rare; for reference only).
+ * - `null` — No sandbox credentials at all (TE_CLAUDE_BASE_URL is also missing); caller should use the user Bearer path instead.
+ *
+ * Note: file read errors (permission issues, corrupted JSON) still throw `TeAgentCredentialsError`,
+ * as these require user intervention to fix and should not be silently swallowed.
+ */
+export function tryLoadTeAgentSandboxCredentials(): {
+  url: string;
+  sandboxId: string | null;
+  sandboxSecretKey: string | null;
+} | null {
+  const legacy = readLegacyCredentials();
+  const persistent = readPersistentEnv();
+
+  const url =
+    process.env.TE_CLAUDE_BASE_URL || persistent?.TE_CLAUDE_BASE_URL || legacy?.url;
+
+  if (typeof url !== 'string' || !url) {
+    // No URL at all — no sandbox credentials whatsoever
+    return null;
+  }
+
+  const sandboxId = process.env.SANDBOX_ID || persistent?.SANDBOX_ID || legacy?.sandboxId || null;
+  const sandboxSecretKey =
+    process.env.SECRET_KEY ||
+    process.env.SANDBOX_SECRET_KEY ||
+    persistent?.SECRET_KEY ||
+    persistent?.SANDBOX_SECRET_KEY ||
+    legacy?.sandboxSecretKey ||
+    legacy?.secretKey ||
+    null;
+
+  return {
+    url,
+    sandboxId: typeof sandboxId === 'string' ? sandboxId : null,
+    sandboxSecretKey: typeof sandboxSecretKey === 'string' ? sandboxSecretKey : null,
+  };
+}
+
+/**
+ * Resolves the target directory where ae-cli writes settings.json.
+ *
+ * Prefers CLAUDE_CONFIG_DIR injected by the PTY (per-workspace private `<wp>/.claude/`).
+ * Falls back to global `~/.claude` when absent, for out-of-sandbox or non-PTY scenarios.
  */
 export function getClaudeConfigDir(): string {
   const fromEnv = process.env.CLAUDE_CONFIG_DIR;

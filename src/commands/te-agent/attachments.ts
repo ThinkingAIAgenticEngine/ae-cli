@@ -1,9 +1,9 @@
 /**
- * ae-cli agent 附件库管理命令
+ * ae-cli agent attachment library management commands
  *
- * +list-attachments — 列出附件（分页）
- * +add-attachment   — 上传沙箱文件到附件库
- * +del-attachment   — 删除附件
+ * +list-attachments — list attachments (paginated)
+ * +add-attachment   — upload sandbox file(s) to the attachment library
+ * +del-attachment   — delete an attachment
  */
 
 import { readFileSync, existsSync } from 'node:fs';
@@ -19,7 +19,7 @@ import {
 const LIST_PATH = '/api/sandbox/agent/attachments';
 const UPLOAD_PATH = '/api/sandbox/agent/attachments/upload';
 
-/** 根据文件扩展名推断 MIME 类型 */
+/** Infer MIME type from file extension */
 function guessMimeType(filePath: string): string {
   const ext = extname(filePath).toLowerCase();
   const map: Record<string, string> = {
@@ -47,42 +47,42 @@ function guessMimeType(filePath: string): string {
 }
 
 /**
- * 解析 --file 或 --files 参数为文件路径数组
+ * Resolve the --file or --files argument into an array of file paths
  */
 function resolveFilePaths(ctx: RuntimeContext): string[] {
   const file = ctx.str('file');
   const files = ctx.str('files');
 
   if (file && files) {
-    throw new Error('--file 和 --files 不能同时使用');
+    throw new Error('--file and --files cannot be used together');
   }
   if (!file && !files) {
-    throw new Error('必须指定 --file 或 --files');
+    throw new Error('Either --file or --files must be specified');
   }
   if (file) return [file];
 
   try {
     const parsed = JSON.parse(files);
-    if (!Array.isArray(parsed)) throw new Error('--files 必须是 JSON 数组');
+    if (!Array.isArray(parsed)) throw new Error('--files must be a JSON array');
     return parsed.map((p: unknown) => {
-      if (typeof p !== 'string') throw new Error('--files 数组元素必须是字符串');
+      if (typeof p !== 'string') throw new Error('--files array elements must be strings');
       return p;
     });
   } catch (err) {
-    if (err instanceof SyntaxError) throw new Error('--files 必须是有效 JSON 数组');
+    if (err instanceof SyntaxError) throw new Error('--files must be a valid JSON array');
     throw err;
   }
 }
 
 /**
- * 构建 FormData 并上传多个文件
+ * Build FormData and upload multiple files
  */
 async function uploadFiles(filePaths: string[]): Promise<any> {
   const formData = new FormData();
   for (const filePath of filePaths) {
     const resolved = resolve(filePath);
     if (!existsSync(resolved)) {
-      throw new Error(`文件不存在：${resolved}`);
+      throw new Error(`File not found: ${resolved}`);
     }
     const buffer = readFileSync(resolved);
     const mimeType = guessMimeType(resolved);
@@ -106,7 +106,7 @@ export const listAttachments: Command = {
   validate: (ctx) => {
     const type = ctx.str('type');
     if (type && !['image', 'document'].includes(type)) {
-      throw new Error('--type 必须是 image 或 document');
+      throw new Error('--type must be image or document');
     }
   },
   dryRun: (ctx) => {

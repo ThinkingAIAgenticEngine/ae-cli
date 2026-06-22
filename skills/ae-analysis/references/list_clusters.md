@@ -1,4 +1,4 @@
-# analysis_audience +list_clusters (Cluster Search)
+# analysis_audience +list_clusters (Audience/User Segment Cluster Search)
 
 > **Prerequisite:** Follow the Global AE CLI Rules in [`../SKILL.md`](../SKILL.md).
 
@@ -8,8 +8,10 @@ Domain: **Cluster Management**
 
 **Fuzzy Search Fallback:** If `--query` returns no results, retry with broader keywords (max 3 attempts), then fall back to full list. See [SKILL.md § C. FUZZY_SEARCH_FALLBACK](../SKILL.md#c-fuzzy_search_fallback).
 
+**Term boundary:** This command lists audience/user segment clusters only. It is not a server, region, or deployment inventory tool.
+
 ## Use Cases
-- List cluster metadata accessible to the current user in the project.
+- List audience/user segment cluster metadata accessible to the current user in the project.
 - Supports payload governance parameters: `query`, `fields`, `limit`, `offset`.
 - Returns a paginated envelope (items + total + limit + offset + hasMore), not cluster members.
 

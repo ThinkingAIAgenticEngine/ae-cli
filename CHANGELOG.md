@@ -1,34 +1,48 @@
+### 1.0.28
+**Date:** 2026-06-22
+
+**Changes:**
+
+* Enhance the security of use
+
+### 1.0.27
+**Date:** 2026-06-18
+
+**Changes:**
+
+* Support customer workspace
+
 ### 1.0.24
-**日期:** 2026/06/05
+**Date:** 2026-06-05
 
-**内容:**
+**Changes:**
 
-* 新增知识库命令
+* Add knowledge base (KB) commands
 
 ### 1.0.20
-**日期:** 2026/05/27
+**Date:** 2026-05-27
 
-**内容:**
+**Changes:**
 
-* 新增 analysis guided QP builder 命令及 dry-run 回归验证
+* Add analysis guided QP builder command and dry-run regression verification
 
 ### 1.0.19
-**日期:** 2026/05/21
+**Date:** 2026-05-21
 
-**内容:**
+**Changes:**
 
-* 优化 skill
+* Improve skills
 
 ### 1.0.17
-**日期:** 2026/05/07
+**Date:** 2026-05-07
 
-**内容:**
+**Changes:**
 
-* 优化登录接口
+* Improve login flow
 
 ### 1.0.16
-**日期:** 2026/04/30
+**Date:** 2026-04-30
 
-**内容:**
+**Changes:**
 
-* 发布 ae-cli 终端工具
+* Initial release of the ae-cli terminal tool

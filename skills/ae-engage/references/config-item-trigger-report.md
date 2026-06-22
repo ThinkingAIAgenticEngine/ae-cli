@@ -1,6 +1,5 @@
 # ae-engage +config_item_trigger_report
 
-> **Prerequisite:** Read [`../../ae-shared/SKILL.md`](../../ae-shared/SKILL.md)
 
 Query the publish and trigger trend report for a config item.
 

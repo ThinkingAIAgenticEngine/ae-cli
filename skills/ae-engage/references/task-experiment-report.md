@@ -1,6 +1,5 @@
 # ae-engage +task_experiment_report
 
-> **Prerequisite:** Read [`../../ae-shared/SKILL.md`](../../ae-shared/SKILL.md)
 
 Query the task experiment report.
 

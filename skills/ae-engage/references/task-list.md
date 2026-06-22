@@ -1,6 +1,5 @@
 # ae-engage +task_list
 
-> **Prerequisite:** Read [`../../ae-shared/SKILL.md`](../../ae-shared/SKILL.md)
 
 Query the paginated task list.
 

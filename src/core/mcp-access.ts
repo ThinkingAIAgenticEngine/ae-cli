@@ -1,8 +1,6 @@
 import type { RuntimeContext } from '../framework/types.js';
-import { loadMcpTokenStore } from './mcp.js';
-import { forceMigrateFromFallback } from './config.js';
+import { getMcpToken } from './mcp.js';
 import { safeJsonParse } from './json-utils.js';
-import { logger } from './logger.js';
 
 function buildUrl(host: string, path: string, params: Record<string, any> = {}): string {
   const base = host.replace(/\/$/, '');
@@ -14,52 +12,6 @@ function buildUrl(host: string, path: string, params: Record<string, any> = {}):
     }
   }
   return url.toString();
-}
-
-function getMcpTokenForHost(host: string): string | undefined {
-  const store = loadMcpTokenStore();
-  const normalizedHost = host.replace(/\/+$/, '');
-  if (store[host]) return store[host];
-  if (store[normalizedHost]) return store[normalizedHost];
-
-  for (const [key, token] of Object.entries(store)) {
-    if (key.replace(/\/+$/, '') === normalizedHost) {
-      return token;
-    }
-  }
-
-  return undefined;
-}
-
-function getTokenFromStore(store: Record<string, string>, host: string): string | undefined {
-  const normalizedHost = host.replace(/\/+$/, '');
-  if (store[host]) return store[host];
-  if (store[normalizedHost]) return store[normalizedHost];
-
-  for (const [key, token] of Object.entries(store)) {
-    if (key.replace(/\/+$/, '') === normalizedHost) {
-      return token;
-    }
-  }
-
-  return undefined;
-}
-
-function refreshMcpTokenFromFallback(host: string): string | undefined {
-  logger.warn(`KB MCP request failed for ${host}, trying fallback`);
-  const migrated = forceMigrateFromFallback();
-  const token = migrated ? getTokenFromStore(migrated, host) : undefined;
-
-  if (token) {
-    logger.info(`KB MCP token refreshed from fallback for ${host}`);
-    process.stderr.write(`[ae-cli] MCP token refreshed from fallback for ${host}\n`);
-  }
-
-  return token;
-}
-
-function isMcpAuthFailure(resp: Response, data: any): boolean {
-  return !resp.ok || data.return_code === -1001;
 }
 
 function parseKbResponse(resp: Response, text: string): any {
@@ -81,7 +33,6 @@ function parseKbResponse(resp: Response, text: string): any {
 }
 
 async function fetchWithMcpToken(
-  host: string,
   input: string,
   init: RequestInit,
   mcpToken: string
@@ -90,31 +41,7 @@ async function fetchWithMcpToken(
   headers.set('mcp-token', mcpToken);
 
   const resp = await fetch(input, { ...init, headers });
-  const text = await resp.text();
-
-  if (!resp.ok) {
-    const refreshedToken = refreshMcpTokenFromFallback(host);
-    if (refreshedToken) {
-      headers.set('mcp-token', refreshedToken);
-      const retryResp = await fetch(input, { ...init, headers });
-      return parseKbResponse(retryResp, await retryResp.text());
-    }
-
-    return parseKbResponse(resp, text);
-  }
-
-  const data = safeJsonParse(text);
-
-  if (isMcpAuthFailure(resp, data)) {
-    const refreshedToken = refreshMcpTokenFromFallback(host);
-    if (refreshedToken) {
-      headers.set('mcp-token', refreshedToken);
-      const retryResp = await fetch(input, { ...init, headers });
-      return parseKbResponse(retryResp, await retryResp.text());
-    }
-  }
-
-  return parseKbResponse(resp, text);
+  return parseKbResponse(resp, await resp.text());
 }
 
 export async function kbApi(
@@ -125,14 +52,10 @@ export async function kbApi(
   body?: any
 ): Promise<any> {
   const host = ctx.host();
-  const mcpToken = getMcpTokenForHost(host);
-
-  if (!mcpToken) {
-    return ctx.api(method, path, params, body);
-  }
+  const mcpToken = await getMcpToken(host);
 
   const upperMethod = method.toUpperCase();
-  return fetchWithMcpToken(host, buildUrl(host, path, params), {
+  return fetchWithMcpToken(buildUrl(host, path, params), {
     method: upperMethod,
     headers: {
       'Content-Type': 'application/json',
@@ -148,14 +71,9 @@ export async function kbUpload(
   params: Record<string, any> = {}
 ): Promise<any> {
   const host = ctx.host();
-  const mcpToken = getMcpTokenForHost(host);
+  const mcpToken = await getMcpToken(host);
 
-  if (!mcpToken) {
-    const { httpUpload } = await import('./client.js');
-    return httpUpload(path, form, params, host);
-  }
-
-  return fetchWithMcpToken(host, buildUrl(host, path, params), {
+  return fetchWithMcpToken(buildUrl(host, path, params), {
     method: 'POST',
     body: form,
   }, mcpToken);

@@ -1,4 +1,4 @@
-import { createMcpCommand, optionalBoolean, optionalJson, optionalJsonString, optionalNumber, optionalString, requiredJsonString } from '../shared.js';
+import { clusterQueryFlags, createMcpCommand, optionalBoolean, optionalClusterQueryArgs, optionalJson, optionalJsonString, optionalNumber, optionalString, requiredJsonString } from '../shared.js';
 
 export const queryReportData = createMcpCommand({
   command: '+query_report_data',
@@ -14,6 +14,7 @@ export const queryReportData = createMcpCommand({
     { name: 'end_date', type: 'string', required: false, desc: 'Optional end date in yyyy-MM-dd format' },
     { name: 'time_granularity', type: 'string', required: false, desc: 'Optional time granularity used to override the report default. Supported values: minute, minute5, minute10, hour, day, week, month, quarter, year, total.' },
     { name: 'timeout_minutes', type: 'number', required: false, desc: 'Query timeout in minutes. If omitted, 30 minutes is used.' },
+    ...clusterQueryFlags('Optional cluster query scope. Supported values: GLOBAL, SLAVE. Omit to query the current self cluster.'),
   ],
   risk: 'read',
   buildArgs: (ctx) => ({
@@ -27,5 +28,6 @@ export const queryReportData = createMcpCommand({
       endDate: optionalString(ctx, 'end_date'),
       timeGranularity: optionalString(ctx, 'time_granularity'),
       timeoutMinutes: optionalNumber(ctx, 'timeout_minutes'),
+      ...optionalClusterQueryArgs(ctx),
     }),
 });

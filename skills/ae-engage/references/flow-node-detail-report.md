@@ -1,6 +1,5 @@
 # ae-engage +flow_node_detail_report
 
-> **Prerequisite:** Read [`../../ae-shared/SKILL.md`](../../ae-shared/SKILL.md)
 
 Query the detailed report for a single flow node.
 

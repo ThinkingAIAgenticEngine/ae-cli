@@ -1,6 +1,5 @@
 # ae-engage +manage_flow
 
-> **Prerequisite:** Read [`../../ae-shared/SKILL.md`](../../ae-shared/SKILL.md)
 
 Batch manage flow status or review actions.
 

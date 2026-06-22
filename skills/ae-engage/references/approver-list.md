@@ -1,6 +1,5 @@
 # ae-engage +approver_list
 
-> **Prerequisite:** Read [`../../ae-shared/SKILL.md`](../../ae-shared/SKILL.md)
 
 Query the project approver list.
 

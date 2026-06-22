@@ -1,6 +1,5 @@
 # ae-engage +strategy_detail
 
-> **Prerequisite:** Read [`../../ae-shared/SKILL.md`](../../ae-shared/SKILL.md)
 
 Query the details of a single strategy.
 

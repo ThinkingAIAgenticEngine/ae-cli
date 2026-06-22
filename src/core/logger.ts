@@ -1,7 +1,7 @@
 import fs from 'fs';
 import path from 'path';
 
-// 直接计算，避免与 config.ts 循环依赖
+// Computed directly to avoid circular dependency with config.ts
 const LOG_DIR = path.join(process.env.HOME || '', '.ae-cli', 'log');
 
 type LogLevel = 'info' | 'warning' | 'error';
@@ -32,7 +32,7 @@ class Logger {
   }
 
   private filePath(level: LogLevel): string {
-    // 按天切割：日期变化时自动写入新文件
+    // Rotate daily: automatically writes to a new file when the date changes
     const today = this.today();
     if (today !== this.date) {
       this.date = today;
@@ -41,7 +41,7 @@ class Logger {
   }
 
   /**
-   * 写入日志到文件（不输出到控制台，控制台由现有 process.stderr.write 负责）
+   * Write a log entry to file (not printed to the console; console output is handled by existing process.stderr.write calls)
    */
   private write(level: LogLevel, message: string): void {
     const ts = this.timestamp();
@@ -49,26 +49,26 @@ class Logger {
     try {
       fs.appendFileSync(this.filePath(level), line);
     } catch {
-      // 日志写入失败不应影响主流程
+      // Log write failures must not affect the main flow
     }
   }
 
-  /** 常规操作日志 */
+  /** Informational log */
   info(message: string): void {
     this.write('info', message);
   }
 
-  /** 警告日志 */
+  /** Warning log */
   warn(message: string): void {
     this.write('warning', message);
   }
 
-  /** 错误日志 */
+  /** Error log */
   error(message: string): void {
     this.write('error', message);
   }
 
-  /** 记录 HTTP API 请求详情 */
+  /** Log HTTP API request details */
   api(method: string, url: string, status: number, reqBody?: any, respBody?: any): void {
     const parts: string[] = [`API ${method} ${url} → HTTP ${status}`];
     if (reqBody !== undefined && reqBody !== null) {
@@ -82,7 +82,7 @@ class Logger {
     this.info(parts.join(' | '));
   }
 
-  /** 记录命令执行 */
+  /** Log command execution */
   command(name: string, args: Record<string, any>): void {
     const filtered = Object.entries(args)
       .filter(([, v]) => v !== undefined && v !== null && v !== '')
