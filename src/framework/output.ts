@@ -89,7 +89,7 @@ export function formatError(type: OutputEnvelope['error'] extends infer E ? E ex
   return JSON.stringify(envelope, null, 2);
 }
 
-export function printError(type: 'auth' | 'api' | 'validation' | 'config', message: string, hint?: string, code?: number): void {
+export function printError(type: 'auth' | 'permission' | 'api' | 'validation' | 'config', message: string, hint?: string, code?: number): void {
   const formatted = formatError(type, message, hint, code);
   process.stderr.write(formatted + '\n');
   // Also write to the error log file

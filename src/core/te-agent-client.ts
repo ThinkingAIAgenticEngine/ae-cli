@@ -305,7 +305,6 @@ export async function postSandboxSyncPull(args: {
   kind: SandboxSyncKind;
   skills?: string[];
   mcp?: string[];
-  ifUnmodifiedSince?: string;
 }): Promise<SandboxSyncPullResult> {
   return postToMainApp<SandboxSyncPullResult>('/api/sandbox/sync/pull', {
     workspacePath: args.workspacePath,
@@ -313,7 +312,6 @@ export async function postSandboxSyncPull(args: {
     skills: args.skills,
     mcp: args.mcp,
     mode: 'merge',
-    ifUnmodifiedSince: args.ifUnmodifiedSince,
   });
 }
 

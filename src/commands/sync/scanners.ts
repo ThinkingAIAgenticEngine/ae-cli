@@ -20,12 +20,16 @@ import {
   SKILL_MANIFEST_FILE,
   type SkillScope,
 } from './skill-manifest.js';
+import { assertValidMcpName, assertValidSkillSlug } from './validation.js';
 
-export type Source = 'workspace' | 'global';
+export type SkillSource = 'workspace' | 'global';
+export type McpSource = 'project' | 'local' | 'user';
+export type Source = SkillSource | McpSource;
+type McpManifestScope = 'personal' | 'company' | 'system';
 
 export interface SkillCandidate {
   slug: string;
-  source: Source;
+  source: SkillSource;
   workspacePath?: string;
   dirPath: string;
   filePath: string;
@@ -37,9 +41,10 @@ export interface SkillCandidate {
 
 export interface McpCandidate {
   slug: string;
-  source: Source;
+  source: McpSource;
   workspacePath?: string;
-  transport: 'http' | 'stdio';
+  workspaceDir?: string;
+  transport: 'http' | 'sse' | 'stdio';
   url?: string;
   command?: string;
   args?: string[];
@@ -50,6 +55,7 @@ export interface McpCandidate {
 }
 
 const SECRET_PATTERN = /TOKEN|SECRET|KEY|PASSWORD/i;
+const MCP_MANIFEST_FILE = '.mcp-manifest.json';
 
 function safeLstat(p: string) {
   try {
@@ -106,7 +112,7 @@ function readSkillScopeIndex(skillsRoot: string): Map<string, SkillScope> {
   return new Map(entries.map((entry) => [entry.dirName, entry.scope]));
 }
 
-function scanSkillsInDir(dir: string, source: Source, workspacePath?: string): SkillCandidate[] {
+function scanSkillsInDir(dir: string, source: SkillSource, workspacePath?: string): SkillCandidate[] {
   if (!existsSync(dir)) return [];
   const out: SkillCandidate[] = [];
   const scopeIndex = readSkillScopeIndex(dir);
@@ -128,6 +134,7 @@ function scanSkillsInDir(dir: string, source: Source, workspacePath?: string): S
     if (!isDir) continue;
     const filePath = join(slugDir, 'SKILL.md');
     if (!existsSync(filePath)) continue;
+    assertValidSkillSlug(slug);
     const file = readSkillFile(filePath);
     if (!file) continue;
     out.push({
@@ -160,6 +167,24 @@ function readJsonSafe(p: string): any | null {
   }
 }
 
+function isMcpManifestScope(value: unknown): value is McpManifestScope {
+  return value === 'personal' || value === 'company' || value === 'system';
+}
+
+function readMcpManifestScopes(workspaceDir: string): Map<string, McpManifestScope> {
+  const parsed = readJsonSafe(join(workspaceDir, MCP_MANIFEST_FILE));
+  const scopes = new Map<string, McpManifestScope>();
+  if (!Array.isArray(parsed)) return scopes;
+  for (const item of parsed) {
+    if (!item || typeof item !== 'object') continue;
+    const entry = item as { name?: unknown; scope?: unknown };
+    if (typeof entry.name !== 'string' || !isMcpManifestScope(entry.scope)) continue;
+    if (scopes.has(entry.name)) continue;
+    scopes.set(entry.name, entry.scope);
+  }
+  return scopes;
+}
+
 function detectSecrets(env: Record<string, string> | undefined): boolean {
   if (!env) return false;
   return Object.keys(env).some((k) => SECRET_PATTERN.test(k));
@@ -167,20 +192,25 @@ function detectSecrets(env: Record<string, string> | undefined): boolean {
 
 function parseMcpServers(
   servers: Record<string, any> | undefined,
-  source: Source,
+  source: McpSource,
   workspacePath?: string,
-  options: { filterScope: boolean } = { filterScope: true },
+  workspaceDir?: string,
+  options: { excludedNames?: Set<string> } = {},
 ): McpCandidate[] {
   if (!servers || typeof servers !== 'object') return [];
   const out: McpCandidate[] = [];
   for (const [slug, raw] of Object.entries(servers)) {
     if (!raw || typeof raw !== 'object') continue;
-    if (options.filterScope && (raw._scope === 'system' || raw._scope === 'company')) continue;
-    // Support both the type and transport field names
-    const transport: 'http' | 'stdio' =
-      raw.type === 'http' || raw.transport === 'http' || typeof raw.url === 'string'
-        ? 'http'
-        : 'stdio';
+    if (options.excludedNames?.has(slug)) continue;
+    assertValidMcpName(slug);
+    // Support both the type and transport field names.
+    const rawTransport = raw.transport ?? raw.type;
+    const transport: 'http' | 'sse' | 'stdio' =
+      rawTransport === 'sse'
+        ? 'sse'
+        : rawTransport === 'http' || typeof raw.url === 'string'
+          ? 'http'
+          : 'stdio';
     const env = (raw.env && typeof raw.env === 'object' ? raw.env : undefined) as
       | Record<string, string>
       | undefined;
@@ -191,6 +221,7 @@ function parseMcpServers(
       slug,
       source,
       workspacePath,
+      workspaceDir,
       transport,
       url: typeof raw.url === 'string' ? raw.url : undefined,
       command: typeof raw.command === 'string' ? raw.command : undefined,
@@ -241,23 +272,53 @@ export function scanMcps(): McpCandidate[] {
   const out: McpCandidate[] = [];
 
   const scopedMcpJson = readJsonSafe(join(workspace.dir, '.mcp.json'));
-  out.push(...parseMcpServers(scopedMcpJson?.mcpServers, 'workspace', workspace.name, { filterScope: true }));
+  const projectManifestScopes = readMcpManifestScopes(workspace.dir);
+  const excludedProjectMcps = new Set(
+    [...projectManifestScopes.entries()]
+      .filter(([, scope]) => scope === 'system' || scope === 'company')
+      .map(([name]) => name),
+  );
+  out.push(
+    ...parseMcpServers(
+      scopedMcpJson?.mcpServers,
+      'project',
+      workspace.name,
+      workspace.dir,
+      { excludedNames: excludedProjectMcps },
+    ),
+  );
 
   const workspaceClaudeJson = readJsonSafe(join(workspace.dir, '.claude', '.claude.json'));
   out.push(
-    ...parseMcpServers(projectMcpServers(workspaceClaudeJson, workspace.dir), 'workspace', workspace.name, {
-      filterScope: false,
-    }),
+    ...parseMcpServers(
+      projectMcpServers(workspaceClaudeJson, workspace.dir),
+      'local',
+      workspace.name,
+      undefined,
+    ),
   );
 
   const globalClaudeJson = readJsonSafe(join(home, '.claude.json'));
   out.push(
-    ...parseMcpServers(projectMcpServers(globalClaudeJson, workspace.dir), 'global', undefined, {
-      filterScope: false,
-    }),
+    ...parseMcpServers(
+      projectMcpServers(globalClaudeJson, workspace.dir),
+      'user',
+      undefined,
+      undefined,
+    ),
   );
 
   return out;
+}
+
+export function splitPushableMcps(candidates: McpCandidate[]): {
+  supported: McpCandidate[];
+  unsupportedStdio: McpCandidate[];
+} {
+  return {
+    supported: candidates.filter((mcp) => mcp.transport === 'http' || mcp.transport === 'sse'),
+    unsupportedStdio: candidates.filter((mcp) => mcp.transport === 'stdio'),
+  };
 }
 
 export function describeSource(_c: { source: Source; workspacePath?: string }): string | undefined {

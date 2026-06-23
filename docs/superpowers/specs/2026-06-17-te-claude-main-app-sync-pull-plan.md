@@ -7,7 +7,7 @@
 配合 ae-cli 的双向 `sync`：
 
 - 保留现有 `工作空间 -> 主应用` 的 `POST /api/sandbox/sync/push` 语义，只接受 personal。
-- 新增 `主应用 -> 工作空间` 能力，让 ae-cli 可以从主应用选择 system / company / personal 的 Skill 与 MCP，并物化到当前 workspace。
+- 新增 `主应用 -> 工作空间` 能力，让 ae-cli 可以从主应用选择 company / personal Skill 与 system / company / personal MCP，并物化到当前 workspace；system Skill 由工作空间配置软链管理，不进入 pull 选择。
 - workspace Skill scope 元数据统一放入 `.claude/skills/.skill-manifest.json` v2，不再设计或生成 `.te-agent-scope.json`。
 - workspace `.mcp.json` 写入改为合并策略，保留用户手动安装且缺失 `_scope` 的 MCP。
 - 主应用写 workspace 时同步更新 `workspace_skill` / `workspace_mcp` desired state，避免网页端显示与落盘文件不一致。
@@ -66,8 +66,13 @@
 - Workspace 物化
   - 文件：`src/lib/workspaces/provisioning.ts`
   - 当前写 `.claude/skills/<slug>/...`、`.claude/skills/.skill-manifest.json`、workspace 根目录 `.mcp.json`。
-  - 当前 system/company Skill 的 scope 需要收敛到 `.skill-manifest.json` v2。
+  - 2026-06-22 修订：system Skill 写 workspace 软链到 `/data/app/te_agent_ta/share/skills/system/<slug>`；personal/company Skill 写真实 package。系统源目录必须由 OS 层保证 `ta` 不可写。
+  - system/company/personal Skill 的 scope 统一写入 `.skill-manifest.json` v2。
   - 当前 `.mcp.json` 是整体覆盖。
+- ae-cli sync scanner
+  - 当前 scanner 已支持 symlink-to-directory。
+  - 当前 scanner 会按 `.claude/skills/.skill-manifest.json` 跳过 `system/company`，因此 system Skill 软链不需要 ae-cli 代码改动，但依赖 te-claude provisioning 正确写 manifest。
+  - 主应用 -> 工作空间 Skill pull 不展示 system Skill；system Skill 内容由 workspace 软链实时读取系统源目录，启用状态由新建/编辑工作空间配置管理。
 - DB 结构
   - `Skill.scope` / `McpServer.scope` 为 `personal | company | system`。
   - `WorkspaceSkill` / `WorkspaceMcp` 保存 workspace desired state。
@@ -276,6 +281,9 @@ export async function applyWorkspaceResourceSelection(args): Promise<ApplyResult
 - `provisionWorkspaceConfigToSandbox()` 每次按最终 desired skills 重写 v2 manifest。
 - system / company / personal 都写入；缺失于该文件的 Skill 视为用户自行安装。
 - `dirName` 继续作为 provisioning 管理边界，用于删除旧的 managed Skill。
+- system Skill 的 `.claude/skills/<dirName>` 是指向系统只读源目录的软链；personal/company Skill 是真实目录。
+- ae-cli sync pull 的 Skill 候选只包含 personal/company；system Skill 不通过 pull 刷新副本。
+- 如果 workspace 已存在 manifest 外的同名真实目录，视为用户自装 Skill，保留该目录，不替换为 system 软链。
 - 不再写 `.claude/skills/<slug>/.te-agent-scope.json` 或 `.claude/skills/.te-agent-scope.json`。
 - company Skill archive 中不再包含任何 `.te-agent-scope.json`。
 
@@ -364,7 +372,7 @@ te-claude：
 
 API 单测：
 
-- candidates 返回 system/company/personal 可见 Skill/MCP。
+- candidates 返回 company/personal Skill 与 system/company/personal MCP。
 - candidates 正确标记 workspace 已启用项 `selected=true`。
 - candidates 不返回 prompt、baseDir、sourcePath、headers/token/env。
 - pull apply 校验不可见 personal/company 资源失败。
@@ -376,6 +384,9 @@ API 单测：
 Provisioning 单测：
 
 - 写 `.claude/skills/.skill-manifest.json` v2，内容为 `dirName + scope`。
+- system Skill 写受限软链，不复制 package；取消勾选只删除软链，源目录仍存在。
+- sync pull candidates 不返回 system Skill；旧客户端强传 system Skill id 时返回失败项。
+- system Skill 同名冲突时，manifest 外用户自装目录优先，不替换为系统软链。
 - 不再写 per-skill 或 root `.te-agent-scope.json`。
 - company Skill archive 不再包含 `.te-agent-scope.json`。
 - `.skill-manifest.json` 仍只清理旧 managed Skill，不删除用户手动目录。

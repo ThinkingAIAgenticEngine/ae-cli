@@ -5,6 +5,9 @@ import { getActiveHost } from '../core/config.js';
 import { safeJsonParse } from '../core/json-utils.js';
 import { logger } from '../core/logger.js';
 import { TeAgentCredentialsError } from '../core/te-agent-credentials.js';
+import { SecureStoreAuthError } from '../core/secure-store.js';
+import { PermissionError } from '../core/errors.js';
+import { TeAgentApiError } from '../core/te-agent-client.js';
 
 export async function runCommand(cmd: Command, opts: Record<string, any>, globalOpts: GlobalOptions): Promise<void> {
   try {
@@ -56,18 +59,49 @@ export async function runCommand(cmd: Command, opts: Record<string, any>, global
   } catch (err: any) {
     const message = err.message || String(err);
     logger.error(`Command failed: ${message}`);
+    // F-018: classify by structured error type (instanceof), NOT by substring-matching the message —
+    // string matching mislabeled permission denials (403, message contains "403"/"auth") as session
+    // expiry and prompted a useless re-login.
     if (err instanceof TeAgentCredentialsError) {
-      // F-001 fix: forward hint to guide the user to configure credentials or log in
+      // F-001: forward hint to guide the user to configure credentials or log in
       printError('config', message, err.hint);
-    } else if (message.includes('token') || message.includes('auth') || message.includes('401') || message.includes('403')) {
+    } else if (err instanceof PermissionError) {
+      // authenticated-but-forbidden — surface the server's reason; re-login won't help
+      printError('permission', message);
+    } else if (err instanceof SecureStoreAuthError) {
       printError('auth', message, 'Run: ae-cli auth login');
-    } else if (message.includes('AE API error')) {
-      printError('api', message);
+    } else if (err instanceof TeAgentApiError) {
+      if (err.status === 403) {
+        printError('permission', message);
+      } else if (err.status === 401) {
+        printError('auth', message, 'Run: ae-cli auth login');
+      } else {
+        printError('api', message);
+      }
+    } else if (looksLikeAuthFailure(message)) {
+      // Narrow fallback for plain Errors signaling a genuine token/session failure (e.g. mcp-token mint
+      // returning -1001 / "Invalid access token"). Deliberately excludes 403 / forbidden / permission.
+      printError('auth', message, 'Run: ae-cli auth login');
     } else {
       printError('api', message);
     }
     process.exit(1);
   }
+}
+
+/** Narrow heuristic: does a plain-Error message indicate a genuine auth/session failure (not a 403/permission)? */
+export function looksLikeAuthFailure(message: string): boolean {
+  const m = message.toLowerCase();
+  if (m.includes('403') || m.includes('forbidden') || m.includes('permission')) return false;
+  return (
+    m.includes('401') ||
+    m.includes('unauthorized') ||
+    m.includes('session expired') ||
+    m.includes('invalid access token') ||
+    m.includes('-1001') ||
+    m.includes('\u767b\u5f55') ||
+    m.includes('ae-cli auth login')
+  );
 }
 
 function createRuntimeContext(cmd: Command, opts: Record<string, any>, globalOpts: GlobalOptions): RuntimeContext {

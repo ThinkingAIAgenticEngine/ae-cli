@@ -7,13 +7,13 @@ export const listTables: Command = {
   description: 'Paginated list of tables/views under a schema. Returns: tableName, tableType. Defaults to physical tables, set isView=true to return views',
   flags: [
     { name: 'spaceCode', type: 'string', required: true, desc: 'Space code' },
-    { name: 'connType', type: 'string', required: true, desc: 'Connection type: SPACE(data warehouse for daily queries, default), ETL(ETL engine for data processing), APP(app warehouse for external services)' },
-    { name: 'repoCode', type: 'string', required: true, desc: 'Repository code, defaults to te_etl if not provided' },
+    { name: 'connType', type: 'string', required: false, default: 'SPACE', desc: 'Connection type: SPACE(data warehouse for daily queries, default), ETL(ETL engine for data processing), APP(app warehouse for external services)' },
+    { name: 'repoCode', type: 'string', required: false, default: 'te_etl', desc: 'Repository code, defaults to te_etl if not provided' },
     { name: 'catalog', type: 'string', required: true, desc: 'Catalog name' },
     { name: 'schema', type: 'string', required: true, desc: 'Schema name' },
-    { name: 'isView', type: 'boolean', required: true, desc: 'Whether to query views, default false returns physical tables, set true to return views' },
-    { name: 'pageNum', type: 'number', required: true, desc: 'Page number, default 1' },
-    { name: 'pageSize', type: 'number', required: true, desc: 'Page size, default 100' },
+    { name: 'isView', type: 'boolean', required: false, desc: 'Whether to query views, default false returns physical tables, set true to return views' },
+    { name: 'pageNum', type: 'number', required: false, default: 1, desc: 'Page number, default 1' },
+    { name: 'pageSize', type: 'number', required: false, default: 100, desc: 'Page size, default 100' },
   ],
   risk: 'read',
   execute: async (ctx) => {

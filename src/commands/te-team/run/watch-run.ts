@@ -1,6 +1,7 @@
 import type { Command } from '../../../framework/types.js';
 import { BASE_RUN_PATH } from '../shared.js';
 import { printOutput, printError } from '../../../framework/output.js';
+import { getAuthHeaders } from '../../../core/mcp-access.js';
 
 const STREAM_PATH = (id: string) => `${BASE_RUN_PATH}/stream/${id}`;
 
@@ -25,7 +26,7 @@ export const watchRun: Command = {
   execute: async (ctx) => {
     const runId = ctx.str('id');
     const quiet = ctx.bool('quiet');
-    const token = await ctx.token();
+    const authHeaders = await getAuthHeaders(ctx);
     const host = ctx.host().replace(/\/$/, '');
 
     // Tracks the last log timestamp across reconnects to avoid replaying old log lines.
@@ -40,7 +41,7 @@ export const watchRun: Command = {
       try {
         resp = await fetch(url.toString(), {
           headers: {
-            Authorization: `bearer ${token}`,
+            ...authHeaders,
             Accept: 'text/event-stream',
             'Cache-Control': 'no-cache',
           },

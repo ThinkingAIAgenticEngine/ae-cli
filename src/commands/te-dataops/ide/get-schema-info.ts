@@ -7,8 +7,8 @@ export const getSchemaInfo: Command = {
   description: 'Gets schema statistics, including table count and view count. Returns: tableCount, viewCount',
   flags: [
     { name: 'spaceCode', type: 'string', required: true, desc: 'Space code' },
-    { name: 'connType', type: 'string', required: true, desc: 'Connection type: SPACE(data warehouse for daily queries, default), ETL(ETL engine for data processing), APP(app warehouse for external services)' },
-    { name: 'repoCode', type: 'string', required: true, desc: 'Repository code, defaults to te_etl if not provided' },
+    { name: 'connType', type: 'string', required: false, default: 'SPACE', desc: 'Connection type: SPACE(data warehouse for daily queries, default), ETL(ETL engine for data processing), APP(app warehouse for external services)' },
+    { name: 'repoCode', type: 'string', required: false, default: 'te_etl', desc: 'Repository code, defaults to te_etl if not provided' },
     { name: 'catalog', type: 'string', required: true, desc: 'Catalog name' },
     { name: 'schema', type: 'string', required: true, desc: 'Schema name' },
   ],

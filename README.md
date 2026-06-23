@@ -31,23 +31,8 @@ npx skills add ThinkingAIAgenticEngine/ae-cli -g -y
 ## Quick Start
 
 ```bash
-# First run — interactive host setup + auto-login
-ae-cli config
+ae-cli auth login --host xxxxx
 ```
-
-The `config` command opens an interactive terminal UI:
-- First run: prompts you to add a AE host URL and label, then auto-authenticates
-- Subsequent runs: shows all configured hosts, lets you switch, edit, delete, or add new ones
-
-```
-AE Host Manager  (↑↓ select · Enter switch · e edit label · d delete · a add · q quit)
-
-❯ ● Production  https://ta.thinkingdata.cn  ✓
-  ○ Staging     https://ta-staging.example.com:8080  ✗
-  + Add new host...
-```
-
-After selecting a host, ae-cli automatically checks if the token is valid. If not, it triggers `auth login` for you.
 
 ## Usage
 

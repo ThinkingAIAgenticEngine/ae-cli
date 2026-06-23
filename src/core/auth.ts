@@ -48,7 +48,7 @@ export function resolveHost(hostOverride?: string): string {
  */
 export async function validateToken(token: string, hostUrl: string): Promise<boolean> {
   // F-013: the server's /v1/oauth/checkToken binds accessToken via @RequestParam (query/form), NOT a JSON body.
-  // A JSON body yields return_code -1008 ("参数(accessToken)为空") on both old and new servers, so set-token would
+  // A JSON body yields return_code -1008 (missing accessToken parameter) on both old and new servers, so set-token would
   // reject even valid tokens. Send it as application/x-www-form-urlencoded: it binds to @RequestParam AND stays out
   // of the URL/query (no token leak into access logs — the original reason a JSON body was used).
   const url = `${hostUrl}/v1/oauth/checkToken`;

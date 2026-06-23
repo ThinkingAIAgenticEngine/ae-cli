@@ -33,7 +33,7 @@ export function registerCommands(program: CommanderCommand, commands: Command[])
         }
       }
 
-      // 每个子命令都可在命令名之后接收 --host，覆盖程序级 --host（per-host 寻址用）
+      // Each subcommand accepts --host after the command name to override the global host.
       sub.option('--host <url>', 'Override active AE host URL for this command');
 
       // Wire action

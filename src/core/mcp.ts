@@ -5,6 +5,18 @@ import { getActiveHost, getFallbackMcpToken } from './config.js';
 import { loadMcpToken as loadSecureMcpToken } from './secure-store.js';
 import { safeJsonParse } from './json-utils.js';
 import { logger } from './logger.js';
+import { PermissionError } from './errors.js';
+
+/** Extract a human-readable permission message from a 403 response body, with a sensible fallback (F-018). */
+async function permissionMessage(resp: Response): Promise<string> {
+  const text = await resp.text().catch(() => '');
+  try {
+    const d: any = safeJsonParse(text);
+    const msg = d && (d.error?.message || (typeof d.error === 'string' ? d.error : undefined) || d.message);
+    if (msg && typeof msg === 'string') return msg;
+  } catch { /* non-JSON body */ }
+  return 'Permission denied for this resource (HTTP 403)';
+}
 
 const MCP_PROTOCOL_VERSION = '2025-11-25';
 const JSONRPC_VERSION = '2.0';
@@ -331,15 +343,18 @@ async function mcpRequest(
     body: JSON.stringify(body),
   });
 
-  // On token expiry (401/403), clear the in-process cache, re-mint, then retry once
   if (!resp.ok) {
-    logger.warn(`MCP request failed (HTTP ${resp.status}) for ${hostUrl}, re-minting token`);
-    if (resp.status === 401 || resp.status === 403) {
-      // Clear cache to trigger re-mint
+    // F-018: 403 = authenticated-but-forbidden (permission/scope), NOT a token issue — do NOT re-mint/retry.
+    if (resp.status === 403) {
+      throw new PermissionError(await permissionMessage(resp));
+    }
+    // 401 = token expired/invalid: clear cache, re-mint (or re-read sandbox fallback), retry once.
+    if (resp.status === 401) {
+      logger.warn(`MCP request failed (HTTP 401) for ${hostUrl}, re-minting token`);
       _mcpTokenCache.delete(hostUrl);
       // Also try the legacy fallback file (may still be present in sandbox environments).
       // The persisted secure-store token is intentionally NOT consulted here: it is the token
-      // that just failed, so on 401/403 we re-read the (possibly refreshed) sandbox file or re-mint.
+      // that just failed, so we re-read the (possibly refreshed) sandbox file or re-mint.
       const fallbackToken = getFallbackMcpToken(hostUrl);
       const newToken = fallbackToken ?? await generateMcpToken(hostUrl);
       _mcpTokenCache.set(hostUrl, newToken);
@@ -353,6 +368,10 @@ async function mcpRequest(
         headers,
         body: JSON.stringify(body),
       });
+      // F-018: a 403 after re-mint is a genuine permission denial, not a token problem.
+      if (retryResp.status === 403) {
+        throw new PermissionError(await permissionMessage(retryResp));
+      }
       if (!retryResp.ok) {
         throw new Error(`MCP HTTP error: ${retryResp.status} ${retryResp.statusText}`);
       }
@@ -438,11 +457,37 @@ export async function callMcpTool(
 export function parseMcpResult(result: McpToolResult): any {
   if (result.content.length > 0 && result.content[0].type === 'text') {
     const text = result.content[0].text || '';
+    let parsed: any;
     try {
-      return safeJsonParse(text);
+      parsed = safeJsonParse(text);
     } catch {
       return text;
     }
+    // F-021: a tool result that is purely a business error envelope ({error:"..."} or
+    // {error:{code,message}}) with no success indicator is a failure, not data — surface it.
+    const errMsg = mcpResultErrorMessage(parsed);
+    if (errMsg !== null) {
+      if (/no_auth|auth_error|permission|forbidden|unauthor|\u65e0\u6743/i.test(errMsg)) {
+        throw new PermissionError(errMsg);
+      }
+      throw new Error(errMsg);
+    }
+    return parsed;
   }
   return result;
+}
+
+/** Returns a failure message if `parsed` is a pure error envelope, else null (F-021). */
+function mcpResultErrorMessage(parsed: any): string | null {
+  if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return null;
+  if (parsed.success === true || parsed.ok === true) return null;
+  const e = parsed.error;
+  if (typeof e === 'string' && e.trim()) return e;
+  if (e && typeof e === 'object') {
+    const msg = (typeof e.message === 'string' && e.message) || undefined;
+    const code = (typeof e.code === 'string' && e.code) || undefined;
+    if (msg && code) return `${code}: ${msg}`;
+    if (msg || code) return (msg || code) as string;
+  }
+  return null;
 }

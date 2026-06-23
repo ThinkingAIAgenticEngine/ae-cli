@@ -9,7 +9,7 @@ export const executeSql: Command = {
     { name: 'spaceCode', type: 'string', required: true, desc: 'Space code' },
     { name: 'repoCode', type: 'string', required: true, desc: 'Repository code' },
     { name: 'sql', type: 'string', required: true, desc: 'SQL statement' },
-    { name: 'engineType', type: 'string', required: true, desc: 'SQL execution engine: TASK_ENGINE_TRINO(default, suitable for interactive queries), TASK_ENGINE_STARROCKS(suitable for real-time analytics and high-concurrency queries)' },
+    { name: 'engineType', type: 'string', required: false, default: 'TASK_ENGINE_TRINO', desc: 'SQL execution engine: TASK_ENGINE_TRINO(default, suitable for interactive queries), TASK_ENGINE_STARROCKS(suitable for real-time analytics and high-concurrency queries)' },
     { name: 'confirmed', type: 'boolean', required: true, desc: 'Whether confirmed to execute. First call: omit or pass false for preview, then pass true to execute' },
   ],
   risk: 'write',

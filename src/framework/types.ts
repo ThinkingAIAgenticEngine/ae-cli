@@ -60,7 +60,7 @@ export interface OutputEnvelope {
   ok: boolean;
   data?: any;
   error?: {
-    type: 'auth' | 'api' | 'validation' | 'config';
+    type: 'auth' | 'permission' | 'api' | 'validation' | 'config';
     code?: number;
     message: string;
     hint?: string;

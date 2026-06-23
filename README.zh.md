@@ -31,23 +31,8 @@ npx skills add ThinkingAIAgenticEngine/ae-cli -g -y
 ## 快速开始
 
 ```bash
-# 首次运行 — 交互式主机配置 + 自动登录
-ae-cli config
+ae-cli auth login --host xxxxx
 ```
-
-`config` 命令会打开一个交互式终端界面：
-- 首次运行：提示您添加 AE 主机 URL 和标签，然后自动进行身份验证
-- 后续运行：显示所有已配置的主机，可以切换、编辑、删除或添加新主机
-
-```
-AE Host Manager  (↑↓ 选择 · Enter 切换 · e 编辑标签 · d 删除 · a 添加 · q 退出)
-
-❯ ● Production  https://ta.thinkingdata.cn  ✓
-  ○ Staging     https://ta-staging.example.com:8080  ✗
-  + Add new host...
-```
-
-选择主机后，ae-cli 会自动检查 token 是否有效。如果无效，会自动触发 `auth login`。
 
 ## 使用方法
 

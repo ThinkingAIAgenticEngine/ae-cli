@@ -6,13 +6,14 @@
  */
 
 import assert from 'node:assert/strict';
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import {
   describeSource,
   scanMcps,
   scanSkills,
+  splitPushableMcps,
 } from '../src/commands/sync/scanners.ts';
 
 let pass = 0;
@@ -127,8 +128,31 @@ try {
             url: 'http://example.com/company',
             _scope: 'company',
           },
+          legacy_scope_only_mcp: {
+            type: 'http',
+            url: 'http://example.com/legacy-scope-only',
+            _scope: 'system',
+          },
+          project_sse_mcp: {
+            transport: 'sse',
+            url: 'http://example.com/sse',
+          },
+          project_stdio_mcp: {
+            type: 'stdio',
+            command: 'npx',
+            args: ['-y', 'project-stdio-mcp'],
+          },
         },
       }),
+      'utf8',
+    );
+    writeFileSync(
+      join(currentWorkspace, '.mcp-manifest.json'),
+      JSON.stringify([
+        { name: 'scoped_personal_mcp', scope: 'personal' },
+        { name: 'scoped_system_mcp', scope: 'system' },
+        { name: 'scoped_company_mcp', scope: 'company' },
+      ]),
       'utf8',
     );
     writeFileSync(
@@ -178,6 +202,9 @@ try {
 
     assert.deepEqual(mcps.map((mcp) => mcp.slug).sort(), [
       'global_claude_mcp',
+      'legacy_scope_only_mcp',
+      'project_sse_mcp',
+      'project_stdio_mcp',
       'scoped_personal_mcp',
       'scoped_self_installed_mcp',
       'workspace_claude_mcp',
@@ -186,7 +213,54 @@ try {
       (mcp) => mcp.slug === 'scoped_personal_mcp',
     );
     assert.deepEqual(scopedPersonal?.headers, { 'Header-Key': 'Header-Value' });
+    assert.equal(scopedPersonal?.source, 'project');
+    assert.equal(scopedPersonal?.workspacePath, 'wqa13');
+    assert.equal(scopedPersonal?.workspaceDir, realpathSync(currentWorkspace));
+    assert.equal(mcps.find((mcp) => mcp.slug === 'workspace_claude_mcp')?.source, 'local');
+    assert.equal(mcps.find((mcp) => mcp.slug === 'global_claude_mcp')?.source, 'user');
+    assert.equal(mcps.find((mcp) => mcp.slug === 'project_sse_mcp')?.transport, 'sse');
+    const split = splitPushableMcps(mcps);
+    assert.deepEqual(split.unsupportedStdio.map((mcp) => mcp.slug).sort(), [
+      'global_claude_mcp',
+      'project_stdio_mcp',
+    ]);
+    assert.deepEqual(split.supported.map((mcp) => mcp.slug).sort(), [
+      'legacy_scope_only_mcp',
+      'project_sse_mcp',
+      'scoped_personal_mcp',
+      'scoped_self_installed_mcp',
+      'workspace_claude_mcp',
+    ]);
     assert.equal(describeSource(scopedPersonal!), undefined);
+  });
+
+  test('scanSkills rejects Skill slugs that do not match runtime name rules', () => {
+    const invalidWorkspace = join(tmpRoot, 'workspaces', 'bad-skill-workspace');
+    const skillsRoot = join(invalidWorkspace, '.claude', 'skills');
+    writeSkill(skillsRoot, 'bad--skill');
+    process.chdir(invalidWorkspace);
+
+    assert.throws(() => scanSkills(), /Invalid Skill slug/);
+  });
+
+  test('scanMcps rejects MCP names that do not match main app rules', () => {
+    const invalidWorkspace = join(tmpRoot, 'workspaces', 'bad-mcp-workspace');
+    mkdirSync(join(invalidWorkspace, '.claude'), { recursive: true });
+    process.chdir(invalidWorkspace);
+    writeFileSync(
+      join(invalidWorkspace, '.mcp.json'),
+      JSON.stringify({
+        mcpServers: {
+          '1bad': {
+            type: 'http',
+            url: 'http://example.com/bad',
+          },
+        },
+      }),
+      'utf8',
+    );
+
+    assert.throws(() => scanMcps(), /Invalid MCP name/);
   });
 } finally {
   process.chdir(prevCwd);

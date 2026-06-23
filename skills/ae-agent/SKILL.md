@@ -128,7 +128,7 @@ ae-cli agent +toggle-model --id <model-cuid> --enabled false
 ## Notes
 
 - Only `personal` scope resources can be created or deleted via CLI.
-- MCP creation automatically validates server connectivity.
+- MCP creation does NOT validate server connectivity — an unreachable URL is accepted at create time and only fails when the agent actually calls the MCP at runtime. Double-check the URL.
 - Attachment upload supports files up to 50MB each, with a 1GB user quota.
 - Batch attachment uploads support partial success — individual file failures don't affect others.
 - Skill `--instructions @-` reads from stdin, useful for piping long instruction text.

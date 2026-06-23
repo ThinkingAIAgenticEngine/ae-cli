@@ -7,11 +7,11 @@ export const generateSql: Command = {
   description: 'Generates SELECT SQL statement based on table name and column names. Returns: Executable SELECT SQL string. Related tools: ide_execute_sql (execute the generated SQL)',
   flags: [
     { name: 'spaceCode', type: 'string', required: true, desc: 'Space code' },
-    { name: 'repoCode', type: 'string', required: true, desc: 'Repository code, defaults to te_etl if not provided' },
+    { name: 'repoCode', type: 'string', required: false, default: 'te_etl', desc: 'Repository code, defaults to te_etl if not provided' },
     { name: 'catalog', type: 'string', required: true, desc: 'Catalog name' },
     { name: 'schema', type: 'string', required: true, desc: 'Schema name' },
     { name: 'tableName', type: 'string', required: true, desc: 'Table name' },
-    { name: 'engineType', type: 'string', required: true, desc: 'SQL execution engine: TASK_ENGINE_TRINO(default), TASK_ENGINE_STARROCKS' },
+    { name: 'engineType', type: 'string', required: false, default: 'TASK_ENGINE_TRINO', desc: 'SQL execution engine: TASK_ENGINE_TRINO(default), TASK_ENGINE_STARROCKS' },
     { name: 'selectColumns', type: 'string', required: true, desc: 'List of column names to query, queries all columns if not provided' },
   ],
   risk: 'read',

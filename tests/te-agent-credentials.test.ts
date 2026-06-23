@@ -332,6 +332,13 @@ try {
     );
     assert.equal(calls[3].url, 'http://te-claude.local/api/sandbox/sync/pull');
     assert.equal((calls[3].init.headers as Record<string, string>)['Content-Type'], 'application/json');
+    assert.deepEqual(JSON.parse(String(calls[3].init.body)), {
+      workspacePath: 'wqa13',
+      kind: 'both',
+      skills: [],
+      mcp: [],
+      mode: 'merge',
+    });
   });
 
   // -------------------------------------------------------------------------

@@ -34,12 +34,19 @@ import {
 import {
   scanSkills,
   scanMcps,
+  splitPushableMcps,
   describeSource,
   getCurrentWorkspace,
+  type McpSource,
+  type SkillSource,
   type SkillCandidate,
   type McpCandidate,
 } from './scanners.js';
-import { copySkillPackageToTarget, updateSkillManifestForSource } from './local-copy.js';
+import {
+  copySkillPackageToTarget,
+  updateMcpManifestForProjectSource,
+  updateSkillManifestForSource,
+} from './local-copy.js';
 
 type Kind = 'skill' | 'mcp';
 type ResourceKind = Kind | 'both';
@@ -49,7 +56,7 @@ interface PushSkillItem {
   kind: 'skill';
   slug: string;
   scope: 'personal';
-  source: 'workspace' | 'global';
+  source: SkillSource;
   workspacePath?: string;
   event: 'upsert';
   dirPath: string;
@@ -62,10 +69,11 @@ interface PushMcpItem {
   kind: 'mcp';
   slug: string;
   scope: 'personal';
-  source: 'workspace' | 'global';
+  source: McpSource;
   workspacePath?: string;
+  workspaceDir?: string;
   event: 'upsert';
-  transport: 'http' | 'stdio';
+  transport: 'http' | 'sse' | 'stdio';
   url?: string;
   command?: string;
   args?: string[];
@@ -98,6 +106,14 @@ function redactEnv(env: Record<string, string> | undefined): Record<string, stri
   return out;
 }
 
+const SOURCE_ORDER: Record<string, number> = {
+  global: 0,
+  workspace: 1,
+  project: 0,
+  local: 1,
+  user: 2,
+};
+
 function skillToItem(s: SkillCandidate): PushSkillItem {
   return {
     kind: 'skill',
@@ -120,6 +136,7 @@ function mcpToItem(m: McpCandidate, includeSecrets: boolean): PushMcpItem {
     scope: 'personal',
     source: m.source,
     workspacePath: m.workspacePath,
+    workspaceDir: m.workspaceDir,
     event: 'upsert',
     transport: m.transport,
     url: m.url,
@@ -136,9 +153,9 @@ async function selectSkills(): Promise<PushSkillItem[]> {
     process.stderr.write('No Skills found (scanned current workspace .claude/skills)\n');
     return [];
   }
-  // Sort by source group: global first, then workspace
+  // Sort by source group, then slug.
   all.sort((a, b) => {
-    if (a.source !== b.source) return a.source === 'global' ? -1 : 1;
+    if (a.source !== b.source) return SOURCE_ORDER[a.source] - SOURCE_ORDER[b.source];
     return a.slug.localeCompare(b.slug);
   });
   const items: MultiselectItem<SkillCandidate>[] = all.map((s) => ({
@@ -157,11 +174,22 @@ async function selectMcps(includeSecrets: boolean): Promise<PushMcpItem[]> {
     process.stderr.write('No MCPs found (scanned current workspace .mcp.json / .claude/.claude.json and global ~/.claude.json)\n');
     return [];
   }
-  all.sort((a, b) => {
-    if (a.source !== b.source) return a.source === 'global' ? -1 : 1;
+  const { supported, unsupportedStdio } = splitPushableMcps(all);
+
+  if (unsupportedStdio.length > 0) {
+    const names = unsupportedStdio.map((m) => m.slug).sort().join(', ');
+    process.stderr.write(`ae-cli sync push only supports http/sse MCPs; skipped stdio MCPs: ${names}\n`);
+  }
+  if (supported.length === 0) {
+    process.stderr.write('No syncable MCPs found. ae-cli sync push only supports http/sse.\n');
+    return [];
+  }
+
+  supported.sort((a, b) => {
+    if (a.source !== b.source) return SOURCE_ORDER[a.source] - SOURCE_ORDER[b.source];
     return a.slug.localeCompare(b.slug);
   });
-  const items: MultiselectItem<McpCandidate>[] = all.map((m) => ({
+  const items: MultiselectItem<McpCandidate>[] = supported.map((m) => ({
     value: m,
     label: m.slug,
     group: describeSource(m),
@@ -215,7 +243,7 @@ function toHttpItems(items: Array<PushSkillItem | PushMcpItem>) {
       const { kind: _kind, dirPath: _dirPath, ...rest } = item;
       return rest;
     }
-    const { kind: _kind, ...rest } = item;
+    const { kind: _kind, workspaceDir: _workspaceDir, ...rest } = item;
     return rest;
   });
 }
@@ -274,6 +302,27 @@ function copySyncedSkillPackages(skillItems: PushSkillItem[], resp: PushResult):
   }
 }
 
+function updateSyncedProjectMcpManifest(mcpItems: PushMcpItem[], resp: PushResult): void {
+  if (mcpItems.length === 0) return;
+  const bySlug = new Map(mcpItems.map((item) => [item.slug, item]));
+  for (const result of resp.results) {
+    if (result.kind !== 'mcp' || result.status !== 'synced') continue;
+    const item = bySlug.get(result.slug);
+    if (!item || item.source !== 'project') continue;
+    if (!item.workspaceDir) {
+      result.status = 'failed';
+      result.message = 'Main app synced the MCP, but local MCP manifest update failed: missing workspaceDir';
+      continue;
+    }
+    try {
+      updateMcpManifestForProjectSource(item.workspaceDir, item.slug);
+    } catch (err: unknown) {
+      result.status = 'failed';
+      result.message = `Main app synced the MCP, but local MCP manifest update failed: ${(err as Error)?.message ?? String(err)}`;
+    }
+  }
+}
+
 async function selectDirection(optsDirection: string | undefined): Promise<Direction> {
   if (optsDirection === 'push' || optsDirection === 'pull') return optsDirection;
   if (optsDirection) {
@@ -322,6 +371,7 @@ async function runPush(kind: ResourceKind, includeSecrets: boolean): Promise<voi
   }
   if (mcpItems.length > 0) {
     const mcpResp = await pushItems('mcp', mcpItems);
+    updateSyncedProjectMcpManifest(mcpItems, mcpResp);
     allResults.push(...mcpResp.results);
   }
   renderResults(allResults);
@@ -350,7 +400,7 @@ async function runPull(kind: ResourceKind): Promise<void> {
     kind !== 'mcp'
       ? await selectPullResources({
           title: 'Select Skills to sync to workspace',
-          candidates: candidates.skills ?? [],
+          candidates: (candidates.skills ?? []).filter((candidate) => candidate.scope !== 'system'),
         })
       : [];
   const mcpItems =
@@ -372,7 +422,6 @@ async function runPull(kind: ResourceKind): Promise<void> {
     kind,
     skills: skillItems.map((item) => item.id),
     mcp: mcpItems.map((item) => item.id),
-    ifUnmodifiedSince: candidates.mtime,
   });
   renderResults(pullResultRows(resp));
 }

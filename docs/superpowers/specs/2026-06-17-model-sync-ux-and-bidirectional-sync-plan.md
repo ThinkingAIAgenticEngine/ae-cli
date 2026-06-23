@@ -12,7 +12,7 @@
 - 将模型能力收敛为单一 `ae-cli model` 命令：展示模型列表、单选切换、`q` 退出。
 - 将 Skill scope 元数据统一收敛到 `.claude/skills/.skill-manifest.json` v2，不再设计或生成 `.te-agent-scope.json`。
 - `ae-cli sync` 增加同步方向选择：工作空间 -> 主应用、主应用 -> 工作空间。
-- 主应用 -> 工作空间时支持 system / company / personal 标记的 Skill 与 MCP 刷新。
+- 主应用 -> 工作空间时，Skill 只刷新 company / personal；system Skill 由工作空间配置软链管理，不进入 ae-cli sync pull 选择。MCP 仍按现有 system / company / personal 候选语义处理。
 
 ## 当前代码事实
 
@@ -29,6 +29,8 @@
   - `sync/push` 当前只接受 `scope: "personal"`。
 - `src/commands/sync/scanners.ts`
   - Skill 只扫描当前工作空间 `.claude/skills/<slug>/SKILL.md`。
+  - Skill 扫描已支持目录软链：先 `lstat` 判断 symlink，再 `stat` 跟随目标确认是目录。
+  - Skill 扫描会先读取 `.claude/skills/.skill-manifest.json`；scope 为 `system` / `company` 的 Skill 会跳过，不进入“工作空间 -> 主应用”的 push 候选。
   - MCP 扫描当前工作空间 `.mcp.json`、当前工作空间 `.claude/.claude.json`、全局 `~/.claude.json`。
 - te-claude 当前已有 `POST /api/sandbox/sync/push`，没有现成的 `pull` 接口。
 - te-claude workspace provisioning 已有主应用写工作空间的能力，且使用 `.claude/skills/.skill-manifest.json` 作为清理边界。
@@ -118,6 +120,7 @@ ae-cli model
 - `.skill-manifest.json` 原本就是 workspace provisioning 的管理边界，scope 放入同一文件后不会出现目录内容与独立 scope 文件不一致。
 - `ae-cli sync` push 成功后写 v2 manifest，scope 固定为 `personal`。
 - 主应用 -> 工作空间 pull 物化后，也由 te-claude 写 v2 manifest；下一次 `ae-cli sync` 扫描即可按该 manifest 过滤 company/system。
+- system Skill 内容由 workspace 软链实时读取系统源目录，不需要通过 pull 刷新副本；system Skill 启用状态只通过新建/编辑工作空间配置调整。
 
 扫描规则计划改为：
 
@@ -165,7 +168,8 @@ te-claude 配套建议：
 建议接口拆分：
 
 - `GET /api/sandbox/sync/pull/candidates?workspacePath=<path>&kind=skill|mcp|both`
-  - 只返回当前 workspace 配置中已选择的 system / company / personal 资源。
+  - Skill 只返回当前 workspace 配置中已选择的 company / personal 资源；system Skill 不返回。
+  - MCP 仍返回当前 workspace 配置中已选择的 system / company / personal 资源。
   - Skill 返回 `id / name / scope / selected`。
   - MCP 返回 `id / name / scope / selected`。
   - CLI 只展示 `selected=true` 的 `name` 和 `scope`，并默认预选全部候选。
@@ -176,7 +180,7 @@ te-claude 配套建议：
 
 主应用 -> 工作空间的文件写入建议：
 
-- Skill 写到 `.claude/skills/<slug>/`，完整 package 包括 `SKILL.md`、`references/`、`assets/`、`scripts/`、隐藏文件/目录。
+- Skill 写到 `.claude/skills/<slug>/`：system Skill 写受限软链到 `/data/app/te_agent_ta/share/skills/system/<slug>`；personal/company Skill 写真实 package，完整 package 包括 `SKILL.md`、`references/`、`assets/`、`scripts/`、隐藏文件/目录。
 - 写 `.claude/skills/.skill-manifest.json` v2，记录主应用物化管理过的 Skill 目录和 scope。
 - MCP 合并写 workspace 根目录 `.mcp.json`：
   - system/company/personal 主应用管理项写 `_scope`。
@@ -197,6 +201,8 @@ Desired state：
 ## te-claude 接口结论
 
 - `主应用 -> 工作空间` 仍需要 te-claude 新增 pull candidates / pull apply 接口。
+- 2026-06-22 补充：system Skill 改为 workspace 软链后，工作空间 -> 主应用 scanner 已能识别 symlink-to-directory，且会按 `.skill-manifest.json` 过滤 `system/company`。前提是 te-claude provisioning 必须给 system 软链写入正确 manifest，否则 ae-cli 会把该软链当作用户自装 personal Skill。
+- 2026-06-22 补充：主应用 -> 工作空间 Skill pull 不展示 system Skill；te-claude candidates 不返回 system Skill，ae-cli 侧保留兼容过滤，防止旧服务返回 system Skill 时被用户选择。
 - `ae-cli model` 保留 `GET /api/sandbox/models` 作为候选列表接口。
 - `ae-cli model` 选择后使用 `POST /api/sandbox/models/select`；旧 `POST /api/sandbox/models/credentials` 已无现行调用方，应随本地 writer 链路删除。
 
@@ -235,7 +241,7 @@ te-cli：
 te-claude：
 
 - workspace provisioning 单测覆盖 `.skill-manifest.json` v2。
-- sandbox sync pull API 单测覆盖 system/company/personal Skill/MCP。
+- sandbox sync pull API 单测覆盖 Skill 排除 system、旧客户端强传 system Skill id 返回失败，以及 MCP system/company/personal 候选。
 - MCP merge 单测覆盖保留用户自装缺失 `_scope` 的 MCP。
 
 ## 风险与边界

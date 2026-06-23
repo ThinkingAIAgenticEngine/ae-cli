@@ -28,7 +28,7 @@ export function getSandboxRuntimeRoot(): string {
   return process.env.SANDBOX_RUNTIME_ROOT || getDefaultSandboxRuntimeRoot();
 }
 
-/** ae-cli 沙箱配置目录（MCP token、cluster-info 等） */
+/** ae-cli sandbox config directory for MCP token, cluster-info, and related files. */
 export function getSandboxAeConfigDir(): string {
   return join(getSandboxRuntimeRoot(), '.ae-config');
 }
