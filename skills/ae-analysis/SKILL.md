@@ -1,11 +1,12 @@
 ---
 name: ae-analysis
-version: 3.0.0
+version: 3.1.0
 description: "AE/TE/ThinkingEngine/ThinkingAI ae-cli manual for analysis-side tasks in the AE system or analysis platform: reports, dashboards, alerts, ad hoc analysis, drilldown, audience clusters, tags, tag members, metrics and metric definitions, events, properties, virtual events, virtual properties, metadata, project configuration, tracking plans, event tracking, mark times, project lists, and resource links. Use when the user asks to query, create, update, refresh, inspect, troubleshoot, govern, or manage these AE analysis assets. Must use ae-cli, read the matching references/<tool_name>.md command manual before composing commands, and never guess command names, flags, JSON payloads, project_id, resource IDs, or parameter formats."
 ---
 
 # ae-analysis
 
+> **CRITICAL - This skill is self-contained.** Use the Global AE CLI Rules below; do not require a separate shared skill for analysis-side tasks.
 > **CRITICAL - For all commands that require `project_id`, you MUST satisfy `PROJECT_ID_GATE` first (no guessing): verify the project by ID/name with `analysis_common +list_projects` only when there is no valid project context yet, when the user switches project/host/environment, or when the supplied project is ambiguous. Reuse a project already verified in the same continuous conversation and same host/environment.**
 > **CRITICAL - For write operations in this skill, you MUST complete the post-write link loop when applicable:** after success and extractable `resource_id`, call `analysis_common +get_resource_url` and return the main result + resource link (or explicit link-failure reason).
 > **CRITICAL - Before running any `+<tool_name>` command, you MUST first read the corresponding `references/<tool_name>.md`.** The reference filename always equals the command name without the leading `+`, for example `+query_adhoc` -> `references/query_adhoc.md`.
@@ -195,9 +196,102 @@ Legacy query_adhoc chain:
 3. Build QP manually from the documented schema and verified project metadata.
 4. Call `+query_adhoc`.
 
-## Tool Groups (73)
+### F. ABSOLUTE_CONTRIBUTION_ATTRIBUTION
 
-### analysis (35)
+**When attributing a metric change to dimensions, you MUST use Absolute Contribution Decomposition. Never judge the primary driver based solely on relative change percentage.**
+
+#### Problem Definition
+
+Base rate fallacy causes inaccurate attribution:
+
+| Dimension | Baseline | Comparison | Absolute Δ | Relative Δ | Contribution |
+|-----------|----------|------------|-----------|-----------|-------------|
+| A         | 1        | 5          | +4        | +400%     | **40%**     |
+| B         | 50       | 55         | +5        | +10%      | **50%**     |
+| C         | 49       | 50         | +1        | +2%       | **10%**     |
+
+Wrong: "Dimension A grew 400%, it is the main driver."
+Correct: "Dimension B contributed 50% of the absolute increase (+5), making it the primary driver."
+
+#### Algorithm
+
+##### Scenario 1: Additive Metrics
+
+Use this for count-based metrics such as DAU, event counts, and payment amounts.
+
+```
+delta_total = V_total(comparison) - V_total(baseline)
+delta_dim_i = V_dim_i(comparison) - V_dim_i(baseline)
+contribution_pct_i = delta_dim_i / delta_total * 100%
+```
+
+- Sort by `|delta_dim_i|` in descending order.
+- Do not sort by `delta_dim_i / V_dim_i(baseline)`.
+
+##### Scenario 2: Ratio / Conversion Metrics
+
+Ratio changes come from two components:
+- **Composition effect**: changes in subgroup weight.
+- **Rate effect**: changes in each subgroup's own rate.
+
+Simplified mode is the default:
+
+```
+rate_change = R_total(comparison) - R_total(baseline)
+```
+
+Report subgroup rates hierarchically and call out structural impact in the conclusion.
+
+Precise decomposition is only required when the user explicitly requests structural breakdown:
+
+```
+contribution_rate_i   = w_i(baseline) * [R_i(comparison) - R_i(baseline)]
+contribution_weight_i = [w_i(comparison) - w_i(baseline)] * R_i(baseline)
+```
+
+Where `w_i` is the subgroup's share of total users.
+
+#### Execution Workflow
+
+1. Identify metric type: additive uses Scenario 1, ratio uses Scenario 2.
+2. Fetch baseline total and dimension values with `query_adhoc` and grouped dimensions.
+3. Fetch comparison total and dimension values with the same scope.
+4. Compute `delta_dim_i` for each dimension.
+5. Compute `contribution_pct_i = delta_dim_i / delta_total * 100%`.
+6. Sort by absolute contribution magnitude and preserve sign.
+7. Present the conclusion.
+
+If the builder supports comparison mode for both periods in one query, prefer it to avoid two `query_adhoc` calls.
+
+#### Output Format
+
+```
+Core conclusion: [Metric] from [baseline] to [comparison], changed by [±][absolute] ([±][percent])
+
+Dimension contribution ranking (by absolute contribution, descending):
+1. [dimension value] -> [±][absolute delta] (contributed [xx]%), relative change [±][percent]
+2. [dimension value] -> [±][absolute delta] (contributed [xx]%), relative change [±][percent]
+...
+
+Conclusion: "[Metric] [increase/decrease] was primarily driven by [top dimension] (contributed [xx]% of the change), followed by [second dimension] ([xx]%)"
+```
+
+If any dimension shows a cross-effect, such as positive contribution but negative relative change, call it out explicitly.
+
+#### Exceptions
+
+Skip absolute contribution decomposition when:
+- The user explicitly asks for growth-rate or percentage-change ranking only.
+- The user asks for a single dimension's trend without cross-dimension comparison.
+- A dimension baseline is zero; mark it as a new dimension separately.
+
+#### Self-Check
+
+After outputting attribution results, verify that dimension contributions sum to approximately 100%. If the sum deviates from 100% by more than 5 percentage points, flag that some dimensions may be missing or data scoping may be inconsistent.
+
+## Tool Groups (79)
+
+### analysis (40)
 
 Alerts (5):
 - `+get_alert_definition_schema` ([doc](references/get_alert_definition_schema.md))
@@ -206,11 +300,12 @@ Alerts (5):
 - `+create_alert` ([doc](references/create_alert.md))
 - `+update_alert` ([doc](references/update_alert.md))
 
-Reports and Dashboards (13):
+Reports and Dashboards (17):
 - `+create_report` ([doc](references/create_report.md))
 - `+get_report_definition` ([doc](references/get_report_definition.md))
 - `+list_reports` ([doc](references/list_reports.md))
 - `+query_report_data` ([doc](references/query_report_data.md))
+- `+create_space` ([doc](references/create_space.md))
 - `+create_dashboard` ([doc](references/create_dashboard.md))
 - `+list_dashboards` ([doc](references/list_dashboards.md))
 - `+query_dashboard_detail` ([doc](references/query_dashboard_detail.md))
@@ -220,13 +315,17 @@ Reports and Dashboards (13):
 - `+list_public_access_links` ([doc](references/list_public_access_links.md))
 - `+create_public_access_link` ([doc](references/create_public_access_link.md))
 - `+update_public_access_link` ([doc](references/update_public_access_link.md))
+- `+list_bi_panels` ([doc](references/list_bi_panels.md))
+- `+get_bi_panel_detail` ([doc](references/get_bi_panel_detail.md))
+- `+query_bi_panel_data` ([doc](references/query_bi_panel_data.md))
 
-Model Analysis (10):
+Model Analysis (11):
 - `+build_event_analysis_qp` ([doc](references/build_event_analysis_qp.md))
 - `+build_retention_analysis_qp` ([doc](references/build_retention_analysis_qp.md))
 - `+build_funnel_analysis_qp` ([doc](references/build_funnel_analysis_qp.md))
 - `+build_prop_analysis_qp` ([doc](references/build_prop_analysis_qp.md))
 - `+query_adhoc` ([doc](references/query_adhoc.md))
+- `+cancel_query` ([doc](references/cancel_query.md))
 - `+drilldown_users` ([doc](references/drilldown_users.md))
 - `+drilldown_user_events` ([doc](references/drilldown_user_events.md))
 - `+create_result_cluster` ([doc](references/create_result_cluster.md))
@@ -266,7 +365,7 @@ Schema Definitions (2):
 - `+get_cluster_definition_schema` ([doc](references/get_cluster_definition_schema.md))
 - `+get_tag_definition_schema` ([doc](references/get_tag_definition_schema.md))
 
-### analysis_meta (20)
+### analysis_meta (23)
 
 Metadata and Governance (10):
 - `+list_events` ([doc](references/list_events.md))
@@ -293,7 +392,8 @@ Project and Tracking (11):
 - `+list_project_mark_times` ([doc](references/list_project_mark_times.md))
 - `+delete_project_mark_times` ([doc](references/delete_project_mark_times.md))
 
-Entity Catalog (1):
+Entity Catalog (2):
+- `+create_entity` ([doc](references/create_entity.md))
 - `+list_entities` ([doc](references/list_entities.md))
 
 ### analysis_common (2)
@@ -316,4 +416,4 @@ npm run verify:analysis-common-tools
 
 ## Reference Docs
 
-See the unified `references/` directory (73 command docs total).
+See the unified `references/` directory (79 command docs total).

@@ -25,7 +25,7 @@ ae-cli analysis +list_alerts --dry-run
 |---|---|---|
 | `--project_id` / `-p` | Yes | Project ID |
 | `--query` / `-q` | No | Optional keyword filter. Performs fuzzy matching against alert names; if omitted, all alerts are returned. |
-| `--limit` / `-l` | No | Optional page size. Default: 20, maximum: 50. |
+| `--limit` / `-l` | No | Optional page size. Default: 20, maximum: 10000. |
 | `--offset` / `-o` | No | Optional page offset. Default: 0. |
 
 ## Decision Rules

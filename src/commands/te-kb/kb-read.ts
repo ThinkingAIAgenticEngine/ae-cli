@@ -41,7 +41,7 @@ export const kbRead: Command = {
       desc: 'Page path relative to the knowledge base root, e.g. wiki/concepts/data-model.md or index.md',
     },
     { name: 'offset', type: 'number', required: false, desc: 'Start line (1-based). Omit to read from the beginning.' },
-    { name: 'limit', type: 'number', required: false, desc: 'Max number of lines to return (1-2000).' },
+    { name: 'limit', type: 'number', required: false, desc: 'Max number of lines to return (1-10000).' },
     { name: 'locale', type: 'string', required: false, desc: 'Optional locale: zh | en | ja | ko' },
   ],
   risk: 'read',

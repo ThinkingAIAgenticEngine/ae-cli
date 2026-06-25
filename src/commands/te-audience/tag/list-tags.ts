@@ -7,7 +7,7 @@ export const listTags = createMcpCommand({
     { name: 'project_id', type: 'number', required: true, desc: 'Project ID', alias: 'p' },
     { name: 'query', type: 'string', required: false, desc: 'Keyword filter', alias: 'q' },
     { name: 'fields', type: 'json', required: false, desc: 'Optional return field list JSON array' },
-    { name: 'limit', type: 'number', required: false, desc: 'Optional page size, default 20, max 50' },
+    { name: 'limit', type: 'number', required: false, desc: 'Optional page size, default 20, max 10000' },
     { name: 'offset', type: 'number', required: false, desc: 'Optional page offset, default 0' },
   ],
   risk: 'read',

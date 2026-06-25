@@ -6,7 +6,7 @@ export const listAlerts = createMcpCommand({
   flags: [
     { name: 'project_id', type: 'number', required: true, alias: 'p', desc: 'Project ID' },
     { name: 'query', type: 'string', required: false, alias: 'q', desc: 'Optional keyword filter. Performs fuzzy matching against alert names; if omitted, all alerts are returned.' },
-    { name: 'limit', type: 'number', required: false, alias: 'l', desc: 'Optional page size. Default: 20, maximum: 50.' },
+    { name: 'limit', type: 'number', required: false, alias: 'l', desc: 'Optional page size. Default: 20, maximum: 10000.' },
     { name: 'offset', type: 'number', required: false, alias: 'o', desc: 'Optional page offset. Default: 0.' },
   ],
   risk: 'read',

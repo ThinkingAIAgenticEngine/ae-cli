@@ -23,7 +23,7 @@ ae-cli analysis +list_public_access_links --dry-run
 | `--project_id` / `-p` | Yes | Project ID |
 | `--query` / `-q` | No | Optional keyword filter. Fuzzy match on shorter and remarks. |
 | `--fields` | No | Optional fields to return. Supported: id, shorter, creator, projectIdAndName, source, accessId, target, options, remarks, accessStatus, effectTime, expireTime, createTime, updateTime. Invalid fields cause INVALID_FIELDS error. |
-| `--limit` | No | Optional limit. Default: 20, maximum: 50. |
+| `--limit` | No | Optional limit. Default: 20, maximum: 10000. |
 | `--offset` | No | Optional offset. Default: 0. |
 
 ## Decision Rules

@@ -83,6 +83,11 @@ function loadAllTokens(): TokenStore {
     }
     if (fs.existsSync(TOKENS_FILE)) {
       const data = safeReadJsonFile(TOKENS_FILE);
+      // Remove stale empty token file left by previous versions
+      if (data && typeof data === 'object' && !Array.isArray(data) && Object.keys(data).length === 0) {
+        try { fs.unlinkSync(TOKENS_FILE); } catch {}
+        return {};
+      }
       // Check if any keys need URL migration
       let needsMigration = false;
       const migrated: TokenStore = {};
@@ -106,6 +111,11 @@ function loadAllTokens(): TokenStore {
 
 function saveAllTokens(tokens: TokenStore): void {
   ensureDir();
+  if (Object.keys(tokens).length === 0) {
+    // Remove the file when no tokens remain — avoids writing empty {}
+    try { fs.unlinkSync(TOKENS_FILE); } catch {}
+    return;
+  }
   fs.writeFileSync(TOKENS_FILE, JSON.stringify(tokens, null, 2));
   // Ensure only the current user can read/write (0600)
   try { fs.chmodSync(TOKENS_FILE, 0o600); } catch {}

@@ -13,7 +13,7 @@ export const buildEventDetailsSql = createMcpCommand({
     { name: 'properties', type: 'json', required: false, desc: 'Optional display properties JSON' },
     { name: 'sort_by', type: 'string', required: false, desc: 'Optional sort field' },
     { name: 'sort_order', type: 'string', required: false, desc: 'Optional sort order. Supported values: asc and desc' },
-    { name: 'limit', type: 'number', required: false, desc: 'Optional result limit. Default: 100' },
+    { name: 'limit', type: 'number', required: false, desc: 'Optional result limit. Default: 100, maximum: 10000' },
     { name: 'zone_offset', type: 'number', required: false, desc: 'Time zone offset. For example, UTC+8 is 8' },
   ],
   risk: 'read',

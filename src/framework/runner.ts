@@ -33,6 +33,22 @@ export async function runCommand(cmd: Command, opts: Record<string, any>, global
       cmd.validate(ctx);
     }
 
+    // Validate pagination/limit flags: all must be <= 10000
+    const LIMIT_FLAG_PATTERNS = [/limit/i, /page_size/i, /pagesize/i, /row_limit/i, /block_limit/i, /top[-_]?k/i];
+    for (const flag of cmd.flags) {
+      const isLimitFlag = LIMIT_FLAG_PATTERNS.some((p) => p.test(flag.name));
+      if (isLimitFlag && flag.type === 'number') {
+        const val = opts[camelCase(flag.name)];
+        if (val !== undefined && val !== null) {
+          const num = Number(val);
+          if (!Number.isInteger(num) || num < 1 || num > 10000) {
+            printError('validation', `--${flag.name} must be an integer between 1 and 10000 (got: ${val})`);
+            process.exit(1);
+          }
+        }
+      }
+    }
+
     // Dry run
     if (globalOpts.dryRun) {
       if (cmd.dryRun) {

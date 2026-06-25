@@ -30,7 +30,7 @@ ae-cli analysis_meta +list_metrics --dry-run
 | `--project_id` / `-p` | Yes | Project ID |
 | `--query` / `-q` | No | Optional keyword filter. Fuzzy match on metricName, metricDesc, metricRemark. |
 | `--fields` | No | Optional fields to return. Supported: metricId, metricName, metricDesc, metricRemark, metricMode, openId, creator, creatorLoginName, updateOpenId, updateCreator, updateLoginName, createTime, updateTime. Invalid fields cause INVALID_FIELDS error. |
-| `--limit` | No | Optional limit. Default: 20, maximum: 50. |
+| `--limit` | No | Optional limit. Default: 20, maximum: 10000. |
 | `--offset` | No | Optional offset. Default: 0. |
 
 ## Decision Rules

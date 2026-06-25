@@ -31,7 +31,7 @@ Domain: **Model analysis**
 ## Command
 ```bash
 ae-cli analysis +drilldown_user_events --project_id <project_id> --user_id u_123 --event_names '["login"]' --target_dates '["2026-04-08 00:00:00"]'
-ae-cli analysis +drilldown_user_events --project_id <project_id> --user_id u_123 --event_names '["login"]' --target_dates '["2026-04-08 00:00:00"]' --zone_offset 8 --use_cache true --page_num 1 --page_size 20
+ae-cli analysis +drilldown_user_events --project_id <project_id> --user_id u_123 --event_names '["login"]' --target_dates '["2026-04-08 00:00:00"]' --zone_offset 8 --use_cache true --page_num 1 --page_size 20 --request_id mcp_bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
 ae-cli analysis +drilldown_user_events --dry-run
 ```
 
@@ -55,13 +55,15 @@ ae-cli analysis +drilldown_user_events --dry-run
 | `--entity_value` | No | Optional entity value for multi-entity scenarios |
 | `--use_cache` | No | Whether to use cache. Default: true |
 | `--page_num` | No | Start page number, default 1 |
-| `--page_size` | No | Page size. Default: 1000, maximum: 100000 |
+| `--page_size` | No | Page size. Default: 1000, maximum: 10000 |
+| `--request_id` | No | Optional unique request ID used for tracking and cancellation. If provided, it must use `mcp_<32 lowercase hex UUID>`, for example `mcp_0123456789abcdef0123456789abcdef`. For long-running or cancelable queries, provide this before starting the query so it can be cancelled later with `+cancel_query --request_id <same value>`, even if the caller stops waiting before the tool returns. If `fetch failed`, HTTP timeout, or caller timeout happens, the backend query may still be running. The auto-generated requestId is not available when the HTTP request fails before a response, so preset `requestId` is required for proactive cleanup. Generated automatically if omitted. The response `metadata.requestId` can also be passed to `cancel_query` when the query is no longer needed. |
 | `--timeout_minutes` | No | Query timeout in minutes |
 
 ## Decision Rules
 - `user_id` / `event_names` / `target_dates` must come from the previous step result and must not be constructed out of thin air.
 - On the first run, start with only the required parameters (`--project_id`,`--user_id`,`--event_names`,`--target_dates`), and add optional parameters after confirming the path works.
 - Wrap JSON parameters in single quotes (for example `--event_names '[]'`, `--target_dates '[]'`) to avoid shell escaping issues.
+- For long-running or cancelable drilldowns, supply your own `--request_id` before starting so `+cancel_query` can cancel by the same ID if the caller or user stops waiting. If `fetch failed`, HTTP timeout, or caller timeout happens, the backend query may still be running; call `+cancel_query --request_id <same value>` with the preset ID. The auto-generated requestId is not available when the HTTP request fails before a response. The value must use `mcp_<32 lowercase hex UUID>`, for example `mcp_0123456789abcdef0123456789abcdef`.
 - For cross-project troubleshooting, first confirm whether `--project_id` matches the current permissions and target environment.
 
 ## Next Steps on Failure

@@ -24,7 +24,7 @@ ae-cli analysis_meta +list_project_mark_times --dry-run
 | `--zone_offset` | No | Marker time zone offset |
 | `--query` / `-q` | No | Optional keyword filter. Fuzzy match on markContent. |
 | `--fields` | No | Optional fields to return. Supported: id, projectId, markTime, userZoneTime, zoneOffset, markContent, isShow, creatorName, creatorId, lastModifierName, lastModifierId, createTime, updateTime. Invalid fields cause INVALID_FIELDS error. |
-| `--limit` | No | Optional limit. Default: 20, maximum: 50. |
+| `--limit` | No | Optional limit. Default: 20, maximum: 10000. |
 | `--offset` | No | Optional offset. Default: 0. |
 
 ## Decision Rules

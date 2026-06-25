@@ -29,7 +29,7 @@ Domain: **Report Management**
 ## Commands
 ```bash
 ae-cli analysis +query_report_data --project_id <project_id> --report_ids '[1001]'
-ae-cli analysis +query_report_data --project_id <project_id> --report_ids '[1001]' --filters '{}' --group_by '[]' --request_id demo --use_cache true --start_date 2026-04-08 --end_date 2026-04-08 --time_granularity day --timeout_minutes 8
+ae-cli analysis +query_report_data --project_id <project_id> --report_ids '[1001]' --filters '{}' --group_by '[]' --request_id mcp_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa --use_cache true --start_date 2026-04-08 --end_date 2026-04-08 --time_granularity day --timeout_minutes 8
 ae-cli analysis +query_report_data --dry-run
 ```
 
@@ -40,7 +40,7 @@ ae-cli analysis +query_report_data --dry-run
 | `--report_ids` | Yes | List of report IDs |
 | `--filters` | No | Optional filter JSON. If provided, MUST follow `+get_filter_schema`, and referenced fields must come from `analysis_meta +list_properties` in the same `project_id`. |
 | `--group_by` | No | Optional group-by JSON array. If provided, MUST follow `+get_groupby_schema`, and referenced fields must come from `analysis_meta +list_properties` in the same `project_id`. |
-| `--request_id` | No | Optional unique request ID. Generated automatically if omitted. |
+| `--request_id` | No | Optional unique request ID used for tracking and cancellation. If provided, it must use `mcp_<32 lowercase hex UUID>`, for example `mcp_0123456789abcdef0123456789abcdef`. For long-running or cancelable queries, provide this before starting the query so it can be cancelled later with `+cancel_query --request_id <same value>`, even if the caller stops waiting before the tool returns. If `fetch failed`, HTTP timeout, or caller timeout happens, the backend query may still be running. The auto-generated requestId is not available when the HTTP request fails before a response, so preset `requestId` is required for proactive cleanup. Generated automatically if omitted. The response `metadata.requestId` can also be passed to `cancel_query` when the query is no longer needed. |
 | `--use_cache` | No | Whether to use cache. Default: true |
 | `--start_date` | No | Optional start date in yyyy-MM-dd format |
 | `--end_date` | No | Optional end date in yyyy-MM-dd format |

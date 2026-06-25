@@ -40,7 +40,7 @@ export const kbGrep: Command = {
       required: false,
       desc: 'Optional JSON array of knowledge base refs to scope the search, e.g. [{"scope":"company","name":"engineering-handbook"}]. Omit to search all accessible knowledge bases.',
     },
-    { name: 'top-k', type: 'number', required: false, desc: 'Max number of hits to return (1-50, default 10)' },
+    { name: 'top-k', type: 'number', required: false, desc: 'Max number of hits to return (1-10000, default 10)' },
     { name: 'locale', type: 'string', required: false, desc: 'Optional locale: zh | en | ja | ko' },
   ],
   risk: 'read',

@@ -24,7 +24,7 @@ ae-cli analysis_meta +list_entities --dry-run
 | `--event_name` | No | Optional event name filter |
 | `--query` / `-q` | No | Optional keyword filter. Fuzzy match is applied to entityName, columnName, and columnDesc; if omitted, all accessible dashboards are returned. |
 | `--fields` / `-f` | No | Optional fields to return (JSON array). Supported fields: `entityId`, `entityName`, `columnName`, `columnDesc`, `selectType`. |
-| `--limit` / `-l` | No | Optional page size. Default: 20, maximum: 50. |
+| `--limit` / `-l` | No | Optional page size. Default: 20, maximum: 10000. |
 | `--offset` / `-o` | No | Optional page offset. Default: 0. |
 
 

@@ -68,11 +68,29 @@ for (const tool of commands) {
 }
 
 // Guard critical argument contracts for cluster/tag MCP tools.
+const lifecycleDescriptionTokens = [
+  "name: 'request_id'",
+  "requestId: optionalString(ctx, 'request_id')",
+  "name: 'timeout_minutes'",
+  "timeoutMinutes: optionalNumber(ctx, 'timeout_minutes')",
+  'provide requestId before starting',
+  'metadata.requestId',
+  'cancel_query',
+  'provide this before starting',
+  'caller stops waiting',
+  'fetch failed',
+  'HTTP timeout',
+  'backend query may still be running',
+  'auto-generated requestId is not available',
+  '+cancel_query --request_id',
+  'mcp_<32 lowercase hex UUID>',
+  'mcp_0123456789abcdef0123456789abcdef',
+];
 const requiredTokensByFile = {
   'src/commands/te-audience/cluster/list-clusters.ts': ["name: 'query'", "name: 'fields'", "name: 'limit'", "name: 'offset'"],
-  'src/commands/te-audience/cluster/list-cluster-members.ts': ["name: 'query'", "name: 'fields'", "name: 'limit'", "name: 'offset'"],
+  'src/commands/te-audience/cluster/list-cluster-members.ts': ["name: 'query'", "name: 'fields'", "name: 'limit'", "name: 'offset'", ...lifecycleDescriptionTokens],
   'src/commands/te-audience/tag/list-tags.ts': ["name: 'query'", "name: 'fields'", "name: 'limit'", "name: 'offset'"],
-  'src/commands/te-audience/tag/list-tag-members.ts': ["name: 'query'", "name: 'fields'", "name: 'limit'", "name: 'offset'"],
+  'src/commands/te-audience/tag/list-tag-members.ts': ["name: 'query'", "name: 'fields'", "name: 'limit'", "name: 'offset'", ...lifecycleDescriptionTokens],
   'src/commands/te-audience/schema/get-cluster-definition-schema.ts': ["name: 'cluster_type'", "name: 'response_mode'", "name: 'condition_subtype'"],
   'src/commands/te-audience/schema/get-tag-definition-schema.ts': ["name: 'type'", "name: 'response_mode'", "name: 'condition_subtype'"],
 };
@@ -86,6 +104,65 @@ for (const [relPath, tokens] of Object.entries(requiredTokensByFile)) {
   for (const token of tokens) {
     if (!content.includes(token)) {
       fail(`missing required audience arg contract "${token}" in ${relPath}`);
+    }
+  }
+}
+
+const lifecycleReferenceTokens = [
+  'provide this before starting',
+  'caller stops waiting',
+  'fetch failed',
+  'HTTP timeout',
+  'backend query may still be running',
+  'auto-generated requestId is not available',
+  '+cancel_query --request_id',
+  'metadata.requestId',
+  'cancel_query',
+  'mcp_<32 lowercase hex UUID>',
+  'mcp_0123456789abcdef0123456789abcdef',
+];
+const requiredReferenceTokensByFile = {
+  'skills/ae-analysis/references/list_cluster_members.md': lifecycleReferenceTokens,
+  'skills/ae-analysis/references/list_tag_members.md': lifecycleReferenceTokens,
+};
+
+for (const [relPath, tokens] of Object.entries(requiredReferenceTokensByFile)) {
+  const absPath = path.join(ROOT, relPath);
+  if (!fs.existsSync(absPath)) {
+    fail(`missing required reference file: ${relPath}`);
+  }
+  const content = fs.readFileSync(absPath, 'utf-8');
+  for (const token of tokens) {
+    if (!content.includes(token)) {
+      fail(`missing required audience reference contract "${token}" in ${relPath}`);
+    }
+  }
+}
+
+const docsPath = path.join(ROOT, 'docs/te-analysis/te-analysis-mcp-tools.md');
+if (!fs.existsSync(docsPath)) {
+  fail('missing docs/te-analysis/te-analysis-mcp-tools.md');
+}
+const docsContent = fs.readFileSync(docsPath, 'utf-8');
+for (const section of ['#### list_cluster_members', '#### list_tag_members']) {
+  const start = docsContent.indexOf(section);
+  if (start < 0) {
+    fail(`missing audience docs section: ${section}`);
+  }
+  const nextSection = docsContent.indexOf('\n#### ', start + section.length);
+  const body = docsContent.slice(start, nextSection < 0 ? undefined : nextSection);
+  for (const token of [
+    'fetch failed',
+    'HTTP timeout',
+    'backend query may still be running',
+    'auto-generated requestId is not available',
+    '+cancel_query --request_id',
+    'metadata.requestId',
+    'mcp_<32 lowercase hex UUID>',
+    'mcp_0123456789abcdef0123456789abcdef',
+  ]) {
+    if (!body.includes(token)) {
+      fail(`missing required audience docs contract "${token}" in ${section}`);
     }
   }
 }

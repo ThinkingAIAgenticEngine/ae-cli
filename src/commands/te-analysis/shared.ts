@@ -91,7 +91,7 @@ export function optionalClusterQueryArgs(ctx: RuntimeContext): Record<string, un
 // Row-count limits for data-query commands. Default is agent-friendly; the
 // maximum is a physical guard against overload, not an artificial throttle.
 export const DEFAULT_QUERY_LIMIT = 1000;
-export const MAX_QUERY_LIMIT = 100000;
+export const MAX_QUERY_LIMIT = 10000;
 
 // Reject a row limit outside the physical range [1, MAX_QUERY_LIMIT].
 // undefined means "not provided" and is left for default resolution.

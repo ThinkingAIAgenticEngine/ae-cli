@@ -8,7 +8,7 @@ export const dictSearchTables: Command = {
   flags: [
     { name: 'spaceCode', type: 'string', required: true, desc: 'Space code' },
     { name: 'search', type: 'string', required: false, desc: 'Search keyword (fuzzy match on table name/remark/description)' },
-    { name: 'maxResults', type: 'number', required: false, desc: 'Max return count, default 200, max 200' },
+    { name: 'maxResults', type: 'number', required: false, desc: 'Max return count, default 200, max 10000' },
   ],
   risk: 'read',
   execute: async (ctx) => {

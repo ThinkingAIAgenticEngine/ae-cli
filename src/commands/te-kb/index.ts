@@ -9,9 +9,11 @@ import { schema } from './schema.js';
 import { kbIndex } from './kb-index.js';
 import { kbGrep } from './kb-grep.js';
 import { kbRead } from './kb-read.js';
+import { ask } from './ask.js';
 
 const commands: Command[] = [
   query,
+  ask,
   add,
   compile,
   remove,
@@ -24,4 +26,4 @@ const commands: Command[] = [
 ];
 
 export default commands;
-export { query, add, compile, remove, create, rmSource, schema, kbIndex, kbGrep, kbRead };
+export { query, ask, add, compile, remove, create, rmSource, schema, kbIndex, kbGrep, kbRead };

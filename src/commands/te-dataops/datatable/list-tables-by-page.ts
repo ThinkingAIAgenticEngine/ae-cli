@@ -9,7 +9,7 @@ export const listTablesByPage: Command = {
     { name: 'spaceCode', type: 'string', required: true, desc: 'Space code' },
     { name: 'search', type: 'string', required: false, desc: 'Search keyword (fuzzy match on table name/remark/description)' },
     { name: 'pageNum', type: 'number', required: false, desc: 'Page number, default 1' },
-    { name: 'pageSize', type: 'number', required: false, desc: 'Page size, default 20' },
+    { name: 'pageSize', type: 'number', required: false, desc: 'Page size, default 20, max 10000' },
   ],
   risk: 'read',
   execute: async (ctx) => {

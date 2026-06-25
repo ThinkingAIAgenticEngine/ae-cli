@@ -26,7 +26,7 @@ Domain: **Entity Detail Queries**
 ## Commands
 ```bash
 ae-cli analysis +query_entity_details --project_id <project_id> --definition '{}'
-ae-cli analysis +query_entity_details --project_id <project_id> --entity_id 1001 --definition '{}' --properties '{}' --sort_by time --sort_order desc --limit 20 --zone_offset 8 --use_cache true
+ae-cli analysis +query_entity_details --project_id <project_id> --entity_id 1001 --definition '{}' --properties '{}' --sort_by time --sort_order desc --limit 20 --zone_offset 8 --use_cache true --request_id mcp_eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee --timeout_minutes 8
 ae-cli analysis +query_entity_details --dry-run
 ```
 
@@ -39,15 +39,18 @@ ae-cli analysis +query_entity_details --dry-run
 | `--properties` | No | Optional display properties JSON, for example `[{"columnName":"#user_id","tableType":"0"},{"columnName":"device_id","tableType":"0"}]`. If provided, property names should come from `analysis_meta +list_properties` in the same `project_id`. |
 | `--sort_by` | No | Optional sort field                                                                                                                                                                                                                     |
 | `--sort_order` | No | Optional sort order. Supported values: asc and desc                                                                                                                                                                                     |
-| `--limit` | No | Optional result limit. Default: 1000, maximum: 100000                                                                                                                                                                                         |
+| `--limit` | No | Optional result limit. Default: 1000, maximum: 10000                                                                                                                                                                                         |
 | `--zone_offset` | No | Time zone offset. For example, UTC+8 is 8                                                                                                                                                                                               |
 | `--use_cache` | No | Whether to use cache. Default: true                                                                                                                                                                                                     |
+| `--request_id` | No | Optional unique request ID used for tracking and cancellation. If provided, it must use `mcp_<32 lowercase hex UUID>`, for example `mcp_0123456789abcdef0123456789abcdef`. For long-running or cancelable queries, provide this before starting the query so it can be cancelled later with `+cancel_query --request_id <same value>`, even if the caller stops waiting before the tool returns. If `fetch failed`, HTTP timeout, or caller timeout happens, the backend query may still be running. The auto-generated requestId is not available when the HTTP request fails before a response, so preset `requestId` is required for proactive cleanup. Generated automatically if omitted. The response `metadata.requestId` can also be passed to `cancel_query` when the query is no longer needed. |
+| `--timeout_minutes` | No | Query timeout in minutes. If omitted, 30 minutes is used. |
 
 ## Decision Rules
 - `definition` / `properties` cannot be written by hand based on experience alone: they must satisfy both the schema structure and the project's real metadata.
 - `list_events` / `list_properties` must be learned from the corresponding reference docs before calling them.
 - For the first run, it is recommended to pass only the required parameters (`--project_id`, `--definition`) and add optional parameters after confirming the chain works.
 - Wrap JSON parameters in single quotes (for example `--definition '{}'`, `--properties '{}'`) to avoid shell escaping issues.
+- For long-running or cancelable queries, supply your own `--request_id` before starting so `+cancel_query` can cancel by the same ID if the caller or user stops waiting. If `fetch failed`, HTTP timeout, or caller timeout happens, the backend query may still be running; call `+cancel_query --request_id <same value>` with the preset ID. The auto-generated requestId is not available when the HTTP request fails before a response. The value must use `mcp_<32 lowercase hex UUID>`, for example `mcp_0123456789abcdef0123456789abcdef`.
 - For cross-project troubleshooting, first confirm whether `--project_id` matches the current permissions and target environment.
 
 ## Next Step After Failure

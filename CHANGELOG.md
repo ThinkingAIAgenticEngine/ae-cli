@@ -1,3 +1,10 @@
+### 6.0.16
+**Date:** 2026-06-25
+
+**Changes:**
+
+* Supports tracking command
+
 ### 1.0.30
 **Date:** 2026-06-23
 

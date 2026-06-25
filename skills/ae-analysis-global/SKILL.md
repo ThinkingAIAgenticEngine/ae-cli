@@ -1,11 +1,13 @@
 ---
 name: ae-analysis-global
 version: 1.0.0
-description: "Overlay rules for AE/TE analysis global multi-cluster mode. Use only when ae-cli config cluster-mode status reports sw_cfg_enable_global_query=true. This skill supplements ae-analysis; it does not replace it."
+description: "Use when AE/TE analysis requests mention query/current/service/deployment clusters, current cluster (当前集群), cluster info (集群信息/有哪些集群), global or multi-cluster data, all clusters/all servers, GLOBAL/SLAVE, list_query_clusters, cluster_query_scope, slave_cluster_id, country/region/server/shard/site/market routing, sw_cfg_enable_global_query, or when cluster may mean query cluster rather than audience/user segment."
 ---
 
 # ae-analysis-global
 
+
+Load this skill based on user intent first. After loading, run `ae-cli config cluster-mode status`; the status gates whether these overlay rules apply, not whether this skill should be loaded.
 
 This is an overlay for `ae-analysis`. First use the normal `ae-analysis` rules and matching command references. Apply the rules below only when local multi-cluster mode is enabled (`ae-cli config cluster-mode status`):
 

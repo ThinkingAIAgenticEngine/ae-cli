@@ -10,7 +10,7 @@
 
 ## 工具分类统计
 
-总计 **38 个工具**，按功能域分类：
+总计 **42 个工具**，按功能域分类：
 
 ### 1. 元数据查询 (Meta) - 2 个工具
 - `list_events` - 列出项目事件元数据（支持字段投影与分页）
@@ -22,14 +22,17 @@
 - `query_report_data` - 查询报告数据
 - `create_report` - 创建新报告
 
-### 3. 仪表盘管理 (Dashboard Management) - 5 个工具
+### 3. 仪表盘管理 (Dashboard Management) - 8 个工具
 - `list_dashboards` - 列出项目可访问仪表盘（支持字段投影与分页）
 - `query_dashboard_detail` - 获取仪表盘详情
 - `query_dashboard_report_data` - 查询仪表盘报告数据
 - `create_dashboard` - 创建新仪表盘
 - `update_dashboard` - 更新仪表盘配置
+- `list_bi_panels` - 列出当前 MCP 用户可访问的 BI 仪表盘
+- `get_bi_panel_detail` - 获取 BI 仪表盘已发布版本结构、页面、图表和控件 schema
+- `query_bi_panel_data` - 查询 BI 仪表盘图表数据或总结摘要正文
 
-### 4. 模型分析 (Model Analysis) - 4 个工具
+### 4. 模型分析 (Model Analysis) - 5 个工具
 - `query_adhoc` - Ad hoc 分析（支持 10+ 种分析模型）
   - event: 事件分析
   - retention: 留存分析
@@ -45,6 +48,7 @@
 - `drilldown_users` - 下钻用户列表
 - `drilldown_user_events` - 下钻用户事件序列
 - `create_result_cluster` - 从分析结果创建分群
+- `cancel_query` - 按 requestId 取消当前用户拥有的运行中 MCP 查询
 
 ### 5. 分群管理 (Cluster Management) - 5 个工具
 - `list_clusters` - 列出项目所有分群
@@ -136,7 +140,7 @@
   - `reportIds` (List<Long>, required) - 报告 ID 列表
   - `filters` (String, optional) - 过滤器 JSON
   - `groupBy` (String, optional) - 分组 JSON 数组
-  - `requestId` (String, optional) - 唯一请求 ID
+  - `requestId` (String, optional) - 用于追踪和取消的唯一请求 ID；如果主动传入，必须使用 `mcp_<32 lowercase hex UUID>`，例如 `mcp_0123456789abcdef0123456789abcdef`；长耗时、可能超过 CLI/MCP HTTP timeout、或可取消查询必须在开始前主动传入，这样即使 caller/agent 在工具返回前停止等待、请求返回 `fetch failed`、或发生 HTTP timeout，也能用同一个 ID 调 `+cancel_query --request_id <same value>`；如果出现 `fetch failed`/HTTP timeout/caller timeout，backend query may still be running；The auto-generated requestId is not available when the HTTP request fails before a response；不传则服务端自动生成；响应 `metadata.requestId` 也可用于后续取消
   - `useCache` (Boolean, optional) - 是否使用缓存，默认 true
   - `startDate` (String, optional) - 开始日期 yyyy-MM-dd
   - `endDate` (String, optional) - 结束日期 yyyy-MM-dd
@@ -183,7 +187,7 @@
   - `dashboardId` (Long, required) - 仪表盘 ID
   - `filters` (String, optional) - 过滤器 JSON
   - `groupBy` (String, optional) - 分组 JSON 数组
-  - `requestId` (String, optional) - 唯一请求 ID
+  - `requestId` (String, optional) - 用于追踪和取消的唯一请求 ID；如果主动传入，必须使用 `mcp_<32 lowercase hex UUID>`，例如 `mcp_0123456789abcdef0123456789abcdef`；长耗时、可能超过 CLI/MCP HTTP timeout、或可取消查询必须在开始前主动传入，这样即使 caller/agent 在工具返回前停止等待、请求返回 `fetch failed`、或发生 HTTP timeout，也能用同一个 ID 调 `+cancel_query --request_id <same value>`；如果出现 `fetch failed`/HTTP timeout/caller timeout，backend query may still be running；The auto-generated requestId is not available when the HTTP request fails before a response；不传则服务端自动生成；响应 `metadata.requestId` 也可用于后续取消
   - `useCache` (Boolean, optional) - 是否使用缓存
   - `startDate` (String, optional) - 开始日期
   - `endDate` (String, optional) - 结束日期
@@ -214,6 +218,45 @@
   - `memberAuthorities` (Map<String, Integer>, optional) - 成员权限映射（userId -> authority）
 - **风险**: write
 
+#### list_bi_panels
+- **描述**: 列出当前 MCP 用户在项目内可访问的 BI 仪表盘，支持名称模糊搜索、字段裁剪和分页；不返回页面、图表、控件、raw config、SQL 或权限规则明细。
+- **参数**:
+  - `projectId` (Integer, required) - 项目 ID
+  - `query` (String, optional) - BI 仪表盘名称关键词
+  - `fields` (List<String>, optional) - 返回字段；支持 `panelId` / `name` / `spaceId` / `spaceName` / `ownerName` / `updatedAt` / `pageCount` / `hasSummary`
+  - `limit` (Integer, optional) - 分页大小，默认 20，最大 50
+  - `offset` (Integer, optional) - 分页偏移，默认 0
+- **风险**: read
+
+#### get_bi_panel_detail
+- **描述**: 读取单个 BI 仪表盘已发布版本的结构，不执行数据查询。返回页面、可查询图表、总结摘要信息、仪表盘级参数控制、仪表盘级权限控制、页面筛选组件及绑定关系。
+- **参数**:
+  - `projectId` (Integer, required) - 项目 ID
+  - `panelId` (Long, required) - `list_bi_panels` 返回的 BI 仪表盘 ID
+  - `fields` (List<String>, optional) - 详情分区；支持 `basic` / `pages` / `charts` / `parameterControls` / `permissionControls` / `chartFilterControls` / `summary`
+- **风险**: read
+- **注意**: `parameterControls` 保持单值语义；`permissionControls` 和 `chartFilterControls` 返回 `valueMode=scalar_or_array`，其 `allowedValues` 只是选值提示，不是 MCP 侧白名单。
+
+#### query_bi_panel_data
+- **描述**: 查询 BI 仪表盘已发布版本的数据。`resultType=charts` 返回一维表格 `columns` + `rows`；`resultType=summary` 返回总结摘要 `markdown` + 分页 `blocks`。
+- **参数**:
+  - `projectId` (Integer, required) - 项目 ID
+  - `panelId` (Long, required) - BI 仪表盘 ID
+  - `pageKey` (String, required) - `get_bi_panel_detail` 返回的页面 key
+  - `resultType` (String, required) - `charts` 或 `summary`
+  - `requestId` (String, optional) - 用于追踪和取消的唯一请求 ID；如果主动传入，必须使用 `mcp_<32 lowercase hex UUID>`，例如 `mcp_0123456789abcdef0123456789abcdef`；长耗时、可能超过 CLI/MCP HTTP timeout、或可取消查询必须在开始前主动传入，这样即使 caller/agent 在工具返回前停止等待、请求返回 `fetch failed`、或发生 HTTP timeout，也能用同一个 ID 调 `+cancel_query --request_id <same value>`；如果出现 `fetch failed`/HTTP timeout/caller timeout，backend query may still be running；The auto-generated requestId is not available when the HTTP request fails before a response；不传则服务端自动生成；响应 `metadata.requestId` 也可用于后续取消
+  - `chartIds` (List<String>, optional) - 查询的图表 ID；不传时查询页面内所有 `queryable=true` 图表
+  - `parameterControls` (List<Map>, optional) - 仪表盘级参数控制覆盖值，每项包含 `controlId` 和单个标量 `value`
+  - `permissionControls` (List<Map>, optional) - 仪表盘级权限控制筛选值，每项包含 `controlId` 和标量或数组 `value`
+  - `chartFilterControls` (List<Map>, optional) - 页面筛选组件值，每项包含 `controlId` 和标量或数组 `value`，只作用于绑定图表
+  - `columns` (List<String>, optional) - 返回列，必须来自 detail 返回的图表字段
+  - `rowLimit` / `rowOffset` (Integer, optional) - 图表行分页，默认 50 / 0，最大 500 行
+  - `blockLimit` / `blockOffset` (Integer, optional) - 总结摘要 block 分页，默认 20 / 0，最大 100 blocks
+  - `useCache` (Boolean, optional) - 是否使用缓存，默认 true
+  - `timeoutMinutes` (Integer, optional) - 查询超时，默认 3，范围 1-10
+- **风险**: read
+- **注意**: MCP 入参不暴露 `paramList`、`permissionFilters`、`visualCfg.whereList`、`perssionFilter`、`field`、`columnName`、`userId`、`openId` 等内部字段。长耗时或可取消查询建议在开始前主动传入 `requestId`，值必须使用 `mcp_<32 lowercase hex UUID>`，例如 `mcp_0123456789abcdef0123456789abcdef`；后续即使 caller/agent 停止等待，也可用 `cancel_query(requestId)` 按同一个 ID 取消。
+
 ### 模型分析工具
 
 #### query_adhoc
@@ -223,13 +266,21 @@
   - `modelType` (String, required) - 模型类型
   - `analysisQuery` (String, required) - 分析查询 JSON
   - `zoneOffset` (Integer, optional) - 时区偏移
-  - `requestId` (String, optional) - 唯一请求 ID
+  - `requestId` (String, optional) - 用于追踪和取消的唯一请求 ID；如果主动传入，必须使用 `mcp_<32 lowercase hex UUID>`，例如 `mcp_0123456789abcdef0123456789abcdef`；长耗时、可能超过 CLI/MCP HTTP timeout、或可取消查询必须在开始前主动传入，这样即使 caller/agent 在工具返回前停止等待、请求返回 `fetch failed`、或发生 HTTP timeout，也能用同一个 ID 调 `+cancel_query --request_id <same value>`；如果出现 `fetch failed`/HTTP timeout/caller timeout，backend query may still be running；The auto-generated requestId is not available when the HTTP request fails before a response；不传则服务端自动生成；响应 `metadata.requestId` 也可用于后续取消
   - `useCache` (Boolean, optional) - 是否使用缓存
   - `timeoutMinutes` (Long, optional) - 查询超时时间
 - **风险**: read
 - **支持的模型类型**:
   - event, retention, funnel, distribution, attribution
   - heat_map, interval, path, rank_list, prop_analysis, sql
+
+#### cancel_query
+- **描述**: 按 requestId 取消当前 MCP 用户拥有的运行中查询。适用于上一次查询已经不再需要、caller/agent 在查询返回前超时、请求返回 `fetch failed`、发生 HTTP timeout、用户明确要求停止等待、或需要主动取消的场景；如果出现 `fetch failed`/HTTP timeout/caller timeout，backend query may still be running；主动取消时应在查询开始前传入 `requestId`，值必须使用 `mcp_<32 lowercase hex UUID>`，例如 `mcp_0123456789abcdef0123456789abcdef`；停止等待后用同一个 ID 调 `+cancel_query --request_id <same value>`；The auto-generated requestId is not available when the HTTP request fails before a response。
+- **参数**:
+  - `requestId` (String, required) - 查询工具响应 `metadata.requestId` 返回的 ID，或启动查询前主动传入的 requestId；必须使用 `mcp_<32 lowercase hex UUID>`，例如 `mcp_0123456789abcdef0123456789abcdef`
+  - `reason` (String, optional) - 取消原因，默认 `MCP_CANCEL_QUERY_TOOL`
+- **风险**: write
+- **注意**: 只支持按 requestId 取消；不支持按 SQL、报告 ID、仪表盘 ID、BI panel ID、runId 或 toolCallId 取消。服务端会校验 requestId 是否属于当前 MCP 用户。
 
 ### 用户下钻工具
 
@@ -252,6 +303,8 @@
   - `relationVal` (String, optional) - 关系值
   - `page` (Integer, optional) - 页码
   - `pageSize` (Integer, optional) - 每页大小
+  - `requestId` (String, optional) - 用于追踪和取消的唯一请求 ID；如果主动传入，必须使用 `mcp_<32 lowercase hex UUID>`，例如 `mcp_0123456789abcdef0123456789abcdef`；长耗时、可能超过 CLI/MCP HTTP timeout、或可取消查询必须在开始前主动传入，这样即使 caller/agent 在工具返回前停止等待、请求返回 `fetch failed`、或发生 HTTP timeout，也能用同一个 ID 调 `+cancel_query --request_id <same value>`；如果出现 `fetch failed`/HTTP timeout/caller timeout，backend query may still be running；The auto-generated requestId is not available when the HTTP request fails before a response；不传则服务端自动生成；响应 `metadata.requestId` 也可用于后续取消
+  - `timeoutMinutes` (Long, optional) - 查询超时时间（分钟），默认 30
 - **风险**: read
 
 #### drilldown_user_events
@@ -263,6 +316,8 @@
   - `zoneOffset` (Integer, optional) - 时区偏移
   - `page` (Integer, optional) - 页码
   - `pageSize` (Integer, optional) - 每页大小
+  - `requestId` (String, optional) - 用于追踪和取消的唯一请求 ID；如果主动传入，必须使用 `mcp_<32 lowercase hex UUID>`，例如 `mcp_0123456789abcdef0123456789abcdef`；长耗时、可能超过 CLI/MCP HTTP timeout、或可取消查询必须在开始前主动传入，这样即使 caller/agent 在工具返回前停止等待、请求返回 `fetch failed`、或发生 HTTP timeout，也能用同一个 ID 调 `+cancel_query --request_id <same value>`；如果出现 `fetch failed`/HTTP timeout/caller timeout，backend query may still be running；The auto-generated requestId is not available when the HTTP request fails before a response；不传则服务端自动生成；响应 `metadata.requestId` 也可用于后续取消
+  - `timeoutMinutes` (Long, optional) - 查询超时时间（分钟），默认 30
 - **风险**: read
 
 ### 分群管理工具
@@ -295,6 +350,8 @@
   - `fields` (List<String>, optional) - 返回字段投影
   - `limit` (Integer, optional) - 分页大小，默认 20，最大 50
   - `offset` (Integer, optional) - 分页偏移，默认 0
+  - `requestId` (String, optional) - 用于追踪和取消的唯一请求 ID；如果主动传入，必须使用 `mcp_<32 lowercase hex UUID>`，例如 `mcp_0123456789abcdef0123456789abcdef`；长耗时、可能超过 CLI/MCP HTTP timeout、或可取消查询必须在开始前主动传入，这样即使 caller/agent 在工具返回前停止等待、请求返回 `fetch failed`、或发生 HTTP timeout，也能用同一个 ID 调 `+cancel_query --request_id <same value>`；如果出现 `fetch failed`/HTTP timeout/caller timeout，backend query may still be running；The auto-generated requestId is not available when the HTTP request fails before a response；不传则服务端自动生成；响应 `metadata.requestId` 也可用于后续取消
+  - `timeoutMinutes` (Long, optional) - 查询超时时间（分钟），默认 30
 - **风险**: read
 
 #### create_cluster
@@ -364,6 +421,8 @@
   - `fields` (List<String>, optional) - 返回字段投影
   - `limit` (Integer, optional) - 分页大小，默认 20，最大 50
   - `offset` (Integer, optional) - 分页偏移，默认 0
+  - `requestId` (String, optional) - 用于追踪和取消的唯一请求 ID；如果主动传入，必须使用 `mcp_<32 lowercase hex UUID>`，例如 `mcp_0123456789abcdef0123456789abcdef`；长耗时、可能超过 CLI/MCP HTTP timeout、或可取消查询必须在开始前主动传入，这样即使 caller/agent 在工具返回前停止等待、请求返回 `fetch failed`、或发生 HTTP timeout，也能用同一个 ID 调 `+cancel_query --request_id <same value>`；如果出现 `fetch failed`/HTTP timeout/caller timeout，backend query may still be running；The auto-generated requestId is not available when the HTTP request fails before a response；不传则服务端自动生成；响应 `metadata.requestId` 也可用于后续取消
+  - `timeoutMinutes` (Long, optional) - 查询超时时间（分钟），默认 30
 - **风险**: read
 
 #### create_tag
@@ -408,6 +467,8 @@
   - `projectId` (Integer, required) - 项目 ID
   - `entityId` (String, required) - 实体 ID
   - `properties` (List<String>, optional) - 属性列表
+  - `requestId` (String, optional) - 用于追踪和取消的唯一请求 ID；如果主动传入，必须使用 `mcp_<32 lowercase hex UUID>`，例如 `mcp_0123456789abcdef0123456789abcdef`；长耗时、可能超过 CLI/MCP HTTP timeout、或可取消查询必须在开始前主动传入，这样即使 caller/agent 在工具返回前停止等待、请求返回 `fetch failed`、或发生 HTTP timeout，也能用同一个 ID 调 `+cancel_query --request_id <same value>`；如果出现 `fetch failed`/HTTP timeout/caller timeout，backend query may still be running；The auto-generated requestId is not available when the HTTP request fails before a response；不传则服务端自动生成；响应 `metadata.requestId` 也可用于后续取消
+  - `timeoutMinutes` (Long, optional) - 查询超时时间（分钟），默认 30
 - **风险**: read
 
 #### query_event_details
@@ -420,6 +481,8 @@
   - `eventNames` (List<String>, optional) - 事件名称列表
   - `page` (Integer, optional) - 页码
   - `pageSize` (Integer, optional) - 每页大小
+  - `requestId` (String, optional) - 用于追踪和取消的唯一请求 ID；如果主动传入，必须使用 `mcp_<32 lowercase hex UUID>`，例如 `mcp_0123456789abcdef0123456789abcdef`；长耗时、可能超过 CLI/MCP HTTP timeout、或可取消查询必须在开始前主动传入，这样即使 caller/agent 在工具返回前停止等待、请求返回 `fetch failed`、或发生 HTTP timeout，也能用同一个 ID 调 `+cancel_query --request_id <same value>`；如果出现 `fetch failed`/HTTP timeout/caller timeout，backend query may still be running；The auto-generated requestId is not available when the HTTP request fails before a response；不传则服务端自动生成；响应 `metadata.requestId` 也可用于后续取消
+  - `timeoutMinutes` (Long, optional) - 查询超时时间（分钟），默认 30
 - **风险**: read
 
 #### build_entity_details_sql

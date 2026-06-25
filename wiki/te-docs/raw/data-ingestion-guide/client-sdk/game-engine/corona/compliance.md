@@ -1,0 +1,28 @@
+---
+code: corona_sdk_compliance
+name: "Compliance"
+wikiToken: Tt0Awcm2biW6LYkDB7NcLOfynEb
+parentWikiToken: QjOXwKuZFiw4JLk477Fcuzmnnnb
+updateTime: 1774249160000
+sourceUrl: https://docs-v2.thinkingdata.cn/?version=v6.0&lan=en-US&code=corona_sdk_compliance
+---
+## **1. Filling out SDK-related Contents in The Privacy Policy**
+### **1.1 Collecting and Acquiring Data**
+The following content is suggested to fill out  in accordance with the actual conditions in the column of collecting and acquiring your personal data in the *Privacy Policy*. 
+When you activate and use the APP, we would collect information about your device (including IDFV, AndroidID, OS, device model, device manufacturer, system version, application process information, etc.) through TDAnalytics-SDK to analyze the effect you achieved by using the App via statistics.
+### **1.2 Sharing with authorized partners**
+The following content is suggested to fill out in accordance with the actual conditions in the column of sharing with authorized partners in the *Privacy Policy*.
+TDAnalytics-SDK: collect information about your device (including IDFV, AndroidID, OS, device model, device manufacturer, system version, application process information, etc.) and your network information to perform data analysis ,so as to improve our products and services
+## **2. ****SDK**** Compliance Steps**
+ThinkingData SDK needs to be initialized after the user agrees with the *Privacy Policy.*
+```lua
+ local TDAnalytics = require("TDAnalytics")
+-- determine whether to enable data tracking according to the Privacy Policy
+if (authorized) {
+    local params = {
+        appId = "YOUR_APP_ID",
+        serverUrl = "YOUR_SERVER_URL"
+    }
+    TDAnalytics.init(params)
+}
+```

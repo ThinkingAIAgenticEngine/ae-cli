@@ -9,7 +9,7 @@ export const getTaskInstanceLog: Command = {
     { name: 'bsTaskInstanceId', type: 'number', required: true, desc: 'BS task instance ID (can be obtained via flow_get_execute_dag)' },
     { name: 'taskCode', type: 'number', required: true, desc: 'Task code (can be obtained via flow_get_execute_dag)' },
     { name: 'startOffset', type: 'number', required: false, desc: 'Starting offset, defaults to 0 if not provided' },
-    { name: 'limit', type: 'number', required: false, desc: 'Number of lines to return, defaults to 100 if not provided' },
+    { name: 'limit', type: 'number', required: false, desc: 'Number of lines to return, defaults to 100, max 10000' },
   ],
   risk: 'read',
   execute: async (ctx) => {

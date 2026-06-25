@@ -19,7 +19,7 @@ export const searchPosts: Command = {
     { name: 'sentiment-types', type: 'string', required: false, desc: 'Sentiment filter: 0 negative, 1 positive, 2 neutral. Comma-separated.' },
     { name: 'order-by', type: 'number', required: false, desc: 'Sort: 0 publish time desc, 1 weight desc, 2 publish time asc, 3 reply count desc, 4 heat desc.' },
     { name: 'page-num', type: 'number', required: false, desc: 'Page number, starting at 1.' },
-    { name: 'page-size', type: 'number', required: false, desc: 'Page size.' },
+    { name: 'page-size', type: 'number', required: false, desc: 'Page size. Max 10000.' },
   ],
   risk: 'read',
   execute: async (ctx: RuntimeContext) => {

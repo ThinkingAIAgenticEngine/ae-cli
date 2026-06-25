@@ -100,7 +100,7 @@ export const listAttachments: Command = {
     { name: 'q', type: 'string', required: false, desc: 'Search keyword' },
     { name: 'type', type: 'string', required: false, desc: 'Filter by type: image | document' },
     { name: 'page', type: 'number', required: false, desc: 'Page number (default 1)' },
-    { name: 'page-size', type: 'number', required: false, desc: 'Page size (default 20, max 100)' },
+    { name: 'page-size', type: 'number', required: false, desc: 'Page size (default 20, max 10000)' },
   ],
   risk: 'read',
   validate: (ctx) => {

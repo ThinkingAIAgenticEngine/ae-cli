@@ -79,7 +79,7 @@ Timezone rule:
 ## Command Syntax
 ```bash
 ae-cli analysis +query_adhoc --project_id <project_id> --model_type <model_type> --qp '<qp_json_from_builder_or_legacy_chain>'
-ae-cli analysis +query_adhoc --project_id <project_id> --model_type <model_type> --qp '<qp_json_from_builder_or_legacy_chain>' --fields '["date","event"]' --limit 10 --offset 0 --zone_offset 8 --request_id demo --use_cache true --is_sort_by_columns true --resolve_recent_day true --timeout_minutes 8
+ae-cli analysis +query_adhoc --project_id <project_id> --model_type <model_type> --qp '<qp_json_from_builder_or_legacy_chain>' --fields '["date","event"]' --limit 10 --offset 0 --zone_offset 8 --request_id mcp_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa --use_cache true --is_sort_by_columns true --resolve_recent_day true --timeout_minutes 8
 ae-cli analysis +query_adhoc --project_id <project_id> --model_type <model_type> --qp '<qp_json_from_builder_or_legacy_chain>' --dry-run
 ```
 
@@ -89,18 +89,18 @@ ae-cli analysis +query_adhoc --project_id <project_id> --model_type <model_type>
 | `--project_id` / `-p` | Yes | Project ID used to identify the analysis project |
 | `--model_type` | Yes | Model type. Supported values: event, retention, funnel, distribution, attribution, heat_map, interval, path, rank_list, prop_analysis, sql. |
 | `--qp` | Yes | Query parameter JSON. For `event`/`retention`/`funnel`/`prop_analysis`, pass QP returned by the matching builder tool. For non-builder models, construct QP through the legacy schema/metadata path. |
-| `--request_id` | No | Optional unique request ID used for tracking and deduplication. Generated automatically if omitted. |
+| `--request_id` | No | Optional unique request ID used for tracking and cancellation. If provided, it must use `mcp_<32 lowercase hex UUID>`, for example `mcp_0123456789abcdef0123456789abcdef`. For long-running or cancelable queries, provide this before starting the query so it can be cancelled later with `+cancel_query --request_id <same value>`, even if the caller stops waiting before the tool returns. If `fetch failed`, HTTP timeout, or caller timeout happens, the backend query may still be running. The auto-generated requestId is not available when the HTTP request fails before a response, so preset `requestId` is required for proactive cleanup. Generated automatically if omitted. The response `metadata.requestId` can also be passed to `cancel_query` when the query is no longer needed. |
 | `--use_cache` | No | Whether to use result cache. Default: true |
 | `--zone_offset` | No | Time zone offset in hours. For example, UTC+8 is 8 and UTC-5 is -5 |
 | `--is_sort_by_columns` | No | Whether to sort query results by columns. Default: false |
 | `--resolve_recent_day` | No | Whether to resolve relative time expressions such as "last 7 days". If omitted, service auto-resolves when `qp.eventView.recentDay` exists and `startTime`/`endTime` is incomplete; otherwise defaults to false. |
 | `--fields` | No | Optional fields to return. Must match column names in result. Invalid fields cause INVALID_FIELDS error. |
-| `--limit` | No | Optional limit. Default: 1000, maximum: 100000. |
+| `--limit` | No | Optional limit. Default: 1000, maximum: 10000. |
 | `--offset` | No | Optional offset. Default: 0. |
 | `--timeout_minutes` | No | Query timeout in minutes. If the query exceeds this time, it will be cancelled automatically. |
 
 ## Decision Rules
-- On the first run, start with only the required parameters (`--project_id`,`--model_type`,`--qp`), and add optional parameters after confirming the path works.
+- On the first run, start with only the required parameters (`--project_id`,`--model_type`,`--qp`) only when the query is clearly small. For any query that may exceed the CLI/MCP HTTP timeout, include a preset `--request_id` from the first run.
 - Do not call this command with placeholder QP such as `{}`. For builder-supported models, wait for builder `status=generated`; for non-builder models, build QP from verified schema/metadata first.
 - For builder-supported models, do not run metadata/schema lookup to "help" the builder. The builder is the metadata resolver.
 - For pagination, use `--limit` and `--offset` together. Default limit is 1000, maximum 100000.
@@ -116,7 +116,8 @@ ae-cli analysis +query_adhoc --project_id <project_id> --model_type <model_type>
 - If required parameters are missing, resolve `project_id`, `model_type`, and a real `qp` first. Do not run placeholder calls except explicit `--dry-run` validation.
 - If a builder returns non-`generated` status for `event`, `retention`, `funnel`, or `prop_analysis`, stop and ask user to clarify before calling `query_adhoc`.
 - If `Invalid JSON` appears on legacy manual QP paths, first check schema required fields, then verify whether event/property names come from metadata query results for the same `project_id`.
-- If the query times out or results are abnormal, first narrow the time range / grouping dimensions, then split the subqueries to locate the issue.
+- If the query returns `fetch failed`, hits an HTTP timeout, or the caller stops waiting after you preset `--request_id`, immediately call `+cancel_query --request_id <same value> --yes`; the backend query may still be running.
+- If the query times out inside the service and returns `QUERY_TIMEOUT`, use the returned `metadata.requestId` for cancellation if further cleanup is needed, then narrow the time range / grouping dimensions and split subqueries to locate the issue.
 
 ## Recommended chaining
 - +build_event_analysis_qp -> +query_adhoc

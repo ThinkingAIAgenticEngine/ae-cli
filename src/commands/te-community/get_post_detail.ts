@@ -13,10 +13,10 @@ export const getPostDetail: Command = {
     { name: 'resource-type', type: 'number', required: true, desc: 'Resource type: 0 post, 1 video.' },
     { name: 'danmu-order-by', type: 'number', required: false, desc: 'Sort for danmu: 0 video timestamp desc, 1 publish time desc.' },
     { name: 'danmu-page-num', type: 'number', required: false, desc: 'Page number for danmu pagination, starting at 1.' },
-    { name: 'danmu-page-size', type: 'number', required: false, desc: 'Page size for danmu pagination.' },
+    { name: 'danmu-page-size', type: 'number', required: false, desc: 'Page size for danmu pagination. Max 10000.' },
     { name: 'reply-order-by', type: 'number', required: false, desc: 'Sort for comments: 0 publish time desc, 1 publish time asc.' },
     { name: 'reply-page-num', type: 'number', required: false, desc: 'Page number for comments, starting at 1.' },
-    { name: 'reply-page-size', type: 'number', required: false, desc: 'Page size for comments.' },
+    { name: 'reply-page-size', type: 'number', required: false, desc: 'Page size for comments. Max 10000.' },
   ],
   risk: 'read',
   execute: async (ctx: RuntimeContext) => {

@@ -3,6 +3,7 @@ import { createRequire } from 'module';
 import { registerCommands } from './framework/register.js';
 import type { Command } from './framework/types.js';
 import { notifyIfUpdateAvailable } from './core/update-check.js';
+import { registerTracking } from './commands/tracking/index.js';
 
 const require = createRequire(import.meta.url);
 const pkg = require('../package.json');
@@ -118,6 +119,7 @@ async function main() {
   await registerApiCommand();
   await registerSyncCommand();
   await registerModelCommand();
+  registerTracking(program);
   program.parse();
 }
 

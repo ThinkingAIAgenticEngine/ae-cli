@@ -1,0 +1,24 @@
+---
+code: ios_sdk_compliance
+name: "Compliance"
+wikiToken: UInGw9XUHiWN2nkNl5pcOLUWnAd
+parentWikiToken: Wxc7wQj3FitXYVkTuW5cAAtPnCc
+updateTime: 1774249068000
+sourceUrl: https://docs-v2.thinkingdata.cn/?version=v6.0&lan=en-US&code=ios_sdk_compliance
+---
+
+## **1. ****Filling out SDK-related Contents in The Privacy Policy**
+### **1.1 ****Collecting and Acquiring Data**
+The following content is suggested to fill out  in accordance with the actual conditions in the column of collecting and acquiring your personal data in the *Privacy Policy*. 
+When you activate and use the APP, we would collect information about your device (including IDFV, AndroidID, OS, device model, device manufacturer, system version, application process information, etc.) through ThinkingAnalytics-SDK to analyze the effect you achieved by using the App via statistics.
+### **1.2 ****Sharing with authorized partners**
+The following content is suggested to fill out in accordance with the actual conditions in the column of sharing with authorized partners in the *Privacy Policy*.
+ThinkingAnalytics-SDK: collect information about your device (including IDFV, AndroidID, OS, device model, device manufacturer, system version, application process information, etc.) and your network information to perform data analysis ,so as to improve our products and services
+## **2. ****SDK**** Compliance Steps**
+ThinkingData SDK needs to be initialized after the user agrees with the *Privacy Policy.*
+```objectivec
+// determine whether to enable data tracking according to the Privacy Policy
+if (authorized) {
+    [TDAnalytics startAnalyticsWithAppId:appid serverUrl:url];
+}
+```

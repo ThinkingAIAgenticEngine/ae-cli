@@ -28,7 +28,7 @@ ae-cli analysis_meta +list_properties --dry-run
 | `--event_name` | No | Optional event name. If provided, only event properties available for that event are returned. |
 | `--query` / `-q` | No | Optional keyword filter. Fuzzy match is applied to propName, propDesc, and aiRemark; if omitted, all matched properties are returned. |
 | `--fields` / `-f` | No | Optional fields to return (JSON array). Supported fields: `propName`, `propDesc`, `aiRemark`, `selectType`, `tableType`, `subTableType`. |
-| `--limit` / `-l` | No | Optional page size. Default: 20, maximum: 50. |
+| `--limit` / `-l` | No | Optional page size. Default: 20, maximum: 10000. |
 | `--offset` / `-o` | No | Optional page offset. Default: 0. |
 
 

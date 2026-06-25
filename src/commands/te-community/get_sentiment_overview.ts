@@ -12,7 +12,7 @@ export const getSentimentOverview: Command = {
     { name: 'start-time', type: 'string', required: true, desc: 'Statistics range start (inclusive). Format: yyyy-MM-dd.' },
     { name: 'end-time', type: 'string', required: true, desc: 'Statistics range end (inclusive). Format: yyyy-MM-dd.' },
     { name: 'is-merged', type: 'boolean', required: false, desc: 'Whether to aggregate merged keywords.' },
-    { name: 'limit', type: 'number', required: false, desc: 'Max number of keywords to return.' },
+    { name: 'limit', type: 'number', required: false, desc: 'Max number of keywords to return. Max 10000.' },
   ],
   risk: 'read',
   execute: async (ctx: RuntimeContext) => {

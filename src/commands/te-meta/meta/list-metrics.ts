@@ -7,7 +7,7 @@ export const listMetrics = createMcpCommand({
     { name: 'project_id', type: 'number', required: true, alias: 'p', desc: 'Project ID' },
     { name: 'query', type: 'string', required: false, alias: 'q', desc: 'Optional keyword filter. Fuzzy match on metricName, metricDesc, metricRemark.' },
     { name: 'fields', type: 'json', required: false, desc: 'Optional fields to return. Supported: metricId, metricName, metricDesc, metricRemark, metricMode, openId, creator, creatorLoginName, updateOpenId, updateCreator, updateLoginName, createTime, updateTime.' },
-    { name: 'limit', type: 'number', required: false, desc: 'Optional limit. Default: 20, maximum: 50.' },
+    { name: 'limit', type: 'number', required: false, desc: 'Optional limit. Default: 20, maximum: 10000.' },
     { name: 'offset', type: 'number', required: false, desc: 'Optional offset. Default: 0.' },
   ],
   risk: 'read',

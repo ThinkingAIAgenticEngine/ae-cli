@@ -15,7 +15,7 @@ export const getRiskContent: Command = {
     { name: 'include-trends', type: 'boolean', required: false, desc: 'Whether to include trend aggregates in the response.' },
     { name: 'order-by', type: 'number', required: false, desc: 'Sort: 0 publish time desc.' },
     { name: 'page-num', type: 'number', required: false, desc: 'Page number, starting at 1.' },
-    { name: 'page-size', type: 'number', required: false, desc: 'Page size.' },
+    { name: 'page-size', type: 'number', required: false, desc: 'Page size. Max 10000.' },
   ],
   risk: 'read',
   execute: async (ctx: RuntimeContext) => {

@@ -1,5 +1,6 @@
 import type { Command } from '../../../framework/types.js';
 import { queryAdhoc } from './query-adhoc.js';
+import { cancelQuery } from './cancel-query.js';
 import { buildEventAnalysisQp } from './build-event-analysis-qp.js';
 import { buildRetentionAnalysisQp } from './build-retention-analysis-qp.js';
 import { buildFunnelAnalysisQp } from './build-funnel-analysis-qp.js';
@@ -16,6 +17,7 @@ const commands: Command[] = [
   buildFunnelAnalysisQp,
   buildPropAnalysisQp,
   queryAdhoc,
+  cancelQuery,
   drilldownUsers,
   drilldownUserEvents,
   createResultCluster,

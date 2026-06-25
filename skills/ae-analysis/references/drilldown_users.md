@@ -30,7 +30,7 @@ Domain: **Model Analysis**
 ## Commands
 ```bash
 ae-cli analysis +drilldown_users --project_id <project_id> --model_type event --qp '{}'
-ae-cli analysis +drilldown_users --project_id <project_id> --model_type retention --qp '{}' --drilldown_date 2026-04-08 --drilldown_groups '[]' --event_index 8 --is_lost true --retention_days 8 --is_churned_user true --funnel_step 8 --interval demo --distribution_bucket 8 --compare_index 8 --include_total true --relation_val demo --limit 10 --offset 0
+ae-cli analysis +drilldown_users --project_id <project_id> --model_type retention --qp '{}' --drilldown_date 2026-04-08 --drilldown_groups '[]' --event_index 8 --is_lost true --retention_days 8 --is_churned_user true --funnel_step 8 --interval demo --distribution_bucket 8 --compare_index 8 --include_total true --relation_val demo --limit 10 --offset 0 --request_id mcp_cccccccccccccccccccccccccccccccc
 ae-cli analysis +drilldown_users --dry-run
 ```
 
@@ -55,14 +55,16 @@ ae-cli analysis +drilldown_users --dry-run
 | `--include_total` | No | Whether to query users from the total row. Default: false |
 | `--relation_val` | No | Relation value used in relation analysis scenarios |
 | `--use_cache` | No | Whether to use cache. Default: true |
-| `--limit` | No | Optional limit. Default: 1000, maximum: 100000. |
+| `--limit` | No | Optional limit. Default: 1000, maximum: 10000. |
 | `--offset` | No | Optional offset. Default: 0. |
+| `--request_id` | No | Optional unique request ID used for tracking and cancellation. If provided, it must use `mcp_<32 lowercase hex UUID>`, for example `mcp_0123456789abcdef0123456789abcdef`. For long-running or cancelable queries, provide this before starting the query so it can be cancelled later with `+cancel_query --request_id <same value>`, even if the caller stops waiting before the tool returns. If `fetch failed`, HTTP timeout, or caller timeout happens, the backend query may still be running. The auto-generated requestId is not available when the HTTP request fails before a response, so preset `requestId` is required for proactive cleanup. Generated automatically if omitted. The response `metadata.requestId` can also be passed to `cancel_query` when the query is no longer needed. |
 | `--timeout_minutes` | No | Query timeout in minutes. If the query exceeds this time, it will be cancelled automatically. |
 
 ## Decision Rules
 - Drilldown positioning parameters must come from upstream analysis results and must not be fabricated.
 - `qp` must not be rewritten or "simplified"; it should remain consistent with the source analysis.
 - For pagination, use `--limit` and `--offset` together. Default limit is 1000, maximum 100000.
+- For long-running or cancelable drilldowns, supply your own `--request_id` before starting so `+cancel_query` can cancel by the same ID if the caller or user stops waiting. If `fetch failed`, HTTP timeout, or caller timeout happens, the backend query may still be running; call `+cancel_query --request_id <same value>` with the preset ID. The auto-generated requestId is not available when the HTTP request fails before a response. The value must use `mcp_<32 lowercase hex UUID>`, for example `mcp_0123456789abcdef0123456789abcdef`.
 - For the first run, it is recommended to pass only the required parameters (`--project_id`, `--model_type`, `--qp`) and add optional parameters after confirming the chain works.
 - Wrap JSON parameters in single quotes (for example `--qp '{}'`, `--drilldown_groups '{}'`) to avoid shell escaping issues.
 - When dates/time ranges are involved, validate with a short range first and then expand gradually.

@@ -25,7 +25,7 @@ Domain: **Event detail queries**
 ## Command
 ```bash
 ae-cli analysis +query_event_details --project_id <project_id> --event_name login --start_time '2026-04-08 00:00:00' --end_time '2026-04-08 23:59:59'
-ae-cli analysis +query_event_details --project_id <project_id> --event_name login --relative_date_range 0-7 --filters '{}' --properties '{}' --sort_by time --sort_order desc --limit 20 --zone_offset 8 --use_cache true
+ae-cli analysis +query_event_details --project_id <project_id> --event_name login --relative_date_range 0-7 --filters '{}' --properties '{}' --sort_by time --sort_order desc --limit 20 --zone_offset 8 --use_cache true --request_id mcp_dddddddddddddddddddddddddddddddd --timeout_minutes 8
 ae-cli analysis +query_event_details --dry-run
 ```
 
@@ -44,6 +44,8 @@ ae-cli analysis +query_event_details --dry-run
 | `--limit` | No | Optional result limit. Default: 1000 |
 | `--zone_offset` | No | Time zone offset. For example, UTC+8 is 8 |
 | `--use_cache` | No | Whether to use cache. Default: true |
+| `--request_id` | No | Optional unique request ID used for tracking and cancellation. If provided, it must use `mcp_<32 lowercase hex UUID>`, for example `mcp_0123456789abcdef0123456789abcdef`. For long-running or cancelable queries, provide this before starting the query so it can be cancelled later with `+cancel_query --request_id <same value>`, even if the caller stops waiting before the tool returns. If `fetch failed`, HTTP timeout, or caller timeout happens, the backend query may still be running. The auto-generated requestId is not available when the HTTP request fails before a response, so preset `requestId` is required for proactive cleanup. Generated automatically if omitted. The response `metadata.requestId` can also be passed to `cancel_query` when the query is no longer needed. |
+| `--timeout_minutes` | No | Query timeout in minutes. If omitted, 30 minutes is used. |
 
 ## Decision Rules
 - `filters` / `properties` cannot be written from experience alone: they must satisfy both the schema structure and the project metadata constraints.
@@ -51,6 +53,7 @@ ae-cli analysis +query_event_details --dry-run
 - On the first run, start with only the required parameters (`--project_id`, `--event_name`) and add optional parameters after confirming the path works.
 - Wrap JSON parameters in single quotes (for example `--filters '{}'`, `--properties '{}'`) to avoid shell escaping issues.
 - When dates/time ranges are involved, first verify with a short range, then gradually expand the range.
+- For long-running or cancelable queries, supply your own `--request_id` before starting so `+cancel_query` can cancel by the same ID if the caller or user stops waiting. If `fetch failed`, HTTP timeout, or caller timeout happens, the backend query may still be running; call `+cancel_query --request_id <same value>` with the preset ID. The auto-generated requestId is not available when the HTTP request fails before a response. The value must use `mcp_<32 lowercase hex UUID>`, for example `mcp_0123456789abcdef0123456789abcdef`.
 - For cross-project troubleshooting, first confirm whether `--project_id` matches the current permissions and target environment.
 
 ## Next Steps on Failure

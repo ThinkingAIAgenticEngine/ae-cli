@@ -13,7 +13,7 @@ export const listTables: Command = {
     { name: 'schema', type: 'string', required: true, desc: 'Schema name' },
     { name: 'isView', type: 'boolean', required: false, desc: 'Whether to query views, default false returns physical tables, set true to return views' },
     { name: 'pageNum', type: 'number', required: false, default: 1, desc: 'Page number, default 1' },
-    { name: 'pageSize', type: 'number', required: false, default: 100, desc: 'Page size, default 100' },
+    { name: 'pageSize', type: 'number', required: false, default: 100, desc: 'Page size, default 100, max 10000' },
   ],
   risk: 'read',
   execute: async (ctx) => {

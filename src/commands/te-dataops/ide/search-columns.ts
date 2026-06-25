@@ -12,7 +12,7 @@ export const searchColumns: Command = {
     { name: 'tables', type: 'string', required: true, desc: 'List of tables to search (JSON array format, each item contains catalog, schema, tableName fields)' },
     { name: 'engineType', type: 'string', required: false, default: 'TASK_ENGINE_TRINO', desc: 'SQL execution engine: TASK_ENGINE_TRINO(default), TASK_ENGINE_STARROCKS' },
     { name: 'pageNum', type: 'number', required: false, default: 1, desc: 'Page number, default 1' },
-    { name: 'pageSize', type: 'number', required: false, default: 100, desc: 'Page size, default 100' },
+    { name: 'pageSize', type: 'number', required: false, default: 100, desc: 'Page size, default 100, max 10000' },
   ],
   risk: 'read',
   execute: async (ctx) => {

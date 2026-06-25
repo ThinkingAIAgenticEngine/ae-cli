@@ -10,7 +10,7 @@ export const listSystemTables: Command = {
     { name: 'projectId', type: 'number', required: false, desc: 'Project ID' },
     { name: 'projectName', type: 'string', required: false, desc: 'Project name' },
     { name: 'pageNum', type: 'number', required: false, desc: 'Page number, default 1' },
-    { name: 'pageSize', type: 'number', required: false, desc: 'Page size, default 20' },
+    { name: 'pageSize', type: 'number', required: false, desc: 'Page size, default 20, max 10000' },
   ],
   risk: 'read',
   execute: async (ctx) => {

@@ -9,7 +9,7 @@ export const listProperties = createMcpCommand({
     { name: 'event_name', type: 'string', required: false, desc: 'Optional event name filter' },
     { name: 'query', type: 'string', required: false, desc: 'Optional keyword filter. Fuzzy match is applied to propName, propDesc, and aiRemark; if omitted, all accessible properties are returned.', alias: 'q' },
     { name: 'fields', type: 'json', required: false, desc: 'Optional fields to return. Supported fields: propName, propDesc, aiRemark, selectType, tableType, subTableType.', alias: 'f' },
-    { name: 'limit', type: 'number', required: false, desc: 'Optional page size. Default: 20, maximum: 50.', alias: 'l' },
+    { name: 'limit', type: 'number', required: false, desc: 'Optional page size. Default: 20, maximum: 10000.', alias: 'l' },
     { name: 'offset', type: 'number', required: false, desc: 'Optional page offset. Default: 0.', alias: 'o' },
   ],
   risk: 'read',

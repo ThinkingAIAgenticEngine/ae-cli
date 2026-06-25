@@ -28,7 +28,7 @@ ae-cli analysis_meta +list_events --dry-run
 | `--project_id` / `-p` | Yes | Project ID |
 | `--query` / `-q` | No | Optional keyword filter. Performs fuzzy matching against eventName, eventDesc, and aiRemark; if omitted, all events are returned. |
 | `--fields` / `-f` | No | Optional fields to return (JSON array). Supported fields: `eventName`, `eventDesc`, `aiRemark`, `eventTag`, `remark`. |
-| `--limit` / `-l` | No | Optional page size. Default: 20, maximum: 50. |
+| `--limit` / `-l` | No | Optional page size. Default: 20, maximum: 10000. |
 | `--offset` / `-o` | No | Optional page offset. Default: 0. |
 ## Decision Rules
 - For the first run, pass only the required parameter (`--project_id`) to confirm the path works, then add optional parameters.

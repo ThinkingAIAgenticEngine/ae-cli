@@ -51,6 +51,9 @@ const DOMAIN_TO_SKILL = {
 const TOOL_DIRS = new Set(['sync', 'model']);
 // Skills that use a "grouped/inline doc" strategy rather than per-command references: do not report per-command missing docs for these.
 const GROUPED_DOC_SKILLS = new Set(['ae-dataops', 'ae-kb']);
+const COMMAND_SKILL_OVERRIDES = [
+  { pathPrefix: 'src/commands/te-analysis/global/', skill: 'ae-analysis-global' },
+];
 
 // ---------- Result collection ----------
 const findings = []; // { level: 'P1'|'P2'|'P3'|'info', dim, msg }

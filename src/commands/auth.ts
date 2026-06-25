@@ -1,6 +1,6 @@
 import { Command } from 'commander';
 import { getToken, clearToken, setTokenManual, getAuthStatus, resolveHost } from '../core/auth.js';
-import { loadConfig, saveConfig } from '../core/config.js';
+import { loadConfig, saveConfig, removeHost } from '../core/config.js';
 import { printOutput, printError } from '../framework/output.js';
 import { validateToken } from '../core/auth.js';
 import { setMcpTokenManual, clearMcpToken, validateMcpToken } from '../core/mcp.js';
@@ -20,8 +20,25 @@ const HOST_OPTION_DESC = 'Override active AE host URL (e.g., https://ta.thinking
 
 type AuthHostOpts = { host?: string };
 
+function getExplicitAuthHostOverride(program: Command, opts: AuthHostOpts): string | undefined {
+  return opts.host || program.opts().host;
+}
+
+/** Resolve host for auth commands: --host (or global --host) first, else config activeHost. */
 function resolveAuthHost(program: Command, opts: AuthHostOpts): string {
-  return resolveHost(opts.host || program.opts().host);
+  return resolveHost(getExplicitAuthHostOverride(program, opts));
+}
+
+/** After a successful login with an explicit --host, make that host the active one. */
+export function activateHostAfterLogin(host: string, explicitHostOverride?: string): void {
+  if (!explicitHostOverride) return;
+  const config = loadConfig();
+  if (!config.hosts[host]) {
+    config.hosts[host] = { label: host };
+  }
+  config.activeHost = host;
+  saveConfig(config);
+  logger.info(`Active host set to ${host} after login`);
 }
 
 /** Persist device-flow tokens to the encrypted secure store (shared by the full and split-flow resume paths). */
@@ -56,15 +73,11 @@ function loginSummary(host: string, tokens: DeviceTokenResponse) {
 }
 
 /**
- * Resolve the base URL of te-claude (the Agent workbench).
+ * Resolve the te-claude base URL used by auth login (device code flow).
+ * Uses the login host (--host or config activeHost), not TE_CLAUDE_BASE_URL (sandbox/agent runtime override).
  * te-claude is mounted at the host's base path (NEXT_PUBLIC_BASE_PATH; AE deployment convention is /agent).
- * The device code endpoints /api/auth/device/* are te-claude routes and must use the te-claude base,
- * NOT the bare analysis-platform host (which hits the root SPA and returns an index.html 404).
- * Priority: TE_CLAUDE_BASE_URL (full override) > host + TE_CLAUDE_BASE_PATH (default /agent).
  */
-function resolveTeClaudeBase(host: string): string {
-  const override = process.env.TE_CLAUDE_BASE_URL;
-  if (override) return override.replace(/\/+$/, '');
+export function resolveLoginTeClaudeBase(host: string): string {
   const base = host.replace(/\/+$/, '');
   const basePath = process.env.TE_CLAUDE_BASE_PATH || '/agent';
   return base.endsWith(basePath) ? base : base + basePath;
@@ -81,6 +94,7 @@ export function registerAuth(program: Command): void {
     .option('--no-wait', 'Request the device code and print the authorization URL as JSON, then exit without polling (for AI agents / split-flow). Resume with --device-code')
     .option('--device-code <code>', 'Resume a split-flow login: poll for the given device code until authorized, then save the token')
     .action(async (opts: { host?: string; browser: boolean; wait: boolean; deviceCode?: string }) => {
+      const explicitHost = getExplicitAuthHostOverride(program, opts);
       const host = resolveAuthHost(program, opts);
       if (!host) {
         printError('config', 'No AE host configured.', 'Run: ae-cli config set-host <url>');
@@ -102,7 +116,7 @@ export function registerAuth(program: Command): void {
       // opts.browser is false when the user passed --no-browser (commander default is true)
       const noBrowser = !opts.browser;
       const fmt = program.opts().format || 'json';
-      const teClaudeBase = resolveTeClaudeBase(host);
+      const teClaudeBase = resolveLoginTeClaudeBase(host);
       const emit = (msg: string) => process.stderr.write(`[ae-cli] ${msg}\n`);
 
       try {
@@ -110,6 +124,7 @@ export function registerAuth(program: Command): void {
         if (opts.deviceCode) {
           const tokens = await pollDeviceFlow(teClaudeBase, opts.deviceCode, {}, emit);
           persistDeviceTokens(host, tokens);
+          activateHostAfterLogin(host, explicitHost);
           logger.info(`Device flow login successful for ${host} (resumed)`);
           emit('Login successful! Token saved securely.');
           printOutput(loginSummary(host, tokens), fmt);
@@ -137,6 +152,7 @@ export function registerAuth(program: Command): void {
         // Full blocking flow (authorize + poll in one shot)
         const tokens = await runDeviceFlow(teClaudeBase, { noBrowser }, emit);
         persistDeviceTokens(host, tokens);
+        activateHostAfterLogin(host, explicitHost);
         logger.info(`Device flow login successful for ${host}`);
         emit('Login successful! Token saved securely.');
         printOutput(loginSummary(host, tokens), fmt);
@@ -245,7 +261,8 @@ export function registerAuth(program: Command): void {
       clearToken(host);
       // I2: also clear secure-store so device-code tokens are wiped on logout
       secureStoreClear(host);
-      process.stderr.write(`[ae-cli] Token cleared for ${host}\n`);
+      removeHost(host);
+      process.stderr.write(`[ae-cli] Token and config cleared for ${host}\n`);
       printOutput({ cleared: true, host }, program.opts().format || 'json');
     });
 

@@ -9,7 +9,7 @@ export const listSyncExecHistories: Command = {
     { name: 'spaceCode', type: 'string', required: true, desc: 'Space code' },
     { name: 'syncId', type: 'string', required: true, desc: 'Sync solution ID' },
     { name: 'execType', type: 'string', required: false, desc: 'Execution type: SCHEDULE (scheduled), MANUAL (manual execution), DEBUG (debug), if not provided query all' },
-    { name: 'limit', type: 'number', required: false, desc: 'Number of results to return, defaults to 20 if not provided' },
+    { name: 'limit', type: 'number', required: false, desc: 'Number of results to return, defaults to 20, max 10000' },
   ],
   risk: 'read',
   execute: async (ctx) => {

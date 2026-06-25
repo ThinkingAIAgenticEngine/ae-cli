@@ -1,6 +1,6 @@
 {
   "name": "@thinkingai/ae-cli",
-  "version": "1.0.30",
+  "version": "6.0.16",
   "description": "CLI tool for ThinkingAI (AE) analytics platform",
   "type": "module",
   "bin": {
@@ -11,11 +11,13 @@
     "bin/",
     "dist/",
     "skills/",
+    "wiki/",
+    "tracking-plan-template/",
     "README.md"
   ],
   "scripts": {
     "dev": "tsx src/index.ts",
-    "build": "tsup src/index.ts --format esm --outDir dist",
+    "build": "tsup src/index.ts --format esm --outDir dist && node scripts/copy-tracking-assets.mjs",
     "verify:config": "node test/config-commands.test.mjs",
     "verify:analysis-tools": "tsx scripts/verify-te-analysis-tools.mjs",
     "verify:analysis-cluster-routing": "node scripts/verify-analysis-cluster-routing.mjs",
@@ -26,6 +28,7 @@
     "verify:analysis-common-tools": "node scripts/verify-te-common-tools.mjs",
     "verify:team-tools": "node scripts/verify-te-team-tools.mjs",
     "verify:agent-tools": "node scripts/verify-agent-tools.mjs",
+    "verify:tracking-tools": "node test/tracking-client.test.mjs && node test/tracking-commands.test.mjs",
     "verify:self-check-overlay": "node test/self-check-overlay.test.mjs",
     "verify:update-check": "npx tsx test/update-check.test.mjs",
     "self-check": "node self-check/scan.mjs",
@@ -52,9 +55,12 @@
     "@types/json-bigint": "^1.0.4",
     "cli-table3": "^0.6.5",
     "commander": "^12.1.0",
+    "exceljs": "^4.4.0",
     "json-bigint": "^1.0.0",
     "turndown": "^7.2.4",
-    "ws": "^8.18.0"
+    "undici": "^6.19.0",
+    "ws": "^8.18.0",
+    "xlsx": "^0.18.5"
   },
   "devDependencies": {
     "@types/node": "^22.0.0",

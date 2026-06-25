@@ -2,7 +2,7 @@ import { assertLimitWithinCap, createMcpCommand, DEFAULT_QUERY_LIMIT, optionalBo
 
 export const drilldownUserEvents = createMcpCommand({
   command: '+drilldown_user_events',
-  description: 'Drill down to detailed event sequences for a specific user on specific dates. Use the result of drilldown_users and keep event names and dates consistent with the source analysis.',
+  description: 'Drill down to detailed event sequences for a specific user on specific dates. Use the result of drilldown_users and keep event names and dates consistent with the source analysis. For long-running or cancelable queries, provide requestId before starting. For any query that may exceed the CLI or MCP HTTP timeout, preset requestId so you can call +cancel_query --request_id <same value> if you stop waiting or the request returns fetch failed. If fetch failed, HTTP timeout, or caller timeout happens, the backend query may still be running. If provided, requestId must use mcp_<32 lowercase hex UUID>, for example mcp_0123456789abcdef0123456789abcdef. Submitted queries return metadata.requestId; pass that value to cancel_query(requestId) when the query is no longer needed. The auto-generated requestId is not available when the HTTP request fails before a response, so preset requestId is required for proactive cleanup.',
   flags: [
     { name: 'project_id', type: 'number', required: true, desc: 'Project ID', alias: 'p' },
     { name: 'user_id', type: 'string', required: true, desc: 'User ID from drilldown_users' },
@@ -21,7 +21,8 @@ export const drilldownUserEvents = createMcpCommand({
     { name: 'entity_value', type: 'string', required: false, desc: 'Optional entity value for multi-entity scenarios' },
     { name: 'use_cache', type: 'boolean', required: false, desc: 'Whether to use cache. Default: true' },
     { name: 'page_num', type: 'number', required: false, desc: 'Start page number. Default: 1' },
-    { name: 'page_size', type: 'number', required: false, desc: 'Page size. Default: 1000, maximum: 100000.' },
+    { name: 'page_size', type: 'number', required: false, desc: 'Page size. Default: 1000, maximum: 10000.' },
+    { name: 'request_id', type: 'string', required: false, desc: 'Optional unique request ID used for tracking and cancellation. If provided, it must use mcp_<32 lowercase hex UUID>, for example mcp_0123456789abcdef0123456789abcdef. For long-running or cancelable queries, provide this before starting the query so it can be cancelled later with +cancel_query --request_id <same value>, even if the caller stops waiting before the tool returns. If fetch failed, HTTP timeout, or caller timeout happens, the backend query may still be running. The auto-generated requestId is not available when the HTTP request fails before a response, so preset requestId is required for proactive cleanup. Generated automatically if omitted. The response metadata.requestId can also be passed to cancel_query when the query is no longer needed.' },
     { name: 'timeout_minutes', type: 'number', required: false, desc: 'Query timeout in minutes. If omitted, 30 minutes is used.' },
   ],
   risk: 'read',
@@ -47,6 +48,7 @@ export const drilldownUserEvents = createMcpCommand({
       useCache: optionalBoolean(ctx, 'use_cache'),
       pageNum: optionalNumber(ctx, 'page_num'),
       pageSize: optionalNumber(ctx, 'page_size') ?? DEFAULT_QUERY_LIMIT,
+      requestId: optionalString(ctx, 'request_id'),
       timeoutMinutes: optionalNumber(ctx, 'timeout_minutes'),
     }),
 });
