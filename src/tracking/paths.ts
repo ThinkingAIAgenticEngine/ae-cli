@@ -15,6 +15,12 @@ export function getWikiSymlinkDir(): string {
   return join(getConfigDir(), 'wiki');
 }
 
+const AE_CLI_PACKAGE_NAMES = new Set(['@tant/ae-cli', '@thinkingai/ae-cli']);
+
+export function isAeCliPackageName(name: unknown): name is string {
+  return typeof name === 'string' && (AE_CLI_PACKAGE_NAMES.has(name) || name.endsWith('/ae-cli'));
+}
+
 export function getPackageRoot(): string {
   let cur = dirname(fileURLToPath(import.meta.url));
   while (cur !== dirname(cur)) {
@@ -22,7 +28,7 @@ export function getPackageRoot(): string {
     if (existsSync(pj)) {
       try {
         const pkg = JSON.parse(readFileSync(pj, 'utf8'));
-        if (pkg.name === '@tant/ae-cli') return cur;
+        if (isAeCliPackageName(pkg.name)) return cur;
       } catch {
         /* keep walking */
       }
