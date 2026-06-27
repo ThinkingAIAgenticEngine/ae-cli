@@ -145,14 +145,10 @@ ae-cli analysis_audience +get_cluster_definition_schema --cluster_type condition
 ae-cli engage +channel_list --project_id <projectId>
 ```
 
-5. The final `--req` for `+save_flow` must be the complete canvas request payload, not an intent description. It must contain at least:
-   - `flowName`
-   - `flowDesc`
-   - `nodeList`
-   - `edgeList`
-6. `nodeList[].config` and `edgeList[].config` must be JSON strings, not JSON objects.
-7. If `targetClusterQp` appears inside a node `config`, its value should usually also be a string produced by `JSON.stringify`, not a raw object.
-8. You must self-check before submitting:
+5. `+save_flow` is **operation-based** (protocol v2). The `--req` object must carry an `operation` of `build`, `preview`, or `commit`. Do **not** use the old `nodeList` / `edgeList` field names — use `nodes` / `edges` with `operation=build`. A legacy `nodeList`/`edgeList` payload (or a missing `operation`) is rejected with `Unsupported save_flow operation: null`.
+6. Run the lifecycle: `build` (returns `ready_to_preview` or `need_input`) → resolve any `need_input` slot → `preview` (re-issues `draftVersion` + `confirmToken`) → `commit` (uses the **preview** `draftVersion` + `confirmToken`) → returns `flowUuid`.
+7. `nodes[].config` / `edges[].config` may be a JSON object or a JSON string. If `targetClusterQp` appears inside a node `config`, its value is usually a `JSON.stringify`'d string, not a raw object.
+8. You must self-check before previewing/committing:
    - There is exactly one entry node
    - There is at least one `exit_flow`
    - `edge.source` and `edge.target` both reference valid nodes
@@ -163,8 +159,8 @@ ae-cli engage +channel_list --project_id <projectId>
 
 - Do not invent a `channelId`
 - Do not fill in branching logic when the user has not provided enough information
-- Do not submit business-semantic nodes directly as final `nodeList` nodes
-- Do not put `config` into `--req` as an object
+- Do not submit business-semantic nodes directly as final `nodes`
+- Do not use the legacy `nodeList` / `edgeList`, and do not omit `operation`
 
 ### Recommended Order
 
@@ -173,9 +169,10 @@ User request
 -> Organize intent
 -> analysis_audience +get_cluster_definition_schema --cluster_type condition
 -> +channel_list --project_id <projectId>
--> Build nodeList / edgeList
+-> Build nodes / edges
 -> Self-check
--> +save_flow
+-> +save_flow operation=build -> (need_input?) -> preview -> commit
+-> +flow_detail (verify)
 ```
 
 For more detailed generation rules, consult these references first:
