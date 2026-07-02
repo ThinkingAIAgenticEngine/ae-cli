@@ -4,6 +4,7 @@ import { listAlerts } from './list-alerts.js';
 import { getAlert } from './get-alert.js';
 import { createAlert } from './create-alert.js';
 import { updateAlert } from './update-alert.js';
+import { deleteAlert } from './delete-alert.js';
 
 const commands: Command[] = [
   getAlertDefinitionSchema,
@@ -11,6 +12,7 @@ const commands: Command[] = [
   getAlert,
   createAlert,
   updateAlert,
+  deleteAlert,
 ];
 
 export default commands;

@@ -13,7 +13,7 @@ metadata:
 
 Use the `dataops_flow` subcommand to manage flow lifecycle.
 
-**Flow Lifecycle: Create → Configure Nodes → Configure Schedule → Test in DEV → Release to PROD → Online Schedule**
+**Flow Lifecycle: Create → Configure Nodes → Configure Schedule → Preview Release → Release to PROD → Manual PROD Execution / Online Schedule**
 
 ---
 
@@ -25,68 +25,58 @@ Follow these steps in order to create a production-ready flow from scratch.
 
 ```bash
 ae-cli dataops_flow +create_flow --spaceCode "${spaceCode}" \
-  --flowName "Daily ETL Process" --remark "Process user data" --confirmed true
+  --flowName "Daily ETL Process" --remark "Process user data"
 # Returns flowCode, required for subsequent steps
 ```
 
 ### Step 2: Create Task Nodes (can be called multiple times)
 
 ```bash
-# Create SQL task
-ae-cli dataops_flow +create_task --spaceCode "${spaceCode}" \
-  --flowCode "${flowCode}" --taskName "Process User Data" --taskType "TRINO_SQL" --confirmed true
-# Returns taskCode
+# Create SQL task and save SQL content
+ae-cli dataops_flow +create_sql_task --spaceCode "${spaceCode}" \
+  --flowCode ${flowCode} --taskName "Process User Data" \
+  --sql "SELECT * FROM dwd_user"
+# Returns result.taskCode
 
 # Create task with upstream dependency
-ae-cli dataops_flow +create_task --spaceCode "${spaceCode}" \
-  --flowCode "${flowCode}" --taskName "Export Results" --taskType "TRINO_SQL" \
-  --preTaskCode "${upstreamTaskCode}" --confirmed true
+ae-cli dataops_flow +create_sql_task --spaceCode "${spaceCode}" \
+  --flowCode ${flowCode} --taskName "Export Results" \
+  --preTaskCode ${upstreamTaskCode} \
+  --sql "INSERT INTO ads_user SELECT * FROM dwd_user"
 ```
 
-**Task Node Types:**
+`+create_sql_task` creates DEV Trino SQL task nodes and saves the SQL content.
 
-| Type | Description | Typical Use |
-|------|-------------|-------------|
-| TRINO_SQL | Trino SQL query | Data processing, ETL |
-| SHELL | Shell script | System commands, file operations |
-| FLOW_CHECK | Flow check | Check if upstream flow is complete |
-| TASK_CHECK | Task check | Check if specified task is complete |
-| OFFLINE_SYNC | Offline sync | Integration solution data sync (requires syncId) |
-| APP_SYNC | App sync | App table data sync (requires syncId) |
-| PLACE_HOLDER | Placeholder | Flow control, logical grouping |
-
-### Step 3: Save Task Definition (configure SQL/Shell content)
+### Step 3: Create or Modify Integration Sync Task
 
 ```bash
-# SQL task
-ae-cli dataops_flow +save_task_definition --spaceCode "${spaceCode}" \
-  --flowCode "${flowCode}" --taskCode "${taskCode}" \
-  --taskContentJson '{"sql":"SELECT * FROM dwd_user","repoCode":"te_etl","catalog":"hive","schema":"ws_default_dev"}' \
-  --failRetryTimes 3 --failRetryInterval 30 --timeout 60 --confirmed true
+# Create integration sync task from an existing DataOps sync solution
+ae-cli dataops_flow +create_integration_task --spaceCode "${spaceCode}" \
+  --flowCode ${flowCode} --taskName "Sync Employees" \
+  --syncId "${syncId}"
 
-# Shell task
-ae-cli dataops_flow +save_task_definition --spaceCode "${spaceCode}" \
-  --flowCode "${flowCode}" --taskCode "${taskCode}" \
-  --taskContentJson '{"script":"#!/bin/bash\necho hello"}' \
-  --confirmed true
+# Rebind an existing integration sync task to another sync solution
+ae-cli dataops_flow +update_integration_task --spaceCode "${spaceCode}" \
+  --flowCode ${flowCode} --taskCode ${taskCode} \
+  --syncId "${syncId}"
 ```
 
-### Step 4: Validate SQL (recommended, TRINO_SQL type only)
+Use `dataops_integration +list_sync_solutions` or `+get_sync_detail` to find the `syncId` first. These commands expose workflow `OFFLINE_SYNC` tasks only; app sync tasks are not part of this flow.
+
+### Step 4: Modify SQL Task Content
 
 ```bash
-ae-cli dataops_flow +validate_task_sql --spaceCode "${spaceCode}" \
-  --flowCode "${flowCode}" --taskCode "${taskCode}" \
-  --sql "SELECT * FROM dwd_user" --repoCode "te_etl" \
-  --catalog "hive" --schema "ws_default_dev"
-# Check valid=true, otherwise review message and errorPosition
+# Update SQL task content without changing owner, remark, dependencies, retry, or timeout
+ae-cli dataops_flow +update_sql_task --spaceCode "${spaceCode}" \
+  --flowCode ${flowCode} --taskCode ${taskCode} \
+  --sql "SELECT * FROM dwd_user"
 ```
 
 ### Step 5: Add Task Dependencies (DAG connections)
 
 ```bash
 ae-cli dataops_flow +add_task_relation --spaceCode "${spaceCode}" \
-  --flowCode "${flowCode}" --preTaskCode "${upstreamTaskCode}" --taskCode "${downstreamTaskCode}" \
-  --confirmed true
+  --flowCode ${flowCode} --preTaskCode ${upstreamTaskCode} --taskCode ${downstreamTaskCode}
 ```
 
 ### Step 6: Configure Schedule
@@ -94,8 +84,8 @@ ae-cli dataops_flow +add_task_relation --spaceCode "${spaceCode}" \
 ```bash
 # CRON expression for scheduled execution
 ae-cli dataops_flow +save_schedule_config --spaceCode "${spaceCode}" \
-  --flowCode "${flowCode}" --scheduled 1 --scheduleType "CRON" \
-  --cron "0 0 2 * * ?" --confirmed true
+  --flowCode ${flowCode} --enabled true \
+  --cron "0 0 2 * * ?"
 # Example: 0 0 2 * * ? = Daily at 2 AM
 ```
 
@@ -103,28 +93,34 @@ ae-cli dataops_flow +save_schedule_config --spaceCode "${spaceCode}" \
 - `0 0 */4 * * ?` — Every 4 hours
 - `0 30 8 * * 1-5` — Weekdays at 8:30
 
-### Step 7: Test in DEV Environment
+### Step 7: Preview Release
 
 ```bash
-# Manually trigger execution
-ae-cli dataops_flow +execute_flow --spaceCode "${spaceCode}" \
-  --flowCode "${flowCode}" --env "DEV" --confirmed true
-
-# Check execution status
-ae-cli dataops_flow +get_execute_dag --spaceCode "${spaceCode}" --executeId "${executeId}"
-
-# View task logs (get bsTaskInstanceId and taskCode from DAG)
-ae-cli dataops_flow +get_task_instance_log --bsTaskInstanceId "${instanceId}" --taskCode "${taskCode}"
-
-# Adjust configuration based on logs, then repeat testing
+# Preview pending DEV-to-PROD release changes before publishing
+ae-cli dataops_flow +preview_release_flow --spaceCode "${spaceCode}" \
+  --flowCode ${flowCode}
 ```
 
-### Step 8: Release to Production
+### Step 8: Release to Production and Verify
 
 ```bash
 ae-cli dataops_flow +release_flow --spaceCode "${spaceCode}" \
-  --flowCode "${flowCode}" --confirmed true
-# After release, PROD schedule takes effect immediately without interrupting running instances
+  --flowCode ${flowCode}
+
+# Manually trigger PROD execution when verification is needed
+ae-cli dataops_flow +execute_flow --spaceCode "${spaceCode}" \
+  --flowCode ${flowCode}
+
+# Check execution status
+ae-cli dataops_operations +search_flow_instances --spaceCode "${spaceCode}" \
+  --keyword "${flowCode}" --pageSize 20
+
+# Inspect one instance and task logs when troubleshooting
+ae-cli dataops_operations +get_flow_instance_detail --spaceCode "${spaceCode}" \
+  --flowCode ${flowCode} --flowInstanceId ${flowInstanceId}
+ae-cli dataops_operations +get_task_instance_detail --spaceCode "${spaceCode}" \
+  --flowCode ${flowCode} --flowInstanceId ${flowInstanceId} \
+  --taskName "${taskName}" --includeLog true
 ```
 
 ---
@@ -133,31 +129,38 @@ ae-cli dataops_flow +release_flow --spaceCode "${spaceCode}" \
 
 | Command | Purpose | Key Flags |
 |---------|---------|-----------|
-| `+create_flow` | Create flow | `--spaceCode` `--flowName` `--remark` `--confirmed` |
-| `+create_task` | Create task node | `--spaceCode` `--flowCode` `--taskName` `--taskType` `--syncId` `--preTaskCode` `--confirmed` |
-| `+save_task_definition` | Save task definition | `--spaceCode` `--flowCode` `--taskCode` `--taskContentJson` `--failRetryTimes` `--failRetryInterval` `--timeout` `--confirmed` |
-| `+validate_task_sql` | Validate SQL | `--spaceCode` `--flowCode` `--taskCode` `--sql` `--repoCode` `--catalog` `--schema` |
-| `+add_task_relation` | Add dependency | `--spaceCode` `--flowCode` `--preTaskCode` `--taskCode` `--confirmed` |
-| `+save_schedule_config` | Configure schedule | `--spaceCode` `--flowCode` `--scheduled` `--scheduleType` `--cron` `--confirmed` |
-| `+get_flow_dag` | View DAG structure | `--spaceCode` `--flowCode` `--env` |
-| `+get_task_params` | View task parameters | `--spaceCode` `--flowCode` `--taskCode` `--env` |
-| `+execute_flow` | Manual execution | `--spaceCode` `--flowCode` `--env` `--confirmed` |
-| `+get_execute_dag` | View runtime DAG | `--spaceCode` `--executeId` |
-| `+get_task_instance_log` | View task logs | `--bsTaskInstanceId` `--taskCode` `--startOffset` `--limit` |
-| `+release_flow` | Release to production | `--spaceCode` `--flowCode` `--confirmed` |
+| `+create_flow` | Create DEV flow | `--spaceCode` `--flowName` `[--remark]` |
+| `+create_sql_task` | Create DEV Trino SQL task and save SQL | `--spaceCode` `--flowCode` `--taskName` `--sql` `[--preSql]` `[--postSql]` `[--preTaskCode]` `[--remark]` |
+| `+update_sql_task` | Update DEV Trino SQL task content | `--spaceCode` `--flowCode` `--taskCode` `--sql` `[--preSql]` `[--postSql]` |
+| `+create_integration_task` | Create DEV integration sync task from an existing sync solution | `--spaceCode` `--flowCode` `--taskName` `--syncId` `[--preTaskCode]` `[--remark]` |
+| `+update_integration_task` | Rebind DEV integration sync task to a sync solution | `--spaceCode` `--flowCode` `--taskCode` `--syncId` |
+| `+add_task_relation` | Add DEV dependency | `--spaceCode` `--flowCode` `--preTaskCode` `--taskCode` |
+| `+save_schedule_config` | Save DEV schedule config | `--spaceCode` `--flowCode` `--enabled` `[--cron]` |
+| `+get_task_params` | View DEV task parameter list | `--spaceCode` `--flowCode` `--taskCode` |
+| `+execute_flow` | Manual PROD execution | `--spaceCode` `--flowCode` `[--baseDate]` |
+| `dataops_operations +get_flow_instance_detail` | View operations instance DAG and task statuses | `--spaceCode` `--flowCode` `--flowInstanceId` |
+| `dataops_operations +get_task_instance_detail` | View operations task detail and optional logs | `--spaceCode` `--flowCode` `--flowInstanceId` (`--taskCode` or `--taskName`) `[--includeLog]` |
+| `+preview_release_flow` | Preview pending DEV-to-PROD release changes without publishing | `--spaceCode` `--flowCode` |
+| `+release_flow` | Submit DEV-to-PROD release | `--spaceCode` `--flowCode` |
 
 ## Parameter Notes
 
 - **Parameter Reference**: Reference workspace parameters in tasks using `${paramKey}` (e.g., `${ws_run_date}`)
-- **Environment**: `DEV` (default) | `PROD`
-- **taskContentJson**: JSON string, format varies by taskType:
-  - TRINO_SQL: `{"sql":"SELECT ...","repoCode":"xxx","catalog":"hive","schema":"db"}`
-  - SHELL: `{"script":"#!/bin/bash\n..."}`
+- **Execution**: `+execute_flow` requires `--spaceCode` and `--flowCode`; `--baseDate` is optional and maps to runtime parameter `bd`. It always runs PROD and returns `action/result/status`; `result` includes `flowCode`, `executeId`, `operationStatus`, `nextAction`, and optional `flowInstanceId`.
+- **Schedule config**: `+save_schedule_config` requires `--spaceCode`, `--flowCode`, and `--enabled`. `--cron` is required only when `--enabled true`; omit it when disabling scheduling. It returns `action/result/status`; `result` includes `enabled`, `flow`, `message`, and `cron` only when enabled.
+- **Release preview**: `+preview_release_flow` requires `--spaceCode` and `--flowCode`; it has no optional flags. It returns `flowCode`, `releaseStatus`, `message`, and `changes`. Each change may include `scheduleConfigChange` and `tasks`; task entries may include `changed`, `contentCompare`, and `targetTable`.
+- **Release**: `+release_flow` requires `--spaceCode` and `--flowCode`; it has no optional flags. It returns `action/result/status`; `result` includes `flowCode`, `releaseStatus`, `message`, optional `packageCode`, and optional `changes`. Each change may include `scheduleConfigChange` and `tasks`; task entries include `changed`.
+- **SQL task creation**: `+create_sql_task` requires `--spaceCode`, `--flowCode`, `--taskName`, and `--sql`; `--preSql`, `--postSql`, `--preTaskCode`, and `--remark` are optional. It returns `action/result/status`; `result` includes `flowCode`, `taskCode`, `taskName`, `taskType=TRINO_SQL`, and `sqlSaved=true`.
+- **SQL task update**: `+update_sql_task` requires `--spaceCode`, `--flowCode`, `--taskCode`, and `--sql`; `--preSql` and `--postSql` are optional and keep existing values when omitted. It returns `action/result/status`; `result` includes `sqlSaved`, `flowCode`, `taskCode`, `taskType=TRINO_SQL`, and `task`.
+- **Task dependency**: `+add_task_relation` requires `--spaceCode`, `--flowCode`, `--preTaskCode`, and `--taskCode`. `preTaskCode` is upstream and `taskCode` is downstream. It returns `action/result/status`; `result` includes `status`, `flowCode`, `preTaskCode`, `taskCode`, and `message`.
+- **Task parameters**: `+get_task_params` requires `--spaceCode`, `--flowCode`, and `--taskCode`; it has no optional flags. It queries DEV and returns `data` as an array. Items include fields such as `paramKey`, `paramType`, `paramDataType`, `paramFrom`, and built-in flags like `isBd`.
+- **Integration task creation**: `+create_integration_task` requires `--spaceCode`, `--flowCode`, `--taskName`, and `--syncId`; `--preTaskCode` and `--remark` are optional. It returns `action/result/status`; `result` includes `syncTaskSaved`, `flowCode`, `taskCode`, `taskName`, `taskType=OFFLINE_SYNC`, `syncId`, and `nextAction`.
+- **SQL task dependencies**: Use optional `--preTaskCode` to create one upstream dependency with the task. Use `+add_task_relation` for additional DAG dependencies.
 
 ## Important Notes
 
 1. **Getting flowCode**: Use `+list_flows` (see `dataops-flow-monitor` Skill)
-2. **Getting taskCode**: Returned by `+create_task` or query via `+get_flow_dag`
-3. **Release Impact**: Syncs all DEV changes to PROD, PROD schedule takes effect immediately
+2. **Getting taskCode**: Returned by `+create_sql_task` / `+create_integration_task` or query via `+get_flow_overview`
+3. **Release Impact**: Submits current DEV changes to PROD; released schedule/config applies to future PROD runs
 4. **SQL Validation**: Recommended to validate before saving TRINO_SQL tasks
 5. **Cannot create circular dependencies**

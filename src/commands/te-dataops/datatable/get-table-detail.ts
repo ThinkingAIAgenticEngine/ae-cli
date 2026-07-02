@@ -1,27 +1,43 @@
-import type { Command } from '../../../framework/types.js';
-import { callMcpTool, parseMcpResult, resolveMcpUrl } from '../../../core/mcp.js';
+import type { Command, RuntimeContext } from '../../../framework/types.js';
+import { buildDataopsApiDryRun, callDataopsApi } from '../shared.js';
+
+const toolName = 'datatable_get_table_detail';
+
+function optionalString(ctx: RuntimeContext, name: string): string | undefined {
+  const value = ctx.str(name);
+  return value === '' ? undefined : value;
+}
+
+function buildArgs(ctx: RuntimeContext): Record<string, unknown> {
+  return {
+    spaceCode: ctx.str('spaceCode'),
+    tableName: ctx.str('tableName'),
+    manageMode: ctx.str('manageMode'),
+    env: ctx.str('env'),
+    entityType: optionalString(ctx, 'entityType'),
+  };
+}
 
 export const getTableDetail: Command = {
   service: 'dataops_datatable',
   command: '+get_table_detail',
-  description: 'Get details of data tables registered on dataops platform (including column definitions, DDL, data lineage). Input table name only, system automatically matches management mode and environment. Returns: columns (column name/type/comment), ddl (CREATE TABLE statement), lineage (upstream/downstream lineage). When env is not specified, TASK_ENV mode returns DEV and PRODUCT dual environment information by default. Supported management modes: TASK_ENV (space task table, default), IDE (IDE table), SYSTEM (system table), AUTHED_SPACE (authorized table, PRODUCT only). If table name has multiple matches, candidate list will be returned for further confirmation. Difference from ide_get_table_detail: This tool queries dataops platform registered information (including data lineage), requires table name; ide_get_table_detail directly queries data warehouse engine real-time metadata. Difference from integration_get_table_structure: integration queries external data source metadata, requires datasourceId',
+  description: 'Get compact DataOps catalog detail for a table/view. Resolves tableName across task, IDE, system, and authorized-space tables unless manageMode is set. TASK_ENV without env returns environments.DEV/PRODUCT; otherwise returns detail. Detail contains identity/status/owner/columns plus optional description/partitionColumns/ddl/lineages. Ambiguous matches return candidates. Unlike ide_get_table_detail, this includes DataOps lifecycle/status/lineage when available.',
   flags: [
     { name: 'spaceCode', type: 'string', required: true, desc: 'Space code' },
-    { name: 'tableName', type: 'string', required: true, desc: 'Table name (supports fuzzy matching, full table name recommended)' },
-    { name: 'manageMode', type: 'string', required: false, desc: 'Management mode: TASK_ENV (space task table, default), IDE (IDE table), SYSTEM (system table), AUTHED_SPACE (authorized table). Auto-match if not provided' },
-    { name: 'env', type: 'string', required: false, desc: 'Environment: DEV (development), PRODUCT (production). If not provided, TASK_ENV returns dual environment info, other modes return corresponding default environment' },
-    { name: 'tableType', type: 'number', required: false, desc: 'Table type: 0 (physical table, default), 1 (view)' },
+    { name: 'tableName', type: 'string', required: true, desc: 'Table name keyword; exact name recommended' },
+    { name: 'manageMode', type: 'string', required: false, desc: 'Optional mode filter: TASK_ENV, IDE, SYSTEM, or AUTHED_SPACE. Omit to auto-match across modes' },
+    { name: 'env', type: 'string', required: false, desc: 'Optional environment: DEV or PRODUCT. If omitted, TASK_ENV returns both environments' },
+    { name: 'entityType', type: 'string', required: false, desc: 'Optional type hint: TABLE or VIEW. Omit unless the table name is ambiguous' },
   ],
+  validate: (ctx) => {
+    const entityType = optionalString(ctx, 'entityType');
+    if (entityType !== undefined && entityType.toUpperCase() !== 'TABLE' && entityType.toUpperCase() !== 'VIEW') {
+      throw new Error('entityType must be TABLE or VIEW');
+    }
+  },
   risk: 'read',
+  dryRun: (ctx) => buildDataopsApiDryRun(ctx, toolName, buildArgs(ctx)),
   execute: async (ctx) => {
-    const mcpUrl = resolveMcpUrl(ctx.mcpUrl(), ctx.host(), ctx.service());
-    const result = await callMcpTool(mcpUrl, 'datatable_get_table_detail', {
-      spaceCode: ctx.str('spaceCode'),
-      tableName: ctx.str('tableName'),
-      manageMode: ctx.str('manageMode'),
-      env: ctx.str('env'),
-      tableType: ctx.num('tableType'),
-    });
-    return parseMcpResult(result);
+    return callDataopsApi(ctx, toolName, buildArgs(ctx));
   },
 };

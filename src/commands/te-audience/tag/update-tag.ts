@@ -9,7 +9,7 @@ export const updateTag = createMcpCommand({
     { name: 'display_name', type: 'string', required: false, desc: 'New tag display name. Length: 1-80' },
     { name: 'remark', type: 'string', required: false, desc: 'New tag remark' },
     { name: 'type', type: 'string', required: false, desc: 'New tag type: condition/metric/first_last/sql' },
-    { name: 'definition', type: 'json', required: false, desc: 'New tag definition JSON. See +get_tag_definition_schema' },
+    { name: 'definition', type: 'json', required: false, desc: 'New tag definition JSON. Call +build_tag_definition first to generate this value.' },
     { name: 'zone_offset', type: 'number', required: false, desc: 'Optional time zone offset, valid range: -12 to 14' },
   ],
   risk: 'write',

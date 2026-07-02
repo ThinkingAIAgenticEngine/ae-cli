@@ -1,23 +1,28 @@
-import type { Command } from '../../../framework/types.js';
-import { callMcpTool, parseMcpResult, resolveMcpUrl } from '../../../core/mcp.js';
+import type { Command, RuntimeContext } from '../../../framework/types.js';
+import { buildDataopsApiDryRun, callDataopsApi } from '../shared.js';
+
+const toolName = 'datatable_dict_search_tables';
+
+function buildArgs(ctx: RuntimeContext): Record<string, unknown> {
+  return {
+    spaceCode: ctx.str('spaceCode'),
+    search: ctx.str('search'),
+    maxResults: ctx.optionalNum('maxResults'),
+  };
+}
 
 export const dictSearchTables: Command = {
   service: 'dataops_datatable',
   command: '+dict_search_tables',
-  description: 'Search tables in dataops data dictionary, supports fuzzy search by table name or description. Returns up to maxResults results (default 200), plus totalCount and hasMore flags. Returns: entityId (table entity ID), tableName (table name), schema (database name), catalog (catalog name), repoCode (repository code), tableType (0=physical table/1=view), tableComment (table description), tableRemark (table remark). Use cases: Browse or search registered data assets in space. If too many results, narrow range with search parameter. Difference from ide_search_tables: This tool queries dataops platform registered metadata (including business descriptions), ide_search_tables directly queries data warehouse engine (real-time metadata, cross catalog/schema)',
+  description: 'Search the DataOps table catalog visible to a space, including task, IDE, system, and authorized-space tables. Use a precise keyword; empty or broad searches can be large. Matches table name, catalog, schema, comment, and remark where available. Returns tables plus totalCount, returnedCount, hasMore, and hint when truncated. Table summaries include identity, location, type, management mode, owner/subject, optional comment/remark, status, env, and createTime. Unlike ide_search_tables, this returns DataOps-enriched catalog results, not raw engine metadata.',
   flags: [
     { name: 'spaceCode', type: 'string', required: true, desc: 'Space code' },
-    { name: 'search', type: 'string', required: false, desc: 'Search keyword (fuzzy match on table name/remark/description)' },
-    { name: 'maxResults', type: 'number', required: false, desc: 'Max return count, default 200, max 10000' },
+    { name: 'search', type: 'string', required: false, desc: 'Keyword matching table name/catalog/schema/comment/remark where available' },
+    { name: 'maxResults', type: 'number', required: false, desc: 'Max return count, default 50, max 200' },
   ],
   risk: 'read',
+  dryRun: (ctx) => buildDataopsApiDryRun(ctx, toolName, buildArgs(ctx)),
   execute: async (ctx) => {
-    const mcpUrl = resolveMcpUrl(ctx.mcpUrl(), ctx.host(), ctx.service());
-    const result = await callMcpTool(mcpUrl, 'datatable_dict_search_tables', {
-      spaceCode: ctx.str('spaceCode'),
-      search: ctx.str('search'),
-      maxResults: ctx.num('maxResults'),
-    });
-    return parseMcpResult(result);
+    return callDataopsApi(ctx, toolName, buildArgs(ctx));
   },
 };

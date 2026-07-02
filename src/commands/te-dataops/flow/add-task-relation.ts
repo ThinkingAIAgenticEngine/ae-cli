@@ -1,27 +1,30 @@
 import type { Command } from '../../../framework/types.js';
-import { callMcpTool, parseMcpResult, resolveMcpUrl } from '../../../core/mcp.js';
+import { buildDataopsApiDryRun, callDataopsApi } from '../shared.js';
+
+const toolName = 'flow_add_task_relation';
+
+function buildArgs(ctx: Parameters<NonNullable<Command['execute']>>[0]) {
+  return {
+    spaceCode: ctx.str('spaceCode'),
+    flowCode: ctx.num('flowCode'),
+    preTaskCode: ctx.num('preTaskCode'),
+    taskCode: ctx.num('taskCode'),
+  };
+}
 
 export const addTaskRelation: Command = {
   service: 'dataops_flow',
   command: '+add_task_relation',
-  description: 'Add task dependency relationship (DAG connection), specify pre-task (upstream) and post-task (downstream). Write operation requires two-step confirmation. Note: Cannot create circular dependencies. Related tools: flow_delete_task_relation, flow_get_flow_dag',
+  description: 'Add a DEV dependency from preTaskCode (upstream) to taskCode (downstream). Requires spaceCode, flowCode, preTaskCode, and taskCode. Returns action/result/status; result includes status, flowCode, preTaskCode, taskCode, and message',
   flags: [
     { name: 'spaceCode', type: 'string', required: true, desc: 'Space code' },
     { name: 'flowCode', type: 'number', required: true, desc: 'Task flow code' },
     { name: 'preTaskCode', type: 'number', required: true, desc: 'Pre-task code (upstream)' },
     { name: 'taskCode', type: 'number', required: true, desc: 'Current task code (downstream)' },
-    { name: 'confirmed', type: 'boolean', required: false, desc: 'Confirmed to execute, defaults to false if not provided' },
   ],
   risk: 'write',
+  dryRun: (ctx) => buildDataopsApiDryRun(ctx, toolName, buildArgs(ctx)),
   execute: async (ctx) => {
-    const mcpUrl = resolveMcpUrl(ctx.mcpUrl(), ctx.host(), ctx.service());
-    const result = await callMcpTool(mcpUrl, 'flow_add_task_relation', {
-      spaceCode: ctx.str('spaceCode'),
-      flowCode: ctx.num('flowCode'),
-      preTaskCode: ctx.num('preTaskCode'),
-      taskCode: ctx.num('taskCode'),
-      confirmed: ctx.bool('confirmed'),
-    });
-    return parseMcpResult(result);
+    return callDataopsApi(ctx, toolName, buildArgs(ctx));
   },
 };

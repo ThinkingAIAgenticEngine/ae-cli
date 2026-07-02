@@ -10,14 +10,15 @@
 
 ## 工具分类统计
 
-总计 **32 个工具**，按功能域分类：
+总计 **39 个工具**，按功能域分类：
 
-### 1. 预警管理 (Alert Management) - 5 个工具
+### 1. 预警管理 (Alert Management) - 6 个工具
 - `get_alert_definition_schema` - 获取预警定义 schema
 - `list_alerts` - 列出预警任务
 - `get_alert` - 获取单个预警详情
 - `create_alert` - 创建预警
 - `update_alert` - 更新预警
+- `delete_alert` - 删除预警
 
 ### 2. 元数据批量管理 (Metadata Batch Management) - 2 个工具
 - `batch_edit_metadata` - 批量编辑系统元数据
@@ -27,11 +28,12 @@
 - `create_virtual_event` - 创建虚拟事件
 - `create_virtual_property` - 创建 SQL 虚拟属性
 
-### 4. 指标管理 (Metric Management) - 4 个工具
+### 4. 指标管理 (Metric Management) - 5 个工具
 - `list_metrics` - 列出指标元数据
 - `get_metric` - 获取指标定义
 - `create_metric` - 创建指标
 - `update_metric` - 更新指标
+- `delete_metric` - 删除指标
 
 ### 5. 埋点方案管理 (Tracking Plan) - 5 个工具
 - `get_track_program` - 查询埋点方案
@@ -47,25 +49,34 @@
 ### 7. 仪表盘备注管理 (Dashboard Note) - 1 个工具
 - `create_or_update_dashboard_note` - 创建或更新仪表盘备注
 
-### 8. 公开链接管理 (Public Access Link) - 3 个工具
+### 8. 仪表盘资产管理 (Dashboard Asset) - 4 个工具
+- `copy_dashboard` - 复制仪表盘（可选同步复制关联报告）
+- `freeze_dashboards` - 冻结或解冻仪表盘（批量）
+- `list_spaces` - 列出项目空间与文件夹树（含仪表盘）
+- `move_dashboard` - 将仪表盘移动到指定空间或文件夹
+
+### 9. 报告管理 (Report Management) - 1 个工具
+- `update_report` - 更新报告（名称、描述、QP）
+
+### 10. 公开链接管理 (Public Access Link) - 3 个工具
 - `list_public_access_links` - 列出公开链接
 - `create_public_access_link` - 创建公开链接
 - `update_public_access_link` - 更新公开链接
 
-### 9. 模型辅助查询 (Model Assist) - 2 个工具
+### 11. 模型辅助查询 (Model Assist) - 2 个工具
 - `load_filters` - 加载属性候选值
 - `get_table_columns` - 查询表字段信息
 
-### 10. 项目日期标注 (Project Mark Time) - 4 个工具
+### 12. 项目日期标注 (Project Mark Time) - 4 个工具
 - `create_project_mark_time` - 创建日期标注
 - `update_project_mark_time` - 更新日期标注
 - `list_project_mark_times` - 列出日期标注
 - `delete_project_mark_times` - 删除日期标注
 
-### 11. 实体管理 (Entity Management) - 1 个工具
+### 13. 实体管理 (Entity Management) - 1 个工具
 - `create_entity` - 创建实体
 
-### 12. 空间管理 (Space Management) - 1 个工具
+### 14. 空间管理 (Space Management) - 1 个工具
 - `create_space` - 创建空间
 
 ## 工具详细信息
@@ -315,9 +326,7 @@
 - **描述**: 查询项目数据表字段列表
 - **参数**:
   - `projectId` (Integer, required) - 项目 ID
-  - `catalog` (String, required) - catalog
-  - `schema` (String, required) - schema
-  - `table` (String, required) - 表名
+  - `tableRef` (String, required) - 表引用，支持 `hive.schema.table`、`schema.table` 或 `table`
 - **风险**: read
 
 ### 项目日期标注工具

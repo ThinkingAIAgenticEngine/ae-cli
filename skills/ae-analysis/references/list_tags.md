@@ -17,7 +17,7 @@ Domain: **Tag Management**
 ```bash
 ae-cli analysis_audience +list_tags --project_id <project_id>
 ae-cli analysis_audience +list_tags --project_id <project_id> --query demo
-ae-cli analysis_audience +list_tags --project_id <project_id> --fields '["id","clusterName","usersNum"]' --limit 20 --offset 0
+ae-cli analysis_audience +list_tags --project_id <project_id> --fields '["id","clusterName","displayName","remarks","clusterType","subConditionTabType","progress","usersNum"]' --limit 20 --offset 0
 ae-cli analysis_audience +list_tags --dry-run
 ```
 
@@ -26,7 +26,7 @@ ae-cli analysis_audience +list_tags --dry-run
 |---|---|---|
 | `--project_id` / `-p` | Yes | Project ID |
 | `--query` / `-q` | No | Optional keyword filter. Performs fuzzy matching against tag names, display names, and remarks; if omitted, all tags are returned. |
-| `--fields` | No | Optional return field list (JSON array). Invalid fields will fail with `INVALID_FIELDS`. |
+| `--fields` | No | Optional return field list (JSON array). Supported fields: `id`, `clusterName`, `displayName`, `clusterType`, `subConditionTabType`, `progress`, `usersNum`, `remarks`. Default fields when omitted: `id`, `clusterName`, `displayName`, `remarks`, `clusterType`, `subConditionTabType`, `progress`, `usersNum`. Invalid fields will fail with `INVALID_FIELDS`. |
 | `--limit` | No | Optional page size. Default: 20, max: 50. |
 | `--offset` | No | Optional page offset. Default: 0. |
 

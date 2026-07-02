@@ -2,13 +2,13 @@ import { createMcpCommand, optionalBoolean, optionalJson, optionalJsonString, op
 
 export const listProperties = createMcpCommand({
   command: '+list_properties',
-  description: 'List properties in the project. Use for explicit metadata inspection, not as a pre-step for event/retention/funnel/prop_analysis ad-hoc builders; the builders resolve property names internally. Query performs fuzzy matching on propName, propDesc and aiRemark. Supports fields/limit/offset payload governance.',
+  description: 'List properties in the project. Use for explicit metadata inspection, not as a pre-step for event/retention/funnel/prop_analysis ad-hoc builders; the builders resolve property names internally. Query performs fuzzy matching on propName, propDesc, and remark. Supports fields/limit/offset payload governance. Default returned fields: propId, propName, propDesc, remark, selectType, tableType.',
   flags: [
     { name: 'project_id', type: 'number', required: true, desc: 'Project ID', alias: 'p' },
     { name: 'scope', type: 'string', required: false, desc: 'Property scope: event or user' },
     { name: 'event_name', type: 'string', required: false, desc: 'Optional event name filter' },
-    { name: 'query', type: 'string', required: false, desc: 'Optional keyword filter. Fuzzy match is applied to propName, propDesc, and aiRemark; if omitted, all accessible properties are returned.', alias: 'q' },
-    { name: 'fields', type: 'json', required: false, desc: 'Optional fields to return. Supported fields: propName, propDesc, aiRemark, selectType, tableType, subTableType.', alias: 'f' },
+    { name: 'query', type: 'string', required: false, desc: 'Optional keyword filter. Fuzzy match is applied to propName, propDesc, and remark; if omitted, all accessible properties are returned.', alias: 'q' },
+    { name: 'fields', type: 'json', required: false, desc: 'Optional fields to return. Supported fields: propId, propName, propDesc, remark, selectType, tableType, subTableType. Default fields when omitted: propId, propName, propDesc, remark, selectType, tableType.', alias: 'f' },
     { name: 'limit', type: 'number', required: false, desc: 'Optional page size. Default: 20, maximum: 10000.', alias: 'l' },
     { name: 'offset', type: 'number', required: false, desc: 'Optional page offset. Default: 0.', alias: 'o' },
   ],

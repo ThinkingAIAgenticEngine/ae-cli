@@ -18,7 +18,7 @@ Domain: **Report management**
 ```bash
 ae-cli analysis +list_reports --project_id <project_id>
 ae-cli analysis +list_reports --project_id <project_id> --query demo
-ae-cli analysis +list_reports --project_id <project_id> --fields '["reportId","reportName","reportModel"]' --limit 20 --offset 0
+ae-cli analysis +list_reports --project_id <project_id> --fields '["reportId","reportName","reportDesc","remark","reportModel"]' --limit 20 --offset 0
 ae-cli analysis +list_reports --dry-run
 ```
 
@@ -26,8 +26,8 @@ ae-cli analysis +list_reports --dry-run
 | Parameter | Required | Description |
 |---|---|---|
 | `--project_id` / `-p` | Yes | Project ID |
-| `--query` / `-q` | No | Optional keyword filter. Performs fuzzy matching against report names, descriptions, and AI remarks; if omitted, all accessible reports are returned. |
-| `--fields` / `-f` | No | Optional fields to return (JSON array). Supported fields: `reportId`, `reportName`, `reportDesc`, `reportModel`, `aiRemark`. |
+| `--query` / `-q` | No | Optional keyword filter. Performs fuzzy matching against reportName, reportDesc, and remark; if omitted, all accessible reports are returned. |
+| `--fields` / `-f` | No | Optional fields to return (JSON array). Supported fields: `reportId`, `reportName`, `reportDesc`, `remark`, `reportModel`. Default fields when omitted: `reportId`, `reportName`, `reportDesc`, `remark`, `reportModel`. |
 | `--limit` / `-l` | No | Optional page size. Default: 20, maximum: 10000. |
 | `--offset` / `-o` | No | Optional page offset. Default: 0. |
 

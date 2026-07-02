@@ -8,7 +8,7 @@ export const createCluster = createMcpCommand({
     { name: 'cluster_name', type: 'string', required: true, desc: 'Cluster name. Must start with a letter and contain only letters, digits, and underscores. Length: 1-80' },
     { name: 'display_name', type: 'string', required: true, desc: 'Cluster display name. Length: 1-80' },
     { name: 'type', type: 'string', required: false, desc: 'Cluster type: condition/sql. Default: condition' },
-    { name: 'definition', type: 'json', required: true, desc: 'Cluster definition JSON. See +get_cluster_definition_schema' },
+    { name: 'definition', type: 'json', required: true, desc: 'Cluster definition JSON. Call +build_cluster_definition first to generate this value.' },
     { name: 'zone_offset', type: 'number', required: false, desc: 'Optional time zone offset, valid range: -12 to 14' },
     { name: 'entity_id', type: 'number', required: false, desc: 'Optional entity ID. Use analysis_meta +list_entities to query' },
   ],

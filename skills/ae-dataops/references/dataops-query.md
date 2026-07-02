@@ -15,6 +15,10 @@ Use the `dataops_ide` subcommand for data exploration and SQL queries.
 
 **Core Rule: IDE only allows query operations, prohibits creating/modifying/deleting data tables (use dataops_datatable for task table DDL).**
 
+**Table discovery rule:** use `dataops_datatable +dict_search_tables` first for the visible DataOps catalog. Use `dataops_ide +search_tables` only when raw engine metadata is needed, and `dataops_ide +ide_list_tables` only for known catalog/schema browsing.
+
+If `spaceCode` is unknown, run `ae-cli dataops_repo +list_spaces` first. Use the only returned `spaceCode` directly; when multiple spaces are returned, choose by user intent or ask the user instead of guessing.
+
 ---
 
 ## Workflow A: Browse Data Warehouse Metadata
@@ -22,67 +26,57 @@ Use the `dataops_ide` subcommand for data exploration and SQL queries.
 Explore data warehouse structure step by step: repository → catalog → schema → table → column.
 
 ```bash
-# Step 1: List available repositories
-ae-cli dataops_ide +list_repos --spaceCode "${spaceCode}"
+# Step 1: List available IDE warehouse repositories
+ae-cli dataops_ide +ide_list_repos --spaceCode "${spaceCode}"
 
-# Step 2: List all catalogs and their schemas in repository
-ae-cli dataops_ide +list_catalogs --spaceCode "${spaceCode}" --connType "SPACE" --repoCode "${repoCode}"
+# Step 2: List accessible catalogs and schema names. Defaults: connType=SPACE, repoCode=te_etl.
+ae-cli dataops_ide +ide_list_catalogs --spaceCode "${spaceCode}"
 
-# Step 3: List tables/views under schema
-ae-cli dataops_ide +list_tables --spaceCode "${spaceCode}" --connType "SPACE" --repoCode "${repoCode}" \
-  --catalog "${catalog}" --schema "${schema}" --isView false --pageNum 1 --pageSize 100
+# Step 3: List physical tables under one schema. Defaults: connType=SPACE, repoCode=te_etl, entityType=TABLE, pageNum=1, pageSize=20.
+# This command does not support keyword filtering; use +search_tables only for engine-side keyword search.
+ae-cli dataops_ide +ide_list_tables --spaceCode "${spaceCode}" \
+  --catalog "${catalog}" --schema "${schema}" --pageSize 20
 
-# Step 4: Get detailed table metadata (column definitions, DDL, partitions, row count)
-ae-cli dataops_ide +get_table_detail --spaceCode "${spaceCode}" --connType "SPACE" --repoCode "${repoCode}" \
-  --catalog "${catalog}" --schema "${schema}" --tableName "${tableName}" \
-  --engineType "TASK_ENGINE_TRINO" --isView false
+# To list views under the same schema
+ae-cli dataops_ide +ide_list_tables --spaceCode "${spaceCode}" \
+  --catalog "${catalog}" --schema "${schema}" --entityType VIEW --pageSize 20
+
+# Step 4: Get engine-side table/view detail. Defaults: connType=SPACE, repoCode=te_etl, engineType=TASK_ENGINE_TRINO; entityType is auto-detected; tableDdl is hidden unless --includeDdl true.
+ae-cli dataops_ide +ide_get_table_detail --spaceCode "${spaceCode}" \
+  --catalog "${catalog}" --schema "${schema}" --tableName "${tableName}"
 ```
 
 ---
 
 ## Workflow B: Search and View Tables
 
-When you don't know the exact table location, search by keyword.
+When you don't know the exact table location, search by keyword. Prefer `dataops_datatable +dict_search_tables`; use the IDE search below only when raw engine metadata is needed.
 
 ```bash
-# Fuzzy search tables across catalog/schema
-ae-cli dataops_ide +search_tables --spaceCode "${spaceCode}" --connType "SPACE" --repoCode "${repoCode}" \
-  --searchKey "user" --size 20
-
-# Fuzzy search column names across tables
-ae-cli dataops_ide +search_columns --spaceCode "${spaceCode}" --repoCode "${repoCode}" \
-  --searchKey "user_id" --tables '[{"catalog":"hive","isView":false,"schema":"ws_default_dev","tableName":"dwd_user"}]' \
-  --engineType "TASK_ENGINE_TRINO" --pageNum 1 --pageSize 100
-
-# Generate SELECT SQL based on table and column names
-ae-cli dataops_ide +generate_sql --spaceCode "${spaceCode}" --repoCode "${repoCode}" \
-  --catalog "hive" --schema "ws_default_dev" --tableName "dwd_user" \
-  --engineType "TASK_ENGINE_TRINO" --selectColumns '["user_id","user_name","age"]'
+# Search engine-side warehouse tables/views by keyword. Defaults: connType=SPACE, repoCode=te_etl, size=20.
+ae-cli dataops_ide +search_tables --spaceCode "${spaceCode}" --searchKey "user"
 ```
 
 ---
 
-## Workflow C: Execute SQL Query (Complete Async Flow)
+## Workflow C: Execute SQL Query (Download-Centered Async Flow)
 
-This is the most important workflow, containing 3 steps: execute → poll progress → get results.
+Use this flow for SQL query execution. Result rows are not returned through MCP/CLI; submit creates a Gaia download-center task directly.
 
 ```bash
-# Step 1: Execute SQL asynchronously (returns requestId)
-ae-cli dataops_ide +execute_sql --spaceCode "${spaceCode}" --repoCode "te_etl" \
+# Step 1: Submit SQL and create a download task. Defaults: repoCode=te_etl, engineType=TASK_ENGINE_TRINO.
+ae-cli dataops_ide +submit_sql_query --spaceCode "${spaceCode}" --repoCode "te_etl" \
   --sql "SELECT * FROM hive.ws_default_dev.dwd_user LIMIT 10" \
-  --engineType "TASK_ENGINE_TRINO" --confirmed true
+  --engineType "TASK_ENGINE_TRINO"
 
-# Step 2: Query execution progress (use requestId from Step 1, recommend 2-5 second polling)
-# state values: QUEUED / RUNNING / FINISHED / FAILED / CANCELLED
-ae-cli dataops_ide +get_query_progress --requestId "${requestId}"
+# Step 2: Poll the download task status by spaceCode/downloadTaskId. Rows are not returned through MCP/CLI.
+ae-cli dataops_ide +get_sql_query_status --spaceCode "${spaceCode}" --downloadTaskId ${downloadTaskId}
 
-# Step 3: After state=FINISHED, get query results
-# recordId obtained from query history or progress info
-ae-cli dataops_ide +get_query_result --spaceCode "${spaceCode}" --connType "SPACE" \
-  --repoCode "te_etl" --recordId "${recordId}"
+# Step 3: CLI-only local save after downloadStatus=SUCCESS. Use a .zip suffix.
+ae-cli dataops_ide +get_sql_query_status --spaceCode "${spaceCode}" --downloadTaskId ${downloadTaskId} --downloadTo "./result.zip"
 
-# (Optional) Cancel running query
-ae-cli dataops_ide +cancel_query --requestId "${requestId}" --confirmed true
+# (Optional) Cancel the download task.
+ae-cli dataops_ide +cancel_sql_query --spaceCode "${spaceCode}" --downloadTaskId ${downloadTaskId}
 ```
 
 ---
@@ -91,21 +85,28 @@ ae-cli dataops_ide +cancel_query --requestId "${requestId}" --confirmed true
 
 | Command | Purpose | Key Flags |
 |---------|---------|-----------|
-| `+list_repos` | List repositories | `--spaceCode` |
-| `+list_catalogs` | List catalog/schema | `--spaceCode` `--connType` `--repoCode` |
-| `+list_tables` | List tables | `--spaceCode` `--connType` `--repoCode` `--catalog` `--schema` `--isView` `--pageNum` `--pageSize` |
-| `+get_table_detail` | Table metadata | `--spaceCode` `--connType` `--repoCode` `--catalog` `--schema` `--tableName` `--engineType` `--isView` |
-| `+get_schema_info` | Schema statistics | `--spaceCode` `--connType` `--repoCode` `--catalog` `--schema` |
-| `+search_tables` | Fuzzy search tables | `--spaceCode` `--connType` `--repoCode` `--searchKey` `--size` |
-| `+search_columns` | Fuzzy search columns | `--spaceCode` `--repoCode` `--searchKey` `--tables` (JSON) `--engineType` `--pageNum` `--pageSize` |
-| `+generate_sql` | Generate SELECT | `--spaceCode` `--repoCode` `--catalog` `--schema` `--tableName` `--engineType` `--selectColumns` (JSON) |
-| `+execute_sql` | Execute SQL | `--spaceCode` `--repoCode` `--sql` `--engineType` `--confirmed` |
-| `+get_query_progress` | Query progress | `--requestId` |
-| `+get_query_result` | Get results | `--spaceCode` `--connType` `--repoCode` `--recordId` |
-| `+cancel_query` | Cancel query | `--requestId` `--confirmed` |
+| `+ide_list_repos` | List IDE repositories grouped by connType | `--spaceCode` |
+| `+ide_list_catalogs` | List IDE catalogs and schemas | `--spaceCode` `[--connType]` `[--repoCode]` |
+| `+ide_list_tables` | List tables or views in one catalog/schema | `--spaceCode` `--catalog` `--schema` `[--connType]` `[--repoCode]` `[--entityType]` `[--pageNum]` `[--pageSize]` |
+| `+ide_get_table_detail` | Get engine-side table/view detail; `tableDdl` only with `--includeDdl true` | `--spaceCode` `--catalog` `--schema` `--tableName` `[--connType]` `[--repoCode]` `[--engineType]` `[--entityType]` `[--includeDdl]` |
+| `+get_schema_info` | Get schema statistics only (`schema/tableNum/viewNum`) | `--spaceCode` `--catalog` `--schema` `[--connType]` `[--repoCode]` |
+| `+search_tables` | Search engine-side warehouse tables/views by keyword | `--spaceCode` `--searchKey` `[--connType]` `[--repoCode]` `[--size]` |
+| `+submit_sql_query` | Submit SQL and create a download task | `--spaceCode` `--sql` `[--repoCode]` `[--engineType]` |
+| `+get_sql_query_status` | Poll download task status; `--downloadTo` is CLI-only local save after `downloadStatus=SUCCESS` | `--spaceCode` `--downloadTaskId` `[--requestId]` `[--downloadTo]` |
+| `+cancel_sql_query` | Cancel download task; `--requestId` is trace-only | `--spaceCode` `--downloadTaskId` `[--requestId]` |
 
 ## Parameter Notes
 
 - **connType**: `SPACE` (data warehouse for daily queries, default) | `ETL` (ETL engine) | `APP` (app warehouse for external services)
-- **engineType**: `TASK_ENGINE_TRINO` (default, interactive queries) | `TASK_ENGINE_STARROCKS` (real-time analytics, high concurrency)
-- **isView**: `false` for physical tables | `true` for views
+- **Repository list**: `+ide_list_repos` requires `--spaceCode` and has no optional flags. It returns an array grouped by `connType`; each group has `repos` with `repoCode`, `repoDesc`, and `engineTypes`.
+- **Catalog list**: `+ide_list_catalogs` requires `--spaceCode`; `--connType` and `--repoCode` are optional and default to `SPACE` and `te_etl`. It returns an array of catalogs with `catalog`, `catalogBelongEnum`, `schemaNum`, and `schemas`.
+- **Table list**: `+ide_list_tables` requires `--spaceCode`, `--catalog`, and `--schema`. `--connType`, `--repoCode`, `--entityType`, `--pageNum`, and `--pageSize` are optional and default to `SPACE`, `te_etl`, `TABLE`, `1`, and `20`. It returns `items`, `pageNum`, `pageSize`, `returnedCount`, `hasMoreMaybe`, and `nextAction`.
+- **Table search**: `+search_tables` requires `--spaceCode` and `--searchKey`. `--connType`, `--repoCode`, and `--size` are optional and default to `SPACE`, `te_etl`, and `20`. It returns `items`, `searchKey`, `size`, `totalCount`, `tableCount`, `viewCount`, `returnedCount`, `hasMore`, and `nextAction`.
+- **Table detail**: `+ide_get_table_detail` requires `--spaceCode`, `--catalog`, `--schema`, and `--tableName`. `--connType`, `--repoCode`, `--engineType`, `--entityType`, and `--includeDdl` are optional and default to `SPACE`, `te_etl`, `TASK_ENGINE_TRINO`, auto-detect, and `false`. It returns identity, storage metadata, columns, partitions, partition keys, optional layout fields, and `tableDdl` only when requested.
+- **Schema info**: `+get_schema_info` requires `--spaceCode`, `--catalog`, and `--schema`. `--connType` and `--repoCode` are optional and default to `SPACE` and `te_etl`. It returns only `schema`, `tableNum`, and `viewNum`.
+- **SQL submit**: `+submit_sql_query` requires `--spaceCode` and `--sql`. `--repoCode` and `--engineType` are optional and default to `te_etl` and `TASK_ENGINE_TRINO`. On success it returns `requestId`, `spaceCode`, `repoCode`, `downloadTaskId`, `downloadStatus`, `downloadApi`, `downloadParams`, and `nextAction`; rows are never returned.
+- **SQL status**: `+get_sql_query_status` requires `--spaceCode` and `--downloadTaskId`. `--requestId` is optional trace-only. `--downloadTo` is CLI-only; after `downloadStatus=SUCCESS` it saves the result zip and adds `localFile`. It returns status/progress metadata, `nextAction`, `downloadApi`, and `downloadParams`; rows are never returned.
+- **SQL cancel**: `+cancel_sql_query` requires `--spaceCode` and `--downloadTaskId`. `--requestId` is optional trace-only. It returns cancellation request metadata such as `downloadCancelStatus`.
+- **engineType**: `TASK_ENGINE_TRINO` (default, interactive queries) | `TASK_ENGINE_STARROCKS` (high-concurrency analytics)
+- **entityType**: optional `TABLE` or `VIEW` hint. Omit it unless the target type must be forced.
+- **includeDdl**: defaults to false. Use `--includeDdl true` only when the raw DDL text is needed.

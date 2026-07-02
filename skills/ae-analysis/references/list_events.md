@@ -18,7 +18,7 @@ Domain: **Metadata Query**
 ```bash
 ae-cli analysis_meta +list_events --project_id <project_id>
 ae-cli analysis_meta +list_events --project_id <project_id> --query demo
-ae-cli analysis_meta +list_events --project_id <project_id> --query demo --fields '["eventName", "eventDesc"]' --limit 20 --offset 0
+ae-cli analysis_meta +list_events --project_id <project_id> --query demo --fields '["eventId", "eventName", "eventDesc", "remark"]' --limit 20 --offset 0
 ae-cli analysis_meta +list_events --dry-run
 ```
 
@@ -26,8 +26,8 @@ ae-cli analysis_meta +list_events --dry-run
 | Parameter | Required | Description |
 |---|---|---|
 | `--project_id` / `-p` | Yes | Project ID |
-| `--query` / `-q` | No | Optional keyword filter. Performs fuzzy matching against eventName, eventDesc, and aiRemark; if omitted, all events are returned. |
-| `--fields` / `-f` | No | Optional fields to return (JSON array). Supported fields: `eventName`, `eventDesc`, `aiRemark`, `eventTag`, `remark`. |
+| `--query` / `-q` | No | Optional keyword filter. Performs fuzzy matching against eventName, eventDesc, and remark; if omitted, all events are returned. |
+| `--fields` / `-f` | No | Optional fields to return (JSON array). Supported fields: `eventId`, `eventName`, `eventDesc`, `remark`, `eventTag`. Default fields when omitted: `eventId`, `eventName`, `eventDesc`, `remark`. |
 | `--limit` / `-l` | No | Optional page size. Default: 20, maximum: 10000. |
 | `--offset` / `-o` | No | Optional page offset. Default: 0. |
 ## Decision Rules

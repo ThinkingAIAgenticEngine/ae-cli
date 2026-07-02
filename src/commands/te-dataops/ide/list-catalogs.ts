@@ -1,23 +1,33 @@
-import type { Command } from '../../../framework/types.js';
-import { callMcpTool, parseMcpResult, resolveMcpUrl } from '../../../core/mcp.js';
+import type { Command, RuntimeContext } from '../../../framework/types.js';
+import { buildDataopsApiDryRun, callDataopsApi } from '../shared.js';
+
+const toolName = 'ide_list_catalogs';
+
+function optionalString(ctx: RuntimeContext, name: string): string | undefined {
+  const value = ctx.str(name);
+  return value === '' ? undefined : value;
+}
+
+function buildArgs(ctx: RuntimeContext): Record<string, unknown> {
+  return {
+    spaceCode: ctx.str('spaceCode'),
+    connType: optionalString(ctx, 'connType'),
+    repoCode: optionalString(ctx, 'repoCode'),
+  };
+}
 
 export const listCatalogs: Command = {
   service: 'dataops_ide',
   command: '+ide_list_catalogs',
-  description: 'Lists all catalogs and their schemas in the repository. Returns: catalogs(list containing catalogName and schemas sub-list). Requires repoCode (obtainable via ide_list_repos)',
+  description: 'List accessible IDE catalogs and schemas. Requires spaceCode; connType and repoCode are optional and default to SPACE and te_etl. Returns catalog, catalogBelongEnum, schemaNum, and schemas.',
   flags: [
     { name: 'spaceCode', type: 'string', required: true, desc: 'Space code' },
-    { name: 'connType', type: 'string', required: false, default: 'SPACE', desc: 'Connection type: SPACE(data warehouse for daily queries, default), ETL(ETL engine for data processing), APP(app warehouse for external services)' },
-    { name: 'repoCode', type: 'string', required: false, default: 'te_etl', desc: 'Repository code, defaults to te_etl if not provided' },
+    { name: 'connType', type: 'string', required: false, desc: 'Optional connection type: SPACE, ETL, or APP. Default SPACE' },
+    { name: 'repoCode', type: 'string', required: false, desc: 'Optional repository code. Default te_etl' },
   ],
   risk: 'read',
+  dryRun: (ctx) => buildDataopsApiDryRun(ctx, toolName, buildArgs(ctx)),
   execute: async (ctx) => {
-    const mcpUrl = resolveMcpUrl(ctx.mcpUrl(), ctx.host(), ctx.service());
-    const result = await callMcpTool(mcpUrl, 'ide_list_catalogs', {
-      spaceCode: ctx.str('spaceCode'),
-      connType: ctx.str('connType'),
-      repoCode: ctx.str('repoCode'),
-    });
-    return parseMcpResult(result);
+    return callDataopsApi(ctx, toolName, buildArgs(ctx));
   },
 };

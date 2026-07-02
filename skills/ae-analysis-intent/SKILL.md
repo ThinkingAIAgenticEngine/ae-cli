@@ -71,7 +71,7 @@ ae-cli <service> +<command> [options]
 - Event list: `ae-cli analysis_meta +list_events -p <project_id>`
 - Property list: `ae-cli analysis_meta +list_properties -p <project_id>`
 - Metric list: `ae-cli analysis_meta +list_metrics -p <project_id>`
-- Table columns: `ae-cli analysis +get_table_columns -p <project_id> --catalog hive --schema ta --table <table>`
+- Table columns: `ae-cli analysis +get_table_columns -p <project_id> --table_ref <hive.schema.table|schema.table|table>`
 
 ### Report/dashboard queries
 

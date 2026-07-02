@@ -10,12 +10,24 @@ import { drilldownUserEvents } from './drilldown-user-events.js';
 import { createResultCluster } from './create-result-cluster.js';
 import { loadFilters } from './load-filters.js';
 import { getTableColumns } from './get-table-columns.js';
+import { buildIntervalAnalysisQp } from './build-interval-analysis-qp.js';
+import { buildPathAnalysisQp } from './build-path-analysis-qp.js';
+import { buildAttributionAnalysisQp } from './build-attribution-analysis-qp.js';
+import { buildHeatMapAnalysisQp } from './build-heat-map-analysis-qp.js';
+import { buildRankListAnalysisQp } from './build-rank-list-analysis-qp.js';
+import { buildDistributionAnalysisQp } from './build-distribution-analysis-qp.js';
 
 const commands: Command[] = [
   buildEventAnalysisQp,
   buildRetentionAnalysisQp,
   buildFunnelAnalysisQp,
   buildPropAnalysisQp,
+  buildIntervalAnalysisQp,
+  buildPathAnalysisQp,
+  buildAttributionAnalysisQp,
+  buildHeatMapAnalysisQp,
+  buildRankListAnalysisQp,
+  buildDistributionAnalysisQp,
   queryAdhoc,
   cancelQuery,
   drilldownUsers,

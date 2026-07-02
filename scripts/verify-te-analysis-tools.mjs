@@ -57,7 +57,7 @@ if (coreSet.size !== coreCommands.length) {
   fail('duplicate core command names found in source files');
 }
 
-const EXPECTED_CORE_COUNT = isGlobalQueryModeEnabled() ? 41 : 40;
+const EXPECTED_CORE_COUNT = isGlobalQueryModeEnabled() ? 55 : 54;
 if (coreCommands.length !== EXPECTED_CORE_COUNT) {
   fail(`analysis tool count mismatch: expected ${EXPECTED_CORE_COUNT}, got ${coreCommands.length}`);
 }
@@ -89,17 +89,22 @@ for (const tool of coreCommands) {
   }
 }
 
-const cancellableQueryTokens = ["name: 'request_id'", "requestId: optionalString(ctx, 'request_id')"];
+const cancellableQueryTokens = [
+  "name: 'request_id', type: 'string', required: true",
+  "requestId: ctx.str('request_id')",
+];
 const lifecycleDescriptionTokens = [
-  'provide requestId before starting',
+  'requestId is required and must be provided before starting',
   'metadata.requestId',
   'cancel_query',
-  'provide this before starting',
+  'Generate it before starting',
   'caller stops waiting',
   'fetch failed',
   'HTTP timeout',
   'backend query may still be running',
-  'auto-generated requestId is not available',
+  'is not auto-generated for MCP query tools',
+  'REQUEST_ID_REQUIRED',
+  'INVALID_REQUEST_ID',
   '+cancel_query --request_id',
   'mcp_<32 lowercase hex UUID>',
   'mcp_0123456789abcdef0123456789abcdef',
@@ -118,11 +123,11 @@ const requiredTokensByFile = {
     'fetch failed',
     'HTTP timeout',
     'backend query may still be running',
-    'auto-generated requestId is not available',
     '+cancel_query --request_id',
     'proactive cancellation',
     'metadata.requestId',
     'supplied before starting',
+    'generate and pass requestId',
     'mcp_<32 lowercase hex UUID>',
     'mcp_0123456789abcdef0123456789abcdef',
   ],
@@ -142,12 +147,14 @@ for (const [relPath, tokens] of Object.entries(requiredTokensByFile)) {
 }
 
 const lifecycleReferenceTokens = [
-  'provide this before starting',
+  'Generate it before starting',
   'caller stops waiting',
   'fetch failed',
   'HTTP timeout',
   'backend query may still be running',
-  'auto-generated requestId is not available',
+  'is not auto-generated for MCP query tools',
+  'REQUEST_ID_REQUIRED',
+  'INVALID_REQUEST_ID',
   '+cancel_query --request_id',
   'metadata.requestId',
   'cancel_query',
@@ -168,11 +175,11 @@ const requiredReferenceTokensByFile = {
     'fetch failed',
     'HTTP timeout',
     'backend query may still be running',
-    'auto-generated requestId is not available',
     '+cancel_query --request_id',
     'proactive cancellation',
     'metadata.requestId',
     'supplied before starting',
+    'MCP query tools require caller-supplied',
     'mcp_<32 lowercase hex UUID>',
     'mcp_0123456789abcdef0123456789abcdef',
   ],
@@ -200,7 +207,19 @@ const lifecycleDocsTokens = [
   'fetch failed',
   'HTTP timeout',
   'backend query may still be running',
-  'auto-generated requestId is not available',
+  'requestId 不会自动生成',
+  'REQUEST_ID_REQUIRED',
+  'INVALID_REQUEST_ID',
+  '+cancel_query --request_id',
+  'metadata.requestId',
+  'mcp_<32 lowercase hex UUID>',
+  'mcp_0123456789abcdef0123456789abcdef',
+];
+const cancelDocsTokens = [
+  'fetch failed',
+  'HTTP timeout',
+  'backend query may still be running',
+  '必须在查询开始前生成并传入',
   '+cancel_query --request_id',
   'metadata.requestId',
   'mcp_<32 lowercase hex UUID>',
@@ -235,7 +254,7 @@ if (cancelStart < 0) {
 }
 const cancelNext = docsContent.indexOf('\n#### ', cancelStart + '#### cancel_query'.length);
 const cancelBody = docsContent.slice(cancelStart, cancelNext < 0 ? undefined : cancelNext);
-for (const token of lifecycleDocsTokens) {
+for (const token of cancelDocsTokens) {
   if (!cancelBody.includes(token)) {
     fail(`missing required analysis docs contract "${token}" in #### cancel_query`);
   }

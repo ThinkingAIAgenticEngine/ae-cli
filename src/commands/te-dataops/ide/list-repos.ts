@@ -1,19 +1,24 @@
-import type { Command } from '../../../framework/types.js';
-import { callMcpTool, parseMcpResult, resolveMcpUrl } from '../../../core/mcp.js';
+import type { Command, RuntimeContext } from '../../../framework/types.js';
+import { buildDataopsApiDryRun, callDataopsApi } from '../shared.js';
+
+const toolName = 'ide_list_repos';
+
+function buildArgs(ctx: RuntimeContext): Record<string, unknown> {
+  return {
+    spaceCode: ctx.str('spaceCode'),
+  };
+}
 
 export const listRepos: Command = {
   service: 'dataops_ide',
   command: '+ide_list_repos',
-  description: 'Lists available data warehouses in the space. Returns: repoCode(repository code), repoName(repository name), connType(connection type: SPACE/ETL/APP). SPACE for daily query development, ETL for data processing, APP for external services',
+  description: 'List available IDE warehouse repositories for one space. Requires spaceCode. Returns an array grouped by connType: [{ connType, repos: [{ repoCode, repoDesc, engineTypes }] }].',
   flags: [
     { name: 'spaceCode', type: 'string', required: true, desc: 'Space code' },
   ],
   risk: 'read',
+  dryRun: (ctx) => buildDataopsApiDryRun(ctx, toolName, buildArgs(ctx)),
   execute: async (ctx) => {
-    const mcpUrl = resolveMcpUrl(ctx.mcpUrl(), ctx.host(), ctx.service());
-    const result = await callMcpTool(mcpUrl, 'ide_list_repos', {
-      spaceCode: ctx.str('spaceCode'),
-    });
-    return parseMcpResult(result);
+    return callDataopsApi(ctx, toolName, buildArgs(ctx));
   },
 };

@@ -1,15 +1,16 @@
 import type { Command } from '../../../framework/types.js';
-import { callMcpTool, parseMcpResult, resolveMcpUrl } from '../../../core/mcp.js';
+import { buildDataopsApiDryRun, callDataopsApi } from '../shared.js';
+
+const toolName = 'repo_list_spaces';
 
 export const listSpaces: Command = {
   service: 'dataops_repo',
   command: '+list_spaces',
-  description: 'List spaces current user has permission to access. Returns: spaceCode (space code), spaceName (space name), description (description). This is the entry point for the entire MCP toolchain, spaceCode is a required parameter for most other tools. If user only has one space, it can be automatically selected',
+  description: 'List DataOps spaces accessible to the current user. Use this first when spaceCode is unknown. Returns createTime, spaceCode, and spaceDisplayName. No flags are required.',
   flags: [],
   risk: 'read',
+  dryRun: (ctx) => buildDataopsApiDryRun(ctx, toolName, {}),
   execute: async (ctx) => {
-    const mcpUrl = resolveMcpUrl(ctx.mcpUrl(), ctx.host(), ctx.service());
-    const result = await callMcpTool(mcpUrl, 'repo_list_spaces', {});
-    return parseMcpResult(result);
+    return callDataopsApi(ctx, toolName, {});
   },
 };

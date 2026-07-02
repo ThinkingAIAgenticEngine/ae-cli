@@ -3,6 +3,7 @@ list_alerts
 get_alert
 create_alert
 update_alert
+delete_alert
 batch_edit_metadata
 batch_create_metadata
 create_virtual_event
@@ -11,12 +12,18 @@ list_metrics
 get_metric
 create_metric
 update_metric
+delete_metric
 get_track_program
 save_track_items
 delete_track_items
 refresh_tag
 refresh_cluster
 create_or_update_dashboard_note
+copy_dashboard
+freeze_dashboards
+list_spaces
+move_dashboard
+update_report
 list_public_access_links
 create_public_access_link
 update_public_access_link

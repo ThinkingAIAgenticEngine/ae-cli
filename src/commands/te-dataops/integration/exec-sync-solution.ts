@@ -1,27 +1,31 @@
 import type { Command } from '../../../framework/types.js';
-import { callMcpTool, parseMcpResult, resolveMcpUrl } from '../../../core/mcp.js';
+import { buildDataopsApiDryRun, callDataopsApi } from '../shared.js';
+
+const toolName = 'integration_exec_sync_solution';
 
 export const execSyncSolution: Command = {
   service: 'dataops_integration',
   command: '+exec_sync_solution',
-  description: 'Manually execute a sync solution. Write operation requires two-step confirmation: first call returns operation preview, confirm by setting confirmed=true to execute. Suggest confirming solution configuration is correct via integration_get_sync_detail before execution. Can pass execution parameters via execParams (e.g., date range, parameter list can be obtained via integration_get_sync_params). Can view execution records via integration_list_sync_exec_histories after execution',
+  description: 'Submit one manual sync solution run. Optional baseDate maps to execution parameter bd. Returns syncId, taskId, execType, status, execTime, and nextAction. Use +list_sync_runs to check run status',
   flags: [
     { name: 'spaceCode', type: 'string', required: true, desc: 'Space code' },
     { name: 'syncId', type: 'string', required: true, desc: 'Sync solution ID' },
-    { name: 'execParams', type: 'string', required: false, desc: 'Execution parameters JSON string' },
-    { name: 'comment', type: 'string', required: false, desc: 'Execution remark' },
-    { name: 'confirmed', type: 'boolean', required: false, desc: 'Confirmed to execute, defaults to false if not provided' },
+    { name: 'baseDate', type: 'string', required: false, desc: 'Optional data date for this manual run, mapped to execution parameter bd, for example 2026-06-20' },
+    { name: 'comment', type: 'string', required: false, desc: 'Optional execution remark' },
   ],
   risk: 'write',
+  dryRun: (ctx) => buildDataopsApiDryRun(ctx, toolName, {
+    spaceCode: ctx.str('spaceCode'),
+    syncId: ctx.str('syncId'),
+    baseDate: ctx.str('baseDate'),
+    comment: ctx.str('comment'),
+  }),
   execute: async (ctx) => {
-    const mcpUrl = resolveMcpUrl(ctx.mcpUrl(), ctx.host(), ctx.service());
-    const result = await callMcpTool(mcpUrl, 'integration_exec_sync_solution', {
+    return callDataopsApi(ctx, toolName, {
       spaceCode: ctx.str('spaceCode'),
       syncId: ctx.str('syncId'),
-      execParams: ctx.str('execParams'),
+      baseDate: ctx.str('baseDate'),
       comment: ctx.str('comment'),
-      confirmed: ctx.bool('confirmed'),
     });
-    return parseMcpResult(result);
   },
 };

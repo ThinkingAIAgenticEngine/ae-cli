@@ -20,7 +20,7 @@ Domain: **Metadata Query**
 ```bash
 ae-cli analysis_meta +list_metrics --project_id <project_id>
 ae-cli analysis_meta +list_metrics --project_id <project_id> --query demo
-ae-cli analysis_meta +list_metrics --project_id <project_id> --query demo --fields '["metricId","metricName"]' --limit 10 --offset 0
+ae-cli analysis_meta +list_metrics --project_id <project_id> --query demo --fields '["metricId","metricName","metricDesc","metricRemark","metricMode"]' --limit 10 --offset 0
 ae-cli analysis_meta +list_metrics --dry-run
 ```
 
@@ -29,7 +29,7 @@ ae-cli analysis_meta +list_metrics --dry-run
 |---|---|---|
 | `--project_id` / `-p` | Yes | Project ID |
 | `--query` / `-q` | No | Optional keyword filter. Fuzzy match on metricName, metricDesc, metricRemark. |
-| `--fields` | No | Optional fields to return. Supported: metricId, metricName, metricDesc, metricRemark, metricMode, openId, creator, creatorLoginName, updateOpenId, updateCreator, updateLoginName, createTime, updateTime. Invalid fields cause INVALID_FIELDS error. |
+| `--fields` | No | Optional fields to return. Supported: metricId, metricName, metricDesc, metricRemark, metricMode, openId, creator, creatorLoginName, updateOpenId, updateCreator, updateLoginName, createTime, updateTime. Default fields when omitted: metricId, metricName, metricDesc, metricRemark, metricMode. Invalid fields cause INVALID_FIELDS error. |
 | `--limit` | No | Optional limit. Default: 20, maximum: 10000. |
 | `--offset` | No | Optional offset. Default: 0. |
 

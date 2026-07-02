@@ -15,7 +15,7 @@ import { join, basename } from "node:path";
 import { execFileSync, execSync } from "node:child_process";
 
 const AGENT_DIR = "src/commands/te-agent";
-const EXPECTED_COUNT = 19;
+const EXPECTED_COUNT = 33;
 const SERVICE = "agent";
 
 let failed = false;
@@ -207,6 +207,56 @@ try {
   }
 } catch (err) {
   fail(`Failed to verify automation dry-run behavior: ${err.message}`);
+}
+
+// ─── Step 6: Market / approval / share dry-run ──────────────
+
+try {
+  const runDry = (cmd, args) => {
+    const output = execFileSync(
+      "npx",
+      ["tsx", "src/index.ts", "--dry-run", SERVICE, cmd, ...args],
+      { encoding: "utf8", timeout: 30000 },
+    );
+    return JSON.parse(output).data;
+  };
+
+  const marketDry = runDry("+list-mcp-market", ["--category", "dev_tool", "--sort", "calls", "--scope", "company"]);
+  if (marketDry?.method !== "GET" || !String(marketDry?.url).includes("category=dev_tool") || !String(marketDry?.url).includes("sort=calls") || !String(marketDry?.url).includes("scope=company")) {
+    fail(`+list-mcp-market dry-run URL is incorrect: ${marketDry?.url}`);
+  } else {
+    ok("+list-mcp-market dry-run builds market query");
+  }
+
+  const submitDry = runDry("+submit-skill", ["--id", "s1", "--description", "review helper", "--category", "dev_tool"]);
+  if (submitDry?.method !== "POST" || !String(submitDry?.url).includes("/api/skills/s1/submit") || submitDry?.body?.description !== "review helper" || submitDry?.body?.category !== "dev_tool") {
+    fail(`+submit-skill dry-run is incorrect: ${JSON.stringify(submitDry)}`);
+  } else {
+    ok("+submit-skill dry-run builds submit body");
+  }
+
+  const shareDry = runDry("+share-skill", ["--id", "s1", "--to-user-id", "u2"]);
+  if (shareDry?.method !== "POST" || !String(shareDry?.url).includes("/api/skills/s1/share") || shareDry?.body?.toUserId !== "u2") {
+    fail(`+share-skill dry-run is incorrect: ${JSON.stringify(shareDry)}`);
+  } else {
+    ok("+share-skill dry-run builds share body");
+  }
+
+  const approveDry = runDry("+approve-skill", ["--id", "sub1"]);
+  if (approveDry?.method !== "POST" || !String(approveDry?.url).includes("/api/skills/submissions/sub1/approve")) {
+    fail(`+approve-skill dry-run is incorrect: ${JSON.stringify(approveDry)}`);
+  } else {
+    ok("+approve-skill dry-run builds approve URL");
+  }
+
+  const copyDry = runDry("+copy-skill", ["--id", "s1", "--category", "dev_tool"]);
+  if (copyDry?.method !== "POST" || !String(copyDry?.url).includes("/api/skills/s1/copy") || copyDry?.body?.category !== "dev_tool") {
+    fail(`+copy-skill dry-run is incorrect: ${JSON.stringify(copyDry)}`);
+  } else {
+    ok("+copy-skill dry-run builds copy URL and body");
+  }
+} catch (err) {
+  fail(`Failed to verify market/approval/share dry-run: ${err.message}`);
 }
 
 // ─── Summary ─────────────────────────────────────────────────

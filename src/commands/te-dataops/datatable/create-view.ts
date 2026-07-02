@@ -1,29 +1,47 @@
-import type { Command } from '../../../framework/types.js';
-import { callMcpTool, parseMcpResult, resolveMcpUrl } from '../../../core/mcp.js';
+import type { Command, RuntimeContext } from '../../../framework/types.js';
+import { printError } from '../../../framework/output.js';
+import { buildDataopsApiDryRun, callDataopsApi } from '../shared.js';
+
+const toolName = 'datatable_create_view';
+
+function buildArgs(ctx: RuntimeContext): Record<string, unknown> {
+  return {
+    spaceCode: ctx.str('spaceCode'),
+    ddl: ctx.str('ddl'),
+  };
+}
+
+function escapeRegExp(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+function validateEnvPlaceholder(ctx: RuntimeContext): void {
+  const spaceCode = ctx.str('spaceCode');
+  const ddl = ctx.str('ddl');
+  const schemaPattern = new RegExp(`\\bws_${escapeRegExp(spaceCode)}_(?:dev|product)?(?=\\.)`, 'i');
+  const match = ddl.match(schemaPattern);
+  if (!match) return;
+
+  const message =
+    `CREATE VIEW DDL references workspace task schema "${match[0]}". Use the literal \${env} placeholder to avoid cross-environment dependencies. ` +
+    `For a concrete space code, wrap the DDL in single quotes, for example: --ddl 'CREATE VIEW ... FROM hive.ws_${spaceCode}_\${env}.table'. ` +
+    `If you use double quotes with shell variables, escape only env as ws_${spaceCode}_\\\${env}.`;
+  printError('validation', message);
+  process.exit(1);
+}
 
 export const createView: Command = {
   service: 'dataops_datatable',
   command: '+create_view',
-  description: 'Create views in space data warehouse. Write operation requires two-step confirmation: First call returns operation preview, set confirmed=true to execute after confirmation. Requires complete CREATE VIEW AS SELECT DDL. View name rule: ^[a-z][0-9a-z_]{0,127}$. Referenced source tables must exist. Returns: viewName, repoCode, catalog, schema, message',
+  description: 'Create a DataOps view in DEV from Trino-compatible CREATE VIEW DDL. Saves TASK_ENV metadata through the DataView save flow in the default workspace warehouse (repo=te_etl, catalog=hive) and does not publish PROD. Returns action/result/status; result contains success details or errors on failure. Publish by name with +publish_entity. Keep ${env} literal when referencing current-space task tables.',
   flags: [
     { name: 'spaceCode', type: 'string', required: true, desc: 'Space code' },
-    { name: 'ddl', type: 'string', required: true, desc: 'Complete CREATE VIEW AS SELECT DDL statement' },
-    { name: 'repoCode', type: 'string', required: false, desc: 'Repository code, defaults to te_etl if not provided' },
-    { name: 'catalog', type: 'string', required: false, desc: 'Catalog name, defaults to hive if not provided' },
-    { name: 'schema', type: 'string', required: false, desc: 'Schema/database name, uses space default task database if not provided' },
-    { name: 'confirmed', type: 'boolean', required: false, desc: 'Whether confirmed to execute. First call without this parameter or with false for preview, pass true to execute after confirmation' },
+    { name: 'ddl', type: 'string', required: true, desc: 'Complete Trino-compatible CREATE VIEW DDL statement; keep ${env} literal when referencing current-space task tables' },
   ],
   risk: 'write',
+  validate: validateEnvPlaceholder,
+  dryRun: (ctx) => buildDataopsApiDryRun(ctx, toolName, buildArgs(ctx)),
   execute: async (ctx) => {
-    const mcpUrl = resolveMcpUrl(ctx.mcpUrl(), ctx.host(), ctx.service());
-    const result = await callMcpTool(mcpUrl, 'datatable_create_view', {
-      spaceCode: ctx.str('spaceCode'),
-      ddl: ctx.str('ddl'),
-      repoCode: ctx.str('repoCode'),
-      catalog: ctx.str('catalog'),
-      schema: ctx.str('schema'),
-      confirmed: ctx.bool('confirmed'),
-    });
-    return parseMcpResult(result);
+    return callDataopsApi(ctx, toolName, buildArgs(ctx));
   },
 };

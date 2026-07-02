@@ -99,6 +99,15 @@ CLI 同时面向团队成员与 AI agent，**源码内容与所有用户可见�
 
 命令对 agent 暴露的能力发生变化时，要同步更新 `skills/` 下对应的 skill 包；`self-check` 用于校验新合入功能。
 
+### KB schema/compile 状态查询陷阱（已知坑）
+
+KB 的"生成编译准则（schema）→ 编译（compile）"是异步流程，排查"卡在生成中"时注意：
+
+- **`+schema` 不是状态查询接口，而是抢占式触发**。后端 `POST .../schema` 用 `updateMany` 把 `schemaStatus` 从 `pending|failed|generated` 原子改为 `generating`；当 DB 已是 `generating` 时返回 `{status:"generating", message:"已经在生成中"}`（HTTP 202，幂等）。所以**反复调 `+schema` 永远看到 "generating"，这是抢占返回值，不代表后台真在跑**——若后台进程已崩溃，`schemaStatus` 会永久卡在 `generating`，轮询 `+schema` 会无限"generating"。`--force` 也只是再抢占一次、重新入队，不解决根因。
+- **查真实状态要用 `+status`**（`POST .../status`），它返回 `empty | schema_generating | schema_pending | wiki_compiling | wiki_compiled | wiki_pending`，区分"准则生成"与"wiki 编译"两个阶段。排查 KB 卡死类问题以 `+status` 为准，不要用 `+schema`/`+index` 反推状态。
+- **`+index` 不返回 schema/build 状态**，只返回 `scope/kbSlug/kbName/description/lang/index`（index.md 导航）。拿 `+index` 的结果去 `--jq .schemaStatus` 只会得到 `null`，是字段不存在、不是"未生成"。别用 `+index` 判断编译状态。
+- **页面显示"已生成"而 CLI 显示"generating"时**：以页面（内部接口 `GET /api/knowledge-bases/[scope]/[slug]/schema`，按 DB `schemaStatus` + 读取 schema 文件返回 `generated`）为准；CLI 侧的 "generating" 多半是上面第一条的抢占返回值误读。根因排查应落到后台生成进程（`src/lib/kb/schema-generator.ts` 的 `persistSuccess/persistFailure` 是否被调用、`schemaStatus` 是否被写回）。
+
 ## 5. 新增一个命令（标准流程）
 
 以现有 `src/commands/te-kb/query.ts` 为模板：

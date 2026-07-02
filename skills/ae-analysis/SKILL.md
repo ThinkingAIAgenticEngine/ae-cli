@@ -17,17 +17,19 @@ AE CLI (`ae-cli`) is the command-line tool for the AE / TE / ThinkingEngine anal
 
 Global parameters:
 
-| Parameter | Description |
-|---|---|
-| `--format <json\|table>` | Output format. Default is JSON. |
-| `--jq <expr>` | jq filter expression for JSON output. |
-| `--host <url>` | Override the active AE host. Available on every command and may be placed after the subcommand, e.g. `ae-cli analysis +list_dashboards --host <url>`. |
+| Parameter                | Description                                                                                                                                           |
+| ------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `--format <json\|table>` | Output format. Default is JSON.                                                                                                                       |
+| `--jq <expr>`            | jq filter expression for JSON output.                                                                                                                 |
+| `--host <url>`           | Override the active AE host. Available on every command and may be placed after the subcommand, e.g. `ae-cli analysis +list_dashboards --host <url>`. |
 
 Output and errors:
+
 - Successful commands return machine-readable JSON by default.
 - Failed commands return `{ "ok": false, "error": { "type": "...", "message": "...", "hint": "..." } }` and exit non-zero.
 
 Safety constraints:
+
 - Read commands can execute directly after required IDs and references are verified.
 - Write commands require explicit user intent and normally keep the confirmation prompt.
 - Never invent command names, flags, JSON payloads, `project_id`, resource IDs, field names, event names, property names, metric definitions, or date formats. For builder-supported ad-hoc models (`event`, `retention`, `funnel`, `prop_analysis`), do not pre-discover metadata; pass the user's event/property/metric wording to the matching QP builder and let the builder resolve metadata or return clarification. For non-builder/manual workflows, read the matching command reference and discover real project metadata first.
@@ -52,6 +54,7 @@ If user intent is Engage/DataOps/Community, switch to `ae-engage` / `ae-dataops`
 - `ae-cli analysis_common +<tool_name> [options]`
 
 Conventions:
+
 - CLI flags use underscores, e.g. `--project_id`.
 - MCP params map automatically to camelCase.
 - JSON args pass as JSON string literals.
@@ -62,6 +65,7 @@ Conventions:
 ### A. PROJECT_ID_GATE
 
 For any command requiring `project_id`:
+
 1. If the same continuous conversation already has a verified project context (`project_id`, project name when known, and host/environment), reuse it directly for follow-up commands.
 2. Call `analysis_common +list_projects` only when no verified project context exists, the user provides a new project ID/name, the user switches host/environment, the user asks to list projects, or the current project is ambiguous.
 3. Verify any new user-provided ID or name against returned projects before using it.
@@ -73,6 +77,7 @@ For any command requiring `project_id`:
 ### B. Write-operation Post-link Completion
 
 When these writes succeed and `resource_id` is extractable, call `analysis_common +get_resource_url` and append link output:
+
 - `dashboard`: `+create_dashboard`, `+update_dashboard`
 - `report`: `+create_report`
 - `metric`: `+create_metric`, `+update_metric`
@@ -84,6 +89,7 @@ When these writes succeed and `resource_id` is extractable, call `analysis_commo
 - `super_event` / `super_prop_event` / `super_prop_user`: `+batch_create_metadata`, `+batch_edit_metadata`
 
 Closed-loop check (must be explicit in result):
+
 - Write result
 - `resource_id` checked
 - `+get_resource_url` called or skipped (no ID)
@@ -102,6 +108,7 @@ For list commands with `--query` parameter (list_reports, list_dashboards, list_
 5. **Never proceed** with operations on non-existent resources
 
 **Example workflow:**
+
 - User asks: "Find active user report"
 - Attempt 1: `--query "active user"` → no results
 - Attempt 2: `--query "active"` → no results
@@ -121,18 +128,21 @@ Before executing ad-hoc queries (`query_adhoc`), MUST check for existing reports
 5. **If not found** - For QP builder-supported models (`event`, `retention`, `funnel`, `prop_analysis`), call the matching builder first and then call `query_adhoc` with builder `qp`; do not call schema or metadata tools between the report/dashboard miss and the builder. For all other `query_adhoc` models, use the legacy schema/metadata path.
 
 **Rationale:**
+
 - **Performance**: Existing reports are pre-computed and faster
 - **Consistency**: Reports have business-defined metrics and calibrated logic
 - **Resource efficiency**: Avoid redundant computation
 - **Permissions**: Users may have report access but not ad-hoc query permissions
 
 **Example:**
+
 - User: "Query active users in last 7 days"
 - Step 1: `list_reports --query "active user"` → found "DAU Active Users Report"
 - Step 2: `query_report_data --report_id <id>` → return data
 - ❌ WRONG: Directly use `query_adhoc` without checking existing reports
 
 **Exceptions (when ad-hoc is acceptable):**
+
 - User explicitly requests "ad-hoc query" or "ad-hoc analysis"
 - User wants custom filters/groupings not available in existing reports
 - User is exploring data for new insights (exploratory analysis)
@@ -150,6 +160,7 @@ For these four model types, QP builder is mandatory before `query_adhoc`. Do not
 4. `prop_analysis` -> `+build_prop_analysis_qp`
 
 Builder-supported model routing is:
+
 1. Search existing reports/dashboards if `QUERY_EXISTING_FIRST` applies.
 2. If no existing asset is used, read the matching builder reference.
 3. Call the matching builder with complete required parameters.
@@ -158,22 +169,26 @@ Builder-supported model routing is:
 Do not insert metadata/schema calls between steps 2 and 3 for builder-supported models. Specifically, do not call `get_analysis_query_schema`, `list_events`, `list_properties`, `list_metrics`, `get_metric`, or `get_report_definition` to prepare the builder payload. The builder resolves event/property/metric metadata internally and returns `need_clarification` when it cannot.
 
 Event metric shortcut:
+
 - If the user asks to query a saved/business metric through event analysis, pass the metric name/display name/remark directly as an event metric target: `--metrics '[{"event":"<metric name>"}]'`.
 - Do not call `analysis_meta +list_metrics` or `analysis_meta +get_metric` first just to expand the metric definition.
 - If the user provides an explicit formula, pass the formula and dependencies to `+build_event_analysis_qp`; do not convert it by reading schema or metric metadata first.
 
 Metric result vs metric metadata:
+
 - "Query metric result/value/trend over a time range" is an ad-hoc analysis request. Use report/dashboard search first when applicable, then builder -> `query_adhoc`.
 - "Inspect/search/update/create metric definition" is metadata/governance. Only then use `analysis_meta +list_metrics`, `+get_metric`, `+create_metric`, or `+update_metric`.
 
 For all other `query_adhoc` model types (`distribution`, `attribution`, `heat_map`, `interval`, `path`, `rank_list`, `sql`), QP builder is not supported. Use the legacy path: read `query_adhoc.md`, fetch schema/metadata as required, then construct QP manually according to the relevant schema.
 
 Execution rule:
+
 - If builder result `status=generated`, call `+query_adhoc` with the same `model_type` and the returned `qp`.
 - If builder returns non-generated status (`need_clarification`, `invalid_argument`, `unsupported_feature`, `validation_error`), stop and ask the user for clarification instead of calling `query_adhoc`.
 - Never bypass a failed builder by manually assembling QP for `event`, `retention`, `funnel`, or `prop_analysis`.
 
 Builder payload rules:
+
 - Before composing any builder JSON, read the matching builder reference doc. The builder references contain the required JSON shape and model-specific field differences.
 - CLI flag names use snake_case, but nested JSON keys use the service DTO field names in camelCase. Correct: `startTime`, `endTime`, `relationEventPropertyName`, `eventPropertyName`. Wrong: `start_date`, `start_time`, `relation_property`, `fieldName`.
 - Builder dry-run still requires the normal required flags. Do not run builder dry-run by itself.
@@ -184,6 +199,7 @@ Builder payload rules:
 - If the user's request lacks a required business element such as time range, event, metric, funnel window, property, or relation field, stop and ask for clarification. If the request supplies a name but it may be a metadata ambiguity, call the builder and let it return candidates. Do not invent names or handcraft QP.
 
 Supported builder chain:
+
 1. Read the builder reference for the target model.
 2. Build structured JSON from the user's request. Use user-provided event/property/metric names as-is; do not pre-query metadata for these names.
 3. Run the matching `+build_*_analysis_qp` command.
@@ -191,6 +207,7 @@ Supported builder chain:
 5. If status is not `generated`, report the structured error or ask the user for the missing information; do not continue to `query_adhoc`.
 
 Legacy query_adhoc chain:
+
 1. Use only for `distribution`, `attribution`, `heat_map`, `interval`, `path`, `rank_list`, or `sql`.
 2. Read `references/query_adhoc.md` and required schema/metadata references.
 3. Build QP manually from the documented schema and verified project metadata.
@@ -205,10 +222,10 @@ Legacy query_adhoc chain:
 Base rate fallacy causes inaccurate attribution:
 
 | Dimension | Baseline | Comparison | Absolute Δ | Relative Δ | Contribution |
-|-----------|----------|------------|-----------|-----------|-------------|
-| A         | 1        | 5          | +4        | +400%     | **40%**     |
-| B         | 50       | 55         | +5        | +10%      | **50%**     |
-| C         | 49       | 50         | +1        | +2%       | **10%**     |
+| --------- | -------- | ---------- | ---------- | ---------- | ------------ |
+| A         | 1        | 5          | +4         | +400%      | **40%**      |
+| B         | 50       | 55         | +5         | +10%       | **50%**      |
+| C         | 49       | 50         | +1         | +2%        | **10%**      |
 
 Wrong: "Dimension A grew 400%, it is the main driver."
 Correct: "Dimension B contributed 50% of the absolute increase (+5), making it the primary driver."
@@ -231,6 +248,7 @@ contribution_pct_i = delta_dim_i / delta_total * 100%
 ##### Scenario 2: Ratio / Conversion Metrics
 
 Ratio changes come from two components:
+
 - **Composition effect**: changes in subgroup weight.
 - **Rate effect**: changes in each subgroup's own rate.
 
@@ -281,6 +299,7 @@ If any dimension shows a cross-effect, such as positive contribution but negativ
 #### Exceptions
 
 Skip absolute contribution decomposition when:
+
 - The user explicitly asks for growth-rate or percentage-change ranking only.
 - The user asks for a single dimension's trend without cross-dimension comparison.
 - A dimension baseline is zero; mark it as a new dimension separately.
@@ -289,28 +308,36 @@ Skip absolute contribution decomposition when:
 
 After outputting attribution results, verify that dimension contributions sum to approximately 100%. If the sum deviates from 100% by more than 5 percentage points, flag that some dimensions may be missing or data scoping may be inconsistent.
 
-## Tool Groups (79)
+## Tool Groups (100)
 
-### analysis (40)
+### analysis (61)
 
-Alerts (5):
+Alerts (6):
 - `+get_alert_definition_schema` ([doc](references/get_alert_definition_schema.md))
 - `+list_alerts` ([doc](references/list_alerts.md))
 - `+get_alert` ([doc](references/get_alert.md))
 - `+create_alert` ([doc](references/create_alert.md))
 - `+update_alert` ([doc](references/update_alert.md))
+- `+delete_alert` ([doc](references/delete_alert.md))
 
-Reports and Dashboards (17):
+Reports and Dashboards (24):
 - `+create_report` ([doc](references/create_report.md))
 - `+get_report_definition` ([doc](references/get_report_definition.md))
 - `+list_reports` ([doc](references/list_reports.md))
 - `+query_report_data` ([doc](references/query_report_data.md))
+- `+update_report` ([doc](references/update_report.md))
+- `+delete_report` ([doc](references/delete_report.md))
 - `+create_space` ([doc](references/create_space.md))
+- `+list_spaces` ([doc](references/list_spaces.md))
 - `+create_dashboard` ([doc](references/create_dashboard.md))
 - `+list_dashboards` ([doc](references/list_dashboards.md))
 - `+query_dashboard_detail` ([doc](references/query_dashboard_detail.md))
 - `+query_dashboard_report_data` ([doc](references/query_dashboard_report_data.md))
 - `+update_dashboard` ([doc](references/update_dashboard.md))
+- `+delete_dashboard` ([doc](references/delete_dashboard.md))
+- `+copy_dashboard` ([doc](references/copy_dashboard.md))
+- `+freeze_dashboards` ([doc](references/freeze_dashboards.md))
+- `+move_dashboard` ([doc](references/move_dashboard.md))
 - `+create_or_update_dashboard_note` ([doc](references/create_or_update_dashboard_note.md))
 - `+list_public_access_links` ([doc](references/list_public_access_links.md))
 - `+create_public_access_link` ([doc](references/create_public_access_link.md))
@@ -319,11 +346,17 @@ Reports and Dashboards (17):
 - `+get_bi_panel_detail` ([doc](references/get_bi_panel_detail.md))
 - `+query_bi_panel_data` ([doc](references/query_bi_panel_data.md))
 
-Model Analysis (11):
+Model Analysis (17):
 - `+build_event_analysis_qp` ([doc](references/build_event_analysis_qp.md))
 - `+build_retention_analysis_qp` ([doc](references/build_retention_analysis_qp.md))
 - `+build_funnel_analysis_qp` ([doc](references/build_funnel_analysis_qp.md))
 - `+build_prop_analysis_qp` ([doc](references/build_prop_analysis_qp.md))
+- `+build_attribution_analysis_qp` ([doc](references/build_attribution_analysis_qp.md))
+- `+build_distribution_analysis_qp` ([doc](references/build_distribution_analysis_qp.md))
+- `+build_heat_map_analysis_qp` ([doc](references/build_heat_map_analysis_qp.md))
+- `+build_interval_analysis_qp` ([doc](references/build_interval_analysis_qp.md))
+- `+build_path_analysis_qp` ([doc](references/build_path_analysis_qp.md))
+- `+build_rank_list_analysis_qp` ([doc](references/build_rank_list_analysis_qp.md))
 - `+query_adhoc` ([doc](references/query_adhoc.md))
 - `+cancel_query` ([doc](references/cancel_query.md))
 - `+drilldown_users` ([doc](references/drilldown_users.md))
@@ -333,53 +366,66 @@ Model Analysis (11):
 - `+get_table_columns` ([doc](references/get_table_columns.md))
 
 Entity/Event Details (4):
+
 - `+query_entity_details` ([doc](references/query_entity_details.md))
 - `+query_event_details` ([doc](references/query_event_details.md))
 - `+build_entity_details_sql` ([doc](references/build_entity_details_sql.md))
 - `+build_event_details_sql` ([doc](references/build_event_details_sql.md))
 
 Schema (3):
+
 - `+get_analysis_query_schema` ([doc](references/get_analysis_query_schema.md))
 - `+get_filter_schema` ([doc](references/get_filter_schema.md))
 - `+get_groupby_schema` ([doc](references/get_groupby_schema.md))
 
-### analysis_audience (14)
+### analysis_audience (22)
 
-Clusters (6):
+Clusters (10):
 - `+create_cluster` ([doc](references/create_cluster.md))
 - `+get_clusters_by_name` ([doc](references/get_clusters_by_name.md))
 - `+list_cluster_members` ([doc](references/list_cluster_members.md))
 - `+list_clusters` ([doc](references/list_clusters.md))
 - `+update_cluster` ([doc](references/update_cluster.md))
 - `+refresh_cluster` ([doc](references/refresh_cluster.md))
+- `+create_id_cluster` ([doc](references/create_id_cluster.md))
+- `+update_id_cluster` ([doc](references/update_id_cluster.md))
+- `+delete_cluster` ([doc](references/delete_cluster.md))
+- `+build_cluster_definition` ([doc](references/build_cluster_definition.md))
 
-Tags (6):
+Tags (10):
 - `+create_tag` ([doc](references/create_tag.md))
 - `+get_tags_by_name` ([doc](references/get_tags_by_name.md))
 - `+list_tag_members` ([doc](references/list_tag_members.md))
 - `+list_tags` ([doc](references/list_tags.md))
 - `+update_tag` ([doc](references/update_tag.md))
 - `+refresh_tag` ([doc](references/refresh_tag.md))
+- `+create_id_tag` ([doc](references/create_id_tag.md))
+- `+update_id_tag` ([doc](references/update_id_tag.md))
+- `+delete_tag` ([doc](references/delete_tag.md))
+- `+build_tag_definition` ([doc](references/build_tag_definition.md))
 
 Schema Definitions (2):
+
 - `+get_cluster_definition_schema` ([doc](references/get_cluster_definition_schema.md))
 - `+get_tag_definition_schema` ([doc](references/get_tag_definition_schema.md))
 
-### analysis_meta (23)
+### analysis_meta (24)
 
-Metadata and Governance (10):
+Metadata and Governance (11):
 - `+list_events` ([doc](references/list_events.md))
 - `+list_properties` ([doc](references/list_properties.md))
 - `+list_metrics` ([doc](references/list_metrics.md))
 - `+get_metric` ([doc](references/get_metric.md))
 - `+create_metric` ([doc](references/create_metric.md))
 - `+update_metric` ([doc](references/update_metric.md))
+- `+delete_metric` ([doc](references/delete_metric.md))
 - `+batch_edit_metadata` ([doc](references/batch_edit_metadata.md))
 - `+batch_create_metadata` ([doc](references/batch_create_metadata.md))
 - `+create_virtual_event` ([doc](references/create_virtual_event.md))
 - `+create_virtual_property` ([doc](references/create_virtual_property.md))
 
 Project and Tracking (11):
+
 - `+get_project_config` ([doc](references/get_project_config.md))
 - `+list_project_users` ([doc](references/list_project_users.md))
 - `+get_track_program` ([doc](references/get_track_program.md))
@@ -393,6 +439,7 @@ Project and Tracking (11):
 - `+delete_project_mark_times` ([doc](references/delete_project_mark_times.md))
 
 Entity Catalog (2):
+
 - `+create_entity` ([doc](references/create_entity.md))
 - `+list_entities` ([doc](references/list_entities.md))
 

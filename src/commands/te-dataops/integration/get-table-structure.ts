@@ -1,27 +1,34 @@
-import type { Command } from '../../../framework/types.js';
-import { callMcpTool, parseMcpResult, resolveMcpUrl } from '../../../core/mcp.js';
+import type { Command, RuntimeContext } from '../../../framework/types.js';
+import { buildDataopsApiDryRun, callDataopsApi } from '../shared.js';
+
+const toolName = 'integration_get_table_structure';
+
+function buildArgs(ctx: RuntimeContext) {
+  return {
+    spaceCode: ctx.str('spaceCode'),
+    datasourceId: ctx.str('datasourceId'),
+    catalog: ctx.str('catalog'),
+    database: ctx.str('database'),
+    tablePath: ctx.str('tablePath'),
+    env: ctx.str('env'),
+  };
+}
 
 export const getTableStructure: Command = {
   service: 'dataops_integration',
   command: '+get_table_structure',
-  description: 'Get column definitions and partition information for a datasource table. Returns: columns (column name/type/comment), partitions (partition information). Requires datasourceId, database, and tablePath (table path). Suitable for understanding table structure, confirming source table schema before creating application tables. Difference from datatable_get_table_detail: This tool queries external datasource metadata, requires datasourceId; datatable_get_table_detail queries dataops platform registered information',
+  description: 'Get structure for a datasource table. Required: spaceCode, datasourceId, database, tablePath. Optional: catalog, env (DEV default or PROD). Returns columns and partitionColumns.',
   flags: [
     { name: 'spaceCode', type: 'string', required: true, desc: 'Space code' },
     { name: 'datasourceId', type: 'string', required: true, desc: 'Datasource ID' },
+    { name: 'catalog', type: 'string', required: false, desc: 'Catalog name for catalog-based datasources such as Databricks' },
     { name: 'database', type: 'string', required: true, desc: 'Database name' },
-    { name: 'tablePath', type: 'string', required: true, desc: 'Table path (e.g., schema.table)' },
-    { name: 'env', type: 'string', required: false, desc: 'Environment: DEV (development environment, default), PROD (production environment)' },
+    { name: 'tablePath', type: 'string', required: true, desc: 'Table name or path' },
+    { name: 'env', type: 'string', required: false, desc: 'Environment: DEV (default) or PROD' },
   ],
   risk: 'read',
+  dryRun: (ctx) => buildDataopsApiDryRun(ctx, toolName, buildArgs(ctx)),
   execute: async (ctx) => {
-    const mcpUrl = resolveMcpUrl(ctx.mcpUrl(), ctx.host(), ctx.service());
-    const result = await callMcpTool(mcpUrl, 'integration_get_table_structure', {
-      spaceCode: ctx.str('spaceCode'),
-      datasourceId: ctx.str('datasourceId'),
-      database: ctx.str('database'),
-      tablePath: ctx.str('tablePath'),
-      env: ctx.str('env'),
-    });
-    return parseMcpResult(result);
+    return callDataopsApi(ctx, toolName, buildArgs(ctx));
   },
 };

@@ -45,7 +45,7 @@ registerMcpMapping('analysis', {
 mkdir -p src/commands/te-analysis/{meta,report,dashboard,model,cluster,tag,entity,schema,project,resource}
 ```
 
-### 目录结构（38 个工具）
+### 目录结构（58 个工具）
 
 ```
 src/commands/te-analysis/
@@ -53,34 +53,55 @@ src/commands/te-analysis/
 ├── meta/                             # 元数据查询 (2 个)
 │   ├── list-events.ts
 │   └── list-properties.ts
-├── report/                           # 报告管理 (4 个)
+├── report/                           # 报告管理 (5 个)
 │   ├── list-reports.ts
 │   ├── get-report-definition.ts
 │   ├── query-report-data.ts
-│   └── create-report.ts
-├── dashboard/                        # 仪表盘管理 (5 个)
+│   ├── create-report.ts
+│   ├── delete-report.ts
+│   └── update-report.ts
+├── dashboard/                        # 仪表盘管理 (9 个)
 │   ├── list-dashboards.ts
 │   ├── query-dashboard-detail.ts
 │   ├── query-dashboard-report-data.ts
 │   ├── create-dashboard.ts
-│   └── update-dashboard.ts
-├── model/                            # 模型分析 (4 个)
+│   ├── update-dashboard.ts
+│   ├── delete-dashboard.ts
+│   ├── copy-dashboard.ts
+│   ├── freeze-dashboards.ts
+│   ├── list-spaces.ts
+│   └── move-dashboard.ts
+├── model/                            # 模型分析 (11 个)
 │   ├── query-adhoc.ts
 │   ├── drilldown-users.ts
 │   ├── drilldown-user-events.ts
-│   └── create-result-cluster.ts
-├── cluster/                          # 分群管理 (5 个)
+│   ├── create-result-cluster.ts
+│   ├── build-attribution-analysis-qp.ts
+│   ├── build-distribution-analysis-qp.ts
+│   ├── build-heat-map-analysis-qp.ts
+│   ├── build-interval-analysis-qp.ts
+│   ├── build-path-analysis-qp.ts
+│   └── build-rank-list-analysis-qp.ts
+├── cluster/                          # 分群管理（te-audience, 9 个）
 │   ├── list-clusters.ts
 │   ├── get-clusters-by-name.ts
 │   ├── list-cluster-members.ts
 │   ├── create-cluster.ts
-│   └── update-cluster.ts
-├── tag/                              # 标签管理 (5 个)
+│   ├── update-cluster.ts
+│   ├── create-id-cluster.ts
+│   ├── update-id-cluster.ts
+│   ├── delete-cluster.ts
+│   └── build-cluster-definition.ts
+├── tag/                              # 标签管理（te-audience, 9 个）
 │   ├── list-tags.ts
 │   ├── get-tags-by-name.ts
 │   ├── list-tag-members.ts
 │   ├── create-tag.ts
-│   └── update-tag.ts
+│   ├── update-tag.ts
+│   ├── create-id-tag.ts
+│   ├── update-id-tag.ts
+│   ├── delete-tag.ts
+│   └── build-tag-definition.ts
 ├── entity/                           # 实体查询 (5 个)
 │   ├── list-entities.ts
 │   ├── query-entity-details.ts
@@ -276,7 +297,7 @@ export const queryAdhoc: Command = {
     { name: 'model_type', type: 'string', required: true, desc: 'Model type: event/retention/funnel/...' },
     { name: 'analysis_query', type: 'json', required: true, desc: 'Analysis query JSON' },
     { name: 'zone_offset', type: 'number', required: false, desc: 'Timezone offset' },
-    { name: 'request_id', type: 'string', required: false, desc: 'Unique request ID' },
+    { name: 'request_id', type: 'string', required: true, desc: 'Required unique request ID for tracking and cancellation' },
     { name: 'use_cache', type: 'boolean', required: false, desc: 'Use cache (default: true)' },
     { name: 'timeout_minutes', type: 'number', required: false, desc: 'Query timeout in minutes' },
   ],
@@ -291,7 +312,7 @@ export const queryAdhoc: Command = {
       modelType: ctx.str('model_type'),
       analysisQuery: JSON.stringify(ctx.json('analysis_query')),
       zoneOffset: ctx.num('zone_offset') || undefined,
-      requestId: ctx.str('request_id') || undefined,
+      requestId: ctx.str('request_id'),
       useCache: ctx.bool('use_cache'),
       timeoutMinutes: ctx.num('timeout_minutes') || undefined,
     }
@@ -308,7 +329,7 @@ export const queryAdhoc: Command = {
         modelType: ctx.str('model_type'),
         analysisQuery: JSON.stringify(ctx.json('analysis_query')),
         zoneOffset: ctx.num('zone_offset') || undefined,
-        requestId: ctx.str('request_id') || undefined,
+        requestId: ctx.str('request_id'),
         useCache: ctx.bool('use_cache'),
         timeoutMinutes: ctx.num('timeout_minutes') || undefined,
       },
@@ -553,7 +574,7 @@ ae-cli analysis +list_events [options]
 | 参数名 | 类型 | 必填 | 别名 | 说明 |
 |--------|------|------|------|------|
 | `--project_id` | number | 是 | `-p` | 项目 ID |
-| `--query` | string | 否 | `-q` | 关键词过滤，模糊匹配事件名称、描述、AI 备注 |
+| `--query` | string | 否 | `-q` | 关键词过滤，模糊匹配 eventName、eventDesc、remark |
 
 ## 风险级别
 
@@ -594,7 +615,7 @@ ae-cli analysis +list_events --project_id 123 --dry-run
     {
       "eventName": "登录",
       "eventDesc": "用户登录事件",
-      "aiRemark": "记录用户登录行为",
+      "remark": "记录用户登录行为",
       "eventType": "track",
       "createTime": "2024-01-01T00:00:00Z"
     }
@@ -606,7 +627,7 @@ ae-cli analysis +list_events --project_id 123 --dry-run
 
 - 仅返回生产环境已生效的系统元数据
 - 不包含埋点方案（tracking-plan）中的元数据
-- 支持模糊匹配事件名称、描述和 AI 备注
+- 支持模糊匹配 eventName、eventDesc 和 remark
 ```
 
 ---
@@ -678,7 +699,7 @@ ae-cli analysis +list_events --project_id 123 --jq '.data[0]'
 ## 验收标准
 
 ### 功能验收
-- [ ] 所有 38 个命令正常工作
+- [ ] 所有 58 个命令正常工作
 - [ ] MCP 服务连接正常
 - [ ] 参数验证正确
 - [ ] 错误处理完善
@@ -686,7 +707,7 @@ ae-cli analysis +list_events --project_id 123 --jq '.data[0]'
 
 ### 文档验收
 - [ ] SKILL.md 完整
-- [ ] 38 个 reference 文档完整
+- [ ] 58 个 reference 文档完整
 - [ ] 使用示例可执行
 - [ ] 参数说明准确
 
@@ -703,56 +724,78 @@ ae-cli analysis +list_events --project_id 123 --jq '.data[0]'
 1. list_events
 2. list_properties
 
-### 报告管理（4 个）
+### 报告管理（5 个）
 3. list_reports
 4. get_report_definition
 5. query_report_data
 6. create_report
+7. delete_report
 
-### 仪表盘管理（5 个）
-7. list_dashboards
-8. query_dashboard_detail
-9. query_dashboard_report_data
-10. create_dashboard
-11. update_dashboard
+### 仪表盘管理（9 个）
+8. list_dashboards
+9. query_dashboard_detail
+10. query_dashboard_report_data
+11. create_dashboard
+12. update_dashboard
+13. delete_dashboard
+14. copy_dashboard（analysis-extend）
+15. freeze_dashboards（analysis-extend）
+16. list_spaces（analysis-extend）
+17. move_dashboard（analysis-extend）
+18. update_report（analysis-extend，归报告管理）
 
-### 模型分析（4 个）
-12. query_adhoc
-13. drilldown_users
-14. drilldown_user_events
-15. create_result_cluster
+### 模型分析（11 个）
+19. query_adhoc
+20. drilldown_users
+21. drilldown_user_events
+22. create_result_cluster
+23. cancel_query
+24. build_attribution_analysis_qp
+25. build_distribution_analysis_qp
+26. build_heat_map_analysis_qp
+27. build_interval_analysis_qp
+28. build_path_analysis_qp
+29. build_rank_list_analysis_qp
 
-### 分群管理（5 个）
-16. list_clusters
-17. get_clusters_by_name
-18. list_cluster_members
-19. create_cluster
-20. update_cluster
+### 分群管理（9 个，te-audience 域）
+30. list_clusters
+31. get_clusters_by_name
+32. list_cluster_members
+33. create_cluster
+34. update_cluster
+35. create_id_cluster
+36. update_id_cluster
+37. delete_cluster
+38. build_cluster_definition
 
-### 标签管理（5 个）
-21. list_tags
-22. get_tags_by_name
-23. list_tag_members
-24. create_tag
-25. update_tag
+### 标签管理（9 个，te-audience 域）
+39. list_tags
+40. get_tags_by_name
+41. list_tag_members
+42. create_tag
+43. update_tag
+44. create_id_tag
+45. update_id_tag
+46. delete_tag
+47. build_tag_definition
 
 ### 实体查询（5 个）
-26. list_entities
-27. query_entity_details
-28. query_event_details
-29. build_entity_details_sql
-30. build_event_details_sql
+48. list_entities
+49. query_entity_details
+50. query_event_details
+51. build_entity_details_sql
+52. build_event_details_sql
 
 ### Schema 查询（5 个）
-31. get_analysis_query_schema
-32. get_filter_schema
-33. get_groupby_schema
-34. get_cluster_definition_schema
-35. get_tag_definition_schema
+53. get_analysis_query_schema
+54. get_filter_schema
+55. get_groupby_schema
+56. get_cluster_definition_schema
+57. get_tag_definition_schema
 
 ### 项目配置（2 个）
-36. get_project_config
-37. list_project_users
+58. get_project_config
+59. list_project_users
 
 ### 资源链接（1 个）
 38. get_resource_url

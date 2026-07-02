@@ -1,29 +1,38 @@
-import type { Command } from '../../../framework/types.js';
-import { callMcpTool, parseMcpResult, resolveMcpUrl } from '../../../core/mcp.js';
+import type { Command, RuntimeContext } from '../../../framework/types.js';
+import { buildDataopsApiDryRun, callDataopsApi } from '../shared.js';
+
+const toolName = 'flow_update_flow';
+
+function requireUpdateField(ctx: RuntimeContext): void {
+  if (!ctx.str('flowName').trim() && !ctx.str('remark').trim()) {
+    throw new Error('Pass at least one of --flowName or --remark');
+  }
+}
+
+function buildArgs(ctx: RuntimeContext): Record<string, unknown> {
+  requireUpdateField(ctx);
+  return {
+    spaceCode: ctx.str('spaceCode'),
+    flowCode: ctx.num('flowCode'),
+    flowName: ctx.str('flowName'),
+    remark: ctx.str('remark'),
+  };
+}
 
 export const updateFlow: Command = {
   service: 'dataops_flow',
   command: '+update_flow',
-  description: 'Update task flow basic information (name/description/owner). Write operation requires two-step confirmation: first call returns operation preview (with before/after comparison), confirm by setting confirmed=true to execute update. Only pass in fields that need to be modified, unpassed fields remain unchanged',
+  description: 'Update DEV workflow name and/or remark. Requires spaceCode, flowCode, and at least one of flowName or remark. Returns action/result/status; result is an array with flowCode, operationStatus, nameChanged, and optional flowName.',
   flags: [
     { name: 'spaceCode', type: 'string', required: true, desc: 'Space code' },
     { name: 'flowCode', type: 'number', required: true, desc: 'Task flow code' },
-    { name: 'flowName', type: 'string', required: false, desc: 'New name (will not modify if not provided)' },
-    { name: 'remark', type: 'string', required: false, desc: 'New description (will not modify if not provided)' },
-    { name: 'owner', type: 'string', required: false, desc: 'New owner openId (will not modify if not provided)' },
-    { name: 'confirmed', type: 'boolean', required: false, desc: 'Confirmed to execute, defaults to false if not provided' },
+    { name: 'flowName', type: 'string', required: false, desc: 'Optional new workflow name' },
+    { name: 'remark', type: 'string', required: false, desc: 'Optional new workflow remark' },
   ],
   risk: 'write',
+  validate: requireUpdateField,
+  dryRun: (ctx) => buildDataopsApiDryRun(ctx, toolName, buildArgs(ctx)),
   execute: async (ctx) => {
-    const mcpUrl = resolveMcpUrl(ctx.mcpUrl(), ctx.host(), ctx.service());
-    const result = await callMcpTool(mcpUrl, 'flow_update_flow', {
-      spaceCode: ctx.str('spaceCode'),
-      flowCode: ctx.num('flowCode'),
-      flowName: ctx.str('flowName'),
-      remark: ctx.str('remark'),
-      owner: ctx.str('owner'),
-      confirmed: ctx.bool('confirmed'),
-    });
-    return parseMcpResult(result);
+    return callDataopsApi(ctx, toolName, buildArgs(ctx));
   },
 };

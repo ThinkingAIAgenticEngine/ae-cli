@@ -18,7 +18,7 @@ Domain: **Dashboard management**
 ```bash
 ae-cli analysis +list_dashboards --project_id <project_id>
 ae-cli analysis +list_dashboards --project_id <project_id> --query demo
-ae-cli analysis +list_dashboards --project_id <project_id> --fields '["dashboardId","dashboardName"]' --limit 20 --offset 0
+ae-cli analysis +list_dashboards --project_id <project_id> --fields '["dashboardId","dashboardName","remark"]' --limit 20 --offset 0
 ae-cli analysis +list_dashboards --dry-run
 ```
 
@@ -26,8 +26,8 @@ ae-cli analysis +list_dashboards --dry-run
 | Parameter | Required | Description |
 |---|---|---|
 | `--project_id` / `-p` | Yes | Project ID |
-| `--query` / `-q` | No | Optional keyword filter. Performs fuzzy matching against dashboard names and AI remarks; if omitted, all accessible dashboards are returned. |
-| `--fields` / `-f` | No | Optional fields to return (JSON array). Supported fields: `dashboardId`, `dashboardName`, `aiRemark`. |
+| `--query` / `-q` | No | Optional keyword filter. Performs fuzzy matching against dashboard names and remarks; if omitted, all accessible dashboards are returned. |
+| `--fields` / `-f` | No | Optional fields to return (JSON array). Supported fields: `dashboardId`, `dashboardName`, `remark`. Default fields when omitted: `dashboardId`, `dashboardName`, `remark`. Dashboard metadata exposes `remark` but no separate desc field. |
 | `--limit` / `-l` | No | Optional page size. Default: 20, maximum: 10000. |
 | `--offset` / `-o` | No | Optional page offset. Default: 0. |
 

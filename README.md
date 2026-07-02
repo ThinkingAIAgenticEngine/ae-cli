@@ -90,11 +90,12 @@ ae-cli auth logout
 | `analysis_audience` | 10+ | Audience operations: clusters, tags, and cluster/tag definition schema |
 | `analysis_meta` | 20+ | Metadata governance: events/properties, metrics, virtual metadata, project config, tracking plan, mark times, entity catalog |
 | `engage` | 40+ | Hermes Engage MCP: channels, tasks, configs, flows, strategies |
-| `dataops_repo` | 8 | Data warehouse repos: spaces, catalogs, schemas, members |
-| `dataops_datatable` | 10+ | Data tables: table creation, views, batch operations, data dictionary |
-| `dataops_flow` | 20+ | Task flows: flow creation, task nodes, scheduling, execution, monitoring |
-| `dataops_ide` | 10+ | IDE queries: metadata browsing, SQL execution, query management |
-| `dataops_integration` | 20+ | Data integration: datasource management, sync solutions, data synchronization |
+| `dataops_repo` | 1 | DataOps repo utilities: space discovery |
+| `dataops_datatable` | 5 | Data tables: table/view creation, publishing, details, data dictionary |
+| `dataops_flow` | 15 | Task flows: flow creation, task nodes, scheduling, execution, release preview |
+| `dataops_operations` | 4 | Operations: workflow instance search, instance detail, task logs, stop |
+| `dataops_ide` | 9 | IDE queries: metadata browsing, SQL execution, query management |
+| `dataops_integration` | 19 | Data integration: datasource management, sync solutions, data synchronization |
 | `community` | 10+ | Community analysis: posts search, sentiment analysis, topic trends, livestream data |
 | `analysis_common` | 2 | Cross-module common constraints: resource link completion, project ID gate |
 | `team` | 14 | AI Agent Team: manage teams (list/create/update/delete/ai-generate/templates/projects) and execute TeamRuns (start/watch/chat/reply/cancel/result/artifacts) |
@@ -169,7 +170,7 @@ Hermes Engage MCP capabilities:
 ### ae-dataops
 
 Data warehouse management:
-- **Repo Management**: spaces, catalogs, schemas, members
+- **Repo Utilities**: space discovery
 - **Data Tables**: table creation, views, batch operations, data dictionary
 - **Task Flows**: flow creation, task nodes, scheduling, execution, monitoring
 - **IDE Queries**: metadata browsing, SQL execution, query management

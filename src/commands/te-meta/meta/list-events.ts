@@ -2,11 +2,11 @@ import { createMcpCommand, optionalBoolean, optionalJson, optionalJsonString, op
 
 export const listEvents = createMcpCommand({
   command: '+list_events',
-  description: 'List events in the project. Use for explicit metadata inspection, not as a pre-step for event/retention/funnel/prop_analysis ad-hoc builders; the builders resolve event names internally. Query performs fuzzy matching on eventName, eventDesc and aiRemark. Supports fields/limit/offset payload governance.',
+  description: 'List events in the project. Use for explicit metadata inspection, not as a pre-step for event/retention/funnel/prop_analysis ad-hoc builders; the builders resolve event names internally. Query performs fuzzy matching on eventName, eventDesc, and remark. Supports fields/limit/offset payload governance. Default returned fields: eventId, eventName, eventDesc, remark.',
   flags: [
     { name: 'project_id', type: 'number', required: true, desc: 'Project ID', alias: 'p' },
-    { name: 'query', type: 'string', required: false, desc: 'Optional keyword filter. Fuzzy match is applied to eventName, eventDesc, and aiRemark; if omitted, all events are returned.', alias: 'q' },
-    { name: 'fields', type: 'json', required: false, desc: 'Optional fields to return. Supported fields: eventName, eventDesc, aiRemark, eventTag, remark.', alias: 'f' },
+    { name: 'query', type: 'string', required: false, desc: 'Optional keyword filter. Fuzzy match is applied to eventName, eventDesc, and remark; if omitted, all events are returned.', alias: 'q' },
+    { name: 'fields', type: 'json', required: false, desc: 'Optional fields to return. Supported fields: eventId, eventName, eventDesc, remark, eventTag. Default fields when omitted: eventId, eventName, eventDesc, remark.', alias: 'f' },
     { name: 'limit', type: 'number', required: false, desc: 'Optional page size. Default: 20, maximum: 10000.', alias: 'l' },
     { name: 'offset', type: 'number', required: false, desc: 'Optional page offset. Default: 0.', alias: 'o' },
   ],

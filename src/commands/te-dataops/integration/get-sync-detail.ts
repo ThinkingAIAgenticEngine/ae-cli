@@ -1,23 +1,26 @@
-import type { Command } from '../../../framework/types.js';
-import { callMcpTool, parseMcpResult, resolveMcpUrl } from '../../../core/mcp.js';
+import type { Command, RuntimeContext } from '../../../framework/types.js';
+import { buildDataopsApiDryRun, callDataopsApi } from '../shared.js';
+
+const toolName = 'integration_get_sync_detail';
+
+function buildArgs(ctx: RuntimeContext) {
+  return {
+    spaceCode: ctx.str('spaceCode'),
+    syncId: ctx.str('syncId'),
+    withParams: ctx.bool('withParams'),
+  };
+}
 
 export const getSyncDetail: Command = {
   service: 'dataops_integration',
   command: '+get_sync_detail',
-  description: 'Get sync solution details, including source/target configuration, field mappings, channel configuration. Returns: syncName (name), srcComponent/sinkComponent (components), sourceConfig/sinkConfig (configurations), fieldsMapping (field mappings), channelConfig (channel configuration). Requires syncId (can be obtained via integration_list_sync_solutions). Optional withParams=true to also return parameter information. Suitable for viewing complete sync solution configuration, confirming configuration is correct before execution',
+  description: 'Get sync solution detail: source, sink, field mapping, last status, owner, and nextAction. Optional withParams=true also returns usedParams',
   flags: [
     { name: 'spaceCode', type: 'string', required: true, desc: 'Space code' },
     { name: 'syncId', type: 'string', required: true, desc: 'Sync solution ID' },
-    { name: 'withParams', type: 'boolean', required: false, desc: 'Whether to also return parameter information' },
+    { name: 'withParams', type: 'boolean', required: false, desc: 'Also return usedParams; defaults to false' },
   ],
   risk: 'read',
-  execute: async (ctx) => {
-    const mcpUrl = resolveMcpUrl(ctx.mcpUrl(), ctx.host(), ctx.service());
-    const result = await callMcpTool(mcpUrl, 'integration_get_sync_detail', {
-      spaceCode: ctx.str('spaceCode'),
-      syncId: ctx.str('syncId'),
-      withParams: ctx.bool('withParams'),
-    });
-    return parseMcpResult(result);
-  },
+  dryRun: (ctx) => buildDataopsApiDryRun(ctx, toolName, buildArgs(ctx)),
+  execute: async (ctx) => callDataopsApi(ctx, toolName, buildArgs(ctx)),
 };

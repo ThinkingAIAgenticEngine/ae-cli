@@ -1,23 +1,25 @@
 import type { Command } from '../../../framework/types.js';
-import { callMcpTool, parseMcpResult, resolveMcpUrl } from '../../../core/mcp.js';
+import { buildDataopsApiDryRun, callDataopsApi } from '../shared.js';
+
+const toolName = 'integration_test_datasource_connect';
 
 export const testDatasourceConnect: Command = {
   service: 'dataops_integration',
   command: '+test_datasource_connect',
-  description: 'Test datasource connection (temporary configuration, not saved). Pass component name and connection configuration JSON, returns connection success or failure and error information. Suitable for verifying connection parameters are correct before creating a datasource, avoiding connection failure after creation. Difference from integration_add_datasource: This tool only tests connection without creating datasource, can debug repeatedly until connection succeeds before formally creating',
+  description: 'Test a saved datasource connection by name. Returns datasourceName, connectStatus, connectFails, lastConnectTime, and nextAction. May take longer for slow external systems.',
   flags: [
     { name: 'spaceCode', type: 'string', required: true, desc: 'Space code' },
-    { name: 'componentName', type: 'string', required: true, desc: 'Component name (e.g., MySQL, Hive, ClickHouse)' },
-    { name: 'configValue', type: 'string', required: true, desc: 'Connection configuration JSON string' },
+    { name: 'datasourceName', type: 'string', required: true, desc: 'Existing datasource name, exact match within the space' },
   ],
   risk: 'read',
+  dryRun: (ctx) => buildDataopsApiDryRun(ctx, toolName, {
+    spaceCode: ctx.str('spaceCode'),
+    datasourceName: ctx.str('datasourceName'),
+  }),
   execute: async (ctx) => {
-    const mcpUrl = resolveMcpUrl(ctx.mcpUrl(), ctx.host(), ctx.service());
-    const result = await callMcpTool(mcpUrl, 'integration_test_datasource_connect', {
+    return callDataopsApi(ctx, toolName, {
       spaceCode: ctx.str('spaceCode'),
-      componentName: ctx.str('componentName'),
-      configValue: ctx.str('configValue'),
+      datasourceName: ctx.str('datasourceName'),
     });
-    return parseMcpResult(result);
   },
 };

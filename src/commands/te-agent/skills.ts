@@ -7,15 +7,36 @@
  * +toggle-skill  — enable/disable a Skill
  */
 
-import type { Command } from '../../framework/types.js';
+import type { Command, RuntimeContext } from '../../framework/types.js';
 import {
   getFromMainApp,
   postToMainApp,
   deleteFromMainApp,
   patchToMainApp,
 } from '../../core/te-agent-client.js';
+import {
+  MARKET_CATEGORIES,
+  MARKET_SCOPES,
+  MARKET_SORTS,
+  isValidMarketCategory,
+  buildMarketQuery,
+} from './market-constants.js';
 
 const BASE_PATH = '/api/sandbox/agent/skills';
+const MARKET_BASE_PATH = '/api/skills';
+
+// Build the optional meta body (category / iconEmoji / iconColor) from ctx.
+// Returns null when none of the meta flags are provided.
+function buildMetaBody(ctx: RuntimeContext): Record<string, string> | null {
+  const body: Record<string, string> = {};
+  const category = ctx.str('category');
+  const iconEmoji = ctx.str('iconEmoji');
+  const iconColor = ctx.str('iconColor');
+  if (category) body.category = category;
+  if (iconEmoji) body.iconEmoji = iconEmoji;
+  if (iconColor) body.iconColor = iconColor;
+  return Object.keys(body).length > 0 ? body : null;
+}
 
 /**
  * Resolve the instructions argument: supports @- to read from stdin
@@ -68,6 +89,9 @@ export const addSkill: Command = {
     { name: 'description', type: 'string', required: true, desc: 'Skill description' },
     { name: 'instructions', type: 'string', required: true, desc: 'Skill instructions (use @- to read from stdin)' },
     { name: 'display-name', type: 'string', required: false, desc: 'Display name (max 100)' },
+    { name: 'category', type: 'string', required: false, desc: `Market category key: ${MARKET_CATEGORIES.join(' | ')}` },
+    { name: 'icon-emoji', type: 'string', required: false, desc: 'Market icon emoji (e.g. robot)' },
+    { name: 'icon-color', type: 'string', required: false, desc: 'Market icon color (e.g. #1E76F0)' },
   ],
   risk: 'write',
   validate: (ctx) => {
@@ -75,25 +99,40 @@ export const addSkill: Command = {
     if (name.length < 1 || name.length > 80) {
       throw new Error('--name length must be between 1 and 80');
     }
+    const category = ctx.str('category');
+    if (category && !isValidMarketCategory(category)) {
+      throw new Error(`--category must be one of: ${MARKET_CATEGORIES.join(', ')}`);
+    }
   },
-  dryRun: (ctx) => ({
-    method: 'POST',
-    url: BASE_PATH,
-    body: {
+  dryRun: (ctx) => {
+    const body: Record<string, unknown> = {
       name: ctx.str('name'),
       description: ctx.str('description'),
       instructions: ctx.str('instructions') === '@-' ? '(from stdin)' : ctx.str('instructions'),
       displayName: ctx.str('displayName') || undefined,
-    },
-  }),
+    };
+    const meta = buildMetaBody(ctx);
+    if (meta) body._meta = meta; // applied via a follow-up PATCH /api/skills/[id]/meta
+    return { method: 'POST', url: BASE_PATH, body };
+  },
   execute: async (ctx) => {
     const instructions = await resolveInstructions(ctx.str('instructions'));
-    return postToMainApp(BASE_PATH, {
+    const created = await postToMainApp<{ item: { id: string; name: string; displayName: string | null } }>(BASE_PATH, {
       name: ctx.str('name'),
       description: ctx.str('description'),
       instructions,
       displayName: ctx.str('displayName') || undefined,
     });
+    const id = created?.item?.id;
+    const meta = buildMetaBody(ctx);
+    if (id && meta) {
+      try {
+        await patchToMainApp(`${MARKET_BASE_PATH}/${encodeURIComponent(id)}/meta`, meta);
+      } catch (err: any) {
+        process.stderr.write(`Warning: Skill created but meta update failed: ${err?.message ?? err}\n`);
+      }
+    }
+    return created;
   },
 };
 
@@ -133,5 +172,104 @@ export const toggleSkill: Command = {
       id: ctx.str('id'),
       enabled: ctx.bool('enabled'),
     });
+  },
+};
+
+export const listSkillMarket: Command = {
+  service: 'agent',
+  command: '+list-skill-market',
+  description: 'List Skills from the market (only approved items; system/company/personal)',
+  flags: [
+    { name: 'scope', type: 'string', required: false, default: 'all', desc: `Market scope: ${MARKET_SCOPES.join(' | ')} (custom = personal)` },
+    { name: 'category', type: 'string', required: false, desc: `Category key: ${MARKET_CATEGORIES.join(' | ')}` },
+    { name: 'search', type: 'string', required: false, desc: 'Fuzzy search on name/displayName/description' },
+    { name: 'sort', type: 'string', required: false, default: 'newest', desc: `Sort: ${MARKET_SORTS.join(' | ')} (calls = downloads)` },
+    { name: 'limit', type: 'number', required: false, default: 50, desc: 'Page size (1-100, default 50)' },
+    { name: 'offset', type: 'number', required: false, default: 0, desc: 'Page offset (>=0, default 0)' },
+  ],
+  risk: 'read',
+  validate: (ctx) => {
+    const scope = ctx.str('scope');
+    if (scope && !(MARKET_SCOPES as readonly string[]).includes(scope)) {
+      throw new Error(`--scope must be one of: ${MARKET_SCOPES.join(', ')}`);
+    }
+    const category = ctx.str('category');
+    if (category && !isValidMarketCategory(category)) {
+      throw new Error(`--category must be one of: ${MARKET_CATEGORIES.join(', ')}`);
+    }
+    const sort = ctx.str('sort');
+    if (sort && !(MARKET_SORTS as readonly string[]).includes(sort)) {
+      throw new Error(`--sort must be one of: ${MARKET_SORTS.join(', ')}`);
+    }
+  },
+  dryRun: (ctx) => ({
+    method: 'GET',
+    url: `${MARKET_BASE_PATH}/market?${buildMarketQuery(ctx).toString()}`,
+  }),
+  execute: async (ctx) => {
+    return getFromMainApp(`${MARKET_BASE_PATH}/market?${buildMarketQuery(ctx).toString()}`);
+  },
+};
+
+export const setSkillMeta: Command = {
+  service: 'agent',
+  command: '+set-skill-meta',
+  description: 'Update a Skill market meta (category / icon). Company scope requires root; system is read-only.',
+  flags: [
+    { name: 'id', type: 'string', required: true, desc: 'Skill record ID (CUID)' },
+    { name: 'category', type: 'string', required: false, desc: `Category key: ${MARKET_CATEGORIES.join(' | ')}` },
+    { name: 'icon-emoji', type: 'string', required: false, desc: 'Market icon emoji (e.g. robot)' },
+    { name: 'icon-color', type: 'string', required: false, desc: 'Market icon color (e.g. #1E76F0)' },
+  ],
+  risk: 'write',
+  validate: (ctx) => {
+    const category = ctx.str('category');
+    if (category && !isValidMarketCategory(category)) {
+      throw new Error(`--category must be one of: ${MARKET_CATEGORIES.join(', ')}`);
+    }
+    if (!buildMetaBody(ctx)) {
+      throw new Error('Provide at least one of --category / --icon-emoji / --icon-color');
+    }
+  },
+  dryRun: (ctx) => ({
+    method: 'PATCH',
+    url: `${MARKET_BASE_PATH}/${encodeURIComponent(ctx.str('id'))}/meta`,
+    body: buildMetaBody(ctx),
+  }),
+  execute: async (ctx) => {
+    return patchToMainApp(
+      `${MARKET_BASE_PATH}/${encodeURIComponent(ctx.str('id'))}/meta`,
+      buildMetaBody(ctx),
+    );
+  },
+};
+
+export const copySkill: Command = {
+  service: 'agent',
+  command: '+copy-skill',
+  description: 'Copy a system/company Skill to a personal copy (independent duplicate)',
+  flags: [
+    { name: 'id', type: 'string', required: true, desc: 'Source Skill record ID (CUID, system or company scope)' },
+    { name: 'category', type: 'string', required: false, desc: `Market category key for the copy: ${MARKET_CATEGORIES.join(' | ')}` },
+    { name: 'icon-emoji', type: 'string', required: false, desc: 'Override market icon emoji (e.g. robot)' },
+    { name: 'icon-color', type: 'string', required: false, desc: 'Override market icon color (e.g. #1E76F0)' },
+  ],
+  risk: 'write',
+  validate: (ctx) => {
+    const category = ctx.str('category');
+    if (category && !isValidMarketCategory(category)) {
+      throw new Error(`--category must be one of: ${MARKET_CATEGORIES.join(', ')}`);
+    }
+  },
+  dryRun: (ctx) => ({
+    method: 'POST',
+    url: `${MARKET_BASE_PATH}/${encodeURIComponent(ctx.str('id'))}/copy`,
+    body: buildMetaBody(ctx) ?? {},
+  }),
+  execute: async (ctx) => {
+    return postToMainApp(
+      `${MARKET_BASE_PATH}/${encodeURIComponent(ctx.str('id'))}/copy`,
+      buildMetaBody(ctx) ?? {},
+    );
   },
 };

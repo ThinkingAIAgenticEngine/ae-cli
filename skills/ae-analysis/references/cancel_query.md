@@ -10,7 +10,7 @@ Domain: **Query lifecycle**
 - Cancel a query by the same `requestId` that was supplied to or returned by a previous query command.
 - For proactive cancellation, pass `requestId` to the query tool before starting it, then call `cancel_query` with the same value if you stop waiting.
 - If a query returns `fetch failed`, hits an HTTP timeout, or the caller stops waiting, the backend query may still be running; call `+cancel_query --request_id <same value>` with the preset `requestId`.
-- auto-generated requestId is not available when the HTTP request fails before a response, so preset `requestId` before any query that may exceed the CLI/MCP HTTP timeout.
+- MCP query tools require caller-supplied `requestId`; generate and pass it before starting any cancelable query, then reuse the same value if cleanup is needed.
 
 ## Command
 ```bash
@@ -30,9 +30,8 @@ ae-cli analysis +cancel_query --request_id mcp_0123456789abcdef0123456789abcdef 
 - The request must belong to the current MCP user. Otherwise the service returns `REQUEST_NOT_FOUND_OR_NOT_OWNED`.
 - Do not invent a request ID. Use the ID from the query response or the ID explicitly supplied to the original query.
 - This command cancels by request ID only. It does not cancel by SQL text, report ID, dashboard ID, BI panel ID, run ID, or tool call ID.
-- For query commands that expose `--request_id`, prefer supplying a stable ID before execution using `mcp_<32 lowercase hex UUID>`, for example `mcp_0123456789abcdef0123456789abcdef`, so proactive cancellation does not depend on waiting for the response metadata.
+- For query commands that expose `--request_id`, supplying a stable ID before execution is required. Use `mcp_<32 lowercase hex UUID>`, for example `mcp_0123456789abcdef0123456789abcdef`, so proactive cancellation does not depend on waiting for the response metadata.
 - For query commands that may exceed the CLI/MCP HTTP timeout, preset `--request_id`; if `fetch failed`, HTTP timeout, or caller timeout happens, immediately call `+cancel_query --request_id <same value> --yes`.
-- For commands that do not expose caller-supplied `request_id`, cancel only if the response includes a request ID.
 
 ## Next Steps on Failure
 - If `REQUEST_NOT_FOUND_OR_NOT_OWNED` appears, verify the request ID, user identity, host, and whether the original query already finished.

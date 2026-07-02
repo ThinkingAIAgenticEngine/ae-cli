@@ -2,11 +2,11 @@ import { createMcpCommand, optionalBoolean, optionalJson, optionalJsonString, op
 
 export const listDashboards = createMcpCommand({
   command: '+list_dashboards',
-  description: 'List dashboard metadata accessible to the current user in the project. Supports keyword filtering and returns paginated dashboard summaries with selectable fields.',
+  description: 'List dashboard metadata accessible to the current user in the project. Supports keyword filtering and returns paginated dashboard summaries. Default returned fields: dashboardId, dashboardName, remark. Dashboard metadata exposes remark but no separate desc field.',
   flags: [
     { name: 'project_id', type: 'number', required: true, desc: 'Project ID', alias: 'p' },
-    { name: 'query', type: 'string', required: false, desc: 'Optional keyword filter. Performs fuzzy matching against dashboard names and AI remarks; if omitted, all accessible dashboards are returned.', alias: 'q' },
-    { name: 'fields', type: 'json', required: false, desc: 'Optional fields to return. Supported fields: dashboardId, dashboardName, aiRemark.', alias: 'f' },
+    { name: 'query', type: 'string', required: false, desc: 'Optional keyword filter. Performs fuzzy matching against dashboard names and remarks; if omitted, all accessible dashboards are returned.', alias: 'q' },
+    { name: 'fields', type: 'json', required: false, desc: 'Optional fields to return. Supported fields: dashboardId, dashboardName, remark. Default fields when omitted: dashboardId, dashboardName, remark.', alias: 'f' },
     { name: 'limit', type: 'number', required: false, desc: 'Optional page size. Default: 20, maximum: 10000.', alias: 'l' },
     { name: 'offset', type: 'number', required: false, desc: 'Optional page offset. Default: 0.', alias: 'o' },
   ],

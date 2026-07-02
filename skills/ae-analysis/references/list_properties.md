@@ -16,7 +16,7 @@ Domain: **Metadata Query**
 ```bash
 ae-cli analysis_meta +list_properties --project_id <project_id>
 ae-cli analysis_meta +list_properties --project_id <project_id> --scope event --event_name purchase --query demo
-ae-cli analysis_meta +list_properties --project_id <project_id> --query demo --fields '["propName", "propDesc"]' --limit 20 --offset 0
+ae-cli analysis_meta +list_properties --project_id <project_id> --query demo --fields '["propId", "propName", "propDesc", "remark", "selectType", "tableType"]' --limit 20 --offset 0
 ae-cli analysis_meta +list_properties --dry-run
 ```
 
@@ -26,8 +26,8 @@ ae-cli analysis_meta +list_properties --dry-run
 | `--project_id` / `-p` | Yes | Project ID |
 | `--scope` | No | Optional property scope. event means event properties, user means user properties. If omitted, all scopes are queried. |
 | `--event_name` | No | Optional event name. If provided, only event properties available for that event are returned. |
-| `--query` / `-q` | No | Optional keyword filter. Fuzzy match is applied to propName, propDesc, and aiRemark; if omitted, all matched properties are returned. |
-| `--fields` / `-f` | No | Optional fields to return (JSON array). Supported fields: `propName`, `propDesc`, `aiRemark`, `selectType`, `tableType`, `subTableType`. |
+| `--query` / `-q` | No | Optional keyword filter. Fuzzy match is applied to propName, propDesc, and remark; if omitted, all matched properties are returned. |
+| `--fields` / `-f` | No | Optional fields to return (JSON array). Supported fields: `propId`, `propName`, `propDesc`, `remark`, `selectType`, `tableType`, `subTableType`. Default fields when omitted: `propId`, `propName`, `propDesc`, `remark`, `selectType`, `tableType`. |
 | `--limit` / `-l` | No | Optional page size. Default: 20, maximum: 10000. |
 | `--offset` / `-o` | No | Optional page offset. Default: 0. |
 

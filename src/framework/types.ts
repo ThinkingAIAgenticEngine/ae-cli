@@ -25,6 +25,7 @@ export interface Command {
 export interface RuntimeContext {
   str(name: string): string;
   num(name: string): number;
+  optionalNum(name: string): number | undefined;
   bool(name: string): boolean;
   json(name: string): any;
 

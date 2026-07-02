@@ -5,16 +5,16 @@
 Domain: **Model analysis**
 
 ## Use Cases
-- Query the field list of a project table. Returns all column names and types under the specified catalog, schema, and table so the table schema can be understood before SQL analysis.
+- Query the field list of a project table. Returns all column names and types for `tableRef` so the table schema can be understood before SQL analysis.
 - Table guide:
-- default.public.ta_event_1: catalog is default, schema is public, table is ta_event_1
-- public.ta_event_1: catalog is hive(default value), schema is public, table is ta_event_1
-- ta_event_1: catalog is hive(default value), schema is ta(default value), table is ta_event_1
-- Query the field list of a project table.
+- `hive.ta_dim.datatable_1`: catalog is hive, schema is ta_dim, table is datatable_1.
+- `ta_dim.datatable_1`: catalog defaults to hive, schema is ta_dim, table is datatable_1.
+- `ta_event_1`: table only; resolved against project available tables and fails if ambiguous.
+- The only common catalog is `hive`. Common hive schemas are `ta` (default analysis tables), `ta_dim` (dimension/datatable/exchange tables), `temp` (SQL temporary tables), and `ta_ext` (external datatable/API tables). Do not replace an explicit schema such as `ta_dim` with default `ta`.
 
 ## Command
 ```bash
-ae-cli analysis +get_table_columns --project_id <project_id> --catalog demo --schema demo --table demo
+ae-cli analysis +get_table_columns --project_id <project_id> --table_ref hive.ta_dim.datatable_1
 ae-cli analysis +get_table_columns --dry-run
 ```
 
@@ -22,17 +22,16 @@ ae-cli analysis +get_table_columns --dry-run
 | Parameter | Required | Description |
 |---|---|---|
 | `--project_id` / `-p` | Yes | Project ID |
-| `--catalog` | Yes | Catalog name, default hive |
-| `--schema` | Yes | Schema name, default ta |
-| `--table` | Yes | Table name |
+| `--table_ref` | Yes | Table reference. Supports `hive.schema.table`, `schema.table`, or `table`. If only `table` is provided, the backend resolves it against project available tables and fails on ambiguity. |
 
 ## Decision Rules
-- On the first run, start with only the required parameters (`--project_id`,`--catalog`,`--schema`), and add optional parameters after confirming the path works.
+- Prefer a fully qualified `--table_ref` when the schema is known, especially for `ta_dim`, `temp`, or `ta_ext` tables.
+- Use table-only `--table_ref <table>` only when you expect the table name to be unique in the project; if the backend returns ambiguity, retry with one of the returned fully qualified `tableRef` values.
 - For cross-project troubleshooting, first confirm whether `--project_id` matches the current permissions and target environment.
 
 ## Next Steps on Failure
-- If required parameters are missing, fall back to the smallest runnable command and fill them in first (focus on `--project_id`, `--catalog`, `--schema`).
-- If reading fails, first verify whether the object ID exists and belongs to the current project.
+- If required parameters are missing, fill in `--project_id` and `--table_ref` first.
+- If reading fails, first verify whether the `tableRef` exists, is unambiguous, and belongs to the current project permissions.
 
 ## Recommended chaining
 - +get_table_columns

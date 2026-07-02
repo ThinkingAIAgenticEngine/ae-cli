@@ -138,6 +138,11 @@ function createRuntimeContext(cmd: Command, opts: Record<string, any>, globalOpt
       const val = opts[camelCase(name)];
       return val !== undefined ? Number(val) : 0;
     },
+    optionalNum(name: string): number | undefined {
+      const val = opts[camelCase(name)];
+      if (val === undefined || val === null || val === '') return undefined;
+      return Number(val);
+    },
     bool(name: string): boolean {
       return Boolean(opts[camelCase(name)]);
     },

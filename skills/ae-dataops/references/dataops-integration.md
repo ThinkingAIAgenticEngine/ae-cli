@@ -1,7 +1,7 @@
 ---
 name: dataops-integration
 version: 1.0.0
-description: "Datasource and data integration: create datasources, create sync solutions, configure field mapping, execute sync, monitor sync. Trigger keywords: datasource, sync, integration, sync, field mapping, data ingestion, datasource, MySQL, ClickHouse."
+description: "Datasource and data integration: create datasources, configure sync solutions and field mappings, execute and monitor runs. Trigger keywords: datasource, sync, integration, field mapping, data ingestion, MySQL, ClickHouse, DatabricksJdbc."
 metadata:
   requires:
     bins: ["ae-cli"]
@@ -16,6 +16,7 @@ Use the `dataops_integration` subcommand to manage datasources and sync solution
 **Core Rules:**
 - Configuration parameters differ significantly between preset repositories (te_etl) and non-preset repositories, must strictly follow templates
 - sourceConfig/sinkConfig/channelConfig/fieldsMapping are all JSON strings
+- Sync solution updates are not partial patches: call `+get_sync_detail --withParams true` first, then submit complete sourceConfig and sinkConfig JSON. Pass channelConfig and fieldsMapping when keeping or updating them
 - Test datasource connection before creating sync solution
 
 ---
@@ -23,20 +24,22 @@ Use the `dataops_integration` subcommand to manage datasources and sync solution
 ## Workflow A: Create Datasource
 
 ```bash
-# Step 1: View supported datasource component types
+# Step 1: View supported datasource component types. No spaceCode is required.
 ae-cli dataops_integration +list_datasource_components
 
-# Step 2: Test connection (temporary configuration, not saved)
-ae-cli dataops_integration +test_datasource_connect --spaceCode "${spaceCode}" \
-  --componentName "MySQL" \
-  --configValue '{"host":"localhost","port":3306,"username":"root","password":"xxx","database":"test"}'
+# Step 2: Get envJsonList template for one component
+ae-cli dataops_integration +get_datasource_component_template \
+  --componentName "MySQL"
 
 # Step 3: Create datasource
 ae-cli dataops_integration +add_datasource --spaceCode "${spaceCode}" \
   --componentName "MySQL" --dataSourceName "Production MySQL" \
   --sharedConfig true \
-  --envJsonList '[{"host":"localhost","port":3306,"username":"root","password":"xxx"}]' \
-  --confirmed true
+  --envJsonList '[{"host":"localhost","port":3306,"username":"root","password":"xxx"}]'
+
+# Step 4: Test the saved datasource connection by name.
+ae-cli dataops_integration +test_datasource_connect --spaceCode "${spaceCode}" \
+  --datasourceName "Production MySQL"
 ```
 
 ---
@@ -49,8 +52,12 @@ ae-cli dataops_integration +add_datasource --spaceCode "${spaceCode}" \
 # View all datasources in workspace
 ae-cli dataops_integration +list_space_datasources --spaceCode "${spaceCode}"
 
+# View one datasource detail when connection config or failure reason is needed
+ae-cli dataops_integration +get_datasource_detail --spaceCode "${spaceCode}" \
+  --datasourceName "${datasourceName}"
+
 # View datasources available for sync (categorized by source/sink)
-ae-cli dataops_integration +list_sync_datasources --spaceCode "${spaceCode}"
+ae-cli dataops_integration +list_sync_datasources --spaceCode "${spaceCode}" --env DEV
 ```
 
 ### Step 2: Browse Source Table Structure
@@ -63,10 +70,12 @@ ae-cli dataops_integration +list_datasource_databases --spaceCode "${spaceCode}"
 # List tables under database
 ae-cli dataops_integration +list_datasource_tables --spaceCode "${spaceCode}" \
   --datasourceId "${datasourceId}" --database "test"
+# For catalog-based sources such as Databricks, add --catalog "${catalog}".
 
-# Get table structure (column definitions, partitions)
+# Get table structure (columns and partitionColumns)
 ae-cli dataops_integration +get_table_structure --spaceCode "${spaceCode}" \
   --datasourceId "${datasourceId}" --database "test" --tablePath "users"
+# For catalog-based sources such as Databricks, add --catalog "${catalog}".
 ```
 
 ### Step 3: Create Sync Solution
@@ -77,12 +86,11 @@ ae-cli dataops_integration +get_table_structure --spaceCode "${spaceCode}" \
 ae-cli dataops_integration +add_sync_solution --spaceCode "${spaceCode}" \
   --syncName "MySQL to Preset Repository Sync" \
   --srcComponent "MySQL" --srcDatasourceId "${mysqlDatasourceId}" \
-  --sinkComponent "hive" --sinkDatasourceId "te_etl@TASK_ENGINE_TRINO" \
+  --sinkComponent "te_etl" --sinkDatasourceId "te_etl@TASK_ENGINE_TRINO" \
   --sourceConfig '{"component":"MySQL","datasourceId":"xxx","database":"test","tablePath":"users"}' \
-  --sinkConfig '{"component":"hive","datasourceId":"te_etl@TASK_ENGINE_TRINO","database":"","tablePath":"ods_users_mysql","tableType":"PHYSICAL_TABLE","bizClassify":"CURRENT","dbBizType":"TASK_ENV_DB","authedSpace":"","partitionKeys":[],"dataSaveMode":1,"batchSize":20000}' \
+  --sinkConfig '{"component":"te_etl","datasourceId":"te_etl@TASK_ENGINE_TRINO","database":"","tablePath":"ods_users_mysql","tableType":"PHYSICAL_TABLE","bizClassify":"CURRENT","dbBizType":"TASK_ENV_DB","authedSpace":"","partitionKeys":[],"dataSaveMode":1,"batchSize":20000}' \
   --channelConfig '{"limitType":"0","gatewayConfig":{"engineFlag":"TASK_ENGINE_TRINO","companyId":1,"appDefinition":"APP_GAIA","bizFlag":"BIZ_GAIA_TASK_RELEASE","repoCode":"te_etl","spaceCode":"default"}}' \
-  --fieldsMapping '{"mapping":[{"source":{"name":"id","type":"int","manual":false,"partitionKey":false,"primaryKey":false,"shardingKey":false,"sortingKey":false,"upsertKey":false},"target":{"name":"id","type":"int","manual":false,"partitionKey":false,"primaryKey":false,"shardingKey":false,"sortingKey":false,"upsertKey":false}}]}' \
-  --confirmed true
+  --fieldsMapping '{"mapping":[{"source":{"name":"id","type":"int","manual":false,"partitionKey":false,"primaryKey":false,"shardingKey":false,"sortingKey":false,"upsertKey":false},"target":{"name":"id","type":"int","manual":false,"partitionKey":false,"primaryKey":false,"shardingKey":false,"sortingKey":false,"upsertKey":false}}]}'
 ```
 
 ### Step 4: Execute Sync
@@ -90,30 +98,42 @@ ae-cli dataops_integration +add_sync_solution --spaceCode "${spaceCode}" \
 ```bash
 # Manually execute sync solution
 ae-cli dataops_integration +exec_sync_solution --spaceCode "${spaceCode}" \
-  --syncId "${syncId}" --confirmed true
+  --syncId "${syncId}" --baseDate "${baseDate}"
 
-# View execution history
-ae-cli dataops_integration +list_sync_exec_histories --spaceCode "${spaceCode}" \
+# List manual sync runs
+ae-cli dataops_integration +list_sync_runs --spaceCode "${spaceCode}" \
   --syncId "${syncId}" --limit 20
-
-# View execution details
-ae-cli dataops_integration +get_sync_exec_info --spaceCode "${spaceCode}" \
-  --syncId "${syncId}" --taskId "${taskId}"
 
 # Stop execution if necessary
 ae-cli dataops_integration +stop_sync_solution --spaceCode "${spaceCode}" \
-  --syncId "${syncId}" --taskId "${taskId}" --confirmed true
+  --syncId "${syncId}" --taskId "${taskId}"
 ```
 
 ---
 
 ## JSON Configuration Templates
 
+### Preset Repository as Source (sourceConfig)
+
+```json
+{
+  "component": "te_etl",
+  "datasourceId": "te_etl@TASK_ENGINE_TRINO",
+  "tablePath": "source_table",
+  "tableType": "PHYSICAL_TABLE",
+  "bizClassify": "CURRENT",
+  "dbBizType": "TASK_ENV_DB",
+  "authedSpace": "",
+  "partitionKeys": [],
+  "successOnEmpty": false
+}
+```
+
 ### Preset Repository as Target (Sink)
 
 ```json
 {
-  "component": "hive",
+  "component": "te_etl",
   "datasourceId": "te_etl@TASK_ENGINE_TRINO",
   "database": "",
   "tablePath": "ods_users_mysql",
@@ -191,28 +211,47 @@ ae-cli dataops_integration +stop_sync_solution --spaceCode "${spaceCode}" \
 
 | Command | Purpose | Key Flags |
 |---------|---------|-----------|
-| `+list_datasource_components` | List component types | None |
-| `+test_datasource_connect` | Test connection | `--spaceCode` `--componentName` `--configValue` |
-| `+add_datasource` | Create datasource | `--spaceCode` `--componentName` `--dataSourceName` `--sharedConfig` `--envJsonList` `--confirmed` |
-| `+modify_datasource` | Modify datasource | `--spaceCode` `--dataSourceName` `--dataSourceRemark` `--sharedConfig` `--envJsonList` `--confirmed` |
-| `+online_datasource` | Online datasource | `--spaceCode` `--dataSourceNames` `--confirmed` |
-| `+list_space_datasources` | List datasources | `--spaceCode` `--componentName` `--dataSourceName` |
-| `+list_sync_datasources` | Sync datasources | `--spaceCode` `--env` |
-| `+list_datasource_databases` | List databases | `--spaceCode` `--datasourceId` `--env` |
-| `+list_datasource_tables` | List tables | `--spaceCode` `--datasourceId` `--database` `--env` |
-| `+get_table_structure` | Table structure | `--spaceCode` `--datasourceId` `--database` `--tablePath` `--env` |
-| `+add_sync_solution` | Create sync solution | `--spaceCode` `--syncName` `--srcComponent` `--srcDatasourceId` `--sinkComponent` `--sinkDatasourceId` `--sourceConfig` `--sinkConfig` `--channelConfig` `--fieldsMapping` `--confirmed` |
-| `+save_sync_solution` | Update sync solution | `--spaceCode` `--syncId` `--syncName` `--sourceConfig` `--sinkConfig` `--channelConfig` `--fieldsMapping` `--confirmed` |
+| `+list_datasource_components` | List supported datasource components | None |
+| `+get_datasource_component_template` | Component envJsonList template | `--componentName` |
+| `+test_datasource_connect` | Test saved datasource connection | `--spaceCode` `--datasourceName` |
+| `+add_datasource` | Create datasource | `--spaceCode` `--componentName` `--dataSourceName` `--sharedConfig` `--envJsonList` `[--dataSourceRemark]` |
+| `+modify_datasource` | Modify datasource | `--spaceCode` `--dataSourceName` `[--dataSourceRemark]` `[--sharedConfig]` `[--envJsonList]` |
+| `+online_datasource` | Online datasource | `--spaceCode` `--dataSourceNames` |
+| `+list_space_datasources` | List datasources | `--spaceCode` `[--datasourceName]` `[--componentName]` |
+| `+get_datasource_detail` | Datasource detail | `--spaceCode` `--datasourceName` |
+| `+list_sync_datasources` | Sync datasources | `--spaceCode` `[--env]` |
+| `+list_datasource_databases` | List datasource databases | `--spaceCode` `--datasourceId` `[--catalog]` `[--env]` |
+| `+list_datasource_tables` | List datasource tables | `--spaceCode` `--datasourceId` `--database` `[--catalog]` `[--env]` |
+| `+get_table_structure` | Datasource table structure | `--spaceCode` `--datasourceId` `--database` `--tablePath` `[--catalog]` `[--env]` |
+| `+add_sync_solution` | Create sync solution | `--spaceCode` `--syncName` `--srcComponent` `--srcDatasourceId` `--sinkComponent` `--sinkDatasourceId` `--sourceConfig` `--sinkConfig` `[--channelConfig]` `[--fieldsMapping]` `[--remark]` |
+| `+save_sync_solution` | Update sync solution | `--spaceCode` `--syncId` `--sourceConfig` `--sinkConfig` `[--syncName]` `[--channelConfig]` `[--fieldsMapping]` `[--remark]` |
 | `+list_sync_solutions` | List sync solutions | `--spaceCode` |
-| `+get_sync_detail` | Sync solution details | `--spaceCode` `--syncId` `--withParams` |
-| `+exec_sync_solution` | Execute sync | `--spaceCode` `--syncId` `--execParams` `--confirmed` |
-| `+list_sync_exec_histories` | Execution history | `--spaceCode` `--syncId` `--execType` `--limit` |
-| `+get_sync_exec_info` | Execution details | `--spaceCode` `--syncId` `--taskId` |
-| `+stop_sync_solution` | Stop sync | `--spaceCode` `--syncId` `--taskId` `--confirmed` |
+| `+get_sync_detail` | Sync solution detail | `--spaceCode` `--syncId` `[--withParams]` |
+| `+exec_sync_solution` | Execute sync | `--spaceCode` `--syncId` `[--baseDate]` `[--comment]` |
+| `+list_sync_runs` | Manual sync runs | `--spaceCode` `--syncId` `[--limit]` |
+| `+stop_sync_solution` | Stop one running sync execution task | `--spaceCode` `--syncId` `--taskId` |
+
+- **Datasource components**: `+list_datasource_components` requires no arguments. It returns an array of `componentName`, `componentType`, and `description`.
+- **Datasource component template**: `+get_datasource_component_template` requires only `--componentName`. It returns component metadata, `requiredFields`, `optionalFields`, `envJsonExampleObject`, and `importantNotes`.
+- **Datasource list**: `+list_space_datasources` requires `--spaceCode`; `--datasourceName` and `--componentName` are optional filters. It returns datasource summary fields including `datasourceId`, `dataSourceComponentName`, `dataSourceName`, `dataSourceRemark`, `dataSourceStatus`, `connectStatus`, `syncTaskNum`, and `sharedConfig`.
+- **Datasource detail**: `+get_datasource_detail` requires `--spaceCode` and `--datasourceName`. It returns `datasourceId`, `dataSourceComponentName`, `dataSourceName`, `dataSourceRemark`, `dataSourceStatus`, `connectStatus`, `syncTaskNum`, `sharedConfig`, masked `connectConfig`, `connectFails`, and `lastConnectTime`.
+- **Datasource creation**: `+add_datasource` creates directly after the CLI write confirmation. `envJsonList` must be a JSON array string using keys from the component template `requiredFields`; `sharedConfig=true` uses one config for DEV/PROD, while `sharedConfig=false` requires two configs (DEV, PROD).
+- **Datasource connection test**: `+test_datasource_connect` requires `--spaceCode` and `--datasourceName`. It tests the saved datasource config and returns `datasourceName`, `connectStatus`, `connectFails`, `lastConnectTime`, and `nextAction`.
+- **Datasource modification**: `+modify_datasource` creates no preview; it updates only provided optional fields after the CLI write confirmation. Use `--envJsonList` with the same JSON array format as `+add_datasource`.
+- **Datasource online**: `+online_datasource` requires `--spaceCode` and `--dataSourceNames`. It executes after the CLI write confirmation and returns `failDataSources` and `successDataSourceNames`.
+- **Sync datasources**: `+list_sync_datasources` requires `--spaceCode`; `--env` is optional and defaults to `DEV`. It returns `sourceComponentSet` and `sinkComponentSet`, grouped by component, with `dataSourceList` and `supportableComponent`.
+- **Datasource databases**: `+list_datasource_databases` requires `--spaceCode` and `--datasourceId`; `--catalog` and `--env` are optional, and `--env` defaults to `DEV`. It returns an array of objects with `databaseName`.
+- **Datasource tables**: `+list_datasource_tables` requires `--spaceCode`, `--datasourceId`, and `--database`; `--catalog` and `--env` are optional, and `--env` defaults to `DEV`. It returns table metadata including `database`, `tableName`, `tableType`, `tableComment`, `engine`, `disabled`, `disabledReasons`, `sameVersion`, and `supportSharding`.
+- **Datasource table structure**: `+get_table_structure` requires `--spaceCode`, `--datasourceId`, `--database`, and `--tablePath`; `--catalog` and `--env` are optional, and `--env` defaults to `DEV`. It returns `columns` and `partitionColumns`.
+- **Sync solution list**: `+list_sync_solutions` requires only `--spaceCode`. It returns sync metadata including `syncId`, `syncName`, source/sink datasource and table fields, last execution/schedule status codes, owner, remark, and timestamps.
+- **Sync detail**: `+get_sync_detail` requires `--spaceCode` and `--syncId`; `--withParams` is optional and defaults to `false`. It returns source, sink, field mapping, last execution/schedule status, owner, and `nextAction`; `withParams=true` also returns `usedParams`.
+- **Sync update**: `+save_sync_solution` requires `--spaceCode`, `--syncId`, `--sourceConfig`, and `--sinkConfig`; `--syncName`, `--channelConfig`, `--fieldsMapping`, and `--remark` are optional. Passing `--syncName` renames the sync solution; omit it to keep the current name. `sourceConfig` and `sinkConfig` must be complete JSON strings from `+get_sync_detail --withParams true`; pass complete `channelConfig` and `fieldsMapping` when keeping or updating them.
+- **Sync runs**: `+list_sync_runs` requires `--spaceCode` and `--syncId`; `--limit` is optional and defaults to `20`. It returns `runs`, `returnedCount`, `limit`, and `nextAction`; each run includes `taskId`, `execType`, `status`, `execTime`, `channelMode`, and `submitter`.
+- **Stop sync run**: `+stop_sync_solution` requires `--spaceCode`, `--syncId`, and `--taskId`. Use `taskId` from `+list_sync_runs` for an active run. It returns `action`, `result` with `execStatus`, `syncId`, and `taskId`, and top-level `status`.
 
 ## Component Conditional Required Parameters
 
-Some components have conditional required parameters that vary based on deployment mode. The requiredFields from `+list_datasource_components` may not include these parameters (they are explained in optionalFields or importantNotes). When creating datasources, be sure to supplement corresponding parameters based on the user's selected mode.
+Some components have conditional required parameters that vary based on deployment mode. The requiredFields from `+get_datasource_component_template` may not include these parameters (they are explained in optionalFields or importantNotes). When creating datasources, be sure to supplement corresponding parameters based on the user's selected mode.
 
 ### MongoDB
 

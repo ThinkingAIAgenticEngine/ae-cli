@@ -1,23 +1,26 @@
-import type { Command } from '../../../framework/types.js';
-import { callMcpTool, parseMcpResult, resolveMcpUrl } from '../../../core/mcp.js';
+import type { Command, RuntimeContext } from '../../../framework/types.js';
+import { buildDataopsApiDryRun, callDataopsApi } from '../shared.js';
+
+const toolName = 'integration_online_datasource';
+
+function buildArgs(ctx: RuntimeContext) {
+  return {
+    spaceCode: ctx.str('spaceCode'),
+    dataSourceNames: ctx.str('dataSourceNames'),
+  };
+}
 
 export const onlineDatasource: Command = {
   service: 'dataops_integration',
   command: '+online_datasource',
-  description: 'Batch online datasources. Write operation requires two-step confirmation: First call returns operation preview, after confirmation set confirmed=true to execute online. After online, datasource status becomes NORMAL, associated sync solutions can execute normally. Used for scenarios where offline datasources need to be re-enabled',
+  description: 'Online one or more datasources. Requires spaceCode and comma-separated dataSourceNames.',
   flags: [
     { name: 'spaceCode', type: 'string', required: true, desc: 'Space code' },
     { name: 'dataSourceNames', type: 'string', required: true, desc: 'Datasource name list (comma-separated)' },
-    { name: 'confirmed', type: 'boolean', required: false, desc: 'Whether confirmed to execute, defaults to false if not passed' },
   ],
   risk: 'write',
+  dryRun: (ctx) => buildDataopsApiDryRun(ctx, toolName, buildArgs(ctx)),
   execute: async (ctx) => {
-    const mcpUrl = resolveMcpUrl(ctx.mcpUrl(), ctx.host(), ctx.service());
-    const result = await callMcpTool(mcpUrl, 'integration_online_datasource', {
-      spaceCode: ctx.str('spaceCode'),
-      dataSourceNames: ctx.str('dataSourceNames'),
-      confirmed: ctx.bool('confirmed'),
-    });
-    return parseMcpResult(result);
+    return callDataopsApi(ctx, toolName, buildArgs(ctx));
   },
 };

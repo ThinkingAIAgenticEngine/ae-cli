@@ -90,11 +90,12 @@ ae-cli auth logout
 | `analysis_audience` | 10+ | 受众运营：分群、标签及其定义模型 |
 | `analysis_meta` | 20+ | 元数据治理：事件/属性、指标、虚拟元数据、项目配置、埋点方案、标记时间、实体目录 |
 | `engage` | 40+ | Hermes Engage MCP：渠道、任务、配置、流程、策略 |
-| `dataops_repo` | 8 | 数仓仓库：空间、目录、模式、成员 |
-| `dataops_datatable` | 10+ | 数据表：表创建、视图、批量操作、数据字典 |
-| `dataops_flow` | 20+ | 任务流：流程创建、任务节点、调度、执行、监控 |
-| `dataops_ide` | 10+ | IDE 查询：元数据浏览、SQL 执行、查询管理 |
-| `dataops_integration` | 20+ | 数据集成：数据源管理、同步方案、数据同步 |
+| `dataops_repo` | 1 | DataOps 仓库辅助：空间发现 |
+| `dataops_datatable` | 5 | 数据表：表/视图创建、发布、详情、数据字典 |
+| `dataops_flow` | 15 | 任务流：流程创建、任务节点、调度、执行、监控、发布预览 |
+| `dataops_operations` | 4 | 运维：工作流实例搜索、实例详情、任务日志、停止执行 |
+| `dataops_ide` | 9 | IDE 查询：元数据浏览、SQL 执行、查询管理 |
+| `dataops_integration` | 19 | 数据集成：数据源管理、同步方案、数据同步 |
 | `community` | 10+ | 社区分析：帖子搜索、情感分析、话题趋势、直播数据 |
 | `analysis_common` | 2 | 跨模块通用约束：资源链接补全、项目 ID 门控 |
 | `agent` | 15 | Agent 平台资源管理：模型、MCP 服务、Skill、附件库的增删查和启停 |
@@ -170,7 +171,7 @@ Hermes Engage MCP 能力：
 ### ae-dataops
 
 数仓管理：
-- **仓库管理**：空间、目录、模式、成员
+- **仓库辅助**：空间发现
 - **数据表**：表创建、视图、批量操作、数据字典
 - **任务流**：流程创建、任务节点、调度、执行、监控
 - **IDE 查询**：元数据浏览、SQL 执行、查询管理

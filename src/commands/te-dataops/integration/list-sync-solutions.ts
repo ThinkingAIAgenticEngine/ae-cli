@@ -1,19 +1,24 @@
-import type { Command } from '../../../framework/types.js';
-import { callMcpTool, parseMcpResult, resolveMcpUrl } from '../../../core/mcp.js';
+import type { Command, RuntimeContext } from '../../../framework/types.js';
+import { buildDataopsApiDryRun, callDataopsApi } from '../shared.js';
+
+const toolName = 'integration_list_sync_solutions';
+
+function buildArgs(ctx: RuntimeContext) {
+  return {
+    spaceCode: ctx.str('spaceCode'),
+  };
+}
 
 export const listSyncSolutions: Command = {
   service: 'dataops_integration',
   command: '+list_sync_solutions',
-  description: 'List all sync solutions under a space. Returns: syncId (sync solution ID, for subsequent Tool calls), syncName (name), srcComponent/sinkComponent (source/target components), srcDatasourceId/sinkDatasourceId (source/target datasource IDs), lastExecStatus (last execution status: WAITING/RUNNING/SUCCESS/FAIL/STOP), owner (owner). This is the entry point for sync solution management, after getting syncId can call integration_get_sync_detail to view details, integration_exec_sync_solution to execute sync',
+  description: 'List sync solutions in a space. Returns syncId, syncName, source/sink component, datasource, database and table fields, lastExecStatus/lastScheduleStatus codes, owner, remark, and timestamps. Use syncId with +get_sync_detail or +exec_sync_solution',
   flags: [
     { name: 'spaceCode', type: 'string', required: true, desc: 'Space code' },
   ],
   risk: 'read',
+  dryRun: (ctx) => buildDataopsApiDryRun(ctx, toolName, buildArgs(ctx)),
   execute: async (ctx) => {
-    const mcpUrl = resolveMcpUrl(ctx.mcpUrl(), ctx.host(), ctx.service());
-    const result = await callMcpTool(mcpUrl, 'integration_list_sync_solutions', {
-      spaceCode: ctx.str('spaceCode'),
-    });
-    return parseMcpResult(result);
+    return callDataopsApi(ctx, toolName, buildArgs(ctx));
   },
 };

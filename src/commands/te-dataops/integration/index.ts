@@ -2,7 +2,9 @@ import type { Command } from '../../../framework/types.js';
 
 // integration commands
 import { listDatasourceComponents } from './list-datasource-components.js';
+import { getDatasourceComponentTemplate } from './get-datasource-component-template.js';
 import { listSpaceDatasources } from './list-space-datasources.js';
+import { getDatasourceDetail } from './get-datasource-detail.js';
 import { testDatasourceConnect } from './test-datasource-connect.js';
 import { listDatasourceTables } from './list-datasource-tables.js';
 import { getTableStructure } from './get-table-structure.js';
@@ -11,12 +13,9 @@ import { listDatasourceDatabases } from './list-datasource-databases.js';
 import { onlineDatasource } from './online-datasource.js';
 import { addDatasource } from './add-datasource.js';
 import { modifyDatasource } from './modify-datasource.js';
-import { validateSql } from './validate-sql.js';
-import { executeSql } from './execute-sql.js';
 import { listSyncSolutions } from './list-sync-solutions.js';
 import { getSyncDetail } from './get-sync-detail.js';
-import { listSyncExecHistories } from './list-sync-exec-histories.js';
-import { getSyncExecInfo } from './get-sync-exec-info.js';
+import { listSyncRuns } from './list-sync-runs.js';
 import { execSyncSolution } from './exec-sync-solution.js';
 import { addSyncSolution } from './add-sync-solution.js';
 import { saveSyncSolution } from './save-sync-solution.js';
@@ -24,7 +23,9 @@ import { stopSyncSolution } from './stop-sync-solution.js';
 
 const commands: Command[] = [
   listDatasourceComponents,
+  getDatasourceComponentTemplate,
   listSpaceDatasources,
+  getDatasourceDetail,
   testDatasourceConnect,
   listDatasourceTables,
   getTableStructure,
@@ -33,12 +34,9 @@ const commands: Command[] = [
   onlineDatasource,
   addDatasource,
   modifyDatasource,
-  validateSql,
-  executeSql,
   listSyncSolutions,
   getSyncDetail,
-  listSyncExecHistories,
-  getSyncExecInfo,
+  listSyncRuns,
   execSyncSolution,
   addSyncSolution,
   saveSyncSolution,

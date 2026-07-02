@@ -9,6 +9,7 @@ import { listMetrics } from './list-metrics.js';
 import { getMetric } from './get-metric.js';
 import { createMetric } from './create-metric.js';
 import { updateMetric } from './update-metric.js';
+import { deleteMetric } from './delete-metric.js';
 
 const commands: Command[] = [
   listEvents,
@@ -21,6 +22,7 @@ const commands: Command[] = [
   getMetric,
   createMetric,
   updateMetric,
+  deleteMetric,
 ];
 
 export default commands;

@@ -1,23 +1,28 @@
-import type { Command } from '../../../framework/types.js';
-import { callMcpTool, parseMcpResult, resolveMcpUrl } from '../../../core/mcp.js';
+import type { Command, RuntimeContext } from '../../../framework/types.js';
+import { buildDataopsApiDryRun, callDataopsApi } from '../shared.js';
+
+const toolName = 'integration_list_space_datasources';
+
+function buildArgs(ctx: RuntimeContext): Record<string, unknown> {
+  return {
+    spaceCode: ctx.str('spaceCode'),
+    dataSourceName: ctx.str('datasourceName'),
+    componentName: ctx.str('componentName'),
+  };
+}
 
 export const listSpaceDatasources: Command = {
   service: 'dataops_integration',
   command: '+list_space_datasources',
-  description: 'Query datasources under a space, supports optional filtering by name and component type, all results include complete configuration details. Not passing filter parameters returns all datasources under the space; pass dataSourceName for exact name matching (business unique, returns 0 or 1 result); pass componentName to filter by component type (e.g., only view all MySQL datasources); two filter parameters can be used alone or in combination. Returns: datasourceId (datasource ID, for subsequent Tool calls), dataSourceComponentName (component type), dataSourceName (name), dataSourceRemark (remark), dataSourceStatus (NORMAL/OFFLINE), connectStatus (SUCCESS/CLOSED/FAILED), syncTaskNum (number of sync tasks), sharedConfig (whether shared configuration), connectConfig (connection configuration, includes envJsonList, password desensitized), connectFails (connection failure reasons), lastConnectTime (last successful connection time)',
+  description: 'List datasource summaries in a space. Requires spaceCode; datasourceName and componentName are optional filters. Returns datasourceId, dataSourceComponentName, dataSourceName, dataSourceRemark, dataSourceStatus, connectStatus, syncTaskNum, and sharedConfig.',
   flags: [
     { name: 'spaceCode', type: 'string', required: true, desc: 'Space code' },
-    { name: 'datasourceName', type: 'string', required: false, desc: 'Datasource name, exact filter (business unique within space)' },
-    { name: 'componentName', type: 'string', required: false, desc: 'Component type (e.g., MySQL, Hive, ClickHouse), filter by type' },
+    { name: 'datasourceName', type: 'string', required: false, desc: 'Optional exact datasource name filter' },
+    { name: 'componentName', type: 'string', required: false, desc: 'Optional component type filter, e.g. MySQL or ClickHouse' },
   ],
   risk: 'read',
+  dryRun: (ctx) => buildDataopsApiDryRun(ctx, toolName, buildArgs(ctx)),
   execute: async (ctx) => {
-    const mcpUrl = resolveMcpUrl(ctx.mcpUrl(), ctx.host(), ctx.service());
-    const result = await callMcpTool(mcpUrl, 'integration_list_space_datasources', {
-      spaceCode: ctx.str('spaceCode'),
-      datasourceName: ctx.str('datasourceName'),
-      componentName: ctx.str('componentName'),
-    });
-    return parseMcpResult(result);
+    return callDataopsApi(ctx, toolName, buildArgs(ctx));
   },
 };

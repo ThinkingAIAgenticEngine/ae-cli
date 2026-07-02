@@ -9,7 +9,7 @@ export const updateCluster = createMcpCommand({
     { name: 'display_name', type: 'string', required: false, desc: 'New cluster display name. Length: 1-80' },
     { name: 'remark', type: 'string', required: false, desc: 'New cluster remark' },
     { name: 'type', type: 'string', required: false, desc: 'New cluster type: condition/sql. Recommended when updating definition' },
-    { name: 'definition', type: 'json', required: false, desc: 'New cluster definition JSON. See +get_cluster_definition_schema' },
+    { name: 'definition', type: 'json', required: false, desc: 'New cluster definition JSON. Call +build_cluster_definition first to generate this value.' },
     { name: 'zone_offset', type: 'number', required: false, desc: 'Optional time zone offset, valid range: -12 to 14' },
   ],
   risk: 'write',

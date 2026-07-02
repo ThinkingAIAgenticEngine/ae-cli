@@ -19,7 +19,7 @@ Domain: **Cluster Management**
 ```bash
 ae-cli analysis_audience +list_clusters --project_id <project_id>
 ae-cli analysis_audience +list_clusters --project_id <project_id> --query demo
-ae-cli analysis_audience +list_clusters --project_id <project_id> --fields '["id","clusterName","usersNum"]' --limit 20 --offset 0
+ae-cli analysis_audience +list_clusters --project_id <project_id> --fields '["id","clusterName","displayName","remarks","clusterType","progress","usersNum"]' --limit 20 --offset 0
 ae-cli analysis_audience +list_clusters --dry-run
 ```
 
@@ -27,8 +27,8 @@ ae-cli analysis_audience +list_clusters --dry-run
 | Parameter | Required | Description |
 |---|---|---|
 | `--project_id` / `-p` | Yes | Project ID |
-| `--query` / `-q` | No | Optional keyword filter. Performs fuzzy matching against cluster names, display names, and remarks; if omitted, all clusters are returned. |
-| `--fields` | No | Optional return field list (JSON array). Invalid fields will fail with `INVALID_FIELDS`. |
+| `--query` / `-q` | No | Optional keyword filter. Performs fuzzy matching against clusterName, displayName, and remarks; if omitted, all clusters are returned. |
+| `--fields` | No | Optional return field list (JSON array). Supported fields: `id`, `clusterName`, `displayName`, `clusterType`, `progress`, `usersNum`, `refreshStatus`, `remarks`. Default fields when omitted: `id`, `clusterName`, `displayName`, `remarks`, `clusterType`, `progress`, `usersNum`. Invalid fields will fail with `INVALID_FIELDS`. |
 | `--limit` | No | Optional page size. Default: 20, max: 50. |
 | `--offset` | No | Optional page offset. Default: 0. |
 
