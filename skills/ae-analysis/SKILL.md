@@ -41,10 +41,10 @@ Use `ae-analysis` for all AE analysis-side work below:
 
 - Domain `analysis`: alerts, reports/dashboards, ad-hoc model analysis, drilldown, entity/event details, schema helpers.
 - Domain `analysis_audience`: clusters/tags and definition schemas.
-- Domain `analysis_meta`: metadata governance, metrics, virtual metadata, project config, tracking plans, mark times, entity catalog.
+- Domain `analysis_meta`: metadata governance, metrics, virtual metadata, project config, tracking plans, mark times, entity catalog (MCP). For **single** super-event / super-property **detail** on the capability gateway, switch to **`ae-metadata`** skill (`metadata event get`, `metadata property get`).
 - Domain `analysis_common`: project listing and post-write resource links.
 
-If user intent is Engage/DataOps/Community, switch to `ae-engage` / `ae-dataops` / `ae-community`.
+If user intent is Engage/DataOps/Community/metadata gateway detail, switch to `ae-engage` / `ae-dataops` / `ae-community` / **`ae-metadata`**.
 
 ## Command Format
 
@@ -167,6 +167,13 @@ Builder-supported model routing is:
 4. Call `query_adhoc` only when builder returns `status=generated`.
 
 Do not insert metadata/schema calls between steps 2 and 3 for builder-supported models. Specifically, do not call `get_analysis_query_schema`, `list_events`, `list_properties`, `list_metrics`, `get_metric`, or `get_report_definition` to prepare the builder payload. The builder resolves event/property/metric metadata internally and returns `need_clarification` when it cannot.
+
+Authenticated asset scope:
+
+- Use `--authenticated_only true` on metadata list commands (`+list_events`, `+list_properties`, `+list_metrics`, `+list_clusters`, `+list_tags`) when the user explicitly asks to see only authenticated assets.
+- Use `--authenticated_only true` on QP builders and cluster/tag definition builders when the generated QP/definition should resolve only authenticated assets.
+- Do not pass `authenticated_only` or `authenticatedOnly` to `+query_adhoc`; the filter takes effect during metadata resolution and QP/definition construction, not query execution.
+- List responses include `authenticationStatus` by default (`1` authenticated, `0` unauthenticated).
 
 Event metric shortcut:
 

@@ -7,7 +7,7 @@
 
 ## 预期工作方式
 
-1. 首次使用：`ae-cli config` 配置 host，必要时 `ae-cli auth login`（如 macOS 从 Chrome 取 token）或 `auth set-token`。
+1. 首次使用：`ae-cli config` 配置 host，然后 `ae-cli auth login`（无头环境用 `--no-browser` / `--no-wait` 分裂流）。
 2. 日常调用：`ae-cli <domain> <subcommand> [flags]`，必要时加 `--project-id` / 业务参数（因命令而异）。
 3. AI 侧：安装 Skills 后，模型根据 `skills/*/SKILL.md` 与 `references/*.md` 拼出正确命令与参数格式。
 

@@ -67,11 +67,8 @@ ae-cli kb +read --source '{"scope":"company","name":"engineering-handbook"}' \
 Authentication is handled per-host. Each AE host URL maintains its own token.
 
 ```bash
-# Auto-login for active host (macOS, extracts token from Chrome)
+# Device code login (cross-platform)
 ae-cli auth login
-
-# Manually set token
-ae-cli auth set-token <your-token>
 
 # Check status
 ae-cli auth status

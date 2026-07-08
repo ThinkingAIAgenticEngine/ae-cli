@@ -1,6 +1,6 @@
 import type { RuntimeContext } from "../framework/types.js";
 import { PermissionError } from "./errors.js";
-import { getMcpToken } from "./mcp.js";
+import { getCliToken } from "./cli-token.js";
 import { safeJsonParse } from "./json-utils.js";
 
 function buildUrl(
@@ -70,13 +70,16 @@ function parseKbResponse(resp: Response, text: string): any {
   return data.data !== undefined ? data.data : data;
 }
 
-async function fetchWithMcpToken(
+/**
+ * KB external REST calls authenticate with `cli-token` only (see mcp.ts buildAuthHeaders).
+ */
+async function fetchWithCliToken(
   input: string,
   init: RequestInit,
-  mcpToken: string,
+  cliToken: string,
 ): Promise<any> {
   const headers = new Headers(init.headers);
-  headers.set("mcp-token", mcpToken);
+  headers.set("cli-token", cliToken);
 
   const resp = await fetch(input, { ...init, headers });
   return parseKbResponse(resp, await resp.text());
@@ -85,8 +88,8 @@ async function fetchWithMcpToken(
 export async function getAuthHeaders(
   ctx: RuntimeContext,
 ): Promise<Record<string, string>> {
-  const mcpToken = await getMcpToken(ctx.host());
-  return { "mcp-token": mcpToken };
+  const cliToken = await getCliToken(ctx.host());
+  return { "cli-token": cliToken };
 }
 
 export async function kbApi(
@@ -97,10 +100,10 @@ export async function kbApi(
   body?: any,
 ): Promise<any> {
   const host = ctx.host();
-  const mcpToken = await getMcpToken(host);
+  const cliToken = await getCliToken(host);
 
   const upperMethod = method.toUpperCase();
-  return fetchWithMcpToken(
+  return fetchWithCliToken(
     buildUrl(host, path, params),
     {
       method: upperMethod,
@@ -109,7 +112,7 @@ export async function kbApi(
       },
       body: upperMethod === "GET" ? undefined : JSON.stringify(body ?? {}),
     },
-    mcpToken,
+    cliToken,
   );
 }
 
@@ -120,14 +123,14 @@ export async function kbUpload(
   params: Record<string, any> = {},
 ): Promise<any> {
   const host = ctx.host();
-  const mcpToken = await getMcpToken(host);
+  const cliToken = await getCliToken(host);
 
-  return fetchWithMcpToken(
+  return fetchWithCliToken(
     buildUrl(host, path, params),
     {
       method: "POST",
       body: form,
     },
-    mcpToken,
+    cliToken,
   );
 }

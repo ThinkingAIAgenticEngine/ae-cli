@@ -32,6 +32,7 @@ ae-cli analysis +build_prop_analysis_qp --project_id <project_id> --prop_analysi
 | Parameter | Required | Description |
 |---|---|---|
 | `--project_id` / `-p` | Yes | Project ID |
+| `--authenticated_only` | No | Resolve only authenticated assets while building the QP. Do not pass this flag to `+query_adhoc`. |
 | `--prop_analysis` | Yes | User property analysis intent JSON |
 
 ## JSON Shape
@@ -110,6 +111,7 @@ ae-cli analysis +build_prop_analysis_qp --project_id 3137 --prop_analysis '{"met
 ```
 
 ## Decision Rules
+- Use `--authenticated_only true` only when the user explicitly wants authenticated assets; do not add this flag to `+query_adhoc`.
 - After successful build, call `+query_adhoc --model_type prop_analysis --qp '<response.qp>'`.
 - If build returns non-generated status, stop and ask user to clarify; do not call `+query_adhoc`.
 - Wrap JSON parameters in single quotes to avoid shell escaping issues.

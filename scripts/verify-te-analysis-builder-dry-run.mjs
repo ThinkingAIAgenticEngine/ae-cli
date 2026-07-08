@@ -64,23 +64,27 @@ runDryRun('+build_event_analysis_qp', [
   '--project_id', '1',
   '--time_range', '{"mode":"previous","unit":"day","value":7}',
   '--metrics', '[{"event":"登录","aggregation":"user_count"}]',
-], ['projectId', 'timeRange', 'metrics']);
+  '--authenticated_only', 'true',
+], ['projectId', 'timeRange', 'metrics', 'authenticatedOnly']);
 
 runDryRun('+build_retention_analysis_qp', [
   '--project_id', '1',
   '--time_range', '{"mode":"previous","unit":"day","value":7}',
   '--retention', '{"initialEvent":"登录","returnEvent":"支付","unitNum":7}',
-], ['projectId', 'timeRange', 'retention']);
+  '--authenticated_only', 'true',
+], ['projectId', 'timeRange', 'retention', 'authenticatedOnly']);
 
 runDryRun('+build_funnel_analysis_qp', [
   '--project_id', '1',
   '--time_range', '{"mode":"previous","unit":"day","value":7}',
   '--funnel', '{"steps":[{"event":"登录"},{"event":"支付"}]}',
-], ['projectId', 'timeRange', 'funnel']);
+  '--authenticated_only', 'true',
+], ['projectId', 'timeRange', 'funnel', 'authenticatedOnly']);
 
 runDryRun('+build_prop_analysis_qp', [
   '--project_id', '1',
   '--prop_analysis', '{"metric":{"aggregation":"user_count"}}',
-], ['projectId', 'propAnalysis']);
+  '--authenticated_only', 'true',
+], ['projectId', 'propAnalysis', 'authenticatedOnly']);
 
 console.log('OK: verified 4 analysis builder dry-run commands are executable and mapped correctly.');

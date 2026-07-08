@@ -1,4 +1,4 @@
-import { createMcpCommand, optionalJson, optionalString } from '../shared.js';
+import { createMcpCommand, optionalBoolean, optionalJson, optionalString } from '../shared.js';
 
 export const buildClusterDefinition = createMcpCommand({
   command: '+build_cluster_definition',
@@ -10,6 +10,7 @@ export const buildClusterDefinition = createMcpCommand({
     { name: 'include_filter', type: 'json', required: false, desc: 'For type=condition: global include condition group JSON (cluster-type conditions only).' },
     { name: 'exclude_filter', type: 'json', required: false, desc: 'For type=condition: global exclude condition group JSON (cluster-type conditions only).' },
     { name: 'sql', type: 'string', required: false, desc: 'For type=sql: SQL query returning a single column named #user_id.' },
+    { name: 'authenticated_only', type: 'boolean', required: false, desc: 'When true, resolve only authenticated assets while building the definition.' },
   ],
   risk: 'read',
   buildArgs: (ctx) => ({
@@ -21,5 +22,6 @@ export const buildClusterDefinition = createMcpCommand({
       excludeFilter: optionalJson(ctx, 'exclude_filter'),
       sql: optionalString(ctx, 'sql'),
     },
+    authenticatedOnly: optionalBoolean(ctx, 'authenticated_only'),
   }),
 });

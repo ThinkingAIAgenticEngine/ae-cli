@@ -45,7 +45,7 @@ if (commandSet.size !== commands.length) {
   fail('duplicate analysis_audience command names found in source files');
 }
 
-const EXPECTED_COUNT = 14;
+const EXPECTED_COUNT = 22;
 if (commands.length !== EXPECTED_COUNT) {
   fail(`analysis_audience tool count mismatch: expected ${EXPECTED_COUNT}, got ${commands.length}`);
 }
@@ -89,12 +89,14 @@ const lifecycleDescriptionTokens = [
   'mcp_0123456789abcdef0123456789abcdef',
 ];
 const requiredTokensByFile = {
-  'src/commands/te-audience/cluster/list-clusters.ts': ["name: 'query'", "name: 'fields'", "name: 'limit'", "name: 'offset'"],
+  'src/commands/te-audience/cluster/list-clusters.ts': ["name: 'query'", "name: 'fields'", "name: 'limit'", "name: 'offset'", "name: 'authenticated_only'", 'authenticatedOnly', 'authenticationStatus', 'max 50'],
   'src/commands/te-audience/cluster/list-cluster-members.ts': ["name: 'query'", "name: 'fields'", "name: 'limit'", "name: 'offset'", ...lifecycleDescriptionTokens],
-  'src/commands/te-audience/tag/list-tags.ts': ["name: 'query'", "name: 'fields'", "name: 'limit'", "name: 'offset'"],
+  'src/commands/te-audience/tag/list-tags.ts': ["name: 'query'", "name: 'fields'", "name: 'limit'", "name: 'offset'", "name: 'authenticated_only'", 'authenticatedOnly', 'authenticationStatus', 'max 50'],
   'src/commands/te-audience/tag/list-tag-members.ts': ["name: 'query'", "name: 'fields'", "name: 'limit'", "name: 'offset'", ...lifecycleDescriptionTokens],
   'src/commands/te-audience/schema/get-cluster-definition-schema.ts': ["name: 'cluster_type'", "name: 'response_mode'", "name: 'condition_subtype'"],
   'src/commands/te-audience/schema/get-tag-definition-schema.ts': ["name: 'type'", "name: 'response_mode'", "name: 'condition_subtype'"],
+  'src/commands/te-audience/cluster/build-cluster-definition.ts': ["name: 'authenticated_only'", 'authenticatedOnly'],
+  'src/commands/te-audience/tag/build-tag-definition.ts': ["name: 'authenticated_only'", 'authenticatedOnly'],
 };
 
 for (const [relPath, tokens] of Object.entries(requiredTokensByFile)) {

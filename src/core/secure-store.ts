@@ -24,7 +24,6 @@
  *   - Does NOT protect: **co-resident processes running as the same user on the same machine** — such processes can read the 0o600 file and re-derive the key, enabling decryption
  *     (stronger protection requires a future enhancement: use the OS keychain to protect the key; see design doc section B)
  *   - CI/containers: the fallback machineId (`$HOME|hostname|platform`) may be approximate or guessable, reducing confidentiality to obfuscation level
- *     (rely on `TE_TOKEN` env / `set-token` command for those environments)
  *
  * ## Consumers
  * - Task 4 (ae-cli auth login): calls `save()` to persist to disk; calls `getValidAccessToken()` to retrieve a valid token
@@ -63,11 +62,12 @@ export interface TokenPayload {
   /** ISO 8601 string, e.g. "2026-06-20T12:00:00.000Z" */
   accessExpiresAt: string;
   /**
-   * Long-lived MCP token (server-side non-expiring; minted at device login).
-   * Persisting it lets MCP-based commands stay authenticated across sessions without
-   * re-minting from a short-lived access token. Optional for backward compatibility.
+   * CLI token (server-side non-expiring). Minted by cli-token.ts immediately after device login
+   * (using the accessToken above) and persisted here
+   * so subsequent CLI invocations (new processes) reuse it instead of re-minting every time.
+   * Also cleared by `auth logout`.
    */
-  mcpToken?: string;
+  cliToken?: string;
 }
 
 /** Refresh response body (per backend contract) */
@@ -306,8 +306,8 @@ export async function getValidAccessToken(host: string): Promise<string> {
   if (payload.refreshToken) {
     logger.info(`secure-store: access token past local expiry for ${host}, refreshing…`);
     const refreshed = await doRefresh(host, payload.refreshToken);
-    // Preserve the (non-expiring) mcpToken across an access-token refresh — doRefresh only returns access/refresh.
-    save(host, { ...refreshed, mcpToken: payload.mcpToken });
+    // Preserve the (non-expiring) cliToken across an access-token refresh — doRefresh only returns access/refresh.
+    save(host, { ...refreshed, cliToken: payload.cliToken });
     logger.info(`secure-store: token refreshed for ${host}`);
     return refreshed.accessToken;
   }
@@ -322,11 +322,11 @@ export async function getValidAccessToken(host: string): Promise<string> {
 }
 
 /**
- * Returns the persisted long-lived MCP token for a host, or null if absent.
- * Used by the MCP path to stay authenticated without re-minting from an access token.
+ * Returns the persisted long-lived CLI token for a host, or null if absent.
+ * Used by cli-token.ts to stay authenticated without re-minting from an access token.
  */
-export function loadMcpToken(host: string): string | null {
-  return load(host)?.mcpToken ?? null;
+export function loadCliToken(host: string): string | null {
+  return load(host)?.cliToken ?? null;
 }
 
 /**
@@ -400,4 +400,4 @@ export class SecureStoreAuthError extends Error {
 }
 
 /** Namespace export (for use with import * as secureStore) */
-export const secureStore = { save, load, clear, getValidAccessToken, loadMcpToken };
+export const secureStore = { save, load, clear, getValidAccessToken, loadCliToken };

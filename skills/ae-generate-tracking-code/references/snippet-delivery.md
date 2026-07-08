@@ -4,9 +4,10 @@
 
 ## Deliverables
 
-Two outputs:
+Three outputs:
 1. **Markdown response**: code snippets grouped by platform (for reading)
 2. **Code files**: `.ae-cli/output/<platform>-sdk.<ext>` (for copy-paste use)
+3. **Attachment library upload**: generated files uploaded with `ae-cli agent +add-attachment` so the user can download them from the file/attachment management entry
 
 ---
 
@@ -230,6 +231,26 @@ AE Debug mode requires the device ID to be added in AE Admin before data can be 
 
 ---
 
+## Attachment Library Upload
+
+After all snippet output files are written, upload generated output artifacts to the Agent attachment library:
+
+```bash
+ae-cli agent +add-attachment --yes --files '<json-array-of-generated-output-files>'
+```
+
+Upload list must include:
+- Every generated platform snippet file under `.ae-cli/output/`
+- `.ae-cli/output/README.md`
+- Server-side config files, including `.ae-cli/output/daemon.json` and related README files
+- Generated debug scripts, if any
+
+Only upload generated output artifacts. Do not upload files inserted directly into the user's project.
+
+If upload succeeds, report that the files are available from the file/attachment management entry. If upload fails because Agent attachment credentials are unavailable, preserve the local output files and report the upload failure separately.
+
+---
+
 ## Generation Workflow
 
 ### ⚠️ Mandatory Pre-checks (do not skip)
@@ -301,6 +322,10 @@ After generation, perform language style checks on each output file:
 
 1. Additionally generate `daemon.json` for server-side
 2. **Must always provide LogBus2 official documentation link**
+
+#### Step 5: Upload Generated Artifacts
+
+Upload all generated `.ae-cli/output/` artifacts to the Agent attachment library using `ae-cli agent +add-attachment --yes --files '<json-array>'`.
 
 ---
 

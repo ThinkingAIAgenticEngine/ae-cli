@@ -14,7 +14,9 @@ export async function runCommand(cmd: Command, opts: Record<string, any>, global
     const ctx = createRuntimeContext(cmd, opts, globalOpts);
 
     // Log command execution
-    const cmdName = `${cmd.service} ${cmd.command}`;
+    const cmdName = cmd.resource
+      ? `${cmd.service} ${cmd.resource} ${cmd.command}`
+      : `${cmd.service} ${cmd.command}`;
     logger.command(cmdName, opts);
 
     // Validate required flags
@@ -22,7 +24,7 @@ export async function runCommand(cmd: Command, opts: Record<string, any>, global
       if (flag.required) {
         const val = opts[camelCase(flag.name)];
         if (val === undefined || val === null || val === '') {
-          printError('validation', `Missing required flag: --${flag.name}`, `Usage: ae-cli ${cmd.service} ${cmd.command} --${flag.name} <value>`);
+          printError('validation', `Missing required flag: --${flag.name}`, `Usage: ae-cli ${cmdName} --${flag.name} <value>`);
           process.exit(1);
         }
       }
@@ -62,7 +64,7 @@ export async function runCommand(cmd: Command, opts: Record<string, any>, global
 
     // Confirm for write operations
     if (cmd.risk === 'write' && !globalOpts.yes) {
-      const confirmed = await confirm(`This is a write operation (${cmd.service} ${cmd.command}). Continue?`);
+      const confirmed = await confirm(`This is a write operation (${cmdName}). Continue?`);
       if (!confirmed) {
         process.stderr.write('Aborted.\n');
         process.exit(0);

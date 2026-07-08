@@ -1,5 +1,7 @@
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
+import { existsSync, mkdtempSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 import path from 'node:path';
 
 const ROOT = path.join(path.dirname(new URL(import.meta.url).pathname), '..');
@@ -19,17 +21,47 @@ function runCli(args) {
 
 console.log('tracking command tests');
 
-test('tracking help lists plan/code/wiki/debug/init/lang', () => {
+test('tracking help lists registered plan/code/wiki/lang commands', () => {
   const r = runCli(['tracking', '--help']);
   assert.equal(r.status, 0, r.stderr);
   assert.match(r.stdout, /plan/);
-  assert.match(r.stdout, /debug/);
-  assert.match(r.stdout, /init/);
+  assert.match(r.stdout, /code/);
+  assert.match(r.stdout, /wiki/);
+  assert.match(r.stdout, /lang/);
 });
 
 test('tracking plan list-templates runs without auth', () => {
   const r = runCli(['tracking', 'plan', 'list-templates']);
   assert.equal(r.status, 0, r.stderr);
+  assert.match(r.stdout, /TE官方模板_dataTrackSample|TE 埋点示例模板|template/);
+});
+
+test('tracking plan list-templates supports json output', () => {
+  const r = runCli(['tracking', 'plan', 'list-templates', '--json']);
+  assert.equal(r.status, 0, r.stderr);
+  const templates = JSON.parse(r.stdout);
+  assert.ok(Array.isArray(templates));
+  assert.ok(templates.some((item) => item.name === 'TE官方模板_dataTrackSample'));
+});
+
+test('tracking code import-template resolves template by name', () => {
+  const dir = mkdtempSync(path.join(tmpdir(), 'ae-cli-template-'));
+  const out = path.join(dir, 'draft.json');
+  try {
+    const r = runCli([
+      'tracking',
+      'code',
+      'import-template',
+      '--template-name',
+      'TE官方模板_dataTrackSample',
+      '--out',
+      out,
+    ]);
+    assert.equal(r.status, 0, r.stderr);
+    assert.ok(existsSync(out));
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
 });
 
 test('tracking wiki query runs locally', () => {

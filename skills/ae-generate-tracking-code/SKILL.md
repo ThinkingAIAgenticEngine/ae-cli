@@ -58,14 +58,14 @@ First, check if `.ae-cli/draft.json` exists and read existing configuration:
 |---|---|---|
 | AE projectId | `meta.project_id` | Has value → confirm; missing → ask |
 | AE web address | `meta.host` | Has value → confirm; missing → ask |
-| **SERVER_URL** | `meta.server_url` | **Must ask**. Data ingestion endpoint — different from web address |
-| **APP_ID** | `meta.app_id` | **Must ask**. Obtained from AE Admin → "Integration Config" |
+| **SERVER_URL** | `meta.server_url` | Has value → confirm; missing → try lookup from project config, then ask if unavailable |
+| **APP_ID** | `meta.app_id` | Has value → confirm; missing → try lookup from accessible project list, then ask if unavailable |
 | SDK integration mode | `meta.sdk_integration_mode` | Has value → use directly |
 | Client SDK type | `meta.client_platforms` (preferred) or `meta.client_sdk_type` | Has value → use directly |
 | Server language | `meta.server_language` | Has value → use directly |
 | User identity system | `meta.user_identity` | Has value → use directly |
 
-**Important**: `project_id` ≠ `APP_ID`, and `host` ≠ `SERVER_URL`. Even if project_id and host are already set, SERVER_URL and APP_ID must still be asked separately.
+**Important**: `project_id` ≠ `APP_ID`, and `host` ≠ `SERVER_URL`. Even if project_id and host are already set, SERVER_URL and APP_ID must still be resolved and confirmed separately. Prefer lookup first; ask the user only when lookup is unavailable or ambiguous.
 
 **Multi-platform support**:
 - If `client_platforms` exists (array): multi-platform scenario — generate code for each platform
@@ -86,14 +86,21 @@ First, check if `.ae-cli/draft.json` exists and read existing configuration:
 - User says `yes` → use draft value
 - User enters new value → update draft.json and use new value
 
-### Required configuration (must confirm each item)
+### Required configuration (must resolve and confirm each item)
 
-**⚠️ Key: SERVER_URL and APP_ID are independent config items. Even if draft.json has project_id and host, you MUST ask. `project_id` ≠ `APP_ID`, `host` ≠ `SERVER_URL`.**
+**⚠️ Key: SERVER_URL and APP_ID are independent config items. Even if draft.json has project_id and host, you MUST resolve and confirm them. `project_id` ≠ `APP_ID`, `host` ≠ `SERVER_URL`.**
 
-1. **SERVER_URL** — Data ingestion endpoint (**different from web URL**; go to AE Admin → "Project Settings" → "Integration Config" → fill in "Public URL")
+1. **APP_ID** — Prefer automatic lookup before asking:
+   - If `meta.project_id` is known, run `ae-cli analysis_common +list_projects` once for the current host.
+   - Find the project whose `projectId` matches `meta.project_id`.
+   - If the matched project has `appId`, ask: **"I found APP_ID `<appId>` for project `<projectId>`. Use it? yes / enter new value"**
+   - If the project is missing, ambiguous, or has no `appId`, ask the user to copy APP_ID from AE Admin → "Project Settings" → "Integration Config".
+2. **SERVER_URL** — Data ingestion endpoint (**different from web URL**; go to AE Admin → "Project Settings" → "Integration Config" → fill in "Public URL")
+   - If `meta.project_id` is known, you may try `ae-cli analysis_meta +get_project_config --project_id <project_id>` once.
+   - Use the returned value only if the response explicitly contains a receiver URL field such as `serverUrl`, `pushUrl`, `push_url`, `receiverUrl`, `publicUrl`, or equivalent ingestion endpoint field.
+   - If a value is found, ask: **"I found SERVER_URL `<url>` for project `<projectId>`. Use it? yes / enter new value"**
    - ⚠️ "Public URL" only shows if previously filled in; if empty, this field won't display
    - Solution: ask ops for the URL, or **skip this step** (use `SERVER_URL` or `PUSH_URL` placeholder in code)
-2. **APP_ID** — Go to AE Admin → "Project Settings" → "Integration Config" → copy "APP_ID"
 
 **host handling** (optional):
 - If you need to fetch plan from AE (no local draft.json) → ask for host
@@ -194,7 +201,7 @@ Ask in order, one item per message:
    - Account ID source: user_account / role_id / none
    - Visitor ID strategy: auto / device_id / custom
 
-5. **SERVER_URL / APP_ID** (skip if already configured)
+5. **APP_ID / SERVER_URL**: resolve them with the lookup-first flow above, confirm any found values with the user, and ask only for values that cannot be found or are rejected by the user.
 
 **Step 4: Merge configuration and proceed to Phase 1**
 
@@ -224,26 +231,31 @@ Without `.ae-cli/draft.json` or `.ae-cli/remote-plan.json`:
 
 **Client platforms** (corresponding to client SDKs):
 
-| plan field | Platform | SDK | Document Path |
-|---|---|---|---|
-| `android` | Android | Android SDK | `~/.ae-cli/wiki/te-docs/raw/data-ingestion-guide/client-sdk/android.md` |
-| `ios` | iOS | iOS SDK | `~/.ae-cli/wiki/te-docs/raw/data-ingestion-guide/client-sdk/ios.md` |
-| `openharmony` | OpenHarmony | OpenHarmony SDK | `~/.ae-cli/wiki/te-docs/raw/客户端-sdk/openharmony.md` |
-| `javascript` | Web / H5 | JavaScript SDK | `~/.ae-cli/wiki/te-docs/raw/data-ingestion-guide/client-sdk/javascript.md` |
-| `miniprogram` | Mini-program | Mini-program SDK | `~/.ae-cli/wiki/te-docs/raw/客户端-sdk/小程序小游戏.md` |
-| `unity` | Unity | Unity SDK | `~/.ae-cli/wiki/te-docs/raw/data-ingestion-guide/client-sdk/game-engine/unity.md` |
-| `game_engine` | Game Engine | Cocos / Laya / Unreal | See `references/sdk-index.md` |
+| plan field | Platform | SDK |
+|---|---|---|
+| `android` | Android | Android SDK |
+| `ios` | iOS | iOS SDK |
+| `openharmony` | OpenHarmony | OpenHarmony SDK |
+| `javascript` | Web / H5 | JavaScript SDK |
+| `miniprogram` | Mini-program | Mini-program SDK |
+| `unity` | Unity | Unity SDK |
+| `game_engine` | Game Engine | Cocos / Laya / Unreal |
 
 **Server languages** (corresponding to server SDKs):
 
-| plan field | Language | SDK | Document Path |
-|---|---|---|---|
-| `java` | Java | Java SDK | `~/.ae-cli/wiki/te-docs/raw/data-ingestion-guide/server-sdk/java.md` |
-| `python` | Python | Python SDK | `~/.ae-cli/wiki/te-docs/raw/data-ingestion-guide/server-sdk/python.md` |
-| `go` | Go | Go SDK | `~/.ae-cli/wiki/te-docs/raw/data-ingestion-guide/server-sdk/golang.md` |
-| `nodejs` | Node.js | Node SDK | `~/.ae-cli/wiki/te-docs/raw/data-ingestion-guide/server-sdk/nodejs.md` |
-| `php` | PHP | PHP SDK | `~/.ae-cli/wiki/te-docs/raw/data-ingestion-guide/server-sdk/php.md` |
-| `csharp` | C# | C# SDK | `~/.ae-cli/wiki/te-docs/raw/data-ingestion-guide/server-sdk/c.md` |
+| plan field | Language | SDK |
+|---|---|---|
+| `java` | Java | Java SDK |
+| `python` | Python | Python SDK |
+| `go` | Go | Go SDK |
+| `nodejs` | Node.js | Node SDK |
+| `php` | PHP | PHP SDK |
+| `csharp` | C# | C# SDK |
+
+**SDK document paths**:
+- Do not use hard-coded wiki paths from this section.
+- Always read `references/sdk-index.md` first and use the path listed there for the selected SDK.
+- If the path from `references/sdk-index.md` does not exist in the local wiki mirror, search under `~/.ae-cli/wiki/te-docs/raw/` with SDK-specific keywords and use the best matching latest main document.
 
 ---
 
@@ -437,7 +449,7 @@ test -z "$(git status --porcelain)" || echo "uncommitted changes present"
 **Only generate events where `platform === "client"` or `platform === "both"`**
 
 **⚠️ Hard rule: Never guess SDK imports**
-- Before generating, MUST read the corresponding SDK wiki document (see `references/sdk-index.md`)
+- Before generating, MUST read `references/sdk-index.md`, resolve the corresponding SDK wiki main document, verify the path exists, and then read that main document
 - **MUST copy import statements and package names from the wiki main document**, never guess
 - Example: JavaScript SDK npm package is `thinkingdata-browser`, import variable is `ta`
 - If generated code doesn't match wiki docs (e.g. `TDAnalytics`/`te`/`@thinkingdata/web-sdk`), re-read wiki and fix
@@ -460,7 +472,7 @@ test -z "$(git status --porcelain)" || echo "uncommitted changes present"
 - **Always provide LogBus2 official docs link**: https://docs-v2.thinkingdata.cn/?version=latest&code=logbus2_installation&lan=en-US
 
 **⚠️ Hard rule: Never guess SDK imports**
-- Before generating, MUST read the corresponding SDK wiki document (see `references/sdk-index.md`)
+- Before generating, MUST read `references/sdk-index.md`, resolve the corresponding SDK wiki main document, verify the path exists, and then read that main document
 - **MUST copy import statements and package names from the wiki main document**, never guess
 - **Re-read docs before every code generation**, never rely on "remembered" code
 
@@ -477,6 +489,25 @@ test -z "$(git status --porcelain)" || echo "uncommitted changes present"
 ## Phase 4 — Deliver (output manifest)
 
 Show deliverables based on selected output modes:
+
+### Attachment upload
+
+After all `.ae-cli/output/` files are generated, upload every generated output file to the Agent attachment library so the user can download them from the file/attachment management entry.
+
+Use the existing attachment command:
+
+```bash
+ae-cli agent +add-attachment --yes --files '<json-array-of-generated-output-files>'
+```
+
+Upload list rules:
+- Include all generated snippet files under `.ae-cli/output/`.
+- Include generated server config files such as `.ae-cli/output/daemon.json` and LogBus README files.
+- Include `.ae-cli/output/README.md`.
+- Include generated debug scripts if the user selected the debug option.
+- Do not upload files inserted directly into the user's project; only upload generated output artifacts.
+
+If upload succeeds, include the attachment upload result in the final response and tell the user the files are available from the file/attachment management entry. If upload fails because Agent attachment credentials are unavailable, keep the local `.ae-cli/output/` files and tell the user the upload did not complete.
 
 ### All snippets
 
@@ -496,6 +527,8 @@ Standalone:
 - .ae-cli/output/te-debug.java (validation script)
 
 README: .ae-cli/output/README.md (usage instructions)
+
+Attachment upload: uploaded generated output files to the file/attachment management entry
 ```
 
 ### Mixed (some insert + some snippet)
@@ -514,6 +547,8 @@ LogBus2 official docs: https://docs-v2.thinkingdata.cn/?version=latest&code=logb
 
 Standalone:
 - .ae-cli/output/te-debug.java (validation script)
+
+Attachment upload: uploaded generated output files to the file/attachment management entry
 ```
 
 ### Markdown code snippet display
@@ -623,7 +658,9 @@ All output mode rules are in `references/*.md`. This SKILL.md only handles phase
 - `~/.ae-cli/wiki/te-docs/synthesis/` — LLM-synthesized overview documents
 
 **Document reading order during code generation**:
-1. Read `references/sdk-index.md` to find the SDK's wiki document path
-2. Read wiki main doc (initialization, basic API)
-3. Read wiki advanced guide (LoggerConsumer, user properties, etc.)
-4. Check advanced guide sub-documents if needed
+1. Read `references/sdk-index.md` to find the selected SDK's main document and advanced guide paths.
+2. Verify the main document path exists in the local wiki mirror before reading it.
+3. If the indexed path is missing, search under `~/.ae-cli/wiki/te-docs/raw/` with SDK-specific keywords such as SDK name, platform name, language name, and `main doc`; choose the latest main document, not historical/versioned documents.
+4. Read the wiki main doc first (initialization, imports, package names, basic API).
+5. Read the advanced guide only after the main doc (LoggerConsumer, user properties, auto-track, preset properties, etc.).
+6. Check advanced guide sub-documents if needed.

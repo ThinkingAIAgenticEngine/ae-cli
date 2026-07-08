@@ -120,7 +120,7 @@ async function dataopsRequest(
   const headers: Record<string, string> = {
     Authorization: `bearer ${token}`,
     'Content-Type': 'application/json',
-    'X-Source': 'ae-cli',
+    
   };
   const options: RequestInit = { method, headers };
   if (method !== 'GET') {

@@ -82,7 +82,6 @@ const MOCK_AUTH_RESP: DeviceAuthorizeResponse = {
 
 const MOCK_TOKEN_RESP: DeviceTokenResponse = {
   access_token: 'access-xyz',
-  mcp_token: 'mcp-xyz',
   refresh_token: 'refresh-xyz',
   token_type: 'bearer',
   expires_in: 72000,

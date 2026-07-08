@@ -8,7 +8,8 @@ const HOST_OPTION_DESC = 'Override active AE host URL';
 export function resolveTrackingHost(program: Command, opts: { host?: string }): string {
   const root = program.root ?? program;
   const globalHost = root.opts()?.host as string | undefined;
-  const host = resolveHost(opts.host || globalHost);
+  const explicitHost = opts.host || globalHost;
+  const host = resolveHost(explicitHost);
   if (!host) {
     throw new Error('No active AE host configured. Run: ae-cli auth login');
   }

@@ -2,19 +2,14 @@
  * Distill xlsx template files to human-readable markdown.
  * Run: npx tsx src/xlsx/distill.ts
  *
- * Reads every *.xlsx in tracking-plan-template/ (and optionally ~/.ae-tracking/templates/)
+ * Reads every *.xlsx in tracking-plan-template/ (and optionally ~/.ae-cli/templates/)
  * and writes a companion *.md file with the same base name.
  */
 import { readdir } from 'node:fs/promises';
 import { resolve, dirname } from 'node:path';
 import { existsSync } from 'node:fs';
 import { readTemplateXlsx } from './read.js';
-import { getConfigDir, getPackageRoot } from '../paths.js';
-
-const TEMPLATE_DIRS = [
-  resolve(getPackageRoot(), 'tracking-plan-template'),
-  resolve(getConfigDir(), 'templates'),
-];
+import { getTemplateDirs } from '../templates.js';
 
 function mdTableHeader(cols: string[]): string {
   return '| ' + cols.join(' | ') + ' |';
@@ -102,7 +97,7 @@ async function main(): Promise<void> {
   let total = 0;
   let ok = 0;
 
-  for (const dir of TEMPLATE_DIRS) {
+  for (const dir of getTemplateDirs()) {
     if (!existsSync(dir)) continue;
     let entries: string[] = [];
     try {

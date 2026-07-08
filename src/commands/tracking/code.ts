@@ -8,6 +8,7 @@ import { readTemplateMd } from '../../tracking/xlsx/md.js';
 import type { Draft, SDKType, ClientLanguage } from '../../tracking/plan/types.js';
 import { t } from '../../tracking/i18n/translate.js';
 import { assertInputFilePath, assertOutputFilePath } from './shared.js';
+import { resolveTrackingTemplateByName } from '../../tracking/templates.js';
 
 /**
  * Infer sdk_integration_mode from events' platform field (if present).
@@ -30,23 +31,34 @@ export function registerCode(cmd: Command): void {
 
   const importTemplateCmd = cmd.command('import-template')
     .description('Import a template file (md or xlsx) to draft.json, inferring sdk_integration_mode from events')
-    .requiredOption('--template <path>', 'Path to template file (.md or .xlsx)')
+    .option('--template <path>', 'Path to template file (.md or .xlsx)')
+    .option('--template-name <name>', 'Built-in or user template name from tracking plan list-templates')
     .requiredOption('--out <path>', 'Output path for draft.json')
     .option('--sdk-type <type>', 'Client SDK type (android/ios/openharmony/javascript/etc.)')
     .option('--languages <langs>', 'Client languages comma-separated (e.g., java,kotlin for android)')
     .option('--server <lang>', 'Server language (java/python/go/etc.)')
     .action(async (opts: {
-      template: string;
+      template?: string;
+      templateName?: string;
       out: string;
       sdkType?: string;
       languages?: string;
       server?: string;
     }) => {
-      assertInputFilePath(opts.template, '--template');
+      if (!opts.template && !opts.templateName) {
+        throw new Error('Either --template or --template-name is required');
+      }
+      if (opts.template && opts.templateName) {
+        throw new Error('Use only one of --template or --template-name');
+      }
       assertOutputFilePath(opts.out, '--out');
-      const draft = (opts.template.endsWith('.md'))
-        ? await readTemplateMd(opts.template)
-        : await readTemplateXlsx(opts.template);
+      const templatePath = opts.templateName
+        ? (await resolveTrackingTemplateByName(opts.templateName)).path
+        : opts.template!;
+      assertInputFilePath(templatePath, opts.templateName ? '--template-name' : '--template');
+      const draft = (templatePath.endsWith('.md'))
+        ? await readTemplateMd(templatePath)
+        : await readTemplateXlsx(templatePath);
 
       // Infer sdk_integration_mode from events (if platform info available)
       const inferredMode = inferSdkMode(draft.events);

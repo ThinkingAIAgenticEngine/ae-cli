@@ -13,8 +13,8 @@
 总计 **58 个工具**，按功能域分类：
 
 ### 1. 元数据查询 (Meta) - 2 个工具
-- `list_events` - 列出项目事件元数据（支持字段投影与分页）
-- `list_properties` - 列出项目属性元数据（事件属性/用户属性）（支持字段投影与分页）
+- `list_events` - 列出项目事件元数据（支持已认证资产过滤、字段投影与分页）
+- `list_properties` - 列出项目属性元数据（事件属性/用户属性）（支持已认证资产过滤、字段投影与分页）
 
 ### 2. 报告管理 (Report Management) - 4 个工具
 - `list_reports` - 列出项目可访问报告（支持字段投影与分页）
@@ -64,8 +64,10 @@
 - `build_path_analysis_qp` - 构建路径分析 QP
 - `build_rank_list_analysis_qp` - 构建排行榜分析 QP
 
+> 认证资产范围：所有 `build_*_analysis_qp`、`build_cluster_definition`、`build_tag_definition` 支持 `authenticatedOnly`，用于构建阶段只解析已认证资产；不要把该参数传给 `query_adhoc`。
+
 ### 6. 分群管理 (Cluster Management) - 9 个工具
-- `list_clusters` - 列出项目所有分群
+- `list_clusters` - 列出项目所有分群（支持已认证资产过滤）
 - `get_clusters_by_name` - 按名称查询分群
 - `list_cluster_members` - 列出分群成员
 - `create_cluster` - 创建分群
@@ -76,7 +78,7 @@
 - `build_cluster_definition` - 构建分群定义 JSON（辅助 create_cluster/update_cluster）
 
 ### 7. 标签管理 (Tag Management) - 9 个工具
-- `list_tags` - 列出项目所有标签
+- `list_tags` - 列出项目所有标签（支持已认证资产过滤）
 - `get_tags_by_name` - 按名称查询标签
 - `list_tag_members` - 列出标签成员
 - `create_tag` - 创建标签
@@ -114,25 +116,27 @@
 ### 元数据查询工具
 
 #### list_events
-- **描述**: 列出项目事件元数据（生产环境已生效的系统元数据）, 支持关键词过滤、字段投影和分页
+- **描述**: 列出项目事件元数据（生产环境已生效的系统元数据）, 支持已认证资产过滤、关键词过滤、字段投影和分页
 - **参数**:
   - `projectId` (Integer, required) - 项目 ID
   - `query` (String, optional) - 关键词过滤，模糊匹配事件名称、显示名/描述和备注
-  - `fields` (List<String>, optional) - 返回字段列表；支持：`eventId` / `eventName` / `eventDesc` / `remark` / `eventTag`；默认：`eventId` / `eventName` / `eventDesc` / `remark`
+  - `fields` (List<String>, optional) - 返回字段列表；支持：`eventId` / `eventName` / `eventDesc` / `remark` / `eventTag` / `authenticationStatus`；默认：`eventId` / `eventName` / `eventDesc` / `remark` / `authenticationStatus`
   - `limit` (Integer, optional) - 分页大小，默认 20，最大 50
   - `offset` (Integer, optional) - 分页偏移，默认 0
+  - `authenticatedOnly` (Boolean, optional) - 仅返回已认证事件；`authenticationStatus`: 1 已认证，0 未认证
 - **风险**: read
 
 #### list_properties
-- **描述**: 列出项目属性元数据（事件属性/用户属性）, 支持关键词过滤、字段投影和分页
+- **描述**: 列出项目属性元数据（事件属性/用户属性）, 支持已认证资产过滤、关键词过滤、字段投影和分页
 - **参数**:
   - `projectId` (Integer, required) - 项目 ID
   - `scope` (String, optional) - 属性范围：event（事件属性）/ user（用户属性）
   - `eventName` (String, optional) - 事件名称，指定后仅返回该事件的属性
   - `query` (String, optional) - 关键词过滤，模糊匹配属性名称、显示名/描述和备注
-  - `fields` (List<String>, optional) - 返回字段列表；支持：`propId` / `propName` / `propDesc` / `remark` / `selectType` / `tableType` / `subTableType`；默认：`propId` / `propName` / `propDesc` / `remark` / `selectType` / `tableType`
+  - `fields` (List<String>, optional) - 返回字段列表；支持：`propId` / `propName` / `propDesc` / `remark` / `selectType` / `tableType` / `subTableType` / `authenticationStatus`；默认：`propId` / `propName` / `propDesc` / `remark` / `selectType` / `tableType` / `authenticationStatus`
   - `limit` (Integer, optional) - 分页大小，默认 20，最大 50
   - `offset` (Integer, optional) - 分页偏移，默认 0
+  - `authenticatedOnly` (Boolean, optional) - 仅返回已认证属性；`authenticationStatus`: 1 已认证，0 未认证
 - **风险**: read
 
 ### 报告管理工具
@@ -345,13 +349,14 @@
 ### 分群管理工具
 
 #### list_clusters
-- **描述**: 列出项目所有分群
+- **描述**: 列出项目所有分群，支持已认证资产过滤
 - **参数**:
   - `projectId` (Integer, required) - 项目 ID
   - `query` (String, optional) - 关键词过滤
-  - `fields` (List<String>, optional) - 返回字段投影；支持：`id` / `clusterName` / `displayName` / `clusterType` / `progress` / `usersNum` / `refreshStatus` / `remarks`；默认：`id` / `clusterName` / `displayName` / `remarks` / `clusterType` / `progress` / `usersNum`
+  - `fields` (List<String>, optional) - 返回字段投影；支持：`id` / `clusterName` / `displayName` / `clusterType` / `progress` / `usersNum` / `refreshStatus` / `remarks` / `authenticationStatus`；默认：`id` / `clusterName` / `displayName` / `remarks` / `clusterType` / `progress` / `usersNum` / `authenticationStatus`
   - `limit` (Integer, optional) - 分页大小，默认 20，最大 50
   - `offset` (Integer, optional) - 分页偏移，默认 0
+  - `authenticatedOnly` (Boolean, optional) - 仅返回已认证分群；`authenticationStatus`: 1 已认证，0 未认证
 - **风险**: read
 
 #### get_clusters_by_name
@@ -415,13 +420,14 @@
 ### 标签管理工具
 
 #### list_tags
-- **描述**: 列出项目所有标签
+- **描述**: 列出项目所有标签，支持已认证资产过滤
 - **参数**:
   - `projectId` (Integer, required) - 项目 ID
   - `query` (String, optional) - 关键词过滤
-  - `fields` (List<String>, optional) - 返回字段投影；支持：`id` / `clusterName` / `displayName` / `clusterType` / `subConditionTabType` / `progress` / `usersNum` / `remarks`；默认：`id` / `clusterName` / `displayName` / `remarks` / `clusterType` / `subConditionTabType` / `progress` / `usersNum`
+  - `fields` (List<String>, optional) - 返回字段投影；支持：`id` / `clusterName` / `displayName` / `clusterType` / `subConditionTabType` / `progress` / `usersNum` / `remarks` / `authenticationStatus`；默认：`id` / `clusterName` / `displayName` / `remarks` / `clusterType` / `subConditionTabType` / `progress` / `usersNum` / `authenticationStatus`
   - `limit` (Integer, optional) - 分页大小，默认 20，最大 50
   - `offset` (Integer, optional) - 分页偏移，默认 0
+  - `authenticatedOnly` (Boolean, optional) - 仅返回已认证标签；`authenticationStatus`: 1 已认证，0 未认证
 - **风险**: read
 
 #### get_tags_by_name

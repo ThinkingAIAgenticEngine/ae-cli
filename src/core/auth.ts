@@ -48,9 +48,7 @@ export function resolveHost(hostOverride?: string): string {
  */
 export async function validateToken(token: string, hostUrl: string): Promise<boolean> {
   // F-013: the server's /v1/oauth/checkToken binds accessToken via @RequestParam (query/form), NOT a JSON body.
-  // A JSON body yields return_code -1008 (missing accessToken parameter) on both old and new servers, so set-token would
-  // reject even valid tokens. Send it as application/x-www-form-urlencoded: it binds to @RequestParam AND stays out
-  // of the URL/query (no token leak into access logs — the original reason a JSON body was used).
+  // Send it as application/x-www-form-urlencoded: binds to @RequestParam and keeps the token out of URL/query logs.
   const url = `${hostUrl}/v1/oauth/checkToken`;
   try {
     const resp = await fetch(url, {
@@ -143,14 +141,7 @@ export function clearToken(hostUrl: string): void {
   saveAllTokens(tokens);
 }
 
-export function setTokenManual(token: string, hostUrl: string): void {
-  saveToken(token, hostUrl);
-}
-
 export function getAuthStatus(hostUrl: string): { authenticated: boolean; host: string; tokenAge?: string; source?: string } {
-  if (process.env.TE_TOKEN) {
-    return { authenticated: true, host: hostUrl, source: 'env:TE_TOKEN' };
-  }
   const cached = loadToken(hostUrl);
   if (cached) {
     const ageMs = Date.now() - new Date(cached.updatedAt).getTime();
@@ -162,9 +153,8 @@ export function getAuthStatus(hostUrl: string): { authenticated: boolean; host: 
 
 /**
  * Get a valid access token. Priority order:
- *   1. TE_TOKEN environment variable (CI / automation escape hatch)
- *   2. Legacy tokens.json cache (written by set-token)
- *   3. secure-store (written by device code flow; includes automatic refresh)
+ *   1. Legacy tokens.json cache (historical; no longer writable via CLI)
+ *   2. secure-store (written by device code flow; includes automatic refresh)
  *
  * Throws an error with guidance when no source can provide a token.
  */
@@ -176,20 +166,14 @@ export async function getToken(hostUrl: string): Promise<string> {
     );
   }
 
-  // 1. Environment variable (CI / headless escape hatch)
-  if (process.env.TE_TOKEN) {
-    logger.info('Using token from env:TE_TOKEN');
-    return process.env.TE_TOKEN;
-  }
-
-  // 2. Legacy tokens.json cache (compatible with set-token)
+  // 1. Legacy tokens.json cache (read-only backward compat)
   const cached = loadToken(hostUrl);
   if (cached && cached.token) {
     logger.info(`Using cached token for ${hostUrl}`);
     return cached.token;
   }
 
-  // 3. secure-store (device code flow; includes automatic refresh)
+  // 2. secure-store (device code flow; includes automatic refresh)
   try {
     const secureToken = await getValidAccessToken(hostUrl);
     logger.info(`Using secure-store token for ${hostUrl}`);
@@ -205,9 +189,6 @@ export async function getToken(hostUrl: string): Promise<string> {
 
   throw new Error(
     `Cannot obtain token for ${hostUrl}.\n` +
-    `Options:\n` +
-    `  1. ae-cli auth login   (device code flow, cross-platform)\n` +
-    `  2. ae-cli auth set-token <token>\n` +
-    `  3. export TE_TOKEN=<token>  (CI/headless)`
+    `Run: ae-cli auth login   (device code flow, cross-platform)`
   );
 }

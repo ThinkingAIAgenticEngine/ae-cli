@@ -67,11 +67,8 @@ ae-cli kb +read --source '{"scope":"company","name":"engineering-handbook"}' \
 每个 AE 主机 URL 维护独立的身份验证 token。
 
 ```bash
-# 自动登录当前主机（macOS，从 Chrome 提取 token）
+# 设备码登录（跨平台）
 ae-cli auth login
-
-# 手动设置 token
-ae-cli auth set-token <your-token>
 
 # 检查状态
 ae-cli auth status

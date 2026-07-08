@@ -25,6 +25,7 @@ ae-cli analysis +build_heat_map_analysis_qp --project_id <project_id> --time_ran
 | Parameter | Required | Description |
 |---|---|---|
 | `--project_id` / `-p` | Yes | Project ID |
+| `--authenticated_only` | No | Resolve only authenticated assets while building the QP. Do not pass this flag to `+query_adhoc`. |
 | `--time_range` | Yes | Time range JSON |
 | `--heat_map` | Yes | Heatmap intent JSON |
 
@@ -45,6 +46,7 @@ ae-cli analysis +build_heat_map_analysis_qp --project_id 3137 --time_range '{"mo
 ```
 
 ## Decision Rules
+- Use `--authenticated_only true` only when the user explicitly wants authenticated assets; do not add this flag to `+query_adhoc`.
 - After successful build (`status=generated`), call `+query_adhoc --model_type heat_map --qp '<response.qp>'`.
 - If non-generated status, stop and ask user to clarify.
 

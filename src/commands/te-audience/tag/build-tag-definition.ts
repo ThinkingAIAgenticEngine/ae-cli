@@ -1,4 +1,4 @@
-import { createMcpCommand, optionalJson, optionalString } from '../shared.js';
+import { createMcpCommand, optionalBoolean, optionalJson, optionalString } from '../shared.js';
 
 export const buildTagDefinition = createMcpCommand({
   command: '+build_tag_definition',
@@ -10,6 +10,7 @@ export const buildTagDefinition = createMcpCommand({
     { name: 'metric', type: 'json', required: false, desc: 'For type=metric: metric definition JSON. Fields: eventName, analysis, quota (property name), recentDay/startTime/endTime.' },
     { name: 'first_last', type: 'json', required: false, desc: 'For type=first_last: first/last occurrence definition JSON. Fields: eventName, firstEvent (true=first occurrence, false=last occurrence), calcPropType, property, recentDay/startTime/endTime.' },
     { name: 'sql', type: 'string', required: false, desc: 'For type=sql: SQL query returning two columns: #user_id and the tag value.' },
+    { name: 'authenticated_only', type: 'boolean', required: false, desc: 'When true, resolve only authenticated assets while building the definition.' },
   ],
   risk: 'read',
   buildArgs: (ctx) => ({
@@ -21,5 +22,6 @@ export const buildTagDefinition = createMcpCommand({
       firstLast: optionalJson(ctx, 'first_last'),
       sql: optionalString(ctx, 'sql'),
     },
+    authenticatedOnly: optionalBoolean(ctx, 'authenticated_only'),
   }),
 });

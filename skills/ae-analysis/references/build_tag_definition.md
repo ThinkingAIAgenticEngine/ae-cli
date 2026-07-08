@@ -34,6 +34,7 @@ ae-cli analysis_audience +build_tag_definition --dry-run
 | Parameter             | Required | Description                                                                                                                                                                       |
 | --------------------- | -------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `--project_id` / `-p` | Yes      | Project ID                                                                                                                                                                        |
+| `--authenticated_only` | No | Resolve only authenticated assets while building the definition. |
 | `--type`              | Yes      | Tag type. Supported values: `condition`, `metric`, `first_last`, `sql`                                                                                                            |
 | `--condition_values`  | No       | For type=condition: list of tag value definitions JSON array. Each item defines a segment label and its conditions. See `+get_tag_definition_schema` for the structure.            |
 | `--metric`            | No       | For type=metric: metric definition JSON. Fields: `eventName`, `analysis`, `quota` (property name), `recentDay`/`startTime`/`endTime`.                                             |
@@ -41,6 +42,7 @@ ae-cli analysis_audience +build_tag_definition --dry-run
 | `--sql`               | No       | For type=sql: SQL query returning two columns: `#user_id` and the tag value.                                                                                                      |
 
 ## Decision Rules
+- Use `--authenticated_only true` when the definition should only resolve authenticated events/properties/metrics/clusters/tags.
 
 - Determine `--type` first, then pass only the corresponding parameter.
 - For type=condition, `--condition_values` is effectively required.

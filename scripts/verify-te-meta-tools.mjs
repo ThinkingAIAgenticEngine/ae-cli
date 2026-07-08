@@ -43,7 +43,7 @@ if (commandSet.size !== commands.length) {
   fail('duplicate analysis_meta command names found in source files');
 }
 
-const EXPECTED_COUNT = 23;
+const EXPECTED_COUNT = 24;
 if (commands.length !== EXPECTED_COUNT) {
   fail(`analysis_meta tool count mismatch: expected ${EXPECTED_COUNT}, got ${commands.length}`);
 }
@@ -62,6 +62,21 @@ for (const tool of commands) {
   const token = `+${tool}`;
   if (!help.stdout.includes(token)) {
     fail(`help output missing command: ${token}`);
+  }
+}
+
+const requiredTokensByFile = {
+  'src/commands/te-meta/meta/list-events.ts': ["name: 'authenticated_only'", 'authenticatedOnly', 'authenticationStatus', 'maximum: 50'],
+  'src/commands/te-meta/meta/list-properties.ts': ["name: 'authenticated_only'", 'authenticatedOnly', 'authenticationStatus', 'maximum: 50'],
+  'src/commands/te-meta/meta/list-metrics.ts': ["name: 'authenticated_only'", 'authenticatedOnly', 'authenticationStatus', 'maximum: 50'],
+};
+
+for (const [relPath, tokens] of Object.entries(requiredTokensByFile)) {
+  const content = fs.readFileSync(path.join(ROOT, relPath), 'utf-8');
+  for (const token of tokens) {
+    if (!content.includes(token)) {
+      fail(`missing required metadata arg contract "${token}" in ${relPath}`);
+    }
   }
 }
 

@@ -29,11 +29,13 @@ ae-cli analysis_meta +list_metrics --dry-run
 |---|---|---|
 | `--project_id` / `-p` | Yes | Project ID |
 | `--query` / `-q` | No | Optional keyword filter. Fuzzy match on metricName, metricDesc, metricRemark. |
-| `--fields` | No | Optional fields to return. Supported: metricId, metricName, metricDesc, metricRemark, metricMode, openId, creator, creatorLoginName, updateOpenId, updateCreator, updateLoginName, createTime, updateTime. Default fields when omitted: metricId, metricName, metricDesc, metricRemark, metricMode. Invalid fields cause INVALID_FIELDS error. |
-| `--limit` | No | Optional limit. Default: 20, maximum: 10000. |
+| `--fields` | No | Optional fields to return. Supported: metricId, metricName, metricDesc, metricRemark, metricMode, authenticationStatus, openId, creator, creatorLoginName, updateOpenId, updateCreator, updateLoginName, createTime, updateTime. Default fields when omitted: metricId, metricName, metricDesc, metricRemark, metricMode, authenticationStatus. Invalid fields cause INVALID_FIELDS error. |
+| `--limit` | No | Optional limit. Default: 20, maximum: 50. |
 | `--offset` | No | Optional offset. Default: 0. |
+| `--authenticated_only` | No | When true, return only authenticated metrics. |
 
 ## Decision Rules
+- Use `--authenticated_only true` only when the user explicitly asks for authenticated assets. `authenticationStatus` is `1` for authenticated and `0` for unauthenticated.
 - First run should only pass the required parameter (`--project_id`), and add optional parameters only after the path is confirmed to work.
 - For pagination, use `--limit` and `--offset` together. Default limit is 20.
 - Use `--fields` to select specific columns for lighter response payloads.

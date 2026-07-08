@@ -66,6 +66,10 @@ async function loadCommands(): Promise<Command[]> {
     const teAgent = await import('./commands/te-agent/index.js');
     commands.push(...teAgent.default);
   } catch {}
+  try {
+    const metadata = await import('./commands/metadata/index.js');
+    commands.push(...metadata.default);
+  } catch {}
   return commands;
 }
 

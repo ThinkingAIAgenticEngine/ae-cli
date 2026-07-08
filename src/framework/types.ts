@@ -13,6 +13,8 @@ export interface Flag {
 
 export interface Command {
   service: string;
+  /** Optional resource segment for three-level commands: `ae-cli <service> <resource> <command>`. */
+  resource?: string;
   command: string;
   description: string;
   flags: Flag[];

@@ -3,10 +3,10 @@
  *
  * Auth header selection logic (priority high -> low):
  *   1. Sandbox credentials complete (url + sandboxId + sandboxSecretKey) -> X-Sandbox-Id / X-Sandbox-Secret-Key
- *   2. Sandbox credentials missing but user access token present (TE_TOKEN / tokens.json / secure-store)
- *      -> Authorization: bearer <accessToken>; URL from sandbox url (if TE_CLAUDE_BASE_URL is configured)
- *        or falls back to ae-cli activeHost (written by `ae-cli config set-host`)
- *   3. Neither available -> throws TeAgentCredentialsError (with hint)
+ *   2. User access token present (tokens.json / secure-store)
+ *      -> Authorization: bearer <accessToken>
+ *   3. CLI token available (secure-store / cli-token.json) -> cli-token: <cliToken>
+ *   4. Neither available -> throws TeAgentCredentialsError (with hint)
  *
  * Independent of src/core/client.ts (AE platform client). Supports ae-cli sync / model / agent commands.
  */
@@ -79,7 +79,8 @@ function teClaudeBaseFromActiveHost(): string | undefined {
  *
  * Auth header selection logic:
  *   - Sandbox credentials complete -> X-Sandbox-Id / X-Sandbox-Secret-Key (preserves the in-sandbox path)
- *   - Sandbox credentials missing but user token present -> Authorization: bearer <token> (out-of-sandbox path)
+ *   - User access token present -> Authorization: bearer <token>
+ *   - CLI token available -> cli-token header (te-claude resolves via /internal/cli/user-info)
  *   - Neither available -> throws TeAgentCredentialsError (with hint)
  */
 async function signRequest(method: 'GET' | 'POST' | 'DELETE' | 'PATCH', path: string, rawBody: string): Promise<SignedRequest> {
@@ -101,13 +102,14 @@ async function signRequest(method: 'GET' | 'POST' | 'DELETE' | 'PATCH', path: st
     };
   }
 
-  // --- User Bearer path: sandbox credentials missing but user token present ---
-  // Dynamic import to avoid circular dependency (auth.ts -> config.ts already exists; load only when needed)
+  // --- User Bearer path: access token from device login / legacy tokens.json / secure-store ---
   const { getToken } = await import('./auth.js');
+  const { getCliToken } = await import('./cli-token.js');
 
   // Determine base URL: prefer the sandbox url field (reuse even if sandbox Id/Key are missing but URL is present),
   // otherwise fall back to the ae-cli-configured activeHost (set by the user via `ae-cli config set-host`).
   const baseUrl = sandboxCred?.url || teClaudeBaseFromActiveHost();
+  const hostForToken = getActiveHost() || baseUrl;
 
   if (!baseUrl) {
     throw new TeAgentCredentialsError(
@@ -116,20 +118,50 @@ async function signRequest(method: 'GET' | 'POST' | 'DELETE' | 'PATCH', path: st
     );
   }
 
-  // Note: the API URL uses baseUrl (including /agent), but the token is retrieved under the bare activeHost —
-  // tokens are stored under the bare host at login time, and the refresh endpoint is at root /v1 (not under /agent).
-  const accessToken = await getToken(getActiveHost() || baseUrl);
-  const headers: Record<string, string> = {
-    'Authorization': `bearer ${accessToken}`,
-  };
-  if (method === 'POST' || method === 'PATCH') {
-    headers['Content-Type'] = 'application/json';
+  const contentTypeHeader =
+    method === 'POST' || method === 'PATCH' ? { 'Content-Type': 'application/json' } : {};
+
+  let accessToken: string | null = null;
+  try {
+    accessToken = await getToken(hostForToken);
+  } catch {
+    accessToken = null;
   }
-  return {
-    url: `${baseUrl.replace(/\/$/, '')}${path}`,
-    headers,
-    rawBody,
-  };
+
+  if (accessToken) {
+    return {
+      url: `${baseUrl.replace(/\/$/, '')}${path}`,
+      headers: {
+        'Authorization': `bearer ${accessToken}`,
+        ...contentTypeHeader,
+      },
+      rawBody,
+    };
+  }
+
+  // --- CLI token path: no user access token; te-claude accepts cli-token header ---
+  let cliToken: string | null = null;
+  try {
+    cliToken = await getCliToken(hostForToken);
+  } catch {
+    cliToken = null;
+  }
+
+  if (cliToken) {
+    return {
+      url: `${baseUrl.replace(/\/$/, '')}${path}`,
+      headers: {
+        'cli-token': cliToken,
+        ...contentTypeHeader,
+      },
+      rawBody,
+    };
+  }
+
+  throw new TeAgentCredentialsError(
+    'No te-claude credentials available',
+    'Run ae-cli auth login, or execute inside a te-agent sandbox',
+  );
 }
 
 async function parseResponse<T>(response: Response, defaultErrorPrefix: string): Promise<T> {

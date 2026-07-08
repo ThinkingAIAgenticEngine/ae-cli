@@ -92,14 +92,44 @@ After user responds, record to `meta.scenario` and generate `meta.plan_name`.
 
 ### Item 2 — Source Material + Business Dimension (combined)
 
-Ask: **"Choose your source material (up to 2):"**
+Before asking, decide whether the current runtime is an agent sandbox. The agent may judge this from runtime context such as sandbox-provisioned `cli-token.json`, restricted filesystem access, or absence of the user's local files. Do not ask the user just to decide sandbox visibility.
 
-User can multi-select (max 2):
+Product document and Codebase are local-material options. **Hide both options in sandbox environments**. When options are hidden, renumber the visible list contiguously from 1; never show skipped numbers.
 
-1. **Product document** (local path, image file, or folder) — Extract events and properties from product docs; supports md/pdf/docx/URL/images (png/jpg/jpeg/webp)
-2. **Detailed description** (conversational) — Describe app business flow, core features, user behaviors, monetization model, etc.
-3. **Codebase** (local project path) — Analyze source code to extract events and properties
-4. **Pre-built template** (built-in industry and game genre templates) — Select a built-in template (run `AE_LANG=<user_lang> ae-cli tracking plan list-templates` to see available templates)
+If **not** in a sandbox environment, ask exactly:
+
+```text
+Choose your source material (up to 2):
+
+1 - Product document (local path, image file, or folder; hidden in sandbox) — Extract events and properties from product docs; supports md/pdf/docx/URL/images (png/jpg/jpeg/webp)
+2 - Detailed description (conversational) — Describe app business flow, core features, user behaviors, monetization model, etc.
+3 - Codebase (local project path; hidden in sandbox) — Analyze source code to extract events and properties
+4 - Pre-built template (built-in industry and game genre templates) — Select a built-in template
+
+Reply with number(s), e.g. 1 or 1,4. Select up to 2.
+```
+
+If in a sandbox environment, ask exactly:
+
+```text
+Choose your source material (up to 2):
+
+1 - Detailed description (conversational) — Describe app business flow, core features, user behaviors, monetization model, etc.
+2 - Pre-built template (built-in industry and game genre templates) — Select a built-in template
+
+Reply with number(s), e.g. 1 or 1,2. Select up to 2.
+```
+
+Do not rewrite this source material list as unnumbered bullets, cards, or prose. The user must be able to reply with the visible numbers.
+
+User can multi-select (max 2). Interpret numbers by the **visible list shown to the user**, not by the non-sandbox canonical list.
+
+Canonical source material options:
+
+- **Product document** (local path, image file, or folder; hidden in sandbox) — Extract events and properties from product docs; supports md/pdf/docx/URL/images (png/jpg/jpeg/webp)
+- **Detailed description** (conversational) — Describe app business flow, core features, user behaviors, monetization model, etc.
+- **Codebase** (local project path; hidden in sandbox) — Analyze source code to extract events and properties
+- **Pre-built template** (built-in industry and game genre templates) — Select a built-in template (run `AE_LANG=<user_lang> ae-cli tracking plan list-templates --json` to see available templates)
 
 Based on user selection, determine source material type and record to `meta.source_type`:
 
@@ -168,7 +198,7 @@ Platform validation: Use `business-dimension-mapping.md` Chapter 5 decision rule
 
 After business dimension confirmation, auto-detect matching templates based on app type:
 ```bash
-AE_LANG=<user_lang> ae-cli tracking plan list-templates
+AE_LANG=<user_lang> ae-cli tracking plan list-templates --json
 ```
 
 Show matching templates to user for confirmation. Confirmed templates serve as baseline and participate in Phase 1 event merging.
@@ -188,6 +218,8 @@ Show matching templates to user for confirmation. Confirmed templates serve as b
 ### Item 3 — SDK Integration Config (client + server combined)
 
 Ask: **"What is your client platform? (multi-select OK, e.g. Android + iOS) Will you integrate a server-side SDK?"**
+
+After asking this Item 3 question, **stop and wait for the user's answer**. Do not display Item 4 in the same response.
 
 > **Language filter**: The following SDKs have Chinese-only documentation and are **visible to Chinese users only**: `Mini-program`, `Mini-game`, `OpenHarmony`, `LayaAir`, `Egret`, `Cocos2d-Lua`. Do not show these to non-Chinese users.
 
@@ -269,6 +301,14 @@ Record to `client_platform_languages`:
 | No | No | `none` (RESTful / LogBus / DataX data ingestion) |
 
 `none` mode: Suitable for historical data import, batch data sync, third-party system integration, etc. Refine phase does not inject SDK auto-track events.
+
+**Item 3 confirmation gate**:
+
+After the user answers Item 3, normalize the SDK configuration and ask only the missing follow-up questions (for Android/iOS programming language or `Other` server language).
+
+Then summarize the normalized SDK config and ask: **"Confirm this SDK integration config? Reply ok to continue to Item 4, or describe changes."**
+
+Do not display Item 4 or ask identity questions until the user explicitly confirms this SDK integration config.
 
 ### Item 4 — User Identity System (visitor ID + account ID combined)
 
@@ -426,8 +466,8 @@ Draft
 Priority from low to high: **template → codebase → prd → chat → autotrack**
 
 - **template**: User-selected industry template (see "Template Lookup Convention" below) as baseline; each item marked `source: "template"`
-  - Templates prefer `.md` distilled files (`tracking-plan-template/*.md`), fall back to `.xlsx`
-  - Import command: `AE_LANG=<user_lang> ae-cli tracking code import-template --template <path> --out .ae-cli/draft.json`
+  - Templates are resolved by ae-cli from the ae-cli package root and user template directory
+  - Import command: `AE_LANG=<user_lang> ae-cli tracking code import-template --template-name "<template name>" --out .ae-cli/draft.json`
   - ⚠️ **Must validate immediately after template import** (see Phase 1.6); template content may not be fully correct
   - ⚠️ **Template content is in Chinese; must translate after import**: Read draft.json, translate `display_name`, `event_desc`, `event_tag`, and property `display_name`/`desc` to user's language, then write back. Only `event_name`, property `name`, `type` identifiers remain as-is.
   - ⚠️ **event_tag also needs translation**: `业务事件`→user's language (e.g. EN: `Business Event`), `系统事件`→user's language (e.g. EN: `System Event`; autotrack events are handled automatically by CLI, no need to re-translate)
@@ -601,21 +641,23 @@ Next: Phase 2 — Refine to confirm the plan.
 Run the following command to dynamically discover available templates:
 
 ```bash
-AE_LANG=<user_lang> ae-cli tracking plan list-templates
+AE_LANG=<user_lang> ae-cli tracking plan list-templates --json
 ```
 
 **Language rules**: Template file names are in Chinese. When displaying to users, **must translate to user's current language**; **do NOT** include the original Chinese name (e.g. show only "Card Game v1", not "Card Game (卡牌游戏) v1").
 
+Built-in templates are resolved by ae-cli from the ae-cli package root. User templates are resolved from the ae-cli user template directory. Do **not** manually construct `./tracking-plan-template/...` paths from the user's current workspace.
+
 Search directories in order:
 
-1. `./tracking-plan-template/` — Project root (development)
-2. `~/.ae-cli/templates/` — `ae-cli tracking` CLI user directory after installation (future default)
+1. `<ae-cli package root>/tracking-plan-template/` — bundled templates
+2. `~/.ae-cli/templates/` — user-provided template directory
 
 Each template prefers `.md` distilled file (if same-name `.md` exists, return md path; otherwise return xlsx path).
-Auto-detect format on import:
+Display translated template names to the user, but keep the original `name` from the JSON result for import. Auto-detect format on import:
 
 ```bash
-AE_LANG=<user_lang> ae-cli tracking code import-template --template <path> --out .ae-cli/draft.json
+AE_LANG=<user_lang> ae-cli tracking code import-template --template-name "<template name>" --out .ae-cli/draft.json
 ```
 
 ---
@@ -633,12 +675,21 @@ In order, one conversation round per segment:
 Per-segment flow:
 
 1. Display corresponding section of current draft
-2. Ask **"Does this look correct? `ok` to proceed to next segment, or describe what to change"**
+2. Ask a segment-specific confirmation question. Always include the current segment number, current segment key, and next segment key:
+   ```text
+   Segment <n>/5 <segment_key> confirmed? Reply ok to continue to Segment <n+1>/5 <next_segment_key>, or describe changes.
+   ```
+   For Segment 5:
+   ```text
+   Segment 5/5 props confirmed? Reply ok to archive the plan and continue to Phase 3, or describe changes.
+   ```
 3. User gives natural language instructions → update `.ae-cli/draft.json` → re-run:
    ```bash
    AE_LANG=<user_lang> ae-cli tracking plan draft --in .ae-cli/draft.json --out .ae-cli/draft.xlsx
    ```
 4. User `ok` → proceed to next segment
+
+`ok` is a refine state-machine input, not a repeated-message error. If the user replies `ok` multiple times in a row, advance exactly one segment per `ok` in order. Before each confirmation prompt, print the new segment heading first, so consecutive confirmations do not look like the same question repeated.
 
 User may say **"Go back to segment N"** at any time to jump to any segment (N = 1-5).
 
@@ -849,33 +900,59 @@ At the start of Phase 3, tell user:
 ```
 ## Phase 3 — Upload Preparation
 Next steps:
-1. AE web address
-2. Login to AE to get token
+1. Check active AE host and login status
+2. Login to AE to get token if needed
 3. AE project ID
 ```
 
-### 3.1 Get AE Web Address
+### 3.1 Check Active AE Host and Login Status
 
-❌ **Do NOT provide unconfirmed example URLs here.** Simply ask the user directly.
+Do not ask for the AE web address first. ae-cli stores an active AE host, and auth commands can use it directly.
 
-Ask user: **"What is the AE web address?"**
-
-After user responds, save to `.ae-cli/draft.json` `meta.host` field.
-
-Guide getting and saving token based on AE web address:
+First check current auth/host status:
 
 ```bash
-ae-cli auth login --host <host>
 ae-cli auth status
 ```
+
+If an active host is configured, save that host to `.ae-cli/draft.json` `meta.host`. If `auth status` reports `authenticated: true`, skip login and continue to project ID.
+
+Only if ae-cli reports no active host / no AE host configured, ask the user:
+
+**"What is the AE web address?"**
+
+After user responds, configure it and save the same value to `.ae-cli/draft.json` `meta.host`:
+
+```bash
+ae-cli config set-host <host>
+```
+
+If `auth status` reports unauthenticated, use the agent split-flow. Do **not** run blocking `ae-cli auth login` directly from an AI agent.
+
+Step 1 — request an authorization URL and return control to the user:
+
+```bash
+ae-cli auth login --no-wait
+```
+
+Show the returned `verification_url` to the user and ask them to complete authorization. Keep the returned `device_code` for the next step.
+
+Step 2 — after the user says authorization is complete, finish login:
+
+```bash
+ae-cli auth login --device-code <device_code>
+ae-cli auth status
+```
+
+Do not retry with `ae-cli auth login --host <host>` unless the previous command explicitly failed because no active host was configured. In that case, configure the host first, then restart the split-flow with `--no-wait`.
 
 Common error tips and self-recovery:
 
 | Error | Cause | What to Tell the User |
 |---|---|---|
-| `Chrome JS-from-AppleEvents disabled` | Chrome disabled AppleScript JS execution | Chrome menu View → Developer → Allow JavaScript from Apple Events, then retry |
-| `not_mac` | Not macOS | Manually set `export AE_TOKEN=<uuid>` (get from DevTools → Application → Local Storage → `ACCESS_TOKEN`, strip quotes) |
-| `NO_TAB_FOUND` | Not logged into AE in Chrome | Open and login to TE in Chrome first, then retry |
+| `Device authorize request failed` | The agent runtime cannot reach the authorization service | Report that no device code was created and include the exact error |
+| `not_mac` | A legacy browser-token flow was attempted | Retry the split-flow device-code login; do not ask the user for browser tokens |
+| `NO_TAB_FOUND` | A legacy browser-token flow was attempted | Retry the split-flow device-code login; do not ask the user to open Chrome |
 
 Token cached for 20 hours; same host avoids re-auth.
 
@@ -901,8 +978,10 @@ Checking project's existing plan...
 Before uploading, check if the project already has a tracking plan:
 
 ```bash
-AE_LANG=<user_lang> ae-cli tracking plan fetch --project <projectId> --host <host> > .ae-cli/existing-plan.json
+AE_LANG=<user_lang> ae-cli tracking plan fetch --project <projectId> > .ae-cli/existing-plan.json
 ```
+
+Do not add `--host` here unless the user explicitly provides a reachable override for this command. In agent sandboxes, ae-cli can resolve the request host from the sandbox-provisioned `cli-token.json`; passing a stale Kubernetes internal host can bypass that fallback.
 
 **Result assessment**:
 - File empty or command error `404` → project has no plan; upload directly
@@ -1008,12 +1087,10 @@ AE_LANG=<user_lang> ae-cli tracking plan upload --project <projectId> --xlsx .ae
 - **With `--replace`**: Delete existing project plan first then upload (when user chooses "Replace", or severe conflict switches to replace)
 - **Without `--replace`**: AE merge-by-name merge (no conflicts, or advisory only with user confirmation to append)
 
-If CLI returns exit code 13 (language mismatch), the AE project language differs from xlsx language. Do NOT silently retry; must prompt user:
-> "AE project language is {aeLang}, but current xlsx is {xlsxLang}. Switch AE language?"
-
-After user confirms, re-upload with `--switch-lang`:
+Upload language is controlled locally by `AE_LANG`, `--lang`, or `draft.meta.lang`. Do not call AE user language config APIs and do not use `--switch-lang`. If the xlsx language is wrong, regenerate the xlsx with the intended language before uploading:
 ```bash
-AE_LANG=<user_lang> ae-cli tracking plan upload --project <projectId> --xlsx .ae-cli/draft.xlsx --draft .ae-cli/draft.json --switch-lang [--replace]
+AE_LANG=<user_lang> ae-cli tracking plan draft --in .ae-cli/draft.json --out .ae-cli/draft.xlsx
+AE_LANG=<user_lang> ae-cli tracking plan upload --project <projectId> --xlsx .ae-cli/draft.xlsx --draft .ae-cli/draft.json [--replace]
 ```
 
 On successful upload, prompt user to verify in AE Admin. **Provide the full URL** (tracking plan page URL format: `https://<host>/#/data/plan`).

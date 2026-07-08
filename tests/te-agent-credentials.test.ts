@@ -363,10 +363,10 @@ try {
           SECRET_KEY: undefined,
           SANDBOX_SECRET_KEY: undefined,
           SANDBOX_RUNTIME_ROOT: join(tmpRoot, 'bearer-test-runtime-empty'),
-          // user token via TE_TOKEN (highest priority in auth.ts getToken)
-          TE_TOKEN: 'user-access-token-abc',
         },
         async () => {
+          const { saveToken } = await import('../src/core/auth.ts');
+          saveToken('user-access-token-abc', 'http://te-claude.local');
           const { getFromMainApp } = await loadClientModule();
           await getFromMainApp('/api/sandbox/agent/models');
         },
@@ -380,6 +380,49 @@ try {
     assert.equal(headers['Authorization'], 'bearer user-access-token-abc', 'should send Authorization: bearer');
     assert.equal(headers['X-Sandbox-Id'], undefined, 'should not send X-Sandbox-Id');
     assert.equal(headers['X-Sandbox-Secret-Key'], undefined, 'should not send X-Sandbox-Secret-Key');
+    assert.equal(calls[0].url, 'http://te-claude.local/api/sandbox/agent/models');
+  });
+
+  await test('cli-token present, no access token → request sends cli-token header (no Bearer)', async () => {
+    const runtimeRoot = join(tmpRoot, 'cli-token-test-runtime');
+    const aeConfigDir = join(runtimeRoot, '.ae-config');
+    mkdirSync(aeConfigDir, { recursive: true });
+    writeFileSync(
+      join(aeConfigDir, 'cli-token.json'),
+      JSON.stringify({ url: 'http://ta1:8996', token: 'cli_test_token_xyz' }, null, 2),
+    );
+
+    const calls: Array<{ url: string; init: RequestInit }> = [];
+    const prevFetch = globalThis.fetch;
+    globalThis.fetch = (async (url: string | URL | Request, init?: RequestInit) => {
+      calls.push({ url: String(url), init: init ?? {} });
+      return new Response(JSON.stringify({ models: [] }), { status: 200 });
+    }) as typeof fetch;
+
+    try {
+      await withEnv(
+        {
+          HOME: join(tmpRoot, 'cli-token-test-home'),
+          TE_CLAUDE_BASE_URL: 'http://te-claude.local',
+          SANDBOX_ID: undefined,
+          SECRET_KEY: undefined,
+          SANDBOX_SECRET_KEY: undefined,
+          SANDBOX_RUNTIME_ROOT: runtimeRoot,
+        },
+        async () => {
+          const { getFromMainApp } = await loadClientModule();
+          await getFromMainApp('/api/sandbox/agent/models');
+        },
+      );
+    } finally {
+      globalThis.fetch = prevFetch;
+    }
+
+    assert.equal(calls.length, 1);
+    const headers = calls[0].init.headers as Record<string, string>;
+    assert.equal(headers['cli-token'], 'cli_test_token_xyz', 'should send cli-token header');
+    assert.equal(headers['Authorization'], undefined, 'should not send Authorization');
+    assert.equal(headers['X-Sandbox-Id'], undefined, 'should not send X-Sandbox-Id');
     assert.equal(calls[0].url, 'http://te-claude.local/api/sandbox/agent/models');
   });
 
@@ -399,7 +442,6 @@ try {
           SANDBOX_ID: 'sb-xyz',
           SECRET_KEY: 'secret-xyz',
           SANDBOX_SECRET_KEY: undefined,
-          TE_TOKEN: undefined,
         },
         async () => {
           const { getFromMainApp } = await loadClientModule();
@@ -426,7 +468,6 @@ try {
         SECRET_KEY: undefined,
         SANDBOX_SECRET_KEY: undefined,
         SANDBOX_RUNTIME_ROOT: join(tmpRoot, 'no-cred-runtime-empty'),
-        TE_TOKEN: undefined,
       },
       async () => {
         // TE_CLAUDE_BASE_URL missing → tryLoadTeAgentSandboxCredentials returns null

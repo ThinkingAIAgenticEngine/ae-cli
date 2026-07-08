@@ -20,6 +20,9 @@
  *   9. refresh HTTP non-200 → SecureStoreAuthError
  *  10. refresh return_code != 0 → SecureStoreAuthError
  *  11. no stored token → getValidAccessToken throws SecureStoreAuthError
+ *  12. cliToken persisted and readable via loadCliToken
+ *  13. loadCliToken returns null when absent
+ *  14. cliToken preserved across an access-token refresh
  */
 
 import assert from 'node:assert/strict';
@@ -33,7 +36,7 @@ import {
   load,
   clear,
   getValidAccessToken,
-  loadMcpToken,
+  loadCliToken,
   SecureStoreAuthError,
   _resetKeyCache,
 } from '../src/core/secure-store.ts';
@@ -340,39 +343,39 @@ try {
     );
   });
 
-  // 12. mcpToken persisted and readable via loadMcpToken (F-010)
-  await test('mcpToken persisted and readable via loadMcpToken', async () => {
-    const host = trackHost(testHost('mcp-persist'));
+  // 12. cliToken persisted and readable via loadCliToken
+  await test('cliToken persisted and readable via loadCliToken', async () => {
+    const host = trackHost(testHost('cli-persist'));
     save(host, {
       accessToken: 'a',
       refreshToken: 'r',
       accessExpiresAt: new Date(Date.now() + 3600_000).toISOString(),
-      mcpToken: 'mcp_secret_123',
+      cliToken: 'cli_secret_123',
     });
-    assert.equal(load(host)!.mcpToken, 'mcp_secret_123');
-    assert.equal(loadMcpToken(host), 'mcp_secret_123');
+    assert.equal(load(host)!.cliToken, 'cli_secret_123');
+    assert.equal(loadCliToken(host), 'cli_secret_123');
   });
 
-  // 13. loadMcpToken returns null when absent
-  await test('loadMcpToken returns null when absent', async () => {
-    const host = trackHost(testHost('mcp-absent'));
+  // 13. loadCliToken returns null when absent
+  await test('loadCliToken returns null when absent', async () => {
+    const host = trackHost(testHost('cli-absent'));
     save(host, {
       accessToken: 'a',
       refreshToken: 'r',
       accessExpiresAt: new Date(Date.now() + 3600_000).toISOString(),
     });
-    assert.equal(loadMcpToken(host), null, 'no mcpToken field → null');
-    assert.equal(loadMcpToken(testHost('never-saved')), null, 'no entry at all → null');
+    assert.equal(loadCliToken(host), null, 'no cliToken field → null');
+    assert.equal(loadCliToken(testHost('never-saved')), null, 'no entry at all → null');
   });
 
-  // 14. mcpToken preserved across an access-token refresh (F-010)
-  await test('mcpToken preserved across refresh', async () => {
-    const host = trackHost(testHost('mcp-refresh'));
+  // 14. cliToken preserved across an access-token refresh
+  await test('cliToken preserved across refresh', async () => {
+    const host = trackHost(testHost('cli-refresh'));
     save(host, {
       accessToken: 'old',
       refreshToken: 'good-refresh',
       accessExpiresAt: new Date(Date.now() - 1000).toISOString(),
-      mcpToken: 'mcp_keep_me',
+      cliToken: 'cli_keep_me',
     });
     const prevFetch = globalThis.fetch;
     globalThis.fetch = (async () =>
@@ -384,7 +387,7 @@ try {
     try {
       const token = await getValidAccessToken(host);
       assert.equal(token, 'new');
-      assert.equal(loadMcpToken(host), 'mcp_keep_me', 'mcpToken should survive an access-token refresh');
+      assert.equal(loadCliToken(host), 'cli_keep_me', 'cliToken should survive an access-token refresh');
     } finally {
       globalThis.fetch = prevFetch;
     }

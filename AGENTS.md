@@ -50,10 +50,10 @@ CLI 同时面向团队成员与 AI agent，**源码内容与所有用户可见�
 
 | 路径 | 职责 |
 | --- | --- |
-| `src/core/` | auth、config、client、mcp、mcp-access（鉴权 / 配置 / HTTP / MCP token） |
+| `src/core/` | auth、config、client、cli-token、mcp、mcp-access、capability-api（鉴权 / 配置 / HTTP / MCP JSON-RPC / 新 REST API） |
 | `src/framework/` | types、register、runner、output（命令框架核心） |
 | `src/api/` | 原始 API 访问（`api` 命令） |
-| `src/commands/<domain>/` | 各业务域命令（te-analysis、te-kb、te-engage…） |
+| `src/commands/<domain>/` | 各业务域命令（te-analysis、metadata、te-kb…） |
 | `skills/` | 给 AI agent 的 skill 包（与命令同步维护） |
 | `self-check/` | 自检脚本 |
 | `tests/`、`test/` | 测试 |
@@ -69,6 +69,18 @@ CLI 同时面向团队成员与 AI agent，**源码内容与所有用户可见�
 
 - `command` 用 `+` 前缀，如 `+query`、`+list_events`。
 - 命令文件放在 `src/commands/<domain>/<cmd>.ts`，并在该 domain 的 `index.ts` 里登记到命令数组 + 具名导出。
+
+### CLI / Capability 命名契约
+
+跨 ae-cli 与 common 的命名边界如下：
+
+- ae-cli 命令段和 flag 使用 kebab-case：`metadata data-table property-bindings-update`、`--project-id`。
+- capabilityId 使用三段式 dot namespace：`<domain>.<resource>.<action>`。
+- capabilityId 每段内部使用 snake_case；common 注册的能力 ID 也遵循这个规则，例如 `metadata.data_table.property_bindings_update`。
+- capability gateway 的 `input` / `data` / `meta` JSON 字段使用 snake_case，例如 `project_id`、`data_table_id`、`client_request_id`。
+- Java 内部类型、方法和 DTO 字段继续按本地代码风格使用 camelCase；边界层负责转换，不把 camelCase 泄漏到 CLI 公共契约。
+
+映射规则：CLI 层级空格映射为 capabilityId 的点号，CLI 段内 `-` 映射为 capabilityId 段内 `_`。例如 `metadata data-table property-bindings-update` → `metadata.data_table.property_bindings_update`。
 
 ### 一切走 RuntimeContext
 
@@ -92,8 +104,11 @@ CLI 同时面向团队成员与 AI agent，**源码内容与所有用户可见�
 
 ### 鉴权
 
-- token 按 host 维度存储（per-host）。
-- KB external 接口走 `kbApi`（`src/core/mcp-access.ts`），自带 `mcp-token` 头与 fallback；**用现成 helper，别手搓鉴权**。
+- **唯一凭证是 CLI token**（`src/core/cli-token.ts` 的 `getCliToken()`），不存在独立的 mcp-token 获取/mint 逻辑。取值优先级：进程内缓存 → `secure-store.cliToken` → 沙箱注入的 `cli-token.json` → 用 accessToken 调 `/v1/ta/cli/token/generate` **mint**（`auth login` 成功后立即 mint 并写回 secure-store；若缺失则在首次命令执行时补 mint）。
+- token 按 host 维度存储（per-host）；不要自己实现凭证获取逻辑，统一调用 `getCliToken()`。
+- **旧命令（`createMcpCommand` → MCP JSON-RPC，`src/core/mcp.ts`）**：请求头只带 `cli-token`（值为 CLI token）。KB external 接口走 `kbApi`（`src/core/mcp-access.ts`），同样只发 `cli-token`；**用现成 helper，别手搓鉴权**。
+- **新命令（`createCapabilityCommand` / `createApiCommand` → capability gateway REST，`src/core/capability-api.ts`）**：请求 `/api/cli/<domain>/v1/capabilities/<capabilityId>/execute`（或 `/dry-run`），鉴权用 `cli-token` 请求头。nginx 在 `<domain>` 段做域路由并 strip 后转发到各服务的 `/api/cli/v1/...`。metadata 域示例命令：`ae-cli metadata event get`、`ae-cli metadata property get`。
+- 401/403 统一语义：401 清缓存、重新 `getCliToken()`、重试一次；403 是权限拒绝（`PermissionError`），不重试、不重新 mint。
 
 ### skills 同步
 

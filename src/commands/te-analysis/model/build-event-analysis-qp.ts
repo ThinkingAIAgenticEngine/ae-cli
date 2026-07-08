@@ -1,4 +1,4 @@
-import { createMcpCommand, optionalJson } from '../shared.js';
+import { createMcpCommand, optionalBoolean, optionalJson } from '../shared.js';
 
 export const buildEventAnalysisQp = createMcpCommand({
   command: '+build_event_analysis_qp',
@@ -11,6 +11,7 @@ export const buildEventAnalysisQp = createMcpCommand({
     { name: 'groups', type: 'json', required: false, desc: 'Optional group-by dimensions JSON array.' },
     { name: 'filters', type: 'json', required: false, desc: 'Optional global filters JSON array.' },
     { name: 'relation', type: 'string', required: false, desc: 'Optional filter relation. Supported values: and, or. Default: and.' },
+    { name: 'authenticated_only', type: 'boolean', required: false, desc: 'When true, resolve only authenticated assets while building the QP.' },
   ],
   risk: 'read',
   buildArgs: (ctx) => ({
@@ -21,5 +22,6 @@ export const buildEventAnalysisQp = createMcpCommand({
     groups: optionalJson(ctx, 'groups'),
     filters: optionalJson(ctx, 'filters'),
     relation: ctx.str('relation') || undefined,
+    authenticatedOnly: optionalBoolean(ctx, 'authenticated_only'),
   }),
 });

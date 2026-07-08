@@ -28,11 +28,13 @@ ae-cli analysis_audience +list_clusters --dry-run
 |---|---|---|
 | `--project_id` / `-p` | Yes | Project ID |
 | `--query` / `-q` | No | Optional keyword filter. Performs fuzzy matching against clusterName, displayName, and remarks; if omitted, all clusters are returned. |
-| `--fields` | No | Optional return field list (JSON array). Supported fields: `id`, `clusterName`, `displayName`, `clusterType`, `progress`, `usersNum`, `refreshStatus`, `remarks`. Default fields when omitted: `id`, `clusterName`, `displayName`, `remarks`, `clusterType`, `progress`, `usersNum`. Invalid fields will fail with `INVALID_FIELDS`. |
+| `--fields` | No | Optional return field list (JSON array). Supported fields: `id`, `clusterName`, `displayName`, `clusterType`, `progress`, `usersNum`, `refreshStatus`, `remarks`, `authenticationStatus`. Default fields when omitted: `id`, `clusterName`, `displayName`, `remarks`, `clusterType`, `progress`, `usersNum`, `authenticationStatus`. Invalid fields will fail with `INVALID_FIELDS`. |
 | `--limit` | No | Optional page size. Default: 20, max: 50. |
 | `--offset` | No | Optional page offset. Default: 0. |
+| `--authenticated_only` | No | When true, return only authenticated clusters. |
 
 ## Decision Rules
+- Use `--authenticated_only true` only when the user explicitly asks for authenticated assets. `authenticationStatus` is `1` for authenticated and `0` for unauthenticated.
 - For the first execution, it is recommended to pass only the required parameters (`--project_id`) and add optional parameters after confirming the path works.
 - When troubleshooting across projects, first confirm whether `--project_id` matches the current permissions and target environment.
 

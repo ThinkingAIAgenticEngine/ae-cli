@@ -33,6 +33,7 @@ ae-cli analysis +build_event_analysis_qp --project_id <project_id> --time_range 
 | Parameter | Required | Description |
 |---|---|---|
 | `--project_id` / `-p` | Yes | Project ID |
+| `--authenticated_only` | No | Resolve only authenticated assets while building the QP. Do not pass this flag to `+query_adhoc`. |
 | `--time_range` | Yes | Event analysis time range JSON |
 | `--metrics` | Yes | Event metrics JSON array |
 | `--time_particle_size` | No | Time granularity. Default: total |
@@ -122,6 +123,7 @@ ae-cli analysis +build_event_analysis_qp --project_id 3137 --time_range '{"mode"
 ```
 
 ## Decision Rules
+- Use `--authenticated_only true` only when the user explicitly wants authenticated assets; do not add this flag to `+query_adhoc`.
 - After successful build, call `+query_adhoc --model_type event --qp '<response.qp>'`.
 - If build returns non-generated status, stop and ask user to clarify; do not call `+query_adhoc`.
 - Wrap JSON parameters in single quotes to avoid shell escaping issues.

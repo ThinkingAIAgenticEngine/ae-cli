@@ -6,24 +6,17 @@ import { writeDraftXlsx, validateDraft } from '../../tracking/xlsx/write.js';
 import type { Locale } from '../../tracking/i18n/xlsx.js';
 import { t } from '../../tracking/i18n/translate.js';
 import { detectCliLocale } from '../../tracking/i18n/locale.js';
-import { cliLocaleToAE } from '../../tracking/i18n/ae-locale.js';
 import { createTrackingClient } from '../../core/tracking-client.js';
 import { fetchPlan } from '../../tracking/te-plan/fetch.js';
 import { injectAutotrackEvents } from '../../tracking/plan/draft.js';
 import { validateAndFix, fixDraft, extractErrors } from '../../tracking/plan/fix.js';
 import { detectConflicts, formatConflictReport } from '../../tracking/plan/conflict.js';
 import type { Draft } from '../../tracking/plan/types.js';
-import { readdir } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
-import { getConfigDir, getPackageRoot } from '../../tracking/paths.js';
+import { getTemplateDirs, listTrackingTemplates } from '../../tracking/templates.js';
 import { HOST_OPTION_DESC, resolveTrackingHost, assertOutputFilePath, assertInputFilePath } from './shared.js';
 
 const MAX_FIX_RETRIES = 3;
-
-const TEMPLATE_DIRS = [
-  resolve(getPackageRoot(), 'tracking-plan-template'),
-  resolve(getConfigDir(), 'templates'),
-];
 
 export function registerPlan(cmd: Command, rootProgram: Command): void {
   cmd.description('manage AE tracking plans');
@@ -130,7 +123,7 @@ export function registerPlan(cmd: Command, rootProgram: Command): void {
     });
 
   cmd.command('upload')
-    .description('Upload xlsx tracking plan to AE (conflict check, auto-fix retry, optional --switch-lang)')
+    .description('Upload xlsx tracking plan to AE (conflict check, auto-fix retry)')
     .requiredOption('-p, --project <id>', 'AE projectId', (v: string) => parseInt(v, 10))
     .requiredOption('--xlsx <path>', 'xlsx file')
     .requiredOption('--draft <path>', 'draft JSON (for auto-fix)')
@@ -138,29 +131,13 @@ export function registerPlan(cmd: Command, rootProgram: Command): void {
     .option('--lang <locale>', 'xlsx language: zh / en / ja / ko')
     .option('--replace', 'delete existing plan first', false)
     .option('--auto-fix', 'auto fix upload errors and retry', true)
-    .option('--switch-lang', 'auto switch AE project language to match xlsx', false)
-    .action(async (opts: { project: number; xlsx: string; draft: string; host?: string; lang?: string; replace: boolean; autoFix: boolean; switchLang: boolean }) => {
+    .action(async (opts: { project: number; xlsx: string; draft: string; host?: string; lang?: string; replace: boolean; autoFix: boolean }) => {
       assertInputFilePath(opts.draft, '--draft');
       assertInputFilePath(opts.xlsx, '--xlsx');
       const host = resolveTrackingHost(rootProgram, opts);
       let client = await createTrackingClient(host);
 
       const draftPre: Draft = JSON.parse(await readFile(opts.draft, 'utf8'));
-      const xlsxLocale = (opts.lang as Locale | undefined) ?? (draftPre.meta.lang as Locale | undefined) ?? detectCliLocale();
-      const aeLocale = await client.getServerLang();
-      if (aeLocale && aeLocale !== xlsxLocale) {
-        console.log('\n' + t('plan.ae_lang_mismatch', { aeLang: aeLocale, xlsxLang: xlsxLocale }));
-        if (opts.switchLang) {
-          const aeLangCode = cliLocaleToAE(xlsxLocale);
-          await client.saveUserAutoConfig(aeLangCode);
-          console.log(t('plan.ae_lang_switched', { aeLang: aeLangCode }));
-          await new Promise(r => setTimeout(r, 2000));
-          client = await createTrackingClient(host);
-        } else {
-          console.log(t('plan.ae_lang_switch_hint'));
-          process.exit(13);
-        }
-      }
 
       if (!opts.replace) {
         console.log(t('plan.checking_conflicts'));
@@ -346,30 +323,15 @@ export function registerPlan(cmd: Command, rootProgram: Command): void {
 
   cmd.command('list-templates')
     .description('List bundled and user tracking plan templates (xlsx/md)')
-    .action(async () => {
-      const found: { path: string; name: string; hasMd: boolean }[] = [];
-      for (const dir of TEMPLATE_DIRS) {
-        if (!existsSync(dir)) continue;
-        let entries: string[] = [];
-        try {
-          entries = await readdir(dir);
-        } catch {
-          continue;
-        }
-        for (const f of entries) {
-          if (!f.endsWith('.xlsx')) continue;
-          const base = f.replace(/\.xlsx$/i, '');
-          const mdPath = resolve(dir, base + '.md');
-          const hasMd = existsSync(mdPath);
-          found.push({
-            path: hasMd ? mdPath : resolve(dir, f),
-            name: base,
-            hasMd,
-          });
-        }
+    .option('--json', 'print machine-readable template list', false)
+    .action(async (opts: { json: boolean }) => {
+      const found = await listTrackingTemplates();
+      if (opts.json) {
+        console.log(JSON.stringify(found, null, 2));
+        return;
       }
       if (found.length === 0) {
-        console.log(t('plan.no_templates_found', { dirs: TEMPLATE_DIRS.join(', ') }));
+        console.log(t('plan.no_templates_found', { dirs: getTemplateDirs().join(', ') }));
         return;
       }
       console.log(t('plan.templates_found', { count: found.length }) + '\n');

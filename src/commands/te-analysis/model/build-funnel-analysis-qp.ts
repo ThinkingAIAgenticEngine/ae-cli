@@ -1,4 +1,4 @@
-import { createMcpCommand } from '../shared.js';
+import { createMcpCommand, optionalBoolean } from '../shared.js';
 
 export const buildFunnelAnalysisQp = createMcpCommand({
   command: '+build_funnel_analysis_qp',
@@ -9,6 +9,7 @@ export const buildFunnelAnalysisQp = createMcpCommand({
     { name: 'funnel', type: 'json', required: true, desc: 'Required funnel intent JSON.' },
     { name: 'relation', type: 'string', required: false, desc: 'Optional top-level funnel filter relation. Supported values: and, or. Default: and.' },
     { name: 'time_particle_size', type: 'string', required: false, desc: 'Optional time granularity. Supported values: day, week, month.' },
+    { name: 'authenticated_only', type: 'boolean', required: false, desc: 'When true, resolve only authenticated assets while building the QP.' },
   ],
   risk: 'read',
   buildArgs: (ctx) => ({
@@ -17,5 +18,6 @@ export const buildFunnelAnalysisQp = createMcpCommand({
     funnel: ctx.json('funnel'),
     relation: ctx.str('relation') || undefined,
     timeParticleSize: ctx.str('time_particle_size') || undefined,
+    authenticatedOnly: optionalBoolean(ctx, 'authenticated_only'),
   }),
 });

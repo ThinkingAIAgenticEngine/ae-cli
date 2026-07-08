@@ -33,8 +33,6 @@ export interface DeviceAuthorizeResponse {
 
 export interface DeviceTokenResponse {
   access_token: string;
-  /** mcp_token may be null if the server did not issue one */
-  mcp_token: string | null;
   /** refresh_token is optional; absent in dev-login / some server configs — degrade gracefully */
   refresh_token?: string | null;
   token_type: string;
@@ -51,8 +49,8 @@ export interface DeviceAuthOptions {
 
 /**
  * Thrown when the AE server does not expose the device-code endpoints (e.g. an older server
- * predating this feature). The CLI should fail fast and point the user at the set-token fallback
- * rather than retrying a missing endpoint until the device code expires.
+ * predating this feature). The CLI should fail fast rather than retrying
+ * a missing endpoint until the device code expires.
  */
 export class DeviceFlowUnsupportedError extends Error {
   constructor() {

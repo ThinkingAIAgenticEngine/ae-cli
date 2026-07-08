@@ -27,10 +27,13 @@ ae-cli analysis_meta +list_events --dry-run
 |---|---|---|
 | `--project_id` / `-p` | Yes | Project ID |
 | `--query` / `-q` | No | Optional keyword filter. Performs fuzzy matching against eventName, eventDesc, and remark; if omitted, all events are returned. |
-| `--fields` / `-f` | No | Optional fields to return (JSON array). Supported fields: `eventId`, `eventName`, `eventDesc`, `remark`, `eventTag`. Default fields when omitted: `eventId`, `eventName`, `eventDesc`, `remark`. |
-| `--limit` / `-l` | No | Optional page size. Default: 20, maximum: 10000. |
+| `--fields` / `-f` | No | Optional fields to return (JSON array). Supported fields: `eventId`, `eventName`, `eventDesc`, `remark`, `eventTag`, `authenticationStatus`. Default fields when omitted: `eventId`, `eventName`, `eventDesc`, `remark`, `authenticationStatus`. |
+| `--limit` / `-l` | No | Optional page size. Default: 20, maximum: 50. |
 | `--offset` / `-o` | No | Optional page offset. Default: 0. |
+| `--authenticated_only` | No | When true, return only authenticated events. |
+
 ## Decision Rules
+- Use `--authenticated_only true` only when the user explicitly asks for authenticated assets. `authenticationStatus` is `1` for authenticated and `0` for unauthenticated.
 - For the first run, pass only the required parameter (`--project_id`) to confirm the path works, then add optional parameters.
 - For builder-supported ad-hoc analysis, pass the user's event wording to the builder instead of pre-querying event metadata.
 - For cross-project troubleshooting, first confirm whether `--project_id` matches the current permissions and target environment.

@@ -1,6 +1,7 @@
 import type { Command, Flag, RiskLevel, RuntimeContext } from '../../framework/types.js';
 import { isGlobalQueryModeEnabled } from '../../core/cluster-info.js';
 import { callMcpTool, parseMcpResult, resolveMcpUrl } from '../../core/mcp.js';
+import { buildApiUrl, callCapabilityApi, type CapabilityApiMethod } from '../../core/capability-api.js';
 
 interface CreateMcpCommandConfig {
   command: `+${string}`;
@@ -35,6 +36,52 @@ export function createMcpCommand(config: CreateMcpCommandConfig): Command {
       const url = resolveMcpUrl(ctx.mcpUrl(), ctx.host(), mcpService);
       const result = await callMcpTool(url, toolName, config.buildArgs(ctx), ctx.host());
       return parseMcpResult(result);
+    },
+  };
+}
+
+/**
+ * Config for commands that use the capability-gateway REST transport
+ * (`/api/cli/<domain>/v1/capabilities/<id>/execute`, `cli-token` header).
+ * Prefer `createCapabilityCommand` in `src/core/capability-command.ts` for gateway-backed domains.
+ */
+interface CreateApiCommandConfig {
+  command: `+${string}`;
+  description: string;
+  flags: Flag[];
+  risk: RiskLevel;
+  /** Capability domain segment, e.g. 'analysis'. Defaults to 'analysis'. */
+  domain?: string;
+  /** Path after `/v1/`, e.g. `capabilities/foo/execute`. Defaults to `capabilities/<command>/execute`. */
+  action?: string;
+  method?: CapabilityApiMethod;
+  validate?: (ctx: RuntimeContext) => void;
+  buildArgs: (ctx: RuntimeContext) => Record<string, unknown>;
+}
+
+export function createApiCommand(config: CreateApiCommandConfig): Command {
+  const domain = config.domain || 'analysis';
+  const capabilityAction = config.action || `capabilities/${config.command.slice(1)}/execute`;
+  const method = config.method || 'POST';
+
+  return {
+    service: 'analysis',
+    command: config.command,
+    description: config.description,
+    flags: config.flags,
+    risk: config.risk,
+    validate: config.validate,
+    dryRun: (ctx) => ({
+      method: 'POST',
+      url: buildApiUrl(ctx.host(), domain, capabilityAction.replace(/\/execute$/, '/dry-run')),
+      body: { input: config.buildArgs(ctx) },
+    }),
+    execute: async (ctx) => {
+      const input = config.buildArgs(ctx);
+      if (method === 'GET') {
+        return callCapabilityApi(ctx.host(), domain, capabilityAction, method, input);
+      }
+      return callCapabilityApi(ctx.host(), domain, capabilityAction, 'POST', { input });
     },
   };
 }

@@ -1,23 +1,22 @@
-# AE Backend API (internal reference)
+# AE Tracking Capability API (internal reference)
 
-> **Terminology**: 认证 = authentication | Token = bearer token from localStorage `ACCESS_TOKEN` | 端点 = endpoint | 抓包 = traffic capture | 埋点方案 = tracking plan | 上传 = upload | 删除 = delete | 查询 = query/fetch
+> **Terminology**: authentication = CLI token | capability = gateway-registered operation | tracking plan = program | upload = save xlsx | delete = clear program | query/fetch = read program
 
-> This file is the implementation basis for `src/client.ts`, maintained for internal contributors.
+> This file is the implementation basis for `src/core/tracking-client.ts`, maintained for internal contributors.
 > **Skill body should not reference this document** — skill users interact via CLI commands and do not need to know underlying endpoints.
 > xlsx format contract is in `xlsx-schema.md`, not here.
 
-Capture environment: `https://web-ta-demo.thinkingdata.cn`. If endpoints change, re-run the
-chrome-devtools capture flow from `docs/superpowers/plans/2026-04-15-ae-tracking-skill.md` Task 3.
+The AE CLI must call common-service through capability gateway URLs under `/api/cli/`.
+The legacy common-service endpoints are wrapped server-side by these capabilities and must not be
+called directly from `ae-cli`.
 
-## 认证
+## Authentication
 
-### Token
-- localStorage key：`ACCESS_TOKEN`
-- 存储形态：**JSON 编码字符串**（带双引号），使用前须 `replace(/^["']|["']$/g, '')`
+All capability requests use the CLI token chain:
 
-### 两种传 token 方式（按端点区分）
-- **GET/JSON 类接口**：Header `authorization: bearer <token>`（全小写）
-- **Excel 上传接口**：**form field `access_token`**，裸 UUID，**不用** Authorization header
+- Header: `cli-token: <token>`
+- Do not send `authorization: bearer ...`.
+- Do not send `access_token` form fields.
 
 ## 响应统一包装
 
@@ -25,16 +24,22 @@ chrome-devtools capture flow from `docs/superpowers/plans/2026-04-15-ae-tracking
 { "return_code": 0, "return_message": "success", "showStackMessage": false, "data": ... }
 ```
 - `return_code === 0` 为成功；非 0 抛错，取 `return_message`
-- 某些端点（如 `excel-save` / 空项目 `query`）成功时无 `data`
+- Empty project query may return no `data`.
 
-## 端点
+## Capabilities
 
-### 1. GET `/v1/ta/bury/manage/program/query`
+### 1. `track.program.query`
 
 获取项目唯一的埋点方案。
 
-- Query：`projectId` 必填 number
-- Header：`authorization: bearer <token>`
+- Method: `POST`
+- URL: `/api/cli/analysis/v1/capabilities/track.program.query/execute`
+- Input:
+
+```json
+{ "project_id": 1603 }
+```
+
 - Response `data` 结构（事件池 / 事件属性池 / 公共属性 / 用户属性）：
 
 ```jsonc
@@ -55,21 +60,46 @@ chrome-devtools capture flow from `docs/superpowers/plans/2026-04-15-ae-tracking
 
 空项目：`data` 不存在，直接 `{ return_code: 0, return_message: "success" }`。
 
-### 2. GET `/v1/ta/bury/manage/program/delete?projectId=<id>`
+### 2. `track.program.delete`
 
 一次清空整个项目的方案（事件 / 事件属性 / 公共属性 / 用户属性）。
 
-### 3. POST `/v1/ta/bury/manage/program/excel-save`
+- Method: `POST`
+- URL: `/api/cli/analysis/v1/capabilities/track.program.delete/execute`
+- Input:
+
+```json
+{ "project_id": 1603 }
+```
+
+### 3. `track.program.excel_save`
 
 批量上传 xlsx。
 
-- Content-Type：`multipart/form-data`
-- Form fields（全必填）：
-  - `file` — xlsx 二进制
-  - `projectId` — 文本
-  - `access_token` — 文本，裸 UUID
-- **无** Authorization header
-- Response：`{ return_code: 0, return_message: "success" }`（无 data）
+Upload is a two-step capability-gateway flow:
+
+1. Upload the xlsx as an input file.
+
+   - Method: `POST`
+   - URL: `/api/cli/analysis/v1/input-files`
+   - Content-Type: `multipart/form-data`
+   - Form fields:
+     - `project_id`
+     - `purpose`: `track.program.xlsx`
+     - `file`: xlsx binary
+   - Response includes `input_file_id`.
+
+2. Execute the save capability.
+
+   - Method: `POST`
+   - URL: `/api/cli/analysis/v1/capabilities/track.program.excel_save/execute`
+   - Input:
+
+```json
+{ "project_id": 1603, "input_file_id": "..." }
+```
+
+- Response: `{ return_code: 0, return_message: "success" }` on success.
 
 **合并语义**：对事件走 **merge-by-name**（同名不覆盖、新名新增）。若要完全替换，
 必须先调 `delete` 端点清空再上传。
@@ -96,5 +126,5 @@ chrome-devtools capture flow from `docs/superpowers/plans/2026-04-15-ae-tracking
 
 ## v2（暂未实现）
 
-- UI「逐个添加」通向单事件 CRUD 接口（`POST /v1/ta/bury/manage/event/*` 族），v1 走 excel-save 统一入口
+- UI「逐个添加」通向单事件 CRUD 接口，v1 走 `track.program.excel_save` 统一入口
 - 列项目、校验错误响应等见 plan 文档的"未抓端点"清单

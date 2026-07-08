@@ -2,19 +2,19 @@ import fs from 'fs';
 import path from 'path';
 import { safeReadJsonFile } from './json-utils.js';
 import { logger } from './logger.js';
-import { getSandboxMcpTokenFilePath } from './sandbox-runtime.js';
+import { getSandboxCliTokenFilePath } from './sandbox-runtime.js';
 
 const CONFIG_DIR = path.join(process.env.HOME || '', '.ae-cli');
 const CONFIG_FILE = path.join(CONFIG_DIR, 'config.json');
-export interface SandboxMcpTokenEntry {
+export interface SandboxCliTokenEntry {
   url: string;
   token: string;
 }
 
-/** Candidate paths for sandbox-provisioned mcp-token.json (read-only). */
-function sandboxMcpTokenCandidatePaths(): string[] {
-  const paths = [getSandboxMcpTokenFilePath()];
-  const homeFallback = path.join(process.env.HOME || '', '.ae-config', 'mcp-token.json');
+/** Candidate paths for sandbox-provisioned cli-token.json (read-only). */
+function sandboxCliTokenCandidatePaths(): string[] {
+  const paths = [getSandboxCliTokenFilePath()];
+  const homeFallback = path.join(process.env.HOME || '', '.ae-config', 'cli-token.json');
   if (!paths.includes(homeFallback)) {
     paths.push(homeFallback);
   }
@@ -22,17 +22,18 @@ function sandboxMcpTokenCandidatePaths(): string[] {
 }
 
 /**
- * Read sandbox-provisioned MCP token from disk.
- * The sandbox injects a pre-minted mcp-token so ae-cli can call MCP without a user access token.
+ * Read sandbox-provisioned CLI token from disk.
+ * The sandbox (te-claude agent injection) writes a pre-minted cli-token so ae-cli can authenticate
+ * without a user access token being available inside the sandbox.
  */
-export function readSandboxMcpTokenEntry(): SandboxMcpTokenEntry | null {
-  for (const file of sandboxMcpTokenCandidatePaths()) {
+export function readSandboxCliTokenEntry(): SandboxCliTokenEntry | null {
+  for (const file of sandboxCliTokenCandidatePaths()) {
     if (!fs.existsSync(file)) continue;
     try {
       const data = safeReadJsonFile(file);
       if (data && typeof data === 'object' && !Array.isArray(data)) {
         const url = data.url as string;
-        const token = data['mcp-token'] as string;
+        const token = data.token as string;
         if (url && token) {
           return { url, token };
         }
@@ -56,23 +57,24 @@ function ensureDir(): void {
 }
 
 /**
- * Read the token mapping from the fallback MCP token file (in-memory only; no longer writes mcp-tokens.json).
- * Used as a transition for sandbox environments before the first mint; returns null if no fallback is available.
+ * Read the token mapping from the sandbox-provisioned cli-token.json (read-only; ae-cli never writes it).
+ * Used as a fallback for sandbox environments where no user access token is available; returns null
+ * if no such file is present.
  */
 export function forceMigrateFromFallback(): Record<string, string> | null {
-  const entry = readSandboxMcpTokenEntry();
+  const entry = readSandboxCliTokenEntry();
   if (!entry) return null;
   return { [entry.url]: entry.token };
 }
 
 /**
- * Resolve a sandbox-provisioned MCP token for the given host from the fallback file.
+ * Resolve a sandbox-provisioned CLI token for the given host from the fallback file.
  * Exact host match wins; otherwise, when the fallback contains exactly one entry, return it.
  * The single-entry fallback decouples the lookup from a fragile host-string match: the sandbox
- * writes one { url, mcp-token }, and the active host (or --host) may not byte-match that url
+ * writes one { url, token }, and the active host (or --host) may not byte-match that url
  * (e.g. activeHost is unset). Returns null when there is no fallback file or no safe match.
  */
-export function getFallbackMcpToken(hostUrl: string): string | null {
+export function getFallbackCliToken(hostUrl: string): string | null {
   const store = forceMigrateFromFallback();
   if (!store) return null;
   if (hostUrl && store[hostUrl]) return store[hostUrl];
@@ -125,10 +127,12 @@ export function saveConfig(config: TeConfig): void {
 }
 
 export function getActiveHost(): string {
+  // Sandbox-provisioned cli-token.json represents the current agent runtime entrypoint.
+  // Prefer it over stale user config copied into the sandbox.
+  const sandboxHost = readSandboxCliTokenEntry()?.url;
+  if (sandboxHost) return sandboxHost;
   const config = loadConfig();
-  if (config.activeHost) return config.activeHost;
-  // Sandbox: host is provisioned alongside mcp-token.json when ~/.ae-cli/config.json is absent.
-  return readSandboxMcpTokenEntry()?.url ?? '';
+  return config.activeHost || '';
 }
 
 export function setActiveHost(url: string): void {

@@ -33,6 +33,7 @@ ae-cli analysis_audience +build_cluster_definition --dry-run
 | Parameter             | Required | Description                                                                                                                           |
 | --------------------- | -------- | ------------------------------------------------------------------------------------------------------------------------------------- |
 | `--project_id` / `-p` | Yes      | Project ID                                                                                                                            |
+| `--authenticated_only` | No | Resolve only authenticated assets while building the definition. |
 | `--type`              | Yes      | Cluster type. Supported values: `condition`, `sql`                                                                                    |
 | `--conditions`        | No       | For type=condition: main condition group JSON (required when type=condition). See `+get_cluster_definition_schema` for the structure. |
 | `--include_filter`    | No       | For type=condition: global include condition group JSON.                                                                              |
@@ -40,6 +41,7 @@ ae-cli analysis_audience +build_cluster_definition --dry-run
 | `--sql`               | No       | For type=sql: SQL query returning a single column named `#user_id`.                                                                   |
 
 ## Decision Rules
+- Use `--authenticated_only true` when the definition should only resolve authenticated events/properties/metrics/clusters/tags.
 
 - Determine `--type` first, then pass the corresponding parameters.
 - For type=condition, `--conditions` is effectively required; `--include_filter` and `--exclude_filter` are optional global filters.

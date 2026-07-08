@@ -1,4 +1,4 @@
-import { createMcpCommand } from '../shared.js';
+import { createMcpCommand, optionalBoolean } from '../shared.js';
 
 export const buildHeatMapAnalysisQp = createMcpCommand({
   command: '+build_heat_map_analysis_qp',
@@ -7,11 +7,13 @@ export const buildHeatMapAnalysisQp = createMcpCommand({
     { name: 'project_id', type: 'number', required: true, desc: 'Project ID', alias: 'p' },
     { name: 'time_range', type: 'json', required: true, desc: 'Required time range JSON for heatmap analysis.' },
     { name: 'heat_map', type: 'json', required: true, desc: 'Heatmap intent JSON. Required fields: hotEvent, hotAggregation, xProp, yProp. Optional: hotProperty, filters, relation.' },
+    { name: 'authenticated_only', type: 'boolean', required: false, desc: 'When true, resolve only authenticated assets while building the QP.' },
   ],
   risk: 'read',
   buildArgs: (ctx) => ({
     projectId: ctx.num('project_id'),
     timeRange: ctx.json('time_range'),
     heatMap: ctx.json('heat_map'),
+    authenticatedOnly: optionalBoolean(ctx, 'authenticated_only'),
   }),
 });

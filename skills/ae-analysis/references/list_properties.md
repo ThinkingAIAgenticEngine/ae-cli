@@ -27,12 +27,14 @@ ae-cli analysis_meta +list_properties --dry-run
 | `--scope` | No | Optional property scope. event means event properties, user means user properties. If omitted, all scopes are queried. |
 | `--event_name` | No | Optional event name. If provided, only event properties available for that event are returned. |
 | `--query` / `-q` | No | Optional keyword filter. Fuzzy match is applied to propName, propDesc, and remark; if omitted, all matched properties are returned. |
-| `--fields` / `-f` | No | Optional fields to return (JSON array). Supported fields: `propId`, `propName`, `propDesc`, `remark`, `selectType`, `tableType`, `subTableType`. Default fields when omitted: `propId`, `propName`, `propDesc`, `remark`, `selectType`, `tableType`. |
-| `--limit` / `-l` | No | Optional page size. Default: 20, maximum: 10000. |
+| `--fields` / `-f` | No | Optional fields to return (JSON array). Supported fields: `propId`, `propName`, `propDesc`, `remark`, `selectType`, `tableType`, `subTableType`, `authenticationStatus`. Default fields when omitted: `propId`, `propName`, `propDesc`, `remark`, `selectType`, `tableType`, `authenticationStatus`. |
+| `--limit` / `-l` | No | Optional page size. Default: 20, maximum: 50. |
 | `--offset` / `-o` | No | Optional page offset. Default: 0. |
+| `--authenticated_only` | No | When true, return only authenticated properties. |
 
 
 ## Decision Rules
+- Use `--authenticated_only true` only when the user explicitly asks for authenticated assets. `authenticationStatus` is `1` for authenticated and `0` for unauthenticated.
 - For the first run, pass only the required parameter (`--project_id`) to confirm the path works, then add optional parameters.
 - For builder-supported ad-hoc analysis, pass the user's property wording to the builder instead of pre-querying property metadata.
 - For cross-project troubleshooting, first confirm whether `--project_id` matches the current permissions and target environment.

@@ -1,4 +1,4 @@
-import { createMcpCommand } from '../shared.js';
+import { createMcpCommand, optionalBoolean } from '../shared.js';
 
 export const buildPathAnalysisQp = createMcpCommand({
   command: '+build_path_analysis_qp',
@@ -7,11 +7,13 @@ export const buildPathAnalysisQp = createMcpCommand({
     { name: 'project_id', type: 'number', required: true, desc: 'Project ID', alias: 'p' },
     { name: 'time_range', type: 'json', required: true, desc: 'Required time range JSON for path analysis.' },
     { name: 'path', type: 'json', required: true, desc: 'Path analysis intent JSON. Required fields: sourceEvent, eventNames (array), sessionInterval, sessionUnit. Optional: sourceType (0=forward, 1=backward, default 0).' },
+    { name: 'authenticated_only', type: 'boolean', required: false, desc: 'When true, resolve only authenticated assets while building the QP.' },
   ],
   risk: 'read',
   buildArgs: (ctx) => ({
     projectId: ctx.num('project_id'),
     timeRange: ctx.json('time_range'),
     path: ctx.json('path'),
+    authenticatedOnly: optionalBoolean(ctx, 'authenticated_only'),
   }),
 });

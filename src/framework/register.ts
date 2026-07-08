@@ -19,7 +19,16 @@ export function registerCommands(program: CommanderCommand, commands: Command[])
     }
 
     for (const cmd of cmds) {
-      const sub = serviceCmd.command(cmd.command).description(cmd.description);
+      let parent = serviceCmd;
+      if (cmd.resource) {
+        let resourceCmd = serviceCmd.commands.find(c => c.name() === cmd.resource);
+        if (!resourceCmd) {
+          resourceCmd = serviceCmd.command(cmd.resource).description(`${cmd.resource} commands`);
+        }
+        parent = resourceCmd;
+      }
+
+      const sub = parent.command(cmd.command).description(cmd.description);
 
       // Register flags
       for (const flag of cmd.flags) {

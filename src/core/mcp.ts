@@ -1,8 +1,7 @@
 import fs from 'fs';
-import { getToken } from './auth.js';
 import { getAnalysisMappingPathForClusterMode } from './cluster-info.js';
-import { getActiveHost, getFallbackMcpToken } from './config.js';
-import { loadMcpToken as loadSecureMcpToken } from './secure-store.js';
+import { getActiveHost } from './config.js';
+import { getCliToken, clearCliToken } from './cli-token.js';
 import { safeJsonParse } from './json-utils.js';
 import { logger } from './logger.js';
 import { PermissionError } from './errors.js';
@@ -16,6 +15,11 @@ async function permissionMessage(resp: Response): Promise<string> {
     if (msg && typeof msg === 'string') return msg;
   } catch { /* non-JSON body */ }
   return 'Permission denied for this resource (HTTP 403)';
+}
+
+function isInvalidCliTokenMessage(message: string): boolean {
+  return /\b(cli[-_\s]?token|token)\b.*\binvalid\b/i.test(message)
+    || /\binvalid\b.*\b(cli[-_\s]?token|token)\b/i.test(message);
 }
 
 const MCP_PROTOCOL_VERSION = '2025-11-25';
@@ -137,170 +141,16 @@ function genRequestId(): number {
   return requestIdCounter++;
 }
 
-const MCP_TOKEN_GENERATE_PATH = '/v1/ta/mcp/token/generate';
-
 /**
- * In-process MCP token cache (host -> token)
- * Valid only within the current process lifetime; never written to disk.
+ * Build the auth header set sent on every MCP JSON-RPC request.
+ * Only `cli-token` is sent: the backend McpAuthHandlerInterceptor validates CLI tokens when this
+ * header is present alone. Sending the same value in `mcp-token` as well currently breaks auth
+ * (interceptor skips the cli branch and rejects non-mcp_ prefixes with HTTP 500).
  */
-const _mcpTokenCache = new Map<string, string>();
-
-/**
- * Mint an MCP token on-demand by calling /v1/ta/mcp/token/generate with the AE token.
- * Result is cached in process memory to avoid repeated minting within the same CLI invocation.
- */
-async function generateMcpToken(hostUrl: string): Promise<string> {
-  const teToken = await getToken(hostUrl);
-  const base = hostUrl.replace(/\/+$/, '');
-  const url = `${base}${MCP_TOKEN_GENERATE_PATH}`;
-
-  const resp = await fetch(url, {
-    method: 'GET',
-    headers: {
-      'Authorization': `bearer ${teToken}`,
-    },
-  });
-
-  if (!resp.ok) {
-    throw new Error(`MCP token generate HTTP error: ${resp.status} ${resp.statusText}`);
-  }
-
-  const data = safeJsonParse(await resp.text());
-
-  if (data.return_code !== 0) {
-    throw new Error(`MCP token generate error: ${data.return_message || 'unknown'} (code: ${data.return_code})`);
-  }
-
-  const mcpToken = data.data?.userSecret;
-  if (!mcpToken) {
-    throw new Error('MCP token generate error: empty userSecret in response');
-  }
-
-  return mcpToken;
-}
-
-/**
- * Get MCP token (in-process cache; never written to disk).
- * Repeated calls within the same process hit the in-memory cache to avoid redundant minting.
- * mcpToken is no longer written to ~/.ae-cli/mcp-tokens.json.
- */
-export async function getMcpToken(hostOverride?: string): Promise<string> {
-  const hostUrl = hostOverride || getActiveHost();
-
-  // 1. Check in-process cache
-  const cached = _mcpTokenCache.get(hostUrl);
-  if (cached) {
-    return cached;
-  }
-
-  // 2. Persisted long-lived MCP token from secure-store (written by device login).
-  // Prefer login credentials for the active host over a sandbox-injected fallback token
-  // provisioned for a different URL (common when ~/.ae-config/mcp-token.json coexists with remote auth).
-  const storedToken = loadSecureMcpToken(hostUrl);
-  if (storedToken) {
-    _mcpTokenCache.set(hostUrl, storedToken);
-    logger.info(`Using persisted MCP token (secure-store) for ${hostUrl}`);
-    return storedToken;
-  }
-
-  // 3. Sandbox path — a pre-provisioned mcp-token may be injected via the legacy fallback file.
-  // Inside a sandbox there is no user access token to mint with, so this MUST be consulted
-  // before attempting to mint. In personal/local environments the fallback file is absent,
-  // so this is skipped and we fall through below.
-  const fallbackToken = getFallbackMcpToken(hostUrl);
-  if (fallbackToken) {
-    _mcpTokenCache.set(hostUrl, fallbackToken);
-    logger.info(`Using sandbox-provisioned MCP token (fallback file) for ${hostUrl}`);
-    return fallbackToken;
-  }
-
-  // 4. Cache miss, no persisted token, no fallback — mint via the API (requires a user access token)
-  logger.info(`Generating MCP token for ${hostUrl}`);
-  const mcpToken = await generateMcpToken(hostUrl);
-
-  // 5. Cache in memory only; do not write to disk
-  _mcpTokenCache.set(hostUrl, mcpToken);
-  logger.info(`MCP token generated and in-process cached for ${hostUrl}`);
-
-  return mcpToken;
-}
-
-/**
- * Clear the in-process MCP token cache.
- * Note: mcp-tokens.json is deprecated and no longer written; this function only clears the in-memory cache.
- */
-export function clearMcpToken(hostUrl?: string): void {
-  if (hostUrl) {
-    _mcpTokenCache.delete(hostUrl);
-  } else {
-    _mcpTokenCache.clear();
-  }
-}
-
-/**
- * Manually set an MCP token (writes to in-process cache).
- * Note: no longer written to disk; valid only within the current process.
- */
-export function setMcpTokenManual(token: string, hostUrl: string): void {
-  _mcpTokenCache.set(hostUrl, token);
-  logger.info(`MCP token manually set (in-process) for ${hostUrl}`);
-}
-
-/**
- * Return the in-process MCP token cache (read-only display, e.g. for auth status).
- * Compatibility shim: previously returned the on-disk store; now returns the in-memory Map as a Record.
- */
-export function loadMcpTokenStore(): Record<string, string> {
-  return Object.fromEntries(_mcpTokenCache.entries());
-}
-
-/**
- * Validate whether an MCP token is valid
- * Tested by calling the tools/list method
- */
-export async function validateMcpToken(token: string, hostUrl: string): Promise<boolean> {
-  const mapping = getMcpMapping('analysis');
-  const base = hostUrl.replace(/\/+$/, '');
-  const url = `${base}/mcp/${mapping.componentName}/http/${mapping.mappingPath}`;
-  const requestId = 1;
-
-  const body = {
-    jsonrpc: JSONRPC_VERSION,
-    id: requestId,
-    method: 'tools/list',
-    params: { _meta: { progressToken: requestId } },
+function buildAuthHeaders(cliToken: string): Record<string, string> {
+  return {
+    'cli-token': cliToken,
   };
-
-  const headers: Record<string, string> = {
-    'Content-Type': 'application/json',
-    'Accept': 'application/json, text/event-stream',
-    'mcp-protocol-version': MCP_PROTOCOL_VERSION,
-    'mcp-token': token,
-    
-  };
-
-  try {
-    const resp = await fetch(url, {
-      method: 'POST',
-      headers,
-      body: JSON.stringify(body),
-    });
-
-    if (!resp.ok) {
-      return false;
-    }
-
-    const data = safeJsonParse(await resp.text());
-    // A JSON-RPC error indicates the token is invalid
-    if (data.error) {
-      return false;
-    }
-
-    // A tools list in the result indicates success
-    return data.result?.tools !== undefined;
-  } catch {
-    return false;
-  }
 }
 
 /**
@@ -313,7 +163,7 @@ async function mcpRequest(
   hostOverride?: string
 ): Promise<any> {
   const hostUrl = hostOverride || getActiveHost();
-  const token = await getMcpToken(hostUrl);
+  const token = await getCliToken(hostUrl);
   const requestId = genRequestId();
 
   // Add _meta.progressToken to params
@@ -333,8 +183,8 @@ async function mcpRequest(
     'Content-Type': 'application/json',
     'Accept': 'application/json, text/event-stream',
     'mcp-protocol-version': MCP_PROTOCOL_VERSION,
-    'mcp-token': token,
     
+    ...buildAuthHeaders(token),
   };
 
   const resp = await fetch(url, {
@@ -344,25 +194,24 @@ async function mcpRequest(
   });
 
   if (!resp.ok) {
-    // F-018: 403 = authenticated-but-forbidden (permission/scope), NOT a token issue — do NOT re-mint/retry.
+    let permissionMsg: string | undefined;
     if (resp.status === 403) {
-      throw new PermissionError(await permissionMessage(resp));
+      permissionMsg = await permissionMessage(resp);
+      if (!isInvalidCliTokenMessage(permissionMsg)) {
+        // F-018: 403 = authenticated-but-forbidden (permission/scope), NOT a token issue.
+        throw new PermissionError(permissionMsg);
+      }
     }
-    // 401 = token expired/invalid: clear cache, re-mint (or re-read sandbox fallback), retry once.
-    if (resp.status === 401) {
-      logger.warn(`MCP request failed (HTTP 401) for ${hostUrl}, re-minting token`);
-      _mcpTokenCache.delete(hostUrl);
-      // Also try the legacy fallback file (may still be present in sandbox environments).
-      // The persisted secure-store token is intentionally NOT consulted here: it is the token
-      // that just failed, so we re-read the (possibly refreshed) sandbox file or re-mint.
-      const fallbackToken = getFallbackMcpToken(hostUrl);
-      const newToken = fallbackToken ?? await generateMcpToken(hostUrl);
-      _mcpTokenCache.set(hostUrl, newToken);
+    // 401, or 403 with an explicit invalid CLI token message: clear cache and retry once.
+    if (resp.status === 401 || (resp.status === 403 && permissionMsg)) {
+      logger.warn(`MCP request failed (${resp.status === 403 ? permissionMsg : 'HTTP 401'}) for ${hostUrl}, refreshing CLI token`);
+      clearCliToken(hostUrl);
+      const newToken = await getCliToken(hostUrl);
 
-      logger.info(`MCP token re-minted for ${hostUrl}`);
-      process.stderr.write(`[ae-cli] MCP token re-minted for ${hostUrl}\n`);
+      logger.info(`CLI token refreshed for ${hostUrl}`);
+      process.stderr.write(`[ae-cli] CLI token refreshed for ${hostUrl}\n`);
 
-      headers['mcp-token'] = newToken;
+      Object.assign(headers, buildAuthHeaders(newToken));
       const retryResp = await fetch(url, {
         method: 'POST',
         headers,

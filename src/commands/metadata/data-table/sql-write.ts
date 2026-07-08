@@ -1,0 +1,35 @@
+import { createCapabilityCommand, optionalJson, optionalNumber, optionalString } from '../shared.js';
+
+export const dataTableSqlWrite = createCapabilityCommand({
+  resource: 'data-table',
+  command: 'sql-write',
+  capabilityId: 'metadata.data_table.sql_write',
+  description: 'Create or update a SQL-backed metadata data table.',
+  flags: [
+    { name: 'project-id', type: 'number', required: true, desc: 'Numeric project ID.', alias: 'p' },
+    { name: 'operation', type: 'string', required: true, desc: 'Write operation: create or update.' },
+    { name: 'columns', type: 'json', required: true, desc: 'Column definitions JSON array.' },
+    { name: 'qp', type: 'json', required: true, desc: 'SQL data table query plan JSON.' },
+    { name: 'data-table-id', type: 'number', required: false, desc: 'Existing data table ID for update operations.' },
+    { name: 'table-name', type: 'string', required: false, desc: 'Technical data table name. Required by the service for create operations.' },
+    { name: 'display-name', type: 'string', required: false, desc: 'Human-readable data table name.' },
+    { name: 'remarks', type: 'string', required: false, desc: 'Data table remarks.' },
+    { name: 'zone-offset', type: 'string', required: false, desc: 'Time zone offset used by the query plan, for example +08:00.' },
+    { name: 'strategy', type: 'string', required: false, desc: 'Write strategy: overwrite or insert.' },
+    { name: 'update-cron', type: 'string', required: false, desc: 'Cron expression for scheduled updates.' },
+  ],
+  risk: 'write',
+  buildInput: (ctx) => ({
+    project_id: ctx.num('project-id'),
+    operation: ctx.str('operation'),
+    data_table_id: optionalNumber(ctx, 'data-table-id'),
+    table_name: optionalString(ctx, 'table-name'),
+    display_name: optionalString(ctx, 'display-name'),
+    remarks: optionalString(ctx, 'remarks'),
+    columns: ctx.json('columns'),
+    qp: ctx.json('qp'),
+    zone_offset: optionalString(ctx, 'zone-offset'),
+    strategy: optionalString(ctx, 'strategy'),
+    update_cron: optionalString(ctx, 'update-cron'),
+  }),
+});
