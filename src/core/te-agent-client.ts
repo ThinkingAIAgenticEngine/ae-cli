@@ -3,7 +3,7 @@
  *
  * Auth header selection logic (priority high -> low):
  *   1. Sandbox credentials complete (url + sandboxId + sandboxSecretKey) -> X-Sandbox-Id / X-Sandbox-Secret-Key
- *   2. User access token present (tokens.json / secure-store)
+ *   2. User access token present (secure-store)
  *      -> Authorization: bearer <accessToken>
  *   3. CLI token available (secure-store / cli-token.json) -> cli-token: <cliToken>
  *   4. Neither available -> throws TeAgentCredentialsError (with hint)
@@ -102,7 +102,7 @@ async function signRequest(method: 'GET' | 'POST' | 'DELETE' | 'PATCH', path: st
     };
   }
 
-  // --- User Bearer path: access token from device login / legacy tokens.json / secure-store ---
+  // --- User Bearer path: access token from device login (secure-store) ---
   const { getToken } = await import('./auth.js');
   const { getCliToken } = await import('./cli-token.js');
 

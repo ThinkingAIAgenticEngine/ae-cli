@@ -22,9 +22,7 @@ v1 让设备码登录跨平台跑通，但暴露三个问题：
 - 不在输出/日志写完整 token（沿用 v1：仅打印前 8 位、URL 不带 query 入日志）。
 - 设备码遵循 RFC 8628（device_code 5min TTL、interval、slow_down）。
 - 保留 `auth set-token` / `TE_TOKEN` 逃生口。
-- 沙箱 `.ae-config` 注入机制 must-preserve（见 design §4）：不得让 `getMcpToken` 绕过 fallback 文件。
-
----
+- 沙箱 `.ae-config/cli-token.json` 注入机制 must-preserve（见 design §4）：`getCliToken` 在 secure-store 之后、mint 之前读取该文件。
 
 ## 实现状态
 
@@ -51,14 +49,14 @@ v1 让设备码登录跨平台跑通，但暴露三个问题：
 ### ✅ Task 2 — `config set-host` 非交互命令 + 沙箱 fallback 去耦（本次）
 
 - **`ae-cli config set-host <url> [--label <label>]`**：非交互写 activeHost（host 不在列表则自动 add，去掉「必须先存在」的硬抛）。全代码库 `config set-host` 悬空提示统一补 `<url>`（命令现已存在）。
-- **沙箱 fallback 去耦**：新增 `getFallbackMcpToken(hostUrl)`——精确 host 命中优先；否则当 `.ae-config` 仅一条目时取它（覆盖 activeHost 为空/不匹配场景），消除 `forceMigrateFromFallback()?.[hostUrl]` 串匹配脆弱性。`getMcpToken` 与 401 重试均改走它（**仍在 mint 前、不绕过 `.ae-config`**，沙箱 must-preserve）。
+- **沙箱 fallback 去耦**：`getFallbackCliToken(hostUrl)` 从 `.ae-config/cli-token.json` 读取——精确 host 命中优先；否则当文件仅一条目时取它（覆盖 activeHost 为空/不匹配场景）。`getCliToken` 在 mint 前走该 fallback。
 - **改动文件**：`src/commands/config.ts`（set-host 子命令）、`src/core/config.ts`（`getFallbackMcpToken`）、`src/core/mcp.ts`（两处 fallback 调用）、`src/commands/auth.ts`/`src/core/auth.ts`/`src/api/raw.ts`（提示补 `<url>`）。
 
 ### ✅ Task 3 — 持久化 mcpToken 作主凭证 + 去客户端虚构过期（本次）
 
 - **持久化 mcpToken**：`TokenPayload` 加 `mcpToken?`，登录时落盘（AES 0600，secure-store）；`loadMcpToken(host)` 读取；access-token refresh 时**保留** mcpToken。
 - **`getMcpToken` 优先级**：内存 → `.ae-config` 沙箱 fallback（保留）→ **secure-store 持久 mcpToken（新）** → 用 access mint。mcp-token 路径（analysis/team 等）因此跨会话免重 mint（mcpToken 服务端非过期 = 长期免登的载体）。
-- **去客户端虚构过期（懒发现）**：①移除 legacy `tokens.json` 的 20h `TOKEN_TTL_MS`；②`getValidAccessToken` 在「过静态期 + 无 refresh token」时**返回存的 token 而非抛错**——`accessExpiresAt` 是登录时的静态快照，而服务端是**滑动窗口（每次使用自动续 8h）**，静态时间不代表真实有效性；交给服务端裁判（真死才 401）。这样**活跃使用 bearer 命令的人，token 跟着服务端滑动、实际永不重登**。
+- **去客户端虚构过期（懒发现）**：`getValidAccessToken` 在「过静态期 + 无 refresh token」时**返回存的 token 而非抛错**——`accessExpiresAt` 是登录时的静态快照，而服务端是**滑动窗口（每次使用自动续 8h）**，静态时间不代表真实有效性；交给服务端裁判（真死才 401）。这样**活跃使用 bearer 命令的人，token 跟着服务端滑动、实际永不重登**。
 - **bearer 路径 401 → 干净重登**：`client.ts`（`ae-cli api` 等 REST）真 401/403 抛 `SecureStoreAuthError`（`raw.ts` 映射成 `error.type=auth`，触发 ae-shared auth-gate）；`te-agent-client` 401/403 抛「Session expired … run auth login」。
 - **`auth status` 诚实化**：有凭证即 `authenticated:true`；`accessExpiresAt` 标为 advisory（服务端滑动，CLI 无法精确知），附 `hasMcpToken` / `pastStaticExpiry`。
 - **改动文件**：`src/core/secure-store.ts`（`mcpToken` 字段 + `loadMcpToken` + refresh 保留 + 懒返回）、`src/core/mcp.ts`（secure-store 档）、`src/core/client.ts`（401→SecureStoreAuthError）、`src/api/raw.ts`（映射 auth）、`src/core/te-agent-client.ts`（401 重登提示）、`src/commands/auth.ts`（登录落 mcpToken + status 诚实化）、`src/core/auth.ts`（去 `TOKEN_TTL_MS`）。

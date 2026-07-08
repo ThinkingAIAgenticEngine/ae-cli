@@ -10,6 +10,7 @@ description: "AE/TE/ThinkingEngine/ThinkingAI ae-cli manual for analysis-side ta
 > **CRITICAL - For all commands that require `project_id`, you MUST satisfy `PROJECT_ID_GATE` first (no guessing): verify the project by ID/name with `analysis_common +list_projects` only when there is no valid project context yet, when the user switches project/host/environment, or when the supplied project is ambiguous. Reuse a project already verified in the same continuous conversation and same host/environment.**
 > **CRITICAL - For write operations in this skill, you MUST complete the post-write link loop when applicable:** after success and extractable `resource_id`, call `analysis_common +get_resource_url` and return the main result + resource link (or explicit link-failure reason).
 > **CRITICAL - Before running any `+<tool_name>` command, you MUST first read the corresponding `references/<tool_name>.md`.** The reference filename always equals the command name without the leading `+`, for example `+query_adhoc` -> `references/query_adhoc.md`.
+> **CRITICAL - Before running any capability-gateway asset command such as `ae-cli analysis dashboard list`, `ae-cli analysis bi-panel get`, `ae-cli analysis project-space create`, or `ae-cli analysis public-link list`, read the matching `references/<resource>_<action>.md` file. Replace hyphens with underscores, for example `analysis dashboard list` -> `references/dashboard_list.md`, `analysis bi-panel get` -> `references/bi_panel_get.md`. Use [`references/analysis_gateway_assets.md`](references/analysis_gateway_assets.md) only as the overview matrix.**
 
 ## Global AE CLI Rules
 
@@ -21,7 +22,7 @@ Global parameters:
 | ------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `--format <json\|table>` | Output format. Default is JSON.                                                                                                                       |
 | `--jq <expr>`            | jq filter expression for JSON output.                                                                                                                 |
-| `--host <url>`           | Override the active AE host. Available on every command and may be placed after the subcommand, e.g. `ae-cli analysis +list_dashboards --host <url>`. |
+| `--host <url>`           | Override the active AE host. Available on every command and may be placed after the subcommand, e.g. `ae-cli analysis dashboard list --host <url>`. |
 
 Output and errors:
 
@@ -52,13 +53,54 @@ If user intent is Engage/DataOps/Community/metadata gateway detail, switch to `a
 - `ae-cli analysis_audience +<tool_name> [options]`
 - `ae-cli analysis_meta +<tool_name> [options]`
 - `ae-cli analysis_common +<tool_name> [options]`
+- `ae-cli analysis <resource> <action> [options]` for capability-gateway dashboard, BI panel, project-space, folder, favorite, public-link, dashboard-definition, dashboard-daily-report, and async asset data commands.
 
 Conventions:
 
-- CLI flags use underscores, e.g. `--project_id`.
+- MCP `+<tool_name>` command flags use underscores, e.g. `--project_id`.
+- Capability-gateway command flags use kebab-case, e.g. `--project-id`, `--dashboard-id`, `--request-id`. The CLI sends snake_case JSON to the gateway.
 - MCP params map automatically to camelCase.
 - JSON args pass as JSON string literals.
 - Write operations require confirmation unless `--yes`.
+
+## Capability Gateway Asset Commands
+
+Use these commands for dashboard, BI panel, project space, folder, favorite, public link, dashboard definition import/export, dashboard daily report, and dashboard/BI page data operations:
+
+```bash
+ae-cli analysis dashboard list --project-id <project_id>
+ae-cli analysis dashboard get --project-id <project_id> --dashboard-id <dashboard_id>
+ae-cli analysis dashboard update --project-id <project_id> --operation settings --dashboard-id <dashboard_id> --payload '{...}'
+ae-cli analysis dashboard-report-data export --project-id <project_id> --dashboard-id <dashboard_id>
+ae-cli analysis bi-panel-page-data run --project-id <project_id> --panel-id <panel_id> --page-key <page_key> --result-type charts
+ae-cli analysis project-space list --project-id <project_id>
+ae-cli analysis query cancel --run-id <run_id>
+```
+
+Use capability-gateway asset commands when the user wants to manage or inspect:
+
+- Dashboards, dashboard basic detail including creator/create time, dashboard sharing, dashboard notes, dashboard copy/freeze/handover/delete, abnormal info, task status.
+- Dashboard report data that may be large or long-running. Prefer `dashboard-report-data export` for large results; use `run` only for bounded inline results.
+- Dashboard definition export/import. Use `dashboard-definition import --validate-only true` for import pre-checks; do not look for a separate import-check command.
+- Dashboard daily report update or immediate send.
+- BI panel list/detail/create/update/delete/share/copy and BI page data. Prefer `bi-panel-page-data export` for large results.
+- Project spaces, folders, favorites, and public links.
+
+Do **not** use these commands for:
+
+- Ad-hoc model analysis, report definition, report data, drilldown, entity/event details, metadata/schema helpers, alerts, audience clusters/tags, or project lookup. Use the existing `+<tool_name>` commands for those.
+- Dashboard locks, BI panel version/lock, dashboard filter module, UI reorder/move/tree operations, daily report retry/download/get-config, public-link logs/source-list/get, or other product-manager-red-marked abilities.
+- Internal-only or UI-only payloads unless the gateway command reference explicitly exposes them through `--payload`.
+
+Capability-gateway output:
+
+- Successful commands return the standard gateway envelope: `{ "ok": true, "data": ..., "meta": ... }`.
+- Failed commands return `{ "ok": false, "error": ... }` and exit non-zero.
+- Inline `run` data is bounded by `--limit` and `--timeout-seconds`.
+- Export commands return `run_id`, `artifact_id`, artifact status, inspect path, and download path. Use `--artifact-format jsonl` for the artifact format; `--format` is reserved for CLI output formatting. Cancel with `ae-cli analysis query cancel --run-id <run_id>`.
+- Unknown input fields and camelCase external fields are rejected by the gateway; use kebab-case CLI flags only.
+
+See [`references/analysis_gateway_assets.md`](references/analysis_gateway_assets.md) for the command matrix. Before running one command, read its dedicated reference file named as `<resource>_<action>.md`.
 
 ## Mandatory Constraints
 
@@ -78,7 +120,7 @@ For any command requiring `project_id`:
 
 When these writes succeed and `resource_id` is extractable, call `analysis_common +get_resource_url` and append link output:
 
-- `dashboard`: `+create_dashboard`, `+update_dashboard`
+- `dashboard`: `analysis dashboard create`, `analysis dashboard update`
 - `report`: `+create_report`
 - `metric`: `+create_metric`, `+update_metric`
 - `alert`: `+create_alert`, `+update_alert`
@@ -97,7 +139,7 @@ Closed-loop check (must be explicit in result):
 
 ### C. FUZZY_SEARCH_FALLBACK
 
-For list commands with `--query` parameter (list_reports, list_dashboards, list_events, list_clusters, list_tags, list_alerts, list_metrics):
+For list commands with `--query` parameter (`list_reports`, `analysis dashboard list`, `list_events`, `list_clusters`, `list_tags`, `list_alerts`, `list_metrics`):
 
 1. **First attempt**: Use `--query` with user-provided keyword for fuzzy search
 2. **If no results found**, retry up to 2 more times with:
@@ -123,8 +165,8 @@ Before executing ad-hoc queries (`query_adhoc`), MUST check for existing reports
 
 1. **Identify user intent** - Extract what metrics/dimensions/filters the user wants
 2. **Search existing reports** - Use `list_reports --query <keyword>` to find matching reports
-3. **Search existing dashboards** - Use `list_dashboards --query <keyword>` to find matching dashboards
-4. **If found** - Use `query_report_data` or `query_dashboard_report_data` to get data from existing assets
+3. **Search existing dashboards** - Use `analysis dashboard list --query <keyword>` to find matching dashboards
+4. **If found** - Use `query_report_data` or `analysis dashboard-report-data run/export` to get data from existing assets
 5. **If not found** - For QP builder-supported models (`event`, `retention`, `funnel`, `prop_analysis`), call the matching builder first and then call `query_adhoc` with builder `qp`; do not call schema or metadata tools between the report/dashboard miss and the builder. For all other `query_adhoc` models, use the legacy schema/metadata path.
 
 **Rationale:**
@@ -327,31 +369,15 @@ Alerts (6):
 - `+update_alert` ([doc](references/update_alert.md))
 - `+delete_alert` ([doc](references/delete_alert.md))
 
-Reports and Dashboards (24):
+Reports:
 - `+create_report` ([doc](references/create_report.md))
 - `+get_report_definition` ([doc](references/get_report_definition.md))
 - `+list_reports` ([doc](references/list_reports.md))
 - `+query_report_data` ([doc](references/query_report_data.md))
 - `+update_report` ([doc](references/update_report.md))
 - `+delete_report` ([doc](references/delete_report.md))
-- `+create_space` ([doc](references/create_space.md))
-- `+list_spaces` ([doc](references/list_spaces.md))
-- `+create_dashboard` ([doc](references/create_dashboard.md))
-- `+list_dashboards` ([doc](references/list_dashboards.md))
-- `+query_dashboard_detail` ([doc](references/query_dashboard_detail.md))
-- `+query_dashboard_report_data` ([doc](references/query_dashboard_report_data.md))
-- `+update_dashboard` ([doc](references/update_dashboard.md))
-- `+delete_dashboard` ([doc](references/delete_dashboard.md))
-- `+copy_dashboard` ([doc](references/copy_dashboard.md))
-- `+freeze_dashboards` ([doc](references/freeze_dashboards.md))
-- `+move_dashboard` ([doc](references/move_dashboard.md))
-- `+create_or_update_dashboard_note` ([doc](references/create_or_update_dashboard_note.md))
-- `+list_public_access_links` ([doc](references/list_public_access_links.md))
-- `+create_public_access_link` ([doc](references/create_public_access_link.md))
-- `+update_public_access_link` ([doc](references/update_public_access_link.md))
-- `+list_bi_panels` ([doc](references/list_bi_panels.md))
-- `+get_bi_panel_detail` ([doc](references/get_bi_panel_detail.md))
-- `+query_bi_panel_data` ([doc](references/query_bi_panel_data.md))
+
+Dashboard, BI panel, project-space, folder, favorite, public-link, dashboard-definition, dashboard-daily-report, and dashboard/BI data commands are capability-gateway commands. Use `ae-cli analysis <resource> <action>` after reading [`references/analysis_gateway_assets.md`](references/analysis_gateway_assets.md); do not use old `+` dashboard/space/BI/public-link command names.
 
 Model Analysis (17):
 - `+build_event_analysis_qp` ([doc](references/build_event_analysis_qp.md))

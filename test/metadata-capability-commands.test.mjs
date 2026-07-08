@@ -39,7 +39,20 @@ await test('metadata data-table list maps to analysis gateway component', () => 
   assert.deepEqual(data.body, { input: { project_id: 1 } });
 });
 
-await test('metadata data-table csv-write keeps snake_case gateway input', () => {
+await test('analysis dashboard get uses analysis capability gateway', () => {
+  const data = runCli(['analysis', 'dashboard', 'get', '--project-id', '1', '--dashboard-id', '1001']);
+  assert.equal(data.method, 'POST');
+  assert.equal(data.url, `${HOST}/api/cli/analysis/v1/capabilities/analysis.dashboard.get/dry-run`);
+  assert.deepEqual(data.body, { input: { project_id: 1, dashboard_id: 1001 } });
+});
+
+await test('analysis project-space list maps to project_space capability', () => {
+  const data = runCli(['analysis', 'project-space', 'list', '--project-id', '1', '--limit', '10']);
+  assert.equal(data.url, `${HOST}/api/cli/analysis/v1/capabilities/analysis.project_space.list/dry-run`);
+  assert.deepEqual(data.body, { input: { project_id: 1, limit: 10 } });
+});
+
+await test('metadata data-table csv-write normalizes columns to gateway schema', () => {
   const data = runCli([
     'metadata',
     'data-table',
@@ -51,18 +64,40 @@ await test('metadata data-table csv-write keeps snake_case gateway input', () =>
     '--input-file-id',
     'ifile_0123456789abcdef0123456789abcdef',
     '--data-table-name',
-    'cli_data_table',
+    'datatable_1_cli_data_table',
     '--columns',
-    '[{"name":"user_id","type":"string"}]',
+    '[{"name":"user_id","type":"string","display_name":"User ID"}]',
   ]);
   assert.equal(data.url, `${HOST}/api/cli/analysis/v1/capabilities/metadata.data_table.csv_write/dry-run`);
   assert.deepEqual(data.body.input, {
     project_id: 1,
     operation: 'create',
     input_file_id: 'ifile_0123456789abcdef0123456789abcdef',
-    data_table_name: 'cli_data_table',
-    columns: [{ name: 'user_id', type: 'string' }],
+    data_table_name: 'datatable_1_cli_data_table',
+    columns: [{ column_name: 'user_id', select_type: 'string', column_desc: 'User ID' }],
   });
+});
+
+await test('metadata data-table sql-write normalizes columns to gateway schema', () => {
+  const data = runCli([
+    'metadata',
+    'data-table',
+    'sql-write',
+    '--project-id',
+    '1',
+    '--operation',
+    'create',
+    '--table-name',
+    'datatable_1_sql_table',
+    '--columns',
+    '[{"name":"id","type":"string","display_name":"ID","is_primary_key":true}]',
+    '--qp',
+    '{"sql":"select 1 as id"}',
+  ]);
+  assert.equal(data.url, `${HOST}/api/cli/analysis/v1/capabilities/metadata.data_table.sql_write/dry-run`);
+  assert.deepEqual(data.body.input.columns, [
+    { column_name: 'id', column_type: 'string', column_desc: 'ID', is_primary_key: true },
+  ]);
 });
 
 await test('metadata input-file upload uses analysis gateway input-files endpoint', () => {
@@ -118,6 +153,29 @@ await test('metadata property bind-existing-dimension-table maps to dimension-ta
     timestamp_join_format: 'yyyy-MM-dd',
     dict_columns: ['display_name'],
   });
+});
+
+await test('metadata property create-and-bind-csv-dimension-table normalizes columns to gateway schema', () => {
+  const data = runCli([
+    'metadata',
+    'property',
+    'create-and-bind-csv-dimension-table',
+    '--project-id',
+    '1',
+    '--property-name',
+    'user_id',
+    '--property-scope',
+    'user',
+    '--input-file-id',
+    'ifile_0123456789abcdef0123456789abcdef',
+    '--columns',
+    '[{"name":"id","type":"string","display_name":"ID"}]',
+  ]);
+  assert.equal(
+    data.url,
+    `${HOST}/api/cli/analysis/v1/capabilities/metadata.property.create_and_bind_csv_dimension_table/dry-run`,
+  );
+  assert.deepEqual(data.body.input.columns, [{ column_name: 'id', select_type: 'string', column_desc: 'ID' }]);
 });
 
 await test('analysis builder commands pass authenticatedOnly to MCP arguments', () => {

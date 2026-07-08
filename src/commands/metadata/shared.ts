@@ -34,3 +34,52 @@ export function optionalJson(ctx: RuntimeContext, name: string): unknown | undef
   const value = ctx.str(name);
   return value === '' ? undefined : ctx.json(name);
 }
+
+type DataTableColumnKind = 'csv' | 'sql';
+
+export function optionalDataTableColumns(
+  ctx: RuntimeContext,
+  name: string,
+  kind: DataTableColumnKind,
+): unknown | undefined {
+  const value = optionalJson(ctx, name);
+  return value === undefined ? undefined : normalizeDataTableColumns(value, kind);
+}
+
+export function requiredDataTableColumns(ctx: RuntimeContext, name: string, kind: DataTableColumnKind): unknown {
+  return normalizeDataTableColumns(ctx.json(name), kind);
+}
+
+function normalizeDataTableColumns(value: unknown, kind: DataTableColumnKind): unknown {
+  if (!Array.isArray(value)) {
+    return value;
+  }
+
+  return value.map((item) => {
+    if (item == null || typeof item !== 'object' || Array.isArray(item)) {
+      return item;
+    }
+
+    const column = { ...(item as Record<string, unknown>) };
+    if (column.column_name === undefined && column.name !== undefined) {
+      column.column_name = column.name;
+    }
+    if (column.column_desc === undefined) {
+      column.column_desc = column.display_name ?? column.description;
+    }
+
+    if (kind === 'csv') {
+      if (column.select_type === undefined && column.type !== undefined) {
+        column.select_type = column.type;
+      }
+    } else if (column.column_type === undefined && column.type !== undefined) {
+      column.column_type = column.type;
+    }
+
+    delete column.name;
+    delete column.type;
+    delete column.display_name;
+    delete column.description;
+    return column;
+  });
+}

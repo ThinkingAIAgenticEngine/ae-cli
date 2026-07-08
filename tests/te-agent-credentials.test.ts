@@ -365,8 +365,12 @@ try {
           SANDBOX_RUNTIME_ROOT: join(tmpRoot, 'bearer-test-runtime-empty'),
         },
         async () => {
-          const { saveToken } = await import('../src/core/auth.ts');
-          saveToken('user-access-token-abc', 'http://te-claude.local');
+          const { save } = await import('../src/core/secure-store.ts');
+          save('http://te-claude.local', {
+            accessToken: 'user-access-token-abc',
+            refreshToken: '',
+            accessExpiresAt: new Date(Date.now() + 3600_000).toISOString(),
+          });
           const { getFromMainApp } = await loadClientModule();
           await getFromMainApp('/api/sandbox/agent/models');
         },

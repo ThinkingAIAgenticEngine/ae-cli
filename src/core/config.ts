@@ -6,6 +6,7 @@ import { getSandboxCliTokenFilePath } from './sandbox-runtime.js';
 
 const CONFIG_DIR = path.join(process.env.HOME || '', '.ae-cli');
 const CONFIG_FILE = path.join(CONFIG_DIR, 'config.json');
+
 export interface SandboxCliTokenEntry {
   url: string;
   token: string;
@@ -23,8 +24,7 @@ function sandboxCliTokenCandidatePaths(): string[] {
 
 /**
  * Read sandbox-provisioned CLI token from disk.
- * The sandbox (te-claude agent injection) writes a pre-minted cli-token so ae-cli can authenticate
- * without a user access token being available inside the sandbox.
+ * The sandbox writes a pre-minted cli-token so ae-cli can authenticate without a user access token.
  */
 export function readSandboxCliTokenEntry(): SandboxCliTokenEntry | null {
   for (const file of sandboxCliTokenCandidatePaths()) {
@@ -43,6 +43,28 @@ export function readSandboxCliTokenEntry(): SandboxCliTokenEntry | null {
   return null;
 }
 
+/**
+ * Read the token mapping from sandbox-provisioned cli-token.json (read-only; ae-cli never writes it).
+ */
+export function forceMigrateFromFallback(): Record<string, string> | null {
+  const entry = readSandboxCliTokenEntry();
+  if (!entry) return null;
+  return { [entry.url]: entry.token };
+}
+
+/**
+ * Resolve a sandbox-provisioned CLI token for the given host from cli-token.json.
+ * Exact host match wins; when the file contains exactly one entry, return it regardless of host.
+ */
+export function getFallbackCliToken(hostUrl: string): string | null {
+  const store = forceMigrateFromFallback();
+  if (!store) return null;
+  if (hostUrl && store[hostUrl]) return store[hostUrl];
+  const entries = Object.values(store);
+  if (entries.length === 1) return entries[0];
+  return null;
+}
+
 export interface HostEntry {
   label: string;
 }
@@ -54,33 +76,6 @@ export interface TeConfig {
 
 function ensureDir(): void {
   if (!fs.existsSync(CONFIG_DIR)) fs.mkdirSync(CONFIG_DIR, { recursive: true });
-}
-
-/**
- * Read the token mapping from the sandbox-provisioned cli-token.json (read-only; ae-cli never writes it).
- * Used as a fallback for sandbox environments where no user access token is available; returns null
- * if no such file is present.
- */
-export function forceMigrateFromFallback(): Record<string, string> | null {
-  const entry = readSandboxCliTokenEntry();
-  if (!entry) return null;
-  return { [entry.url]: entry.token };
-}
-
-/**
- * Resolve a sandbox-provisioned CLI token for the given host from the fallback file.
- * Exact host match wins; otherwise, when the fallback contains exactly one entry, return it.
- * The single-entry fallback decouples the lookup from a fragile host-string match: the sandbox
- * writes one { url, token }, and the active host (or --host) may not byte-match that url
- * (e.g. activeHost is unset). Returns null when there is no fallback file or no safe match.
- */
-export function getFallbackCliToken(hostUrl: string): string | null {
-  const store = forceMigrateFromFallback();
-  if (!store) return null;
-  if (hostUrl && store[hostUrl]) return store[hostUrl];
-  const entries = Object.values(store);
-  if (entries.length === 1) return entries[0];
-  return null;
 }
 
 export function loadConfig(): TeConfig {
@@ -96,7 +91,6 @@ export function loadConfig(): TeConfig {
       return raw;
     }
   } catch (err: any) {
-    // If the config file is corrupted, return an empty config
     logger.error(`Error loading config: ${err.message}`);
     console.error(`Error loading config: ${err.message}`);
   }
@@ -106,7 +100,6 @@ export function loadConfig(): TeConfig {
 function migrateConfig(old: any): TeConfig {
   const hosts: Record<string, HostEntry> = {};
   const oldHost = old.defaultHost as string;
-  // Convert bare hostnames to full URLs
   if (old.hosts) {
     for (const [key, val] of Object.entries(old.hosts)) {
       const url = key.startsWith('http') ? key : `https://${key}`;
@@ -127,8 +120,6 @@ export function saveConfig(config: TeConfig): void {
 }
 
 export function getActiveHost(): string {
-  // Sandbox-provisioned cli-token.json represents the current agent runtime entrypoint.
-  // Prefer it over stale user config copied into the sandbox.
   const sandboxHost = readSandboxCliTokenEntry()?.url;
   if (sandboxHost) return sandboxHost;
   const config = loadConfig();
@@ -148,7 +139,6 @@ export function addHost(url: string, label: string): void {
   const config = loadConfig();
   assertUniqueHostLabel(config, label, url);
   config.hosts[url] = { label };
-  // If no active host, set this one
   if (!config.activeHost) {
     config.activeHost = url;
   }
@@ -201,7 +191,7 @@ export function getConfigDir(): string {
 export function extractHostname(fullUrl: string): string {
   try {
     const u = new URL(fullUrl);
-    return u.host; // includes port if present
+    return u.host;
   } catch {
     return fullUrl;
   }

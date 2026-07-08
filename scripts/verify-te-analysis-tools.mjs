@@ -32,7 +32,7 @@ function walk(dir) {
       continue;
     }
     if (!entry.name.endsWith('.ts')) continue;
-    if (entry.name === 'index.ts' || entry.name === 'shared.ts') continue;
+    if (entry.name === 'index.ts' || entry.name === 'shared.ts' || entry.name === 'capability-shared.ts') continue;
     if (!isGlobalQueryModeEnabled() && p.includes(`${path.sep}global${path.sep}`)) continue;
     commandFiles.push(p);
   }
@@ -41,15 +41,28 @@ function walk(dir) {
 walk(commandsDir);
 
 const coreCommands = [];
+const capabilityCommands = [];
 const fileContents = new Map();
 for (const file of commandFiles) {
   const content = fs.readFileSync(file, 'utf-8');
   fileContents.set(file, content);
-  const match = content.match(/command:\s*'\+([a-z0-9_]+)'/);
-  if (!match) {
+  const mcpMatch = content.match(/command:\s*'\+([a-z0-9_]+)'/);
+  if (mcpMatch) {
+    coreCommands.push(mcpMatch[1]);
+    continue;
+  }
+  const resourceMatch = content.match(/resource:\s*'([^']+)'/);
+  const commandMatch = content.match(/command:\s*'([^']+)'/);
+  const capabilityMatch = content.match(/capabilityId:\s*'([^']+)'/);
+  if (!resourceMatch || !commandMatch || !capabilityMatch) {
     fail(`cannot parse command from ${path.relative(ROOT, file)}`);
   }
-  coreCommands.push(match[1]);
+  capabilityCommands.push({
+    file,
+    resource: resourceMatch[1],
+    command: commandMatch[1],
+    capabilityId: capabilityMatch[1],
+  });
 }
 
 const coreSet = new Set(coreCommands);
@@ -57,9 +70,18 @@ if (coreSet.size !== coreCommands.length) {
   fail('duplicate core command names found in source files');
 }
 
-const EXPECTED_CORE_COUNT = isGlobalQueryModeEnabled() ? 55 : 54;
+const capabilitySet = new Set(capabilityCommands.map((item) => `${item.resource} ${item.command}`));
+if (capabilitySet.size !== capabilityCommands.length) {
+  fail('duplicate capability command names found in source files');
+}
+
+const EXPECTED_CORE_COUNT = isGlobalQueryModeEnabled() ? 37 : 36;
 if (coreCommands.length !== EXPECTED_CORE_COUNT) {
   fail(`analysis tool count mismatch: expected ${EXPECTED_CORE_COUNT}, got ${coreCommands.length}`);
+}
+const EXPECTED_CAPABILITY_COUNT = 45;
+if (capabilityCommands.length !== EXPECTED_CAPABILITY_COUNT) {
+  fail(`analysis capability command count mismatch: expected ${EXPECTED_CAPABILITY_COUNT}, got ${capabilityCommands.length}`);
 }
 
 const help = spawnSync('npx', ['tsx', 'src/index.ts', 'analysis', '--help'], {
@@ -89,6 +111,21 @@ for (const tool of coreCommands) {
   }
 }
 
+for (const item of capabilityCommands) {
+  const toolHelp = spawnSync('npx', ['tsx', 'src/index.ts', 'analysis', item.resource, item.command, '--help'], {
+    cwd: ROOT,
+    encoding: 'utf-8',
+    maxBuffer: 10 * 1024 * 1024,
+  });
+  if (toolHelp.status !== 0) {
+    process.stderr.write(toolHelp.stderr || '');
+    fail(`failed to run analysis ${item.resource} ${item.command} --help`);
+  }
+  if (!toolHelp.stdout.includes(`Usage: ae-cli analysis ${item.resource} ${item.command}`)) {
+    fail(`command help output missing usage for: ${item.resource} ${item.command}`);
+  }
+}
+
 const cancellableQueryTokens = [
   "name: 'request_id', type: 'string', required: true",
   "requestId: ctx.str('request_id')",
@@ -110,8 +147,6 @@ const lifecycleDescriptionTokens = [
   'mcp_0123456789abcdef0123456789abcdef',
 ];
 const requiredTokensByFile = {
-  'src/commands/te-analysis/dashboard/query-bi-panel-data.ts': [...cancellableQueryTokens, ...lifecycleDescriptionTokens],
-  'src/commands/te-analysis/dashboard/query-dashboard-report-data.ts': [...cancellableQueryTokens, ...lifecycleDescriptionTokens, "name: 'timeout_minutes'", "timeoutMinutes: optionalNumber(ctx, 'timeout_minutes')"],
   'src/commands/te-analysis/entity/query-entity-details.ts': [...cancellableQueryTokens, ...lifecycleDescriptionTokens, "name: 'timeout_minutes'", "timeoutMinutes: optionalNumber(ctx, 'timeout_minutes')"],
   'src/commands/te-analysis/entity/query-event-details.ts': [...cancellableQueryTokens, ...lifecycleDescriptionTokens, "name: 'timeout_minutes'", "timeoutMinutes: optionalNumber(ctx, 'timeout_minutes')"],
   'src/commands/te-analysis/model/drilldown-user-events.ts': [...cancellableQueryTokens, ...lifecycleDescriptionTokens],
@@ -162,8 +197,6 @@ const lifecycleReferenceTokens = [
   'mcp_0123456789abcdef0123456789abcdef',
 ];
 const requiredReferenceTokensByFile = {
-  'skills/ae-analysis/references/query_bi_panel_data.md': lifecycleReferenceTokens,
-  'skills/ae-analysis/references/query_dashboard_report_data.md': lifecycleReferenceTokens,
   'skills/ae-analysis/references/query_report_data.md': lifecycleReferenceTokens,
   'skills/ae-analysis/references/query_entity_details.md': lifecycleReferenceTokens,
   'skills/ae-analysis/references/query_event_details.md': lifecycleReferenceTokens,
@@ -198,6 +231,32 @@ for (const [relPath, tokens] of Object.entries(requiredReferenceTokensByFile)) {
   }
 }
 
+function capabilityReferenceName(resource, command) {
+  return `${resource.replaceAll('-', '_')}_${command.replaceAll('-', '_')}.md`;
+}
+
+for (const item of capabilityCommands) {
+  const relPath = `skills/ae-analysis/references/${capabilityReferenceName(item.resource, item.command)}`;
+  const absPath = path.join(ROOT, relPath);
+  if (!fs.existsSync(absPath)) {
+    fail(`missing capability reference file: ${relPath}`);
+  }
+  const content = fs.readFileSync(absPath, 'utf-8');
+  const requiredTokens = [
+    `# analysis ${item.resource} ${item.command}`,
+    `ae-cli analysis ${item.resource} ${item.command}`,
+    'Use',
+    'Do not use',
+    'Input',
+    'Output',
+  ];
+  for (const token of requiredTokens) {
+    if (!content.includes(token)) {
+      fail(`missing capability reference token "${token}" in ${relPath}`);
+    }
+  }
+}
+
 const docsPath = path.join(ROOT, 'docs/te-analysis/te-analysis-mcp-tools.md');
 if (!fs.existsSync(docsPath)) {
   fail('missing docs/te-analysis/te-analysis-mcp-tools.md');
@@ -227,8 +286,6 @@ const cancelDocsTokens = [
 ];
 const lifecycleDocsSections = [
   '#### query_report_data',
-  '#### query_dashboard_report_data',
-  '#### query_bi_panel_data',
   '#### query_adhoc',
   '#### drilldown_users',
   '#### drilldown_user_events',
@@ -260,4 +317,4 @@ for (const token of cancelDocsTokens) {
   }
 }
 
-console.log(`OK: verified ${coreCommands.length} analysis tools are registered and aligned.`);
+console.log(`OK: verified ${coreCommands.length} MCP analysis tools and ${capabilityCommands.length} capability commands are registered and aligned.`);

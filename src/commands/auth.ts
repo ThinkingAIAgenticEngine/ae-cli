@@ -1,6 +1,6 @@
 import { Command } from 'commander';
-import { clearToken, getAuthStatus, resolveHost } from '../core/auth.js';
-import { getFallbackCliToken, loadConfig, saveConfig, removeHost } from '../core/config.js';
+import { resolveHost } from '../core/auth.js';
+import { loadConfig, saveConfig, removeHost, getFallbackCliToken } from '../core/config.js';
 import { printOutput, printError } from '../framework/output.js';
 import { clearCliToken, mintCliToken } from '../core/cli-token.js';
 import { logger } from '../core/logger.js';
@@ -210,17 +210,14 @@ export function registerAuth(program: Command): void {
             host,
             source: 'sandbox-cli-token',
             hasCliToken: true,
+            note: 'sandbox-provisioned cli-token.json; no user access token in secure-store',
           },
           program.opts().format || 'json',
         );
         return;
       }
 
-      // Fallback: legacy tokens.json cache
-      const tokenStatus = getAuthStatus(host);
-      const authenticated = tokenStatus.authenticated;
-
-      printOutput({ authenticated, host, source: tokenStatus.source ?? 'none' }, program.opts().format || 'json');
+      printOutput({ authenticated: false, host, source: 'none' }, program.opts().format || 'json');
     });
 
   auth
@@ -234,7 +231,6 @@ export function registerAuth(program: Command): void {
         process.exit(1);
       }
       clearCliToken(host);
-      clearToken(host);
       secureStoreClear(host);
       removeHost(host);
       process.stderr.write(`[ae-cli] Credentials and config cleared for ${host}\n`);

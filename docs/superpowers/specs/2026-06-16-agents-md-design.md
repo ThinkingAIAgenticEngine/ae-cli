@@ -68,7 +68,7 @@ te-cli/
 - **一切走 RuntimeContext**：`ctx.str/num/bool/json` 取参、`ctx.api()` 发请求、`ctx.out()` 输出——**禁止裸用 `fetch` / `process.stdout`**。
 - **flag 规范**：必须带 `desc`（会被 agent 读）；写操作标 `risk:'write'`（触发确认，除非 `--yes`）；尽量提供 `dryRun` 返回 `{ method, url, params, body }`。
 - **输出 envelope**：`{ ok, data, error:{ type, code, message, hint } }`；JSON 走 stdout，进度/告警走 stderr。
-- **鉴权**：per-host token；KB external 接口走 `kbApi`（mcp-token，自带 fallback），用现成 helper，不要手搓鉴权。
+- **鉴权**：per-host token（secure-store）；KB external 接口走 `kbApi`（`cli-token` 头），用现成 helper，不要手搓鉴权。
 - **skills 同步**：命令变化要同步 `skills/` 包；`self-check` 用于校验新合入功能。
 
 ### ⑤ 新增命令的标准流程（手把手 recipe）

@@ -8,6 +8,7 @@ import { TeAgentCredentialsError } from '../core/te-agent-credentials.js';
 import { SecureStoreAuthError } from '../core/secure-store.js';
 import { PermissionError } from '../core/errors.js';
 import { TeAgentApiError } from '../core/te-agent-client.js';
+import { CapabilityGatewayError } from '../core/capability-api.js';
 
 export async function runCommand(cmd: Command, opts: Record<string, any>, globalOpts: GlobalOptions): Promise<void> {
   try {
@@ -86,6 +87,8 @@ export async function runCommand(cmd: Command, opts: Record<string, any>, global
     } else if (err instanceof PermissionError) {
       // authenticated-but-forbidden — surface the server's reason; re-login won't help
       printError('permission', message);
+    } else if (err instanceof CapabilityGatewayError) {
+      printError('api', message, err.hint, err.code);
     } else if (err instanceof SecureStoreAuthError) {
       printError('auth', message, 'Run: ae-cli auth login');
     } else if (err instanceof TeAgentApiError) {

@@ -156,26 +156,16 @@ interface DryRunResult {
 }
 ```
 
-### Token Cache: `~/.ae-cli/tokens.json`
+### Token Storage: secure-store (AES-encrypted, per-host)
 
-```json
-{
-  "ta.thinkingdata.cn": {
-    "token": "xxx",
-    "updatedAt": "2026-04-04T00:00:00Z"
-  }
-}
-```
-
-Token TTL: 20 小时（与 MCP server 一致），过期自动清除。
+Access tokens and CLI tokens are stored in the encrypted secure-store under `~/.ae-cli/`. Run `ae-cli auth login` (device code flow) to obtain credentials.
 
 ### Auth Resolution Priority
 
 ```
-1. 环境变量 TE_TOKEN（最高优先，适合 CI）
-2. tokens.json 缓存（未过期）
-3. osascript 自动提取（仅 macOS）
-4. 失败 → 提示 ae-cli auth login 或 ae-cli auth set-token
+1. secure-store access token (device code login; auto-refresh when refresh token exists)
+2. Mint CLI token via /v1/ta/cli/token/generate when MCP/capability commands need cli-token
+3. Failure → run ae-cli auth login
 ```
 
 ### Auth Commands

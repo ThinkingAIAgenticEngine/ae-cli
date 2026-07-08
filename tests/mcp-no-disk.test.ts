@@ -1,32 +1,28 @@
 /**
- * mcp-no-disk unit tests → CLI token migration coverage
+ * mcp-no-disk unit tests → CLI token coverage
  *
  * Run:
  *   npx tsx tests/mcp-no-disk.test.ts
  *
- * te-cli authentication now has a single credential source (cli-token.ts): the old mcp-token
- * concept (getMcpToken/generateMcpToken/etc., minted via /v1/ta/mcp/token/generate, in-process
- * cache only) has been fully removed. cli-token is lazily minted via /v1/ta/cli/token/generate on
- * first use and — unlike the old mcpToken — IS persisted to secure-store so subsequent CLI
+ * te-cli authentication uses a single CLI credential source (cli-token.ts): lazily minted via
+ * /v1/ta/cli/token/generate on first use and persisted to secure-store so subsequent CLI
  * invocations (new processes) reuse it instead of re-minting every time.
  *
  * Coverage:
  *  1. setCliTokenManual / clearCliToken manage the in-process cache
  *  2. clearCliToken(host) also clears the persisted secure-store cliToken (not accessToken/refreshToken)
- *  3. tokens.json permissions are 0600 after write
- *  4. legacy mcp-tokens.json (plaintext access-token cache) is auto-removed on module load
- *  5. getCliToken mints on demand via /v1/ta/cli/token/generate, persists to secure-store, and
+ *  3. getCliToken mints on demand via /v1/ta/cli/token/generate, persists to secure-store, and
  *     reuses the in-process cache without re-minting
- *  6. sandbox-provisioned cli-token.json is read before minting
- *  7. secure-store cliToken wins over sandbox fallback for a different host
- *  8. mcpRequest (MCP JSON-RPC transport) sends cli-token header only
- *  9. mcpRequest: 401 clears the CLI token cache, re-mints, and retries once with refreshed headers
+ *  4. sandbox-provisioned cli-token.json is read before minting
+ *  5. secure-store cliToken wins over sandbox fallback for a different host
+ *  6. mcpRequest (MCP JSON-RPC transport) sends cli-token header only
+ *  7. mcpRequest: 401/403 clears the CLI token cache, re-mints, and retries once with refreshed headers
  */
 
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
-import path from 'node:path';
 import os from 'node:os';
+import path from 'node:path';
 import { execFileSync } from 'node:child_process';
 
 // ── helpers ───────────────────────────────────────────────────────────────
@@ -50,13 +46,9 @@ async function test(name: string, fn: () => void | Promise<void>) {
   }
 }
 
-const AE_CLI_DIR = path.join(os.homedir(), '.ae-cli');
-const MCP_TOKENS_FILE = path.join(AE_CLI_DIR, 'mcp-tokens.json');
-const TOKENS_FILE = path.join(AE_CLI_DIR, 'tokens.json');
-
 // ── test body ─────────────────────────────────────────────────────────────
 
-process.stdout.write('\nmcp-no-disk tests (cli-token migration)\n');
+process.stdout.write('\nmcp-no-disk tests (cli-token)\n');
 
 // ── test 1: clearCliToken / setCliTokenManual in-process cache ───────────
 
@@ -68,7 +60,6 @@ await test('clearCliToken clears in-process cache (forces a mint attempt afterwa
   assert.equal(await getCliToken(host), 'test-token-123', 'should be readable from cache after set');
 
   clearCliToken(host);
-  // No secure-store session, no sandbox file → mint attempt fails, proving the cache was cleared.
   await assert.rejects(() => getCliToken(host), 'cache miss should fall through to a (failing) mint attempt');
 });
 
@@ -86,7 +77,6 @@ await test('clearCliToken(host) clears the persisted secure-store cliToken (not 
     accessExpiresAt: new Date(Date.now() + 3600_000).toISOString(),
   });
 
-  // An existing secure-store session means setCliTokenManual persists (not in-process-cache-only).
   setCliTokenManual('minted-abc', host);
   assert.equal(load(host)?.cliToken, 'minted-abc', 'setCliTokenManual should persist when a secure-store session exists');
 
@@ -95,65 +85,10 @@ await test('clearCliToken(host) clears the persisted secure-store cliToken (not 
   assert.equal(load(host)?.accessToken, 'acc', 'clearCliToken must NOT touch accessToken');
   assert.equal(load(host)?.refreshToken, 'ref', 'clearCliToken must NOT touch refreshToken');
 
-  clear(host); // cleanup
+  clear(host);
 });
 
-// ── test 3: tokens.json permissions are 0600 after write ─────────────────
-
-await test('tokens.json permissions are 0600 after write', async () => {
-  if (process.platform === 'win32') {
-    process.stdout.write('    (skip on Windows — chmod not supported)\n');
-    return;
-  }
-
-  const { saveToken } = await import('../src/core/auth.ts');
-
-  const host = 'https://test-0600-tokens.internal';
-  saveToken('dummy-token-for-0600-test', host);
-
-  assert.ok(fs.existsSync(TOKENS_FILE), 'tokens.json should exist');
-  const stat = fs.statSync(TOKENS_FILE);
-  const mode = stat.mode & 0o777;
-  assert.equal(mode, 0o600, `tokens.json permissions should be 0600, actual: 0${mode.toString(8)}`);
-
-  // cleanup test data
-  const { clearToken } = await import('../src/core/auth.ts');
-  clearToken(host);
-});
-
-// ── test 4: legacy mcp-tokens.json (plaintext access-token cache) ────────
-
-await test('legacy mcp-tokens.json (plaintext access-token cache) should not exist', async () => {
-  // auth.ts module load should have auto-removed the legacy file
-  assert.equal(
-    fs.existsSync(MCP_TOKENS_FILE),
-    false,
-    `mcp-tokens.json should not exist at ${MCP_TOKENS_FILE}`
-  );
-});
-
-await test('legacy mcp-tokens.json is auto-removed on auth module load', async () => {
-  if (!fs.existsSync(MCP_TOKENS_FILE)) {
-    const dir = path.dirname(MCP_TOKENS_FILE);
-    if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
-    fs.writeFileSync(MCP_TOKENS_FILE, JSON.stringify({ 'https://old.host': 'old-token' }));
-
-    assert.ok(fs.existsSync(MCP_TOKENS_FILE), 'test setup: legacy file should have been created');
-
-    // ESM modules are cached; the IIFE cleanup in auth.ts only runs once per process.
-    // Verify the equivalent cleanup behavior directly.
-    if (fs.existsSync(MCP_TOKENS_FILE)) {
-      fs.rmSync(MCP_TOKENS_FILE);
-    }
-
-    assert.equal(fs.existsSync(MCP_TOKENS_FILE), false, 'legacy file should not exist after cleanup');
-    process.stdout.write('    (verified: equivalent auto-cleanup behavior confirmed)\n');
-  } else {
-    process.stdout.write('    (skip: mcp-tokens.json already absent, cleanup already effective)\n');
-  }
-});
-
-// ── test 5: getCliToken mints on demand, persists, and caches ────────────
+// ── test 3: getCliToken mints on demand, persists, and caches ────────────
 
 await test('getCliToken mints via /v1/ta/cli/token/generate, persists to secure-store, and reuses cache', async () => {
   const { getCliToken, clearCliToken } = await import('../src/core/cli-token.ts');
@@ -162,8 +97,6 @@ await test('getCliToken mints via /v1/ta/cli/token/generate, persists to secure-
   const host = 'https://test-cli-mint.internal';
   clearCliToken(host);
   clear(host);
-  // Seed a secure-store session so (a) getToken() can resolve an accessToken to mint with, and
-  // (b) persistCliTokenIfPossible() has an existing session to attach the minted cliToken to.
   save(host, {
     accessToken: 'access-for-mint',
     refreshToken: '',
@@ -204,14 +137,12 @@ await test('getCliToken mints via /v1/ta/cli/token/generate, persists to secure-
 
 // ── log redaction grep verification ───────────────────────────────────────
 
-await test('log redaction: logger.api() does not log token values (only URL and summary)', async () => {
+await test('log redaction: validateToken sends accessToken in form body, not URL query', async () => {
   const authSrc = fs.readFileSync(
     path.join(process.cwd(), 'src/core/auth.ts'),
     'utf8',
   );
 
-  // F-013: validateToken sends accessToken as a form-encoded body param (binds to server @RequestParam),
-  // still in the body (not the URL query) so it does not leak into access logs.
   assert.ok(
     authSrc.includes("method: 'POST'") &&
     authSrc.includes("'Content-Type': 'application/x-www-form-urlencoded'") &&
@@ -247,7 +178,7 @@ await test('osascript has been removed from the codebase (T4 verification)', asy
   assert.equal(nonCommentHits.length, 0, `osascript should not be called in code, found: ${nonCommentHits.join(', ')}`);
 });
 
-// ── test 6: sandbox fallback cli-token is read before minting ────────────
+// ── sandbox cli-token.json fallback ──────────────────────────────────────
 
 await test('forceMigrateFromFallback reads sandbox-provisioned cli-token via SANDBOX_RUNTIME_ROOT', async () => {
   const { forceMigrateFromFallback } = await import('../src/core/config.ts');
@@ -266,11 +197,7 @@ await test('forceMigrateFromFallback reads sandbox-provisioned cli-token via SAN
   try {
     const migrated = forceMigrateFromFallback();
     assert.ok(migrated, 'fallback file should be read when present');
-    assert.equal(
-      migrated?.[host],
-      'sandbox-provisioned-xyz',
-      'should return the pre-provisioned cli-token keyed by host (this is what getCliToken uses before minting)',
-    );
+    assert.equal(migrated?.[host], 'sandbox-provisioned-xyz');
   } finally {
     if (prevRoot === undefined) delete process.env.SANDBOX_RUNTIME_ROOT;
     else process.env.SANDBOX_RUNTIME_ROOT = prevRoot;
@@ -287,7 +214,7 @@ await test('forceMigrateFromFallback returns null when no fallback file (persona
   process.env.SANDBOX_RUNTIME_ROOT = tmpRoot;
   process.env.HOME = tmpRoot;
   try {
-    assert.equal(forceMigrateFromFallback(), null, 'no fallback file -> null -> getCliToken falls through to minting');
+    assert.equal(forceMigrateFromFallback(), null);
   } finally {
     if (prevRoot === undefined) delete process.env.SANDBOX_RUNTIME_ROOT;
     else process.env.SANDBOX_RUNTIME_ROOT = prevRoot;
@@ -334,8 +261,6 @@ await test('getActiveHost: sandbox cli-token url wins over stale config activeHo
   }
 });
 
-// ── getFallbackCliToken: host-string decoupling ──────────────────────────
-
 await test('getFallbackCliToken: exact host match', async () => {
   const { getFallbackCliToken } = await import('../src/core/config.ts');
   const host = 'http://ta1:8993';
@@ -352,7 +277,7 @@ await test('getFallbackCliToken: exact host match', async () => {
   }
 });
 
-await test('getFallbackCliToken: single-entry fallback when host unset/mismatched (sandbox decoupling)', async () => {
+await test('getFallbackCliToken: single-entry fallback when host unset/mismatched', async () => {
   const { getFallbackCliToken } = await import('../src/core/config.ts');
   const writtenHost = 'http://ta1:8993';
   const tmpRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'ae-fb-single-'));
@@ -361,8 +286,8 @@ await test('getFallbackCliToken: single-entry fallback when host unset/mismatche
   const prev = process.env.SANDBOX_RUNTIME_ROOT;
   process.env.SANDBOX_RUNTIME_ROOT = tmpRoot;
   try {
-    assert.equal(getFallbackCliToken(''), 'tok-single', 'empty activeHost → single entry');
-    assert.equal(getFallbackCliToken('https://different-host.example'), 'tok-single', 'mismatched host → single entry');
+    assert.equal(getFallbackCliToken(''), 'tok-single');
+    assert.equal(getFallbackCliToken('https://different-host.example'), 'tok-single');
   } finally {
     if (prev === undefined) delete process.env.SANDBOX_RUNTIME_ROOT; else process.env.SANDBOX_RUNTIME_ROOT = prev;
     fs.rmSync(tmpRoot, { recursive: true, force: true });
@@ -382,10 +307,10 @@ await test('getFallbackCliToken: returns null when no fallback file', async () =
   }
 });
 
-// ── test 7: secure-store cliToken wins over sandbox fallback ─────────────
+// ── secure-store cliToken wins over sandbox fallback ─────────────────────
 
-await test('secure-store cliToken wins over sandbox fallback for the active host', async () => {
-  const { callMcpTool, } = await import('../src/core/mcp.ts');
+await test('secure-store cliToken wins over sandbox fallback for a different host', async () => {
+  const { callMcpTool } = await import('../src/core/mcp.ts');
   const { clearCliToken } = await import('../src/core/cli-token.ts');
   const { save, clear } = await import('../src/core/secure-store.ts');
 
@@ -400,7 +325,7 @@ await test('secure-store cliToken wins over sandbox fallback for the active host
 
   const prevRoot = process.env.SANDBOX_RUNTIME_ROOT;
   process.env.SANDBOX_RUNTIME_ROOT = tmpRoot;
-  clearCliToken();
+  clearCliToken(remoteHost);
   clear(remoteHost);
   save(remoteHost, {
     accessToken: 'access-test',
@@ -418,10 +343,10 @@ await test('secure-store cliToken wins over sandbox fallback for the active host
 
   try {
     await callMcpTool(`${remoteHost}/mcp/analysis/http/analysis`, 'list_dashboards', { projectId: 1 }, remoteHost);
-    assert.equal(usedToken, 'tok-login', 'device-login cliToken should beat sandbox fallback for a different host');
+    assert.equal(usedToken, 'tok-login');
   } finally {
     globalThis.fetch = prevFetch;
-    clearCliToken();
+    clearCliToken(remoteHost);
     clear(remoteHost);
     if (prevRoot === undefined) delete process.env.SANDBOX_RUNTIME_ROOT;
     else process.env.SANDBOX_RUNTIME_ROOT = prevRoot;
@@ -429,7 +354,41 @@ await test('secure-store cliToken wins over sandbox fallback for the active host
   }
 });
 
-// ── test 8: MCP JSON-RPC sends cli-token header only ─────────────────────
+// ── test 5: secure-store cliToken is used for MCP requests ───────────────
+
+await test('secure-store cliToken is used for MCP requests', async () => {
+  const { callMcpTool } = await import('../src/core/mcp.ts');
+  const { clearCliToken } = await import('../src/core/cli-token.ts');
+  const { save, clear } = await import('../src/core/secure-store.ts');
+
+  const remoteHost = 'https://remote-env.example';
+  clearCliToken(remoteHost);
+  clear(remoteHost);
+  save(remoteHost, {
+    accessToken: 'access-test',
+    refreshToken: '',
+    accessExpiresAt: new Date(Date.now() + 3600_000).toISOString(),
+    cliToken: 'tok-login',
+  });
+
+  let usedToken = '';
+  const prevFetch = globalThis.fetch;
+  globalThis.fetch = (async (_url, init) => {
+    usedToken = String((init?.headers as Record<string, string>)?.['cli-token'] ?? '');
+    return new Response(JSON.stringify({ jsonrpc: '2.0', id: 1, result: { content: [] } }), { status: 200 });
+  }) as typeof fetch;
+
+  try {
+    await callMcpTool(`${remoteHost}/mcp/analysis/http/analysis`, 'list_dashboards', { projectId: 1 }, remoteHost);
+    assert.equal(usedToken, 'tok-login', 'secure-store cliToken should be sent on MCP requests');
+  } finally {
+    globalThis.fetch = prevFetch;
+    clearCliToken(remoteHost);
+    clear(remoteHost);
+  }
+});
+
+// ── test 5: MCP JSON-RPC sends cli-token header only ─────────────────────
 
 await test('mcpRequest sends cli-token header only (no mcp-token)', async () => {
   const { callMcpTool } = await import('../src/core/mcp.ts');
@@ -456,20 +415,22 @@ await test('mcpRequest sends cli-token header only (no mcp-token)', async () => 
   }
 });
 
-// ── test 9: 401 → clear cache, re-mint, retry once with refreshed headers ─
+// ── test 6: 401/403 → clear cache, re-mint, retry once ───────────────────
 
 await test('mcpRequest: 401 clears the CLI token cache, re-mints, and retries once with refreshed cli-token header', async () => {
   const { callMcpTool } = await import('../src/core/mcp.ts');
   const { setCliTokenManual, clearCliToken } = await import('../src/core/cli-token.ts');
-  const { clear } = await import('../src/core/secure-store.ts');
-  const { saveToken, clearToken } = await import('../src/core/auth.ts');
+  const { save, clear } = await import('../src/core/secure-store.ts');
 
   const host = 'https://test-401-retry.internal';
   clearCliToken(host);
   clear(host);
-  clearToken(host);
-  setCliTokenManual('stale-token', host); // in-process cache only (no secure-store session)
-  saveToken('fake-access-token-for-401-test', host);
+  setCliTokenManual('stale-token', host);
+  save(host, {
+    accessToken: 'fake-access-token-for-401-test',
+    refreshToken: '',
+    accessExpiresAt: new Date(Date.now() + 3600_000).toISOString(),
+  });
 
   let mcpCallCount = 0;
   const seenTokens: string[] = [];
@@ -498,22 +459,23 @@ await test('mcpRequest: 401 clears the CLI token cache, re-mints, and retries on
     globalThis.fetch = prevFetch;
     clearCliToken(host);
     clear(host);
-    clearToken(host);
   }
 });
 
 await test('mcpRequest: 403 invalid cli-token clears the cache, re-mints, and retries once', async () => {
   const { callMcpTool } = await import('../src/core/mcp.ts');
   const { setCliTokenManual, clearCliToken } = await import('../src/core/cli-token.ts');
-  const { clear } = await import('../src/core/secure-store.ts');
-  const { saveToken, clearToken } = await import('../src/core/auth.ts');
+  const { save, clear } = await import('../src/core/secure-store.ts');
 
   const host = 'https://test-invalid-cli-token-retry.internal';
   clearCliToken(host);
   clear(host);
-  clearToken(host);
   setCliTokenManual('stale-token', host);
-  saveToken('fake-access-token-for-invalid-cli-token-test', host);
+  save(host, {
+    accessToken: 'fake-access-token-for-invalid-cli-token-test',
+    refreshToken: '',
+    accessExpiresAt: new Date(Date.now() + 3600_000).toISOString(),
+  });
 
   let mcpCallCount = 0;
   const seenTokens: string[] = [];
@@ -545,7 +507,6 @@ await test('mcpRequest: 403 invalid cli-token clears the cache, re-mints, and re
     globalThis.fetch = prevFetch;
     clearCliToken(host);
     clear(host);
-    clearToken(host);
   }
 });
 

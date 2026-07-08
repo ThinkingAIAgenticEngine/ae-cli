@@ -1,4 +1,4 @@
-import { createCapabilityCommand, optionalJson, optionalString } from '../../shared.js';
+import { createCapabilityCommand, optionalDataTableColumns, optionalJson, optionalString } from '../../shared.js';
 
 export const propertyDimensionTableCreateAndBindCsv = createCapabilityCommand({
   resource: 'property',
@@ -10,10 +10,10 @@ export const propertyDimensionTableCreateAndBindCsv = createCapabilityCommand({
     { name: 'property-name', type: 'string', required: true, desc: 'Property technical name.' },
     { name: 'property-scope', type: 'string', required: true, desc: 'Property owner table, for example event or user.' },
     { name: 'input-file-id', type: 'string', required: true, desc: 'Uploaded input file ID, for example ifile_<32 lowercase hex>.' },
-    { name: 'data-table-name', type: 'string', required: false, desc: 'Technical data table name.' },
+    { name: 'data-table-name', type: 'string', required: false, desc: 'Optional technical data table name. If supplied, use datatable_<project_id>_<name>.' },
     { name: 'display-name', type: 'string', required: false, desc: 'Human-readable data table name.' },
     { name: 'description', type: 'string', required: false, desc: 'Data table description.' },
-    { name: 'columns', type: 'json', required: false, desc: 'Column definitions JSON array.' },
+    { name: 'columns', type: 'json', required: false, desc: 'Column definitions JSON array. Use column_name/select_type/column_desc, or name/type/display_name aliases.' },
     { name: 'timestamp-join-format', type: 'string', required: false, desc: 'Optional timestamp join format.' },
     { name: 'dict-columns', type: 'json', required: false, desc: 'Optional dictionary column names JSON array.' },
   ],
@@ -26,7 +26,7 @@ export const propertyDimensionTableCreateAndBindCsv = createCapabilityCommand({
     data_table_name: optionalString(ctx, 'data-table-name'),
     display_name: optionalString(ctx, 'display-name'),
     description: optionalString(ctx, 'description'),
-    columns: optionalJson(ctx, 'columns'),
+    columns: optionalDataTableColumns(ctx, 'columns', 'csv'),
     timestamp_join_format: optionalString(ctx, 'timestamp-join-format'),
     dict_columns: optionalJson(ctx, 'dict-columns'),
   }),

@@ -51,9 +51,7 @@ async function generateCliToken(hostUrl: string): Promise<string> {
 
 /**
  * Persist a freshly-minted/manually-set CLI token to secure-store, without disturbing
- * accessToken/refreshToken. Skipped when there is no existing secure-store session for the host
- * (e.g. legacy tokens.json cache only) — in that case the token stays
- * in-process-cache-only, mirroring how those auth sources are themselves not secure-store-backed.
+ * accessToken/refreshToken. Skipped when there is no existing secure-store session for the host.
  */
 function persistCliTokenIfPossible(hostUrl: string, cliToken: string): void {
   const existing = secureStoreLoad(hostUrl);

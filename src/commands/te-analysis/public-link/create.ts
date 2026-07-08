@@ -1,0 +1,40 @@
+import {
+  compactInput,
+  createAnalysisCapabilityCommand,
+  optionalJson,
+  optionalNumber,
+  optionalString,
+  payloadFlag,
+  projectIdFlag,
+  projectInput,
+} from '../capability-shared.js';
+
+export const publicLinkCreate = createAnalysisCapabilityCommand({
+  resource: 'public-link',
+  command: 'create',
+  capabilityId: 'analysis.public_link.create',
+  description: 'Create a public link for a dashboard or BI panel.',
+  flags: [
+    projectIdFlag,
+    { name: 'company-id', type: 'number', required: false, desc: 'Company ID. Derived from project ID when omitted.' },
+    { name: 'resource-type', type: 'string', required: true, desc: 'Resource type: dashboard or bi_panel.' },
+    { name: 'resource-id', type: 'number', required: true, desc: 'Target resource ID.' },
+    { name: 'access-controls', type: 'json', required: false, desc: 'Public link access-control JSON.' },
+    { name: 'remark', type: 'string', required: false, desc: 'Public link remark.' },
+    { name: 'effective-at', type: 'string', required: true, desc: 'Effective time, yyyy-MM-dd HH:mm:ss.' },
+    { name: 'expires-at', type: 'string', required: true, desc: 'Expiration time, yyyy-MM-dd HH:mm:ss.' },
+    payloadFlag,
+  ],
+  risk: 'write',
+  buildInput: (ctx) => compactInput({
+    ...projectInput(ctx),
+    company_id: optionalNumber(ctx, 'company-id'),
+    resource_type: ctx.str('resource-type'),
+    resource_id: ctx.num('resource-id'),
+    access_controls: optionalJson(ctx, 'access-controls'),
+    remark: optionalString(ctx, 'remark'),
+    effective_at: ctx.str('effective-at'),
+    expires_at: ctx.str('expires-at'),
+    payload: optionalJson(ctx, 'payload'),
+  }),
+});

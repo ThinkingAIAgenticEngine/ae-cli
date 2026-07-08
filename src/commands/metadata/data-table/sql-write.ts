@@ -1,4 +1,4 @@
-import { createCapabilityCommand, optionalJson, optionalNumber, optionalString } from '../shared.js';
+import { createCapabilityCommand, optionalNumber, optionalString, requiredDataTableColumns } from '../shared.js';
 
 export const dataTableSqlWrite = createCapabilityCommand({
   resource: 'data-table',
@@ -8,13 +8,13 @@ export const dataTableSqlWrite = createCapabilityCommand({
   flags: [
     { name: 'project-id', type: 'number', required: true, desc: 'Numeric project ID.', alias: 'p' },
     { name: 'operation', type: 'string', required: true, desc: 'Write operation: create or update.' },
-    { name: 'columns', type: 'json', required: true, desc: 'Column definitions JSON array.' },
+    { name: 'columns', type: 'json', required: true, desc: 'Column definitions JSON array. Use column_name/column_type/column_desc, or name/type/display_name aliases.' },
     { name: 'qp', type: 'json', required: true, desc: 'SQL data table query plan JSON.' },
     { name: 'data-table-id', type: 'number', required: false, desc: 'Existing data table ID for update operations.' },
-    { name: 'table-name', type: 'string', required: false, desc: 'Technical data table name. Required by the service for create operations.' },
+    { name: 'table-name', type: 'string', required: false, desc: 'Technical data table name for create. Use datatable_<project_id>_<name>.' },
     { name: 'display-name', type: 'string', required: false, desc: 'Human-readable data table name.' },
     { name: 'remarks', type: 'string', required: false, desc: 'Data table remarks.' },
-    { name: 'zone-offset', type: 'string', required: false, desc: 'Time zone offset used by the query plan, for example +08:00.' },
+    { name: 'zone-offset', type: 'number', required: false, desc: 'Time zone offset in hours used by the query plan. For example, UTC+8 is 8 and UTC-5 is -5. Valid range: -12 to 14.' },
     { name: 'strategy', type: 'string', required: false, desc: 'Write strategy: overwrite or insert.' },
     { name: 'update-cron', type: 'string', required: false, desc: 'Cron expression for scheduled updates.' },
   ],
@@ -26,9 +26,9 @@ export const dataTableSqlWrite = createCapabilityCommand({
     table_name: optionalString(ctx, 'table-name'),
     display_name: optionalString(ctx, 'display-name'),
     remarks: optionalString(ctx, 'remarks'),
-    columns: ctx.json('columns'),
+    columns: requiredDataTableColumns(ctx, 'columns', 'sql'),
     qp: ctx.json('qp'),
-    zone_offset: optionalString(ctx, 'zone-offset'),
+    zone_offset: optionalNumber(ctx, 'zone-offset'),
     strategy: optionalString(ctx, 'strategy'),
     update_cron: optionalString(ctx, 'update-cron'),
   }),

@@ -81,7 +81,12 @@ export function formatOutput(data: any, format: OutputFormat, jqExpr?: string): 
   return JSON.stringify(envelope, null, 2);
 }
 
-export function formatError(type: OutputEnvelope['error'] extends infer E ? E extends { type: infer T } ? T : never : never, message: string, hint?: string, code?: number): string {
+export function formatError(
+  type: OutputEnvelope['error'] extends infer E ? E extends { type: infer T } ? T : never : never,
+  message: string,
+  hint?: string,
+  code?: string | number,
+): string {
   const envelope: OutputEnvelope = {
     ok: false,
     error: { type: type as any, message, hint, code },
@@ -89,7 +94,12 @@ export function formatError(type: OutputEnvelope['error'] extends infer E ? E ex
   return JSON.stringify(envelope, null, 2);
 }
 
-export function printError(type: 'auth' | 'permission' | 'api' | 'validation' | 'config', message: string, hint?: string, code?: number): void {
+export function printError(
+  type: 'auth' | 'permission' | 'api' | 'validation' | 'config',
+  message: string,
+  hint?: string,
+  code?: string | number,
+): void {
   const formatted = formatError(type, message, hint, code);
   process.stderr.write(formatted + '\n');
   // Also write to the error log file

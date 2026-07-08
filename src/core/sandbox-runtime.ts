@@ -28,7 +28,7 @@ export function getSandboxRuntimeRoot(): string {
   return process.env.SANDBOX_RUNTIME_ROOT || getDefaultSandboxRuntimeRoot();
 }
 
-/** ae-cli sandbox config directory for CLI token, cluster-info, and related files. */
+/** ae-cli sandbox config directory (cluster-info, cli-token, and related files). */
 export function getSandboxAeConfigDir(): string {
   return join(getSandboxRuntimeRoot(), '.ae-config');
 }

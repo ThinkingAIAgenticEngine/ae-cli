@@ -19,13 +19,14 @@ export class CapabilityGatewayError extends Error {
     message: string,
     readonly code?: string,
     readonly httpStatus?: number,
+    readonly hint?: string,
   ) {
     super(message);
     this.name = 'CapabilityGatewayError';
   }
 }
 
-/** Build `/api/cli/<domain>/v1/<pathAfterV1>` with optional query params. */
+/** Build `/api/cli/<domain>/v1/<pathAfterV1>` or root `/api/cli/v1/<pathAfterV1>` with optional query params. */
 export function buildCapabilityGatewayUrl(
   host: string,
   domain: string,
@@ -35,7 +36,8 @@ export function buildCapabilityGatewayUrl(
   const base = host.replace(/\/+$/, '');
   const cleanDomain = domain.replace(/^\/+|\/+$/g, '');
   const cleanPath = pathAfterV1.replace(/^\/+|\/+$/g, '');
-  const url = new URL(`${base}/api/cli/${cleanDomain}/v1/${cleanPath}`);
+  const gatewayPrefix = cleanDomain === '' ? '/api/cli/v1' : `/api/cli/${cleanDomain}/v1`;
+  const url = new URL(`${base}${gatewayPrefix}/${cleanPath}`);
   for (const [key, value] of Object.entries(queryParams)) {
     if (value !== undefined && value !== null) {
       url.searchParams.set(key, String(value));
@@ -85,10 +87,43 @@ function unwrapCapabilityEnvelope(body: any): any {
       return body.data;
     }
     const err = body.error ?? {};
-    const message = err.message || err.code || 'Capability gateway request failed';
-    throw new CapabilityGatewayError(message, err.code, err.http_status ?? err.httpStatus);
+    const code = nonEmptyString(err.code);
+    const message = nonEmptyString(err.message) ?? code ?? 'Capability gateway request failed';
+    const hint = nonEmptyString(err.hint);
+    throw new CapabilityGatewayError(message, code, err.http_status ?? err.httpStatus, hint);
   }
   return body;
+}
+
+function nonEmptyString(value: unknown): string | undefined {
+  return typeof value === 'string' && value.trim() ? value.trim() : undefined;
+}
+
+function buildCapabilityHttpError(resp: Response, body: any): CapabilityGatewayError {
+  const fallback = `Capability gateway HTTP error: ${resp.status} ${resp.statusText}`.trim();
+
+  if (body && typeof body === 'object') {
+    const err = body.error ?? body.data?.error ?? body;
+    const code = nonEmptyString(err.code) ?? nonEmptyString(err.errorCode) ?? nonEmptyString(body.code);
+    const message = nonEmptyString(err.message) ?? nonEmptyString(body.message);
+    const hint = nonEmptyString(err.hint) ?? nonEmptyString(body.hint);
+    const details = [code, message, hint ? `Hint: ${hint}` : undefined].filter(Boolean);
+
+    if (details.length > 0) {
+      return new CapabilityGatewayError(message ?? fallback, code, resp.status, hint);
+    }
+  }
+
+  if (typeof body === 'string' && body.trim()) {
+    return new CapabilityGatewayError(`${fallback}: ${body.slice(0, 500)}`, undefined, resp.status);
+  }
+
+  return new CapabilityGatewayError(fallback, undefined, resp.status);
+}
+
+async function throwCapabilityHttpError(resp: Response): Promise<never> {
+  const body = parseCapabilityResponse(await resp.text());
+  throw buildCapabilityHttpError(resp, body);
 }
 
 async function requestOnce(
@@ -149,10 +184,10 @@ async function callGateway(
       throw new PermissionError(await permissionMessage(resp));
     }
     if (!resp.ok) {
-      throw new Error(`Capability gateway HTTP error: ${resp.status} ${resp.statusText}`);
+      await throwCapabilityHttpError(resp);
     }
   } else if (!resp.ok) {
-    throw new Error(`Capability gateway HTTP error: ${resp.status} ${resp.statusText}`);
+    await throwCapabilityHttpError(resp);
   }
 
   return unwrapCapabilityEnvelope(parseCapabilityResponse(await resp.text()));
@@ -231,10 +266,10 @@ export async function uploadInputFileBytes(
       throw new PermissionError(await permissionMessage(resp));
     }
     if (!resp.ok) {
-      throw new Error(`Capability gateway HTTP error: ${resp.status} ${resp.statusText}`);
+      await throwCapabilityHttpError(resp);
     }
   } else if (!resp.ok) {
-    throw new Error(`Capability gateway HTTP error: ${resp.status} ${resp.statusText}`);
+    await throwCapabilityHttpError(resp);
   }
 
   return unwrapCapabilityEnvelope(parseCapabilityResponse(await resp.text()));

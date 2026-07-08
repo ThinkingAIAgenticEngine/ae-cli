@@ -10,9 +10,11 @@ import {
   buildApiUrl,
   buildCapabilityGatewayUrl,
   callCapabilityApi,
+  CapabilityGatewayError,
   executeCapability,
   inspectCapability,
   listCapabilities,
+  uploadInputFileBytes,
 } from '../src/core/capability-api.ts';
 import { setCliTokenManual, clearCliToken } from '../src/core/cli-token.ts';
 import { PermissionError } from '../src/core/errors.ts';
@@ -152,13 +154,55 @@ await test('callCapabilityApi: 403 → PermissionError, no retry', async () => {
   }
 });
 
+await test('executeCapability: non-2xx response exposes capability error body', async () => {
+  const host = 'https://test-capi-422.internal';
+  clearCliToken(host);
+  setCliTokenManual('tok', host);
+
+  const prevFetch = globalThis.fetch;
+  globalThis.fetch = (async () => {
+    return new Response(
+      JSON.stringify({
+        ok: false,
+        error: {
+          code: 'DATA_TABLE_NOT_FOUND',
+          message: 'Data table does not exist.',
+          hint: 'Check data_table_id.',
+        },
+      }),
+      { status: 422, statusText: 'Unprocessable Entity' },
+    );
+  }) as typeof fetch;
+
+  try {
+    await assert.rejects(
+      () => executeCapability(host, 'metadata', 'metadata.data_table.get', { project_id: 1, data_table_id: 1 }),
+      (err: Error) => {
+        assert.ok(err instanceof CapabilityGatewayError);
+        assert.match(err.message, /Data table does not exist/);
+        assert.equal(err.code, 'DATA_TABLE_NOT_FOUND');
+        assert.equal(err.hint, 'Check data_table_id.');
+        assert.equal(err.httpStatus, 422);
+        return true;
+      },
+    );
+  } finally {
+    globalThis.fetch = prevFetch;
+    clearCliToken(host);
+  }
+});
+
 await test('executeCapability: 401 clears cache and retries once', async () => {
   const host = 'https://test-capi-401.internal';
-  const { saveToken, clearToken } = await import('../src/core/auth.ts');
+  const { save, clear } = await import('../src/core/secure-store.ts');
   clearCliToken(host);
-  clearToken(host);
+  clear(host);
   setCliTokenManual('stale-token', host);
-  saveToken('fake-access-token-for-401-test', host);
+  save(host, {
+    accessToken: 'fake-access-token-for-401-test',
+    refreshToken: '',
+    accessExpiresAt: new Date(Date.now() + 3600_000).toISOString(),
+  });
 
   let apiCallCount = 0;
   const seenTokens: string[] = [];
@@ -181,12 +225,98 @@ await test('executeCapability: 401 clears cache and retries once', async () => {
     const result = await executeCapability(host, 'metadata', 'metadata.event.get', { project_id: 1, event_name: 'a' });
     assert.equal(apiCallCount, 2);
     assert.equal(seenTokens[0], 'stale-token');
-    assert.equal(seenTokens[1], 'fresh-token');
+    assert.ok(seenTokens[1]);
+    assert.notEqual(seenTokens[1], 'stale-token');
     assert.equal(JSON.stringify(result), JSON.stringify({ ok: true }));
   } finally {
     globalThis.fetch = prevFetch;
     clearCliToken(host);
+    clear(host);
+  }
+});
+
+await test('executeCapability: retry non-2xx response exposes capability error body', async () => {
+  const host = 'https://test-capi-401-422.internal';
+  const { saveToken, clearToken } = await import('../src/core/auth.ts');
+  clearCliToken(host);
+  clearToken(host);
+  setCliTokenManual('stale-token', host);
+  saveToken('fake-access-token-for-401-422-test', host);
+
+  let apiCallCount = 0;
+  const prevFetch = globalThis.fetch;
+  globalThis.fetch = (async (url) => {
+    if (String(url).includes('/v1/ta/cli/token/generate')) {
+      return new Response(JSON.stringify({ return_code: 0, data: { userSecret: 'fresh-token' } }), { status: 200 });
+    }
+    apiCallCount++;
+    if (apiCallCount === 1) {
+      return new Response('Unauthorized', { status: 401 });
+    }
+    return new Response(
+      JSON.stringify({
+        ok: false,
+        error: {
+          code: 'INVALID_INPUT_FILE',
+          message: 'Input file is invalid.',
+        },
+      }),
+      { status: 422, statusText: 'Unprocessable Entity' },
+    );
+  }) as typeof fetch;
+
+  try {
+    await assert.rejects(
+      () => executeCapability(host, 'metadata', 'metadata.data_table.csv_write', { project_id: 1 }),
+      (err: Error) => {
+        assert.ok(err instanceof CapabilityGatewayError);
+        assert.match(err.message, /Input file is invalid/);
+        assert.equal(err.code, 'INVALID_INPUT_FILE');
+        assert.equal(err.httpStatus, 422);
+        return true;
+      },
+    );
+    assert.equal(apiCallCount, 2);
+  } finally {
+    globalThis.fetch = prevFetch;
+    clearCliToken(host);
     clearToken(host);
+  }
+});
+
+await test('uploadInputFileBytes: non-2xx response exposes capability error body', async () => {
+  const host = 'https://test-capi-upload-422.internal';
+  clearCliToken(host);
+  setCliTokenManual('tok', host);
+
+  const prevFetch = globalThis.fetch;
+  globalThis.fetch = (async () => {
+    return new Response(
+      JSON.stringify({
+        ok: false,
+        error: {
+          code: 'UPLOAD_PURPOSE_INVALID',
+          message: 'Unsupported upload purpose.',
+        },
+      }),
+      { status: 422, statusText: 'Unprocessable Entity' },
+    );
+  }) as typeof fetch;
+
+  try {
+    await assert.rejects(
+      () => uploadInputFileBytes(host, 'metadata', 1, 'data_table.csv', Buffer.from('id\n1\n'), 'data.csv'),
+      (err: Error) => {
+        assert.ok(err instanceof CapabilityGatewayError);
+        assert.match(err.message, /Unsupported upload purpose/);
+        assert.equal(err.code, 'UPLOAD_PURPOSE_INVALID');
+        assert.equal(err.httpStatus, 422);
+        return true;
+      },
+    );
+  } finally {
+    globalThis.fetch = prevFetch;
+    clearCliToken(host);
   }
 });
 

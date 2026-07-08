@@ -1,4 +1,4 @@
-import { clearToken, getToken, resolveHost } from '../../core/auth.js';
+import { invalidateAccessTokenForRetry, getToken, resolveHost } from '../../core/auth.js';
 import { safeJsonParse } from '../../core/json-utils.js';
 import { logger } from '../../core/logger.js';
 import type { DryRunResult, RuntimeContext } from '../../framework/types.js';
@@ -133,7 +133,7 @@ async function dataopsRequest(
   logger.api(method, url, resp.status, body, data);
 
   if ((resp.status === 401 || resp.status === 403) && retry) {
-    clearToken(host);
+    invalidateAccessTokenForRetry(host);
     return dataopsRequest(ctx, method, path, params, body, false);
   }
 

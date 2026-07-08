@@ -64,7 +64,7 @@ export interface OutputEnvelope {
   data?: any;
   error?: {
     type: 'auth' | 'permission' | 'api' | 'validation' | 'config';
-    code?: number;
+    code?: string | number;
     message: string;
     hint?: string;
   };

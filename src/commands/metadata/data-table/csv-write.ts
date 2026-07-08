@@ -1,4 +1,4 @@
-import { createCapabilityCommand, optionalJson, optionalNumber, optionalString } from '../shared.js';
+import { createCapabilityCommand, optionalDataTableColumns, optionalNumber, optionalString } from '../shared.js';
 
 export const dataTableCsvWrite = createCapabilityCommand({
   resource: 'data-table',
@@ -10,10 +10,10 @@ export const dataTableCsvWrite = createCapabilityCommand({
     { name: 'operation', type: 'string', required: true, desc: 'Write operation: create, incremental_update, or replace_update.' },
     { name: 'input-file-id', type: 'string', required: true, desc: 'Uploaded input file ID, for example ifile_<32 lowercase hex>.' },
     { name: 'data-table-id', type: 'number', required: false, desc: 'Existing data table ID for update operations.' },
-    { name: 'data-table-name', type: 'string', required: false, desc: 'Technical data table name. Required by the service for create operations.' },
+    { name: 'data-table-name', type: 'string', required: false, desc: 'Optional technical data table name. If supplied, use datatable_<project_id>_<name>.' },
     { name: 'display-name', type: 'string', required: false, desc: 'Human-readable data table name.' },
     { name: 'description', type: 'string', required: false, desc: 'Data table description.' },
-    { name: 'columns', type: 'json', required: false, desc: 'Column definitions JSON array.' },
+    { name: 'columns', type: 'json', required: false, desc: 'Column definitions JSON array. Use column_name/select_type/column_desc, or name/type/display_name aliases.' },
   ],
   risk: 'write',
   buildInput: (ctx) => ({
@@ -24,6 +24,6 @@ export const dataTableCsvWrite = createCapabilityCommand({
     data_table_name: optionalString(ctx, 'data-table-name'),
     display_name: optionalString(ctx, 'display-name'),
     description: optionalString(ctx, 'description'),
-    columns: optionalJson(ctx, 'columns'),
+    columns: optionalDataTableColumns(ctx, 'columns', 'csv'),
   }),
 });

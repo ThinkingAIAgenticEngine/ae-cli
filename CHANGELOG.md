@@ -1,3 +1,20 @@
+### 6.0.24
+**Date:** 2026-07-08
+
+**Changes:**
+
+* Fix auth bugs
+* Add 40+ commands across dashboard and project space domains
+
+### 6.0.22
+**Date:** 2026-07-07
+
+**Changes:**
+
+* Refactor auth
+* Update tracking CLI commands
+* Add new metadata domain commands
+
 ### 6.0.20
 **Date:** 2026-07-02
 

@@ -5,7 +5,7 @@
 ## Command
 
 ```bash
-ae-cli metadata data-table csv-write --project-id <project_id> --operation create --input-file-id <input_file_id> --data-table-name <name> --columns '<columns_json>' --yes
+ae-cli metadata data-table csv-write --project-id <project_id> --operation create --input-file-id <input_file_id> --data-table-name datatable_<project_id>_<name> --columns '<columns_json>' --yes
 ae-cli metadata data-table csv-write --project-id <project_id> --operation incremental_update --data-table-id <id> --input-file-id <input_file_id> --yes
 ae-cli metadata data-table csv-write --project-id <project_id> --operation replace_update --data-table-id <id> --input-file-id <input_file_id> --yes
 ```
@@ -18,12 +18,14 @@ ae-cli metadata data-table csv-write --project-id <project_id> --operation repla
 | `--operation` | Yes | `create`, `incremental_update`, or `replace_update`. |
 | `--input-file-id` | Yes | ID returned by `metadata input-file upload`. |
 | `--data-table-id` | For updates | Existing data table ID. |
-| `--data-table-name` | For create | Technical data table name. |
+| `--data-table-name` | No | Optional technical data table name. If supplied, use `datatable_<project_id>_<name>`. |
 | `--display-name` | No | Human-readable table name. |
 | `--description` | No | Table description. |
-| `--columns` | No | Column definitions JSON array. |
+| `--columns` | No | Column definitions JSON array. Preferred fields are `column_name`, `select_type`, and `column_desc`; CLI also accepts `name`, `type`, and `display_name` aliases. |
 
 ## Decision Rules
 
 - Upload the CSV first with `metadata input-file upload --purpose data_table.csv`.
+- Do not invent `input_file_id` or `data_table_id`; use upload/list outputs.
+- If you provide `--data-table-name`, it must include the project segment, for example `datatable_2_orders`.
 - This is a write command; use `--dry-run` before non-dry-run and pass `--yes` when executing.

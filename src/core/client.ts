@@ -1,6 +1,6 @@
 import WebSocket from 'ws';
 import { randomBytes } from 'crypto';
-import { getToken, clearToken, resolveHost } from './auth.js';
+import { getToken, invalidateAccessTokenForRetry, resolveHost } from './auth.js';
 import { extractHostname } from './config.js';
 import { safeJsonParse } from './json-utils.js';
 import { logger } from './logger.js';
@@ -65,7 +65,7 @@ async function request(
 
   if (resp.status === 401) {
     if (retry) {
-      clearToken(resolvedHost);
+      invalidateAccessTokenForRetry(resolvedHost);
       return request(method, modulePath, params, body, false, resolvedHost);
     }
     // F-010: token rejected even after re-fetch — session genuinely expired (lazy discovery; the access
@@ -83,7 +83,7 @@ async function request(
   }
 
   if (data.return_code === -1001 && retry) {
-    clearToken(resolvedHost);
+    invalidateAccessTokenForRetry(resolvedHost);
     return request(method, modulePath, params, body, false, resolvedHost);
   }
 
@@ -135,7 +135,7 @@ async function uploadRequest(
 
   if (resp.status === 401) {
     if (retry) {
-      clearToken(resolvedHost);
+      invalidateAccessTokenForRetry(resolvedHost);
       return uploadRequest(modulePath, form, params, false, resolvedHost);
     }
     throw new SecureStoreAuthError(`Session expired or unauthorized for ${resolvedHost}. Please run: ae-cli auth login`);
@@ -150,7 +150,7 @@ async function uploadRequest(
   }
 
   if (data.return_code === -1001 && retry) {
-    clearToken(resolvedHost);
+    invalidateAccessTokenForRetry(resolvedHost);
     return uploadRequest(modulePath, form, params, false, resolvedHost);
   }
 
@@ -244,7 +244,7 @@ export async function wsQuery(
   } catch (err: any) {
     const msg = err.message || '';
     if (msg.includes('401') || msg.includes('403') || msg.includes('auth')) {
-      clearToken(resolvedHost);
+      invalidateAccessTokenForRetry(resolvedHost);
       const newToken = await getToken(resolvedHost);
       return wsQueryOnce(projectId, requestId, qp, eventModel, options, newToken, resolvedHost);
     }
