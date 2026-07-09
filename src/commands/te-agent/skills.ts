@@ -23,7 +23,7 @@ import {
 } from './market-constants.js';
 
 const BASE_PATH = '/api/sandbox/agent/skills';
-const MARKET_BASE_PATH = '/api/skills';
+const MARKET_BASE_PATH = '/api/sandbox/agent/skills';
 
 // Build the optional meta body (category / iconEmoji / iconColor) from ctx.
 // Returns null when none of the meta flags are provided.
@@ -83,7 +83,7 @@ export const listSkills: Command = {
 export const addSkill: Command = {
   service: 'agent',
   command: '+add-skill',
-  description: 'Create a custom Skill (personal scope)',
+  description: 'Create a custom Skill (personal or company scope)',
   flags: [
     { name: 'name', type: 'string', required: true, desc: 'Skill name (1-80 chars)' },
     { name: 'description', type: 'string', required: true, desc: 'Skill description' },
@@ -92,6 +92,7 @@ export const addSkill: Command = {
     { name: 'category', type: 'string', required: false, desc: `Market category key: ${MARKET_CATEGORIES.join(' | ')}` },
     { name: 'icon-emoji', type: 'string', required: false, desc: 'Market icon emoji (e.g. robot)' },
     { name: 'icon-color', type: 'string', required: false, desc: 'Market icon color (e.g. #1E76F0)' },
+    { name: 'scope', type: 'string', required: false, default: 'personal', desc: 'Target scope: personal | company' },
   ],
   risk: 'write',
   validate: (ctx) => {
@@ -103,6 +104,10 @@ export const addSkill: Command = {
     if (category && !isValidMarketCategory(category)) {
       throw new Error(`--category must be one of: ${MARKET_CATEGORIES.join(', ')}`);
     }
+    const scope = ctx.str('scope');
+    if (scope && !['personal', 'company'].includes(scope)) {
+      throw new Error('--scope must be personal or company');
+    }
   },
   dryRun: (ctx) => {
     const body: Record<string, unknown> = {
@@ -110,9 +115,10 @@ export const addSkill: Command = {
       description: ctx.str('description'),
       instructions: ctx.str('instructions') === '@-' ? '(from stdin)' : ctx.str('instructions'),
       displayName: ctx.str('displayName') || undefined,
+      scope: ctx.str('scope') || 'personal',
     };
     const meta = buildMetaBody(ctx);
-    if (meta) body._meta = meta; // applied via a follow-up PATCH /api/skills/[id]/meta
+    if (meta) body._meta = meta; // applied via a follow-up PATCH /api/sandbox/agent/skills/[id]/meta
     return { method: 'POST', url: BASE_PATH, body };
   },
   execute: async (ctx) => {
@@ -122,6 +128,7 @@ export const addSkill: Command = {
       description: ctx.str('description'),
       instructions,
       displayName: ctx.str('displayName') || undefined,
+      scope: ctx.str('scope') || 'personal',
     });
     const id = created?.item?.id;
     const meta = buildMetaBody(ctx);

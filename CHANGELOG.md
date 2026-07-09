@@ -1,3 +1,14 @@
+### 6.0.27
+**Date:** 2026-07-09
+
+**Changes:**
+
+* Expand te-agent with sandbox/agent CRUD for agents, MCPs, skills, and models
+* Add analysis artifact download and run inspect commands; refine dashboard export contracts
+* Migrate DataOps API calls to cli-token and support taskInstanceId in task instance detail
+* Improve CLI token handling with daily renew, clearer 403 errors, and host URL normalization
+* Adapt engage save_flow protocol and support tracking-plan file upload in sandbox workspace
+
 ### 6.0.24
 **Date:** 2026-07-08
 

@@ -237,11 +237,15 @@ await test('executeCapability: 401 clears cache and retries once', async () => {
 
 await test('executeCapability: retry non-2xx response exposes capability error body', async () => {
   const host = 'https://test-capi-401-422.internal';
-  const { saveToken, clearToken } = await import('../src/core/auth.ts');
+  const { save, clear } = await import('../src/core/secure-store.ts');
   clearCliToken(host);
-  clearToken(host);
+  clear(host);
   setCliTokenManual('stale-token', host);
-  saveToken('fake-access-token-for-401-422-test', host);
+  save(host, {
+    accessToken: 'fake-access-token-for-401-422-test',
+    refreshToken: '',
+    accessExpiresAt: new Date(Date.now() + 3600_000).toISOString(),
+  });
 
   let apiCallCount = 0;
   const prevFetch = globalThis.fetch;
@@ -280,7 +284,7 @@ await test('executeCapability: retry non-2xx response exposes capability error b
   } finally {
     globalThis.fetch = prevFetch;
     clearCliToken(host);
-    clearToken(host);
+    clear(host);
   }
 });
 
@@ -317,6 +321,57 @@ await test('uploadInputFileBytes: non-2xx response exposes capability error body
   } finally {
     globalThis.fetch = prevFetch;
     clearCliToken(host);
+  }
+});
+
+await test('executeCapability: 403 invalid cli-token clears cache and retries once', async () => {
+  const host = 'https://test-capi-invalid-token.internal';
+  const { save, clear } = await import('../src/core/secure-store.ts');
+  clearCliToken(host);
+  clear(host);
+  setCliTokenManual('stale-token', host);
+  save(host, {
+    accessToken: 'fake-access-token-for-invalid-cli-token-test',
+    refreshToken: '',
+    accessExpiresAt: new Date(Date.now() + 3600_000).toISOString(),
+  });
+
+  let apiCallCount = 0;
+  const seenTokens: string[] = [];
+  const prevFetch = globalThis.fetch;
+  globalThis.fetch = (async (url, init) => {
+    const urlStr = String(url);
+    const token = (init?.headers as Record<string, string> | undefined)?.['cli-token'];
+    if (urlStr.includes('/v1/ta/cli/token/generate')) {
+      return new Response(JSON.stringify({ return_code: 0, data: { userSecret: 'fresh-token' } }), { status: 200 });
+    }
+    apiCallCount++;
+    seenTokens.push(token ?? '');
+    if (apiCallCount === 1) {
+      return new Response(
+        JSON.stringify({
+          ok: false,
+          error: {
+            type: 'permission',
+            message: 'Your token is invalid. Please verify your token and try again.',
+          },
+        }),
+        { status: 403, headers: { 'Content-Type': 'application/json' } },
+      );
+    }
+    return new Response(JSON.stringify({ ok: true, data: { ok: true } }), { status: 200 });
+  }) as typeof fetch;
+
+  try {
+    const result = await executeCapability(host, 'metadata', 'metadata.data_table.list', { project_id: 1 });
+    assert.equal(apiCallCount, 2);
+    assert.equal(seenTokens[0], 'stale-token');
+    assert.equal(seenTokens[1], 'fresh-token');
+    assert.equal(JSON.stringify(result), JSON.stringify({ ok: true }));
+  } finally {
+    globalThis.fetch = prevFetch;
+    clearCliToken(host);
+    clear(host);
   }
 });
 

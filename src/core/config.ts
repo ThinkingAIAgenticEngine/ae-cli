@@ -2,6 +2,7 @@ import fs from 'fs';
 import path from 'path';
 import { safeReadJsonFile } from './json-utils.js';
 import { logger } from './logger.js';
+import { normalizeUrl } from './url-utils.js';
 import { getSandboxCliTokenFilePath } from './sandbox-runtime.js';
 
 const CONFIG_DIR = path.join(process.env.HOME || '', '.ae-cli');
@@ -78,17 +79,44 @@ function ensureDir(): void {
   if (!fs.existsSync(CONFIG_DIR)) fs.mkdirSync(CONFIG_DIR, { recursive: true });
 }
 
+function dedupeNormalizedHosts(config: TeConfig): TeConfig {
+  const hosts: Record<string, HostEntry> = {};
+  for (const [url, entry] of Object.entries(config.hosts)) {
+    const key = normalizeUrl(url);
+    if (!hosts[key]) {
+      hosts[key] = entry;
+    }
+  }
+  return {
+    activeHost: config.activeHost ? normalizeUrl(config.activeHost) : '',
+    hosts,
+  };
+}
+
+function configNeedsNormalization(config: TeConfig): boolean {
+  if (config.activeHost && normalizeUrl(config.activeHost) !== config.activeHost) return true;
+  const keys = Object.keys(config.hosts);
+  if (keys.some(url => normalizeUrl(url) !== url)) return true;
+  return new Set(keys.map(normalizeUrl)).size !== keys.length;
+}
+
 export function loadConfig(): TeConfig {
   try {
     if (fs.existsSync(CONFIG_FILE)) {
       const raw = safeReadJsonFile(CONFIG_FILE);
       // Migrate from old format (defaultHost without protocol)
       if (raw.defaultHost && !raw.activeHost) {
-        const migrated = migrateConfig(raw);
+        const migrated = dedupeNormalizedHosts(migrateConfig(raw));
         saveConfig(migrated);
         return migrated;
       }
-      return raw;
+      const rawConfig = raw as TeConfig;
+      if (configNeedsNormalization(rawConfig)) {
+        const config = dedupeNormalizedHosts(rawConfig);
+        saveConfig(config);
+        return config;
+      }
+      return rawConfig;
     }
   } catch (err: any) {
     logger.error(`Error loading config: ${err.message}`);
@@ -102,11 +130,11 @@ function migrateConfig(old: any): TeConfig {
   const oldHost = old.defaultHost as string;
   if (old.hosts) {
     for (const [key, val] of Object.entries(old.hosts)) {
-      const url = key.startsWith('http') ? key : `https://${key}`;
+      const url = normalizeUrl(key.startsWith('http') ? key : `https://${key}`);
       hosts[url] = val as HostEntry;
     }
   }
-  const activeHost = oldHost.startsWith('http') ? oldHost : `https://${oldHost}`;
+  const activeHost = normalizeUrl(oldHost.startsWith('http') ? oldHost : `https://${oldHost}`);
   if (!hosts[activeHost]) {
     hosts[activeHost] = { label: 'default' };
   }
@@ -127,6 +155,7 @@ export function getActiveHost(): string {
 }
 
 export function setActiveHost(url: string): void {
+  url = normalizeUrl(url);
   const config = loadConfig();
   if (!config.hosts[url]) {
     throw new Error(`Host ${url} is not in the configured hosts list. Add it first.`);
@@ -136,6 +165,7 @@ export function setActiveHost(url: string): void {
 }
 
 export function addHost(url: string, label: string): void {
+  url = normalizeUrl(url);
   const config = loadConfig();
   assertUniqueHostLabel(config, label, url);
   config.hosts[url] = { label };
@@ -162,6 +192,7 @@ function assertUniqueHostLabel(config: TeConfig, label: string, excludeUrl: stri
 }
 
 export function removeHost(url: string): void {
+  url = normalizeUrl(url);
   const config = loadConfig();
   delete config.hosts[url];
   if (config.activeHost === url) {

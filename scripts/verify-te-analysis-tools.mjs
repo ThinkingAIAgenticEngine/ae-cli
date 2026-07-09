@@ -54,14 +54,15 @@ for (const file of commandFiles) {
   const resourceMatch = content.match(/resource:\s*'([^']+)'/);
   const commandMatch = content.match(/command:\s*'([^']+)'/);
   const capabilityMatch = content.match(/capabilityId:\s*'([^']+)'/);
-  if (!resourceMatch || !commandMatch || !capabilityMatch) {
+  const directGatewayEndpoint = content.includes('callCapabilityApi(') || content.includes('downloadCapabilityArtifact(');
+  if (!resourceMatch || !commandMatch || (!capabilityMatch && !directGatewayEndpoint)) {
     fail(`cannot parse command from ${path.relative(ROOT, file)}`);
   }
   capabilityCommands.push({
     file,
     resource: resourceMatch[1],
     command: commandMatch[1],
-    capabilityId: capabilityMatch[1],
+    capabilityId: capabilityMatch ? capabilityMatch[1] : '(gateway endpoint)',
   });
 }
 
@@ -79,7 +80,7 @@ const EXPECTED_CORE_COUNT = isGlobalQueryModeEnabled() ? 37 : 36;
 if (coreCommands.length !== EXPECTED_CORE_COUNT) {
   fail(`analysis tool count mismatch: expected ${EXPECTED_CORE_COUNT}, got ${coreCommands.length}`);
 }
-const EXPECTED_CAPABILITY_COUNT = 45;
+const EXPECTED_CAPABILITY_COUNT = 47;
 if (capabilityCommands.length !== EXPECTED_CAPABILITY_COUNT) {
   fail(`analysis capability command count mismatch: expected ${EXPECTED_CAPABILITY_COUNT}, got ${capabilityCommands.length}`);
 }

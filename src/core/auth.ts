@@ -1,4 +1,5 @@
 import { getActiveHost } from './config.js';
+import { normalizeUrl } from './url-utils.js';
 import { logger } from './logger.js';
 import { getValidAccessToken, SecureStoreAuthError, load as secureStoreLoad, save as secureStoreSave } from './secure-store.js';
 import { safeJsonParse } from './json-utils.js';
@@ -8,7 +9,7 @@ import { safeJsonParse } from './json-utils.js';
  * The --host flag override is handled at the runner/command level.
  */
 export function resolveHost(hostOverride?: string): string {
-  if (hostOverride) return hostOverride;
+  if (hostOverride) return normalizeUrl(hostOverride);
   return getActiveHost();
 }
 

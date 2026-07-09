@@ -1,6 +1,7 @@
 import {
   compactInput,
   createAnalysisCapabilityCommand,
+  numberWithDefault,
   optionalJson,
   optionalNumber,
   optionalString,
@@ -18,19 +19,24 @@ export const projectSpaceCreate = createAnalysisCapabilityCommand({
     projectIdFlag,
     { name: 'space-name', type: 'string', required: false, desc: 'Project space name.' },
     { name: 'space-desc', type: 'string', required: false, desc: 'Project space description.' },
-    { name: 'avatar-type', type: 'number', required: false, desc: 'Avatar type.' },
+    { name: 'avatar-type', type: 'number', required: false, desc: 'Avatar type: 1=WORD, 2=ICON, 3=IMAGE. Default: 1.' },
     { name: 'color-key', type: 'string', required: false, desc: 'Avatar color key.' },
     { name: 'avatar', type: 'string', required: false, desc: 'Avatar value.' },
     payloadFlag,
   ],
   risk: 'write',
-  buildInput: (ctx) => compactInput({
-    ...projectInput(ctx),
-    space_name: optionalString(ctx, 'space-name'),
-    space_desc: optionalString(ctx, 'space-desc'),
-    avatar_type: optionalNumber(ctx, 'avatar-type'),
-    color_key: optionalString(ctx, 'color-key'),
-    avatar: optionalString(ctx, 'avatar'),
-    payload: optionalJson(ctx, 'payload'),
-  }),
+  buildInput: (ctx) => {
+    const payload = optionalJson(ctx, 'payload');
+    return compactInput({
+      ...projectInput(ctx),
+      space_name: optionalString(ctx, 'space-name'),
+      space_desc: optionalString(ctx, 'space-desc'),
+      avatar_type: payload === undefined
+        ? numberWithDefault(ctx, 'avatar-type', 1)
+        : optionalNumber(ctx, 'avatar-type'),
+      color_key: optionalString(ctx, 'color-key'),
+      avatar: optionalString(ctx, 'avatar'),
+      payload,
+    });
+  },
 });

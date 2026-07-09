@@ -4,9 +4,9 @@ Create, edit, preview, or commit a flow canvas draft.
 
 Mapped command: `ae-cli engage +save_flow --project_id <projectId> --req '<req-json>'`
 
-> **Protocol v2 (current).** `save_flow` is now **operation-based**. The `--req` object must carry an `operation` of `build`, `preview`, or `commit`. Do **not** use the old `nodeList` / `edgeList` field names — send `nodes` / `edges` instead. Posting a legacy `nodeList`/`edgeList` payload (or omitting `operation`) makes the backend reject the call with `Unsupported save_flow operation: null`.
+> **Protocol v2 (current).** `save_flow` is now **operation-based**. The `--req` object must carry an `operation` of `build`, `preview`, or `commit`. Do **not** use the old `nodeList` / `edgeList` field names -- send `nodes` / `edges` instead. Posting a legacy `nodeList`/`edgeList` payload (or omitting `operation`) makes the backend reject the call with `Unsupported save_flow operation: null`.
 
-The CLI passes your `--req` straight through to the backend (it only injects `projectId`). So everything in this document is about building the correct `req` object.
+The CLI injects `projectId` and rejects missing/unsupported `operation` values, legacy `nodeList`/`edgeList` fields, and the removed `sourceFlowUuid` clone mode; otherwise it passes your `--req` through to the backend. So everything in this document is about building the correct `req` object.
 
 ---
 
@@ -22,10 +22,11 @@ build  ──► status = ready_to_preview ──► preview ──► commit �
 
 You still organize user requirements into an intermediate intent first, then map the intent to `nodes` / `edges`, then run the lifecycle.
 
-- `build`: assemble/edit a draft from `nodes` + `edges` (or `dsl`, or clone). Returns `ready_to_preview` (with `draftId`, `draftVersion`, `confirmToken`, `preview.mainPath`) or `need_input` (one more slot required).
+- `build`: assemble/edit a draft from `nodes` + `edges` (or topology-only `dsl`). Returns `ready_to_preview` (with `draftId`, `draftVersion`, `confirmToken`, `preview.mainPath`) or `need_input` (one more slot required).
 - `preview`: validate the draft; **re-issues** a fresh `draftVersion` + `confirmToken`.
 - `commit`: finalize the draft into a flow version using the **preview** `draftVersion` + `confirmToken`; returns the final `flowUuid`.
 - Always verify with `ae-cli engage +flow_detail --project_id <projectId> --flow_uuid <flowUuid>`.
+- To copy an existing flow, first call `+flow_detail`, convert the returned `nodeList` / `edgeList` into compact `nodes` / `edges`, then call `operation=build` as normal creation input. Do not pass `sourceFlowUuid`.
 
 ---
 
@@ -34,8 +35,9 @@ You still organize user requirements into an intermediate intent first, then map
 1. Identify the flow intent from the user input and produce a unified intent JSON.
 2. Run `ae-cli analysis_audience +get_cluster_definition_schema --cluster_type condition` to obtain the condition cluster definition schema for assembling condition-related fields later.
 3. Run `ae-cli engage +channel_list --project_id <projectId>` to get the available channels and match real `channelId` values for touchpoint nodes. For `webhook_push`, also run `ae-cli engage +channel_detail` and use `data.config.paramsList` to build `contentList`.
-4. Map the intent JSON to `nodes` and `edges` (compact form, see §7 / §8).
-5. `build` → resolve any `need_input` slot → `preview` → `commit`, then verify with `+flow_detail`.
+4. Query `ae-cli engage +flow_node_config_schema --node_type <type>` before constructing each non-trivial node config, then run `ae-cli engage +validate_flow_node_config --node_type <type> --operation_mode save_flow --config '<config-json-string>'` before placing the config into `nodes` or `nodeConfigs`.
+5. Map the intent JSON to `nodes` and `edges` (compact form, see §7 / §8).
+6. `build` → resolve any `need_input` slot → `preview` → `commit`, then verify with `+flow_detail`.
 
 ---
 
@@ -54,7 +56,6 @@ You still organize user requirements into an intermediate intent first, then map
 | `nodes` | array | build | Compact nodes for structured build (see §7) |
 | `edges` | array | build | Compact edges for structured build (see §8) |
 | `dsl` | string | build | Topology-only: lines `node <id> <type>` and `edge <source> -> <target>` |
-| `sourceFlowUuid` | string | build | Clone an existing flow into a new draft |
 | `flowUuid` | string | build | Draft flow UUID for update-draft mode |
 | `parentFlowUuid` | string | build | Base version flow UUID for new-version mode |
 | `userIntent` | string | build | Natural-language intent (optional) |
@@ -68,6 +69,23 @@ You still organize user requirements into an intermediate intent first, then map
 | `confirmToken` | string | commit | Opaque token returned by **preview** (not build) |
 
 `flowUuid` and `parentFlowUuid` are mutually exclusive; when creating a brand-new draft, provide neither.
+
+### Response Fields
+
+Common response fields include:
+
+| Field | Meaning |
+|---|---|
+| `status` | Draft state, such as `need_input`, `ready_to_preview`, `previewed`, or `committed` |
+| `draftId` / `draftVersion` | Server draft identity and version |
+| `selectedMode` | Server-selected authoring mode, such as structured build, wizard, or draft edit |
+| `confidence` / `reason` | Router confidence and explanation for the selected mode |
+| `nextSlot` | One missing slot to answer when `status=need_input` |
+| `preview` | Human-readable preview; use it for user confirmation |
+| `confirmToken` | Token returned by `preview`; required for `commit` |
+| `warnings` / `errors` | Soft warnings and hard validation failures |
+| `supportedOperations` | Server-advertised `build`, `preview`, and `commit` contract |
+| `result` | Commit result, including the final `flowUuid` when committed |
 
 ### Compact node (`nodes[]`)
 
@@ -86,7 +104,7 @@ You still organize user requirements into an intermediate intent first, then map
 | `source` | Yes | Upstream node ID |
 | `target` | Yes | Downstream node ID |
 | `edgeId` | No | Edge ID, unique within the canvas |
-| `sourceBranchId` | No | Branch ID for edges leaving a split/judge node |
+| `sourceBranchId` | No | Branch ID for edges leaving a split/judge node, or a push action node with two branch outgoing edges |
 | `config` | No | Edge business config as JSON string |
 
 ---
@@ -217,36 +235,47 @@ Inside action nodes: `channel_name` → real `channelId`; `content` → `content
 2. Any `branchId` later referenced by `edge.sourceBranchId` must be declared in that node's `config` first.
 3. Every path must eventually end at `exit_flow`.
 4. `config` may be a JSON object or a JSON string. (`targetClusterQp` inside it is usually a `JSON.stringify`'d string — see §9.)
+5. The backend normalizes some compatible input forms before validation: leading apostrophes on field names are stripped, property names are matched case-insensitively when unambiguous, `enableChannelTouchLimits` booleans become `1`/`0`, `targetClusterQp` relation strings `"0"`/`"1"` become numeric values inside the JSON string, and `clusterPredictCount: null` becomes `0`.
 
 ### 7.2 Common Node Types
 
 `single_trigger`, `repeat_trigger`, `event_trigger`, `event_split_flow`, `feature_split_flow`, `ab_split_flow`, `event_judge`, `feature_judge`, `message_push`, `wechat_push`, `webhook_push`, `time_control`, `exit_flow`.
 
+Before writing any config below, call `+flow_node_config_schema` for the exact node type. The backend schema is the source of truth for required fields, defaults, allowed enum values, submit-time requirements, and examples.
+
 ### 7.3 Common `config` Templates
+
+#### `single_trigger`
+
+```json
+{ "targetUserType": 2, "triggerTime": "<YYYY-MM-DD HH:mm>", "flowEndDate": "<YYYY-MM-DD HH:mm>", "targetClusterName": "<existing clusterName>" }
+```
+
+For custom users, use `targetUserType=1` and fill `targetClusterQp` with the QP JSON string returned by the cluster QP workflow. For existing clusters (`targetUserType=2`), fill `targetClusterName` from a real current-project cluster list queried with the flow `tzOffset`; do not fill `targetClusterQp`. `clusterPredictCount` defaults to `0` and `clusterPredictTime` defaults to `""` when omitted.
 
 #### `repeat_trigger`
 
 ```json
-{ "targetUserType": 1, "startDate": "<YYYY-MM-DD>", "endDate": "<YYYY-MM-DD>", "flowEndDate": "<YYYY-MM-DD HH:mm>", "crontab": "0 00 09 * * ?", "entryControlLimits": { "enableMultEntry": false, "disableConcurrentEntry": false }, "targetClusterName": null, "clusterPredictCount": null, "clusterPredictTime": "<YYYY-MM-DD HH:mm:ss>", "targetClusterQp": "<JSON.stringify(qp)>" }
+{ "targetUserType": 1, "startDate": "<YYYY-MM-DD>", "endDate": "<YYYY-MM-DD>", "flowEndDate": "<YYYY-MM-DD HH:mm>", "crontab": "0 00 09 * * ?", "entryControlLimits": { "enableMultEntry": false, "disableConcurrentEntry": false }, "targetClusterName": null, "targetClusterQp": "<JSON.stringify(qp)>" }
 ```
 
-`entry.segment` → `targetClusterQp`; `entry.schedule` → `crontab` (common default `0 00 09 * * ?`).
+`entry.segment` → `targetClusterQp`; `entry.schedule` → `crontab` (common default `0 00 09 * * ?`). `clusterPredictCount` defaults to `0` and `clusterPredictTime` defaults to `""` when omitted. For existing clusters (`targetUserType=2`), fill `targetClusterName` from a real current-project cluster list queried with the flow `tzOffset`; do not fill `targetClusterQp`.
 
 #### `event_trigger`
 
 ```json
-{ "triggerType": 3, "targetUserType": 1, "realtime": 0, "clusterRefresh": 12, "clusterRefreshTime": null, "startDate": "<YYYY-MM-DD HH:mm>", "endDate": "<YYYY-MM-DD HH:mm>", "flowEndDate": "<YYYY-MM-DD HH:mm>", "clusterPredictCount": null, "clusterPredictTime": "<YYYY-MM-DD HH:mm:ss>", "triggerRule": [ { "periodStart": "<startDate>", "periodEnd": "<endDate>", "periodTimeSymbol": "TS02", "dayStartTime": null, "startDay": null, "eventTriggerType": 0, "zoneoffset": 8, "events": [] } ], "entryControlLimits": { "enableMultEntry": false, "disableConcurrentEntry": false }, "targetClusterQp": "<JSON.stringify(qp) or null>" }
+{ "triggerType": 3, "targetUserType": 1, "startDate": "<YYYY-MM-DD HH:mm>", "endDate": "<YYYY-MM-DD HH:mm>", "flowEndDate": "<YYYY-MM-DD HH:mm>", "triggerRule": [ { "periodStart": "<startDate>", "periodEnd": "<endDate>", "periodTimeSymbol": "TS02", "eventTriggerType": 0, "events": [] } ], "entryControlLimits": { "enableMultEntry": false, "disableConcurrentEntry": false }, "targetClusterQp": "<JSON.stringify(qp) or null>" }
 ```
 
-`entry.trigger_event` → `triggerRule[0].events`; generate `targetClusterQp` only when `entry.segment` exists.
+`entry.trigger_event` → `triggerRule[0].events`; generate `targetClusterQp` only when `entry.segment` exists. `triggerType` supports `3`, `4`, and `5`; `targetUserType=2` existing cluster is not supported for `event_trigger`; use `1` custom or `3` all users. For non-branch trigger rules, use `periodStart` / `periodEnd` / `periodTimeSymbol`. `realtime`, `clusterRefresh`, `clusterRefreshTime`, `clusterPredictTime`, and `triggerRule[].zoneoffset` can be omitted and are defaulted by the backend.
 
 #### `event_split_flow`
 
 ```json
-{ "splitFlowType": 1, "branchList": [ { "branchId": "<branchId>", "branchName": "<label>", "branchType": 1, "triggerRule": [ { "delayTimeSymbol": "<minute|hour|day>", "delayTime": "<number>", "eventTriggerType": "<0 or -1>", "zoneoffset": 8, "events": [] } ] } ] }
+{ "splitFlowType": 1, "branchList": [ { "branchId": "<branchId>", "branchName": "<label>", "branchType": 1, "targetClusterType": 3, "triggerRule": [ { "delayTimeSymbol": "<minute|hour|day>", "delayTime": "<number>", "eventTriggerType": "<0|-1|1|2>", "events": [] } ] } ] }
 ```
 
-`time_limit` → `delayTimeSymbol` + `delayTime`; `0` = happened, `-1` = not happened. Fallback branch keeps only `{ "branchId": "<branchId>", "branchType": 2 }`.
+`time_limit` → `delayTimeSymbol` + `delayTime`; `0` = happened, `-1` = not happened. For `branchType=1`, fill `targetClusterType`; use `3` for all users. If `targetClusterType` is not `3`, fill `clusterKey`. `occasionKeys` is optional, but each item must contain at least four colon-separated parts. Fallback branch keeps only `{ "branchId": "<branchId>", "branchType": 2 }` and must omit `triggerRule`.
 
 #### `feature_split_flow`
 
@@ -265,10 +294,10 @@ Fallback branch keeps only `branchId` + `branchType: 2`.
 #### `event_judge`
 
 ```json
-{ "transferType": 1, "meetBranchId": "<meetBranchId>", "notMeetBranchId": "<notMeetBranchId>", "triggerRule": [ { "delayTimeSymbol": "<minute|hour|day>", "delayTime": "<number>", "eventTriggerType": 0, "zoneoffset": 8, "events": [] } ] }
+{ "transferType": 1, "meetBranchId": "<meetBranchId>", "notMeetBranchId": "<notMeetBranchId>", "triggerRule": [ { "periodStart": "<YYYY-MM-DD HH:mm>", "periodEnd": "<YYYY-MM-DD HH:mm>", "periodTimeSymbol": "TS02", "eventTriggerType": 0, "events": [] } ] }
 ```
 
-`wait_time` → `delayTimeSymbol` + `delayTime` (default `30 minute` if unspecified).
+`event_judge` is a non-branch flow task. Use `periodStart`, `periodEnd`, and `periodTimeSymbol` in the A segment; use `delayTime` / `delayTimeSymbol` only for a B segment when the schema/example requires it. `eventTriggerType` supports `0`, `1`, and `2`.
 
 #### `feature_judge`
 
@@ -279,10 +308,10 @@ Fallback branch keeps only `branchId` + `branchType: 2`.
 #### `message_push` / `webhook_push`
 
 ```json
-{ "channelId": "<matched channelId>", "channelType": "<matched channelType>", "enableChannelTouchLimits": false, "isOccasionUp": false, "contentList": [ { "pushLanguageCode": "default", "content": [] } ], "processType": 1 }
+{ "channelId": "<matched channelId>", "channelType": "<matched channelType>", "contentList": [ { "pushLanguageCode": "default", "content": [] } ] }
 ```
 
-`channel_name` → real `channelId`; `content` → the param that best matches body text. When the param `type = TEXT`, also add `{ "config": "[{\"type\":\"paragraph\",\"children\":[{\"text\":\"<same as value>\"}]}]" }`. First `contentList` entry must use `"pushLanguageCode": "default"`; generate extra languages per `languages`.
+`channel_name` → real `channelId`; `content` → the param that best matches body text. `processType` defaults to `1`, `enableChannelTouchLimits` defaults to `0`, and `isOccasionUp` defaults to `false`. `enableChannelTouchLimits` may be supplied as a boolean for compatibility, but `normalizedConfigObject` will convert it to `1` or `0`. When the param `type = TEXT`, also add `{ "config": "[{\"type\":\"paragraph\",\"children\":[{\"text\":\"<same as value>\"}]}]" }`. `contentList[].content` should be a JSON array; validation also accepts a JSON-stringified array for compatibility. When the param `type = OBJ_ARRAY`, `value` must be a JSON array, and the item must copy the complete child field definition from `query_channel_detail data.config.paramsList[].objArray`. First `contentList` entry must use `"pushLanguageCode": "default"`; generate extra languages per `languages`.
 
 #### `wechat_push`
 
@@ -295,6 +324,8 @@ Fallback branch keeps only `branchId` + `branchType: 2`.
 ```json
 { "controlType": 1, "timeUnit": "<minute|hour|day>", "timeUnitNum": "<number>" }
 ```
+
+`controlType=1` requires `timeUnit` + `timeUnitNum`; `2` requires `timePointStr`; `3` requires `rollTimeDayNum` + `timePointStr`; `4` requires `fixedDay` + `timePointStr`; `5` requires `relativeMonthLastDayNum` + `timePointStr`.
 
 `30 minutes` → `minute`+`30`; `2 hours` → `hour`+`2`; `1 day` → `day`+`1`.
 
@@ -325,14 +356,17 @@ Minimum usable `config`: `{}`.
 | `single_trigger` / `repeat_trigger` / `event_trigger` | 1 | do not provide |
 | `event_split_flow` / `feature_split_flow` / `ab_split_flow` | one per branch | the corresponding `branchList[].branchId` |
 | `event_judge` / `feature_judge` | 2 | `meetBranchId` and `notMeetBranchId` |
-| `message_push` / `wechat_push` / `webhook_push` / `time_control` | 1 | do not provide |
+| `message_push` / `wechat_push` / `webhook_push` | 1 or 2 | omit for 1 outgoing edge; for 2 outgoing edges, use the node config's `meetBranchId` and `notMeetBranchId` |
+| `time_control` | 1 | do not provide |
 | `exit_flow` | 0 | do not provide |
 
 ### 8.4 Rules
 
 1. `source` / `target` must reference existing `node.id` values.
-2. Only edges leaving split/judge nodes carry `sourceBranchId`, and it must be a `branchId` already declared in the upstream node `config`.
-3. The graph must be a DAG (no cycles).
+2. Edges leaving split/judge nodes carry `sourceBranchId`. Push action nodes (`message_push`, `wechat_push`, `webhook_push`) may also carry `sourceBranchId` when they have exactly two outgoing edges.
+3. For push action nodes with one outgoing edge, omit `meetBranchId` / `notMeetBranchId`; if present, the backend ignores them.
+4. For push action nodes with two outgoing edges, set both `config.meetBranchId` and `config.notMeetBranchId`, and make the two `edge.sourceBranchId` values match them.
+5. The graph must be a DAG (no cycles).
 
 ---
 
@@ -436,7 +470,7 @@ ae-cli engage +save_flow --project_id 1 --req '{
   "flowDesc": "New user welcome flow",
   "groupId": 0, "tzOffset": 8, "versionType": 1,
   "nodes": [
-    { "id": "n1", "type": "single_trigger", "name": "Enter", "config": {} },
+    { "id": "n1", "type": "single_trigger", "name": "Enter", "config": { "targetUserType": 2, "triggerTime": "2026-03-31 19:00", "flowEndDate": "2026-04-04 18:00", "targetClusterName": "cohort_20260331_182643" } },
     { "id": "n2", "type": "exit_flow", "name": "End", "config": {} }
   ],
   "edges": [ { "source": "n1", "target": "n2" } ]
@@ -483,6 +517,7 @@ Output the complete `req` JSON for debugging plus a clear failure reason.
 | Symptom | Cause | Fix |
 |---|---|---|
 | `Unsupported save_flow operation: null` | Legacy `nodeList`/`edgeList` payload, or `operation` missing | Put `operation` = `build`/`preview`/`commit` in `req`, use `nodes`/`edges` |
+| `Flag --req.sourceFlowUuid is no longer supported` | Removed clone mode from an older protocol | Call `+flow_detail`, convert detail `nodeList`/`edgeList` into compact `nodes`/`edges`, then create with `operation=build` |
 | operation rejected (`SAVE`/`DRAFT`/`SUBMIT`/`mode`/`action`…) | Wrong field or wrong enum | `operation` is at `req.operation`; enum is only `build`/`preview`/`commit` |
 | `invalid_qp_relation: QP relation must be number 0 or 1` | `relation` sent as string | Use integer `0`/`1` |
 | `invalid_qp_leaf: QP property leaf must contain columnType/columnDesc` | userCondition leaf missing fields | Add `columnType` + `columnDesc` |
@@ -499,16 +534,17 @@ Output the complete `req` JSON for debugging plus a clear failure reason.
 ## 13. Most Common Mistakes
 
 1. **Legacy `nodeList`/`edgeList`** — use `nodes`/`edges` with `operation=build`.
-2. **Time units must be lowercase** — `day`, `hour`, `minute`, `week`, `month` (not `DAY`/`HOUR`).
-3. **Do not invent `channelId`** — get it from `ae-cli engage +channel_list`.
-4. **Define branch IDs before referencing them** — `edge.sourceBranchId` must already exist in the upstream node `config`.
-5. **`targetClusterQp` is usually a string** — `JSON.stringify` the QP object.
-6. **TEXT rich-text `config` must also be a string** — not an object.
-7. **`commit` uses preview's token/version** — not build's.
-8. **Do not merge branches again when `splitFlowType = 2`**.
+2. **Removed clone mode** — do not pass `sourceFlowUuid`; copy flows via `+flow_detail` and a fresh `operation=build` request.
+3. **Time units must be lowercase** — `day`, `hour`, `minute`, `week`, `month` (not `DAY`/`HOUR`).
+4. **Do not invent `channelId`** — get it from `ae-cli engage +channel_list`.
+5. **Define branch IDs before referencing them** — `edge.sourceBranchId` must already exist in the upstream node `config`; for two-edge push action nodes, use `meetBranchId` and `notMeetBranchId`.
+6. **`targetClusterQp` is usually a string** — `JSON.stringify` the QP object.
+7. **TEXT rich-text `config` must also be a string** — not an object.
+8. **`commit` uses preview's token/version** — not build's.
+9. **Do not merge branches again when `splitFlowType = 2`**.
 
 ---
 
 ## 14. One-Sentence Summary
 
-Drive `+save_flow` as a state machine — `build` (`nodes`/`edges`, not `nodeList`/`edgeList`) → resolve any `need_input` slots → `preview` (take its fresh `draftVersion` + `confirmToken`) → `commit` → verify with `+flow_detail`; keep QP `relation` integer, fill `columnType`/`columnDesc` on userCondition leaves and `quotaDesc`/`quota`/`analysisParams` on `taPropQuota`, and ensure touchpoint channels are enabled before referencing them.
+Drive `+save_flow` as a state machine — `build` (`nodes`/`edges`, not `nodeList`/`edgeList` or `sourceFlowUuid`) → resolve any `need_input` slots → `preview` (take its fresh `draftVersion` + `confirmToken`) → `commit` → verify with `+flow_detail`; keep QP `relation` integer, fill `columnType`/`columnDesc` on userCondition leaves and `quotaDesc`/`quota`/`analysisParams` on `taPropQuota`, and ensure touchpoint channels are enabled before referencing them.

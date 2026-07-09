@@ -1,9 +1,10 @@
 /**
  * ae-cli agent attachment library management commands
  *
- * +list-attachments — list attachments (paginated)
- * +add-attachment   — upload sandbox file(s) to the attachment library
- * +del-attachment   — delete an attachment
+ * +list-attachments  — list attachments (paginated)
+ * +add-attachment    — upload sandbox file(s) to the attachment library
+ * +del-attachment    — delete an attachment
+ * +attachment-stats  — show attachment library statistics (total files, size, images, documents)
  */
 
 import { readFileSync, existsSync } from 'node:fs';
@@ -18,6 +19,7 @@ import {
 
 const LIST_PATH = '/api/sandbox/agent/attachments';
 const UPLOAD_PATH = '/api/sandbox/agent/attachments/upload';
+const STATS_PATH = '/api/sandbox/agent/attachments/stats';
 
 /** Infer MIME type from file extension */
 function guessMimeType(filePath: string): string {
@@ -165,5 +167,20 @@ export const delAttachment: Command = {
   }),
   execute: async (ctx) => {
     return deleteFromMainApp(`${LIST_PATH}?id=${encodeURIComponent(ctx.str('id'))}`);
+  },
+};
+
+export const attachmentStats: Command = {
+  service: 'agent',
+  command: '+attachment-stats',
+  description: 'Show attachment library statistics (total files, size, images, documents)',
+  flags: [],
+  risk: 'read',
+  dryRun: () => ({
+    method: 'GET',
+    url: STATS_PATH,
+  }),
+  execute: async () => {
+    return getFromMainApp(STATS_PATH);
   },
 };

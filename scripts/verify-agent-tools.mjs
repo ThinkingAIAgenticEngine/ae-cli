@@ -6,7 +6,7 @@
  * Verify all commands under src/commands/te-agent/:
  * 1. Scan .ts files and extract command names via regex
  * 2. Duplicate check
- * 3. Count check (EXPECTED_COUNT = 19)
+ * 3. Count check (EXPECTED_COUNT = 66)
  * 4. Run ae-cli agent --help and verify all command names appear
  */
 
@@ -15,7 +15,7 @@ import { join, basename } from "node:path";
 import { execFileSync, execSync } from "node:child_process";
 
 const AGENT_DIR = "src/commands/te-agent";
-const EXPECTED_COUNT = 33;
+const EXPECTED_COUNT = 66;
 const SERVICE = "agent";
 
 let failed = false;
@@ -44,7 +44,7 @@ function scanCommands(dir) {
     if (!entry.endsWith(".ts") || entry === "index.ts") continue;
 
     const content = readFileSync(full, "utf8");
-    const re = /command:\s*['"](\+[a-z][a-z0-9-]*)['"]/g;
+    const re = /['"](\+[a-z][a-z0-9-]*)['"]/g;
     let match;
     while ((match = re.exec(content)) !== null) {
       commands.push({ name: match[1], file: full });
@@ -229,28 +229,28 @@ try {
   }
 
   const submitDry = runDry("+submit-skill", ["--id", "s1", "--description", "review helper", "--category", "dev_tool"]);
-  if (submitDry?.method !== "POST" || !String(submitDry?.url).includes("/api/skills/s1/submit") || submitDry?.body?.description !== "review helper" || submitDry?.body?.category !== "dev_tool") {
+  if (submitDry?.method !== "POST" || !String(submitDry?.url).includes("/api/sandbox/agent/skills/s1/submit") || submitDry?.body?.description !== "review helper" || submitDry?.body?.category !== "dev_tool") {
     fail(`+submit-skill dry-run is incorrect: ${JSON.stringify(submitDry)}`);
   } else {
     ok("+submit-skill dry-run builds submit body");
   }
 
   const shareDry = runDry("+share-skill", ["--id", "s1", "--to-user-id", "u2"]);
-  if (shareDry?.method !== "POST" || !String(shareDry?.url).includes("/api/skills/s1/share") || shareDry?.body?.toUserId !== "u2") {
+  if (shareDry?.method !== "POST" || !String(shareDry?.url).includes("/api/sandbox/agent/skills/s1/share") || shareDry?.body?.toUserId !== "u2") {
     fail(`+share-skill dry-run is incorrect: ${JSON.stringify(shareDry)}`);
   } else {
     ok("+share-skill dry-run builds share body");
   }
 
   const approveDry = runDry("+approve-skill", ["--id", "sub1"]);
-  if (approveDry?.method !== "POST" || !String(approveDry?.url).includes("/api/skills/submissions/sub1/approve")) {
+  if (approveDry?.method !== "POST" || !String(approveDry?.url).includes("/api/sandbox/agent/skills/submissions/sub1/approve")) {
     fail(`+approve-skill dry-run is incorrect: ${JSON.stringify(approveDry)}`);
   } else {
     ok("+approve-skill dry-run builds approve URL");
   }
 
   const copyDry = runDry("+copy-skill", ["--id", "s1", "--category", "dev_tool"]);
-  if (copyDry?.method !== "POST" || !String(copyDry?.url).includes("/api/skills/s1/copy") || copyDry?.body?.category !== "dev_tool") {
+  if (copyDry?.method !== "POST" || !String(copyDry?.url).includes("/api/sandbox/agent/skills/s1/copy") || copyDry?.body?.category !== "dev_tool") {
     fail(`+copy-skill dry-run is incorrect: ${JSON.stringify(copyDry)}`);
   } else {
     ok("+copy-skill dry-run builds copy URL and body");

@@ -7,6 +7,7 @@ import {
   isGlobalQueryModeEnabled,
   setGlobalQueryModeEnabled,
 } from '../core/cluster-info.js';
+import { normalizeUrl } from '../core/url-utils.js';
 import { printError, printOutput } from '../framework/output.js';
 
 type HostView = { url: string; label: string; active: boolean };
@@ -166,11 +167,4 @@ function formatHostOptions(hosts: HostView[]): string {
 function failConfig(message: string, hint: string): void {
   printError('config', message, hint);
   process.exitCode = 1;
-}
-
-function normalizeUrl(url: string): string {
-  if (!url.startsWith('http://') && !url.startsWith('https://')) {
-    url = `https://${url}`;
-  }
-  return url.replace(/\/$/, '');
 }

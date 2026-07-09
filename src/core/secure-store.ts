@@ -62,7 +62,8 @@ export interface TokenPayload {
   /** ISO 8601 string, e.g. "2026-06-20T12:00:00.000Z" */
   accessExpiresAt: string;
   /**
-   * CLI token (server-side non-expiring). Minted by cli-token.ts immediately after device login
+   * CLI token (long-lived; server expireTime is slid by explicit /renew from ae-cli).
+   * Minted by cli-token.ts immediately after device login
    * (using the accessToken above) and persisted here
    * so subsequent CLI invocations (new processes) reuse it instead of re-minting every time.
    * Also cleared by `auth logout`.

@@ -20,6 +20,8 @@ Prefer export commands for long-running or large data:
 
 ```bash
 ae-cli analysis dashboard-report-data export --project-id 1 --dashboard-id 1001
+ae-cli analysis run inspect --run-id run_0123456789abcdef0123456789abcdef
+ae-cli analysis artifact download --run-id run_0123456789abcdef0123456789abcdef --artifact-id artifact_0123456789abcdef0123456789abcdef --output /tmp/dashboard.jsonl.gz
 ae-cli analysis bi-panel-page-data export --project-id 1 --panel-id 2001 --page-key main --result-type charts
 ae-cli analysis query cancel --run-id run_0123456789abcdef0123456789abcdef
 ```
@@ -52,7 +54,17 @@ Failures return:
 }
 ```
 
-Export commands return `run_id`, `artifact_id`, `status`, `artifact_status`, `inspect_path`, `download_path`, `expires_at`, and `expires_at_iso`. Download the artifact through the returned path; cancel by `run_id`.
+Export commands return `run_id`, `artifact_id`, `status`, `artifact_status`, `expires_at`, and `expires_at_iso`. They do not expose raw inspect/download API paths.
+
+Artifact workflow:
+
+1. Submit an export command and keep `data.run_id` and `data.artifact_id`.
+2. Poll `ae-cli analysis run inspect --run-id <run_id>` every few seconds until `data.status` is terminal and `data.artifact_status` is complete.
+3. Terminal success is `COMPLETED` or `SUCCEEDED`; terminal failure is `FAILED`, `CANCELED`, or `CANCELLED`. On failure, report the returned error fields instead of downloading.
+4. Download with `ae-cli analysis artifact download --run-id <run_id> --artifact-id <artifact_id> --output <file>`.
+5. Cancel long or abandoned exports with `ae-cli analysis query cancel --run-id <run_id>`.
+
+Prefer the run/artifact commands over hand-written HTTP, Python, or curl. The descriptor paths are informational and may be internal `/api/cli/v1/...` paths behind a domain-routed CLI host.
 
 ## Command matrix
 
@@ -66,17 +78,19 @@ Export commands return `run_id`, `artifact_id`, `status`, `artifact_status`, `in
 | `dashboard share` | `analysis.dashboard.share` | Modify dashboard sharing | `--project-id`, `--dashboard-id`, `--payload` or `--member-authorities` | Share update result |
 | `dashboard delete` | `analysis.dashboard.delete` | Delete dashboards | `--project-id`, `--dashboard-ids '[...]'` | Delete result |
 | `dashboard handover` | `analysis.dashboard.handover` | Transfer dashboards | `--dashboard-ids`, `--to-user-id` | Handover result |
-| `dashboard copy` | `analysis.dashboard.copy` | Copy a dashboard | `--dashboard-id`, `--dashboard-name`, optional target IDs | Copied dashboard |
+| `dashboard copy` | `analysis.dashboard.copy` | Copy a dashboard; omitted target IDs copy to the source location | `--dashboard-id`, `--dashboard-name`, optional target IDs | Copied dashboard |
 | `dashboard freeze` | `analysis.dashboard.freeze` | Freeze/unfreeze dashboards | `--dashboard-ids`, optional `--freeze false` | Freeze status |
 | `dashboard abnormal-get` | `analysis.dashboard.abnormal_get` | Inspect abnormal dependencies | `--dashboard-id` | Abnormal info |
 | `dashboard task-status` | `analysis.dashboard.task_status` | Inspect scheduled task status | `--dashboard-id` | Task status |
 | `dashboard-report-data run` | `analysis.dashboard_report_data.run` | Bounded inline dashboard report data | `--dashboard-id`, optional `--report-ids`, `--start-time`, `--end-time`, `--limit` | Inline data |
 | `dashboard-report-data export` | `analysis.dashboard_report_data.export` | Large/long dashboard report data | same as run, plus optional `--artifact-format jsonl` | Async artifact descriptor |
+| `run inspect` | `analysis.run.inspect` | Poll async export status | `--run-id` | Run and artifact status |
+| `artifact download` | `analysis.artifact.download` | Download run-bound export artifact | `--run-id`, `--artifact-id`, `--output` | Local output file info |
 | `query cancel` | `analysis.query.cancel` | Cancel gateway run/export | `--run-id`, optional `--reason` | Cancellation result |
-| `dashboard-definition export` | `analysis.dashboard_definition.export` | Export dashboard definition JSON | `--dashboard-folder-ids`, `--shared-spaces`, or `--payload` | Definition JSON |
+| `dashboard-definition export` | `analysis.dashboard_definition.export` | Export dashboard definition JSON | `--dashboard-id`, `--dashboard-ids`, `--dashboard-folder-ids`, `--shared-spaces`, or `--payload` | Definition JSON |
 | `dashboard-definition import` | `analysis.dashboard_definition.import` | Validate/import dashboard definition | `--definition`, optional `--validate-only true` | Validation or import result |
-| `dashboard-daily-report update` | `analysis.dashboard_daily_report.update` | Update daily report config | `--dashboard-id`, optional config flags or `--payload` | Config result |
-| `dashboard-daily-report send` | `analysis.dashboard_daily_report.send` | Send daily report immediately | `--dashboard-id`, optional `--payload` | Async send result |
+| `dashboard-daily-report update` | `analysis.dashboard_daily_report.update` | Update daily report config; defaults are sent when `--payload` is absent | `--dashboard-id`, optional config flags or `--payload` | Config result |
+| `dashboard-daily-report send` | `analysis.dashboard_daily_report.send` | Send daily report immediately; defaults are sent when `--payload` is absent | `--dashboard-id`, optional config flags or `--payload` | Async send result |
 | `bi-panel list` | `analysis.bi_panel.list` | Find accessible BI panels | `--project-id`, optional list filters | Paginated BI panel summaries |
 | `bi-panel get` | `analysis.bi_panel.get` | Inspect released BI panel page structure | `--panel-id`, optional `--fields` | Panel structure |
 | `bi-panel create` | `analysis.bi_panel.create` | Create a BI panel | optional `--panel-name`, `--payload` | Created panel |
@@ -88,7 +102,7 @@ Export commands return `run_id`, `artifact_id`, `status`, `artifact_status`, `in
 | `bi-panel-page-data export` | `analysis.bi_panel_page_data.export` | Large/long BI page data | same as run, optional `--artifact-format jsonl` | Async artifact descriptor |
 | `project-space list` | `analysis.project_space.list` | Find accessible project spaces | `--project-id`, optional list filters | Paginated project spaces |
 | `project-space get` | `analysis.project_space.get` | Inspect one project space | `--project-id`, `--space-id` | Project space detail |
-| `project-space create` | `analysis.project_space.create` | Create a project space | `--space-name` or `--payload` | Created space |
+| `project-space create` | `analysis.project_space.create` | Create a project space; `avatar_type` defaults to 1 when omitted | `--space-name` or `--payload` | Created space |
 | `project-space delete` | `analysis.project_space.delete` | Delete project spaces | `--space-id` or `--space-ids` | Delete result |
 | `project-space share` | `analysis.project_space.share` | Modify project-space members | `--space-id`, `--payload` | Share update result |
 | `project-space members` | `analysis.project_space.members` | Read project-space members | `--space-id` | Members |
@@ -109,6 +123,7 @@ Export commands return `run_id`, `artifact_id`, `status`, `artifact_status`, `in
 ```bash
 ae-cli analysis dashboard list --project-id 1 --query retention --limit 20
 ae-cli analysis dashboard update --project-id 1 --operation note-upsert --dashboard-id 1001 --note-title "Summary" --description "Weekly note" --yes
+ae-cli analysis dashboard-definition export --project-id 1 --dashboard-id 1001 --export-file-name retention_dashboard
 ae-cli analysis dashboard-definition import --project-id 1 --definition '{"dashboard_folders":[],"shared_spaces":[]}' --validate-only true
 ae-cli analysis public-link create --project-id 1 --resource-type dashboard --resource-id 1001 --effective-at "2026-07-08 00:00:00" --expires-at "2026-08-08 00:00:00" --yes
 ```

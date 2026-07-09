@@ -18,6 +18,7 @@ Use the `dataops_integration` subcommand to manage datasources and sync solution
 - sourceConfig/sinkConfig/channelConfig/fieldsMapping are all JSON strings
 - Sync solution updates are not partial patches: call `+get_sync_detail --withParams true` first, then submit complete sourceConfig and sinkConfig JSON. Pass channelConfig and fieldsMapping when keeping or updating them
 - Test datasource connection before creating sync solution
+- `sinkConfig.dataSaveMode` codes are fixed: `1 = APPEND_DATA` (insert/append new data; UI label `插入新数据`), `2 = OVERWRITE` (`DROP_DATA`; UI label `覆盖写入`). Never describe `dataSaveMode=1` as overwrite; use `2` for overwrite.
 
 ---
 

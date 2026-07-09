@@ -20,7 +20,7 @@ import {
   isValidMarketCategory,
 } from './market-constants.js';
 
-const BASE = '/api/skills';
+const BASE = '/api/sandbox/agent/skills';
 
 export const submitSkill: Command = {
   service: 'agent',

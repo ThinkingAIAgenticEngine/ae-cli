@@ -120,7 +120,7 @@ ae-cli dataops_operations +get_flow_instance_detail --spaceCode "${spaceCode}" \
   --flowCode ${flowCode} --flowInstanceId ${flowInstanceId}
 ae-cli dataops_operations +get_task_instance_detail --spaceCode "${spaceCode}" \
   --flowCode ${flowCode} --flowInstanceId ${flowInstanceId} \
-  --taskName "${taskName}" --includeLog true
+  --taskInstanceId ${taskInstanceId} --includeLog true
 ```
 
 ---
@@ -139,7 +139,7 @@ ae-cli dataops_operations +get_task_instance_detail --spaceCode "${spaceCode}" \
 | `+get_task_params` | View DEV task parameter list | `--spaceCode` `--flowCode` `--taskCode` |
 | `+execute_flow` | Manual PROD execution | `--spaceCode` `--flowCode` `[--baseDate]` |
 | `dataops_operations +get_flow_instance_detail` | View operations instance DAG and task statuses | `--spaceCode` `--flowCode` `--flowInstanceId` |
-| `dataops_operations +get_task_instance_detail` | View operations task detail and optional logs | `--spaceCode` `--flowCode` `--flowInstanceId` (`--taskCode` or `--taskName`) `[--includeLog]` |
+| `dataops_operations +get_task_instance_detail` | View operations task detail and optional logs | `--spaceCode` `--flowCode` `--flowInstanceId` (`--taskInstanceId` or `--taskCode` or `--taskName`) `[--includeLog]` |
 | `+preview_release_flow` | Preview pending DEV-to-PROD release changes without publishing | `--spaceCode` `--flowCode` |
 | `+release_flow` | Submit DEV-to-PROD release | `--spaceCode` `--flowCode` |
 

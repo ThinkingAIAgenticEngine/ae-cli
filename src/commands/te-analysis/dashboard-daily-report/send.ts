@@ -1,13 +1,9 @@
 import {
-  compactInput,
   createAnalysisCapabilityCommand,
-  optionalJson,
-  optionalNumber,
-  optionalString,
   payloadFlag,
   projectIdFlag,
-  projectInput,
 } from '../capability-shared.js';
+import { dailyReportFlags, dailyReportInput } from './shared.js';
 
 export const dashboardDailyReportSend = createAnalysisCapabilityCommand({
   resource: 'dashboard-daily-report',
@@ -17,16 +13,9 @@ export const dashboardDailyReportSend = createAnalysisCapabilityCommand({
   flags: [
     projectIdFlag,
     { name: 'dashboard-id', type: 'number', required: true, desc: 'Dashboard ID.' },
-    { name: 'need-csv', type: 'number', required: false, desc: 'Whether CSV attachment is needed.' },
-    { name: 'host-url', type: 'string', required: false, desc: 'Host URL used in report links.' },
+    ...dailyReportFlags(false),
     payloadFlag,
   ],
   risk: 'write',
-  buildInput: (ctx) => compactInput({
-    ...projectInput(ctx),
-    dashboard_id: ctx.num('dashboard-id'),
-    need_csv: optionalNumber(ctx, 'need-csv'),
-    host_url: optionalString(ctx, 'host-url'),
-    payload: optionalJson(ctx, 'payload'),
-  }),
+  buildInput: (ctx) => dailyReportInput(ctx, false),
 });

@@ -20,7 +20,7 @@ echo "[dry-run] flow process report"
 node dist/index.js --dry-run engage +flow_process_report --project_id "$PROJECT_ID" --flow_uuid "$FLOW_UUID" --report_type overview
 
 echo "[dry-run] save flow"
-node dist/index.js --dry-run engage +save_flow --project_id "$PROJECT_ID" --req '{"flowName":"demo flow","flowDesc":"demo","nodeList":[{"id":"node_1","name":"entry","type":"single_trigger","config":"{}"},{"id":"node_2","name":"exit","type":"exit_flow","config":"{}"}],"edgeList":[{"source":"node_1","target":"node_2"}]}'
+node dist/index.js --dry-run engage +save_flow --project_id "$PROJECT_ID" --req '{"operation":"build","flowName":"demo flow","flowDesc":"demo","nodes":[{"id":"node_1","name":"entry","type":"single_trigger","config":{"targetUserType":2,"triggerTime":"2026-03-31 19:00","flowEndDate":"2026-04-04 18:00","targetClusterName":"cohort_20260331_182643"}},{"id":"node_2","name":"exit","type":"exit_flow","config":{}}],"edges":[{"source":"node_1","target":"node_2"}]}'
 
 echo "[dry-run] manage flow"
 node dist/index.js --dry-run engage +manage_flow --project_id "$PROJECT_ID" --action end --flow_id_list '["flow_id_1"]'

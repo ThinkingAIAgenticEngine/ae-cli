@@ -4,6 +4,8 @@ import report from './report/index.js';
 import dashboard from './dashboard/index.js';
 import dashboardReportData from './dashboard-report-data/index.js';
 import query from './query/index.js';
+import run from './run/index.js';
+import artifact from './artifact/index.js';
 import dashboardDefinition from './dashboard-definition/index.js';
 import dashboardDailyReport from './dashboard-daily-report/index.js';
 import biPanel from './bi-panel/index.js';
@@ -27,6 +29,8 @@ const commands: Command[] = [
   ...dashboard,
   ...dashboardReportData,
   ...query,
+  ...run,
+  ...artifact,
   ...dashboardDefinition,
   ...dashboardDailyReport,
   ...biPanel,

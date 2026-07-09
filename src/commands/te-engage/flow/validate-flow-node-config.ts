@@ -15,11 +15,11 @@ function buildArgs(ctx: RuntimeContext): Record<string, any> {
 export const validateFlowNodeConfig: Command = {
   service: 'engage',
   command: '+validate_flow_node_config',
-  description: 'Validate one node config before save_flow.',
+  description: 'Validate and normalize one candidate node config before placing it into save_flow.',
   flags: [
-    { name: 'node_type', type: 'string', required: true, desc: 'Node type' },
-    { name: 'config', type: 'string', required: true, desc: 'Node config JSON string' },
-    { name: 'operation_mode', type: 'string', required: true, desc: 'Validation mode' },
+    { name: 'node_type', type: 'string', required: true, desc: 'Flow node type, for example single_trigger, event_trigger, event_split_flow, or message_push' },
+    { name: 'config', type: 'string', required: true, desc: 'Node config JSON object encoded as a string' },
+    { name: 'operation_mode', type: 'string', required: true, desc: 'Validation mode. Use save_flow for the current exposed MCP protocol; save_submit_flow applies stricter submit-time checks' },
   ],
   risk: 'read',
   dryRun: (ctx) => buildMcpDryRun(ctx, serviceName, toolName, buildArgs(ctx)),

@@ -83,7 +83,7 @@ function teClaudeBaseFromActiveHost(): string | undefined {
  *   - CLI token available -> cli-token header (te-claude resolves via /internal/cli/user-info)
  *   - Neither available -> throws TeAgentCredentialsError (with hint)
  */
-async function signRequest(method: 'GET' | 'POST' | 'DELETE' | 'PATCH', path: string, rawBody: string): Promise<SignedRequest> {
+async function signRequest(method: 'GET' | 'POST' | 'DELETE' | 'PATCH' | 'PUT', path: string, rawBody: string): Promise<SignedRequest> {
   const sandboxCred = tryLoadTeAgentSandboxCredentials();
 
   // --- Sandbox path: credentials complete ---
@@ -92,7 +92,7 @@ async function signRequest(method: 'GET' | 'POST' | 'DELETE' | 'PATCH', path: st
       'X-Sandbox-Id': sandboxCred.sandboxId,
       'X-Sandbox-Secret-Key': sandboxCred.sandboxSecretKey,
     };
-    if (method === 'POST' || method === 'PATCH') {
+    if (method === 'POST' || method === 'PATCH' || method === 'PUT') {
       headers['Content-Type'] = 'application/json';
     }
     return {
@@ -119,7 +119,7 @@ async function signRequest(method: 'GET' | 'POST' | 'DELETE' | 'PATCH', path: st
   }
 
   const contentTypeHeader =
-    method === 'POST' || method === 'PATCH' ? { 'Content-Type': 'application/json' } : {};
+    method === 'POST' || method === 'PATCH' || method === 'PUT' ? { 'Content-Type': 'application/json' } : {};
 
   let accessToken: string | null = null;
   try {
@@ -375,6 +375,76 @@ export async function patchToMainApp<T = unknown>(path: string, body: unknown): 
   });
 
   return parseResponse<T>(response, 'Main app returned');
+}
+
+/**
+ * PUT a main app resource with automatic signing (used by Skill content edit).
+ */
+export async function putToMainApp<T = unknown>(path: string, body: unknown): Promise<T> {
+  const rawBody = JSON.stringify(body);
+  const signed = await signRequest('PUT', path, rawBody);
+
+  const response = await fetchWithTimeout(signed.url, {
+    method: 'PUT',
+    headers: signed.headers,
+    body: signed.rawBody,
+  });
+
+  return parseResponse<T>(response, 'Main app returned');
+}
+
+/**
+ * GET raw binary content from the main app (used by Skill asset/reference/script read).
+ * Returns the response body as a Buffer plus the filename extracted from Content-Disposition.
+ * Unlike getFromMainApp, this does NOT parse the response as JSON/text — binary content is preserved.
+ */
+export async function getBufferFromMainApp(path: string): Promise<{ buffer: Buffer; fileName: string | null }> {
+  const signed = await signRequest('GET', path, '');
+
+  const response = await fetchWithTimeout(signed.url, {
+    method: 'GET',
+    headers: signed.headers,
+  });
+
+  if (!response.ok) {
+    // Reuse the error parsing logic from parseResponse for non-OK responses
+    const text = await response.text();
+    let parsed: any = undefined;
+    if (text) {
+      try {
+        parsed = JSON.parse(text);
+      } catch {
+        parsed = text;
+      }
+    }
+    if (response.status === 401) {
+      throw new TeAgentApiError(
+        'Session expired or unauthorized. Please run: ae-cli auth login',
+        response.status,
+        'auth_expired',
+        parsed,
+      );
+    }
+    const message =
+      typeof parsed === 'object' && parsed && typeof parsed.error === 'string'
+        ? parsed.error
+        : `Main app returned ${response.status}`;
+    const code =
+      typeof parsed === 'object' && parsed && typeof parsed.code === 'string'
+        ? parsed.code
+        : undefined;
+    throw new TeAgentApiError(message, response.status, code, parsed);
+  }
+
+  const arrayBuffer = await response.arrayBuffer();
+  const buffer = Buffer.from(arrayBuffer);
+
+  // Extract filename from Content-Disposition: inline; filename*=UTF-8''<encoded>
+  const cd = response.headers.get('Content-Disposition') || '';
+  const match = cd.match(/filename\*=UTF-8''([^;]+)/);
+  const fileName = match ? decodeURIComponent(match[1]) : null;
+
+  return { buffer, fileName };
 }
 
 /**

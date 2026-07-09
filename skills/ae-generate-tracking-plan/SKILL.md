@@ -94,14 +94,14 @@ After user responds, record to `meta.scenario` and generate `meta.plan_name`.
 
 Before asking, decide whether the current runtime is an agent sandbox. The agent may judge this from runtime context such as sandbox-provisioned `cli-token.json`, restricted filesystem access, or absence of the user's local files. Do not ask the user just to decide sandbox visibility.
 
-Product document and Codebase are local-material options. **Hide both options in sandbox environments**. When options are hidden, renumber the visible list contiguously from 1; never show skipped numbers.
+Product document is available in sandbox environments **only for files that are readable inside the sandbox workspace**, including files the user attaches/uploads into the conversation workspace. It cannot read arbitrary local paths outside the sandbox unless those files are mounted or attached. Codebase is a local-material option and must be hidden in sandbox environments unless the codebase is already present in the readable workspace. When options are hidden, renumber the visible list contiguously from 1; never show skipped numbers.
 
 If **not** in a sandbox environment, ask exactly:
 
 ```text
 Choose your source material (up to 2):
 
-1 - Product document (local path, image file, or folder; hidden in sandbox) — Extract events and properties from product docs; supports md/pdf/docx/URL/images (png/jpg/jpeg/webp)
+1 - Product document (local path, image file, or folder) — Extract events and properties from product docs; supports md/pdf/docx/URL/images (png/jpg/jpeg/webp)
 2 - Detailed description (conversational) — Describe app business flow, core features, user behaviors, monetization model, etc.
 3 - Codebase (local project path; hidden in sandbox) — Analyze source code to extract events and properties
 4 - Pre-built template (built-in industry and game genre templates) — Select a built-in template
@@ -114,10 +114,11 @@ If in a sandbox environment, ask exactly:
 ```text
 Choose your source material (up to 2):
 
-1 - Detailed description (conversational) — Describe app business flow, core features, user behaviors, monetization model, etc.
-2 - Pre-built template (built-in industry and game genre templates) — Select a built-in template
+1 - Product document (sandbox workspace path, uploaded attachment, URL, image file, or folder) — Extract events and properties from product docs; supports md/pdf/docx/URL/images (png/jpg/jpeg/webp). You can attach/upload relevant files here.
+2 - Detailed description (conversational) — Describe app business flow, core features, user behaviors, monetization model, etc.
+3 - Pre-built template (built-in industry and game genre templates) — Select a built-in template
 
-Reply with number(s), e.g. 1 or 1,2. Select up to 2.
+Reply with number(s), e.g. 1 or 1,3. Select up to 2.
 ```
 
 Do not rewrite this source material list as unnumbered bullets, cards, or prose. The user must be able to reply with the visible numbers.
@@ -126,7 +127,7 @@ User can multi-select (max 2). Interpret numbers by the **visible list shown to 
 
 Canonical source material options:
 
-- **Product document** (local path, image file, or folder; hidden in sandbox) — Extract events and properties from product docs; supports md/pdf/docx/URL/images (png/jpg/jpeg/webp)
+- **Product document** (local path, sandbox workspace path, uploaded attachment, URL, image file, or folder) — Extract events and properties from product docs; supports md/pdf/docx/URL/images (png/jpg/jpeg/webp)
 - **Detailed description** (conversational) — Describe app business flow, core features, user behaviors, monetization model, etc.
 - **Codebase** (local project path; hidden in sandbox) — Analyze source code to extract events and properties
 - **Pre-built template** (built-in industry and game genre templates) — Select a built-in template (run `AE_LANG=<user_lang> ae-cli tracking plan list-templates --json` to see available templates)
@@ -142,7 +143,8 @@ Based on user selection, determine source material type and record to `meta.sour
 | Any two-item combo | Join two types with `_` | First as baseline, second as supplement (priority: template → codebase → prd → chat) |
 
 **Follow-up questions** (ask in selection order):
-- Product doc → ask **"What is the product document path? You can provide one or more paths, separated by commas or newlines (local paths, URLs, image files, or folders)"**
+- Product doc → if not in a sandbox environment, ask **"What is the product document path? You can provide one or more paths, separated by commas or newlines (local paths, URLs, image files, or folders)"**
+- Product doc → if in a sandbox environment, ask **"What is the product document path? You can provide one or more sandbox workspace paths, uploaded attachment paths, URLs, image files, or folders. You can also attach/upload relevant files here, and I will read them from the sandbox workspace if available."**
 - Detailed description → If too vague, follow up on core features, user behaviors, business flows, monetization
 - Codebase → ask **"What is the project directory path?"**, then scan source to extract business logic
 - Pre-built template → display matching templates for user confirmation

@@ -72,6 +72,8 @@ ae-cli analysis dashboard list --project-id <project_id>
 ae-cli analysis dashboard get --project-id <project_id> --dashboard-id <dashboard_id>
 ae-cli analysis dashboard update --project-id <project_id> --operation settings --dashboard-id <dashboard_id> --payload '{...}'
 ae-cli analysis dashboard-report-data export --project-id <project_id> --dashboard-id <dashboard_id>
+ae-cli analysis run inspect --run-id <run_id>
+ae-cli analysis artifact download --run-id <run_id> --artifact-id <artifact_id> --output <file>
 ae-cli analysis bi-panel-page-data run --project-id <project_id> --panel-id <panel_id> --page-key <page_key> --result-type charts
 ae-cli analysis project-space list --project-id <project_id>
 ae-cli analysis query cancel --run-id <run_id>
@@ -97,7 +99,7 @@ Capability-gateway output:
 - Successful commands return the standard gateway envelope: `{ "ok": true, "data": ..., "meta": ... }`.
 - Failed commands return `{ "ok": false, "error": ... }` and exit non-zero.
 - Inline `run` data is bounded by `--limit` and `--timeout-seconds`.
-- Export commands return `run_id`, `artifact_id`, artifact status, inspect path, and download path. Use `--artifact-format jsonl` for the artifact format; `--format` is reserved for CLI output formatting. Cancel with `ae-cli analysis query cancel --run-id <run_id>`.
+- Export commands return `run_id`, `artifact_id`, status fields, and expiration fields. Use `--artifact-format jsonl` for the artifact format; `--format` is reserved for CLI output formatting. Poll with `ae-cli analysis run inspect --run-id <run_id>` until the run and artifact are complete, then download with `ae-cli analysis artifact download --run-id <run_id> --artifact-id <artifact_id> --output <file>`. Do not call raw inspect/download API paths directly. Cancel with `ae-cli analysis query cancel --run-id <run_id>`.
 - Unknown input fields and camelCase external fields are rejected by the gateway; use kebab-case CLI flags only.
 
 See [`references/analysis_gateway_assets.md`](references/analysis_gateway_assets.md) for the command matrix. Before running one command, read its dedicated reference file named as `<resource>_<action>.md`.
@@ -377,7 +379,7 @@ Reports:
 - `+update_report` ([doc](references/update_report.md))
 - `+delete_report` ([doc](references/delete_report.md))
 
-Dashboard, BI panel, project-space, folder, favorite, public-link, dashboard-definition, dashboard-daily-report, and dashboard/BI data commands are capability-gateway commands. Use `ae-cli analysis <resource> <action>` after reading [`references/analysis_gateway_assets.md`](references/analysis_gateway_assets.md); do not use old `+` dashboard/space/BI/public-link command names.
+Dashboard, BI panel, project-space, folder, favorite, public-link, dashboard-definition, dashboard-daily-report, run, artifact, and dashboard/BI data commands are capability-gateway commands. Use `ae-cli analysis <resource> <action>` after reading [`references/analysis_gateway_assets.md`](references/analysis_gateway_assets.md); do not use old `+` dashboard/space/BI/public-link command names.
 
 Model Analysis (17):
 - `+build_event_analysis_qp` ([doc](references/build_event_analysis_qp.md))

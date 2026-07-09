@@ -1,5 +1,6 @@
 import { Command } from 'commander';
 import { resolveHost } from '../core/auth.js';
+import { normalizeUrl } from '../core/url-utils.js';
 import { loadConfig, saveConfig, removeHost, getFallbackCliToken } from '../core/config.js';
 import { printOutput, printError } from '../framework/output.js';
 import { clearCliToken, mintCliToken } from '../core/cli-token.js';
@@ -31,13 +32,14 @@ function resolveAuthHost(program: Command, opts: AuthHostOpts): string {
 /** After a successful login with an explicit --host, make that host the active one. */
 export function activateHostAfterLogin(host: string, explicitHostOverride?: string): void {
   if (!explicitHostOverride) return;
+  const normalized = normalizeUrl(host);
   const config = loadConfig();
-  if (!config.hosts[host]) {
-    config.hosts[host] = { label: host };
+  if (!config.hosts[normalized]) {
+    config.hosts[normalized] = { label: normalized };
   }
-  config.activeHost = host;
+  config.activeHost = normalized;
   saveConfig(config);
-  logger.info(`Active host set to ${host} after login`);
+  logger.info(`Active host set to ${normalized} after login`);
 }
 
 /** Persist device-flow tokens to the encrypted secure store (shared by the full and split-flow resume paths). */

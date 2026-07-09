@@ -69,6 +69,12 @@ async function permissionMessage(resp: Response): Promise<string> {
   return 'Permission denied for this resource (HTTP 403)';
 }
 
+function isInvalidCliTokenMessage(message: string): boolean {
+  return /\byour token is invalid\b/i.test(message)
+    || /\bcli[-_\s]?token\b.*\binvalid\b/i.test(message)
+    || /\binvalid\b.*\bcli[-_\s]?token\b/i.test(message);
+}
+
 function parseCapabilityResponse(text: string): any {
   if (!text) return undefined;
   try {
@@ -157,6 +163,17 @@ async function requestMultipartOnce(url: string, token: string, form: FormData):
   });
 }
 
+async function requestDownloadOnce(url: string, token: string): Promise<Response> {
+  return fetch(url, {
+    method: 'GET',
+    headers: {
+      'cli-token': token,
+      'Accept': '*/*',
+      
+    },
+  });
+}
+
 async function callGateway(
   host: string,
   domain: string,
@@ -169,12 +186,16 @@ async function callGateway(
 
   let resp = await requestOnce(url, method, token, body);
 
+  let permissionMsg: string | undefined;
   if (resp.status === 403) {
-    throw new PermissionError(await permissionMessage(resp));
+    permissionMsg = await permissionMessage(resp);
+    if (!isInvalidCliTokenMessage(permissionMsg)) {
+      throw new PermissionError(permissionMsg);
+    }
   }
 
-  if (resp.status === 401) {
-    logger.warn(`Capability gateway request failed (HTTP 401) for ${host}, refreshing CLI token`);
+  if (resp.status === 401 || (resp.status === 403 && permissionMsg)) {
+    logger.warn(`Capability gateway request failed (${resp.status === 403 ? permissionMsg : 'HTTP 401'}) for ${host}, refreshing CLI token`);
     clearCliToken(host);
     const newToken = await getCliToken(host);
     process.stderr.write(`[ae-cli] CLI token refreshed for ${host}\n`);
@@ -273,6 +294,53 @@ export async function uploadInputFileBytes(
   }
 
   return unwrapCapabilityEnvelope(parseCapabilityResponse(await resp.text()));
+}
+
+export interface CapabilityArtifactDownload {
+  bytes: Buffer;
+  contentType?: string;
+  contentDisposition?: string;
+}
+
+export async function downloadCapabilityArtifact(
+  host: string,
+  domain: string,
+  runId: string,
+  artifactId: string,
+): Promise<CapabilityArtifactDownload> {
+  const url = buildCapabilityGatewayUrl(
+    host,
+    domain,
+    `runs/${encodeURIComponent(runId)}/artifacts/${encodeURIComponent(artifactId)}/download`,
+  );
+  const token = await getCliToken(host);
+  let resp = await requestDownloadOnce(url, token);
+
+  if (resp.status === 403) {
+    throw new PermissionError(await permissionMessage(resp));
+  }
+
+  if (resp.status === 401) {
+    logger.warn(`Capability gateway artifact download failed (HTTP 401) for ${host}, refreshing CLI token`);
+    clearCliToken(host);
+    const newToken = await getCliToken(host);
+    process.stderr.write(`[ae-cli] CLI token refreshed for ${host}\n`);
+    resp = await requestDownloadOnce(url, newToken);
+    if (resp.status === 403) {
+      throw new PermissionError(await permissionMessage(resp));
+    }
+    if (!resp.ok) {
+      await throwCapabilityHttpError(resp);
+    }
+  } else if (!resp.ok) {
+    await throwCapabilityHttpError(resp);
+  }
+
+  return {
+    bytes: Buffer.from(await resp.arrayBuffer()),
+    contentType: resp.headers.get('content-type') ?? undefined,
+    contentDisposition: resp.headers.get('content-disposition') ?? undefined,
+  };
 }
 
 /**

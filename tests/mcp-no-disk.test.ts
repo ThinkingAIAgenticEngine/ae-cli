@@ -13,10 +13,11 @@
  *  2. clearCliToken(host) also clears the persisted secure-store cliToken (not accessToken/refreshToken)
  *  3. getCliToken mints on demand via /v1/ta/cli/token/generate, persists to secure-store, and
  *     reuses the in-process cache without re-minting
- *  4. sandbox-provisioned cli-token.json is read before minting
- *  5. secure-store cliToken wins over sandbox fallback for a different host
- *  6. mcpRequest (MCP JSON-RPC transport) sends cli-token header only
- *  7. mcpRequest: 401/403 clears the CLI token cache, re-mints, and retries once with refreshed headers
+ *  6. sandbox-provisioned cli-token.json is read before minting
+ *  7. secure-store cliToken wins over sandbox fallback for a different host
+ *  8. mcpRequest (MCP JSON-RPC transport) sends cli-token header only
+ *  9. mcpRequest: 401 clears the CLI token cache, re-mints, and retries once with refreshed headers
+ * 10. getCliToken renews once per local day via /v1/ta/cli/token/renew; failure does not block
  */
 
 import assert from 'node:assert/strict';
@@ -115,6 +116,9 @@ await test('getCliToken mints via /v1/ta/cli/token/generate, persists to secure-
         JSON.stringify({ return_code: 0, data: { userSecret: 'minted-cli-token-1' } }),
         { status: 200 },
       );
+    }
+    if (urlStr.includes('/v1/ta/cli/token/renew')) {
+      return new Response(JSON.stringify({ return_code: 0 }), { status: 200 });
     }
     throw new Error(`Unexpected fetch: ${urlStr}`);
   }) as typeof fetch;
@@ -336,7 +340,11 @@ await test('secure-store cliToken wins over sandbox fallback for a different hos
 
   let usedToken = '';
   const prevFetch = globalThis.fetch;
-  globalThis.fetch = (async (_url, init) => {
+  globalThis.fetch = (async (url, init) => {
+    const urlStr = String(url);
+    if (urlStr.includes('/v1/ta/cli/token/renew')) {
+      return new Response(JSON.stringify({ return_code: 0 }), { status: 200 });
+    }
     usedToken = String((init?.headers as Record<string, string>)?.['cli-token'] ?? '');
     return new Response(JSON.stringify({ jsonrpc: '2.0', id: 1, result: { content: [] } }), { status: 200 });
   }) as typeof fetch;
@@ -400,7 +408,11 @@ await test('mcpRequest sends cli-token header only (no mcp-token)', async () => 
 
   let capturedHeaders: Record<string, string> | undefined;
   const prevFetch = globalThis.fetch;
-  globalThis.fetch = (async (_url, init) => {
+  globalThis.fetch = (async (url, init) => {
+    const urlStr = String(url);
+    if (urlStr.includes('/v1/ta/cli/token/renew')) {
+      return new Response(JSON.stringify({ return_code: 0 }), { status: 200 });
+    }
     capturedHeaders = init?.headers as Record<string, string>;
     return new Response(JSON.stringify({ jsonrpc: '2.0', id: 1, result: { content: [] } }), { status: 200 });
   }) as typeof fetch;
@@ -438,6 +450,9 @@ await test('mcpRequest: 401 clears the CLI token cache, re-mints, and retries on
   globalThis.fetch = (async (url, init) => {
     const urlStr = String(url);
     const headers = init?.headers as Record<string, string> | undefined;
+    if (urlStr.includes('/v1/ta/cli/token/renew')) {
+      return new Response(JSON.stringify({ return_code: 0 }), { status: 200 });
+    }
     if (urlStr.includes('/v1/ta/cli/token/generate')) {
       return new Response(JSON.stringify({ return_code: 0, data: { userSecret: 'fresh-token' } }), { status: 200 });
     }
@@ -483,6 +498,9 @@ await test('mcpRequest: 403 invalid cli-token clears the cache, re-mints, and re
   globalThis.fetch = (async (url, init) => {
     const urlStr = String(url);
     const headers = init?.headers as Record<string, string> | undefined;
+    if (urlStr.includes('/v1/ta/cli/token/renew')) {
+      return new Response(JSON.stringify({ return_code: 0 }), { status: 200 });
+    }
     if (urlStr.includes('/v1/ta/cli/token/generate')) {
       return new Response(JSON.stringify({ return_code: 0, data: { userSecret: 'fresh-token' } }), { status: 200 });
     }
@@ -507,6 +525,137 @@ await test('mcpRequest: 403 invalid cli-token clears the cache, re-mints, and re
     globalThis.fetch = prevFetch;
     clearCliToken(host);
     clear(host);
+  }
+});
+
+// ── test 10: daily renew once; failure does not block; next call retries ─
+
+await test('getCliToken renews once per local day; success skips subsequent renew', async () => {
+  const {
+    getCliToken,
+    clearCliToken,
+    setCliTokenManual,
+    localRenewDate,
+    _resetRenewMemoryForTest,
+  } = await import('../src/core/cli-token.ts');
+  const { getConfigDir } = await import('../src/core/config.ts');
+
+  const host = 'https://test-cli-renew-ok.internal';
+  clearCliToken(host);
+  _resetRenewMemoryForTest();
+  setCliTokenManual('cli_renew_token', host);
+
+  let renewCount = 0;
+  const prevFetch = globalThis.fetch;
+  globalThis.fetch = (async (url) => {
+    const urlStr = String(url);
+    if (urlStr.includes('/v1/ta/cli/token/renew')) {
+      renewCount++;
+      assert.ok(urlStr.includes('cli-token=cli_renew_token'), 'renew must pass cli-token query');
+      return new Response(JSON.stringify({ return_code: 0 }), { status: 200 });
+    }
+    throw new Error(`Unexpected fetch: ${urlStr}`);
+  }) as typeof fetch;
+
+  try {
+    assert.equal(await getCliToken(host), 'cli_renew_token');
+    assert.equal(await getCliToken(host), 'cli_renew_token');
+    assert.equal(renewCount, 1, 'successful renew should run only once per local day');
+
+    const renewFile = path.join(getConfigDir(), 'cli-token-renew.json');
+    assert.ok(fs.existsSync(renewFile), 'renew success should persist local day marker');
+    const store = JSON.parse(fs.readFileSync(renewFile, 'utf8'));
+    assert.equal(store[host]?.date, localRenewDate());
+  } finally {
+    globalThis.fetch = prevFetch;
+    clearCliToken(host);
+  }
+});
+
+await test('getCliToken renew state uses normalized host key (trailing slash deduped)', async () => {
+  const {
+    getCliToken,
+    clearCliToken,
+    setCliTokenManual,
+    localRenewDate,
+    _resetRenewMemoryForTest,
+  } = await import('../src/core/cli-token.ts');
+  const { getConfigDir } = await import('../src/core/config.ts');
+
+  const hostSlash = 'https://test-cli-renew-normalize.internal/';
+  const hostPlain = 'https://test-cli-renew-normalize.internal';
+  clearCliToken(hostSlash);
+  clearCliToken(hostPlain);
+  _resetRenewMemoryForTest();
+  setCliTokenManual('cli_norm_token', hostSlash);
+  setCliTokenManual('cli_norm_token', hostPlain);
+
+  let renewCount = 0;
+  const prevFetch = globalThis.fetch;
+  globalThis.fetch = (async (url) => {
+    const urlStr = String(url);
+    if (urlStr.includes('/v1/ta/cli/token/renew')) {
+      renewCount++;
+      return new Response(JSON.stringify({ return_code: 0 }), { status: 200 });
+    }
+    throw new Error(`Unexpected fetch: ${urlStr}`);
+  }) as typeof fetch;
+
+  try {
+    assert.equal(await getCliToken(hostSlash), 'cli_norm_token');
+    _resetRenewMemoryForTest();
+    assert.equal(await getCliToken(hostPlain), 'cli_norm_token');
+    assert.equal(renewCount, 1, 'trailing-slash and plain host should share one renew marker');
+
+    const renewFile = path.join(getConfigDir(), 'cli-token-renew.json');
+    const store = JSON.parse(fs.readFileSync(renewFile, 'utf8'));
+    assert.equal(store[hostPlain]?.date, localRenewDate());
+    assert.equal(store[hostSlash], undefined, 'legacy trailing-slash key should not be persisted');
+  } finally {
+    globalThis.fetch = prevFetch;
+    clearCliToken(hostSlash);
+    clearCliToken(hostPlain);
+  }
+});
+
+await test('getCliToken renew failure does not block token return and retries next call', async () => {
+  const {
+    getCliToken,
+    clearCliToken,
+    setCliTokenManual,
+    _resetRenewMemoryForTest,
+  } = await import('../src/core/cli-token.ts');
+  const { getConfigDir } = await import('../src/core/config.ts');
+
+  const host = 'https://test-cli-renew-fail.internal';
+  clearCliToken(host);
+  _resetRenewMemoryForTest();
+  setCliTokenManual('cli_renew_fail_token', host);
+
+  let renewCount = 0;
+  const prevFetch = globalThis.fetch;
+  globalThis.fetch = (async (url) => {
+    const urlStr = String(url);
+    if (urlStr.includes('/v1/ta/cli/token/renew')) {
+      renewCount++;
+      return new Response(JSON.stringify({ return_code: -1001, return_message: 'boom' }), { status: 200 });
+    }
+    throw new Error(`Unexpected fetch: ${urlStr}`);
+  }) as typeof fetch;
+
+  try {
+    assert.equal(await getCliToken(host), 'cli_renew_fail_token', 'renew failure must not block returning token');
+    assert.equal(await getCliToken(host), 'cli_renew_fail_token');
+    assert.equal(renewCount, 2, 'failed renew must not mark the day; next call retries');
+
+    const renewFile = path.join(getConfigDir(), 'cli-token-renew.json');
+    if (fs.existsSync(renewFile)) {
+      const store = JSON.parse(fs.readFileSync(renewFile, 'utf8'));
+      assert.equal(store[host], undefined, 'failed renew must not persist a success marker for this host');
+    }
+  } finally {
+    globalThis.fetch = prevFetch;
+    clearCliToken(host);
   }
 });
 

@@ -128,6 +128,21 @@ export function optionalBoolean(ctx: RuntimeContext, name: string): boolean | un
   return value === '' ? undefined : ctx.bool(name);
 }
 
+export function stringWithDefault(ctx: RuntimeContext, name: string, defaultValue: string): string {
+  const value = ctx.str(name);
+  return value === '' ? defaultValue : value;
+}
+
+export function numberWithDefault(ctx: RuntimeContext, name: string, defaultValue: number): number {
+  const value = ctx.str(name);
+  return value === '' ? defaultValue : Number(value);
+}
+
+export function booleanWithDefault(ctx: RuntimeContext, name: string, defaultValue: boolean): boolean {
+  const value = ctx.str(name);
+  return value === '' ? defaultValue : ctx.bool(name);
+}
+
 export function optionalJson(ctx: RuntimeContext, name: string): unknown | undefined {
   const value = ctx.str(name);
   return value === '' ? undefined : ctx.json(name);
