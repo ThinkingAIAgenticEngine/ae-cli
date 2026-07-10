@@ -80,7 +80,8 @@ const EXPECTED_CORE_COUNT = isGlobalQueryModeEnabled() ? 37 : 36;
 if (coreCommands.length !== EXPECTED_CORE_COUNT) {
   fail(`analysis tool count mismatch: expected ${EXPECTED_CORE_COUNT}, got ${coreCommands.length}`);
 }
-const EXPECTED_CAPABILITY_COUNT = 47;
+
+const EXPECTED_CAPABILITY_COUNT = 96;
 if (capabilityCommands.length !== EXPECTED_CAPABILITY_COUNT) {
   fail(`analysis capability command count mismatch: expected ${EXPECTED_CAPABILITY_COUNT}, got ${capabilityCommands.length}`);
 }

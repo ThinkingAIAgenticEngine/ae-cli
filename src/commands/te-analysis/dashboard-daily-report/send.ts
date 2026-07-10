@@ -9,7 +9,7 @@ export const dashboardDailyReportSend = createAnalysisCapabilityCommand({
   resource: 'dashboard-daily-report',
   command: 'send',
   capabilityId: 'analysis.dashboard_daily_report.send',
-  description: 'Send dashboard daily report immediately.',
+  description: 'Send dashboard daily report immediately. Omit config to use saved config; pass channel flags for an ad hoc send.',
   flags: [
     projectIdFlag,
     { name: 'dashboard-id', type: 'number', required: true, desc: 'Dashboard ID.' },

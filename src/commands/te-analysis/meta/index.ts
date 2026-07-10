@@ -5,6 +5,15 @@ import { getAlert } from './get-alert.js';
 import { createAlert } from './create-alert.js';
 import { updateAlert } from './update-alert.js';
 import { deleteAlert } from './delete-alert.js';
+import event from './event/index.js';
+import property from './property/index.js';
+import virtualEvent from './virtual-event/index.js';
+import virtualProperty from './virtual-property/index.js';
+import metric from './metric/index.js';
+import asset from './asset/index.js';
+import exchange from './exchange/index.js';
+import superMetadata from './super-metadata/index.js';
+import datatable from './datatable/index.js';
 
 const commands: Command[] = [
   getAlertDefinitionSchema,
@@ -13,6 +22,15 @@ const commands: Command[] = [
   createAlert,
   updateAlert,
   deleteAlert,
+  ...event,
+  ...property,
+  ...virtualEvent,
+  ...virtualProperty,
+  ...metric,
+  ...asset,
+  ...exchange,
+  ...superMetadata,
+  ...datatable,
 ];
 
 export default commands;

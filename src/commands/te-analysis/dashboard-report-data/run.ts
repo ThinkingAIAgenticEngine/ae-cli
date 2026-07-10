@@ -14,7 +14,7 @@ export const dashboardReportDataRun = createAnalysisCapabilityCommand({
     projectIdFlag,
     { name: 'dashboard-id', type: 'number', required: true, desc: 'Dashboard ID.' },
     { name: 'report-ids', type: 'json', required: false, desc: 'Optional report ID array. Omit to query all dashboard reports.' },
-    { name: 'filters', type: 'json', required: false, desc: 'Optional dashboard filter JSON.' },
+    { name: 'filters', type: 'json', required: false, desc: 'Optional analysis Filter JSON injected as commonFilter.aiFilter. Use analysis +get_filter_schema for schema, e.g. {"relation":"and","filts":[...]}.' },
     { name: 'start-time', type: 'string', required: false, desc: 'Optional start date/time.' },
     { name: 'end-time', type: 'string', required: false, desc: 'Optional end date/time.' },
     { name: 'use-cache', type: 'boolean', required: false, desc: 'Whether to use cache. Default: true.' },

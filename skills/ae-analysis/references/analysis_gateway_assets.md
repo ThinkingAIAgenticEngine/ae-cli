@@ -14,7 +14,7 @@ This file is an overview only. Before running one command, read the dedicated co
 
 ## When to use
 
-Use these commands for dashboard, BI panel, project-space, folder, favorite, public-link, dashboard-definition, dashboard-daily-report, and dashboard/BI page data workflows.
+Use these commands for dashboard, BI panel, BI panel version, project-space, folder, favorite, public-link, dashboard-definition, dashboard-daily-report, and dashboard/BI page data workflows.
 
 Prefer export commands for long-running or large data:
 
@@ -28,7 +28,7 @@ ae-cli analysis query cancel --run-id run_0123456789abcdef0123456789abcdef
 
 ## When not to use
 
-Do not use these commands for ad-hoc model analysis, report definition, report data, drilldown, schema helpers, alerts, audience clusters/tags, project lookup, metadata governance, dashboard locks, BI panel version/lock, dashboard filters, UI reorder/tree/move operations, daily report retry/download/get-config, or public-link logs/source-list/get. Use the existing `+<tool_name>` references for those.
+Do not use these commands for ad-hoc model analysis, report definition, report data, drilldown, schema helpers, alerts, audience clusters/tags, project lookup, metadata governance, dashboard locks, BI panel lock, dashboard filters, UI reorder/tree/move operations, daily report retry/download/get-config, or public-link logs/source-list/get. Use the existing `+<tool_name>` references for those.
 
 ## Output
 
@@ -82,7 +82,7 @@ Prefer the run/artifact commands over hand-written HTTP, Python, or curl. The de
 | `dashboard freeze` | `analysis.dashboard.freeze` | Freeze/unfreeze dashboards | `--dashboard-ids`, optional `--freeze false` | Freeze status |
 | `dashboard abnormal-get` | `analysis.dashboard.abnormal_get` | Inspect abnormal dependencies | `--dashboard-id` | Abnormal info |
 | `dashboard task-status` | `analysis.dashboard.task_status` | Inspect scheduled task status | `--dashboard-id` | Task status |
-| `dashboard-report-data run` | `analysis.dashboard_report_data.run` | Bounded inline dashboard report data | `--dashboard-id`, optional `--report-ids`, `--start-time`, `--end-time`, `--limit` | Inline data |
+| `dashboard-report-data run` | `analysis.dashboard_report_data.run` | Bounded inline dashboard report data; `--filters` is analysis Filter JSON from `+get_filter_schema` | `--dashboard-id`, optional `--report-ids`, `--filters`, `--start-time`, `--end-time`, `--limit` | Inline data |
 | `dashboard-report-data export` | `analysis.dashboard_report_data.export` | Large/long dashboard report data | same as run, plus optional `--artifact-format jsonl` | Async artifact descriptor |
 | `run inspect` | `analysis.run.inspect` | Poll async export status | `--run-id` | Run and artifact status |
 | `artifact download` | `analysis.artifact.download` | Download run-bound export artifact | `--run-id`, `--artifact-id`, `--output` | Local output file info |
@@ -90,14 +90,16 @@ Prefer the run/artifact commands over hand-written HTTP, Python, or curl. The de
 | `dashboard-definition export` | `analysis.dashboard_definition.export` | Export dashboard definition JSON | `--dashboard-id`, `--dashboard-ids`, `--dashboard-folder-ids`, `--shared-spaces`, or `--payload` | Definition JSON |
 | `dashboard-definition import` | `analysis.dashboard_definition.import` | Validate/import dashboard definition | `--definition`, optional `--validate-only true` | Validation or import result |
 | `dashboard-daily-report update` | `analysis.dashboard_daily_report.update` | Update daily report config; defaults are sent when `--payload` is absent | `--dashboard-id`, optional config flags or `--payload` | Config result |
-| `dashboard-daily-report send` | `analysis.dashboard_daily_report.send` | Send daily report immediately; defaults are sent when `--payload` is absent | `--dashboard-id`, optional config flags or `--payload` | Async send result |
+| `dashboard-daily-report send` | `analysis.dashboard_daily_report.send` | Send daily report immediately; no config flags means use saved config, missing saved config fails | `--dashboard-id`, optional config flags or `--payload` | Async send result |
 | `bi-panel list` | `analysis.bi_panel.list` | Find accessible BI panels | `--project-id`, optional list filters | Paginated BI panel summaries |
-| `bi-panel get` | `analysis.bi_panel.get` | Inspect released BI panel page structure | `--panel-id`, optional `--fields` | Panel structure |
+| `bi-panel get` | `analysis.bi_panel.get` | Inspect released BI panel page structure only | `--panel-id`, optional `--fields` | Panel structure |
 | `bi-panel create` | `analysis.bi_panel.create` | Create a BI panel | optional `--panel-name`, `--payload` | Created panel |
 | `bi-panel update` | `analysis.bi_panel.update` | Update BI panel content/metadata | optional `--payload` | Update result |
 | `bi-panel delete` | `analysis.bi_panel.delete` | Delete BI panels | `--panel-ids '[...]'` | Delete result |
 | `bi-panel share` | `analysis.bi_panel.share` | Modify BI panel sharing | `--panel-id`, `--payload` | Share update result |
 | `bi-panel copy` | `analysis.bi_panel.copy` | Copy a BI panel | optional source/target flags and `--payload` | Copied panel |
+| `bi-panel-version get` | `analysis.bi_panel_version.get` | Inspect BI panel released or draft version | `--panel-id` or `--panel-uuid`, optional `--version-type release|draft` | Version detail |
+| `bi-panel-version publish` | `analysis.bi_panel_version.publish` | Publish current BI panel draft after source version matches | `--panel-id` or `--panel-uuid`, `--source-version` | Published version |
 | `bi-panel-page-data run` | `analysis.bi_panel_page_data.run` | Bounded inline BI page data | `--panel-id`, `--page-key`, `--result-type charts|summary` | Inline page data |
 | `bi-panel-page-data export` | `analysis.bi_panel_page_data.export` | Large/long BI page data | same as run, optional `--artifact-format jsonl` | Async artifact descriptor |
 | `project-space list` | `analysis.project_space.list` | Find accessible project spaces | `--project-id`, optional list filters | Paginated project spaces |

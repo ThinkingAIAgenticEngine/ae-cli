@@ -11,7 +11,7 @@ export const biPanelGet = createAnalysisCapabilityCommand({
   resource: 'bi-panel',
   command: 'get',
   capabilityId: 'analysis.bi_panel.get',
-  description: 'Get a BI panel released page structure.',
+  description: 'Get a BI panel released page structure. Use bi-panel-version get --version-type draft for unpublished edits.',
   flags: [
     projectIdFlag,
     { name: 'panel-id', type: 'number', required: true, desc: 'BI panel ID.' },

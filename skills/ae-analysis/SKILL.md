@@ -75,6 +75,7 @@ ae-cli analysis dashboard-report-data export --project-id <project_id> --dashboa
 ae-cli analysis run inspect --run-id <run_id>
 ae-cli analysis artifact download --run-id <run_id> --artifact-id <artifact_id> --output <file>
 ae-cli analysis bi-panel-page-data run --project-id <project_id> --panel-id <panel_id> --page-key <page_key> --result-type charts
+ae-cli analysis bi-panel-version get --project-id <project_id> --panel-id <panel_id> --version-type draft
 ae-cli analysis project-space list --project-id <project_id>
 ae-cli analysis query cancel --run-id <run_id>
 ```
@@ -85,13 +86,13 @@ Use capability-gateway asset commands when the user wants to manage or inspect:
 - Dashboard report data that may be large or long-running. Prefer `dashboard-report-data export` for large results; use `run` only for bounded inline results.
 - Dashboard definition export/import. Use `dashboard-definition import --validate-only true` for import pre-checks; do not look for a separate import-check command.
 - Dashboard daily report update or immediate send.
-- BI panel list/detail/create/update/delete/share/copy and BI page data. Prefer `bi-panel-page-data export` for large results.
+- BI panel list/detail/create/update/delete/share/copy, BI panel release/draft version get/publish, and BI page data. Prefer `bi-panel-page-data export` for large results.
 - Project spaces, folders, favorites, and public links.
 
 Do **not** use these commands for:
 
 - Ad-hoc model analysis, report definition, report data, drilldown, entity/event details, metadata/schema helpers, alerts, audience clusters/tags, or project lookup. Use the existing `+<tool_name>` commands for those.
-- Dashboard locks, BI panel version/lock, dashboard filter module, UI reorder/move/tree operations, daily report retry/download/get-config, public-link logs/source-list/get, or other product-manager-red-marked abilities.
+- Dashboard locks, BI panel lock, dashboard filter module, UI reorder/move/tree operations, daily report retry/download/get-config, public-link logs/source-list/get, or other product-manager-red-marked abilities.
 - Internal-only or UI-only payloads unless the gateway command reference explicitly exposes them through `--payload`.
 
 Capability-gateway output:
@@ -361,7 +362,58 @@ After outputting attribution results, verify that dimension contributions sum to
 
 ## Tool Groups (100)
 
-### analysis (61)
+### analysis (108)
+
+
+Metadata Capabilities (47):
+
+- `asset abnormal-get` ([doc](references/asset_abnormal_get.md))
+- `asset abnormal-list` ([doc](references/asset_abnormal_list.md))
+- `asset authentication-list` ([doc](references/asset_authentication_list.md))
+- `asset authentication-update` ([doc](references/asset_authentication_update.md))
+- `asset recent-list` ([doc](references/asset_recent_list.md))
+- `asset search` ([doc](references/asset_search.md))
+- `datatable columns-get` ([doc](references/datatable_columns_get.md))
+- `datatable influence-list` ([doc](references/datatable_influence_list.md))
+- `datatable version-get` ([doc](references/datatable_version_get.md))
+- `datatable version-list` ([doc](references/datatable_version_list.md))
+- `event changelog-list` ([doc](references/event_changelog_list.md))
+- `event create` ([doc](references/event_create.md))
+- `event delete` ([doc](references/event_delete.md))
+- `event get` ([doc](references/event_get.md))
+- `event hide-update` ([doc](references/event_hide_update.md))
+- `event influence-list` ([doc](references/event_influence_list.md))
+- `event list` ([doc](references/event_list.md))
+- `event relation-update` ([doc](references/event_relation_update.md))
+- `event update` ([doc](references/event_update.md))
+- `exchange config-update` ([doc](references/exchange_config_update.md))
+- `exchange rate-refresh` ([doc](references/exchange_rate_refresh.md))
+- `exchange rule-list` ([doc](references/exchange_rule_list.md))
+- `exchange rule-update` ([doc](references/exchange_rule_update.md))
+- `exchange rule-validate` ([doc](references/exchange_rule_validate.md))
+- `metric create` ([doc](references/metric_create.md))
+- `metric delete` ([doc](references/metric_delete.md))
+- `metric get` ([doc](references/metric_get.md))
+- `metric list` ([doc](references/metric_list.md))
+- `metric update` ([doc](references/metric_update.md))
+- `property changelog-list` ([doc](references/property_changelog_list.md))
+- `property create` ([doc](references/property_create.md))
+- `property delete` ([doc](references/property_delete.md))
+- `property get` ([doc](references/property_get.md))
+- `property hide-update` ([doc](references/property_hide_update.md))
+- `property influence-list` ([doc](references/property_influence_list.md))
+- `property list` ([doc](references/property_list.md))
+- `property related-events` ([doc](references/property_related_events.md))
+- `property relation-update` ([doc](references/property_relation_update.md))
+- `property update` ([doc](references/property_update.md))
+- `super-metadata export` ([doc](references/super_metadata_export.md))
+- `super-metadata import` ([doc](references/super_metadata_import.md))
+- `virtual-event create` ([doc](references/virtual_event_create.md))
+- `virtual-event delete` ([doc](references/virtual_event_delete.md))
+- `virtual-event get` ([doc](references/virtual_event_get.md))
+- `virtual-property create` ([doc](references/virtual_property_create.md))
+- `virtual-property sql-rule-delete` ([doc](references/virtual_property_sql_rule_delete.md))
+- `virtual-property sql-rule-update` ([doc](references/virtual_property_sql_rule_update.md))
 
 Alerts (6):
 - `+get_alert_definition_schema` ([doc](references/get_alert_definition_schema.md))
@@ -498,4 +550,4 @@ npm run verify:analysis-common-tools
 
 ## Reference Docs
 
-See the unified `references/` directory (79 command docs total).
+See the unified `references/` directory (126 command docs total).

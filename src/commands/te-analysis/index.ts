@@ -9,6 +9,7 @@ import artifact from './artifact/index.js';
 import dashboardDefinition from './dashboard-definition/index.js';
 import dashboardDailyReport from './dashboard-daily-report/index.js';
 import biPanel from './bi-panel/index.js';
+import biPanelVersion from './bi-panel-version/index.js';
 import biPanelPageData from './bi-panel-page-data/index.js';
 import projectSpace from './project-space/index.js';
 import folder from './folder/index.js';
@@ -34,6 +35,7 @@ const commands: Command[] = [
   ...dashboardDefinition,
   ...dashboardDailyReport,
   ...biPanel,
+  ...biPanelVersion,
   ...biPanelPageData,
   ...projectSpace,
   ...folder,

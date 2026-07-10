@@ -247,6 +247,22 @@ Upload list must include:
 
 Only upload generated output artifacts. Do not upload files inserted directly into the user's project.
 
+### Upload Compatibility for Code and Config Files
+
+The attachment upload endpoint accepts a limited document MIME set. Many generated tracking artifacts are valid text files but have extensions that may be rejected by the backend when uploaded directly, including `.java`, `.kt`, `.swift`, `.m`, `.ets`, `.cs`, `.py`, `.go`, `.ts`, `.js`, `.php`, and `.json`.
+
+Before calling `ae-cli agent +add-attachment`, build an upload-safe file list:
+
+1. Keep the original generated files unchanged in `.ae-cli/output/`.
+2. For each unsupported text artifact, create a sibling upload-only copy with `.txt` appended to the original filename.
+   - `.ae-cli/output/android-sdk-java.java` → `.ae-cli/output/android-sdk-java.java.txt`
+   - `.ae-cli/output/daemon.json` → `.ae-cli/output/daemon.json.txt`
+3. Copy the content exactly. Do not add markdown fences, comments, titles, or any extra bytes beyond the original text content.
+4. Upload the `.txt` compatibility copies instead of the unsupported originals.
+5. Upload already-supported text artifacts such as `.md`, `.txt`, and `.csv` directly.
+
+The final deliverable list should still point users to the original generated files. Mention the `.txt` files only as attachment-upload compatibility copies.
+
 If upload succeeds, report that the files are available from the file/attachment management entry. If upload fails because Agent attachment credentials are unavailable, preserve the local output files and report the upload failure separately.
 
 ---
@@ -325,7 +341,7 @@ After generation, perform language style checks on each output file:
 
 #### Step 5: Upload Generated Artifacts
 
-Upload all generated `.ae-cli/output/` artifacts to the Agent attachment library using `ae-cli agent +add-attachment --yes --files '<json-array>'`.
+Prepare upload compatibility copies for unsupported code/config extensions, then upload the safe file list to the Agent attachment library using `ae-cli agent +add-attachment --yes --files '<json-array>'`.
 
 ---
 

@@ -82,7 +82,7 @@ Phase 0 → 1 → 2 → 3 → 4, do not skip steps.
 > Determine `<user_lang>` from user's input language: Chinese→`zh`, English→`en`, Japanese→`ja`, Korean→`ko`. Other languages default to `en`.
 > All subsequent CLI commands must be prefixed with `AE_LANG=<user_lang>` to ensure CLI output and generated xlsx headers match the user's language.
 
-Collect the following **5 items** sequentially, **do NOT ask all at once**:
+Collect the following **4 items** sequentially, **do NOT ask all at once**:
 
 ### Item 1 — Application Scenario
 
@@ -122,15 +122,16 @@ Reply with number(s), e.g. 1 or 1,3. Select up to 2.
 ```
 
 Do not rewrite this source material list as unnumbered bullets, cards, or prose. The user must be able to reply with the visible numbers.
+When translating this prompt, preserve the numeric prefixes and line breaks exactly. Every visible option MUST be on its own line and MUST begin with `1 -`, `2 -`, `3 -`, etc. Never place two numbered options in the same paragraph or visual line. If a Markdown renderer may collapse soft line breaks, use Markdown hard line breaks (two trailing spaces before newline) rather than blank lines. Translation may change only the option text, not the numbering prefix or one-option-per-line structure.
 
 User can multi-select (max 2). Interpret numbers by the **visible list shown to the user**, not by the non-sandbox canonical list.
 
-Canonical source material options:
+Canonical source material options (non-sandbox numbering):
 
-- **Product document** (local path, sandbox workspace path, uploaded attachment, URL, image file, or folder) — Extract events and properties from product docs; supports md/pdf/docx/URL/images (png/jpg/jpeg/webp)
-- **Detailed description** (conversational) — Describe app business flow, core features, user behaviors, monetization model, etc.
-- **Codebase** (local project path; hidden in sandbox) — Analyze source code to extract events and properties
-- **Pre-built template** (built-in industry and game genre templates) — Select a built-in template (run `AE_LANG=<user_lang> ae-cli tracking plan list-templates --json` to see available templates)
+1. **Product document** ****(****local path, sandbox workspace path, uploaded attachment, URL, image file, or folder) — Extract events and properties from product docs; supports md/pdf/docx/URL/images (png/jpg/jpeg/webp)
+2. **Detailed description** (conversational) — Describe app business flow, core features, user behaviors, monetization model, etc.
+3. **Codebase** (local project path; hidden in sandbox) — Analyze source code to extract events and properties
+4. **Pre-built template** (built-in industry and game genre templates) — Select a built-in template (run `AE_LANG=<user_lang> ae-cli tracking plan list-templates --json` to see available templates)
 
 Based on user selection, determine source material type and record to `meta.source_type`:
 
@@ -143,8 +144,29 @@ Based on user selection, determine source material type and record to `meta.sour
 | Any two-item combo | Join two types with `_` | First as baseline, second as supplement (priority: template → codebase → prd → chat) |
 
 **Follow-up questions** (ask in selection order):
-- Product doc → if not in a sandbox environment, ask **"What is the product document path? You can provide one or more paths, separated by commas or newlines (local paths, URLs, image files, or folders)"**
-- Product doc → if in a sandbox environment, ask **"What is the product document path? You can provide one or more sandbox workspace paths, uploaded attachment paths, URLs, image files, or folders. You can also attach/upload relevant files here, and I will read them from the sandbox workspace if available."**
+- Product doc → if not in a sandbox environment, ask exactly:
+  ```text
+  What is the product document path?
+
+  You can provide one or more items, separated by commas or newlines:
+  1. Local file path
+  2. URL
+  3. Image file path
+  4. Folder path
+  ```
+- Product doc → if in a sandbox environment, ask exactly:
+  ```text
+  What is the product document path?
+
+  You can provide one or more items, separated by commas or newlines:
+  1. Sandbox workspace path
+  2. Uploaded attachment path
+  3. URL
+  4. Image file path
+  5. Folder path
+
+  You can also attach/upload relevant files here, and I will read them from the sandbox workspace if available.
+  ```
 - Detailed description → If too vague, follow up on core features, user behaviors, business flows, monetization
 - Codebase → ask **"What is the project directory path?"**, then scan source to extract business logic
 - Pre-built template → display matching templates for user confirmation

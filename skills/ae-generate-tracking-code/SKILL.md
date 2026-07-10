@@ -97,7 +97,8 @@ First, check if `.ae-cli/draft.json` exists and read existing configuration:
    - If the project is missing, ambiguous, or has no `appId`, ask the user to copy APP_ID from AE Admin → "Project Settings" → "Integration Config".
 2. **SERVER_URL** — Data ingestion endpoint (**different from web URL**; go to AE Admin → "Project Settings" → "Integration Config" → fill in "Public URL")
    - If `meta.project_id` is known, you may try `ae-cli analysis_meta +get_project_config --project_id <project_id>` once.
-   - Use the returned value only if the response explicitly contains a receiver URL field such as `serverUrl`, `pushUrl`, `push_url`, `receiverUrl`, `publicUrl`, or equivalent ingestion endpoint field.
+   - Use the returned value only if the response explicitly contains a receiver URL field such as `serverUrl`, `pushUrl`, `push_url`, `receiverUrl`, `publicUrl`, `publicReceiverAddress`, `privateReceiverAddress`, or equivalent ingestion endpoint field.
+   - If both `publicReceiverAddress` and `privateReceiverAddress` are present, prefer `publicReceiverAddress` as `SERVER_URL` for generated snippets unless the user explicitly needs an internal/private-network receiver.
    - If a value is found, ask: **"I found SERVER_URL `<url>` for project `<projectId>`. Use it? yes / enter new value"**
    - ⚠️ "Public URL" only shows if previously filled in; if empty, this field won't display
    - Solution: ask ops for the URL, or **skip this step** (use `SERVER_URL` or `PUSH_URL` placeholder in code)
@@ -506,6 +507,20 @@ Upload list rules:
 - Include `.ae-cli/output/README.md`.
 - Include generated debug scripts if the user selected the debug option.
 - Do not upload files inserted directly into the user's project; only upload generated output artifacts.
+
+### Attachment upload compatibility
+
+The Agent attachment backend accepts a limited document MIME set. Code/config artifacts such as `.java`, `.kt`, `.swift`, `.m`, `.ets`, `.cs`, `.py`, `.go`, `.ts`, `.js`, `.php`, and `.json` may be rejected if uploaded directly.
+
+Before running `ae-cli agent +add-attachment`, prepare the upload list as follows:
+- Keep every original generated file unchanged under `.ae-cli/output/`.
+- For each generated text artifact whose extension may be unsupported by the attachment backend, create an upload-only sibling copy by appending `.txt` to the filename.
+  - Example: `.ae-cli/output/java-sdk.java` → `.ae-cli/output/java-sdk.java.txt`
+  - Example: `.ae-cli/output/daemon.json` → `.ae-cli/output/daemon.json.txt`
+- The `.txt` copy must have identical content to the original file. Do not wrap it in markdown fences, do not add headers, and do not change line endings intentionally.
+- Upload the `.txt` compatibility copies instead of the unsupported originals.
+- Keep `.md`, `.txt`, and `.csv` artifacts in the upload list as-is.
+- In the final response, list the original deliverable paths first, then mention any `.txt` compatibility copies used only for attachment upload.
 
 If upload succeeds, include the attachment upload result in the final response and tell the user the files are available from the file/attachment management entry. If upload fails because Agent attachment credentials are unavailable, keep the local `.ae-cli/output/` files and tell the user the upload did not complete.
 

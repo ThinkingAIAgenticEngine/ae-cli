@@ -12,4 +12,10 @@ ae-cli analysis dashboard-report-data run --project-id <project_id> --dashboard-
 
 Input sends `project_id`, `dashboard_id`, and optional `report_ids`, `filters`, `start_time`, `end_time`, `use_cache`, `request_id`, `timeout_seconds`, `limit`.
 
+`--filters` is an analysis Filter JSON injected as `commonFilter.aiFilter` for each queried report. It is not a dashboard UI control dump. Use `ae-cli analysis +get_filter_schema` for the exact schema. Minimal shape:
+
+```json
+{"relation":"and","filts":[{"field":{"type":"event_property","propertyName":"#event_name"},"operator":"equal","values":["login"]}]}
+```
+
 Output is the gateway envelope. `data` contains bounded inline report data.

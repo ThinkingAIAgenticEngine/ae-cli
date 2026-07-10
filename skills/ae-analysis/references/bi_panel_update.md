@@ -2,7 +2,10 @@
 
 Use when the user wants to update BI panel content or metadata.
 
-Do not use for BI panel version or lock workflows; those are intentionally not CLI-enabled.
+Do not use this command to verify draft content or publish a draft. `bi-panel get`
+reads only the released/queryable version. Use `bi-panel-version get` to inspect
+`release` or `draft`, and `bi-panel-version publish` to publish a matching draft
+`source_version`.
 
 Command:
 
