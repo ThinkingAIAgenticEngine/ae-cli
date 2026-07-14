@@ -13,6 +13,7 @@ export const createIdCluster = createMcpCommand({
     { name: 'main_column_name', type: 'string', required: false, desc: 'Optional main column name for ID matching' },
   ],
   risk: 'write',
+  mcpService: 'te_analysis_extend',
   buildArgs: (ctx) => ({
     projectId: ctx.num('project_id'),
     displayName: ctx.str('display_name'),

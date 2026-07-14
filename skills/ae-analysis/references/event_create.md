@@ -1,4 +1,4 @@
-# analysis event create
+# analysis-meta event create
 
 Use when the user needs to create super events and optionally associate event properties.
 
@@ -7,8 +7,8 @@ Do not use this command for unrelated analysis queries, ad-hoc query constructio
 Command:
 
 ```bash
-ae-cli analysis event create --project-id <project_id> --payload '{}'
-ae-cli analysis event create --dry-run
+ae-cli analysis-meta event create --project-id <project_id> --payload '{}'
+ae-cli analysis-meta event create --dry-run
 ```
 
 Capability id: `metadata.event.create`.

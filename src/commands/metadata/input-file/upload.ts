@@ -11,7 +11,7 @@ export const inputFileUpload: Command = {
   description: 'Upload a local file to the metadata capability gateway and return an input_file_id.',
   flags: [
     { name: 'project-id', type: 'number', required: true, desc: 'Numeric project ID.', alias: 'p' },
-    { name: 'purpose', type: 'string', required: true, desc: 'Input file purpose. For data table CSV imports, use data_table.csv.' },
+    { name: 'purpose', type: 'string', required: true, desc: 'Input file purpose, for example data_table.csv or super_metadata.import.xlsx.' },
     { name: 'file', type: 'string', required: true, desc: 'Local file path to upload.' },
   ],
   risk: 'write',

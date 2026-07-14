@@ -6,7 +6,7 @@ Domain: **Report Management**
 
 ## Constraints
 
-**Not a builder fallback:** Do not call `+get_report_definition` to repair or replace a failed `+build_event_analysis_qp`, `+build_retention_analysis_qp`, `+build_funnel_analysis_qp`, or `+build_prop_analysis_qp` call. For builder-supported ad-hoc analysis, builder failure means stop and ask for clarification or report the structured error.
+**Not a builder fallback:** Do not call `+get_report_definition` to repair or replace a failed non-SQL QP builder call. Builder failure means stop and ask for clarification or report the structured error.
 
 ## Use Cases
 - Get the definition details of a single report. Returns model type, event configuration, display configuration, and other definition data without executing a data query.

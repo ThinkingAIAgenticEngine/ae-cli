@@ -9,6 +9,7 @@ import { SecureStoreAuthError } from '../core/secure-store.js';
 import { PermissionError } from '../core/errors.js';
 import { TeAgentApiError } from '../core/te-agent-client.js';
 import { CapabilityGatewayError } from '../core/capability-api.js';
+import { requiresConfirmation } from '../core/capability-risk.js';
 
 export async function runCommand(cmd: Command, opts: Record<string, any>, globalOpts: GlobalOptions): Promise<void> {
   try {
@@ -63,9 +64,9 @@ export async function runCommand(cmd: Command, opts: Record<string, any>, global
       return;
     }
 
-    // Confirm for write operations
-    if (cmd.risk === 'write' && !globalOpts.yes) {
-      const confirmed = await confirm(`This is a write operation (${cmdName}). Continue?`);
+    // Confirm for high-risk-write operations (delete)
+    if (requiresConfirmation(cmd.risk) && !globalOpts.yes) {
+      const confirmed = await confirm(`This is a high-risk-write operation (${cmdName}). Continue?`);
       if (!confirmed) {
         process.stderr.write('Aborted.\n');
         process.exit(0);

@@ -1,4 +1,4 @@
-# analysis datatable influence-list
+# analysis-meta datatable influence-list
 
 Use when the user needs to list metadata and assets affected by data table deletion or column changes.
 
@@ -7,8 +7,8 @@ Do not use this command for unrelated analysis queries, ad-hoc query constructio
 Command:
 
 ```bash
-ae-cli analysis datatable influence-list --project-id <project_id> --datatable-id <datatable_id>
-ae-cli analysis datatable influence-list --dry-run
+ae-cli analysis-meta datatable influence-list --project-id <project_id> --datatable-id <datatable_id>
+ae-cli analysis-meta datatable influence-list --dry-run
 ```
 
 Capability id: `metadata.data_table.influence_list`.

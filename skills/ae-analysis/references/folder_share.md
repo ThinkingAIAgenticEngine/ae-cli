@@ -1,15 +1,25 @@
-# analysis folder share
+# analysis folder share (L3)
 
-Use when the user wants to add, remove, or batch modify folder sharing members.
+Use when the user wants to modify folder sharing members.
 
-Do not use to inspect members only. Use `folder members`.
+Do not use to inspect members only. Use `analysis.folder.members` via `capability search/inspect/run`; see [`analysis_gateway_assets.md`](analysis_gateway_assets.md) L3 members section.
 
-Command:
+This capability has no curated `ae-cli analysis` command. Read [`ae-capability`](../../ae-capability/SKILL.md), then:
 
 ```bash
-ae-cli analysis folder share --project-id <project_id> --folder-id <folder_id> [--payload '{...}'] --yes
+ae-cli capability inspect analysis.folder.share
+ae-cli capability dry-run analysis.folder.share --input '{"project_id":1,"folder_id":1001,"payload":{...}}'
+ae-cli capability run analysis.folder.share --input '{"project_id":1,"folder_id":1001,"payload":{...}}'
 ```
 
-Input sends `project_id`, `folder_id`, and backend-compatible snake_case `payload`.
+`risk=write` — no chat confirmation required after dry-run succeeds.
+
+Input uses snake_case JSON. Common fields:
+
+| field | type | required | description |
+| --- | --- | --- | --- |
+| `project_id` | integer | yes | Project ID. |
+| `folder_id` | integer | yes | Folder ID. |
+| `payload` | object | no | Optional snake_case share/member update payload. Inspect the capability schema before composing it. |
 
 Output is the gateway envelope. `data` contains the share update result.

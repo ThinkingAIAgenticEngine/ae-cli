@@ -1,4 +1,4 @@
-# analysis metric update
+# analysis-meta metric update
 
 Use when the user needs to update metric definition, name, and remark.
 
@@ -7,8 +7,8 @@ Do not use this command for unrelated analysis queries, ad-hoc query constructio
 Command:
 
 ```bash
-ae-cli analysis metric update --project-id <project_id> --payload '{}'
-ae-cli analysis metric update --dry-run
+ae-cli analysis-meta metric update --project-id <project_id> --payload '{}'
+ae-cli analysis-meta metric update --dry-run
 ```
 
 Capability id: `metadata.metric.update`.

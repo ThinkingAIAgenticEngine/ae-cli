@@ -1,4 +1,4 @@
-# analysis super-metadata import
+# analysis-meta super-metadata import
 
 Use when the user needs to pre-import and confirm-import super event and super property configuration.
 
@@ -7,8 +7,8 @@ Do not use this command for unrelated analysis queries, ad-hoc query constructio
 Command:
 
 ```bash
-ae-cli analysis super-metadata import --project-id <project_id> --payload '{}'
-ae-cli analysis super-metadata import --dry-run
+ae-cli analysis-meta super-metadata import --project-id <project_id> --payload '{}'
+ae-cli analysis-meta super-metadata import --dry-run
 ```
 
 Capability id: `metadata.super_metadata.import`.

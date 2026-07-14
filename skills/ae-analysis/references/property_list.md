@@ -1,4 +1,4 @@
-# analysis property list
+# analysis-meta property list
 
 Use when the user needs to list event or user properties.
 
@@ -7,8 +7,8 @@ Do not use this command for unrelated analysis queries, ad-hoc query constructio
 Command:
 
 ```bash
-ae-cli analysis property list --project-id <project_id> --table-type <table_type>
-ae-cli analysis property list --dry-run
+ae-cli analysis-meta property list --project-id <project_id> --table-type <table_type>
+ae-cli analysis-meta property list --dry-run
 ```
 
 Capability id: `metadata.property.list`.

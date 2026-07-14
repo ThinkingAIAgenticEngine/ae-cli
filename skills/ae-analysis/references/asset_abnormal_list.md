@@ -1,4 +1,4 @@
-# analysis asset abnormal-list
+# analysis-meta asset abnormal-list
 
 Use when the user needs to list abnormal assets by resource type.
 
@@ -7,8 +7,8 @@ Do not use this command for unrelated analysis queries, ad-hoc query constructio
 Command:
 
 ```bash
-ae-cli analysis asset abnormal-list --project-id <project_id> --resource-types <resource_types>
-ae-cli analysis asset abnormal-list --dry-run
+ae-cli analysis-meta asset abnormal-list --project-id <project_id> --resource-types <resource_types>
+ae-cli analysis-meta asset abnormal-list --dry-run
 ```
 
 Capability id: `metadata.asset_abnormal.list`.

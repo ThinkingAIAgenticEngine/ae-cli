@@ -1,10 +1,10 @@
 import {
-  createAnalysisCapabilityCommand,
+  createAnalysisMetaCapabilityCommand,
   projectIdFlag,
   projectInput,
 } from '../../capability-shared.js';
 
-export const metadataAssetAbnormalList = createAnalysisCapabilityCommand({
+export const metadataAssetAbnormalList = createAnalysisMetaCapabilityCommand({
   resource: 'asset',
   command: 'abnormal-list',
   capabilityId: 'metadata.asset_abnormal.list',

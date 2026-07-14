@@ -1,4 +1,4 @@
-# analysis asset abnormal-get
+# analysis-meta asset abnormal-get
 
 Use when the user needs to get abnormal reason for one asset.
 
@@ -7,8 +7,8 @@ Do not use this command for unrelated analysis queries, ad-hoc query constructio
 Command:
 
 ```bash
-ae-cli analysis asset abnormal-get --project-id <project_id> --resource-type <resource_type> --resource-id <resource_id> --resource-name <resource_name> --table-type <table_type>
-ae-cli analysis asset abnormal-get --dry-run
+ae-cli analysis-meta asset abnormal-get --project-id <project_id> --resource-type <resource_type> --resource-id <resource_id> --resource-name <resource_name> --table-type <table_type>
+ae-cli analysis-meta asset abnormal-get --dry-run
 ```
 
 Capability id: `metadata.asset_abnormal.get`.

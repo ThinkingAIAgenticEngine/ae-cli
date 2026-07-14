@@ -1,4 +1,4 @@
-# analysis datatable version-get
+# analysis-meta datatable version-get
 
 Use when the user needs to get data table version detail.
 
@@ -7,8 +7,8 @@ Do not use this command for unrelated analysis queries, ad-hoc query constructio
 Command:
 
 ```bash
-ae-cli analysis datatable version-get --project-id <project_id> --version-id <version_id>
-ae-cli analysis datatable version-get --dry-run
+ae-cli analysis-meta datatable version-get --project-id <project_id> --version-id <version_id>
+ae-cli analysis-meta datatable version-get --dry-run
 ```
 
 Capability id: `metadata.data_table_version.get`.

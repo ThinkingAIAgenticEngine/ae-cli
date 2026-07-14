@@ -1,4 +1,4 @@
-# analysis asset authentication-update
+# analysis-meta asset authentication-update
 
 Use when the user needs to batch authenticate or unauthenticate assets.
 
@@ -7,8 +7,8 @@ Do not use this command for unrelated analysis queries, ad-hoc query constructio
 Command:
 
 ```bash
-ae-cli analysis asset authentication-update --project-id <project_id> --payload '{}'
-ae-cli analysis asset authentication-update --dry-run
+ae-cli analysis-meta asset authentication-update --project-id <project_id> --payload '{}'
+ae-cli analysis-meta asset authentication-update --dry-run
 ```
 
 Capability id: `metadata.asset_authentication.update`.

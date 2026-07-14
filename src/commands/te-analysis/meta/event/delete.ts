@@ -1,10 +1,10 @@
 import {
-  createAnalysisCapabilityCommand,
+  createAnalysisMetaCapabilityCommand,
   projectIdFlag,
   projectInput,
 } from '../../capability-shared.js';
 
-export const metadataEventDelete = createAnalysisCapabilityCommand({
+export const metadataEventDelete = createAnalysisMetaCapabilityCommand({
   resource: 'event',
   command: 'delete',
   capabilityId: 'metadata.event.delete',
@@ -13,6 +13,6 @@ export const metadataEventDelete = createAnalysisCapabilityCommand({
     projectIdFlag,
     { name: 'event-names', type: 'json', required: true, desc: 'Event names JSON array, or a JSON string accepted by common-service.' },
   ],
-  risk: 'write',
+  risk: 'high-risk-write',
   buildInput: (ctx) => ({ ...projectInput(ctx), event_names: ctx.json('event-names') }),
 });

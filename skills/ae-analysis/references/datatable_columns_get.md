@@ -1,4 +1,4 @@
-# analysis datatable columns-get
+# analysis-meta datatable columns-get
 
 Use when the user needs to get columns for a project table reference.
 
@@ -7,8 +7,8 @@ Do not use this command for unrelated analysis queries, ad-hoc query constructio
 Command:
 
 ```bash
-ae-cli analysis datatable columns-get --project-id <project_id> --table-ref <table_ref>
-ae-cli analysis datatable columns-get --dry-run
+ae-cli analysis-meta datatable columns-get --project-id <project_id> --table-ref <table_ref>
+ae-cli analysis-meta datatable columns-get --dry-run
 ```
 
 Capability id: `metadata.data_table.columns_get`.

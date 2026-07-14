@@ -1,4 +1,4 @@
-# analysis metric create
+# analysis-meta metric create
 
 Use when the user needs to create a metric from event or retention analysis configuration.
 
@@ -7,8 +7,8 @@ Do not use this command for unrelated analysis queries, ad-hoc query constructio
 Command:
 
 ```bash
-ae-cli analysis metric create --project-id <project_id> --payload '{}'
-ae-cli analysis metric create --dry-run
+ae-cli analysis-meta metric create --project-id <project_id> --payload '{}'
+ae-cli analysis-meta metric create --dry-run
 ```
 
 Capability id: `metadata.metric.create`.

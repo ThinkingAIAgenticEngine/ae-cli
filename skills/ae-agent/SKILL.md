@@ -28,8 +28,9 @@ ae-cli agent +create-automation --help
 
 - Use this skill for Agent platform resource management: Agents, automations, models, MCP servers, Skills, attachments, the MCP/Skill market, and Skill copy/approval/share flows.
 - **Read operations** (`+list-*`) can run directly once required IDs are known.
-- **Write operations** require explicit user intent and keep the confirmation prompt by default. Pass `--yes` only in fully automated pipelines.
-- Prefer `--dry-run` before destructive writes to inspect the request shape without executing.
+- **Write operations** (`risk: write`) can run directly once required IDs and references are verified.
+- **Delete operations** (`risk: high-risk-write`) require explicit user authorization. Pass `--yes` only after the user confirms.
+- Prefer `--dry-run` before delete operations to inspect the request shape without executing.
 - Personal and company scope resources can be created/updated/deleted; company scope requires root/agent_admin role; system resources are read-only (exception: root users can approve/reject submissions and set company-scope meta).
 - Toggle operations on company/system resources only affect the current user's preference, not the global state.
 - Never invent record IDs. Discover them with `+list-*` commands or accept them from the user.
@@ -41,7 +42,7 @@ ae-cli agent +create-automation --help
 |---|---|
 | `--format <json\|table>` | Output format. Default is JSON. |
 | `--host <url>` | Override the active AE host. Available on every command and may be placed after the subcommand, e.g. `ae-cli agent +<command> --host <url>`. |
-| `--yes` | Skip confirmation for write operations. |
+| `--yes` | Skip confirmation for `high-risk-write` (delete) operations. |
 | `--dry-run` | Show request details (method + URL + body) without executing. |
 
 ### Output and Errors

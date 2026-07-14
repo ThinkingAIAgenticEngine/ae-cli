@@ -1,4 +1,4 @@
-# analysis virtual-event delete
+# analysis-meta virtual-event delete
 
 Use when the user needs to delete a virtual event rule.
 
@@ -7,8 +7,8 @@ Do not use this command for unrelated analysis queries, ad-hoc query constructio
 Command:
 
 ```bash
-ae-cli analysis virtual-event delete --project-id <project_id> --v-event-id <v_event_id>
-ae-cli analysis virtual-event delete --dry-run
+ae-cli analysis-meta virtual-event delete --project-id <project_id> --v-event-id <v_event_id>
+ae-cli analysis-meta virtual-event delete --dry-run
 ```
 
 Capability id: `metadata.virtual_event.delete`.

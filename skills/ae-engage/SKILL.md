@@ -228,12 +228,12 @@ Commands that accept date parameters usually use `yyyy-MM-dd`, for example `--st
 
 ## Write Operation Reminder
 
-The following commands are write operations. Confirm that the user intent is explicit before executing them:
+High-risk delete commands (`risk: high-risk-write`) require explicit user authorization before execution. Ordinary write commands (`risk: write`) do not:
 
-- Channels and config channels: `+add_channel`, `+delete_channel`, `+update_channel_status`, `+delete_config_channel`, `+update_config_channel_status`
-- Strategies and config items: `+delete_config_item`, `+copy_config_template`, `+manage_strategy`
-- Flows: `+save_flow`, `+modify_flow_base_info`, `+manage_flow`, `+delete_flow`
-- Tasks: `+save_task`, `+manage_task`
+- Channels and config channels: `+add_channel` (write), `+delete_channel` (high-risk-write), `+update_channel_status` (write), `+delete_config_channel` (high-risk-write), `+update_config_channel_status` (write)
+- Strategies and config items: `+delete_config_item` (high-risk-write), `+copy_config_template` (write), `+manage_strategy` (write)
+- Flows: `+save_flow` (write), `+modify_flow_base_info` (write), `+manage_flow` (write), `+delete_flow` (high-risk-write)
+- Tasks: `+save_task` (write), `+manage_task` (write)
 
 For task draft creation or update, use this workflow:
 

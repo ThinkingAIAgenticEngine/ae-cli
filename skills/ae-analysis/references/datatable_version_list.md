@@ -1,4 +1,4 @@
-# analysis datatable version-list
+# analysis-meta datatable version-list
 
 Use when the user needs to list data table historical versions.
 
@@ -7,8 +7,8 @@ Do not use this command for unrelated analysis queries, ad-hoc query constructio
 Command:
 
 ```bash
-ae-cli analysis datatable version-list --project-id <project_id> --datatable-id <datatable_id>
-ae-cli analysis datatable version-list --dry-run
+ae-cli analysis-meta datatable version-list --project-id <project_id> --datatable-id <datatable_id>
+ae-cli analysis-meta datatable version-list --dry-run
 ```
 
 Capability id: `metadata.data_table_version.list`.

@@ -87,4 +87,46 @@ runDryRun('+build_prop_analysis_qp', [
   '--authenticated_only', 'true',
 ], ['projectId', 'propAnalysis', 'authenticatedOnly']);
 
-console.log('OK: verified 4 analysis builder dry-run commands are executable and mapped correctly.');
+runDryRun('+build_attribution_analysis_qp', [
+  '--project_id', '1',
+  '--time_range', '{"mode":"previous","unit":"day","value":7}',
+  '--attribution', '{"targetEvent":"支付","targetAggregation":"total_count","attributionEvents":["广告点击"],"attributionModel":"last","window":{"value":7,"unit":"day"}}',
+  '--authenticated_only', 'true',
+], ['projectId', 'timeRange', 'attribution', 'authenticatedOnly']);
+
+runDryRun('+build_distribution_analysis_qp', [
+  '--project_id', '1',
+  '--time_range', '{"mode":"previous","unit":"day","value":7}',
+  '--distribution_metrics', '[{"event":"登录","aggregation":"A200"}]',
+  '--authenticated_only', 'true',
+], ['projectId', 'timeRange', 'distributionMetrics', 'authenticatedOnly']);
+
+runDryRun('+build_heat_map_analysis_qp', [
+  '--project_id', '1',
+  '--time_range', '{"mode":"previous","unit":"day","value":7}',
+  '--heat_map', '{"hotEvent":"点击","hotAggregation":"total_count","xProp":"x","yProp":"y"}',
+  '--authenticated_only', 'true',
+], ['projectId', 'timeRange', 'heatMap', 'authenticatedOnly']);
+
+runDryRun('+build_interval_analysis_qp', [
+  '--project_id', '1',
+  '--time_range', '{"mode":"previous","unit":"day","value":7}',
+  '--interval', '{"initialEvent":"登录","returnEvent":"支付","window":{"value":7,"unit":"day"}}',
+  '--authenticated_only', 'true',
+], ['projectId', 'timeRange', 'interval', 'authenticatedOnly']);
+
+runDryRun('+build_path_analysis_qp', [
+  '--project_id', '1',
+  '--time_range', '{"mode":"previous","unit":"day","value":7}',
+  '--path', '{"sourceEvent":"登录","eventNames":["登录","支付"],"sessionInterval":30,"sessionUnit":"minute"}',
+  '--authenticated_only', 'true',
+], ['projectId', 'timeRange', 'path', 'authenticatedOnly']);
+
+runDryRun('+build_rank_list_analysis_qp', [
+  '--project_id', '1',
+  '--time_range', '{"mode":"previous","unit":"day","value":7}',
+  '--rank_list', '{"rankDimension":{"name":"商品","type":"event_property"},"rankEvent":"支付","rankAggregation":"total_count"}',
+  '--authenticated_only', 'true',
+], ['projectId', 'timeRange', 'rankList', 'authenticatedOnly']);
+
+console.log('OK: verified 10 analysis builder dry-run commands are executable and mapped correctly.');

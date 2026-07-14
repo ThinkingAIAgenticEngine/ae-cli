@@ -1,6 +1,6 @@
 {
   "name": "@thinkingai/ae-cli",
-  "version": "6.0.28",
+  "version": "6.0.29",
   "description": "CLI tool for ThinkingAI (AE) analytics platform",
   "type": "module",
   "bin": {
@@ -20,6 +20,7 @@
     "build": "tsup src/index.ts --format esm --outDir dist && node scripts/copy-tracking-assets.mjs",
     "verify:config": "node test/config-commands.test.mjs",
     "verify:analysis-tools": "tsx scripts/verify-te-analysis-tools.mjs",
+    "verify:analysis-contract-regressions": "node test/analysis-contract-regressions.test.mjs",
     "verify:analysis-cluster-routing": "node scripts/verify-analysis-cluster-routing.mjs",
     "verify:multi-cluster-mode": "node test/multi-cluster-mode.test.mjs",
     "verify:metadata-capability": "node test/metadata-capability-commands.test.mjs",

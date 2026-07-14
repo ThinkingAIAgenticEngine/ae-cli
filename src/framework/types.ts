@@ -1,5 +1,5 @@
 export type FlagType = 'string' | 'number' | 'boolean' | 'json';
-export type RiskLevel = 'read' | 'write';
+export type RiskLevel = 'read' | 'write' | 'high-risk-write';
 export type OutputFormat = 'json' | 'table';
 
 export interface Flag {

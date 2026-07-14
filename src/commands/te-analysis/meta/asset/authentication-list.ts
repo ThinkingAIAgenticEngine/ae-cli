@@ -1,10 +1,10 @@
 import {
-  createAnalysisCapabilityCommand,
+  createAnalysisMetaCapabilityCommand,
   projectIdFlag,
   projectInput,
 } from '../../capability-shared.js';
 
-export const metadataAssetAuthenticationList = createAnalysisCapabilityCommand({
+export const metadataAssetAuthenticationList = createAnalysisMetaCapabilityCommand({
   resource: 'asset',
   command: 'authentication-list',
   capabilityId: 'metadata.asset_authentication.list',

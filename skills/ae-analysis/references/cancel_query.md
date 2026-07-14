@@ -26,7 +26,7 @@ ae-cli analysis +cancel_query --request_id mcp_0123456789abcdef0123456789abcdef 
 | `--reason` | No | Optional cancellation reason. Default: `MCP_CANCEL_QUERY_TOOL`. |
 
 ## Decision Rules
-- This is a write operation. Use `--yes` only when the user clearly asked to cancel or stop a running query.
+- This is a write operation (`risk: write`). Use `--yes` only when the user clearly asked to cancel or stop a running query.
 - The request must belong to the current MCP user. Otherwise the service returns `REQUEST_NOT_FOUND_OR_NOT_OWNED`.
 - Do not invent a request ID. Use the ID from the query response or the ID explicitly supplied to the original query.
 - This command cancels by request ID only. It does not cancel by SQL text, report ID, dashboard ID, BI panel ID, run ID, or tool call ID.

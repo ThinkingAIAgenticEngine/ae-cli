@@ -14,7 +14,7 @@ export const remove: Command = {
   flags: [
     { name: 'name', type: 'string', required: true, desc: 'Knowledge base name to delete' },
   ],
-  risk: 'write',
+  risk: 'high-risk-write',
   dryRun: (ctx) => ({
     method: 'DELETE',
     url: `${ctx.host().replace(/\/$/, '')}${API_PATH}`,

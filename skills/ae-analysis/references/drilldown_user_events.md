@@ -8,7 +8,7 @@ Domain: **Model analysis**
 - Drill down to detailed event sequences for a specific user on specific dates.
 - This tool is typically used after drilldown_users.
 - Common parameters (focus on these): projectId, userId, eventNames, targetDates.
-- Advanced parameters (for special scenarios): zoneOffset, properties, timeGranularity, firstDayOfWeek, sortOrder, eventNameFilter, timeFilter, timeFilterBeforeNums, timeFilterAfterNums, entityId, entityValue, useCache, pageNum, pageSize.
+- Advanced parameters (for special scenarios): zoneOffset, properties, timeGranularity, firstDayOfWeek, sortOrder, eventNameFilter, timeFilter, timeFilterBeforeNums, timeFilterAfterNums, entityId, entityValue, useCache, limit, offset.
 - The userId must come from drilldown_users and must not be guessed.
 - targetDates is a list of discrete dates, not a date range.
 - Constraint: drilldown positioning parameters must come from the previous query result and must not be guessed.
@@ -31,7 +31,7 @@ Domain: **Model analysis**
 ## Command
 ```bash
 ae-cli analysis +drilldown_user_events --project_id <project_id> --user_id u_123 --event_names '["login"]' --target_dates '["2026-04-08 00:00:00"]'
-ae-cli analysis +drilldown_user_events --project_id <project_id> --user_id u_123 --event_names '["login"]' --target_dates '["2026-04-08 00:00:00"]' --zone_offset 8 --use_cache true --page_num 1 --page_size 20 --request_id mcp_bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
+ae-cli analysis +drilldown_user_events --project_id <project_id> --user_id u_123 --event_names '["login"]' --target_dates '["2026-04-08 00:00:00"]' --zone_offset 8 --use_cache true --limit 20 --offset 0 --request_id mcp_bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
 ae-cli analysis +drilldown_user_events --dry-run
 ```
 
@@ -54,8 +54,8 @@ ae-cli analysis +drilldown_user_events --dry-run
 | `--entity_id` | No | Optional entity ID for multi-entity scenarios |
 | `--entity_value` | No | Optional entity value for multi-entity scenarios |
 | `--use_cache` | No | Whether to use cache. Default: true |
-| `--page_num` | No | Start page number, default 1 |
-| `--page_size` | No | Page size. Default: 1000, maximum: 10000 |
+| `--limit` | No | Maximum rows. Default: 1000, maximum: 10000 |
+| `--offset` | No | Row offset. Default: 0 |
 | `--request_id` | Yes | Required unique request ID used for tracking and cancellation. Generate it before starting the query. It must use `mcp_<32 lowercase hex UUID>`, for example `mcp_0123456789abcdef0123456789abcdef`. Provide this before starting the query so it can be cancelled later with `+cancel_query --request_id <same value>`, even if the caller stops waiting before the tool returns. If `fetch failed`, HTTP timeout, or caller timeout happens, the backend query may still be running. `requestId` is not auto-generated for MCP query tools because the caller must know it before the response for proactive cleanup. If omitted or blank, the backend returns `REQUEST_ID_REQUIRED`; invalid format returns `INVALID_REQUEST_ID`. The response `metadata.requestId` echoes the supplied requestId and can also be passed to `cancel_query(requestId)` when the query is no longer needed. |
 | `--timeout_minutes` | No | Query timeout in minutes |
 

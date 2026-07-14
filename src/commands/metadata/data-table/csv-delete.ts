@@ -9,7 +9,7 @@ export const dataTableCsvDelete = createCapabilityCommand({
     { name: 'project-id', type: 'number', required: true, desc: 'Numeric project ID.', alias: 'p' },
     { name: 'data-table-id', type: 'number', required: true, desc: 'Data table ID.' },
   ],
-  risk: 'write',
+  risk: 'high-risk-write',
   buildInput: (ctx) => ({
     project_id: ctx.num('project-id'),
     data_table_id: ctx.num('data-table-id'),

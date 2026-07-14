@@ -1,4 +1,4 @@
-# analysis exchange config-update
+# analysis-meta exchange config-update
 
 Use when the user needs to update exchange-rate configuration switch or value.
 
@@ -7,8 +7,8 @@ Do not use this command for unrelated analysis queries, ad-hoc query constructio
 Command:
 
 ```bash
-ae-cli analysis exchange config-update --project-id <project_id> --config-val <config_val>
-ae-cli analysis exchange config-update --dry-run
+ae-cli analysis-meta exchange config-update --project-id <project_id> --config-val <config_val>
+ae-cli analysis-meta exchange config-update --dry-run
 ```
 
 Capability id: `metadata.exchange_config.update`.

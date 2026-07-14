@@ -1,15 +1,25 @@
-# analysis project-space share
+# analysis project-space share (L3)
 
-Use when the user wants to add, remove, or batch modify project-space sharing members.
+Use when the user wants to modify project-space sharing members.
 
-Do not use to inspect members only. Use `project-space members`.
+Do not use to inspect members only. Use `analysis.project_space.members` via `capability search/inspect/run`; see [`analysis_gateway_assets.md`](analysis_gateway_assets.md) L3 members section.
 
-Command:
+This capability has no curated `ae-cli analysis` command. Read [`ae-capability`](../../ae-capability/SKILL.md), then:
 
 ```bash
-ae-cli analysis project-space share --project-id <project_id> --space-id <space_id> [--payload '{...}'] --yes
+ae-cli capability inspect analysis.project_space.share
+ae-cli capability dry-run analysis.project_space.share --input '{"project_id":1,"space_id":10,"payload":{...}}'
+ae-cli capability run analysis.project_space.share --input '{"project_id":1,"space_id":10,"payload":{...}}'
 ```
 
-Input sends `project_id`, `space_id`, and backend-compatible snake_case `payload`.
+`risk=write` — no chat confirmation required after dry-run succeeds.
+
+Input uses snake_case JSON. Common fields:
+
+| field | type | required | description |
+| --- | --- | --- | --- |
+| `project_id` | integer | yes | Project ID. |
+| `space_id` | integer | yes | Project space ID. |
+| `payload` | object | no | Optional snake_case share/member update payload. Inspect the capability schema before composing it. |
 
 Output is the gateway envelope. `data` contains the share update result.

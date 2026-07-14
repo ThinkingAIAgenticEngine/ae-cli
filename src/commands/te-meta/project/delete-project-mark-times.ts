@@ -7,7 +7,7 @@ export const deleteProjectMarkTimes = createMcpCommand({
     { name: 'project_id', type: 'number', required: true, alias: 'p', desc: 'Project ID' },
     { name: 'mark_time_ids', type: 'json', required: true, desc: 'Marker ID list JSON array' },
   ],
-  risk: 'write',
+  risk: 'high-risk-write',
   mcpService: 'te_analysis_extend',
   buildArgs: (ctx) => ({
     projectId: ctx.num('project_id'),

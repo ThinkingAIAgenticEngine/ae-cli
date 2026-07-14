@@ -97,6 +97,13 @@ async function registerApiCommand(): Promise<void> {
   } catch {}
 }
 
+async function registerCapabilityCommands(): Promise<void> {
+  try {
+    const { registerCapability } = await import('./commands/capability/index.js');
+    registerCapability(program);
+  } catch {}
+}
+
 // Register sync command (te-agent Skill / MCP push)
 async function registerSyncCommand(): Promise<void> {
   try {
@@ -121,6 +128,7 @@ async function main() {
   await registerAuthCommands();
   await registerConfigCommands();
   await registerApiCommand();
+  await registerCapabilityCommands();
   await registerSyncCommand();
   await registerModelCommand();
   registerTracking(program);

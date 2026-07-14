@@ -21,7 +21,7 @@ export const deleteConfigItem: Command = {
     { name: 'config_id', type: 'string', required: true, desc: 'Config item ID' },
     { name: 'open_id', type: 'string', required: true, desc: 'Operator open ID' },
   ],
-  risk: 'write',
+  risk: 'high-risk-write',
   dryRun: (ctx) => buildMcpDryRun(ctx, serviceName, toolName, buildArgs(ctx)),
   execute: async (ctx) => executeMcpCommand(ctx, serviceName, toolName, buildArgs(ctx)),
 };

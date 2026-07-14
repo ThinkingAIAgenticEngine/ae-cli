@@ -1,3 +1,26 @@
+### 6.0.29
+**Date:** 2026-07-13
+
+**Changes:**
+
+* Add capability gateway discovery commands (`capability list/search/inspect/dry-run/run`) with `ae-capability` skill and command-admission docs for long-tail capabilities
+* Migrate project-space and folder create/delete/share/members mutations to L3 capability flows; remove curated L2 commands
+* Align CLI risk levels with lark-cli three-tier model (`read` / `write` / `high-risk-write`) and tighten delete confirmation behavior
+* Route data-management capabilities to `analysis-meta` domain; fix metric, virtual-property, and super-metadata import CLI input contracts
+* Sync analysis and audience CLI contracts: ten ad-hoc QP builders, cluster-definition top-level params, drilldown pagination, and report version fields
+* Fix ID cluster update/delete routing to `te_analysis_extend` MCP service
+* Document `SqlDatatableDef` qp shape and examples for `metadata data-table sql-write`
+
+### 6.0.28
+**Date:** 2026-07-10
+
+**Changes:**
+
+* Add 47 analysis data-management capability commands (event, property, virtual-event, virtual-property, metric, asset, exchange, datatable, super-metadata)
+* Align super-metadata export with async XLSX artifact workflow (`request-id`, `timeout-seconds`, run inspect + artifact download)
+* Add BI panel version get/publish commands; clarify released vs draft panel contracts, daily-report send flags, and dashboard report filter usage
+* Improve tracking-plan and tracking-code skills (snippet delivery and plan workflow docs)
+
 ### 6.0.27
 **Date:** 2026-07-09
 

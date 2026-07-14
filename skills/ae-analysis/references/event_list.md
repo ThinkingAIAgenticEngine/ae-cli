@@ -1,4 +1,4 @@
-# analysis event list
+# analysis-meta event list
 
 Use when the user needs to list project super events.
 
@@ -7,8 +7,8 @@ Do not use this command for unrelated analysis queries, ad-hoc query constructio
 Command:
 
 ```bash
-ae-cli analysis event list --project-id <project_id>
-ae-cli analysis event list --dry-run
+ae-cli analysis-meta event list --project-id <project_id>
+ae-cli analysis-meta event list --dry-run
 ```
 
 Capability id: `metadata.event.list`.

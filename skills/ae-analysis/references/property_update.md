@@ -1,4 +1,4 @@
-# analysis property update
+# analysis-meta property update
 
 Use when the user needs to update property display names and remarks.
 
@@ -7,8 +7,8 @@ Do not use this command for unrelated analysis queries, ad-hoc query constructio
 Command:
 
 ```bash
-ae-cli analysis property update --project-id <project_id> --table-type <table_type> --prop-name <prop_name> --prop-desc <prop_desc> --prop-remark <prop_remark>
-ae-cli analysis property update --dry-run
+ae-cli analysis-meta property update --project-id <project_id> --table-type <table_type> --prop-name <prop_name> --prop-desc <prop_desc> --prop-remark <prop_remark>
+ae-cli analysis-meta property update --dry-run
 ```
 
 Capability id: `metadata.property.update`.

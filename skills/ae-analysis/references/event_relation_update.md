@@ -1,4 +1,4 @@
-# analysis event relation-update
+# analysis-meta event relation-update
 
 Use when the user needs to update event-property connection or source relations.
 
@@ -7,8 +7,8 @@ Do not use this command for unrelated analysis queries, ad-hoc query constructio
 Command:
 
 ```bash
-ae-cli analysis event relation-update --project-id <project_id> --payload '{}'
-ae-cli analysis event relation-update --dry-run
+ae-cli analysis-meta event relation-update --project-id <project_id> --payload '{}'
+ae-cli analysis-meta event relation-update --dry-run
 ```
 
 Capability id: `metadata.event.relation_update`.

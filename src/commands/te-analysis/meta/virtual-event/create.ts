@@ -1,13 +1,13 @@
 import {
   compactInput,
-  createAnalysisCapabilityCommand,
+  createAnalysisMetaCapabilityCommand,
   optionalBoolean,
   payloadFlag,
   projectIdFlag,
   projectInput,
 } from '../../capability-shared.js';
 
-export const metadataVirtualEventCreate = createAnalysisCapabilityCommand({
+export const metadataVirtualEventCreate = createAnalysisMetaCapabilityCommand({
   resource: 'virtual-event',
   command: 'create',
   capabilityId: 'metadata.virtual_event.create',

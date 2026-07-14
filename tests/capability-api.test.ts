@@ -11,6 +11,7 @@ import {
   buildCapabilityGatewayUrl,
   callCapabilityApi,
   CapabilityGatewayError,
+  dryRunCapability,
   executeCapability,
   inspectCapability,
   listCapabilities,
@@ -97,6 +98,31 @@ await test('executeCapability POSTs { input } to .../execute', async () => {
     assert.ok(capturedUrl.includes('/api/cli/metadata/v1/capabilities/metadata.event.get/execute'));
     assert.equal(capturedBody, JSON.stringify({ input: { project_id: 1, event_name: 'purchase' } }));
     assert.equal(JSON.stringify(result), JSON.stringify({ event_name: 'x' }));
+  } finally {
+    globalThis.fetch = prevFetch;
+    clearCliToken(host);
+  }
+});
+
+await test('dryRunCapability POSTs { input } to .../dry-run', async () => {
+  const host = 'https://test-cap-dry-run.internal';
+  clearCliToken(host);
+  setCliTokenManual('cli-dry-run-token', host);
+
+  let capturedUrl = '';
+  let capturedBody: any;
+  const prevFetch = globalThis.fetch;
+  globalThis.fetch = (async (url, init) => {
+    capturedUrl = String(url);
+    capturedBody = init?.body;
+    return new Response(JSON.stringify({ ok: true, data: { valid: true } }), { status: 200 });
+  }) as typeof fetch;
+
+  try {
+    const result = await dryRunCapability(host, 'analysis', 'analysis.report.list', { project_id: 1 });
+    assert.ok(capturedUrl.endsWith('/api/cli/analysis/v1/capabilities/analysis.report.list/dry-run'));
+    assert.equal(capturedBody, JSON.stringify({ input: { project_id: 1 } }));
+    assert.equal(JSON.stringify(result), JSON.stringify({ valid: true }));
   } finally {
     globalThis.fetch = prevFetch;
     clearCliToken(host);

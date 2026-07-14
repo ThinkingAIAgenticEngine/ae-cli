@@ -20,6 +20,10 @@ export function registerCapabilityGatewayRoute(
   cliServiceRoutes.set(cliService, route);
 }
 
+export function findGatewayDomain(cliService: string): string | undefined {
+  return cliServiceRoutes.get(cliService)?.gatewayDomain;
+}
+
 export function resolveGatewayDomain(cliService: string, override?: string): string {
   if (override !== undefined) {
     return override;

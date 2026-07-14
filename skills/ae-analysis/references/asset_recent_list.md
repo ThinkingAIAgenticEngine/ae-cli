@@ -1,4 +1,4 @@
-# analysis asset recent-list
+# analysis-meta asset recent-list
 
 Use when the user needs to list recently visited assets for the current user.
 
@@ -7,8 +7,8 @@ Do not use this command for unrelated analysis queries, ad-hoc query constructio
 Command:
 
 ```bash
-ae-cli analysis asset recent-list --project-id <project_id> --payload '{}'
-ae-cli analysis asset recent-list --dry-run
+ae-cli analysis-meta asset recent-list --project-id <project_id> --payload '{}'
+ae-cli analysis-meta asset recent-list --dry-run
 ```
 
 Capability id: `metadata.asset.recent_list`.

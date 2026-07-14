@@ -8,7 +8,7 @@ export const deleteTag = createMcpCommand({
     { name: 'tag_name', type: 'string', required: true, desc: 'Tag name to delete' },
     { name: 'confirmed', type: 'boolean', required: false, desc: 'Pass after user explicitly confirms deletion despite listed dependencies' },
   ],
-  risk: 'write',
+  risk: 'high-risk-write',
   buildArgs: (ctx) => ({
     projectId: ctx.num('project_id'),
     tagName: ctx.str('tag_name'),

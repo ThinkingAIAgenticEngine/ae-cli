@@ -11,7 +11,7 @@ export const biPanelDelete = createAnalysisCapabilityCommand({
   capabilityId: 'analysis.bi_panel.delete',
   description: 'Delete one or more BI panels.',
   flags: [projectIdFlag, { name: 'panel-ids', type: 'json', required: true, desc: 'BI panel ID array.' }],
-  risk: 'write',
+  risk: 'high-risk-write',
   buildInput: (ctx) => ({
     ...projectInput(ctx),
     panel_ids: jsonArray(ctx, 'panel-ids'),

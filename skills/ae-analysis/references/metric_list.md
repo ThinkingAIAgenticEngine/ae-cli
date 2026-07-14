@@ -1,4 +1,4 @@
-# analysis metric list
+# analysis-meta metric list
 
 Use when the user needs to list project metrics.
 
@@ -7,8 +7,8 @@ Do not use this command for unrelated analysis queries, ad-hoc query constructio
 Command:
 
 ```bash
-ae-cli analysis metric list --project-id <project_id> --ignore-authentication true
-ae-cli analysis metric list --dry-run
+ae-cli analysis-meta metric list --project-id <project_id> --ignore-authentication true
+ae-cli analysis-meta metric list --dry-run
 ```
 
 Capability id: `metadata.metric.list`.

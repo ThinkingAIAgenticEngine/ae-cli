@@ -1,10 +1,10 @@
 import {
-  createAnalysisCapabilityCommand,
+  createAnalysisMetaCapabilityCommand,
   projectIdFlag,
   projectInput,
 } from '../../capability-shared.js';
 
-export const metadataVirtualEventGet = createAnalysisCapabilityCommand({
+export const metadataVirtualEventGet = createAnalysisMetaCapabilityCommand({
   resource: 'virtual-event',
   command: 'get',
   capabilityId: 'metadata.virtual_event.get',

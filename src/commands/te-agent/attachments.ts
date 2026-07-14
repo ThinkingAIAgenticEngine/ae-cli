@@ -160,7 +160,7 @@ export const delAttachment: Command = {
   flags: [
     { name: 'id', type: 'string', required: true, desc: 'Attachment ID' },
   ],
-  risk: 'write',
+  risk: 'high-risk-write',
   dryRun: (ctx) => ({
     method: 'DELETE',
     url: `${LIST_PATH}?id=${encodeURIComponent(ctx.str('id'))}`,

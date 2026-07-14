@@ -1,4 +1,4 @@
-# analysis property changelog-list
+# analysis-meta property changelog-list
 
 Use when the user needs to list property metadata change logs.
 
@@ -7,8 +7,8 @@ Do not use this command for unrelated analysis queries, ad-hoc query constructio
 Command:
 
 ```bash
-ae-cli analysis property changelog-list --project-id <project_id> --table-type <table_type> --prop-name <prop_name>
-ae-cli analysis property changelog-list --dry-run
+ae-cli analysis-meta property changelog-list --project-id <project_id> --table-type <table_type> --prop-name <prop_name>
+ae-cli analysis-meta property changelog-list --dry-run
 ```
 
 Capability id: `metadata.property.changelog_list`.

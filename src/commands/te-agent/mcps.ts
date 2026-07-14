@@ -170,7 +170,7 @@ export const delMcp: Command = {
   flags: [
     { name: 'id', type: 'string', required: true, desc: 'MCP server record ID (CUID)' },
   ],
-  risk: 'write',
+  risk: 'high-risk-write',
   dryRun: (ctx) => ({
     method: 'DELETE',
     url: `${BASE_PATH}?id=${encodeURIComponent(ctx.str('id'))}`,

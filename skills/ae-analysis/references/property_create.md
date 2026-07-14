@@ -1,4 +1,4 @@
-# analysis property create
+# analysis-meta property create
 
 Use when the user needs to create event or user properties and optionally associate events.
 
@@ -7,8 +7,8 @@ Do not use this command for unrelated analysis queries, ad-hoc query constructio
 Command:
 
 ```bash
-ae-cli analysis property create --project-id <project_id> --table-type <table_type> --payload '{}'
-ae-cli analysis property create --dry-run
+ae-cli analysis-meta property create --project-id <project_id> --table-type <table_type> --payload '{}'
+ae-cli analysis-meta property create --dry-run
 ```
 
 Capability id: `metadata.property.create`.

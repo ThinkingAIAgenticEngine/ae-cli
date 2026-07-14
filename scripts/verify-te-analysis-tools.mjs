@@ -60,6 +60,7 @@ for (const file of commandFiles) {
   }
   capabilityCommands.push({
     file,
+    service: content.includes('createAnalysisMetaCapabilityCommand') ? 'analysis-meta' : 'analysis',
     resource: resourceMatch[1],
     command: commandMatch[1],
     capabilityId: capabilityMatch ? capabilityMatch[1] : '(gateway endpoint)',
@@ -71,7 +72,7 @@ if (coreSet.size !== coreCommands.length) {
   fail('duplicate core command names found in source files');
 }
 
-const capabilitySet = new Set(capabilityCommands.map((item) => `${item.resource} ${item.command}`));
+const capabilitySet = new Set(capabilityCommands.map((item) => `${item.service} ${item.resource} ${item.command}`));
 if (capabilitySet.size !== capabilityCommands.length) {
   fail('duplicate capability command names found in source files');
 }
@@ -84,6 +85,17 @@ if (coreCommands.length !== EXPECTED_CORE_COUNT) {
 const EXPECTED_CAPABILITY_COUNT = 96;
 if (capabilityCommands.length !== EXPECTED_CAPABILITY_COUNT) {
   fail(`analysis capability command count mismatch: expected ${EXPECTED_CAPABILITY_COUNT}, got ${capabilityCommands.length}`);
+}
+
+const expectedCapabilityCountsByService = {
+  analysis: 49,
+  'analysis-meta': 47,
+};
+for (const [service, expectedCount] of Object.entries(expectedCapabilityCountsByService)) {
+  const actualCount = capabilityCommands.filter((item) => item.service === service).length;
+  if (actualCount !== expectedCount) {
+    fail(`${service} capability command count mismatch: expected ${expectedCount}, got ${actualCount}`);
+  }
 }
 
 const help = spawnSync('npx', ['tsx', 'src/index.ts', 'analysis', '--help'], {
@@ -114,17 +126,17 @@ for (const tool of coreCommands) {
 }
 
 for (const item of capabilityCommands) {
-  const toolHelp = spawnSync('npx', ['tsx', 'src/index.ts', 'analysis', item.resource, item.command, '--help'], {
+  const toolHelp = spawnSync('npx', ['tsx', 'src/index.ts', item.service, item.resource, item.command, '--help'], {
     cwd: ROOT,
     encoding: 'utf-8',
     maxBuffer: 10 * 1024 * 1024,
   });
   if (toolHelp.status !== 0) {
     process.stderr.write(toolHelp.stderr || '');
-    fail(`failed to run analysis ${item.resource} ${item.command} --help`);
+    fail(`failed to run ${item.service} ${item.resource} ${item.command} --help`);
   }
-  if (!toolHelp.stdout.includes(`Usage: ae-cli analysis ${item.resource} ${item.command}`)) {
-    fail(`command help output missing usage for: ${item.resource} ${item.command}`);
+  if (!toolHelp.stdout.includes(`Usage: ae-cli ${item.service} ${item.resource} ${item.command}`)) {
+    fail(`command help output missing usage for: ${item.service} ${item.resource} ${item.command}`);
   }
 }
 
@@ -151,10 +163,12 @@ const lifecycleDescriptionTokens = [
 const requiredTokensByFile = {
   'src/commands/te-analysis/entity/query-entity-details.ts': [...cancellableQueryTokens, ...lifecycleDescriptionTokens, "name: 'timeout_minutes'", "timeoutMinutes: optionalNumber(ctx, 'timeout_minutes')"],
   'src/commands/te-analysis/entity/query-event-details.ts': [...cancellableQueryTokens, ...lifecycleDescriptionTokens, "name: 'timeout_minutes'", "timeoutMinutes: optionalNumber(ctx, 'timeout_minutes')"],
-  'src/commands/te-analysis/model/drilldown-user-events.ts': [...cancellableQueryTokens, ...lifecycleDescriptionTokens],
+  'src/commands/te-analysis/model/drilldown-user-events.ts': [...cancellableQueryTokens, ...lifecycleDescriptionTokens, "name: 'limit'", "name: 'offset'", "limit: optionalNumber(ctx, 'limit')", "offset: optionalNumber(ctx, 'offset')"],
   'src/commands/te-analysis/model/drilldown-users.ts': [...cancellableQueryTokens, ...lifecycleDescriptionTokens],
   'src/commands/te-analysis/model/query-adhoc.ts': [...cancellableQueryTokens, ...lifecycleDescriptionTokens],
   'src/commands/te-analysis/report/query-report-data.ts': [...cancellableQueryTokens, ...lifecycleDescriptionTokens],
+  'src/commands/te-analysis/report/update-report.ts': ["name: 'report_version'", "version: ctx.num('report_version')"],
+  'src/commands/te-analysis/schema/get-analysis-query-schema.ts': ['all ten non-SQL models', 'SQL manual path'],
   'src/commands/te-analysis/model/cancel-query.ts': [
     'caller or agent timed out before the query returned',
     'fetch failed',
@@ -204,7 +218,8 @@ const requiredReferenceTokensByFile = {
   'skills/ae-analysis/references/query_event_details.md': lifecycleReferenceTokens,
   'skills/ae-analysis/references/query_adhoc.md': lifecycleReferenceTokens,
   'skills/ae-analysis/references/drilldown_users.md': lifecycleReferenceTokens,
-  'skills/ae-analysis/references/drilldown_user_events.md': lifecycleReferenceTokens,
+  'skills/ae-analysis/references/drilldown_user_events.md': [...lifecycleReferenceTokens, '--limit', '--offset'],
+  'skills/ae-analysis/references/update_report.md': ['--report_version'],
   'skills/ae-analysis/references/cancel_query.md': [
     'caller or agent timed out before the query returned',
     'fetch failed',
@@ -245,8 +260,8 @@ for (const item of capabilityCommands) {
   }
   const content = fs.readFileSync(absPath, 'utf-8');
   const requiredTokens = [
-    `# analysis ${item.resource} ${item.command}`,
-    `ae-cli analysis ${item.resource} ${item.command}`,
+    `# ${item.service} ${item.resource} ${item.command}`,
+    `ae-cli ${item.service} ${item.resource} ${item.command}`,
     'Use',
     'Do not use',
     'Input',

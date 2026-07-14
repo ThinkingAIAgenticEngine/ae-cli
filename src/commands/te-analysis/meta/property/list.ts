@@ -1,10 +1,10 @@
 import {
-  createAnalysisCapabilityCommand,
+  createAnalysisMetaCapabilityCommand,
   projectIdFlag,
   projectInput,
 } from '../../capability-shared.js';
 
-export const metadataPropertyList = createAnalysisCapabilityCommand({
+export const metadataPropertyList = createAnalysisMetaCapabilityCommand({
   resource: 'property',
   command: 'list',
   capabilityId: 'metadata.property.list',

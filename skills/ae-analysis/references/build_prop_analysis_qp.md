@@ -8,7 +8,7 @@ Domain: **Model Analysis**
 - Build a validated `prop_analysis` QP from structured intent.
 - Use in the mandatory builder flow before `+query_adhoc --model_type prop_analysis`.
 - This command builds QP only and does not execute the analysis query.
-- This is one of exactly four QP builders: `event`, `retention`, `funnel`, `prop_analysis`.
+- This is the `prop_analysis` builder in the ten-model guided QP builder set.
 - Use this builder for property-analysis ad hoc requests; do not manually build prop_analysis QP through `+get_analysis_query_schema`.
 
 ## JSON Rules

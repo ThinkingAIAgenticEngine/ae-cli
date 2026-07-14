@@ -20,14 +20,14 @@ export const drilldownUserEvents = createMcpCommand({
     { name: 'entity_id', type: 'number', required: false, desc: 'Optional entity ID for multi-entity scenarios' },
     { name: 'entity_value', type: 'string', required: false, desc: 'Optional entity value for multi-entity scenarios' },
     { name: 'use_cache', type: 'boolean', required: false, desc: 'Whether to use cache. Default: true' },
-    { name: 'page_num', type: 'number', required: false, desc: 'Start page number. Default: 1' },
-    { name: 'page_size', type: 'number', required: false, desc: 'Page size. Default: 1000, maximum: 10000.' },
+    { name: 'limit', type: 'number', required: false, desc: 'Result limit. Default: 1000, maximum: 10000.' },
+    { name: 'offset', type: 'number', required: false, desc: 'Result offset. Default: 0.' },
     { name: 'request_id', type: 'string', required: true, desc: 'Required unique request ID used for tracking and cancellation. Generate it before starting the query. It must use mcp_<32 lowercase hex UUID>, for example mcp_0123456789abcdef0123456789abcdef. Provide this before starting the query so it can be cancelled later with +cancel_query --request_id <same value>, even if the caller stops waiting before the tool returns. If fetch failed, HTTP timeout, or caller timeout happens, the backend query may still be running. requestId is not auto-generated for MCP query tools because the caller must know it before the response for proactive cleanup. If omitted or blank, the backend returns REQUEST_ID_REQUIRED; invalid format returns INVALID_REQUEST_ID. The response metadata.requestId echoes the supplied requestId and can also be passed to cancel_query(requestId) when the query is no longer needed.' },
     { name: 'timeout_minutes', type: 'number', required: false, desc: 'Query timeout in minutes. If omitted, 30 minutes is used.' },
   ],
   risk: 'read',
   validate: (ctx) => {
-    assertLimitWithinCap(optionalNumber(ctx, 'page_size'), 'page_size');
+    assertLimitWithinCap(optionalNumber(ctx, 'limit'), 'limit');
   },
   buildArgs: (ctx) => ({
       projectId: ctx.num('project_id'),
@@ -46,8 +46,8 @@ export const drilldownUserEvents = createMcpCommand({
       entityId: optionalNumber(ctx, 'entity_id'),
       entityValue: optionalString(ctx, 'entity_value'),
       useCache: optionalBoolean(ctx, 'use_cache'),
-      pageNum: optionalNumber(ctx, 'page_num'),
-      pageSize: optionalNumber(ctx, 'page_size') ?? DEFAULT_QUERY_LIMIT,
+      limit: optionalNumber(ctx, 'limit') ?? DEFAULT_QUERY_LIMIT,
+      offset: optionalNumber(ctx, 'offset'),
       requestId: ctx.str('request_id'),
       timeoutMinutes: optionalNumber(ctx, 'timeout_minutes'),
     }),

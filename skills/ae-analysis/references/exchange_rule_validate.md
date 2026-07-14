@@ -1,4 +1,4 @@
-# analysis exchange rule-validate
+# analysis-meta exchange rule-validate
 
 Use when the user needs to validate affected range before saving exchange-rate rules.
 
@@ -7,8 +7,8 @@ Do not use this command for unrelated analysis queries, ad-hoc query constructio
 Command:
 
 ```bash
-ae-cli analysis exchange rule-validate --project-id <project_id> --payload '{}'
-ae-cli analysis exchange rule-validate --dry-run
+ae-cli analysis-meta exchange rule-validate --project-id <project_id> --payload '{}'
+ae-cli analysis-meta exchange rule-validate --dry-run
 ```
 
 Capability id: `metadata.exchange_rule.validate`.

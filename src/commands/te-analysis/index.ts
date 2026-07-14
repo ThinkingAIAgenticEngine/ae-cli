@@ -12,7 +12,6 @@ import biPanel from './bi-panel/index.js';
 import biPanelVersion from './bi-panel-version/index.js';
 import biPanelPageData from './bi-panel-page-data/index.js';
 import projectSpace from './project-space/index.js';
-import folder from './folder/index.js';
 import favorite from './favorite/index.js';
 import publicLink from './public-link/index.js';
 import model from './model/index.js';
@@ -38,7 +37,6 @@ const commands: Command[] = [
   ...biPanelVersion,
   ...biPanelPageData,
   ...projectSpace,
-  ...folder,
   ...favorite,
   ...publicLink,
   ...model,

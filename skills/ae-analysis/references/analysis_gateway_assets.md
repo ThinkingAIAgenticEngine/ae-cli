@@ -10,7 +10,7 @@ ae-cli analysis <resource> <action> [options]
 
 Flags use kebab-case. The gateway input JSON uses snake_case. Do not pass camelCase flags or payload keys unless a nested backend DTO explicitly requires them inside `--payload`.
 
-This file is an overview only. Before running one command, read the dedicated command reference named `references/<resource>_<action>.md` with hyphens converted to underscores, for example `dashboard_report_data_export.md`.
+This file is an overview only. Before running an L2 command, read the dedicated command reference named `references/<resource>_<action>.md` with hyphens converted to underscores, for example `dashboard_report_data_export.md`. L3 capabilities without a dedicated reference use dynamic discovery per [`ae-capability`](../../ae-capability/SKILL.md) and the L3 section below.
 
 ## When to use
 
@@ -104,14 +104,6 @@ Prefer the run/artifact commands over hand-written HTTP, Python, or curl. The de
 | `bi-panel-page-data export` | `analysis.bi_panel_page_data.export` | Large/long BI page data | same as run, optional `--artifact-format jsonl` | Async artifact descriptor |
 | `project-space list` | `analysis.project_space.list` | Find accessible project spaces | `--project-id`, optional list filters | Paginated project spaces |
 | `project-space get` | `analysis.project_space.get` | Inspect one project space | `--project-id`, `--space-id` | Project space detail |
-| `project-space create` | `analysis.project_space.create` | Create a project space; `avatar_type` defaults to 1 when omitted | `--space-name` or `--payload` | Created space |
-| `project-space delete` | `analysis.project_space.delete` | Delete project spaces | `--space-id` or `--space-ids` | Delete result |
-| `project-space share` | `analysis.project_space.share` | Modify project-space members | `--space-id`, `--payload` | Share update result |
-| `project-space members` | `analysis.project_space.members` | Read project-space members | `--space-id` | Members |
-| `folder create` | `analysis.folder.create` | Create personal/project-space folder | `--folder-name`, optional `--space-id`, `--parent-folder-id` | Created folder |
-| `folder delete` | `analysis.folder.delete` | Delete folders | `--folder-id` or `--folder-ids`, optional `--space-id` | Delete result |
-| `folder share` | `analysis.folder.share` | Modify folder members | `--folder-id`, `--payload` | Share update result |
-| `folder members` | `analysis.folder.members` | Read folder members | `--folder-id` | Members |
 | `favorite add` | `analysis.favorite.add` | Favorite dashboard/BI/folder | `--asset-id`, `--asset-type`, optional `--payload` | Favorite result |
 | `favorite remove` | `analysis.favorite.remove` | Remove favorite | same as add | Remove result |
 | `public-link create` | `analysis.public_link.create` | Generate public link | `--resource-type`, `--resource-id`, `--effective-at`, `--expires-at` | Link result |
@@ -119,6 +111,47 @@ Prefer the run/artifact commands over hand-written HTTP, Python, or curl. The de
 | `public-link update` | `analysis.public_link.update` | Edit public link | `--link-id`, `--effective-at`, `--expires-at` | Update result |
 | `public-link offline` | `analysis.public_link.offline` | Take links offline | `--link-id` or `--link-ids` | Offline result |
 | `public-link delete` | `analysis.public_link.delete` | Delete public links | `--link-id` or `--link-ids` | Delete result |
+
+## L3 project-space and folder capabilities
+
+Per [`capability-command-admission` §10](../../../docs/capability-command-admission.md): new gateway capabilities default to **dynamic discovery** (`capability search` → `inspect` → `dry-run` → `run`); standalone skill references are **exceptions only** (L2 bar, confusion, high-risk delete, multi-step orchestration).
+
+For **create / delete / share**, read the linked reference before `capability inspect/dry-run/run`. For **`*.members` read**, use this matrix only — no separate `references/*.md` (pilot).
+
+| Capability ID | Use for | Reference / discovery |
+| --- | --- | --- |
+| `analysis.project_space.create` | Create a project space | [`project_space_create.md`](project_space_create.md) |
+| `analysis.project_space.delete` | Delete project spaces | [`project_space_delete.md`](project_space_delete.md) |
+| `analysis.project_space.share` | Modify project-space members | [`project_space_share.md`](project_space_share.md) |
+| `analysis.project_space.members` | Read project-space members | Matrix only (see below) |
+| `analysis.folder.create` | Create personal/project-space folder | [`folder_create.md`](folder_create.md) |
+| `analysis.folder.delete` | Delete folders | [`folder_delete.md`](folder_delete.md) |
+| `analysis.folder.share` | Modify folder members | [`folder_share.md`](folder_share.md) |
+| `analysis.folder.members` | Read folder members | Matrix only (see below) |
+
+### L3 members (matrix-only pilot)
+
+Read-only member lists; `risk=read`. Do not use to modify members — use the matching `*.share` capability.
+
+**When to use:** inspect who has access to a project space or folder.
+
+**When not to use:** modify members → `analysis.project_space.share` or `analysis.folder.share`.
+
+```bash
+ae-cli capability inspect analysis.project_space.members
+ae-cli capability run analysis.project_space.members --input '{"project_id":1,"space_id":10}'
+
+ae-cli capability inspect analysis.folder.members
+ae-cli capability run analysis.folder.members --input '{"project_id":1,"folder_id":1001}'
+```
+
+| field | type | required | capability |
+| --- | --- | --- | --- |
+| `project_id` | integer | yes | both |
+| `space_id` | integer | yes | `project_space.members` |
+| `folder_id` | integer | yes | `folder.members` |
+
+Output is the gateway envelope; `data` contains members.
 
 ## Examples
 

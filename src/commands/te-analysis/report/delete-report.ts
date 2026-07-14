@@ -7,7 +7,7 @@ export const deleteReport = createMcpCommand({
     { name: 'project_id', type: 'number', required: true, desc: 'Project ID', alias: 'p' },
     { name: 'report_id', type: 'number', required: true, desc: 'Report ID to delete' },
   ],
-  risk: 'write',
+  risk: 'high-risk-write',
   buildArgs: (ctx) => ({
     projectId: ctx.num('project_id'),
     reportId: ctx.num('report_id'),

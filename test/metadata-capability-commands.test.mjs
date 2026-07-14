@@ -92,12 +92,90 @@ await test('metadata data-table sql-write normalizes columns to gateway schema',
     '--columns',
     '[{"name":"id","type":"string","display_name":"ID","is_primary_key":true}]',
     '--qp',
-    '{"sql":"select 1 as id"}',
+    '{"taSqlVo":{"sql":"select 1 as id","sqlVoParams":[]},"taSqlView":{}}',
   ]);
   assert.equal(data.url, `${HOST}/api/cli/analysis/v1/capabilities/metadata.data_table.sql_write/dry-run`);
   assert.deepEqual(data.body.input.columns, [
     { column_name: 'id', column_type: 'string', column_desc: 'ID', is_primary_key: true },
   ]);
+});
+
+await test('analysis-meta metric create sends typed snake_case fields', () => {
+  const data = runCli([
+    'analysis-meta',
+    'metric',
+    'create',
+    '--project-id',
+    '1',
+    '--metric-name',
+    'pay_count',
+    '--metric-desc',
+    'Pay Count',
+    '--metric-mode',
+    '0',
+    '--metric-events',
+    '[{"eventName":"pay","analysis":"A101"}]',
+    '--metric-params',
+    '{}',
+  ]);
+  assert.equal(data.url, `${HOST}/api/cli/analysis/v1/capabilities/metadata.metric.create/dry-run`);
+  assert.deepEqual(data.body.input, {
+    project_id: 1,
+    metric_name: 'pay_count',
+    metric_desc: 'Pay Count',
+    metric_mode: 0,
+    metric_events: [{ eventName: 'pay', analysis: 'A101' }],
+    metric_params: {},
+  });
+});
+
+await test('analysis-meta virtual-property create sends typed snake_case fields', () => {
+  const data = runCli([
+    'analysis-meta',
+    'virtual-property',
+    'create',
+    '--project-id',
+    '1',
+    '--sql-expression',
+    '1',
+    '--v-prop',
+    '{"property":{"column_name":"v_pay","column_desc":"V Pay","table_type":"event","select_type":"string"}}',
+    '--properties',
+    '[]',
+    '--sql-event-relation-type',
+    'relation_by_setting',
+    '--related-events',
+    '[{"event_name":"pay","event_desc":"Pay"}]',
+  ]);
+  assert.equal(data.url, `${HOST}/api/cli/analysis/v1/capabilities/metadata.virtual_property.create/dry-run`);
+  assert.deepEqual(data.body.input, {
+    project_id: 1,
+    sql_expression: '1',
+    v_prop: { property: { column_name: 'v_pay', column_desc: 'V Pay', table_type: 'event', select_type: 'string' } },
+    properties: [],
+    sql_event_relation_type: 'relation_by_setting',
+    related_events: [{ event_name: 'pay', event_desc: 'Pay' }],
+  });
+});
+
+await test('analysis-meta super-metadata import pre-import sends input_file_id', () => {
+  const data = runCli([
+    'analysis-meta',
+    'super-metadata',
+    'import',
+    '--project-id',
+    '1',
+    '--operation',
+    'pre_import',
+    '--input-file-id',
+    'ifile_0123456789abcdef0123456789abcdef',
+  ]);
+  assert.equal(data.url, `${HOST}/api/cli/analysis/v1/capabilities/metadata.super_metadata.import/dry-run`);
+  assert.deepEqual(data.body.input, {
+    project_id: 1,
+    operation: 'pre_import',
+    input_file_id: 'ifile_0123456789abcdef0123456789abcdef',
+  });
 });
 
 await test('metadata input-file upload uses analysis gateway input-files endpoint', () => {

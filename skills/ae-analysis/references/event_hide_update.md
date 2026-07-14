@@ -1,4 +1,4 @@
-# analysis event hide-update
+# analysis-meta event hide-update
 
 Use when the user needs to batch hide or show events.
 
@@ -7,8 +7,8 @@ Do not use this command for unrelated analysis queries, ad-hoc query constructio
 Command:
 
 ```bash
-ae-cli analysis event hide-update --project-id <project_id> --event-names '{}' --is-hide true
-ae-cli analysis event hide-update --dry-run
+ae-cli analysis-meta event hide-update --project-id <project_id> --event-names '{}' --is-hide true
+ae-cli analysis-meta event hide-update --dry-run
 ```
 
 Capability id: `metadata.event.hide_update`.

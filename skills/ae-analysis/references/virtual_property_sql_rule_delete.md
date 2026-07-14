@@ -1,4 +1,4 @@
-# analysis virtual-property sql-rule-delete
+# analysis-meta virtual-property sql-rule-delete
 
 Use when the user needs to delete or revoke SQL virtual property rule.
 
@@ -7,8 +7,8 @@ Do not use this command for unrelated analysis queries, ad-hoc query constructio
 Command:
 
 ```bash
-ae-cli analysis virtual-property sql-rule-delete --project-id <project_id> --v-prop-id <v_prop_id> --operation <operation>
-ae-cli analysis virtual-property sql-rule-delete --dry-run
+ae-cli analysis-meta virtual-property sql-rule-delete --project-id <project_id> --v-prop-id <v_prop_id> --operation <operation>
+ae-cli analysis-meta virtual-property sql-rule-delete --dry-run
 ```
 
 Capability id: `metadata.virtual_property.sql_rule_delete`.

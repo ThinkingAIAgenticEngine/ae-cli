@@ -1,10 +1,10 @@
 import {
-  createAnalysisCapabilityCommand,
+  createAnalysisMetaCapabilityCommand,
   projectIdFlag,
   projectInput,
 } from '../../capability-shared.js';
 
-export const metadataDataTableInfluenceList = createAnalysisCapabilityCommand({
+export const metadataDataTableInfluenceList = createAnalysisMetaCapabilityCommand({
   resource: 'datatable',
   command: 'influence-list',
   capabilityId: 'metadata.data_table.influence_list',

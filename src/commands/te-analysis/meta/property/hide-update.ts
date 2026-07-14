@@ -1,10 +1,10 @@
 import {
-  createAnalysisCapabilityCommand,
+  createAnalysisMetaCapabilityCommand,
   projectIdFlag,
   projectInput,
 } from '../../capability-shared.js';
 
-export const metadataPropertyHideUpdate = createAnalysisCapabilityCommand({
+export const metadataPropertyHideUpdate = createAnalysisMetaCapabilityCommand({
   resource: 'property',
   command: 'hide-update',
   capabilityId: 'metadata.property.hide_update',

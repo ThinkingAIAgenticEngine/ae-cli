@@ -1,4 +1,4 @@
-# analysis event influence-list
+# analysis-meta event influence-list
 
 Use when the user needs to list assets affected by event delete, hide, or update.
 
@@ -7,8 +7,8 @@ Do not use this command for unrelated analysis queries, ad-hoc query constructio
 Command:
 
 ```bash
-ae-cli analysis event influence-list --project-id <project_id> --event-name <event_name>
-ae-cli analysis event influence-list --dry-run
+ae-cli analysis-meta event influence-list --project-id <project_id> --event-name <event_name>
+ae-cli analysis-meta event influence-list --dry-run
 ```
 
 Capability id: `metadata.event.influence_list`.

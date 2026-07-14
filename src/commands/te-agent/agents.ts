@@ -204,7 +204,7 @@ export const delAgent: Command = {
   flags: [
     { name: "id", type: "string", required: true, desc: "Agent record ID (CUID)" },
   ],
-  risk: "write",
+  risk: "high-risk-write",
   dryRun: (ctx) => ({
     method: "DELETE",
     url: `${BASE_PATH}/${encodeURIComponent(ctx.str("id"))}`,

@@ -1,4 +1,4 @@
-# analysis event get
+# analysis-meta event get
 
 Use when the user needs to get one super event metadata detail.
 
@@ -7,8 +7,8 @@ Do not use this command for unrelated analysis queries, ad-hoc query constructio
 Command:
 
 ```bash
-ae-cli analysis event get --project-id <project_id> --event-name <event_name>
-ae-cli analysis event get --dry-run
+ae-cli analysis-meta event get --project-id <project_id> --event-name <event_name>
+ae-cli analysis-meta event get --dry-run
 ```
 
 Capability id: `metadata.event.get`.

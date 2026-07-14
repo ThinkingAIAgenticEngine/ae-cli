@@ -8,7 +8,7 @@ Domain: **Metadata Query**
 
 **Fuzzy Search Fallback:** If `--query` returns no results, retry with broader keywords (max 3 attempts), then fall back to full list. See [SKILL.md § C. FUZZY_SEARCH_FALLBACK](../SKILL.md#c-fuzzy_search_fallback).
 
-**Not a builder pre-step:** Do not call `+list_metrics` before `+build_event_analysis_qp`, `+build_retention_analysis_qp`, `+build_funnel_analysis_qp`, or `+build_prop_analysis_qp` for normal ad-hoc analysis. Event builder resolves saved metric names internally when the metric name is passed in `metrics[].event`. If the builder fails, stop and ask for clarification instead of using this command as a fallback.
+**Not a builder pre-step:** Do not call `+list_metrics` before non-SQL ad-hoc analysis. The matching builder resolves referenced metrics internally; the event builder accepts a saved metric name in `metrics[].event`. If the builder fails, stop and ask for clarification instead of using this command as a fallback.
 
 ## Use Cases
 - List metric metadata in the project. Supports keyword filtering and returns metric IDs, names, display names, model types, remarks, and related metadata, but not metric calculation results.

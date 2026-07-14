@@ -1,4 +1,4 @@
-# analysis asset authentication-list
+# analysis-meta asset authentication-list
 
 Use when the user needs to list authenticatable project assets and authentication status.
 
@@ -7,8 +7,8 @@ Do not use this command for unrelated analysis queries, ad-hoc query constructio
 Command:
 
 ```bash
-ae-cli analysis asset authentication-list --project-id <project_id>
-ae-cli analysis asset authentication-list --dry-run
+ae-cli analysis-meta asset authentication-list --project-id <project_id>
+ae-cli analysis-meta asset authentication-list --dry-run
 ```
 
 Capability id: `metadata.asset_authentication.list`.

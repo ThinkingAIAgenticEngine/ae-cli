@@ -1,4 +1,4 @@
-# analysis exchange rule-update
+# analysis-meta exchange rule-update
 
 Use when the user needs to save currency field, amount field, and target currency rules.
 
@@ -7,8 +7,8 @@ Do not use this command for unrelated analysis queries, ad-hoc query constructio
 Command:
 
 ```bash
-ae-cli analysis exchange rule-update --project-id <project_id> --payload '{}'
-ae-cli analysis exchange rule-update --dry-run
+ae-cli analysis-meta exchange rule-update --project-id <project_id> --payload '{}'
+ae-cli analysis-meta exchange rule-update --dry-run
 ```
 
 Capability id: `metadata.exchange_rule.update`.

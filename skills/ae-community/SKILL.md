@@ -214,4 +214,4 @@ Structured multi-step reports (MCP tool chains) — open the linked reference fo
 
 ## Write operations
 
-Most community commands are **read-only**. If new write-capable commands are added later, confirm user intent and use `--yes` where the CLI marks **`risk: write`**.
+Most community commands are **read-only**. If new write-capable commands are added later, confirm user intent and use `--yes` where the CLI marks **`risk: high-risk-write`**.

@@ -1,13 +1,13 @@
 import {
   compactInput,
-  createAnalysisCapabilityCommand,
+  createAnalysisMetaCapabilityCommand,
   optionalNumber,
   optionalString,
   projectIdFlag,
   projectInput,
 } from '../../capability-shared.js';
 
-export const metadataSuperMetadataExport = createAnalysisCapabilityCommand({
+export const metadataSuperMetadataExport = createAnalysisMetaCapabilityCommand({
   resource: 'super-metadata',
   command: 'export',
   capabilityId: 'metadata.super_metadata.export',

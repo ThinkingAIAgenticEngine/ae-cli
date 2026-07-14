@@ -1,4 +1,4 @@
-# analysis property get
+# analysis-meta property get
 
 Use when the user needs to get one event or user property metadata detail.
 
@@ -7,8 +7,8 @@ Do not use this command for unrelated analysis queries, ad-hoc query constructio
 Command:
 
 ```bash
-ae-cli analysis property get --project-id <project_id> --table-type <table_type> --prop-name <prop_name>
-ae-cli analysis property get --dry-run
+ae-cli analysis-meta property get --project-id <project_id> --table-type <table_type> --prop-name <prop_name>
+ae-cli analysis-meta property get --dry-run
 ```
 
 Capability id: `metadata.property.get`.

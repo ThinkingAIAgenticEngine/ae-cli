@@ -1,4 +1,4 @@
-# analysis virtual-event get
+# analysis-meta virtual-event get
 
 Use when the user needs to get virtual event rule.
 
@@ -7,8 +7,8 @@ Do not use this command for unrelated analysis queries, ad-hoc query constructio
 Command:
 
 ```bash
-ae-cli analysis virtual-event get --project-id <project_id> --v-event-id <v_event_id>
-ae-cli analysis virtual-event get --dry-run
+ae-cli analysis-meta virtual-event get --project-id <project_id> --v-event-id <v_event_id>
+ae-cli analysis-meta virtual-event get --dry-run
 ```
 
 Capability id: `metadata.virtual_event.get`.

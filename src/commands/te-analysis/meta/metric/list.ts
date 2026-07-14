@@ -1,12 +1,12 @@
 import {
   compactInput,
-  createAnalysisCapabilityCommand,
+  createAnalysisMetaCapabilityCommand,
   optionalBoolean,
   projectIdFlag,
   projectInput,
 } from '../../capability-shared.js';
 
-export const metadataMetricList = createAnalysisCapabilityCommand({
+export const metadataMetricList = createAnalysisMetaCapabilityCommand({
   resource: 'metric',
   command: 'list',
   capabilityId: 'metadata.metric.list',

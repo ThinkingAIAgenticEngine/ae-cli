@@ -19,7 +19,7 @@ export const deleteChannel: Command = {
     { name: 'project_id', type: 'number', required: true, alias: 'p', desc: 'Project ID' },
     { name: 'channel_id', type: 'string', required: true, desc: 'Channel ID' },
   ],
-  risk: 'write',
+  risk: 'high-risk-write',
   dryRun: (ctx) => buildMcpDryRun(ctx, serviceName, toolName, buildArgs(ctx)),
   execute: async (ctx) => executeMcpCommand(ctx, serviceName, toolName, buildArgs(ctx)),
 };

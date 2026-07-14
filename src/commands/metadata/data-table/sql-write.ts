@@ -1,5 +1,7 @@
 import { createCapabilityCommand, optionalNumber, optionalString, requiredDataTableColumns } from '../shared.js';
 
+const SQL_DATATABLE_QP_EXAMPLE = '{"taSqlVo":{"sql":"select \'1\' as id","sqlVoParams":[]},"taSqlView":{}}';
+
 export const dataTableSqlWrite = createCapabilityCommand({
   resource: 'data-table',
   command: 'sql-write',
@@ -8,8 +10,8 @@ export const dataTableSqlWrite = createCapabilityCommand({
   flags: [
     { name: 'project-id', type: 'number', required: true, desc: 'Numeric project ID.', alias: 'p' },
     { name: 'operation', type: 'string', required: true, desc: 'Write operation: create or update.' },
-    { name: 'columns', type: 'json', required: true, desc: 'Column definitions JSON array. Use column_name/column_type/column_desc, or name/type/display_name aliases.' },
-    { name: 'qp', type: 'json', required: true, desc: 'SQL data table query plan JSON.' },
+    { name: 'columns', type: 'json', required: true, desc: 'Column definitions JSON array. Use column_name/column_type/column_desc, or name/type/display_name aliases. Must match SQL output columns.' },
+    { name: 'qp', type: 'json', required: true, desc: `SqlDatatableDef JSON object with taSqlVo.sql (required) and taSqlView (use {} when empty). Do not pass a top-level sql field. Create example: ${SQL_DATATABLE_QP_EXAMPLE}` },
     { name: 'data-table-id', type: 'number', required: false, desc: 'Existing data table ID for update operations.' },
     { name: 'table-name', type: 'string', required: false, desc: 'Technical data table name for create. Use datatable_<project_id>_<name>.' },
     { name: 'display-name', type: 'string', required: false, desc: 'Human-readable data table name.' },

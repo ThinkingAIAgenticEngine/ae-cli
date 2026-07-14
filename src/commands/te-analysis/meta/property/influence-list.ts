@@ -1,10 +1,10 @@
 import {
-  createAnalysisCapabilityCommand,
+  createAnalysisMetaCapabilityCommand,
   projectIdFlag,
   projectInput,
 } from '../../capability-shared.js';
 
-export const metadataPropertyInfluenceList = createAnalysisCapabilityCommand({
+export const metadataPropertyInfluenceList = createAnalysisMetaCapabilityCommand({
   resource: 'property',
   command: 'influence-list',
   capabilityId: 'metadata.property.influence_list',

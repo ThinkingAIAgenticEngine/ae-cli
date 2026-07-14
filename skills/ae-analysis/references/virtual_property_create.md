@@ -1,4 +1,4 @@
-# analysis virtual-property create
+# analysis-meta virtual-property create
 
 Use when the user needs to create a SQL virtual event or user property.
 
@@ -7,8 +7,8 @@ Do not use this command for unrelated analysis queries, ad-hoc query constructio
 Command:
 
 ```bash
-ae-cli analysis virtual-property create --project-id <project_id> --payload '{}'
-ae-cli analysis virtual-property create --dry-run
+ae-cli analysis-meta virtual-property create --project-id <project_id> --payload '{}'
+ae-cli analysis-meta virtual-property create --dry-run
 ```
 
 Capability id: `metadata.virtual_property.create`.

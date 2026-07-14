@@ -14,14 +14,12 @@ export const buildClusterDefinition = createMcpCommand({
   ],
   risk: 'read',
   buildArgs: (ctx) => ({
-    request: {
-      projectId: ctx.num('project_id'),
-      type: ctx.str('type'),
-      conditions: optionalJson(ctx, 'conditions'),
-      includeFilter: optionalJson(ctx, 'include_filter'),
-      excludeFilter: optionalJson(ctx, 'exclude_filter'),
-      sql: optionalString(ctx, 'sql'),
-    },
+    projectId: ctx.num('project_id'),
+    type: ctx.str('type'),
+    conditions: optionalJson(ctx, 'conditions'),
+    includeFilter: optionalJson(ctx, 'include_filter'),
+    excludeFilter: optionalJson(ctx, 'exclude_filter'),
+    sql: optionalString(ctx, 'sql'),
     authenticatedOnly: optionalBoolean(ctx, 'authenticated_only'),
   }),
 });

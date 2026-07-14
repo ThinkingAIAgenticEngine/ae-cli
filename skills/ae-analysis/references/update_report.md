@@ -11,8 +11,8 @@ Domain: **Report Management**
 
 ## Commands
 ```bash
-ae-cli analysis +update_report --project_id <project_id> --report_id <report_id> --version <version> --report_name "New Name"
-ae-cli analysis +update_report --project_id <project_id> --report_id <report_id> --version <version> --qp '<qp_json>' --report_model 1
+ae-cli analysis +update_report --project_id <project_id> --report_id <report_id> --report_version <version> --report_name "New Name"
+ae-cli analysis +update_report --project_id <project_id> --report_id <report_id> --report_version <version> --qp '<qp_json>' --report_model 1
 ae-cli analysis +update_report --dry-run
 ```
 
@@ -21,7 +21,7 @@ ae-cli analysis +update_report --dry-run
 |---|---|---|
 | `--project_id` / `-p` | Yes | Project ID |
 | `--report_id` | Yes | Report ID to update |
-| `--version` | Yes | Current report version number. Retrieve via `+get_report_definition`. |
+| `--report_version` | Yes | Current report version number. Retrieve via `+get_report_definition`. This name avoids Commander intercepting the global `--version` flag. |
 | `--report_name` | No | New report name. Omit to keep existing. |
 | `--report_desc` | No | New report description. Omit to keep existing. |
 | `--qp` | No | New QP JSON string. Omit to keep existing. When provided, also supply `--report_model`. |

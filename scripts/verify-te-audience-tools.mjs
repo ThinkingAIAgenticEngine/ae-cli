@@ -95,7 +95,8 @@ const requiredTokensByFile = {
   'src/commands/te-audience/tag/list-tag-members.ts': ["name: 'query'", "name: 'fields'", "name: 'limit'", "name: 'offset'", ...lifecycleDescriptionTokens],
   'src/commands/te-audience/schema/get-cluster-definition-schema.ts': ["name: 'cluster_type'", "name: 'response_mode'", "name: 'condition_subtype'"],
   'src/commands/te-audience/schema/get-tag-definition-schema.ts': ["name: 'type'", "name: 'response_mode'", "name: 'condition_subtype'"],
-  'src/commands/te-audience/cluster/build-cluster-definition.ts': ["name: 'authenticated_only'", 'authenticatedOnly'],
+  'src/commands/te-audience/cluster/build-cluster-definition.ts': ["name: 'project_id'", "projectId: ctx.num('project_id')", "name: 'type'", "type: ctx.str('type')", "name: 'authenticated_only'", 'authenticatedOnly'],
+  'src/commands/te-audience/cluster/create-id-cluster.ts': ["mcpService: 'te_analysis_extend'"],
   'src/commands/te-audience/tag/build-tag-definition.ts': ["name: 'authenticated_only'", 'authenticatedOnly'],
 };
 

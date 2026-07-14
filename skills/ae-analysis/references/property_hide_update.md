@@ -1,4 +1,4 @@
-# analysis property hide-update
+# analysis-meta property hide-update
 
 Use when the user needs to batch hide or show properties.
 
@@ -7,8 +7,8 @@ Do not use this command for unrelated analysis queries, ad-hoc query constructio
 Command:
 
 ```bash
-ae-cli analysis property hide-update --project-id <project_id> --table-type <table_type> --prop-names '{}' --is-hide true
-ae-cli analysis property hide-update --dry-run
+ae-cli analysis-meta property hide-update --project-id <project_id> --table-type <table_type> --prop-names '{}' --is-hide true
+ae-cli analysis-meta property hide-update --dry-run
 ```
 
 Capability id: `metadata.property.hide_update`.

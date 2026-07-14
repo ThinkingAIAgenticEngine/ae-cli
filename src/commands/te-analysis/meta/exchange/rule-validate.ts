@@ -1,11 +1,11 @@
 import {
-  createAnalysisCapabilityCommand,
+  createAnalysisMetaCapabilityCommand,
   payloadFlag,
   projectIdFlag,
   projectInput,
 } from '../../capability-shared.js';
 
-export const metadataExchangeRuleValidate = createAnalysisCapabilityCommand({
+export const metadataExchangeRuleValidate = createAnalysisMetaCapabilityCommand({
   resource: 'exchange',
   command: 'rule-validate',
   capabilityId: 'metadata.exchange_rule.validate',

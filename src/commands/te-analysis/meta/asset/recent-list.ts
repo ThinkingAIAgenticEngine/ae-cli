@@ -1,11 +1,11 @@
 import {
-  createAnalysisCapabilityCommand,
+  createAnalysisMetaCapabilityCommand,
   payloadFlag,
   projectIdFlag,
   projectInput,
 } from '../../capability-shared.js';
 
-export const metadataAssetRecentList = createAnalysisCapabilityCommand({
+export const metadataAssetRecentList = createAnalysisMetaCapabilityCommand({
   resource: 'asset',
   command: 'recent-list',
   capabilityId: 'metadata.asset.recent_list',

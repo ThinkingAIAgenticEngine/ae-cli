@@ -22,18 +22,16 @@
 - `query_report_data` - 查询报告数据
 - `create_report` - 创建新报告
 
-### 3. 仪表盘管理 (Dashboard Management) - 10 个工具
-- `list_dashboards` - 列出项目可访问仪表盘（支持字段投影与分页）
-- `query_dashboard_detail` - 获取仪表盘详情
-- `query_dashboard_report_data` - 查询仪表盘报告数据
-- `create_dashboard` - 创建新仪表盘
-- `update_dashboard` - 更新仪表盘配置
-- `delete_dashboard` - 删除仪表盘
-- `list_bi_panels` - 列出当前 MCP 用户可访问的 BI 仪表盘
-- `get_bi_panel_detail` - 获取 BI 仪表盘已发布版本结构、页面、图表和控件 schema
-- `query_bi_panel_data` - 查询 BI 仪表盘图表数据或总结摘要正文
+### 3. 仪表盘与 BI 管理
 
-> 注意：`copy_dashboard`、`freeze_dashboards`、`move_dashboard`、`list_spaces` 属于 `te-mcp-analysis-extend`（analysis-extend 路由）。
+CLI 已统一走 Capability Gateway，不再使用旧的 `+list_dashboards`、`+query_dashboard_report_data`、`+list_bi_panels` 等 MCP 命令。使用：
+
+- `ae-cli analysis dashboard list|get|create|update|delete`
+- `ae-cli analysis dashboard-report-data run|export`
+- `ae-cli analysis bi-panel list|get|create|update|delete`
+- `ae-cli analysis bi-panel-page-data run|export`
+
+完整命令矩阵见 `skills/ae-analysis/references/analysis_gateway_assets.md`。
 
 ### 4. 报告管理补充 (Report Management)
 - `delete_report` - 删除报告（走 analysis 路由）
@@ -187,7 +185,9 @@
   - `dashboardIds` (List<Long>, optional) - 关联的仪表盘 ID 列表
 - **风险**: write
 
-### 仪表盘管理工具
+### 历史 MCP 仪表盘工具
+
+以下为服务端历史工具说明，仅用于排查旧调用；CLI/Agent 新调用必须使用 Capability Gateway 的 `analysis dashboard ...` 与 `analysis dashboard-report-data ...` 命令。
 
 #### list_dashboards
 - **描述**: 列出当前用户可访问的仪表盘元数据，支持关键词过滤、字段投影和分页
@@ -337,11 +337,13 @@
 - **描述**: 下钻用户事件序列
 - **参数**:
   - `projectId` (Integer, required) - 项目 ID
-  - `accountId` (String, required) - 账号 ID
-  - `eventModel` (String, required) - 分析查询 JSON
+  - `userId` (String, required) - 来自 `drilldown_users` 的用户 ID
+  - `eventNames` (List<String>, required) - 事件名称列表
+  - `targetDates` (List<String>, required) - 离散目标时间点列表
   - `zoneOffset` (Integer, optional) - 时区偏移
-  - `page` (Integer, optional) - 页码
-  - `pageSize` (Integer, optional) - 每页大小
+  - `properties` (List<String>, optional) - 要展示的事件属性
+  - `limit` (Integer, optional) - 返回条数，默认 1000，最大 10000
+  - `offset` (Integer, optional) - 行偏移，默认 0
   - `requestId` (String, required) - 必填，用于追踪和取消的唯一请求 ID；必须在查询开始前生成并传入，格式为 `mcp_<32 lowercase hex UUID>`，例如 `mcp_0123456789abcdef0123456789abcdef`；若 caller/agent 停止等待、请求返回 `fetch failed`、或发生 HTTP timeout，backend query may still be running，可用同一个 ID 调 `+cancel_query --request_id <same value>`；requestId 不会自动生成，因为调用方必须在响应前就知道它；省略或空白返回 `REQUEST_ID_REQUIRED`，格式错误返回 `INVALID_REQUEST_ID`；响应 `metadata.requestId` 会回显传入值。
   - `timeoutMinutes` (Long, optional) - 查询超时时间（分钟），默认 30
 - **风险**: read

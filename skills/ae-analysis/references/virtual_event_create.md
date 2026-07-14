@@ -1,4 +1,4 @@
-# analysis virtual-event create
+# analysis-meta virtual-event create
 
 Use when the user needs to create a virtual event from events and filters.
 
@@ -7,8 +7,8 @@ Do not use this command for unrelated analysis queries, ad-hoc query constructio
 Command:
 
 ```bash
-ae-cli analysis virtual-event create --project-id <project_id> --override true --payload '{}'
-ae-cli analysis virtual-event create --dry-run
+ae-cli analysis-meta virtual-event create --project-id <project_id> --override true --payload '{}'
+ae-cli analysis-meta virtual-event create --dry-run
 ```
 
 Capability id: `metadata.virtual_event.create`.

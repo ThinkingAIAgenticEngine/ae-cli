@@ -7,7 +7,7 @@ export const deleteMetric = createMcpCommand({
     { name: 'project_id', type: 'number', required: true, desc: 'Project ID', alias: 'p' },
     { name: 'metric_id', type: 'number', required: true, desc: 'Metric ID to delete' },
   ],
-  risk: 'write',
+  risk: 'high-risk-write',
   mcpService: 'te_analysis_extend',
   buildArgs: (ctx) => ({
     projectId: ctx.num('project_id'),

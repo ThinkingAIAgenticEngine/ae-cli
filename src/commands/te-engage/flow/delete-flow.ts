@@ -19,7 +19,7 @@ export const deleteFlow: Command = {
     { name: 'project_id', type: 'number', required: true, alias: 'p', desc: 'Project ID' },
     { name: 'flow_uuid_list', type: 'json', required: true, desc: 'Flow UUID list as JSON array' },
   ],
-  risk: 'write',
+  risk: 'high-risk-write',
   validate: (ctx) => {
     readRequiredJsonArray(ctx, 'flow_uuid_list');
   },

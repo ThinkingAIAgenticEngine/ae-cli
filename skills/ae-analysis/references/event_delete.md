@@ -1,4 +1,4 @@
-# analysis event delete
+# analysis-meta event delete
 
 Use when the user needs to batch delete events or virtual events.
 
@@ -7,8 +7,8 @@ Do not use this command for unrelated analysis queries, ad-hoc query constructio
 Command:
 
 ```bash
-ae-cli analysis event delete --project-id <project_id> --event-names '{}'
-ae-cli analysis event delete --dry-run
+ae-cli analysis-meta event delete --project-id <project_id> --event-names '{}'
+ae-cli analysis-meta event delete --dry-run
 ```
 
 Capability id: `metadata.event.delete`.

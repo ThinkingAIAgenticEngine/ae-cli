@@ -1,4 +1,4 @@
-# analysis event update
+# analysis-meta event update
 
 Use when the user needs to update event display names and remarks.
 
@@ -7,8 +7,8 @@ Do not use this command for unrelated analysis queries, ad-hoc query constructio
 Command:
 
 ```bash
-ae-cli analysis event update --project-id <project_id> --event-name <event_name> --event-desc <event_desc> --remark <remark>
-ae-cli analysis event update --dry-run
+ae-cli analysis-meta event update --project-id <project_id> --event-name <event_name> --event-desc <event_desc> --remark <remark>
+ae-cli analysis-meta event update --dry-run
 ```
 
 Capability id: `metadata.event.update`.

@@ -18,7 +18,7 @@ export const publicLinkDelete = createAnalysisCapabilityCommand({
     { name: 'link-id', type: 'number', required: false, desc: 'Public link ID.' },
     { name: 'link-ids', type: 'json', required: false, desc: 'Public link ID array.' },
   ],
-  risk: 'write',
+  risk: 'high-risk-write',
   buildInput: (ctx) => compactInput({
     ...projectInput(ctx),
     company_id: optionalNumber(ctx, 'company-id'),

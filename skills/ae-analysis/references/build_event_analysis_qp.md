@@ -8,7 +8,7 @@ Domain: **Model Analysis**
 - Build a validated event-analysis QP from structured intent.
 - Use in the mandatory builder flow before `+query_adhoc --model_type event`.
 - This command builds QP only and does not execute the analysis query.
-- This is one of exactly four QP builders: `event`, `retention`, `funnel`, `prop_analysis`.
+- This is the `event` builder in the ten-model guided QP builder set.
 - Use this builder for event-analysis ad hoc requests; do not manually build event QP through `+get_analysis_query_schema`.
 
 ## JSON Rules

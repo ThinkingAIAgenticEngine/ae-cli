@@ -1,4 +1,4 @@
-# analysis property related-events
+# analysis-meta property related-events
 
 Use when the user needs to list events related to one event property.
 
@@ -7,8 +7,8 @@ Do not use this command for unrelated analysis queries, ad-hoc query constructio
 Command:
 
 ```bash
-ae-cli analysis property related-events --project-id <project_id> --prop-name <prop_name>
-ae-cli analysis property related-events --dry-run
+ae-cli analysis-meta property related-events --project-id <project_id> --prop-name <prop_name>
+ae-cli analysis-meta property related-events --dry-run
 ```
 
 Capability id: `metadata.property.related_events`.

@@ -1,15 +1,27 @@
-# analysis folder create
+# analysis folder create (L3)
 
-Use when the user explicitly wants to create a folder in personal space or a project space.
+Use when the user wants to create a folder in personal space or project space.
 
-Do not use to create a project space. Use `project-space create`.
+Do not use to create a project space. Use `analysis.project_space.create` via capability run.
 
-Command:
+This capability has no curated `ae-cli analysis` command. Read [`ae-capability`](../../ae-capability/SKILL.md), then:
 
 ```bash
-ae-cli analysis folder create --project-id <project_id> --folder-name <name> [--space-id <space_id>] [--parent-folder-id <folder_id>] [--payload '{...}'] --yes
+ae-cli capability inspect analysis.folder.create
+ae-cli capability dry-run analysis.folder.create --input '{"project_id":1,"folder_name":"Weekly","space_id":10}'
+ae-cli capability run analysis.folder.create --input '{"project_id":1,"folder_name":"Weekly","space_id":10}'
 ```
 
-Input sends `project_id`, `folder_name`, and optional `space_id`, `parent_folder_id`, `payload`.
+`risk=write` — no chat confirmation required after dry-run succeeds.
+
+Input uses snake_case JSON. Common fields:
+
+| field | type | required | description |
+| --- | --- | --- | --- |
+| `project_id` | integer | yes | Project ID. |
+| `folder_name` | string | no | Folder name. |
+| `space_id` | integer | no | Project space ID. Omit for personal-space folders. |
+| `parent_folder_id` | integer | no | Parent project-space folder ID. |
+| `payload` | object | no | Optional snake_case object for complex create payloads. |
 
 Output is the gateway envelope. `data` contains the created folder result.

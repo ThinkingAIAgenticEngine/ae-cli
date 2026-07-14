@@ -1,10 +1,10 @@
 import {
-  createAnalysisCapabilityCommand,
+  createAnalysisMetaCapabilityCommand,
   projectIdFlag,
   projectInput,
 } from '../../capability-shared.js';
 
-export const metadataDataTableVersionGet = createAnalysisCapabilityCommand({
+export const metadataDataTableVersionGet = createAnalysisMetaCapabilityCommand({
   resource: 'datatable',
   command: 'version-get',
   capabilityId: 'metadata.data_table_version.get',

@@ -1,4 +1,4 @@
-# analysis super-metadata export
+# analysis-meta super-metadata export
 
 Use when the user needs to export super event and super property configuration.
 
@@ -7,9 +7,9 @@ Do not use this command for unrelated analysis queries, ad-hoc query constructio
 Command:
 
 ```bash
-ae-cli analysis super-metadata export --project-id <project_id>
-ae-cli analysis super-metadata export --project-id <project_id> --request-id cli_0123456789abcdef0123456789abcdef --timeout-seconds 3600
-ae-cli analysis super-metadata export --dry-run
+ae-cli analysis-meta super-metadata export --project-id <project_id>
+ae-cli analysis-meta super-metadata export --project-id <project_id> --request-id cli_0123456789abcdef0123456789abcdef --timeout-seconds 3600
+ae-cli analysis-meta super-metadata export --dry-run
 ```
 
 Capability id: `metadata.super_metadata.export`.

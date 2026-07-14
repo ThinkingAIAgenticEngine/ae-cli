@@ -2,6 +2,7 @@ import { createMcpCommand, optionalString } from '../shared.js';
 
 export const updateIdCluster = createMcpCommand({
   command: '+update_id_cluster',
+  mcpService: 'te_analysis_extend',
   description: 'Update an existing ID cluster by re-uploading CSV file content as plain text. The cluster is identified by cluster_name. The operation is asynchronous.',
   flags: [
     { name: 'project_id', type: 'number', required: true, desc: 'Project ID', alias: 'p' },

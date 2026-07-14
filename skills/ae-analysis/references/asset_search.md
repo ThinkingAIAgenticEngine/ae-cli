@@ -1,4 +1,4 @@
-# analysis asset search
+# analysis-meta asset search
 
 Use when the user needs to search project assets by keyword.
 
@@ -7,8 +7,8 @@ Do not use this command for unrelated analysis queries, ad-hoc query constructio
 Command:
 
 ```bash
-ae-cli analysis asset search --project-id <project_id> --payload '{}'
-ae-cli analysis asset search --dry-run
+ae-cli analysis-meta asset search --project-id <project_id> --payload '{}'
+ae-cli analysis-meta asset search --dry-run
 ```
 
 Capability id: `metadata.asset.search`.

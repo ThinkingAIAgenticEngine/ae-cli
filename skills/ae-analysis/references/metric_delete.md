@@ -1,4 +1,4 @@
-# analysis metric delete
+# analysis-meta metric delete
 
 Use when the user needs to delete a metric.
 
@@ -7,8 +7,8 @@ Do not use this command for unrelated analysis queries, ad-hoc query constructio
 Command:
 
 ```bash
-ae-cli analysis metric delete --project-id <project_id> --metric-id <metric_id>
-ae-cli analysis metric delete --dry-run
+ae-cli analysis-meta metric delete --project-id <project_id> --metric-id <metric_id>
+ae-cli analysis-meta metric delete --dry-run
 ```
 
 Capability id: `metadata.metric.delete`.

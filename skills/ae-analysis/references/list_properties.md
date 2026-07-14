@@ -6,7 +6,7 @@ Domain: **Metadata Query**
 
 ## Constraints
 
-**Not a builder pre-step:** Do not call `+list_properties` before builder-supported ad-hoc analysis (`event`, `retention`, `funnel`, `prop_analysis`). The matching QP builder resolves property names internally. If the builder returns MCP failure, stop and ask for clarification instead of using this command as a fallback.
+**Not a builder pre-step:** Do not call `+list_properties` before non-SQL ad-hoc analysis. The matching QP builder resolves property names internally. If the builder returns MCP failure, stop and ask for clarification instead of using this command as a fallback.
 
 ## Use Cases
 - Read-only query for SYSTEM METADATA properties already effective in the project. Supports event/user scope. Do NOT use for tracking-plan metadata (bury/track program); that belongs to BuryProgramTool.

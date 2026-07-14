@@ -1,15 +1,29 @@
-# analysis project-space create
+# analysis project-space create (L3)
 
 Use when the user explicitly wants to create a project space.
 
-Do not use to create folders inside a space. Use `folder create`.
+Do not use to create folders inside a space. Use `analysis.folder.create` via capability run.
 
-Command:
+This capability has no curated `ae-cli analysis` command. Read [`ae-capability`](../../ae-capability/SKILL.md), then:
 
 ```bash
-ae-cli analysis project-space create --project-id <project_id> [--space-name <name>] [--space-desc <text>] [--avatar-type <type>] [--color-key <key>] [--avatar <value>] [--payload '{...}'] --yes
+ae-cli capability inspect analysis.project_space.create
+ae-cli capability dry-run analysis.project_space.create --input '{"project_id":1,"space_name":"lds-test-071301","avatar_type":1}'
+ae-cli capability run analysis.project_space.create --input '{"project_id":1,"space_name":"lds-test-071301","avatar_type":1}'
 ```
 
-Input sends `project_id` plus optional space metadata and `payload`. `avatar_type` defaults to `1` (word avatar) when omitted. When using `--payload`, put custom avatar fields in the payload or pass explicit top-level flags.
+`risk=write` — no chat confirmation required after dry-run succeeds.
+
+Input uses snake_case JSON. Common fields:
+
+| field | type | required | description |
+| --- | --- | --- | --- |
+| `project_id` | integer | yes | Project ID. |
+| `space_name` | string | no | Project space name. |
+| `space_desc` | string | no | Project space description. |
+| `avatar_type` | integer | no | Avatar type: 1=WORD, 2=ICON, 3=IMAGE. Default 1. |
+| `color_key` | string | no | Avatar color key. |
+| `avatar` | string | no | Avatar content. |
+| `payload` | object | no | Optional snake_case object for complex create payloads. |
 
 Output is the gateway envelope. `data` contains the created project-space result.

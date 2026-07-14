@@ -1,15 +1,30 @@
-# analysis folder delete
+# analysis folder delete (L3)
 
-Use when the user explicitly wants to delete one or more folders.
+Use when the user wants to delete one or more folders.
 
-Do not use for deleting dashboards or BI panels inside a folder. Use the asset delete command.
+This capability has no curated `ae-cli analysis` command. Read [`ae-capability`](../../ae-capability/SKILL.md) High-Risk Confirmation Workflow, then:
 
-Command:
+**Phase 1 — preview:**
 
 ```bash
-ae-cli analysis folder delete --project-id <project_id> [--folder-id <folder_id>] [--folder-ids '[1,2]'] [--space-id <space_id>] --yes
+ae-cli capability inspect analysis.folder.delete
+ae-cli capability dry-run analysis.folder.delete --input '{"project_id":1,"folder_ids":[1001,1002]}'
 ```
 
-Input sends `project_id`, either `folder_id` or `folder_ids`, and optional `space_id`.
+Summarize capability ID, target folder IDs, and `risk=high-risk-write` in chat. Ask the user to confirm.
+
+**Phase 2 — execute (only after explicit user confirmation):**
+
+```bash
+ae-cli capability run analysis.folder.delete --input '{"project_id":1,"folder_ids":[1001,1002]}' --yes
+```
+
+Input uses snake_case JSON. Common fields:
+
+| field | type | required | description |
+| --- | --- | --- | --- |
+| `project_id` | integer | yes | Project ID. |
+| `folder_id` | integer | no | Single folder ID. |
+| `folder_ids` | integer[] | no | Batch folder IDs. |
 
 Output is the gateway envelope. `data` contains the delete result.

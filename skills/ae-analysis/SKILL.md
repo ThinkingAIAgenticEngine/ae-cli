@@ -10,7 +10,9 @@ description: "AE/TE/ThinkingEngine/ThinkingAI ae-cli manual for analysis-side ta
 > **CRITICAL - For all commands that require `project_id`, you MUST satisfy `PROJECT_ID_GATE` first (no guessing): verify the project by ID/name with `analysis_common +list_projects` only when there is no valid project context yet, when the user switches project/host/environment, or when the supplied project is ambiguous. Reuse a project already verified in the same continuous conversation and same host/environment.**
 > **CRITICAL - For write operations in this skill, you MUST complete the post-write link loop when applicable:** after success and extractable `resource_id`, call `analysis_common +get_resource_url` and return the main result + resource link (or explicit link-failure reason).
 > **CRITICAL - Before running any `+<tool_name>` command, you MUST first read the corresponding `references/<tool_name>.md`.** The reference filename always equals the command name without the leading `+`, for example `+query_adhoc` -> `references/query_adhoc.md`.
-> **CRITICAL - Before running any capability-gateway asset command such as `ae-cli analysis dashboard list`, `ae-cli analysis bi-panel get`, `ae-cli analysis project-space create`, or `ae-cli analysis public-link list`, read the matching `references/<resource>_<action>.md` file. Replace hyphens with underscores, for example `analysis dashboard list` -> `references/dashboard_list.md`, `analysis bi-panel get` -> `references/bi_panel_get.md`. Use [`references/analysis_gateway_assets.md`](references/analysis_gateway_assets.md) only as the overview matrix.**
+> **CRITICAL - Before running any capability-gateway L2 command such as `ae-cli analysis dashboard list`, `ae-cli analysis bi-panel get`, `ae-cli analysis project-space list`, or `ae-cli analysis public-link list`, read the matching `references/<resource>_<action>.md` file. Replace hyphens with underscores, for example `analysis dashboard list` -> `references/dashboard_list.md`, `analysis bi-panel get` -> `references/bi_panel_get.md`. Use [`references/analysis_gateway_assets.md`](references/analysis_gateway_assets.md) as the overview matrix.**
+> **CRITICAL - Project-space and folder create/delete/share are L3 capabilities only.** Do not use `ae-cli analysis project-space create` or `ae-cli analysis folder create`. Read the matching `references/<resource>_<action>.md` file and invoke via `ae-cli capability inspect/dry-run/run`. For `*.members` read capabilities, use `capability search/inspect/run` per [`ae-capability`](../../ae-capability/SKILL.md) and the L3 matrix in `analysis_gateway_assets.md` — no standalone reference file (see `te-cli/docs/capability-command-admission.md` §10).
+> **CRITICAL - L3 delete capabilities:** user intent is not execution authorization. For `risk=high-risk-write`, dry-run first, summarize in chat, ask for confirmation, and call `capability run ... --yes` only in a later turn after the user explicitly confirms. For `risk=write`, run directly after dry-run. Follow [`ae-capability`](../../ae-capability/SKILL.md) High-Risk Confirmation Workflow.
 
 ## Global AE CLI Rules
 
@@ -31,9 +33,9 @@ Output and errors:
 
 Safety constraints:
 
-- Read commands can execute directly after required IDs and references are verified.
-- Write commands require explicit user intent and normally keep the confirmation prompt.
-- Never invent command names, flags, JSON payloads, `project_id`, resource IDs, field names, event names, property names, metric definitions, or date formats. For builder-supported ad-hoc models (`event`, `retention`, `funnel`, `prop_analysis`), do not pre-discover metadata; pass the user's event/property/metric wording to the matching QP builder and let the builder resolve metadata or return clarification. For non-builder/manual workflows, read the matching command reference and discover real project metadata first.
+- Read and write commands can execute directly after required IDs and references are verified.
+- Delete commands (`high-risk-write`) require explicit user authorization. For L3 `capability run` with `risk=high-risk-write`, dry-run first, then chat confirmation, then `--yes` only after the user authorizes execution in a follow-up message.
+- Never invent command names, flags, JSON payloads, `project_id`, resource IDs, field names, event names, property names, metric definitions, or date formats. For every non-SQL ad-hoc model, do not pre-discover metadata; pass the user's intent to the matching QP builder and let the builder resolve metadata or return clarification. For the SQL manual workflow, read the matching command reference and verify the real project definition first.
 - **NEVER fabricate or guess resource names** (reports, dashboards, events, properties, metrics, clusters, tags, alerts). Always use list commands to discover real resources first. If a resource is not found after fuzzy search and full list fallback, explicitly tell the user "resource not found" and stop - do not proceed with fabricated names.
 
 ## When to Use
@@ -41,6 +43,7 @@ Safety constraints:
 Use `ae-analysis` for all AE analysis-side work below:
 
 - Domain `analysis`: alerts, reports/dashboards, ad-hoc model analysis, drilldown, entity/event details, schema helpers.
+- Domain `analysis-meta`: capability-gateway metadata assets, events, properties, virtual metadata, metrics, data tables, exchange rules, and super metadata.
 - Domain `analysis_audience`: clusters/tags and definition schemas.
 - Domain `analysis_meta`: metadata governance, metrics, virtual metadata, project config, tracking plans, mark times, entity catalog (MCP). For **single** super-event / super-property **detail** on the capability gateway, switch to **`ae-metadata`** skill (`metadata event get`, `metadata property get`).
 - Domain `analysis_common`: project listing and post-write resource links.
@@ -53,7 +56,9 @@ If user intent is Engage/DataOps/Community/metadata gateway detail, switch to `a
 - `ae-cli analysis_audience +<tool_name> [options]`
 - `ae-cli analysis_meta +<tool_name> [options]`
 - `ae-cli analysis_common +<tool_name> [options]`
-- `ae-cli analysis <resource> <action> [options]` for capability-gateway dashboard, BI panel, project-space, folder, favorite, public-link, dashboard-definition, dashboard-daily-report, and async asset data commands.
+- `ae-cli analysis-meta <resource> <action> [options]` for capability-gateway metadata assets, events, properties, virtual metadata, metrics, data tables, exchange rules, and super metadata.
+- `ae-cli analysis <resource> <action> [options]` for curated capability-gateway dashboard, BI panel, project-space list/get, favorite, public-link, dashboard-definition, dashboard-daily-report, and async asset data commands.
+- `ae-cli capability inspect/dry-run/run <capability-id>` for L3 project-space and folder create/delete/share/members capabilities.
 
 Conventions:
 
@@ -61,7 +66,12 @@ Conventions:
 - Capability-gateway command flags use kebab-case, e.g. `--project-id`, `--dashboard-id`, `--request-id`. The CLI sends snake_case JSON to the gateway.
 - MCP params map automatically to camelCase.
 - JSON args pass as JSON string literals.
-- Write operations require confirmation unless `--yes`.
+- Write operations require chat confirmation before `--yes`. User describing the desired action does not count as authorization to skip confirmation.
+
+Credential lifecycle:
+
+- Use `ae-cli auth login`, `ae-cli auth status`, and `ae-cli auth logout` for authentication. There is no separate MCP-token command.
+- After login, the CLI automatically mints, stores, and refreshes the CLI token used by MCP and capability-gateway commands. Never ask the user to set an `mcp-token` manually.
 
 ## Capability Gateway Asset Commands
 
@@ -87,7 +97,8 @@ Use capability-gateway asset commands when the user wants to manage or inspect:
 - Dashboard definition export/import. Use `dashboard-definition import --validate-only true` for import pre-checks; do not look for a separate import-check command.
 - Dashboard daily report update or immediate send.
 - BI panel list/detail/create/update/delete/share/copy, BI panel release/draft version get/publish, and BI page data. Prefer `bi-panel-page-data export` for large results.
-- Project spaces, folders, favorites, and public links.
+- Project spaces and folders: use `project-space list/get` for discovery; use L3 capability run for create/delete/share/members.
+- Favorites and public links.
 
 Do **not** use these commands for:
 
@@ -103,7 +114,7 @@ Capability-gateway output:
 - Export commands return `run_id`, `artifact_id`, status fields, and expiration fields. Use `--artifact-format jsonl` for the artifact format; `--format` is reserved for CLI output formatting. Poll with `ae-cli analysis run inspect --run-id <run_id>` until the run and artifact are complete, then download with `ae-cli analysis artifact download --run-id <run_id> --artifact-id <artifact_id> --output <file>`. Do not call raw inspect/download API paths directly. Cancel with `ae-cli analysis query cancel --run-id <run_id>`.
 - Unknown input fields and camelCase external fields are rejected by the gateway; use kebab-case CLI flags only.
 
-See [`references/analysis_gateway_assets.md`](references/analysis_gateway_assets.md) for the command matrix. Before running one command, read its dedicated reference file named as `<resource>_<action>.md`.
+See [`references/analysis_gateway_assets.md`](references/analysis_gateway_assets.md) for the command matrix. Before running an L2 command, read its dedicated reference file named as `<resource>_<action>.md`. L3 capabilities without a dedicated reference use dynamic discovery per [`ae-capability`](../../ae-capability/SKILL.md).
 
 ## Mandatory Constraints
 
@@ -170,7 +181,7 @@ Before executing ad-hoc queries (`query_adhoc`), MUST check for existing reports
 2. **Search existing reports** - Use `list_reports --query <keyword>` to find matching reports
 3. **Search existing dashboards** - Use `analysis dashboard list --query <keyword>` to find matching dashboards
 4. **If found** - Use `query_report_data` or `analysis dashboard-report-data run/export` to get data from existing assets
-5. **If not found** - For QP builder-supported models (`event`, `retention`, `funnel`, `prop_analysis`), call the matching builder first and then call `query_adhoc` with builder `qp`; do not call schema or metadata tools between the report/dashboard miss and the builder. For all other `query_adhoc` models, use the legacy schema/metadata path.
+5. **If not found** - For every non-SQL model (`event`, `retention`, `funnel`, `prop_analysis`, `attribution`, `distribution`, `heat_map`, `interval`, `path`, `rank_list`), call the matching builder first and then call `query_adhoc` with builder `qp`; do not call schema or metadata tools between the report/dashboard miss and the builder. Only SQL uses the manual schema/verified-definition path.
 
 **Rationale:**
 
@@ -195,14 +206,20 @@ Before executing ad-hoc queries (`query_adhoc`), MUST check for existing reports
 
 ### E. QP_BUILDER_SUPPORTED_MODELS_ONLY
 
-QP builder supports exactly four ad-hoc model types: `event`, `retention`, `funnel`, and `prop_analysis`.
+QP builder supports ten ad-hoc model types: `event`, `retention`, `funnel`, `prop_analysis`, `attribution`, `distribution`, `heat_map`, `interval`, `path`, and `rank_list`.
 
-For these four model types, QP builder is mandatory before `query_adhoc`. Do not handcraft QP from `get_analysis_query_schema`, examples, or prior knowledge.
+For these ten model types, QP builder is mandatory before `query_adhoc`. Do not handcraft QP from `get_analysis_query_schema`, examples, or prior knowledge.
 
 1. `event` -> `+build_event_analysis_qp`
 2. `retention` -> `+build_retention_analysis_qp`
 3. `funnel` -> `+build_funnel_analysis_qp`
 4. `prop_analysis` -> `+build_prop_analysis_qp`
+5. `attribution` -> `+build_attribution_analysis_qp`
+6. `distribution` -> `+build_distribution_analysis_qp`
+7. `heat_map` -> `+build_heat_map_analysis_qp`
+8. `interval` -> `+build_interval_analysis_qp`
+9. `path` -> `+build_path_analysis_qp`
+10. `rank_list` -> `+build_rank_list_analysis_qp`
 
 Builder-supported model routing is:
 
@@ -237,7 +254,7 @@ Execution rule:
 
 - If builder result `status=generated`, call `+query_adhoc` with the same `model_type` and the returned `qp`.
 - If builder returns non-generated status (`need_clarification`, `invalid_argument`, `unsupported_feature`, `validation_error`), stop and ask the user for clarification instead of calling `query_adhoc`.
-- Never bypass a failed builder by manually assembling QP for `event`, `retention`, `funnel`, or `prop_analysis`.
+- Never bypass a failed builder by manually assembling QP for any non-SQL model.
 
 Builder payload rules:
 
@@ -362,8 +379,7 @@ After outputting attribution results, verify that dimension contributions sum to
 
 ## Tool Groups (100)
 
-### analysis (108)
-
+### analysis-meta (47)
 
 Metadata Capabilities (47):
 
@@ -415,6 +431,8 @@ Metadata Capabilities (47):
 - `virtual-property sql-rule-delete` ([doc](references/virtual_property_sql_rule_delete.md))
 - `virtual-property sql-rule-update` ([doc](references/virtual_property_sql_rule_update.md))
 
+### analysis
+
 Alerts (6):
 - `+get_alert_definition_schema` ([doc](references/get_alert_definition_schema.md))
 - `+list_alerts` ([doc](references/list_alerts.md))
@@ -431,7 +449,7 @@ Reports:
 - `+update_report` ([doc](references/update_report.md))
 - `+delete_report` ([doc](references/delete_report.md))
 
-Dashboard, BI panel, project-space, folder, favorite, public-link, dashboard-definition, dashboard-daily-report, run, artifact, and dashboard/BI data commands are capability-gateway commands. Use `ae-cli analysis <resource> <action>` after reading [`references/analysis_gateway_assets.md`](references/analysis_gateway_assets.md); do not use old `+` dashboard/space/BI/public-link command names.
+Dashboard, BI panel, project-space list/get, favorite, public-link, dashboard-definition, dashboard-daily-report, run, artifact, and dashboard/BI data commands are curated capability-gateway commands. Use `ae-cli analysis <resource> <action>` after reading [`references/analysis_gateway_assets.md`](references/analysis_gateway_assets.md). Project-space and folder create/delete/share are L3 only; use `ae-cli capability ...` after reading the matching reference. `*.members` read capabilities use L3 dynamic discovery via the gateway matrix (no standalone reference). Do not use old `+` dashboard/space/BI/public-link command names.
 
 Model Analysis (17):
 - `+build_event_analysis_qp` ([doc](references/build_event_analysis_qp.md))
@@ -539,6 +557,7 @@ Entity Catalog (2):
 
 ```bash
 ae-cli analysis --help
+ae-cli analysis-meta --help
 ae-cli analysis_audience --help
 ae-cli analysis_meta --help
 ae-cli analysis_common --help
@@ -550,4 +569,4 @@ npm run verify:analysis-common-tools
 
 ## Reference Docs
 
-See the unified `references/` directory (126 command docs total).
+See the unified `references/` directory (124 command docs total).

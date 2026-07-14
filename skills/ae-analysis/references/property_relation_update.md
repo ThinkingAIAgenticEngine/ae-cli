@@ -1,4 +1,4 @@
-# analysis property relation-update
+# analysis-meta property relation-update
 
 Use when the user needs to update property type, connection relation, or event mapping.
 
@@ -7,8 +7,8 @@ Do not use this command for unrelated analysis queries, ad-hoc query constructio
 Command:
 
 ```bash
-ae-cli analysis property relation-update --project-id <project_id> --table-type <table_type> --payload '{}'
-ae-cli analysis property relation-update --dry-run
+ae-cli analysis-meta property relation-update --project-id <project_id> --table-type <table_type> --payload '{}'
+ae-cli analysis-meta property relation-update --dry-run
 ```
 
 Capability id: `metadata.property.relation_update`.

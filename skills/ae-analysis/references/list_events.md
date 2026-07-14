@@ -8,7 +8,7 @@ Domain: **Metadata Query**
 
 **Fuzzy Search Fallback:** If `--query` returns no results, retry with broader keywords (max 3 attempts), then fall back to full list. See [SKILL.md § C. FUZZY_SEARCH_FALLBACK](../SKILL.md#c-fuzzy_search_fallback).
 
-**Not a builder pre-step:** Do not call `+list_events` before builder-supported ad-hoc analysis (`event`, `retention`, `funnel`, `prop_analysis`). The matching QP builder resolves event names internally. If the builder returns MCP failure, stop and ask for clarification instead of using this command as a fallback.
+**Not a builder pre-step:** Do not call `+list_events` before non-SQL ad-hoc analysis. The matching QP builder resolves event names internally. If the builder returns MCP failure, stop and ask for clarification instead of using this command as a fallback.
 
 ## Use Cases
 - Read-only query for SYSTEM METADATA already effective in the project. Use for super events in production metadata. Do NOT use for tracking-plan metadata (bury/track program); that belongs to BuryProgramTool.

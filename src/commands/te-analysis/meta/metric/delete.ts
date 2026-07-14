@@ -1,10 +1,10 @@
 import {
-  createAnalysisCapabilityCommand,
+  createAnalysisMetaCapabilityCommand,
   projectIdFlag,
   projectInput,
 } from '../../capability-shared.js';
 
-export const metadataMetricDelete = createAnalysisCapabilityCommand({
+export const metadataMetricDelete = createAnalysisMetaCapabilityCommand({
   resource: 'metric',
   command: 'delete',
   capabilityId: 'metadata.metric.delete',
@@ -13,6 +13,6 @@ export const metadataMetricDelete = createAnalysisCapabilityCommand({
     projectIdFlag,
     { name: 'metric-id', type: 'number', required: true, desc: 'Metric ID.' },
   ],
-  risk: 'write',
+  risk: 'high-risk-write',
   buildInput: (ctx) => ({ ...projectInput(ctx), metric_id: ctx.num('metric-id') }),
 });

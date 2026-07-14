@@ -9,7 +9,7 @@ export const deleteTeam: Command = {
   flags: [
     { name: 'id', type: 'string', required: true, desc: 'Team ID' },
   ],
-  risk: 'write',
+  risk: 'high-risk-write',
   dryRun: (ctx) => ({
     method: 'DELETE',
     url: `${ctx.host().replace(/\/$/, '')}${BASE_TEAM_PATH}/${ctx.str('id')}`,

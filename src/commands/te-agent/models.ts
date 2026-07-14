@@ -168,7 +168,7 @@ export const delModel: Command = {
       desc: "Target scope: personal | company",
     },
   ],
-  risk: "write",
+  risk: "high-risk-write",
   validate: (ctx) => {
     const scope = ctx.str("scope");
     if (scope && !["personal", "company"].includes(scope)) {

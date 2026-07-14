@@ -1,4 +1,4 @@
-# analysis property delete
+# analysis-meta property delete
 
 Use when the user needs to batch delete properties or virtual properties.
 
@@ -7,8 +7,8 @@ Do not use this command for unrelated analysis queries, ad-hoc query constructio
 Command:
 
 ```bash
-ae-cli analysis property delete --project-id <project_id> --table-type <table_type> --prop-names '{}'
-ae-cli analysis property delete --dry-run
+ae-cli analysis-meta property delete --project-id <project_id> --table-type <table_type> --prop-names '{}'
+ae-cli analysis-meta property delete --dry-run
 ```
 
 Capability id: `metadata.property.delete`.

@@ -7,7 +7,7 @@ export const deleteTrackItems = createMcpCommand({
     { name: 'project_id', type: 'number', required: true, alias: 'p', desc: 'Project ID' },
     { name: 'delete_data', type: 'json', required: true, desc: 'Delete payload JSON object with events/eventPropNames/userPropNames/commonEventPropNames' },
   ],
-  risk: 'write',
+  risk: 'high-risk-write',
   mcpService: 'te_analysis_extend',
   buildArgs: (ctx) => ({
     projectId: ctx.num('project_id'),

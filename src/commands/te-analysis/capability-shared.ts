@@ -13,6 +13,14 @@ export function createAnalysisCapabilityCommand(config: AnalysisCapabilityComman
   });
 }
 
+export function createAnalysisMetaCapabilityCommand(config: AnalysisCapabilityCommandConfig) {
+  return createCapabilityCommandCore({
+    ...config,
+    cliService: 'analysis-meta',
+    gatewayDomain: 'analysis',
+  });
+}
+
 export const projectIdFlag: Flag = {
   name: 'project-id',
   type: 'number',

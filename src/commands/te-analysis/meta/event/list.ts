@@ -1,10 +1,10 @@
 import {
-  createAnalysisCapabilityCommand,
+  createAnalysisMetaCapabilityCommand,
   projectIdFlag,
   projectInput,
 } from '../../capability-shared.js';
 
-export const metadataEventList = createAnalysisCapabilityCommand({
+export const metadataEventList = createAnalysisMetaCapabilityCommand({
   resource: 'event',
   command: 'list',
   capabilityId: 'metadata.event.list',

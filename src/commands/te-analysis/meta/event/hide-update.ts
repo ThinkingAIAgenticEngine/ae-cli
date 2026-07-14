@@ -1,10 +1,10 @@
 import {
-  createAnalysisCapabilityCommand,
+  createAnalysisMetaCapabilityCommand,
   projectIdFlag,
   projectInput,
 } from '../../capability-shared.js';
 
-export const metadataEventHideUpdate = createAnalysisCapabilityCommand({
+export const metadataEventHideUpdate = createAnalysisMetaCapabilityCommand({
   resource: 'event',
   command: 'hide-update',
   capabilityId: 'metadata.event.hide_update',

@@ -1,4 +1,4 @@
-# analysis exchange rule-list
+# analysis-meta exchange rule-list
 
 Use when the user needs to list exchange-rate conversion rules.
 
@@ -7,8 +7,8 @@ Do not use this command for unrelated analysis queries, ad-hoc query constructio
 Command:
 
 ```bash
-ae-cli analysis exchange rule-list --project-id <project_id>
-ae-cli analysis exchange rule-list --dry-run
+ae-cli analysis-meta exchange rule-list --project-id <project_id>
+ae-cli analysis-meta exchange rule-list --dry-run
 ```
 
 Capability id: `metadata.exchange_rule.list`.

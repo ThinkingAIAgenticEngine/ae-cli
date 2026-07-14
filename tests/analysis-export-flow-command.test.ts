@@ -10,7 +10,6 @@ import { dashboardCopy } from '../src/commands/te-analysis/dashboard/copy.ts';
 import { dashboardDailyReportSend } from '../src/commands/te-analysis/dashboard-daily-report/send.ts';
 import { dashboardDailyReportUpdate } from '../src/commands/te-analysis/dashboard-daily-report/update.ts';
 import { dashboardDefinitionExport } from '../src/commands/te-analysis/dashboard-definition/export.ts';
-import { projectSpaceCreate } from '../src/commands/te-analysis/project-space/create.ts';
 import { runInspect } from '../src/commands/te-analysis/run/inspect.ts';
 import {
   clearCapabilityGatewayRoutesForTest,
@@ -112,38 +111,6 @@ await test('dashboard copy defaults report copy and omits target location', () =
       dashboard_id: 1001,
       dashboard_name: 'Copy',
       report_copy: false,
-    },
-  });
-});
-
-await test('project space create defaults avatar type when payload is absent', () => {
-  const dryRun = projectSpaceCreate.dryRun!(makeCtx({
-    'project-id': 1,
-    'space-name': 'Ops',
-  }));
-
-  assert.deepEqual(dryRun.body, {
-    input: {
-      project_id: 1,
-      space_name: 'Ops',
-      avatar_type: 1,
-    },
-  });
-});
-
-await test('project space create does not let defaults override payload', () => {
-  const dryRun = projectSpaceCreate.dryRun!(makeCtx({
-    'project-id': 1,
-    payload: '{"space_name":"Ops","avatar_type":2}',
-  }));
-
-  assert.deepEqual(dryRun.body, {
-    input: {
-      project_id: 1,
-      payload: {
-        space_name: 'Ops',
-        avatar_type: 2,
-      },
     },
   });
 });

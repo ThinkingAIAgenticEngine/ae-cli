@@ -1,10 +1,10 @@
 import {
-  createAnalysisCapabilityCommand,
+  createAnalysisMetaCapabilityCommand,
   projectIdFlag,
   projectInput,
 } from '../../capability-shared.js';
 
-export const metadataExchangeConfigUpdate = createAnalysisCapabilityCommand({
+export const metadataExchangeConfigUpdate = createAnalysisMetaCapabilityCommand({
   resource: 'exchange',
   command: 'config-update',
   capabilityId: 'metadata.exchange_config.update',

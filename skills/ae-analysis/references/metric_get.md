@@ -1,4 +1,4 @@
-# analysis metric get
+# analysis-meta metric get
 
 Use when the user needs to get metric definition, events, and params.
 
@@ -7,8 +7,8 @@ Do not use this command for unrelated analysis queries, ad-hoc query constructio
 Command:
 
 ```bash
-ae-cli analysis metric get --project-id <project_id> --metric-id <metric_id>
-ae-cli analysis metric get --dry-run
+ae-cli analysis-meta metric get --project-id <project_id> --metric-id <metric_id>
+ae-cli analysis-meta metric get --dry-run
 ```
 
 Capability id: `metadata.metric.get`.

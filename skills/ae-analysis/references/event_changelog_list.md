@@ -1,4 +1,4 @@
-# analysis event changelog-list
+# analysis-meta event changelog-list
 
 Use when the user needs to list event metadata change logs.
 
@@ -7,8 +7,8 @@ Do not use this command for unrelated analysis queries, ad-hoc query constructio
 Command:
 
 ```bash
-ae-cli analysis event changelog-list --project-id <project_id> --event-name <event_name>
-ae-cli analysis event changelog-list --dry-run
+ae-cli analysis-meta event changelog-list --project-id <project_id> --event-name <event_name>
+ae-cli analysis-meta event changelog-list --dry-run
 ```
 
 Capability id: `metadata.event.changelog_list`.

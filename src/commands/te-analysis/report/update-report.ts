@@ -6,7 +6,7 @@ export const updateReport = createMcpCommand({
   flags: [
     { name: 'project_id', type: 'number', required: true, desc: 'Project ID', alias: 'p' },
     { name: 'report_id', type: 'number', required: true, desc: 'Report ID to update' },
-    { name: 'version', type: 'number', required: true, desc: 'Current report version number. Retrieve via +get_report_definition.' },
+    { name: 'report_version', type: 'number', required: true, desc: 'Current report version number. Retrieve via +get_report_definition.' },
     { name: 'report_name', type: 'string', required: false, desc: 'New report name. Omit to keep existing.' },
     { name: 'report_desc', type: 'string', required: false, desc: 'New report description. Omit to keep existing.' },
     { name: 'qp', type: 'string', required: false, desc: 'New QP JSON string. Omit to keep existing. When provided, also supply report_model.' },
@@ -17,7 +17,7 @@ export const updateReport = createMcpCommand({
   buildArgs: (ctx) => ({
     projectId: ctx.num('project_id'),
     reportId: ctx.num('report_id'),
-    version: ctx.num('version'),
+    version: ctx.num('report_version'),
     reportName: optionalString(ctx, 'report_name'),
     reportDesc: optionalString(ctx, 'report_desc'),
     qp: optionalString(ctx, 'qp'),
