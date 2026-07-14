@@ -1,3 +1,11 @@
+### 6.0.30
+**Date:** 2026-07-14
+
+**Changes:**
+
+* Fix Skill Hub YAML frontmatter parse errors by quoting `description` in tracking-code, tracking-plan, and data-integration-helper skills
+* Add self-check guard for unquoted skill descriptions that contain `: `
+
 ### 6.0.29
 **Date:** 2026-07-13
 

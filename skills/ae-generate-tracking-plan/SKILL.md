@@ -1,6 +1,6 @@
 ---
 name: ae-generate-tracking-plan
-description: Interactive generation of an AE tracking plan and upload. Trigger words: 埋点方案、埋点模板、tracking plan、AE 方案生成、create tracking plan、トラッキングプラン、트래킹 플랜. Follows anchor → draft → refine → token → upload five-phase workflow. Deliverable is a real tracking plan created in the AE platform.
+description: "Interactive generation of an AE tracking plan and upload. Trigger words: 埋点方案、埋点模板、tracking plan、AE 方案生成、create tracking plan、トラッキングプラン、트래킹 플랜. Follows anchor → draft → refine → token → upload five-phase workflow. Deliverable is a real tracking plan created in the AE platform."
 ---
 
 # ae-generate-tracking-plan

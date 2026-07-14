@@ -278,6 +278,28 @@ function checkSkills(domains, focus) {
     if (!/^---[\s\S]*?name:\s*\S+[\s\S]*?description:\s*\S+[\s\S]*?---/m.test(skillMd)) {
       add('P3', 'D4', `skill '${skill}' SKILL.md frontmatter is missing name/description`);
     }
+
+    // D4d: description must be YAML-safe when it contains ": " (external skill hubs parse frontmatter as YAML)
+    const fm = skillMd.match(/^---\r?\n([\s\S]*?)\r?\n---/);
+    if (fm) {
+      for (const line of fm[1].split(/\r?\n/)) {
+        const dm = line.match(/^description:\s*(.*)$/);
+        if (!dm) continue;
+        const val = dm[1];
+        const quoted =
+          (val.startsWith('"') && val.endsWith('"')) ||
+          (val.startsWith("'") && val.endsWith("'")) ||
+          val === '>' ||
+          val === '|';
+        if (!quoted && /:\s/.test(val)) {
+          add(
+            'P1',
+            'D4',
+            `skill '${skill}' SKILL.md description is unquoted but contains ": " — external YAML parsers will fail (quote the description)`,
+          );
+        }
+      }
+    }
   }
 }
 

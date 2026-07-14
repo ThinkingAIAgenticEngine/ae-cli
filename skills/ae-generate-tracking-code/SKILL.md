@@ -1,6 +1,6 @@
 ---
 name: ae-generate-tracking-code
-description: Interactive generation of AE tracking code, LogBus2 configuration, and debug scripts from a tracking plan. Trigger words: 代码埋点、埋点代码、tracking code、埋点落地、logbus 配置、AE 上报代码、generate tracking code、insert tracking、トラッキングコード、트래킹 코드. Supports independent output mode selection per platform (insert/snippet). Server-side defaults to LoggerConsumer + LogBus2 architecture.
+description: "Interactive generation of AE tracking code, LogBus2 configuration, and debug scripts from a tracking plan. Trigger words: 代码埋点、埋点代码、tracking code、埋点落地、logbus 配置、AE 上报代码、generate tracking code、insert tracking、トラッキングコード、트래킹 코드. Supports independent output mode selection per platform (insert/snippet). Server-side defaults to LoggerConsumer + LogBus2 architecture."
 ---
 
 # ae-generate-tracking-code
