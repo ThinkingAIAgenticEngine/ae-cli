@@ -1,3 +1,28 @@
+### 6.0.31
+**Date:** 2026-07-16
+
+**Changes:**
+
+#### CLI architecture
+* Route more domains through capability gateway; add `capability --validate` and keep `--dry-run` as server-side pre-check only
+* Replace custom `--jq` path walker with real `jq-wasm` for stable JSON filtering
+* Improve Agent error hints, request dispatch guidance, and illegal numeric flag rejection (avoid NaN → null gateway noise)
+* Add release-gate skill frontmatter check so `npx skills add` fails fast on unquoted YAML `description`
+* Temporarily hide unfinished commands; retire gateway-superseded legacy analysis command entry points
+
+#### Analysis
+* CLI-ize report/dashboard/adhoc/detail/audience flows: unified run/export routes, drilldown, artifact download, and AI QP contracts
+* Merge analysis skills into a single indexed surface (`command_index`) and align Agent contracts with capability gateway schemas
+* Move asset governance capabilities to `analysis-governance` (list/search/lineage/impact/batch ops) and fix related governance bugs
+* Complete user-analysis CLI (cluster/tag members, history-tag drilldown, definition build) and ID-file import contracts
+* Remove old `analysis_audience` / detail MCP fallback commands already covered by gateway; sync tracking-plan upload `lang` and built-in i18n
+
+#### Engage
+* Register engage capability gateway route and restore/restructure engage CLI + skill docs
+* Add flow version list, flow/task operation-log query, test-run, and push-record query (with local date-range validation)
+* Add channel touch-limits L2 command and engage-task P0 set (segment-list / group / metric / race / ops / channel-ref)
+* Temporarily disable 4 unfinished engage-task write commands to avoid unsafe Agent writes
+
 ### 6.0.30
 **Date:** 2026-07-14
 

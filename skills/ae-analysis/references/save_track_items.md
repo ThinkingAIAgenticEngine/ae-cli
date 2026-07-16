@@ -8,6 +8,9 @@ Domain: **Project Configuration**
 - Create/update TRACKING-PLAN metadata only (planned bury items). Do not use this tool to create or edit effective system metadata. If the user intent is production metadata changes, route to MetaPowerTool instead.
 - Create/update TRACKING-PLAN metadata only (planned bury items).
 
+## Output
+The response reports persistence of the submitted tracking-plan items. Read the plan back with `+get_track_program` before claiming the saved structure is effective.
+
 ## Command
 ```bash
 ae-cli analysis_meta +save_track_items --project_id <project_id> --track_data '{}'
@@ -24,7 +27,7 @@ ae-cli analysis_meta +save_track_items --dry-run
 - First run should only pass the required parameters (`--project_id`, `--track_data`), and add optional parameters only after the path is confirmed to work.
 - Wrap JSON arguments in single quotes (for example `--track_data '{}'`) to avoid shell escaping issues.
 - For cross-project troubleshooting, first confirm whether `--project_id` matches the current permissions and target environment.
-- Write operations keep the confirmation prompt by default; re-evaluate whether to use `--yes` in automation scenarios.
+- This is an ordinary `write` operation and does not require CLI confirmation.
 
 ## Next Steps After Failure
 - If required parameters are missing, fall back to the smallest runnable command and fill them in (focus on `--project_id` and `--track_data`).

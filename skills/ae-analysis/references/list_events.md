@@ -8,17 +8,17 @@ Domain: **Metadata Query**
 
 **Fuzzy Search Fallback:** If `--query` returns no results, retry with broader keywords (max 3 attempts), then fall back to full list. See [SKILL.md § C. FUZZY_SEARCH_FALLBACK](../SKILL.md#c-fuzzy_search_fallback).
 
-**Not a builder pre-step:** Do not call `+list_events` before non-SQL ad-hoc analysis. The matching QP builder resolves event names internally. If the builder returns MCP failure, stop and ask for clarification instead of using this command as a fallback.
+**Not an ad-hoc pre-step:** Do not call `+list_events` just to prepare `analysis adhoc run/export`. Pass the user's event wording in the AI-facing `definition`; the backend compiler resolves it or returns a structured clarification/error. Use this command only when the user explicitly wants to inspect metadata or when a prior compiler error asks for disambiguation.
 
 ## Use Cases
 - Read-only query for SYSTEM METADATA already effective in the project. Use for super events in production metadata. Do NOT use for tracking-plan metadata (bury/track program); that belongs to BuryProgramTool.
-- Read-only query for SYSTEM METADATA already effective in the project. Use when the user explicitly asks to inspect event metadata, not as a required preparation step for QP builder.
+- Read-only query for SYSTEM METADATA already effective in the project. Use when the user explicitly asks to inspect event metadata, not as a required preparation step for ad-hoc AI model construction.
 
 ## Commands
 ```bash
 ae-cli analysis_meta +list_events --project_id <project_id>
 ae-cli analysis_meta +list_events --project_id <project_id> --query demo
-ae-cli analysis_meta +list_events --project_id <project_id> --query demo --fields '["eventId", "eventName", "eventDesc", "remark"]' --limit 20 --offset 0
+ae-cli analysis_meta +list_events --project_id <project_id> --query demo --fields '["eventId", "eventName", "eventDesc", "remark"]' --limit 50 --offset 0
 ae-cli analysis_meta +list_events --dry-run
 ```
 
@@ -28,14 +28,14 @@ ae-cli analysis_meta +list_events --dry-run
 | `--project_id` / `-p` | Yes | Project ID |
 | `--query` / `-q` | No | Optional keyword filter. Performs fuzzy matching against eventName, eventDesc, and remark; if omitted, all events are returned. |
 | `--fields` / `-f` | No | Optional fields to return (JSON array). Supported fields: `eventId`, `eventName`, `eventDesc`, `remark`, `eventTag`, `authenticationStatus`. Default fields when omitted: `eventId`, `eventName`, `eventDesc`, `remark`, `authenticationStatus`. |
-| `--limit` / `-l` | No | Optional page size. Default: 20, maximum: 50. |
+| `--limit` / `-l` | No | Optional page size. Default: 50, maximum: 200. |
 | `--offset` / `-o` | No | Optional page offset. Default: 0. |
 | `--authenticated_only` | No | When true, return only authenticated events. |
 
 ## Decision Rules
 - Use `--authenticated_only true` only when the user explicitly asks for authenticated assets. `authenticationStatus` is `1` for authenticated and `0` for unauthenticated.
 - For the first run, pass only the required parameter (`--project_id`) to confirm the path works, then add optional parameters.
-- For builder-supported ad-hoc analysis, pass the user's event wording to the builder instead of pre-querying event metadata.
+- For ad-hoc analysis, pass the user's event wording in the AI-facing `definition` instead of pre-querying event metadata.
 - For cross-project troubleshooting, first confirm whether `--project_id` matches the current permissions and target environment.
 
 ## Next Steps After Failure

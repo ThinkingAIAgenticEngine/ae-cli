@@ -6,11 +6,16 @@ Domain: **Metric Management**
 
 ## Use Cases
 - Permanently delete a metric by its ID.
+- Do not use it when the metric should be retained with a corrected definition; use `+update_metric` instead.
+
+## Output
+Success confirms deletion of the specified metric. The command does not return a metric definition; verify absence with `+list_metrics`.
 
 ## Commands
 ```bash
-ae-cli analysis_meta +delete_metric --project_id <project_id> --metric_id <metric_id>
-ae-cli analysis_meta +delete_metric --dry-run
+ae-cli analysis_meta +delete_metric --project_id <project_id> --metric_id <metric_id> --dry-run
+# Summarize the target and impact, then wait for explicit user confirmation.
+ae-cli analysis_meta +delete_metric --project_id <project_id> --metric_id <metric_id> --yes
 ```
 
 ## Parameters
@@ -21,7 +26,7 @@ ae-cli analysis_meta +delete_metric --dry-run
 
 ## Decision Rules
 - Use `+list_metrics` first to confirm the metric ID before deleting.
-- This is a destructive operation; keep the confirmation prompt unless automation is explicitly required.
+- This is `high-risk-write`: inspect the dry-run, summarize the target and impact, and wait for explicit user confirmation before the `--yes` execution.
 
 ## Recommended Chain
 - `+list_metrics` -> `+delete_metric`

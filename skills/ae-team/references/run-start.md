@@ -14,19 +14,18 @@ Domain: **TeamRun execution / write**
 - `--input` is required (1–50000 chars). Pass the user's task description verbatim; do not truncate.
 - JSON array flags (`--project-ids`, `--project-names`, `--space-ids`, etc.) must be valid JSON arrays, e.g. `'["id1","id2"]'`.
 - `--notification` must be valid JSON if provided, e.g. `'{"channels":["feishu"],"feishuChatId":"..."}'`.
-- Write operation: keep the confirmation prompt unless `--yes` is explicitly requested.
+- This is an ordinary `write` operation and does not require CLI confirmation.
 - After starting, capture the returned `id` (run ID) and use it to poll `+run-result`.
 
 ## Command
 ```bash
-ae-cli team +run-start --team-id <team_id> --input "分析上周用户留存情况，生成报告" --yes
+ae-cli team +run-start --team-id <team_id> --input "分析上周用户留存情况，生成报告"
 
 ae-cli team +run-start \
   --team-id <team_id> \
   --input "分析本月DAU趋势" \
   --notification '{"channels":["feishu"],"feishuChatId":"oc_xxx"}' \
-  --save-to-kb-id <kb_id> \
-  --yes
+  --save-to-kb-id <kb_id>
 
 ae-cli team +run-start --dry-run --team-id <team_id> --input "test"
 ```
@@ -59,7 +58,7 @@ ae-cli team +run-watch --id <run_id>
 # exit 0 → completed/partial_success
 # exit 1 → failed/cancelled/stale
 # exit 2 → waiting_user: read pendingQuestion from stdout, reply, re-watch
-ae-cli team +run-reply --id <run_id> --input "<user_answer>" --yes
+ae-cli team +run-reply --id <run_id> --input "<user_answer>"
 ae-cli team +run-watch --id <run_id>
 ```
 

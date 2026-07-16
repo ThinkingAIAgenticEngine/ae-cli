@@ -200,6 +200,7 @@ export function registerPlan(cmd: Command, rootProgram: Command): void {
           projectId: opts.project,
           file,
           filename: path.basename(opts.xlsx),
+          lang: locale,
         });
 
         console.log(JSON.stringify(lastRes, null, 2));

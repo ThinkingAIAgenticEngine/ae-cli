@@ -7,6 +7,8 @@ Do not use for soft archival or hiding unless the gateway contract defines that 
 Command:
 
 ```bash
+ae-cli analysis dashboard delete --project-id <project_id> --dashboard-ids '[1001,1002]' --dry-run
+# Summarize the target and impact, then wait for explicit user confirmation.
 ae-cli analysis dashboard delete --project-id <project_id> --dashboard-ids '[1001,1002]' --yes
 ```
 

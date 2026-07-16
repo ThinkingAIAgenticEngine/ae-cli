@@ -6,6 +6,12 @@ import {
 
 type AnalysisCapabilityCommandConfig = Omit<CoreCapabilityCommandConfig, 'cliService' | 'gatewayDomain'>;
 
+export const analysisDataRunRoutingHelp =
+  'Routing: use run only for analysis data that fits <=1000 inline rows and <=180s; use export for full, unknown-size, >1000-row, or long-running data.';
+
+export const analysisDataExportRoutingHelp =
+  'Routing: use export for full, unknown-size, >1000-row, or long-running analysis data; inspect/download by run_id/artifact_id; use run only for <=1000-row inline previews.';
+
 export function createAnalysisCapabilityCommand(config: AnalysisCapabilityCommandConfig) {
   return createCapabilityCommandCore({
     ...config,
@@ -17,6 +23,14 @@ export function createAnalysisMetaCapabilityCommand(config: AnalysisCapabilityCo
   return createCapabilityCommandCore({
     ...config,
     cliService: 'analysis-meta',
+    gatewayDomain: 'analysis',
+  });
+}
+
+export function createAnalysisGovernanceCapabilityCommand(config: AnalysisCapabilityCommandConfig) {
+  return createCapabilityCommandCore({
+    ...config,
+    cliService: 'analysis-governance',
     gatewayDomain: 'analysis',
   });
 }
@@ -53,6 +67,70 @@ export const limitFlag: Flag = {
   alias: 'l',
 };
 
+export const directoryLimitFlag: Flag = {
+  name: 'limit',
+  type: 'number',
+  required: false,
+  desc: 'Directory page size. Default: 50, max: 200. Values outside 1..200 are rejected.',
+  alias: 'l',
+  min: 1,
+  max: 200,
+};
+
+export const memberLimitFlag: Flag = {
+  name: 'limit',
+  type: 'number',
+  required: false,
+  desc: 'Bounded member row limit. Default: 50, max: 200. Values outside 1..200 are rejected.',
+  alias: 'l',
+  min: 1,
+  max: 200,
+};
+
+export const sqlTableUsageFlag: Flag = {
+  name: 'usage',
+  type: 'string',
+  required: false,
+  desc: 'Authorized table set: analysis (default) or tag_cluster. Use tag_cluster before creating SQL tags or clusters.',
+};
+
+export const reportListLimitFlag: Flag = {
+  name: 'limit',
+  type: 'number',
+  required: false,
+  desc: 'Report page size. Default: 50, max: 200. Values outside 1..200 are rejected.',
+  alias: 'l',
+  min: 1,
+  max: 200,
+};
+
+export const reportModelTypesFlag: Flag = {
+  name: 'model-types',
+  type: 'json',
+  required: false,
+  desc: 'Optional semantic report model JSON array, for example ["event","sql","tag","revenue"].',
+};
+
+export const syncLimitFlag: Flag = {
+  name: 'limit',
+  type: 'number',
+  required: false,
+  desc: 'Maximum inline rows for sync query results. Default: 100, max: 1000. Use export for full data.',
+  alias: 'l',
+  min: 1,
+  max: 1000,
+};
+
+export const detailPreviewLimitFlag: Flag = {
+  name: 'limit',
+  type: 'number',
+  required: false,
+  desc: 'Maximum first preview rows. Default: 100, max: 1000. This is not a pagination window; use export for more rows.',
+  alias: 'l',
+  min: 1,
+  max: 1000,
+};
+
 export const offsetFlag: Flag = {
   name: 'offset',
   type: 'number',
@@ -66,6 +144,56 @@ export const payloadFlag: Flag = {
   type: 'json',
   required: false,
   desc: 'Optional snake_case object for complex capability payload fields.',
+};
+
+export const requiredPayloadFlag: Flag = {
+  ...payloadFlag,
+  required: true,
+  desc: 'Required snake_case capability payload. Read the dedicated command reference for its semantic shape; an empty object is not a generic valid payload.',
+};
+
+export const requestIdFlag: Flag = {
+  name: 'request-id',
+  type: 'string',
+  required: false,
+  desc: 'Optional caller-supplied cli_<32 lowercase hex> lifecycle ID. ae-cli generates and prints one before dispatch when omitted.',
+};
+
+export const timeoutSecondsFlag: Flag = {
+  name: 'timeout-seconds',
+  type: 'number',
+  required: false,
+  desc: 'Optional capability execution timeout in seconds.',
+};
+
+export const syncTimeoutSecondsFlag: Flag = {
+  name: 'timeout-seconds',
+  type: 'number',
+  required: false,
+  desc: 'Sync timeout seconds. Default: 120, max: 180.',
+  min: 1,
+  max: 180,
+};
+
+export const dashboardSyncTimeoutSecondsFlag: Flag = {
+  ...syncTimeoutSecondsFlag,
+  desc: 'Sync timeout seconds. Default: 180, max: 180.',
+};
+
+export const asyncTimeoutSecondsFlag: Flag = {
+  name: 'timeout-seconds',
+  type: 'number',
+  required: false,
+  desc: 'Async runtime in seconds. Default and max: 21600 (6 hours); cancel earlier with analysis query cancel --run-id <run_id>.',
+  min: 1,
+  max: 21600,
+};
+
+export const artifactFormatFlag: Flag = {
+  name: 'artifact-format',
+  type: 'string',
+  required: false,
+  desc: 'Logical artifact format, usually jsonl or csv. This does not select compression; read format, compression, file_name, content_type, and content_encoding from the returned descriptor.',
 };
 
 export function projectInput(ctx: RuntimeContext): Record<string, unknown> {
@@ -82,6 +210,13 @@ export function listInput(ctx: RuntimeContext): Record<string, unknown> {
   });
 }
 
+export function reportListInput(ctx: RuntimeContext): Record<string, unknown> {
+  return compactInput({
+    ...listInput(ctx),
+    model_types: optionalJson(ctx, 'model-types'),
+  });
+}
+
 export function dashboardReportDataInput(ctx: RuntimeContext): Record<string, unknown> {
   return compactInput({
     ...projectInput(ctx),
@@ -94,6 +229,14 @@ export function dashboardReportDataInput(ctx: RuntimeContext): Record<string, un
     request_id: optionalString(ctx, 'request-id'),
     timeout_seconds: optionalNumber(ctx, 'timeout-seconds'),
     limit: optionalNumber(ctx, 'limit'),
+    format: optionalString(ctx, 'artifact-format'),
+  });
+}
+
+export function exportLifecycleInput(ctx: RuntimeContext): Record<string, unknown> {
+  return compactInput({
+    request_id: optionalString(ctx, 'request-id'),
+    timeout_seconds: optionalNumber(ctx, 'timeout-seconds'),
     format: optionalString(ctx, 'artifact-format'),
   });
 }
@@ -156,6 +299,11 @@ export function optionalJson(ctx: RuntimeContext, name: string): unknown | undef
   return value === '' ? undefined : ctx.json(name);
 }
 
+export function optionalJsonString(ctx: RuntimeContext, name: string): string | undefined {
+  const value = optionalJson(ctx, name);
+  return value === undefined ? undefined : JSON.stringify(value);
+}
+
 export function jsonArray(ctx: RuntimeContext, name: string): unknown[] {
   const value = ctx.json(name);
   return Array.isArray(value) ? value : [value];
@@ -178,4 +326,72 @@ export function compactInput(input: Record<string, unknown>): Record<string, unk
     }
   }
   return result;
+}
+
+export function applyAnalysisInlineLimit(result: unknown, input: Record<string, unknown>): unknown {
+  const limit = typeof input.limit === 'number' && Number.isInteger(input.limit) && input.limit > 0
+    ? input.limit
+    : undefined;
+  if (!limit) {
+    return result;
+  }
+
+  const cloned = cloneJsonLike(result);
+  const summary = {
+    truncated: false,
+    containers: 0,
+    originalRows: 0,
+    returnedRows: 0,
+  };
+  trimRows(cloned, limit, summary);
+
+  if (summary.truncated && cloned && typeof cloned === 'object' && !Array.isArray(cloned)) {
+    (cloned as Record<string, unknown>)._cli_inline_limit = {
+      requested_limit: limit,
+      containers_truncated: summary.containers,
+      original_rows: summary.originalRows,
+      returned_rows: summary.returnedRows,
+      note: 'Rows were truncated by ae-cli to keep sync run output within the inline limit. Use export for full data.',
+    };
+  }
+
+  return cloned;
+}
+
+function cloneJsonLike(value: unknown): unknown {
+  if (value === undefined || value === null) return value;
+  return JSON.parse(JSON.stringify(value));
+}
+
+function trimRows(
+  value: unknown,
+  limit: number,
+  summary: { truncated: boolean; containers: number; originalRows: number; returnedRows: number },
+): void {
+  if (!value || typeof value !== 'object') return;
+
+  if (Array.isArray(value)) {
+    for (const item of value) trimRows(item, limit, summary);
+    return;
+  }
+
+  const record = value as Record<string, unknown>;
+  const rows = record.rows;
+  if (Array.isArray(rows) && rows.length > limit) {
+    record.rows = rows.slice(0, limit);
+    record._cli_truncation = {
+      field: 'rows',
+      requested_limit: limit,
+      original_row_count: rows.length,
+      returned_row_count: limit,
+    };
+    summary.truncated = true;
+    summary.containers += 1;
+    summary.originalRows += rows.length;
+    summary.returnedRows += limit;
+  }
+
+  for (const child of Object.values(record)) {
+    trimRows(child, limit, summary);
+  }
 }

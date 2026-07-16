@@ -498,7 +498,7 @@ After all `.ae-cli/output/` files are generated, upload every generated output f
 Use the existing attachment command:
 
 ```bash
-ae-cli agent +add-attachment --yes --files '<json-array-of-generated-output-files>'
+ae-cli agent +add-attachment --files '<json-array-of-generated-output-files>'
 ```
 
 Upload list rules:

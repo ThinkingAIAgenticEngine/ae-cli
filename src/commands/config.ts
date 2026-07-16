@@ -24,70 +24,70 @@ export function registerConfig(program: Command): void {
   configCmd
     .command('list')
     .description('List configured AE environments')
-    .action(() => {
-      printConfigList(program);
+    .action(async () => {
+      await printConfigList(program);
     });
 
   configCmd
     .command('current')
     .description('Show the active AE environment')
-    .action(() => {
-      printCurrentConfig(program);
+    .action(async () => {
+      await printCurrentConfig(program);
     });
 
   configCmd
     .command('use <env>')
     .description('Switch active AE environment by exact URL or unique label')
-    .action((env: string) => {
-      useConfigEnv(program, env);
+    .action(async (env: string) => {
+      await useConfigEnv(program, env);
     });
 
   configCmd
     .command('set-host <url>')
     .description('Set the active AE host non-interactively (adds it if not already configured)')
     .option('--label <label>', 'Display label for this host (defaults to the host URL)')
-    .action((url: string, opts: { label?: string }) => {
+    .action(async (url: string, opts: { label?: string }) => {
       const normalized = normalizeUrl(url);
       const label = opts.label || normalized;
       addHost(normalized, label);
       setActiveHost(normalized);
-      printOutput({ activeHost: normalized, label }, program.opts().format || 'json');
+      await printOutput({ activeHost: normalized, label }, program.opts().format || 'json');
     });
 
   const clusterMode = configCmd
     .command('cluster-mode')
     .description('Manage local multi-cluster analysis MCP mode')
-    .action(() => {
-      printClusterModeStatus(program);
+    .action(async () => {
+      await printClusterModeStatus(program);
     });
 
   clusterMode
     .command('status')
     .description('Show local multi-cluster analysis MCP mode')
-    .action(() => {
-      printClusterModeStatus(program);
+    .action(async () => {
+      await printClusterModeStatus(program);
     });
 
   clusterMode
     .command('enable')
     .description('Enable local multi-cluster analysis MCP mode')
-    .action(() => {
+    .action(async () => {
       setGlobalQueryModeEnabled(true);
-      printClusterModeStatus(program);
+      await printClusterModeStatus(program);
     });
 
   clusterMode
     .command('disable')
     .description('Disable local multi-cluster analysis MCP mode')
-    .action(() => {
+    .action(async () => {
       setGlobalQueryModeEnabled(false);
-      printClusterModeStatus(program);
+      await printClusterModeStatus(program);
     });
 }
 
-function printClusterModeStatus(program: Command): void {
+async function printClusterModeStatus(program: Command): Promise<void> {
   const enabled = isGlobalQueryModeEnabled();
-  printOutput({
+  await printOutput({
     [GLOBAL_QUERY_CONFIG_KEY]: enabled,
     path: getClusterInfoFilePath(),
     analysisMappingPath: getAnalysisMappingPathForClusterMode(enabled),
@@ -104,22 +104,22 @@ function readHostViews(): { activeHost: string; hosts: HostView[] } {
   return { activeHost: config.activeHost, hosts };
 }
 
-function printConfigList(program: Command): void {
+async function printConfigList(program: Command): Promise<void> {
   const { activeHost, hosts } = readHostViews();
-  printOutput({ activeHost, hosts }, program.opts().format || 'json', program.opts().jq);
+  await printOutput({ activeHost, hosts }, program.opts().format || 'json', program.opts().jq);
 }
 
-function printCurrentConfig(program: Command): void {
+async function printCurrentConfig(program: Command): Promise<void> {
   const { activeHost, hosts } = readHostViews();
   const current = hosts.find(h => h.url === activeHost);
   if (!current) {
     failConfig('No active AE environment configured.', 'Run: ae-cli config use <env> or ae-cli config list');
     return;
   }
-  printOutput({ activeHost: current.url, label: current.label }, program.opts().format || 'json', program.opts().jq);
+  await printOutput({ activeHost: current.url, label: current.label }, program.opts().format || 'json', program.opts().jq);
 }
 
-function useConfigEnv(program: Command, env: string): void {
+async function useConfigEnv(program: Command, env: string): Promise<void> {
   const target = resolveHost(env);
   if (target.status === 'not-found') {
     failConfig(
@@ -139,7 +139,7 @@ function useConfigEnv(program: Command, env: string): void {
   }
 
   setActiveHost(target.host.url);
-  printOutput({ activeHost: target.host.url, label: target.host.label }, program.opts().format || 'json', program.opts().jq);
+  await printOutput({ activeHost: target.host.url, label: target.host.label }, program.opts().format || 'json', program.opts().jq);
 }
 
 type HostResolveResult =

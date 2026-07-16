@@ -19,7 +19,7 @@ Domain: **MCP Servers / write**
 - `--category` must be one of the market category keys (see below) when provided.
 - **MCP creation does NOT validate server connectivity** — an unreachable URL is accepted at create time and only fails when the agent calls the MCP at runtime. Double-check the URL.
 - `--scope` controls target scope: `personal` (default) or `company`. Company scope requires root/agent_admin.
-- Write operation: keep the confirmation prompt unless `--yes` is explicitly requested.
+- This is an ordinary `write` operation and does not require CLI confirmation.
 
 ## Market Category Keys
 `ae_preset | dev_tool | search_tool | data_query | content_gen | enterprise | life | automation | other`
@@ -39,8 +39,7 @@ ae-cli agent +add-mcp \
   --transport http \
   --headers '{"Authorization":"Bearer token"}' \
   --category dev_tool \
-  --icon-emoji robot \
-  --yes
+  --icon-emoji robot
 
 # Dry-run to inspect the request before executing
 ae-cli agent +add-mcp --dry-run --name my-mcp --url "https://mcp.example.com/mcp"

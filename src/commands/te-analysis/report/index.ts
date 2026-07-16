@@ -1,22 +1,24 @@
 import type { Command } from '../../../framework/types.js';
-import { listReports } from './list-reports.js';
-import { getReportDefinition } from './get-report-definition.js';
-import { queryReportData } from './query-report-data.js';
-import { createReport } from './create-report.js';
-import { deleteReport } from './delete-report.js';
-import { updateReport } from './update-report.js';
+import { reportList } from './list.js';
+import { reportListExport } from './list-export.js';
+import { reportGet } from './get.js';
+import { reportCreate } from './create.js';
+import { reportUpdate } from './update.js';
+import { reportDelete } from './delete.js';
 
 const commands: Command[] = [
-  listReports,
-  getReportDefinition,
-  queryReportData,
-  createReport,
-  deleteReport,
-  updateReport,
+  reportList,
+  reportListExport,
+  reportGet,
+  reportCreate,
+  reportUpdate,
+  reportDelete,
 ];
 
 export default commands;
-export { listReports };
-export { getReportDefinition };
-export { queryReportData };
-export { createReport };
+export { reportList };
+export { reportListExport };
+export { reportGet };
+export { reportCreate };
+export { reportUpdate };
+export { reportDelete };

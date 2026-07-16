@@ -7,6 +7,7 @@ Domain: **Project Configuration**
 ## Use Cases
 - Get project configuration details. Returns: projectId, projectName, companyId, defaultTimeZoneOffset (project default time zone offset), remark, timeZoneEnabled (whether multiple time zones are supported), timeZoneOffsetColumn (time zone column name in event data), and availableTimeZones (array of time zone offsets used in this project). Call this tool when you need project basic info or time zone configuration.
 - Get project configuration details.
+- Do not use it for project discovery or membership lookup; use `analysis_common +list_projects` or `+list_project_users` respectively.
 
 ## Command
 ```bash

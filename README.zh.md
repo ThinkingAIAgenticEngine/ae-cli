@@ -84,7 +84,6 @@ ae-cli auth logout
 | 域 | 命令数 | 描述 |
 |---|---|---|
 | `analysis` | 30+ | 分析工作流：告警、报表、仪表板、即时分析/下钻、实体/事件详情、分析模型 |
-| `analysis_audience` | 10+ | 受众运营：分群、标签及其定义模型 |
 | `analysis_meta` | 20+ | 元数据治理：事件/属性、指标、虚拟元数据、项目配置、埋点方案、标记时间、实体目录 |
 | `engage` | 40+ | Hermes Engage MCP：渠道、任务、配置、流程、策略 |
 | `dataops_repo` | 1 | DataOps 仓库辅助：空间发现 |
@@ -125,9 +124,10 @@ ae-cli auth logout
 |---|---|---|
 | `--host <url>` | 覆盖当前 AE 主机 URL | 从配置读取 |
 | `--format <json\|table>` | 输出格式 | json |
-| `--jq <expr>` | 过滤表达式 | - |
-| `--dry-run` | 预览请求 | false |
-| `--yes` | 跳过确认 | false |
+| `--jq <expr>` | jq 1.8 表达式（jq-wasm），作用于命令业务结果，再包进输出信封 | - |
+| `--validate` | 改对参数：仅能力网关 `/validate`（精选网关命令）。勿与 `--dry-run` 同用 | false |
+| `--dry-run` | 确认可以跑：能力网关 `/dry-run`（或其它传输的请求预览）。勿与 `--validate` 同用 | false |
+| `--yes` | 跳过高风险写操作确认 | false |
 | `--no-update-check` | 跳过 ae-cli 新版本检查 | false |
 
 ## Skills
@@ -189,7 +189,7 @@ ae-cli 基于：
 - **TypeScript**（约 8000 行代码）
 - **Commander.js** 作为 CLI 框架
 - **WebSocket** 用于 MCP 服务器集成
-- **Node.js** 运行时（v18+）
+- **Node.js** 运行时（v20+）
 
 项目结构：
 ```
@@ -201,7 +201,6 @@ src/
     ├── auth.ts
     ├── config.ts
     ├── te-analysis/
-    ├── te-audience/
     ├── te-meta/
     ├── te-engage/
     ├── te-dataops/
@@ -214,7 +213,6 @@ src/
 
 ```bash
 npm run verify:analysis-tools
-npm run verify:analysis-audience-tools
 npm run verify:analysis-meta-tools
 npm run verify:analysis-common-tools
 ```

@@ -12,12 +12,12 @@ Domain: **MCP Servers / write**
 ## Mandatory Rules (MUST)
 - `--id` and `--enabled` are required.
 - Obtain the real MCP server record ID (CUID) via `+list-mcps` — do not guess.
-- Write operation: keep the confirmation prompt unless `--yes` is explicitly requested.
+- This is an ordinary `write` operation and does not require CLI confirmation.
 
 ## Command
 ```bash
-ae-cli agent +toggle-mcp --id <mcp-cuid> --enabled true --yes
-ae-cli agent +toggle-mcp --id <mcp-cuid> --enabled false --yes
+ae-cli agent +toggle-mcp --id <mcp-cuid> --enabled true
+ae-cli agent +toggle-mcp --id <mcp-cuid> --enabled false
 ae-cli agent +toggle-mcp --dry-run --id <mcp-cuid> --enabled false
 ```
 

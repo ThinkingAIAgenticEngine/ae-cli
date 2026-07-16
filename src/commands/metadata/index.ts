@@ -10,7 +10,6 @@ import { dataTableList } from './data-table/list.js';
 import { dataTablePropertyBindingsUpdate } from './data-table/property-bindings-update.js';
 import { dataTableSqlDelete } from './data-table/sql-delete.js';
 import { dataTableSqlWrite } from './data-table/sql-write.js';
-import { inputFileUpload } from './input-file/upload.js';
 import { propertyDimensionTableBindExisting } from './property/dimension-table/bind-existing.js';
 import { propertyDimensionTableCreateAndBindCsv } from './property/dimension-table/create-and-bind-csv.js';
 
@@ -27,7 +26,6 @@ const commands: Command[] = [
   dataTableSqlDelete,
   dataTableDownload,
   dataTablePropertyBindingsUpdate,
-  inputFileUpload,
   propertyDimensionTableBindExisting,
   propertyDimensionTableCreateAndBindCsv,
 ];

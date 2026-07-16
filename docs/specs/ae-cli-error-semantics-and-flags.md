@@ -33,7 +33,7 @@
 
 - [x] `npm run build` 绿；`self-check` P1=0/P2=0；单测全过（新增 `tests/error-classify.test.ts` 9、`tests/resource-url.test.ts` 6；secure-store 15 / device-auth 22 / mcp-no-disk 14 / te-agent-credentials 10）。
 - [x] **F-017 e2e**（inner-audit）：`dataops_ide +list_tables --spaceCode default --catalog hive --schema datamap` 不再报 `Missing required flag`，直达服务端（connType/repoCode/isView/pageNum/pageSize 套默认）。
-- [x] **F-018/F-019 e2e（2026-06-23，无权账号复验通过）**：`analysis_meta +list_events --project_id 3` / `analysis +query_report_data` → `{ok:false, type:"permission", message:"Your token does not have permission to access this project…"}`（无重登误导、透传服务端消息）；`team +delete --id 1 --yes` → `{ok:false, type:"api", message:"Team 不存在或无权删除"}`（之前是 `ok:true`）。
+- [x] **F-018/F-019 e2e（2026-06-23，无权账号复验通过）**：元数据列表与旧报表数据查询命令均返回 `{ok:false, type:"permission", message:"Your token does not have permission to access this project…"}`（无重登误导、透传服务端消息）；`team +delete --id 1 --yes` → `{ok:false, type:"api", message:"Team 不存在或无权删除"}`（之前是 `ok:true`）。
 
 ## 关联
 

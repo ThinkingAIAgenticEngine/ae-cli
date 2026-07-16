@@ -7,6 +7,7 @@ Domain: **Project Configuration**
 ## Use Cases
 - Create a project date marker. Returns the new marker ID, timestamp, content, and visibility status.
 - Create a project date marker.
+- Do not use it to modify an existing marker; use `+update_project_mark_time` with the verified marker ID.
 
 ## Command
 ```bash
@@ -28,7 +29,7 @@ ae-cli analysis_meta +create_project_mark_time --dry-run
 - First run should only pass required parameters (`--project_id`, `--marked_at`, `--content`), and add optional parameters only after the path is confirmed to work.
 - For date/time ranges, first validate with a short range, then expand the range step by step.
 - For cross-project troubleshooting, first confirm whether `--project_id` matches the current permissions and target environment.
-- Write operations keep the confirmation prompt by default; re-evaluate whether to use `--yes` in automation scenarios.
+- This is an ordinary `write` operation and does not require CLI confirmation.
 
 ## Next Steps After Failure
 - If required parameters are missing, fall back to the smallest runnable command and fill them in (focus on `--project_id`, `--marked_at`, and `--content`).

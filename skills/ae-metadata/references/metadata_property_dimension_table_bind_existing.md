@@ -5,8 +5,8 @@
 ## Command
 
 ```bash
-ae-cli metadata property bind-existing-dimension-table --project-id <project_id> --property-name <name> --property-scope user --data-table-id <id> --yes
-ae-cli metadata property bind-existing-dimension-table --project-id <project_id> --property-name <name> --property-scope event --data-table-id <id> --dict-columns '["display_name"]' --yes
+ae-cli metadata property bind-existing-dimension-table --project-id <project_id> --property-name <name> --property-scope user --data-table-id <id>
+ae-cli metadata property bind-existing-dimension-table --project-id <project_id> --property-name <name> --property-scope event --data-table-id <id> --dict-columns '["display_name"]'
 ```
 
 ## Parameters
@@ -24,4 +24,4 @@ ae-cli metadata property bind-existing-dimension-table --project-id <project_id>
 
 - Confirm the property with `metadata property get` or `analysis_meta +list_properties`.
 - Confirm the data table with `metadata data-table get`.
-- This is a write command; use `--dry-run` before non-dry-run and pass `--yes` when executing.
+- This is an ordinary `write` command and does not require CLI confirmation.

@@ -4,15 +4,14 @@ Use when the user explicitly wants to create a project space.
 
 Do not use to create folders inside a space. Use `analysis.folder.create` via capability run.
 
-This capability has no curated `ae-cli analysis` command. Read [`ae-capability`](../../ae-capability/SKILL.md), then:
+This capability has no curated `ae-cli analysis` command. Read [`ae-capability`](../../ae-capability/SKILL.md) (on-demand validate/dry-run table), then:
 
 ```bash
 ae-cli capability inspect analysis.project_space.create
-ae-cli capability dry-run analysis.project_space.create --input '{"project_id":1,"space_name":"lds-test-071301","avatar_type":1}'
 ae-cli capability run analysis.project_space.create --input '{"project_id":1,"space_name":"lds-test-071301","avatar_type":1}'
 ```
 
-`risk=write` — no chat confirmation required after dry-run succeeds.
+`risk=write` — no chat confirmation required.
 
 Input uses snake_case JSON. Common fields:
 

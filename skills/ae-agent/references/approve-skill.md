@@ -13,12 +13,12 @@ Domain: **Skill Approval (company-scope publish) / write**
 ## Mandatory Rules (MUST)
 - `--id` is required and must reference a **submission** record (CUID), not a Skill ID. Obtain it via `+list-skill-submissions` — do not guess.
 - **Root only** — non-root users cannot approve submissions.
-- Write operation: keep the confirmation prompt unless `--yes` is explicitly requested.
+- This is an ordinary `write` operation and does not require CLI confirmation.
 - Only `pending` submissions can be approved.
 
 ## Command
 ```bash
-ae-cli agent +approve-skill --id <submission-cuid> --yes
+ae-cli agent +approve-skill --id <submission-cuid>
 ae-cli agent +approve-skill --dry-run --id <submission-cuid>
 ```
 

@@ -7,6 +7,7 @@ Domain: **Project Configuration**
 ## Use Cases
 - Generate a tracking plan from structured business context. This AI generation flow is different from save_track_items: save_track_items persists explicitly provided plan items, while this tool requests AI generation and saves the generated result asynchronously.
 - Users should check the in-site message center for final results.
+- Do not use it to persist a fully specified set of tracking items; use `+save_track_items` when the exact items are already known.
 
 ## CRITICAL: Pre-execution Check
 **Before calling this command, you MUST:**

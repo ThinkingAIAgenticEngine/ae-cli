@@ -7,7 +7,7 @@ Do not use to copy an existing dashboard. Use `dashboard copy` for copy workflow
 Command:
 
 ```bash
-ae-cli analysis dashboard create --project-id <project_id> --dashboard-name <name> [--space-id <space_id>] [--folder-id <folder_id>] [--initial-report-id <report_id>] [--payload '{...}'] --yes
+ae-cli analysis dashboard create --project-id <project_id> --dashboard-name <name> [--space-id <space_id>] [--folder-id <folder_id>] [--initial-report-id <report_id>] [--payload '{...}']
 ```
 
 Input sends `project_id`, `dashboard_name`, and optional `space_id`, `folder_id`, `initial_report_id`, `payload`.

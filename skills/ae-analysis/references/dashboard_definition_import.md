@@ -7,7 +7,7 @@ Do not use a separate pre-check command; validation is part of this import comma
 Command:
 
 ```bash
-ae-cli analysis dashboard-definition import --project-id <project_id> --definition '{...}' [--validate-only true] [--dashboard-name-conflict-policy <policy>] [--space-dashboard-policy <policy>] [--payload '{...}'] --yes
+ae-cli analysis dashboard-definition import --project-id <project_id> --definition '{...}' [--validate-only true] [--dashboard-name-conflict-policy <policy>] [--space-dashboard-policy <policy>] [--payload '{...}']
 ```
 
 Input sends `project_id`, `definition`, and optional validation/import policies and `payload`.

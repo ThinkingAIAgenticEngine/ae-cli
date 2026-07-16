@@ -2,7 +2,7 @@ import { createMcpCommand } from '../shared.js';
 
 export const getMetric = createMcpCommand({
   command: '+get_metric',
-  description: 'Get the definition details of a single metric. Use for metric metadata inspection/management, not as a pre-step for event ad-hoc builder; pass saved metric names directly to +build_event_analysis_qp in metrics[].event.',
+  description: 'Get the definition details of a single metric. Use for metric metadata inspection/management. For AI-facing analysis definitions, reference saved metrics by verified metric name instead of calling old QP builders.',
   flags: [
     { name: 'project_id', type: 'number', required: true, alias: 'p', desc: 'Project ID' },
     { name: 'metric_id', type: 'number', required: true, alias: 'm', desc: 'Metric ID' },

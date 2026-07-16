@@ -15,7 +15,7 @@ Domain: **Skills / write**
 - `--name` must be 1–80 chars when provided.
 - `--instructions` supports `@-` to read from stdin (useful for piping long instruction text).
 - `--category` must be one of the market category keys when provided.
-- Write operation: keep the confirmation prompt unless `--yes` is explicitly requested.
+- This is an ordinary `write` operation and does not require CLI confirmation.
 
 ## Market Category Keys
 `ae_preset | dev_tool | search_tool | data_query | content_gen | enterprise | life | automation | other`
@@ -23,14 +23,14 @@ Domain: **Skills / write**
 ## Command
 ```bash
 # Edit instructions only
-ae-cli agent +edit-skill --id <skill-cuid> --instructions "Updated instructions..." --yes
+ae-cli agent +edit-skill --id <skill-cuid> --instructions "Updated instructions..."
 
 # Edit name and description
-ae-cli agent +edit-skill --id <skill-cuid> --name new-name --description "New description" --yes
+ae-cli agent +edit-skill --id <skill-cuid> --name new-name --description "New description"
 
 # Instructions from stdin
 echo "You are a helpful assistant..." | \
-  ae-cli agent +edit-skill --id <skill-cuid> --instructions @- --yes
+  ae-cli agent +edit-skill --id <skill-cuid> --instructions @-
 
 # Dry-run to inspect the request before executing
 ae-cli agent +edit-skill --dry-run --id <skill-cuid> --name new-name

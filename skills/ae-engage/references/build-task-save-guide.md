@@ -14,10 +14,11 @@ Use this sequence when creating or updating a task draft:
 
 1. Query channels with `ae-cli engage +channel_list --project_id <projectId>`.
 2. Call `ae-cli engage +build_task_save_guide --project_id <projectId> --req '{...}'`.
-3. If the guide says QP-derived fields are required, call:
+3. If the guide says an audience or QP-derived fields are required, create the audience directly and read it back:
 
 ```bash
-ae-cli analysis_audience +get_cluster_definition_schema --cluster_type condition
+ae-cli analysis user-cluster create --project-id <projectId> --cluster-name <condition_cluster_name> --display-name <display_name> --definition-request '<semantic-definition-json>'
+ae-cli analysis user-cluster get --project-id <projectId> --cluster-names '["<condition_cluster_name>"]'
 ```
 
 4. Build the final grouped `save_task.req`.
@@ -25,8 +26,8 @@ ae-cli analysis_audience +get_cluster_definition_schema --cluster_type condition
 
 Important:
 
-- Do not treat the audience schema query as a fixed preflight step.
-- Call it only when the guide indicates that you need to construct:
+- Do not treat audience creation as a fixed preflight step.
+- Create/read the audience only when the guide indicates that you need to construct:
   - `targetConfig.qp`
   - `triggerConfig.triggerRule`
   - `clientConfig.clientQp`
@@ -175,7 +176,7 @@ This section describes the high-level contract:
 
 - final tool is `save_task`
 - required preflight is `query_channel_list -> build_task_save_guide`
-- QP-derived fields may require `ae-cli analysis_audience +get_cluster_definition_schema --cluster_type condition`
+- QP-derived fields require a server-authored audience: direct `analysis user-cluster create`, followed by `analysis user-cluster get`
 - `save_task.req` must be a grouped JSON object
 
 ### 4.6 `scenario`
@@ -263,13 +264,14 @@ Recommended usage pattern:
 3. read `fieldRules.channelContentSchema`
 4. read `handoff.reqTemplate`
 5. fix everything in `blockingPlaceholders`
-6. if the guide points to QP-derived fields, call:
+6. if the guide points to an audience or QP-derived fields, call:
 
 ```bash
-ae-cli analysis_audience +get_cluster_definition_schema --cluster_type condition
+ae-cli analysis user-cluster create --project-id <projectId> --cluster-name <condition_cluster_name> --display-name <display_name> --definition-request '<semantic-definition-json>'
+ae-cli analysis user-cluster get --project-id <projectId> --cluster-names '["<condition_cluster_name>"]'
 ```
 
-7. fill those fields using the real condition schema
+7. prefer the created cluster reference; only copy server-authored fields from `user-cluster get` when the guide explicitly requires QP-derived fields
 8. call `+save_task`
 
 ---
@@ -278,6 +280,6 @@ ae-cli analysis_audience +get_cluster_definition_schema --cluster_type condition
 
 - `+build_task_save_guide` is read-only; it does not save a draft
 - do not skip the guide and build `save_task.req` from memory alone
-- do not treat the audience schema query as mandatory for every task
+- do not treat the semantic cluster definition builder as mandatory for every task
 - do not invent `channelId`, `clusterKey`, content keys, or QP structures
 - if the guide exposes an unsupported scenario, correct it before calling `save_task`

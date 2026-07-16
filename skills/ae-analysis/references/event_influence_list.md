@@ -2,7 +2,7 @@
 
 Use when the user needs to list assets affected by event delete, hide, or update.
 
-Do not use this command for unrelated analysis queries, ad-hoc query construction, or MCP metadata discovery when an existing specialized command already fits the user's request.
+Do not use it as mutation or as proof that deletion is safe without reviewing every returned dependency.
 
 Command:
 
@@ -15,7 +15,7 @@ Capability id: `metadata.event.influence_list`.
 
 Input sends `project_id`, `event_name`.
 
-Output is the gateway envelope. `data` contains the common-service capability result.
+Output is the snake_case event influence object returned by Common, including dependent assets and operation constraints.
 
 ## Parameters
 | Parameter | Required | Description |

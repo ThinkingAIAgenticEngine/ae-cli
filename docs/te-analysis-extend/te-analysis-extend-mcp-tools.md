@@ -55,17 +55,18 @@
 - `list_spaces` - 列出项目空间与文件夹树（含仪表盘）
 - `move_dashboard` - 将仪表盘移动到指定空间或文件夹
 
-### 9. 报告管理 (Report Management) - 1 个工具
-- `update_report` - 更新报告（名称、描述、QP）
+### 9. 报告管理 (Report Management)
+旧报表更新 MCP 工具已迁移到 capability gateway 命令：`ae-cli analysis report update`。
 
 ### 10. 公开链接管理 (Public Access Link) - 3 个工具
 - `list_public_access_links` - 列出公开链接
 - `create_public_access_link` - 创建公开链接
 - `update_public_access_link` - 更新公开链接
 
-### 11. 模型辅助查询 (Model Assist) - 2 个工具
+### 11. 模型辅助查询 (Model Assist) - 1 个工具
 - `load_filters` - 加载属性候选值
-- `get_table_columns` - 查询表字段信息
+
+SQL 表及列发现已迁移到 capability gateway：先执行 `ae-cli analysis sql-table list`，再把返回的 `table_ref` 传给 `ae-cli analysis sql-table columns`。
 
 ### 12. 项目日期标注 (Project Mark Time) - 4 个工具
 - `create_project_mark_time` - 创建日期标注
@@ -320,13 +321,6 @@
   - `clusterDatePolicy` (String, optional) - `LATEST` / `AUTO` / `SPECIFIED`
   - `specifiedClusterDate` (String, optional) - 指定分群日期（`yyyy-MM-dd`）
   - `isReport` (Boolean, optional) - 是否报表模式
-- **风险**: read
-
-#### get_table_columns
-- **描述**: 查询项目数据表字段列表
-- **参数**:
-  - `projectId` (Integer, required) - 项目 ID
-  - `tableRef` (String, required) - 表引用，支持 `hive.schema.table`、`schema.table` 或 `table`
 - **风险**: read
 
 ### 项目日期标注工具

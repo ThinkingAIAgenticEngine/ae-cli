@@ -12,6 +12,9 @@ Domain: **Model Analysis**
 - clusterDatePolicy is only used when tableType=user and user clusters are involved. Supported values: LATEST, AUTO, SPECIFIED.
 - Load candidate values for a property.
 
+## Output
+Returns candidate values for the requested property and scope. Treat the list as selectable values, not as aggregated counts or analysis results.
+
 ## Commands
 ```bash
 ae-cli analysis +load_filters --project_id <project_id> --quot demo --table_type event

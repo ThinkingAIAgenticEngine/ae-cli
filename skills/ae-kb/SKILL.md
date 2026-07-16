@@ -15,7 +15,7 @@ ae-cli kb +<command> [options]
 ## Global Rules
 
 - Use this skill for TE/AE knowledge base tasks: create, query, ask with LLM, inspect indexes, grep pages, read pages, check status, upload sources, add URL sources, generate schema, compile, remove source files, and delete knowledge bases.
-- Read operations can run directly after required inputs are known. Write operations require explicit user intent and normally keep the confirmation prompt unless the user asks to bypass it.
+- Read and ordinary `write` operations can run directly after required inputs and user intent are known. Only `high-risk-write` operations use the confirmation gate.
 - Prefer `--dry-run` before destructive or broad writes when the user has not already validated the target.
 - Do not invent knowledge base names, scopes, source display names, or JSON payloads. Ask the user or query known context when values are missing.
 - JSON flags must be valid JSON strings, usually wrapped in single quotes in shell commands.

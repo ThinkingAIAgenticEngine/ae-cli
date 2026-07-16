@@ -15,15 +15,15 @@ Domain: **Skill Share (peer-to-peer) / write**
 - `--id` is required and must reference a **personal-scope** Skill (CUID). Obtain it via `+list-skills` — do not guess.
 - `--to-user-id` is required — the recipient user ID (must be in the same company).
 - `--category` must be one of the market category keys (see below) when provided.
-- Write operation: keep the confirmation prompt unless `--yes` is explicitly requested.
+- This is an ordinary `write` operation and does not require CLI confirmation.
 
 ## Market Category Keys
 `ae_preset | dev_tool | search_tool | data_query | content_gen | enterprise | life | automation | other`
 
 ## Command
 ```bash
-ae-cli agent +share-skill --id <skill-cuid> --to-user-id <user-id> --yes
-ae-cli agent +share-skill --id <skill-cuid> --to-user-id <user-id> --category dev_tool --icon-emoji robot --yes
+ae-cli agent +share-skill --id <skill-cuid> --to-user-id <user-id>
+ae-cli agent +share-skill --id <skill-cuid> --to-user-id <user-id> --category dev_tool --icon-emoji robot
 ae-cli agent +share-skill --dry-run --id <skill-cuid> --to-user-id <user-id>
 ```
 

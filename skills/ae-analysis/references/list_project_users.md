@@ -7,6 +7,7 @@ Domain: **Project Configuration**
 ## Use Cases
 - Get all project members. Returns userId, loginName, and userName for each member. Use this to resolve userId when managing dashboard share members.
 - Get all project members.
+- Do not use it as an organization-wide people search or as proof of resource-level authority; it lists project membership only.
 
 ## Command
 ```bash

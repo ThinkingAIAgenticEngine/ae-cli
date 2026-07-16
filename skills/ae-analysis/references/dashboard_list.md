@@ -7,9 +7,11 @@ Do not use for dashboard report data. Use `dashboard-report-data run` or `dashbo
 Command:
 
 ```bash
-ae-cli analysis dashboard list --project-id <project_id> [--query <keyword>] [--fields '["id","name"]'] [--limit 20] [--offset 0]
+ae-cli analysis dashboard list --project-id <project_id> [--query <keyword>] [--fields '["dashboard_id","dashboard_name"]'] [--limit 50] [--offset 0]
 ```
 
-Input uses `project_id` plus optional `query`, `fields`, `limit`, `offset`. Use `--payload` only when the dedicated gateway contract requires extra snake_case filters.
+Input uses `project_id` plus optional `query`, `fields`, `limit`, `offset`. `--fields` accepts only `dashboard_id`, `dashboard_name`, and `remark`. Input and output both use snake_case; do not use `dashboardId`, `dashboardName`, generic `id`, or generic `name`.
+
+When `has_more=true`, continue only with the returned `next_offset`; do not calculate the next page locally.
 
 Output is the gateway envelope. `data` contains dashboard summaries and paging metadata when returned by the gateway.

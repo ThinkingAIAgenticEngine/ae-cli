@@ -15,7 +15,7 @@ export const dashboardShare = createAnalysisCapabilityCommand({
   flags: [
     projectIdFlag,
     { name: 'dashboard-id', type: 'number', required: true, desc: 'Dashboard ID.' },
-    { name: 'member-authorities', type: 'json', required: false, desc: 'Optional member authority map.' },
+    { name: 'member-authorities', type: 'json', required: false, desc: 'Complete user authority map: {"<numeric_user_id>":"READ|EDIT|CREATOR|MAINTAIN"}. An empty object removes all directly shared users.' },
     payloadFlag,
   ],
   risk: 'write',

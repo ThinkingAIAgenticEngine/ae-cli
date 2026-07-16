@@ -15,6 +15,7 @@ import {
   clearCapabilityGatewayRoutesForTest,
   registerCapabilityGatewayRoute,
 } from '../src/core/capability-routing.ts';
+import { clearCliToken, setCliTokenManual } from '../src/core/cli-token.ts';
 
 let pass = 0;
 let fail = 0;
@@ -41,7 +42,28 @@ function makeCtx(values: Record<string, any>) {
   } as any;
 }
 
+async function dryBody(command: { dryRun?: (ctx: any) => unknown }, values: Record<string, any>) {
+  const host = 'https://ta.example.com';
+  setCliTokenManual('analysis-export-flow-test-token', host);
+  let body: any;
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = (async (_request: any, init?: RequestInit) => {
+    body = init?.body ? JSON.parse(String(init.body)) : undefined;
+    return new Response(JSON.stringify({ ok: true, data: { dry_run: true } }), { status: 200 });
+  }) as typeof fetch;
+  try {
+    await command.dryRun!(makeCtx(values));
+    return body;
+  } finally {
+    globalThis.fetch = originalFetch;
+    clearCliToken(host);
+  }
+}
+
 process.stdout.write('\nanalysis export flow command tests\n');
+
+clearCapabilityGatewayRoutesForTest();
+registerCapabilityGatewayRoute('analysis', { gatewayDomain: 'analysis' });
 
 await test('run inspect targets analysis run endpoint', () => {
   const dryRun = runInspect.dryRun!(makeCtx({ 'run-id': 'run_abc' }));
@@ -60,21 +82,21 @@ await test('artifact download targets run-scoped download endpoint', () => {
     dryRun.url,
     'https://ta.example.com/api/cli/analysis/v1/runs/run_abc/artifacts/artifact_xyz/download',
   );
-  assert.deepEqual(dryRun.body, { output_path: '/tmp/out.jsonl.gz' });
+  assert.equal(dryRun.output_path, '/tmp/out.jsonl.gz');
 });
 
-await test('dashboard definition export sends single and batch dashboard IDs', () => {
+await test('dashboard definition export sends single and batch dashboard IDs', async () => {
   clearCapabilityGatewayRoutesForTest();
   registerCapabilityGatewayRoute('analysis', { gatewayDomain: 'analysis' });
 
-  const dryRun = dashboardDefinitionExport.dryRun!(makeCtx({
+  const body = await dryBody(dashboardDefinitionExport, {
     'project-id': 1,
     'dashboard-id': 1001,
     'dashboard-ids': '[1002,1003]',
     'export-file-name': 'dashboards',
-  }));
+  });
 
-  assert.deepEqual(dryRun.body, {
+  assert.deepEqual(body, {
     input: {
       project_id: 1,
       dashboard_id: 1001,
@@ -84,13 +106,13 @@ await test('dashboard definition export sends single and batch dashboard IDs', (
   });
 });
 
-await test('dashboard definition export accepts simple folder ID arrays', () => {
-  const dryRun = dashboardDefinitionExport.dryRun!(makeCtx({
+await test('dashboard definition export accepts simple folder ID arrays', async () => {
+  const body = await dryBody(dashboardDefinitionExport, {
     'project-id': 1,
     'dashboard-folder-ids': '[11]',
-  }));
+  });
 
-  assert.deepEqual(dryRun.body, {
+  assert.deepEqual(body, {
     input: {
       project_id: 1,
       dashboard_folder_ids: [11],
@@ -98,14 +120,14 @@ await test('dashboard definition export accepts simple folder ID arrays', () => 
   });
 });
 
-await test('dashboard copy defaults report copy and omits target location', () => {
-  const dryRun = dashboardCopy.dryRun!(makeCtx({
+await test('dashboard copy defaults report copy and omits target location', async () => {
+  const body = await dryBody(dashboardCopy, {
     'project-id': 1,
     'dashboard-id': 1001,
     'dashboard-name': 'Copy',
-  }));
+  });
 
-  assert.deepEqual(dryRun.body, {
+  assert.deepEqual(body, {
     input: {
       project_id: 1,
       dashboard_id: 1001,
@@ -115,13 +137,13 @@ await test('dashboard copy defaults report copy and omits target location', () =
   });
 });
 
-await test('dashboard daily report update sends safe defaults when payload is absent', () => {
-  const dryRun = dashboardDailyReportUpdate.dryRun!(makeCtx({
+await test('dashboard daily report update sends safe defaults when payload is absent', async () => {
+  const body = await dryBody(dashboardDailyReportUpdate, {
     'project-id': 1,
     'dashboard-id': 1001,
-  }));
+  });
 
-  assert.deepEqual(dryRun.body, {
+  assert.deepEqual(body, {
     input: {
       project_id: 1,
       dashboard_id: 1001,
@@ -132,6 +154,8 @@ await test('dashboard daily report update sends safe defaults when payload is ab
       enable_dd: false,
       enable_wx: false,
       enable_feishu: false,
+      enable_kim: false,
+      enable_slack: false,
       send_date: '1,2,3,4,5,6,7',
       send_time: '09:00',
       lang: 'zh-CN',
@@ -142,14 +166,14 @@ await test('dashboard daily report update sends safe defaults when payload is ab
   });
 });
 
-await test('dashboard daily report send keeps payload authoritative', () => {
-  const dryRun = dashboardDailyReportSend.dryRun!(makeCtx({
+await test('dashboard daily report send keeps payload authoritative', async () => {
+  const body = await dryBody(dashboardDailyReportSend, {
     'project-id': 1,
     'dashboard-id': 1001,
     payload: '{"need_csv":true,"host_url":"https://ta.example.com"}',
-  }));
+  });
 
-  assert.deepEqual(dryRun.body, {
+  assert.deepEqual(body, {
     input: {
       project_id: 1,
       dashboard_id: 1001,

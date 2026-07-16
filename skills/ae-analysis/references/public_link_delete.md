@@ -7,6 +7,8 @@ Do not use to temporarily stop access while keeping records. Use `public-link of
 Command:
 
 ```bash
+ae-cli analysis public-link delete --project-id <project_id> [--link-id <link_id>] [--link-ids '[1,2]'] [--company-id <company_id>] --dry-run
+# Summarize the target and impact, then wait for explicit user confirmation.
 ae-cli analysis public-link delete --project-id <project_id> [--link-id <link_id>] [--link-ids '[1,2]'] [--company-id <company_id>] --yes
 ```
 

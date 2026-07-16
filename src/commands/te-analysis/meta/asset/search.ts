@@ -1,6 +1,6 @@
 import {
   createAnalysisMetaCapabilityCommand,
-  payloadFlag,
+  requiredPayloadFlag,
   projectIdFlag,
   projectInput,
 } from '../../capability-shared.js';
@@ -12,7 +12,7 @@ export const metadataAssetSearch = createAnalysisMetaCapabilityCommand({
   description: 'Search project assets by keyword.',
   flags: [
     projectIdFlag,
-    payloadFlag,
+    requiredPayloadFlag,
   ],
   risk: 'read',
   buildInput: (ctx) => ({ ...projectInput(ctx), payload: ctx.json('payload') }),

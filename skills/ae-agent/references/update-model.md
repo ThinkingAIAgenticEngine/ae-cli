@@ -15,7 +15,7 @@ Domain: **Models / write**
 - `--base-url` must be a valid URL.
 - `--api-key` is optional; omit or leave empty to preserve the existing key (do NOT pass an empty string to clear — the stored key is kept).
 - `--scope` controls target scope: `personal` (default) or `company`. Company scope requires root/agent_admin; system models are read-only.
-- Write operation: keep the confirmation prompt unless `--yes` is explicitly requested.
+- This is an ordinary `write` operation and does not require CLI confirmation.
 
 ## Command
 ```bash
@@ -25,8 +25,7 @@ ae-cli agent +update-model \
   --model-id gpt-4o \
   --name "GPT-4o (prod)" \
   --base-url "https://api.openai.com/v1" \
-  --provider openai \
-  --yes
+  --provider openai
 
 # Rotate the API key
 ae-cli agent +update-model \

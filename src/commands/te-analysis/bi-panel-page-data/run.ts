@@ -1,15 +1,18 @@
 import {
+  analysisDataRunRoutingHelp,
+  applyAnalysisInlineLimit,
   biPanelPageDataInput,
   createAnalysisCapabilityCommand,
-  limitFlag,
   projectIdFlag,
+  syncLimitFlag,
+  syncTimeoutSecondsFlag,
 } from '../capability-shared.js';
 
 export const biPanelPageDataRun = createAnalysisCapabilityCommand({
   resource: 'bi-panel-page-data',
   command: 'run',
   capabilityId: 'analysis.bi_panel_page_data.run',
-  description: 'Run a bounded BI panel page data query and return inline JSON.',
+  description: `Run a bounded BI panel page data query and return inline JSON. Chart results may include query_context_id; BI SQL chart contexts are not model-drilldown contexts unless drilldown_available=true. ${analysisDataRunRoutingHelp}`,
   flags: [
     projectIdFlag,
     { name: 'panel-id', type: 'number', required: true, desc: 'BI panel ID.' },
@@ -20,15 +23,16 @@ export const biPanelPageDataRun = createAnalysisCapabilityCommand({
     { name: 'permission-controls', type: 'json', required: false, desc: 'Optional permission control array.' },
     { name: 'chart-filter-controls', type: 'json', required: false, desc: 'Optional chart filter control array.' },
     { name: 'columns', type: 'json', required: false, desc: 'Optional returned column array.' },
-    { name: 'row-limit', type: 'number', required: false, desc: 'Chart row limit.' },
+    { name: 'row-limit', type: 'number', required: false, desc: 'BI chart row window control. Default: 100, max: 1000. This is chart paging, not the sync/export routing policy.', min: 1, max: 1000 },
     { name: 'row-offset', type: 'number', required: false, desc: 'Chart row offset.' },
     { name: 'block-limit', type: 'number', required: false, desc: 'Summary block limit.' },
     { name: 'block-offset', type: 'number', required: false, desc: 'Summary block offset.' },
     { name: 'use-cache', type: 'boolean', required: false, desc: 'Whether to use cache. Default: true.' },
     { name: 'request-id', type: 'string', required: false, desc: 'Optional cli_<32 lowercase hex> request ID. Generated when omitted.' },
-    { name: 'timeout-seconds', type: 'number', required: false, desc: 'Sync timeout seconds. Default: 60, max: 180.' },
-    limitFlag,
+    syncTimeoutSecondsFlag,
+    syncLimitFlag,
   ],
   risk: 'read',
   buildInput: biPanelPageDataInput,
+  postProcess: applyAnalysisInlineLimit,
 });

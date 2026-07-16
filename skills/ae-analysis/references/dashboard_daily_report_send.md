@@ -7,7 +7,7 @@ Do not use for configuration changes. Use `dashboard-daily-report update`.
 Command:
 
 ```bash
-ae-cli analysis dashboard-daily-report send --project-id <project_id> --dashboard-id <dashboard_id> [--need-csv true] [--host-url <url>] [--payload '{...}'] --yes
+ae-cli analysis dashboard-daily-report send --project-id <project_id> --dashboard-id <dashboard_id> [--need-csv true] [--host-url <url>] [--payload '{...}']
 ```
 
 Input sends `project_id`, `dashboard_id`, and optional daily report fields or `payload`.

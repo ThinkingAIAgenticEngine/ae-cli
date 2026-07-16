@@ -2,7 +2,7 @@
 
 Use when the user needs to list events related to one event property.
 
-Do not use this command for unrelated analysis queries, ad-hoc query construction, or MCP metadata discovery when an existing specialized command already fits the user's request.
+Do not use it for user properties or for event result data; it resolves event metadata related to one event property.
 
 Command:
 
@@ -15,7 +15,7 @@ Capability id: `metadata.property.related_events`.
 
 Input sends `project_id`, `prop_name`.
 
-Output is the gateway envelope. `data` contains the common-service capability result.
+Output `data.events[]` contains super events related to the event property.
 
 ## Parameters
 | Parameter | Required | Description |

@@ -6,6 +6,10 @@ Domain: **Metadata Lookup**
 
 ## Use Cases
 - Get detailed information about a specific alert by alertId.
+- Do not use it to discover an unknown alert ID; call `+list_alerts` first.
+
+## Output
+Returns the alert identity and saved definition. Use that returned definition as the baseline before an update; do not reconstruct it from memory.
 
 ## Commands
 ```bash

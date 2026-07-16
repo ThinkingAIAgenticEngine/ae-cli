@@ -18,6 +18,10 @@ function test(name: string, fn: () => void) {
   catch (e) { fail++; process.stdout.write(`  ✗ ${name}\n    ${e instanceof Error ? e.message : String(e)}\n`); }
 }
 const txt = (o: unknown) => ({ content: [{ type: 'text' as const, text: JSON.stringify(o) }] });
+const failedTxt = (text: string) => ({
+  content: [{ type: 'text' as const, text }],
+  isError: true,
+});
 
 process.stdout.write('\nparseMcpResult tests\n');
 
@@ -32,6 +36,38 @@ test('string error (non-permission) → Error (not PermissionError)', () => {
   assert.throws(
     () => parseMcpResult(txt({ error: 'something failed' })),
     (e: Error) => !(e instanceof PermissionError) && /something failed/.test(e.message),
+  );
+});
+test('MCP isError with plain exception text → Error', () => {
+  assert.throws(
+    () => parseMcpResult(failedTxt('java.lang.NullPointerException\n\tat SqlIdeHelper.exchangeConfig(SqlIdeHelper.java:194)')),
+    (e: Error) => !(e instanceof PermissionError) && /NullPointerException/.test(e.message),
+  );
+});
+test('MCP isError without text content still fails', () => {
+  assert.throws(
+    () => parseMcpResult({ content: [], isError: true }),
+    (e: Error) => /MCP tool call failed/.test(e.message),
+  );
+});
+test('MCP isError with success:false envelope preserves code and message', () => {
+  assert.throws(
+    () => parseMcpResult(failedTxt(JSON.stringify({
+      success: false,
+      errorCode: 'TABLE_COLUMNS_FAILED',
+      message: 'Unable to inspect table columns',
+    }))),
+    (e: Error) => /TABLE_COLUMNS_FAILED: Unable to inspect table columns/.test(e.message),
+  );
+});
+test('success:false envelope is a failure even without MCP isError', () => {
+  assert.throws(
+    () => parseMcpResult(txt({
+      success: false,
+      error_code: 'TABLE_COLUMNS_FAILED',
+      message: 'Unable to inspect table columns',
+    })),
+    (e: Error) => /TABLE_COLUMNS_FAILED: Unable to inspect table columns/.test(e.message),
   );
 });
 

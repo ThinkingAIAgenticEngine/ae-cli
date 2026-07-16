@@ -5,6 +5,7 @@ import { metadataAssetAuthenticationList } from './authentication-list.js';
 import { metadataAssetAuthenticationUpdate } from './authentication-update.js';
 import { metadataAssetAbnormalList } from './abnormal-list.js';
 import { metadataAssetAbnormalGet } from './abnormal-get.js';
+import { analysisMetaAssetUrlGet } from './url-get.js';
 
 const commands: Command[] = [
   metadataAssetSearch,
@@ -13,6 +14,7 @@ const commands: Command[] = [
   metadataAssetAuthenticationUpdate,
   metadataAssetAbnormalList,
   metadataAssetAbnormalGet,
+  analysisMetaAssetUrlGet,
 ];
 
 export default commands;
@@ -22,3 +24,4 @@ export { metadataAssetAuthenticationList };
 export { metadataAssetAuthenticationUpdate };
 export { metadataAssetAbnormalList };
 export { metadataAssetAbnormalGet };
+export { analysisMetaAssetUrlGet };

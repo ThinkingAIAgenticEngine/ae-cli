@@ -49,9 +49,11 @@ export function registerApi(program: CommanderCommand): void {
           result = await httpPost(apiPath, params, body, host);
         }
 
-        printOutput(result, format, jq);
+        await printOutput(result, format, jq);
       } catch (err: any) {
-        if (err instanceof SecureStoreAuthError) {
+        if (err?.type === 'validation' && String(err.message || '').includes('--jq')) {
+          printError('validation', err.message, err.hint);
+        } else if (err instanceof SecureStoreAuthError) {
           printError('auth', err.message, 'Run: ae-cli auth login');
         } else {
           printError('api', err.message);

@@ -39,14 +39,14 @@ async function test(name: string, fn: () => void | Promise<void>) {
 
 process.stdout.write('\ncapability discovery command tests\n');
 
-await test('registerCapability exposes the five discovery and invocation commands', () => {
+await test('registerCapability exposes the six discovery and invocation commands', () => {
   const program = new Command();
   registerCapability(program);
   const capability = program.commands.find((command) => command.name() === 'capability');
   assert.ok(capability);
   assert.deepEqual(
     capability.commands.map((command) => command.name()),
-    ['list', 'search', 'inspect', 'dry-run', 'run'],
+    ['list', 'search', 'inspect', 'validate', 'dry-run', 'run'],
   );
 });
 

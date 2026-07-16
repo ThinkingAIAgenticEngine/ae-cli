@@ -1,4 +1,4 @@
-# analysis capability-gateway asset commands
+# analysis capability-gateway commands
 
 > Prerequisite: follow [`../SKILL.md`](../SKILL.md), especially `PROJECT_ID_GATE`.
 
@@ -12,14 +12,17 @@ Flags use kebab-case. The gateway input JSON uses snake_case. Do not pass camelC
 
 This file is an overview only. Before running an L2 command, read the dedicated command reference named `references/<resource>_<action>.md` with hyphens converted to underscores, for example `dashboard_report_data_export.md`. L3 capabilities without a dedicated reference use dynamic discovery per [`ae-capability`](../../ae-capability/SKILL.md) and the L3 section below.
 
+For analysis data retrieval commands, read [`analysis_data_retrieval.md`](analysis_data_retrieval.md) before choosing `run` or `export`. That routing policy applies only to analysis data retrieval and must not be generalized to other `te-cli` business modules.
+
 ## When to use
 
-Use these commands for dashboard, BI panel, BI panel version, project-space, folder, favorite, public-link, dashboard-definition, dashboard-daily-report, and dashboard/BI page data workflows.
+Use these commands for ad-hoc model analysis, report definition/data/management, dashboard, BI panel and panel versions, project-space, folder, favorite, public-link, dashboard-definition, dashboard-daily-report, dashboard/BI page data, metadata governance, and user cluster/tag/history-tag workflows.
 
-Prefer export commands for long-running or large data:
+When the routing policy chooses async artifact retrieval, use export commands:
 
 ```bash
 ae-cli analysis dashboard-report-data export --project-id 1 --dashboard-id 1001
+ae-cli analysis report-data export --project-id 1 --report-ids '[1001]'
 ae-cli analysis run inspect --run-id run_0123456789abcdef0123456789abcdef
 ae-cli analysis artifact download --run-id run_0123456789abcdef0123456789abcdef --artifact-id artifact_0123456789abcdef0123456789abcdef --output /tmp/dashboard.jsonl.gz
 ae-cli analysis bi-panel-page-data export --project-id 1 --panel-id 2001 --page-key main --result-type charts
@@ -28,7 +31,7 @@ ae-cli analysis query cancel --run-id run_0123456789abcdef0123456789abcdef
 
 ## When not to use
 
-Do not use these commands for ad-hoc model analysis, report definition, report data, drilldown, schema helpers, alerts, audience clusters/tags, project lookup, metadata governance, dashboard locks, BI panel lock, dashboard filters, UI reorder/tree/move operations, daily report retry/download/get-config, or public-link logs/source-list/get. Use the existing `+<tool_name>` references for those.
+Do not use these commands for schema helpers, alerts, project lookup, dashboard locks, BI panel locks, dashboard filters, UI reorder/tree/move operations, daily report retry/download/get-config, or public-link logs/source-list/get. Use the existing `+<tool_name>` references for those.
 
 ## Output
 
@@ -64,12 +67,31 @@ Artifact workflow:
 4. Download with `ae-cli analysis artifact download --run-id <run_id> --artifact-id <artifact_id> --output <file>`.
 5. Cancel long or abandoned exports with `ae-cli analysis query cancel --run-id <run_id>`.
 
-Prefer the run/artifact commands over hand-written HTTP, Python, or curl. The descriptor paths are informational and may be internal `/api/cli/v1/...` paths behind a domain-routed CLI host.
+Prefer the run/artifact commands over hand-written HTTP, Python, or curl. For analysis data exports, the descriptor and first artifact metadata line may also contain `query_context_id` when Redis context creation succeeds.
 
 ## Command matrix
 
 | Command | Capability ID | Use for | Key input | Output |
 | --- | --- | --- | --- | --- |
+| `adhoc run` | `analysis.adhoc.run` | Unified ad-hoc inline query for 12 AI models: 9 common + 3 scenario models | `--project-id`, `--model-type`, AI-facing `--definition` | Inline data plus optional `query_context_id` |
+| `adhoc export` | `analysis.adhoc.export` | Unified ad-hoc async export for 12 AI models: 9 common + 3 scenario models | same as run, plus optional `--artifact-format`; no inline `--limit` | Async artifact descriptor; artifact metadata may include `query_context_id` |
+| `query drilldown-users` | `analysis.query.drilldown_users` | Drill down to users from an analysis data query context | `--query-context-id`, `--target` | User rows plus `drilldown_context_id` |
+| `query drilldown-user-events` | `analysis.query.drilldown_user_events` | Query one drilldown user's event sequence | `--drilldown-context-id`, `--user-id` | Event sequence rows |
+| `query create-result-cluster` | `analysis.query.create_result_cluster` | Save users matched by an analysis result target as a result cluster | `--query-context-id`, `--target`, `--cluster-name` | Result cluster creation result |
+| `report list` | `analysis.report.list` | Find accessible reports | `--project-id`, optional `--query`, `--fields`, `--limit`, `--offset` | Paginated report summaries |
+| `report list-export` | `analysis.report.list_export` | Export report catalog | same as list, plus optional `--artifact-format`, `--request-id` | Async artifact descriptor |
+| `report get` | `analysis.report.get` | Inspect current report definition as AI QP | `--project-id`, `--report-id` | Report metadata plus `model_type` and `definition` |
+| `report create` | `analysis.report.create` | Create a report from AI QP definition | `--report-name`, `--model-type`, `--definition` | Created report ID and normalized definition |
+| `report update` | `analysis.report.update` | Update metadata or AI QP definition | `--report-id`, `--report-version`, update fields | Update result |
+| `report delete` | `analysis.report.delete` | Delete reports | `--report-ids '[...]'` | Delete result |
+| `report-data run` | `analysis.report_data.run` | Bounded inline report data | `--report-ids`, optional AI-facing `--filters`, `--group-by`, SQL dynamic parameter value-only `--sql-params`, time/limit | Inline data plus optional `query_context_id` |
+| `report-data export` | `analysis.report_data.export` | Large/long report data | same as run, plus optional `--artifact-format` | Async artifact descriptor; artifact metadata may include `query_context_id` |
+| `query cancel` | `analysis.query.cancel` | Cancel any async analysis export | `--run-id`, optional `--reason` | Cancellation result |
+| `report-change-log list` | `analysis.report_change_log.list` | List one report's change logs | `--report-id` | Change log summaries |
+| `report-change-log get` | `analysis.report_change_log.get` | Inspect one change log detail | `--report-id`, optional `--history-version` | Change log detail with AI QP definition when available |
+| `report-version rollback` | `analysis.report_version.rollback` | Rollback a report version | `--report-id`, `--target-version` | Rollback result |
+| `report-abnormal get` | `analysis.report_abnormal.get` | Inspect report abnormal dependencies | `--report-id` | Abnormal info |
+| `dashboard-report add` | `analysis.dashboard_report.add` | Add reports to a dashboard | `--dashboard-id`, `--report-ids` | Add result |
 | `dashboard list` | `analysis.dashboard.list` | Find accessible dashboards | `--project-id`, optional `--query`, `--fields`, `--limit`, `--offset` | Paginated dashboard summaries |
 | `dashboard create` | `analysis.dashboard.create` | Create a dashboard | `--project-id`, `--dashboard-name`, optional `--space-id`, `--folder-id` | Created dashboard |
 | `dashboard get` | `analysis.dashboard.get` | Inspect one dashboard definition/share/report structure, including creator and creation/update time | `--project-id`, `--dashboard-id` | Dashboard detail |
@@ -82,8 +104,8 @@ Prefer the run/artifact commands over hand-written HTTP, Python, or curl. The de
 | `dashboard freeze` | `analysis.dashboard.freeze` | Freeze/unfreeze dashboards | `--dashboard-ids`, optional `--freeze false` | Freeze status |
 | `dashboard abnormal-get` | `analysis.dashboard.abnormal_get` | Inspect abnormal dependencies | `--dashboard-id` | Abnormal info |
 | `dashboard task-status` | `analysis.dashboard.task_status` | Inspect scheduled task status | `--dashboard-id` | Task status |
-| `dashboard-report-data run` | `analysis.dashboard_report_data.run` | Bounded inline dashboard report data; `--filters` is analysis Filter JSON from `+get_filter_schema` | `--dashboard-id`, optional `--report-ids`, `--filters`, `--start-time`, `--end-time`, `--limit` | Inline data |
-| `dashboard-report-data export` | `analysis.dashboard_report_data.export` | Large/long dashboard report data | same as run, plus optional `--artifact-format jsonl` | Async artifact descriptor |
+| `dashboard-report-data run` | `analysis.dashboard_report_data.run` | Bounded inline dashboard report data; `--filters` is analysis Filter JSON from `+get_filter_schema` | `--dashboard-id`, optional `--report-ids`, `--filters`, `--start-time`, `--end-time`, `--limit` | Inline data plus optional `query_context_id` |
+| `dashboard-report-data export` | `analysis.dashboard_report_data.export` | Large/long dashboard report data | same as run, plus optional `--artifact-format jsonl` | Async artifact descriptor; artifact metadata may include `query_context_id` |
 | `run inspect` | `analysis.run.inspect` | Poll async export status | `--run-id` | Run and artifact status |
 | `artifact download` | `analysis.artifact.download` | Download run-bound export artifact | `--run-id`, `--artifact-id`, `--output` | Local output file info |
 | `query cancel` | `analysis.query.cancel` | Cancel gateway run/export | `--run-id`, optional `--reason` | Cancellation result |
@@ -111,12 +133,40 @@ Prefer the run/artifact commands over hand-written HTTP, Python, or curl. The de
 | `public-link update` | `analysis.public_link.update` | Edit public link | `--link-id`, `--effective-at`, `--expires-at` | Update result |
 | `public-link offline` | `analysis.public_link.offline` | Take links offline | `--link-id` or `--link-ids` | Offline result |
 | `public-link delete` | `analysis.public_link.delete` | Delete public links | `--link-id` or `--link-ids` | Delete result |
+| `user-cluster list` | `analysis.user_cluster.list` | Find accessible user clusters | `--project-id`, optional `--query`, `--fields`, `--limit`, `--offset` | Paginated cluster summaries |
+| `user-cluster get` | `analysis.user_cluster.get` | Inspect exact clusters | `--cluster-names '[...]'` | Cluster details |
+| `user-cluster-member list` | `analysis.user_cluster_member.list` | Bounded inline cluster members | `--cluster-name`, optional properties/fields/query/limit/offset | Member rows |
+| `user-cluster-member export` | `analysis.user_cluster_member.export` | Export cluster members as jsonl | `--cluster-name`, optional properties/fields/query | Async artifact descriptor |
+| `user-cluster create` | `analysis.user_cluster.create` | Create condition/sql cluster directly from semantic intent | `--cluster-name`, `--display-name`, `--definition-request` | Create result and canonical request |
+| `user-cluster update` | `analysis.user_cluster.update` | Update condition/sql cluster | `--cluster-name`, fields to change, optional `--definition-request` | Update result |
+| `user-cluster create-id` | `analysis.user_cluster.create_id` | Map imported values to an entity and create a cluster | `--display-name`, `--entity-id`, exactly one input source, conditional `--association-property` | Processing state; poll get for final match summary |
+| `user-cluster update-id` | `analysis.user_cluster.update_id` | Remap imported values for an ID cluster | `--cluster-name`, exactly one input source, conditional `--association-property` | Processing state; poll get for final match summary |
+| `user-cluster refresh` | `analysis.user_cluster.refresh` | Trigger cluster recompute | `--cluster-name` | Refresh result |
+| `user-cluster delete` | `analysis.user_cluster.delete` | Delete cluster after dependency review | `--cluster-name`, `--confirmed`, `--yes` | Delete result |
+| `user-tag list` | `analysis.user_tag.list` | Find accessible user tags | `--project-id`, optional `--query`, `--fields`, `--limit`, `--offset` | Paginated tag summaries |
+| `user-tag get` | `analysis.user_tag.get` | Inspect exact tags | `--tag-names '[...]'` | Tag details |
+| `user-tag-member list` | `analysis.user_tag_member.list` | Bounded inline tag members | `--tag-name`, optional `--snapshot-date`, properties/fields/query/limit/offset | Member rows |
+| `user-tag-member export` | `analysis.user_tag_member.export` | Export tag members as jsonl | `--tag-name`, optional `--snapshot-date`, properties/fields/query | Async artifact descriptor |
+| `user-tag create` | `analysis.user_tag.create` | Create tag directly from semantic intent | `--tag-name`, `--display-name`, `--definition-request` | Create result and canonical request |
+| `user-tag update` | `analysis.user_tag.update` | Update tag | `--tag-name`, fields to change, optional `--definition-request` | Update result |
+| `user-tag refresh` | `analysis.user_tag.refresh` | Trigger tag recompute | `--tag-name` | Refresh result |
+| `user-tag create-id` | `analysis.user_tag.create_id` | Map imported values to an entity and create a tag | `--display-name`, `--entity-id`, exactly one input source, conditional `--association-property` | Processing state; poll get for final match summary |
+| `user-tag update-id` | `analysis.user_tag.update_id` | Remap imported values for an ID tag | `--tag-name`, exactly one input source, conditional `--association-property` | Processing state; poll get for final match summary |
+| `user-tag delete` | `analysis.user_tag.delete` | Delete tag after dependency review | `--tag-name`, `--confirmed`, `--yes` | Delete result |
+| `history-tag list` | `analysis.history_tag.list` | List history snapshots for a tag | `--tag-name` | Snapshot summaries |
+| `history-tag refresh` | `analysis.history_tag.refresh` | Refresh one history snapshot | `--tag-name`, `--refresh-date` | Refresh result |
+| `history-tag batch-refresh` | `analysis.history_tag.batch_refresh` | Batch refresh snapshots | `--tag-name`, `--refresh-request` | Async refresh result |
+| `history-tag clear` | `analysis.history_tag.clear` | Clear snapshots in date range | `--tag-name`, date range, `--confirmed`, `--yes` | Clear result |
+| `history-tag-data run` | `analysis.history_tag_data.run` | Bounded inline history tag statistics | `--tag-name`, `--view`, `--limit` | Statistic result |
+| `history-tag-data export` | `analysis.history_tag_data.export` | Export history tag statistics as jsonl | `--tag-name`, `--view` | Async artifact descriptor |
+| `history-tag-data-drilldown run` | `analysis.history_tag_data_drilldown.run` | Bounded inline users for one statistic value/bucket | `--tag-name`, `--snapshot-date`, `--group-col`, `--view`, optional member fields | Drilldown member rows |
+| `history-tag-data-drilldown export` | `analysis.history_tag_data_drilldown.export` | Export all users for one statistic value/bucket as jsonl | `--tag-name`, `--snapshot-date`, `--group-col`, `--view`, optional member fields | Async artifact descriptor |
 
 ## L3 project-space and folder capabilities
 
-Per [`capability-command-admission` §10](../../../docs/capability-command-admission.md): new gateway capabilities default to **dynamic discovery** (`capability search` → `inspect` → `dry-run` → `run`); standalone skill references are **exceptions only** (L2 bar, confusion, high-risk delete, multi-step orchestration).
+Per [`capability-command-admission` §10](../../../docs/capability-command-admission.md): new gateway capabilities default to **dynamic discovery** (`capability search` → `inspect` →（按需二选一：`validate` **或** `dry-run`，默认不叠打）→ `run`); standalone skill references are **exceptions only** (L2 bar, confusion, high-risk delete, multi-step orchestration).
 
-For **create / delete / share**, read the linked reference before `capability inspect/dry-run/run`. For **`*.members` read**, use this matrix only — no separate `references/*.md` (pilot).
+For **create / delete / share**, read the linked reference before `capability inspect` then `run` (optional pre-check per [`ae-capability`](../../ae-capability/SKILL.md) on-demand table). For **`*.members` read**, use this matrix only — no separate `references/*.md` (pilot).
 
 | Capability ID | Use for | Reference / discovery |
 | --- | --- | --- |
@@ -156,9 +206,19 @@ Output is the gateway envelope; `data` contains members.
 ## Examples
 
 ```bash
-ae-cli analysis dashboard list --project-id 1 --query retention --limit 20
-ae-cli analysis dashboard update --project-id 1 --operation note-upsert --dashboard-id 1001 --note-title "Summary" --description "Weekly note" --yes
+ae-cli analysis dashboard list --project-id 1 --query retention --limit 50
+ae-cli analysis adhoc run --project-id 1 --model-type sql --definition '{"sql":"select * from events limit 20"}'
+ae-cli analysis adhoc export --project-id 1 --model-type sql --definition '{"sql":"select * from events where country ${Text:country}","params":[{"name":"country","type":"text","value":"US"}]}' --artifact-format jsonl
+ae-cli analysis report list --project-id 1 --query revenue --limit 50
+ae-cli analysis report-data run --project-id 1 --report-ids '[1001]' --limit 50
+ae-cli analysis report-data run --project-id 1 --report-ids '[1001]' --filters '{"relation":"and","items":[{"field":{"name":"country","type":"user_property"},"operator":"eq","values":["US"]}]}' --group-by '[{"field":{"name":"country","type":"user_property"}}]' --sql-params '[{"name":"platform","value":"ios"}]' --limit 50
+ae-cli analysis query drilldown-users --query-context-id ctx_0123456789abcdef0123456789abcdef --target '{"report_id":1001,"drilldown_date":"2026-07-01"}'
+ae-cli analysis query create-result-cluster --query-context-id ctx_0123456789abcdef0123456789abcdef --target '{"report_id":1001,"drilldown_date":"2026-07-01"}' --cluster-name retained_users
+ae-cli analysis dashboard update --project-id 1 --operation note-upsert --dashboard-id 1001 --note-title "Summary" --description "Weekly note"
 ae-cli analysis dashboard-definition export --project-id 1 --dashboard-id 1001 --export-file-name retention_dashboard
 ae-cli analysis dashboard-definition import --project-id 1 --definition '{"dashboard_folders":[],"shared_spaces":[]}' --validate-only true
-ae-cli analysis public-link create --project-id 1 --resource-type dashboard --resource-id 1001 --effective-at "2026-07-08 00:00:00" --expires-at "2026-08-08 00:00:00" --yes
+ae-cli analysis public-link create --project-id 1 --resource-type dashboard --resource-id 1001 --effective-at "2026-07-08 00:00:00" --expires-at "2026-08-08 00:00:00"
+ae-cli analysis user-cluster list --project-id 1 --query retained --limit 50
+ae-cli analysis user-cluster-member export --project-id 1 --cluster-name retained_users --artifact-format jsonl
+ae-cli analysis user-tag create --project-id 1 --tag-name user_level --display-name "User Level" --definition-request '{"type":"condition","condition_values":[]}'
 ```

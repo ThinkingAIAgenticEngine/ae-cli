@@ -8,8 +8,8 @@ import {
 } from '../../capability-shared.js';
 
 export const metadataAssetAbnormalGet = createAnalysisMetaCapabilityCommand({
-  resource: 'asset',
-  command: 'abnormal-get',
+  resource: 'asset-abnormal',
+  command: 'get',
   capabilityId: 'metadata.asset_abnormal.get',
   description: 'Get abnormal reason for one asset.',
   flags: [

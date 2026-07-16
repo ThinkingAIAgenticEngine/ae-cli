@@ -31,7 +31,7 @@ walk(commandsDir);
 const commands = [];
 for (const file of commandFiles) {
   const content = fs.readFileSync(file, 'utf-8');
-  const match = content.match(/command:\s*'\+([a-z0-9_-]+)'/);
+  const match = content.match(/command:\s*["']\+([a-z0-9_-]+)["']/);
   if (!match) {
     fail(`cannot parse command from ${path.relative(ROOT, file)}`);
   }

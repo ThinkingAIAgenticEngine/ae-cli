@@ -15,15 +15,15 @@ Domain: **MCP Credentials / write**
 - `--auth-type` defaults to `oauth`; must be `oauth` or `apikey` when provided.
 - `--token` is optional but recommended — without it, only the credential record is created/enabled without a stored token.
 - `--expires-at` (when provided) must be a valid ISO 8601 datetime (e.g. `2026-12-31T23:59:59Z`).
-- Write operation: keep the confirmation prompt unless `--yes` is explicitly requested.
+- This is an ordinary `write` operation and does not require CLI confirmation.
 
 ## Command
 ```bash
 # Set an OAuth token with expiry
-ae-cli agent +set-mcp-credential --mcp-server-id <mcp-cuid> --token "abc123" --expires-at "2026-12-31T23:59:59Z" --yes
+ae-cli agent +set-mcp-credential --mcp-server-id <mcp-cuid> --token "abc123" --expires-at "2026-12-31T23:59:59Z"
 
 # Set an API key (no expiry)
-ae-cli agent +set-mcp-credential --mcp-server-id <mcp-cuid> --auth-type apikey --token "sk-xxx" --yes
+ae-cli agent +set-mcp-credential --mcp-server-id <mcp-cuid> --auth-type apikey --token "sk-xxx"
 
 # Dry-run to inspect the request
 ae-cli agent +set-mcp-credential --dry-run --mcp-server-id <mcp-cuid> --token "abc123"

@@ -2,20 +2,21 @@
 
 Use when the user needs to delete or revoke SQL virtual property rule.
 
-Do not use this command for unrelated analysis queries, ad-hoc query construction, or MCP metadata discovery when an existing specialized command already fits the user's request.
+Do not use it for physical/super properties. Omit `--operation` for permanent deletion; pass `revoke` only when the user explicitly wants revocation instead.
 
 Command:
 
 ```bash
-ae-cli analysis-meta virtual-property sql-rule-delete --project-id <project_id> --v-prop-id <v_prop_id> --operation <operation>
-ae-cli analysis-meta virtual-property sql-rule-delete --dry-run
+ae-cli analysis-meta virtual-property sql-rule-delete --project-id <project_id> --v-prop-id <v_prop_id> --operation <operation> --dry-run
+# Summarize the target and impact, then wait for explicit user confirmation.
+ae-cli analysis-meta virtual-property sql-rule-delete --project-id <project_id> --v-prop-id <v_prop_id> --operation <operation> --yes
 ```
 
 Capability id: `metadata.virtual_property.sql_rule_delete`.
 
 Input sends `project_id`, `v_prop_id`, `operation`.
 
-Output is the gateway envelope. `data` contains the common-service capability result.
+Output is a successful gateway envelope with no business data.
 
 ## Parameters
 | Parameter | Required | Description |

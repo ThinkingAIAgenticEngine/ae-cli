@@ -42,10 +42,9 @@ function tasksFor(files) {
   if (needs(files, [/^src\/commands\/te-analysis\//, /^skills\/ae-analysis\//, /^docs\/te-analysis\//, /^scripts\/verify-te-analysis/, /^test\/multi-cluster-mode\.test\.mjs$/])) {
     tasks.push(
       ['npm', ['run', 'verify:analysis-tools']],
+      ['npm', ['run', 'verify:analysis-four-modules']],
       ['npm', ['run', 'verify:analysis-cluster-routing']],
       ['npm', ['run', 'verify:multi-cluster-mode']],
-      ['npm', ['run', 'verify:analysis-builder-dry-run']],
-      ['npm', ['run', 'verify:analysis-audience-tools']],
       ['npm', ['run', 'verify:analysis-meta-tools']],
       ['npm', ['run', 'verify:analysis-common-tools']]
     );
@@ -68,6 +67,9 @@ function tasksFor(files) {
   }
   if (needs(files, [/^test\/config-commands\.test\.mjs$/, /^src\/commands\/config\//])) {
     tasks.push(['npm', ['run', 'verify:config']]);
+  }
+  if (needs(files, [/^src\/commands\/te-engage\//, /^skills\/ae-engage\//, /^test\/engage\/engage-(capability-command|skill-capability)\.test\.mjs$/])) {
+    tasks.push(['npm', ['run', 'verify:engage-capability']]);
   }
 
   return tasks;

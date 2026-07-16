@@ -30,3 +30,4 @@ ae-cli analysis_common +get_resource_url --dry-run
 ## Recommended Chaining
 - `+create_*` -> `analysis_common +get_resource_url`
 - `+update_*` -> `analysis_common +get_resource_url`
+- For `analysis report create/update`, use the returned `report_id` directly as `--resource_id`; do not run a broad report list to rediscover the asset.

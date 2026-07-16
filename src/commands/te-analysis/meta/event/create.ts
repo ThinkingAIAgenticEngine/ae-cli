@@ -1,6 +1,6 @@
 import {
   createAnalysisMetaCapabilityCommand,
-  payloadFlag,
+  requiredPayloadFlag,
   projectIdFlag,
   projectInput,
 } from '../../capability-shared.js';
@@ -12,7 +12,7 @@ export const metadataEventCreate = createAnalysisMetaCapabilityCommand({
   description: 'Create super events and optionally associate event properties.',
   flags: [
     projectIdFlag,
-    payloadFlag,
+    requiredPayloadFlag,
   ],
   risk: 'write',
   buildInput: (ctx) => ({ ...projectInput(ctx), payload: ctx.json('payload') }),

@@ -36,7 +36,7 @@ ae-cli analysis +create_alert --dry-run
 - On the first run, start with only the required parameters (`--project_id`, `--definition`) and add optional parameters after confirming the path works.
 - Wrap JSON parameters in single quotes (for example `--definition '{}'`) to avoid shell escaping issues.
 - For cross-project troubleshooting, first confirm whether `--project_id` matches the current permissions and target environment.
-- Write operations keep the confirmation prompt by default; evaluate whether to use `--yes` for automated scenarios.
+- This is an ordinary `write` operation and does not require CLI confirmation.
 
 ## Next Steps on Failure
 - If required parameters are missing, fall back to the smallest runnable command and fill them in first (focus on `--project_id` and `--definition`).

@@ -10,8 +10,9 @@ Domain: **Project Configuration**
 
 ## Command
 ```bash
-ae-cli analysis_meta +delete_track_items --project_id <project_id> --delete_data '{}'
-ae-cli analysis_meta +delete_track_items --dry-run
+ae-cli analysis_meta +delete_track_items --project_id <project_id> --delete_data '{}' --dry-run
+# Summarize the target and impact, then wait for explicit user confirmation.
+ae-cli analysis_meta +delete_track_items --project_id <project_id> --delete_data '{}' --yes
 ```
 
 ## Parameters
@@ -24,7 +25,7 @@ ae-cli analysis_meta +delete_track_items --dry-run
 - First run should only pass required parameters (`--project_id`, `--delete_data`), and add optional parameters only after the path is confirmed to work.
 - Wrap JSON arguments in single quotes (for example `--delete_data '{}'`) to avoid shell escaping issues.
 - For cross-project troubleshooting, first confirm whether `--project_id` matches the current permissions and target environment.
-- Write operations keep the confirmation prompt by default; re-evaluate whether to use `--yes` in automation scenarios.
+- This is `high-risk-write`: inspect the dry-run, summarize the target and impact, and wait for explicit user confirmation before the `--yes` execution.
 
 ## Next Steps After Failure
 - If required parameters are missing, fall back to the smallest runnable command and fill them in (focus on `--project_id` and `--delete_data`).

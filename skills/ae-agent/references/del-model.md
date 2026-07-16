@@ -12,12 +12,13 @@ Domain: **Models / write**
 - `--id` is required. Obtain the real model record ID (CUID) via `+list-models` — do not guess.
 - `--scope` controls target scope: `personal` (default) or `company`. Company scope requires root/agent_admin.
 - Prefer `--dry-run` before executing a destructive delete.
-- Write operation: keep the confirmation prompt unless `--yes` is explicitly requested.
+- This is a high-risk-write operation; never execute it before the dry-run impact is explicitly confirmed.
 
 ## Command
 ```bash
+ae-cli agent +del-model --id <model-cuid> --dry-run
+# Summarize the target and impact, then wait for explicit user confirmation.
 ae-cli agent +del-model --id <model-cuid> --yes
-ae-cli agent +del-model --dry-run --id <model-cuid>
 ```
 
 ## Parameters

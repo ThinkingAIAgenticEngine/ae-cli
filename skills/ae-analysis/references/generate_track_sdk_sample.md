@@ -7,6 +7,7 @@ Domain: **Project Configuration**
 ## Use Cases
 - Generate SDK sample files based on the current tracking plan and requested SDK types. This flow is asynchronous and users should check in-site messages for final downloadable results.
 - Useful for developers who need SDK integration code samples based on the tracking plan.
+- Do not use it to create or change the tracking plan itself; generate samples only after `+get_track_program` confirms the plan content.
 
 ## Commands
 ```bash

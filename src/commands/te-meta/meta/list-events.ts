@@ -7,7 +7,7 @@ export const listEvents = createMcpCommand({
     { name: 'project_id', type: 'number', required: true, desc: 'Project ID', alias: 'p' },
     { name: 'query', type: 'string', required: false, desc: 'Optional keyword filter. Fuzzy match is applied to eventName, eventDesc, and remark; if omitted, all events are returned.', alias: 'q' },
     { name: 'fields', type: 'json', required: false, desc: 'Optional fields to return. Supported fields: eventId, eventName, eventDesc, remark, eventTag, authenticationStatus. Default fields when omitted: eventId, eventName, eventDesc, remark, authenticationStatus.', alias: 'f' },
-    { name: 'limit', type: 'number', required: false, desc: 'Optional page size. Default: 20, maximum: 50.', alias: 'l' },
+    { name: 'limit', type: 'number', required: false, desc: 'Optional page size. Default: 50, maximum: 200.', alias: 'l', min: 1, max: 200 },
     { name: 'offset', type: 'number', required: false, desc: 'Optional page offset. Default: 0.', alias: 'o' },
     { name: 'authenticated_only', type: 'boolean', required: false, desc: 'When true, return only authenticated events.' },
   ],

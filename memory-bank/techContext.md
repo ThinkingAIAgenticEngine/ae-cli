@@ -2,7 +2,7 @@
 
 ## 运行时与语言
 
-- **Node.js**：`>= 18`（见 `package.json` engines）。
+- **Node.js**：`>= 20`（见 `package.json` engines；jq-wasm 要求）。
 - **模块**：ESM（`"type": "module"`），源码 `.ts`，构建输出 `dist/`。
 - **TypeScript**：^5.5；开发跑 `tsx`，构建用 `tsup` 打 ESM bundle。
 

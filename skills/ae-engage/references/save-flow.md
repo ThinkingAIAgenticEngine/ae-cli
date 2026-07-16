@@ -33,7 +33,7 @@ You still organize user requirements into an intermediate intent first, then map
 ## 2. Workflow
 
 1. Identify the flow intent from the user input and produce a unified intent JSON.
-2. Run `ae-cli analysis_audience +get_cluster_definition_schema --cluster_type condition` to obtain the condition cluster definition schema for assembling condition-related fields later.
+2. Build a semantic condition request from `ae-analysis/references/user_cluster_models.md`, create the audience directly with `analysis user-cluster create`, and prefer its `cluster_name`/`clusterKey`. Read the saved server-authored definition with `analysis user-cluster get` only when an Engage node schema explicitly requires QP-derived fields; never assemble raw QP.
 3. Run `ae-cli engage +channel_list --project_id <projectId>` to get the available channels and match real `channelId` values for touchpoint nodes. For `webhook_push`, also run `ae-cli engage +channel_detail` and use `data.config.paramsList` to build `contentList`.
 4. Query `ae-cli engage +flow_node_config_schema --node_type <type>` before constructing each non-trivial node config, then run `ae-cli engage +validate_flow_node_config --node_type <type> --operation_mode save_flow --config '<config-json-string>'` before placing the config into `nodes` or `nodeConfigs`.
 5. Map the intent JSON to `nodes` and `edges` (compact form, see §7 / §8).
@@ -167,13 +167,14 @@ Organize the user requirement into an intermediate intent JSON (not the final `r
 
 ## 5. Step Two: Required CLI Queries
 
-### 5.1 Cluster Definition Schema
+### 5.1 Semantic Audience
 
 ```bash
-ae-cli analysis_audience +get_cluster_definition_schema --cluster_type condition
+ae-cli analysis user-cluster create --project-id <projectId> --cluster-name <condition_cluster_name> --display-name <display_name> --definition-request '<semantic-definition-json>'
+ae-cli analysis user-cluster get --project-id <projectId> --cluster-names '["<condition_cluster_name>"]'
 ```
 
-Provides the basis for `targetClusterQp` and `triggerRule.events`.
+Prefer the created cluster reference. Only when the node schema requires `targetClusterQp` or `triggerRule.events`, copy the corresponding server-authored fields returned by `user-cluster get`.
 
 ### 5.2 Project Channels
 

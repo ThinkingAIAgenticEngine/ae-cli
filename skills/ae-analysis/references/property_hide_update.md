@@ -2,12 +2,12 @@
 
 Use when the user needs to batch hide or show properties.
 
-Do not use this command for unrelated analysis queries, ad-hoc query construction, or MCP metadata discovery when an existing specialized command already fits the user's request.
+Do not use it for deletion: this keeps the property but changes metadata visibility. Keep all targets in one table type.
 
 Command:
 
 ```bash
-ae-cli analysis-meta property hide-update --project-id <project_id> --table-type <table_type> --prop-names '{}' --is-hide true
+ae-cli analysis-meta property hide-update --project-id <project_id> --table-type event --prop-names '["amount"]' --is-hide true
 ae-cli analysis-meta property hide-update --dry-run
 ```
 
@@ -15,7 +15,7 @@ Capability id: `metadata.property.hide_update`.
 
 Input sends `project_id`, `table_type`, `prop_names`, `is_hide`.
 
-Output is the gateway envelope. `data` contains the common-service capability result.
+Output is a successful gateway envelope with no business data. Verify with `property list|get`.
 
 ## Parameters
 | Parameter | Required | Description |

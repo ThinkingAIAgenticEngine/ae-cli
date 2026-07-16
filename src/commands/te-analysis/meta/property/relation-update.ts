@@ -1,6 +1,6 @@
 import {
   createAnalysisMetaCapabilityCommand,
-  payloadFlag,
+  requiredPayloadFlag,
   projectIdFlag,
   projectInput,
 } from '../../capability-shared.js';
@@ -13,7 +13,7 @@ export const metadataPropertyRelationUpdate = createAnalysisMetaCapabilityComman
   flags: [
     projectIdFlag,
     { name: 'table-type', type: 'string', required: true, desc: 'Property table type.' },
-    payloadFlag,
+    requiredPayloadFlag,
   ],
   risk: 'write',
   buildInput: (ctx) => ({ ...projectInput(ctx), table_type: ctx.str('table-type'), payload: ctx.json('payload') }),

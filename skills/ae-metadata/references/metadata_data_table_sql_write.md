@@ -5,8 +5,8 @@
 ## Command
 
 ```bash
-ae-cli metadata data-table sql-write --project-id <project_id> --operation create --table-name datatable_<project_id>_<name> --columns '<columns_json>' --qp '<qp_json>' --zone-offset 8 --yes
-ae-cli metadata data-table sql-write --project-id <project_id> --operation update --data-table-id <id> --columns '<columns_json>' --qp '<qp_json>' --strategy overwrite --update-cron '0 0 * * * ?' --yes
+ae-cli metadata data-table sql-write --project-id <project_id> --operation create --table-name datatable_<project_id>_<name> --columns '<columns_json>' --qp '<qp_json>' --zone-offset 8
+ae-cli metadata data-table sql-write --project-id <project_id> --operation update --data-table-id <id> --columns '<columns_json>' --qp '<qp_json>' --strategy overwrite --update-cron '0 0 * * * ?'
 ```
 
 ## Parameters
@@ -47,15 +47,26 @@ ae-cli metadata data-table sql-write --project-id <project_id> --operation updat
 | `taSqlView` | No | SQL view (`TaSqlView`). Use `{}` when no dynamic view params. |
 | `taSqlView.sqlViewParams` | No | View dynamic parameters. |
 
-Inspect the live schema:
+Inspect the live schema. For complex `qp` / `columns`, use **on-demand** pre-check (motto: validate = fix params; dry-run = confirm ready to run). Prefer **`--validate` only** while iterating — then execute. Do **not** stack `--validate` then `--dry-run` on the same final input by default (`dry-run` already validates params).
 
 ```bash
 ae-cli capability inspect metadata.data_table.sql_write
+ae-cli metadata data-table sql-write \
+  --project-id 1 \
+  --operation create \
+  --table-name datatable_1_orders_dim \
+  --columns '[{"name":"id","type":"string"},{"name":"name","type":"string"}]' \
+  --qp '{"taSqlVo":{"sql":"select '\''1'\'' as id, '\''demo'\'' as name","sqlVoParams":[]},"taSqlView":{}}' \
+  --zone-offset 8 \
+  --validate
 ```
+
+`--validate` only checks/normalizes parameters (`valid` + `normalized_input`). It does not create the table. After `valid=true`, execute without `--yes`. Use `--dry-run` **instead of** `--validate` only when you need risk/output/cancel preview — not both.
 
 ## Create example
 
 ```bash
+# Typical complex-qp path: validate while fixing, then execute (no mandatory dry-run).
 ae-cli metadata data-table sql-write \
   --project-id 1 \
   --operation create \
@@ -64,7 +75,7 @@ ae-cli metadata data-table sql-write \
   --columns '[{"name":"id","type":"string","display_name":"id"},{"name":"name","type":"string","display_name":"name"}]' \
   --qp '{"taSqlVo":{"sql":"select '\''1'\'' as id, '\''demo'\'' as name","sqlVoParams":[]},"taSqlView":{}}' \
   --zone-offset 8 \
-  --dry-run
+  --validate
 
 ae-cli metadata data-table sql-write \
   --project-id 1 \
@@ -78,7 +89,10 @@ ae-cli metadata data-table sql-write \
 
 ## Decision Rules
 
-- This is a write command; use `--dry-run` before non-dry-run execution.
-- Keep `columns` and `qp` as valid JSON. `qp` must follow `SqlDatatableDef`; dry-run validates structure but does not execute SQL.
+- Write command. Motto: validate = fix params; dry-run = confirm ready to run. **Pick one pre-check on demand** — do not stack both on the same final input.
+- Complex `qp` / `columns`: use `--validate` while iterating until `valid=true`, then execute without CLI confirmation. Skip `--dry-run` unless you specifically need risk/output/cancel preview.
+- If you need that preview instead, use `--dry-run` **once** on the final input (it already validates params) — do not validate then dry-run as a habit.
+- Global `--validate` → `/validate`; `--dry-run` → `/dry-run`. Neither creates the table. Do not pass both flags together.
+- Keep `columns` and `qp` as valid JSON. `qp` must follow `SqlDatatableDef`; validate / dry-run check structure but do not execute SQL.
 - If you provide a table name, it must include the project segment, for example `datatable_2_orders_sql`.
-- If execute fails with `CAPABILITY_EXECUTION_FAILED`, fix qp structure first, then retry with a valid query before investigating backend SQL/Presto issues.
+- If execute fails with `CAPABILITY_EXECUTION_FAILED`, fix qp with `--validate`, then retry before investigating backend SQL/Presto issues.

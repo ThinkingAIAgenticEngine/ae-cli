@@ -15,15 +15,15 @@ Domain: **MCP Servers / write**
 - The MCP server must have `authMode=oauth2`; otherwise the server returns `oauth_not_required`.
 - `--redirect-after` (when provided) must be same-origin as the service base URL; otherwise it is rejected.
 - `--cli` defaults to `true` and is always true on the sandbox endpoint — it is for documentation/compat only.
-- Write operation: keep the confirmation prompt unless `--yes` is explicitly requested.
+- This is an ordinary `write` operation and does not require CLI confirmation.
 
 ## Command
 ```bash
 # Start OAuth for an MCP server
-ae-cli agent +mcp-auth-start --id <mcp-cuid> --yes
+ae-cli agent +mcp-auth-start --id <mcp-cuid>
 
 # With a redirect-after URL
-ae-cli agent +mcp-auth-start --id <mcp-cuid> --redirect-after "https://app.example.com/mcp/done" --yes
+ae-cli agent +mcp-auth-start --id <mcp-cuid> --redirect-after "https://app.example.com/mcp/done"
 
 # Dry-run to inspect the request
 ae-cli agent +mcp-auth-start --dry-run --id <mcp-cuid>

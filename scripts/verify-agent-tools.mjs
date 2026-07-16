@@ -56,6 +56,18 @@ function scanCommands(dir) {
 const commands = scanCommands(AGENT_DIR);
 ok(`Found ${commands.length} commands`);
 
+const skillContentSource = readFileSync(join(AGENT_DIR, 'skill-content.ts'), 'utf8');
+if (!/function makeAssetDelCommand[\s\S]*?risk: 'high-risk-write'/.test(skillContentSource)) {
+  fail('Skill asset/reference/script delete commands must be high-risk-write');
+} else {
+  ok('Skill content delete commands use high-risk-write');
+}
+if (!/function makeAssetUploadCommand[\s\S]*?risk: 'write'/.test(skillContentSource)) {
+  fail('Skill asset/reference/script upload commands must remain ordinary write');
+} else {
+  ok('Skill content upload commands remain ordinary write');
+}
+
 // ─── Step 2: Duplicate check ─────────────────────────────────
 
 const names = commands.map((c) => c.name);

@@ -1,12 +1,12 @@
 ---
 name: ae-metadata
 version: 1.0.0
-description: "AE/TE metadata capability-gateway CLI: metadata event/property detail, metadata data-table management, input-file upload, and property dimension-table binding. Use for ae-cli metadata commands backed by /api/cli/metadata/v1. Must read references before composing commands; command/flags use kebab-case while gateway input keeps snake_case. Never guess project_id, event/property names, input_file_id, or data_table_id."
+description: "AE/TE metadata capability-gateway CLI: metadata event/property detail, data-table management, and property dimension-table binding. Metadata CLI routes through the analysis gateway. Input-file upload belongs to ae-analysis."
 ---
 
 # ae-metadata
 
-Capability-gateway domain **`metadata`** — REST via `/api/cli/metadata/v1/...`, auth header **`cli-token`**.
+CLI domain **`metadata`** routes to the analysis capability gateway (`/api/cli/analysis/v1/...`), using auth header **`cli-token`**.
 
 Parallel to **`ae-analysis`** (MCP `analysis_meta` for metadata lists/governance). Use **this skill** for gateway-backed metadata detail and data-table/dimension-table operations; use **`ae-analysis`** for MCP metadata list/search, metrics, virtual create, and batch edit.
 
@@ -17,7 +17,8 @@ Parallel to **`ae-analysis`** (MCP `analysis_meta` for metadata lists/governance
 | `--format <json\|table>` | Output format. Default JSON. |
 | `--jq <expr>` | jq filter on JSON output. |
 | `--host <url>` | Override active AE host, e.g. `ae-cli metadata event get --host <url> ...`. |
-| `--dry-run` | Validate input against gateway schema without executing. |
+| `--validate` | Optional: fix params only (`/validate`). Alone while iterating complex `qp` / payload — then run. Do not stack with `--dry-run`. |
+| `--dry-run` | Optional: confirm ready to run (`/dry-run`). Alone for risk/output preview. Do not stack with `--validate`. |
 
 Output and errors:
 - Success: JSON envelope (default).
@@ -25,7 +26,7 @@ Output and errors:
 
 Safety:
 - Read-only commands can run directly after IDs/names are verified.
-- Write commands (`data-table *-write`, `*-delete`, `property-bindings-update`, dimension-table bind/create, `input-file upload`) require `--yes` for non-dry-run execution.
+- Ordinary writes (`data-table *-write`, `property-bindings-update`, dimension-table bind/create) execute without `--yes`. Delete commands are `high-risk-write`: dry-run first, summarize impact, wait for explicit confirmation, then execute with `--yes`.
 - **Before any command**, read the matching `references/<name>.md` (filename = command with spaces → underscores, e.g. `metadata event get` → `metadata_event_get.md`).
 - Never invent `project_id`, event/property names, `input_file_id`, or `data_table_id`. Discover names via `ae-analysis` and data table IDs via `metadata data-table list`.
 
@@ -36,7 +37,7 @@ Switch to **`ae-metadata`** when the user needs:
 - Full detail for **one** super-event (incl. virtual event `definition`)
 - Full detail for **one** super-property (incl. virtual property `definition`)
 - Metadata data-table list/get/create/update/delete/download
-- Upload a local file to get `input_file_id`
+- For local uploads, switch to `ae-analysis` and use `analysis input-file upload` with a discovered purpose.
 - Bind an existing data table to a property, or create a CSV dimension table and bind it
 
 Stay on **`ae-analysis`** for: metadata event/property/metric list/search, metric CRUD, batch metadata, virtual create, project config, tracking plans.
@@ -48,20 +49,19 @@ ae-cli metadata <resource> <action> [options]
 ae-cli metadata property <dimension-table-action> [options]
 ```
 
-- Commands and flags use **kebab-case**: `data-table`, `input-file`, `dimension-table`, `--project-id`, `--data-table-id`.
+- Commands and flags use **kebab-case**: `data-table`, `dimension-table`, `--project-id`, `--data-table-id`.
 - Gateway `input` body fields remain **snake_case** (`project_id`, `event_name`, …); ae-cli maps flags automatically.
 
 ## PROJECT_ID_GATE
 
 Same rules as `ae-analysis`: reuse verified project context in one conversation; otherwise `ae-cli analysis_common +list_projects` (or `ae-analysis` skill) to resolve `project_id`.
 
-## Commands (13)
+## Commands (12)
 
 | User command | Capability id | Reference |
 |---|---|---|
 | `metadata event get` | `metadata.event.get` | [metadata_event_get.md](references/metadata_event_get.md) |
 | `metadata property get` | `metadata.property.get` | [metadata_property_get.md](references/metadata_property_get.md) |
-| `metadata input-file upload` | `POST /input-files` | [metadata_input_file_upload.md](references/metadata_input_file_upload.md) |
 | `metadata data-table list` | `metadata.data_table.list` | [metadata_data_table_list.md](references/metadata_data_table_list.md) |
 | `metadata data-table get` | `metadata.data_table.get` | [metadata_data_table_get.md](references/metadata_data_table_get.md) |
 | `metadata data-table csv-write` | `metadata.data_table.csv_write` | [metadata_data_table_csv_write.md](references/metadata_data_table_csv_write.md) |
@@ -82,6 +82,7 @@ ae-cli metadata property get --help
 ae-cli metadata data-table list --help
 ae-cli metadata event get --project-id 1 --event-name <name> --dry-run
 ae-cli metadata data-table list --project-id 1 --dry-run
+ae-cli analysis input-file purpose list --project-id 1
 ```
 
 ## Related Skills

@@ -11,12 +11,13 @@ Domain: **Metadata Lookup**
 ## Use Cases
 - List all alerts in the project. Supports keyword filtering by alert name. Returns a paginated list containing alerts array and pager result with total count.
 - List all alerts in the project.
+- Do not use it for alert result data or one known alert's complete definition; use `+get_alert` after resolving the ID.
 
 ## Commands
 ```bash
 ae-cli analysis +list_alerts --project_id <project_id>
 ae-cli analysis +list_alerts --project_id <project_id> --query demo
-ae-cli analysis +list_alerts --project_id <project_id> --limit 20 --offset 0
+ae-cli analysis +list_alerts --project_id <project_id> --limit 50 --offset 0
 ae-cli analysis +list_alerts --dry-run
 ```
 
@@ -25,7 +26,7 @@ ae-cli analysis +list_alerts --dry-run
 |---|---|---|
 | `--project_id` / `-p` | Yes | Project ID |
 | `--query` / `-q` | No | Optional keyword filter. Performs fuzzy matching against alert names; if omitted, all alerts are returned. |
-| `--limit` / `-l` | No | Optional page size. Default: 20, maximum: 10000. |
+| `--limit` / `-l` | No | Optional page size. Default: 50, maximum: 200. |
 | `--offset` / `-o` | No | Optional page offset. Default: 0. |
 
 ## Decision Rules

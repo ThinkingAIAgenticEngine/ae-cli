@@ -1,7 +1,8 @@
 import fs from 'fs';
 import path from 'path';
-import { spawnSync } from 'child_process';
+import { Command as CommanderCommand } from 'commander';
 import { getClusterInfoFilePath } from '../src/core/cluster-info.ts';
+import { registerCommands } from '../src/framework/register.ts';
 
 const ROOT = process.cwd();
 const commandsDir = path.join(ROOT, 'src/commands/te-analysis');
@@ -32,7 +33,6 @@ function walk(dir) {
       continue;
     }
     if (!entry.name.endsWith('.ts')) continue;
-    if (entry.name === 'index.ts' || entry.name === 'shared.ts' || entry.name === 'capability-shared.ts') continue;
     if (!isGlobalQueryModeEnabled() && p.includes(`${path.sep}global${path.sep}`)) continue;
     commandFiles.push(p);
   }
@@ -42,28 +42,34 @@ walk(commandsDir);
 
 const coreCommands = [];
 const capabilityCommands = [];
+const gatewayLifecycleCommands = [];
 const fileContents = new Map();
 for (const file of commandFiles) {
-  const content = fs.readFileSync(file, 'utf-8');
-  fileContents.set(file, content);
-  const mcpMatch = content.match(/command:\s*'\+([a-z0-9_]+)'/);
-  if (mcpMatch) {
-    coreCommands.push(mcpMatch[1]);
+  fileContents.set(file, fs.readFileSync(file, 'utf-8'));
+}
+
+const { default: registeredCommands } = await import('../src/commands/te-analysis/index.ts');
+for (const command of registeredCommands) {
+  if (command.command.startsWith('+')) {
+    coreCommands.push(command.command.slice(1));
     continue;
   }
-  const resourceMatch = content.match(/resource:\s*'([^']+)'/);
-  const commandMatch = content.match(/command:\s*'([^']+)'/);
-  const capabilityMatch = content.match(/capabilityId:\s*'([^']+)'/);
-  const directGatewayEndpoint = content.includes('callCapabilityApi(') || content.includes('downloadCapabilityArtifact(');
-  if (!resourceMatch || !commandMatch || (!capabilityMatch && !directGatewayEndpoint)) {
-    fail(`cannot parse command from ${path.relative(ROOT, file)}`);
+  if (!command.resource) {
+    fail(`registered analysis command has no resource: ${command.command}`);
+  }
+  if (!command.capabilityId) {
+    gatewayLifecycleCommands.push({
+      service: command.service,
+      resource: command.resource,
+      command: command.command,
+    });
+    continue;
   }
   capabilityCommands.push({
-    file,
-    service: content.includes('createAnalysisMetaCapabilityCommand') ? 'analysis-meta' : 'analysis',
-    resource: resourceMatch[1],
-    command: commandMatch[1],
-    capabilityId: capabilityMatch ? capabilityMatch[1] : '(gateway endpoint)',
+    service: command.service,
+    resource: command.resource,
+    command: command.command,
+    capabilityId: command.capabilityId,
   });
 }
 
@@ -76,99 +82,109 @@ const capabilitySet = new Set(capabilityCommands.map((item) => `${item.service} 
 if (capabilitySet.size !== capabilityCommands.length) {
   fail('duplicate capability command names found in source files');
 }
+const capabilityIdSet = new Set(capabilityCommands.map((item) => item.capabilityId));
+if (capabilityIdSet.size !== capabilityCommands.length) {
+  fail('duplicate analysis capability IDs found in registered command metadata');
+}
+const gatewayLifecycleSet = new Set(gatewayLifecycleCommands.map((item) => `${item.resource} ${item.command}`));
+if (gatewayLifecycleSet.size !== gatewayLifecycleCommands.length) {
+  fail('duplicate gateway lifecycle command names found in source files');
+}
 
-const EXPECTED_CORE_COUNT = isGlobalQueryModeEnabled() ? 37 : 36;
+const EXPECTED_CORE_COUNT = isGlobalQueryModeEnabled() ? 9 : 8;
 if (coreCommands.length !== EXPECTED_CORE_COUNT) {
   fail(`analysis tool count mismatch: expected ${EXPECTED_CORE_COUNT}, got ${coreCommands.length}`);
 }
+const REQUIRED_FOUR_MODULE_CAPABILITIES = [
+  'analysis.sql_table.list',
+  'analysis.sql_table.columns',
+  'analysis.entity.id_import_options',
+  'analysis.input_file.purpose.list',
+  'analysis.dashboard.list',
+  'analysis.dashboard.get',
+  'analysis.dashboard_report_data.run',
+  'analysis.dashboard_report_data.export',
+  'analysis.report.list',
+  'analysis.report.get',
+  'analysis.report.create',
+  'analysis.report.update',
+  'analysis.report_data.run',
+  'analysis.report_data.export',
+  'analysis.adhoc.run',
+  'analysis.adhoc.export',
+  'analysis.query.drilldown_users',
+  'analysis.query.drilldown_user_events',
+  'analysis.query.create_result_cluster',
+  'analysis.user_cluster.list',
+  'analysis.user_cluster.create',
+  'analysis.user_cluster.update',
+  'analysis.user_cluster_member.list',
+  'analysis.user_cluster_member.export',
+  'analysis.user_tag.list',
+  'analysis.user_tag.create',
+  'analysis.user_tag.update',
+  'analysis.user_tag_member.list',
+  'analysis.user_tag_member.export',
+  'analysis.history_tag.batch_refresh',
+];
+for (const capabilityId of REQUIRED_FOUR_MODULE_CAPABILITIES) {
+  if (!capabilityIdSet.has(capabilityId)) {
+    fail(`missing required dashboard/report/adhoc/audience capability: ${capabilityId}`);
+  }
+}
+if (capabilityIdSet.has('analysis.user_cluster.create_from_result')) {
+  fail('duplicate result-cluster capability must not be reintroduced; use analysis.query.create_result_cluster');
+}
+const EXPECTED_GATEWAY_LIFECYCLE_COUNT = 4;
+if (gatewayLifecycleCommands.length !== EXPECTED_GATEWAY_LIFECYCLE_COUNT) {
+  fail(`analysis gateway lifecycle command count mismatch: expected ${EXPECTED_GATEWAY_LIFECYCLE_COUNT}, got ${gatewayLifecycleCommands.length}`);
+}
 
-const EXPECTED_CAPABILITY_COUNT = 96;
+const EXPECTED_CAPABILITY_COUNT = 163;
 if (capabilityCommands.length !== EXPECTED_CAPABILITY_COUNT) {
   fail(`analysis capability command count mismatch: expected ${EXPECTED_CAPABILITY_COUNT}, got ${capabilityCommands.length}`);
 }
 
-const expectedCapabilityCountsByService = {
-  analysis: 49,
-  'analysis-meta': 47,
+const EXPECTED_CAPABILITY_COUNTS_BY_SERVICE = {
+  analysis: 95,
+  'analysis-meta': 48,
+  'analysis-governance': 20,
 };
-for (const [service, expectedCount] of Object.entries(expectedCapabilityCountsByService)) {
+for (const [service, expectedCount] of Object.entries(EXPECTED_CAPABILITY_COUNTS_BY_SERVICE)) {
   const actualCount = capabilityCommands.filter((item) => item.service === service).length;
   if (actualCount !== expectedCount) {
     fail(`${service} capability command count mismatch: expected ${expectedCount}, got ${actualCount}`);
   }
 }
 
-const help = spawnSync('npx', ['tsx', 'src/index.ts', 'analysis', '--help'], {
-  cwd: ROOT,
-  encoding: 'utf-8',
-  maxBuffer: 10 * 1024 * 1024,
-});
-
-if (help.status !== 0) {
-  process.stderr.write(help.stderr || '');
-  fail('failed to run analysis --help');
+const program = new CommanderCommand().name('ae-cli');
+registerCommands(program, registeredCommands);
+const analysisHelp = program.commands.find((item) => item.name() === 'analysis');
+if (!analysisHelp) {
+  fail('registered command tree is missing the analysis service');
 }
 
 for (const tool of coreCommands) {
   const token = `+${tool}`;
-  const toolHelp = spawnSync('npx', ['tsx', 'src/index.ts', 'analysis', token, '--help'], {
-    cwd: ROOT,
-    encoding: 'utf-8',
-    maxBuffer: 10 * 1024 * 1024,
-  });
-  if (toolHelp.status !== 0) {
-    process.stderr.write(toolHelp.stderr || '');
-    fail(`failed to run analysis ${token} --help`);
-  }
-  if (!toolHelp.stdout.includes(`Usage: ae-cli analysis ${token}`)) {
+  const command = analysisHelp.commands.find((item) => item.name() === token);
+  if (!command || !command.helpInformation().includes(`Usage: ae-cli analysis ${token}`)) {
     fail(`command help output missing usage for: ${token}`);
   }
 }
 
-for (const item of capabilityCommands) {
-  const toolHelp = spawnSync('npx', ['tsx', 'src/index.ts', item.service, item.resource, item.command, '--help'], {
-    cwd: ROOT,
-    encoding: 'utf-8',
-    maxBuffer: 10 * 1024 * 1024,
-  });
-  if (toolHelp.status !== 0) {
-    process.stderr.write(toolHelp.stderr || '');
-    fail(`failed to run ${item.service} ${item.resource} ${item.command} --help`);
+for (const item of [...capabilityCommands, ...gatewayLifecycleCommands]) {
+  const service = program.commands.find((command) => command.name() === item.service);
+  let resource = service;
+  for (const segment of item.resource.split(/\s+/).filter(Boolean)) {
+    resource = resource?.commands.find((command) => command.name() === segment);
   }
-  if (!toolHelp.stdout.includes(`Usage: ae-cli ${item.service} ${item.resource} ${item.command}`)) {
+  const command = resource?.commands.find((candidate) => candidate.name() === item.command);
+  if (!command || !command.helpInformation().includes(`Usage: ae-cli ${item.service} ${item.resource} ${item.command}`)) {
     fail(`command help output missing usage for: ${item.service} ${item.resource} ${item.command}`);
   }
 }
 
-const cancellableQueryTokens = [
-  "name: 'request_id', type: 'string', required: true",
-  "requestId: ctx.str('request_id')",
-];
-const lifecycleDescriptionTokens = [
-  'requestId is required and must be provided before starting',
-  'metadata.requestId',
-  'cancel_query',
-  'Generate it before starting',
-  'caller stops waiting',
-  'fetch failed',
-  'HTTP timeout',
-  'backend query may still be running',
-  'is not auto-generated for MCP query tools',
-  'REQUEST_ID_REQUIRED',
-  'INVALID_REQUEST_ID',
-  '+cancel_query --request_id',
-  'mcp_<32 lowercase hex UUID>',
-  'mcp_0123456789abcdef0123456789abcdef',
-];
 const requiredTokensByFile = {
-  'src/commands/te-analysis/entity/query-entity-details.ts': [...cancellableQueryTokens, ...lifecycleDescriptionTokens, "name: 'timeout_minutes'", "timeoutMinutes: optionalNumber(ctx, 'timeout_minutes')"],
-  'src/commands/te-analysis/entity/query-event-details.ts': [...cancellableQueryTokens, ...lifecycleDescriptionTokens, "name: 'timeout_minutes'", "timeoutMinutes: optionalNumber(ctx, 'timeout_minutes')"],
-  'src/commands/te-analysis/model/drilldown-user-events.ts': [...cancellableQueryTokens, ...lifecycleDescriptionTokens, "name: 'limit'", "name: 'offset'", "limit: optionalNumber(ctx, 'limit')", "offset: optionalNumber(ctx, 'offset')"],
-  'src/commands/te-analysis/model/drilldown-users.ts': [...cancellableQueryTokens, ...lifecycleDescriptionTokens],
-  'src/commands/te-analysis/model/query-adhoc.ts': [...cancellableQueryTokens, ...lifecycleDescriptionTokens],
-  'src/commands/te-analysis/report/query-report-data.ts': [...cancellableQueryTokens, ...lifecycleDescriptionTokens],
-  'src/commands/te-analysis/report/update-report.ts': ["name: 'report_version'", "version: ctx.num('report_version')"],
-  'src/commands/te-analysis/schema/get-analysis-query-schema.ts': ['all ten non-SQL models', 'SQL manual path'],
   'src/commands/te-analysis/model/cancel-query.ts': [
     'caller or agent timed out before the query returned',
     'fetch failed',
@@ -197,29 +213,7 @@ for (const [relPath, tokens] of Object.entries(requiredTokensByFile)) {
   }
 }
 
-const lifecycleReferenceTokens = [
-  'Generate it before starting',
-  'caller stops waiting',
-  'fetch failed',
-  'HTTP timeout',
-  'backend query may still be running',
-  'is not auto-generated for MCP query tools',
-  'REQUEST_ID_REQUIRED',
-  'INVALID_REQUEST_ID',
-  '+cancel_query --request_id',
-  'metadata.requestId',
-  'cancel_query',
-  'mcp_<32 lowercase hex UUID>',
-  'mcp_0123456789abcdef0123456789abcdef',
-];
 const requiredReferenceTokensByFile = {
-  'skills/ae-analysis/references/query_report_data.md': lifecycleReferenceTokens,
-  'skills/ae-analysis/references/query_entity_details.md': lifecycleReferenceTokens,
-  'skills/ae-analysis/references/query_event_details.md': lifecycleReferenceTokens,
-  'skills/ae-analysis/references/query_adhoc.md': lifecycleReferenceTokens,
-  'skills/ae-analysis/references/drilldown_users.md': lifecycleReferenceTokens,
-  'skills/ae-analysis/references/drilldown_user_events.md': [...lifecycleReferenceTokens, '--limit', '--offset'],
-  'skills/ae-analysis/references/update_report.md': ['--report_version'],
   'skills/ae-analysis/references/cancel_query.md': [
     'caller or agent timed out before the query returned',
     'fetch failed',
@@ -249,10 +243,10 @@ for (const [relPath, tokens] of Object.entries(requiredReferenceTokensByFile)) {
 }
 
 function capabilityReferenceName(resource, command) {
-  return `${resource.replaceAll('-', '_')}_${command.replaceAll('-', '_')}.md`;
+  return `${resource.replaceAll('-', '_').replaceAll(/\s+/g, '_')}_${command.replaceAll('-', '_')}.md`;
 }
 
-for (const item of capabilityCommands) {
+for (const item of [...capabilityCommands, ...gatewayLifecycleCommands]) {
   const relPath = `skills/ae-analysis/references/${capabilityReferenceName(item.resource, item.command)}`;
   const absPath = path.join(ROOT, relPath);
   if (!fs.existsSync(absPath)) {
@@ -262,14 +256,70 @@ for (const item of capabilityCommands) {
   const requiredTokens = [
     `# ${item.service} ${item.resource} ${item.command}`,
     `ae-cli ${item.service} ${item.resource} ${item.command}`,
-    'Use',
-    'Do not use',
-    'Input',
-    'Output',
+    ...(['analysis-meta', 'analysis-governance'].includes(item.service)
+      ? ['Use', 'Do not use', 'Input', 'Output']
+      : []),
   ];
   for (const token of requiredTokens) {
     if (!content.includes(token)) {
       fail(`missing capability reference token "${token}" in ${relPath}`);
+    }
+  }
+}
+
+const criticalReferenceTokens = {
+  'skills/ae-analysis/references/dashboard_list.md': ['dashboard_id', 'dashboard_name', 'remark', 'snake_case'],
+  'skills/ae-analysis/references/dashboard_share.md': ['numeric user ID', 'READ', 'EDIT', 'complete directly shared user map'],
+  'skills/ae-analysis/references/dashboard_update.md': ['refresh_type', '0', '1', 'dashboard_status', 'normal', 'freeze', 'dashboard_job_schedule'],
+  'skills/ae-analysis/references/audience_models.md': ['Operators', 'Property reference', 'Time range', 'Filter group'],
+  'skills/ae-analysis/references/user_cluster_models.md': ['event', 'user', 'tag', 'cluster', 'compound', 'behavior_sequence', 'condition', 'SQL'],
+  'skills/ae-analysis/references/user_tag_models.md': ['condition', 'metric', 'first_last', 'SQL'],
+  'skills/ae-analysis/references/user_cluster_member_export.md': ['has_more=false', 'final metadata line'],
+  'skills/ae-analysis/references/user_tag_member_export.md': ['has_more=false', 'final metadata line'],
+  'skills/ae-analysis/references/history_tag_batch_refresh.md': ['start_time', 'end_time', 'only_abnormal', 'use_user_table_type'],
+  'skills/ae-analysis/references/drilldown_users_run.md': ['sources[]', 'target_contract.default_target', 'target_contract.copy_from_selected_result'],
+  'skills/ae-analysis/references/drilldown_users_export.md': ['does not accept `--limit` or `--offset`', 'one JSONL artifact'],
+  'skills/ae-analysis/references/drilldown_user_events_export.md': ['does not accept `--limit`, `--page-num`, or `--page-size`', 'one JSONL artifact'],
+  'skills/ae-analysis/references/query_create_result_cluster.md': ['sources[].target_contract', 'query_context_id'],
+  'skills/ae-analysis/references/analysis_data_retrieval.md': ['Default and maximum runtime is 21600 seconds (6 hours)', 'sources', 'target_contract'],
+  'skills/ae-analysis/references/report_create.md': ['SQL dynamic parameter', 'query the saved default first', '`report_id` returned by this exact create response'],
+  'skills/ae-analysis/references/report_update.md': ['read the current `version` exactly once', 'query the saved default before applying an override'],
+  'skills/ae-analysis/references/report_list.md': ['narrow with `--query` or `--model-types` before paging', 'do not enumerate every report page'],
+  'skills/ae-analysis/references/report_data_run.md': ['omit `--sql-params` to execute the saved default', 'then make one second call with `--sql-params`', '"recent_day":"1-7"'],
+  'skills/ae-analysis/references/report_data_export.md': ['same export response'],
+  'skills/ae-analysis/references/adhoc_run.md': ['SQL text requests `LIMIT 2000`', 'go directly to `analysis adhoc export`', 'Do not lower the SQL limit to 1000'],
+  'skills/ae-analysis/references/adhoc_export.md': ['Preserve the `run_id` and `artifact_id` from this exact submit response'],
+  'skills/ae-analysis/references/run_inspect.md': ['same export response'],
+  'skills/ae-analysis/references/artifact_download.md': ['same export response'],
+  'skills/ae-analysis/references/get_resource_url.md': ['report create/update', 'returned `report_id`'],
+  'skills/ae-analysis/references/ai_models.md': ['`tag_name` is the only tag-report name field'],
+};
+for (const [relPath, tokens] of Object.entries(criticalReferenceTokens)) {
+  const content = fs.readFileSync(path.join(ROOT, relPath), 'utf-8');
+  for (const token of tokens) {
+    if (!content.includes(token)) {
+      fail(`missing critical four-module contract "${token}" in ${relPath}`);
+    }
+  }
+}
+
+const forbiddenReferenceTokens = {
+  'skills/ae-analysis/SKILL.md': ['+list_reports', 'analysis user capability gateway (32)'],
+  'skills/ae-analysis/references/dashboard_list.md': ['dashboardId","dashboardName'],
+  'skills/ae-analysis/references/user_cluster_create.md': ['Optional: `--type condition|sql`, `--authenticated-only`, `--remark`'],
+  'skills/ae-analysis/references/user_tag_create.md': ['Optional: `--type condition|metric|first_last|sql`, `--authenticated-only`, `--remark`'],
+  'skills/ae-analysis/references/user_cluster_member_export.md': ['capped at 10000'],
+  'skills/ae-analysis/references/user_tag_member_export.md': ['capped at 10000'],
+  'skills/ae-analysis/references/adhoc_run.md': ['[--offset'],
+  'skills/ae-analysis/references/user_cluster_member_list.md': ['Optional: `--property-names`, `--fields`, `--query`, `--use-cache`, `--request-id`, `--limit`, `--offset`'],
+  'skills/ae-analysis/references/user_tag_member_list.md': ['Optional: `--snapshot-date`, `--property-names`, `--fields`, `--query`, `--use-cache`, `--request-id`, `--limit`, `--offset`'],
+  'skills/ae-analysis/references/history_tag_data_drilldown_run.md': ['`--limit`, `--offset`'],
+};
+for (const [relPath, tokens] of Object.entries(forbiddenReferenceTokens)) {
+  const content = fs.readFileSync(path.join(ROOT, relPath), 'utf-8');
+  for (const token of tokens) {
+    if (content.includes(token)) {
+      fail(`forbidden stale contract "${token}" in ${relPath}`);
     }
   }
 }
@@ -279,59 +329,65 @@ if (!fs.existsSync(docsPath)) {
   fail('missing docs/te-analysis/te-analysis-mcp-tools.md');
 }
 const docsContent = fs.readFileSync(docsPath, 'utf-8');
-const lifecycleDocsTokens = [
-  'fetch failed',
-  'HTTP timeout',
-  'backend query may still be running',
-  'requestId 不会自动生成',
+const removedDocsTokens = [
+  'query_adhoc',
+  'build_event_analysis_qp',
+  'build_retention_analysis_qp',
+  'build_funnel_analysis_qp',
+  'build_distribution_analysis_qp',
+  'build_attribution_analysis_qp',
+  'build_interval_analysis_qp',
+  'build_path_analysis_qp',
+  'build_prop_analysis_qp',
+  'build_heat_map_analysis_qp',
+  'build_rank_list_analysis_qp',
+  'get_analysis_query_schema',
+  'get_filter_schema',
+  'get_groupby_schema',
+];
+for (const token of removedDocsTokens) {
+  if (docsContent.includes(token)) {
+    fail(`removed ad-hoc QP/schema docs token must not appear in ${path.relative(ROOT, docsPath)}: ${token}`);
+  }
+}
+const currentDocsTokens = [
+  'analysis adhoc run',
+  'analysis adhoc export',
+  'analysis report create',
+  'analysis report update',
+  'analysis report-data run',
+  'analysis report-data export',
+  'analysis dashboard-report-data run',
+  'analysis dashboard-report-data export',
+  'analysis bi-panel-page-data run',
+  'analysis bi-panel-page-data export',
+  'analysis drilldown-users run',
+  'analysis drilldown-users export',
+  'analysis drilldown-user-events run',
+  'analysis drilldown-user-events export',
+  'analysis query create-result-cluster',
+  'analysis query cancel',
+  'analysis run inspect',
+  'analysis artifact download',
+  'model_type + definition',
+  'query_context_id',
+  'drilldown_context_id',
+  'Default limit is 100, max 1000',
+  'Default and maximum runtime is 21600 seconds (6 hours)',
+  'mcp_<32 lowercase hex UUID>',
+  'mcp_0123456789abcdef0123456789abcdef',
   'REQUEST_ID_REQUIRED',
   'INVALID_REQUEST_ID',
   '+cancel_query --request_id',
   'metadata.requestId',
-  'mcp_<32 lowercase hex UUID>',
-  'mcp_0123456789abcdef0123456789abcdef',
-];
-const cancelDocsTokens = [
   'fetch failed',
   'HTTP timeout',
   'backend query may still be running',
-  '必须在查询开始前生成并传入',
-  '+cancel_query --request_id',
-  'metadata.requestId',
-  'mcp_<32 lowercase hex UUID>',
-  'mcp_0123456789abcdef0123456789abcdef',
 ];
-const lifecycleDocsSections = [
-  '#### query_report_data',
-  '#### query_adhoc',
-  '#### drilldown_users',
-  '#### drilldown_user_events',
-  '#### query_entity_details',
-  '#### query_event_details',
-];
-for (const section of lifecycleDocsSections) {
-  const start = docsContent.indexOf(section);
-  if (start < 0) {
-    fail(`missing analysis docs section: ${section}`);
-  }
-  const nextSection = docsContent.indexOf('\n#### ', start + section.length);
-  const body = docsContent.slice(start, nextSection < 0 ? undefined : nextSection);
-  for (const token of lifecycleDocsTokens) {
-    if (!body.includes(token)) {
-      fail(`missing required analysis docs contract "${token}" in ${section}`);
-    }
-  }
-}
-const cancelStart = docsContent.indexOf('#### cancel_query');
-if (cancelStart < 0) {
-  fail('missing analysis docs section: #### cancel_query');
-}
-const cancelNext = docsContent.indexOf('\n#### ', cancelStart + '#### cancel_query'.length);
-const cancelBody = docsContent.slice(cancelStart, cancelNext < 0 ? undefined : cancelNext);
-for (const token of cancelDocsTokens) {
-  if (!cancelBody.includes(token)) {
-    fail(`missing required analysis docs contract "${token}" in #### cancel_query`);
+for (const token of currentDocsTokens) {
+  if (!docsContent.includes(token)) {
+    fail(`missing current analysis docs contract "${token}" in ${path.relative(ROOT, docsPath)}`);
   }
 }
 
-console.log(`OK: verified ${coreCommands.length} MCP analysis tools and ${capabilityCommands.length} capability commands are registered and aligned.`);
+console.log(`OK: verified ${coreCommands.length} MCP analysis tools, ${capabilityCommands.length} capability commands, and ${gatewayLifecycleCommands.length} gateway lifecycle commands are registered and aligned.`);

@@ -11,12 +11,13 @@ Domain: **Skills / write**
 ## Mandatory Rules (MUST)
 - `--id` is required. Obtain the real Skill record ID (CUID) via `+list-skills` — do not guess.
 - This is a **physical delete** — prefer `--dry-run` before executing.
-- Write operation: keep the confirmation prompt unless `--yes` is explicitly requested.
+- This is a high-risk-write operation; never execute it before the dry-run impact is explicitly confirmed.
 
 ## Command
 ```bash
+ae-cli agent +del-skill --id <skill-cuid> --dry-run
+# Summarize the target and impact, then wait for explicit user confirmation.
 ae-cli agent +del-skill --id <skill-cuid> --yes
-ae-cli agent +del-skill --dry-run --id <skill-cuid>
 ```
 
 ## Parameters

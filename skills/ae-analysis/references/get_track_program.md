@@ -8,6 +8,9 @@ Domain: **Project Configuration**
 - Query TRACKING-PLAN metadata (bury program), including planned events/properties/common properties. This is NOT system metadata. Do NOT use MetaTool/MetaPowerTool for these plan objects.
 - Query TRACKING-PLAN metadata (bury program), including planned events/properties/common properties.
 
+## Output
+Returns the current plan content. An empty plan permits first-time generation; a non-empty result must be reviewed before any merge-generating operation.
+
 ## Commands
 ```bash
 ae-cli analysis_meta +get_track_program --project_id <project_id>

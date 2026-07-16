@@ -15,9 +15,9 @@ Domain: **Team management / write**
 
 ## Command
 ```bash
-ae-cli team +delete --id <team_id>
+ae-cli team +delete --id <team_id> --dry-run
+# Summarize the target and impact, then wait for explicit user confirmation.
 ae-cli team +delete --id <team_id> --yes
-ae-cli team +delete --dry-run --id <team_id>
 ```
 
 ## Parameters
@@ -31,7 +31,7 @@ ae-cli team +delete --dry-run --id <team_id>
 - Do not retry delete until all active runs have reached a terminal status.
 
 ## Next Steps on Failure
-- `409 Conflict`: cancel active runs first (`+run-cancel --id <run_id> --yes`), then retry.
+- `409 Conflict`: cancel active runs first (`+run-cancel --id <run_id>`), then retry.
 - `404`: team already deleted or wrong ID — re-run `+list` to verify.
 
 ## Recommended Chaining

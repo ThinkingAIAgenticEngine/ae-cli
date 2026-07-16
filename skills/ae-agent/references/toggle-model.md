@@ -11,12 +11,12 @@ Domain: **Models / write**
 ## Mandatory Rules (MUST)
 - `--id` and `--enabled` are required.
 - Obtain the real model record ID (CUID) via `+list-models` — do not guess.
-- Write operation: keep the confirmation prompt unless `--yes` is explicitly requested.
+- This is an ordinary `write` operation and does not require CLI confirmation.
 
 ## Command
 ```bash
-ae-cli agent +toggle-model --id <model-cuid> --enabled true --yes
-ae-cli agent +toggle-model --id <model-cuid> --enabled false --yes
+ae-cli agent +toggle-model --id <model-cuid> --enabled true
+ae-cli agent +toggle-model --id <model-cuid> --enabled false
 ae-cli agent +toggle-model --dry-run --id <model-cuid> --enabled false
 ```
 

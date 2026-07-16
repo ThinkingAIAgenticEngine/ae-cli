@@ -9,7 +9,7 @@ export const createMetric = createMcpCommand({
     { name: 'display_name', type: 'string', required: true, desc: 'Metric display name' },
     { name: 'remark', type: 'string', required: false, desc: 'Optional metric remark' },
     { name: 'model_type', type: 'string', required: true, desc: 'Metric model type: event or retention' },
-    { name: 'events', type: 'json', required: true, desc: 'Metric events JSON. Use get_analysis_query_schema first to obtain the schema.' },
+    { name: 'events', type: 'json', required: true, desc: 'Metric events JSON. Follow the create_metric reference for the metric event contract.' },
     { name: 'params', type: 'json', required: true, desc: 'Metric parameters JSON. For event, use format config; for retention, use the eventView configuration.' },
   ],
   risk: 'write',

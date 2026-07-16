@@ -7,7 +7,7 @@ Do not use for MCP query cancellation by `request_id`; use `analysis +cancel_que
 Command:
 
 ```bash
-ae-cli analysis query cancel --run-id <run_id> [--reason <reason>] --yes
+ae-cli analysis query cancel --run-id <run_id> [--reason <reason>]
 ```
 
 Input sends `run_id` and optional `reason`.

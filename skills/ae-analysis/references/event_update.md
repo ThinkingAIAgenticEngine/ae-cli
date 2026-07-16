@@ -2,7 +2,7 @@
 
 Use when the user needs to update event display names and remarks.
 
-Do not use this command for unrelated analysis queries, ad-hoc query construction, or MCP metadata discovery when an existing specialized command already fits the user's request.
+Do not use it to change source-event/property relations; use `event relation-update` for the complete relation definition.
 
 Command:
 
@@ -15,7 +15,7 @@ Capability id: `metadata.event.update`.
 
 Input sends `project_id`, `event_name`, `event_desc`, `remark`.
 
-Output is the gateway envelope. `data` contains the common-service capability result.
+Output is a successful gateway envelope with no business data. Read back with `event get`.
 
 ## Parameters
 | Parameter | Required | Description |

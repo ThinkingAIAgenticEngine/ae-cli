@@ -15,7 +15,7 @@ Domain: **Skill Approval (company-scope publish) / write**
 - `--id` is required and must reference a **personal-scope** Skill (CUID). Obtain it via `+list-skills` — do not guess.
 - `--description` is required (1–80 chars) — the submission reason.
 - `--category` must be one of the market category keys (see below) when provided.
-- Write operation: keep the confirmation prompt unless `--yes` is explicitly requested.
+- This is an ordinary `write` operation and does not require CLI confirmation.
 - After submission, the Skill enters `pending` status until a root user approves or rejects it.
 
 ## Market Category Keys
@@ -23,8 +23,8 @@ Domain: **Skill Approval (company-scope publish) / write**
 
 ## Command
 ```bash
-ae-cli agent +submit-skill --id <skill-cuid> --description "Code reviewer for the team" --yes
-ae-cli agent +submit-skill --id <skill-cuid> --description "Data query helper" --category data_query --icon-emoji robot --yes
+ae-cli agent +submit-skill --id <skill-cuid> --description "Code reviewer for the team"
+ae-cli agent +submit-skill --id <skill-cuid> --description "Data query helper" --category data_query --icon-emoji robot
 ae-cli agent +submit-skill --dry-run --id <skill-cuid> --description "Test submit"
 ```
 

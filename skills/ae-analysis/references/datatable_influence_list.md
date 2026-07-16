@@ -2,7 +2,7 @@
 
 Use when the user needs to list metadata and assets affected by data table deletion or column changes.
 
-Do not use this command for unrelated analysis queries, ad-hoc query construction, or MCP metadata discovery when an existing specialized command already fits the user's request.
+Do not use it as a delete command. It is a read-only dependency check before table/column mutation.
 
 Command:
 
@@ -15,7 +15,7 @@ Capability id: `metadata.data_table.influence_list`.
 
 Input sends `project_id`, `datatable_id`.
 
-Output is the gateway envelope. `data` contains the common-service capability result.
+Output includes `data.resources[]`, `data.continuable`, and `data.project_info` for the proposed table operation.
 
 ## Parameters
 | Parameter | Required | Description |

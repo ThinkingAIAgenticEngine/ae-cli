@@ -13,12 +13,12 @@ Domain: **MCP Servers / write**
 ## Mandatory Rules (MUST)
 - `--id` is required. Obtain the real MCP server record ID (CUID) via `+list-mcps` — do not guess.
 - After disconnect, the MCP server is disabled (`enabled=false`); re-enable with `+toggle-mcp --enabled true` after re-authorizing.
-- Write operation: keep the confirmation prompt unless `--yes` is explicitly requested.
+- This is an ordinary `write` operation and does not require CLI confirmation.
 
 ## Command
 ```bash
 # Disconnect OAuth
-ae-cli agent +mcp-auth-disconnect --id <mcp-cuid> --yes
+ae-cli agent +mcp-auth-disconnect --id <mcp-cuid>
 
 # Dry-run to inspect the request
 ae-cli agent +mcp-auth-disconnect --dry-run --id <mcp-cuid>

@@ -10,13 +10,13 @@ Domain: **TeamRun execution / write**
 
 ## Mandatory Rules (MUST)
 - `--id` is required. Obtain the real run ID from a previous `+run-start` or `+run-chat` response — do not guess.
-- Write operation: keep the confirmation prompt unless `--yes` is explicitly requested.
+- This is an ordinary `write` operation and does not require CLI confirmation.
 - Cancellation is irreversible. To re-run the same task, call `+run-start` again.
 
 ## Command
 ```bash
 ae-cli team +run-cancel --id <run_id>
-ae-cli team +run-cancel --id <run_id> --yes
+ae-cli team +run-cancel --id <run_id>
 ae-cli team +run-cancel --dry-run --id <run_id>
 ```
 
@@ -34,5 +34,5 @@ ae-cli team +run-cancel --dry-run --id <run_id>
 - Already terminal: the run has already completed, failed, or been cancelled — no action needed.
 
 ## Recommended Chaining
-- `+run-result` (verify status) → `+run-cancel --yes`
+- `+run-result` (verify status) → `+run-cancel`
 - `+run-cancel` (clear active runs) → `+delete` (team)

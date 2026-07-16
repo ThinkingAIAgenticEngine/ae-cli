@@ -199,7 +199,7 @@ Access tokens and CLI tokens are stored in the encrypted secure-store under `~/.
 | `ae-cli meta +list-entities` | `te_list_entities` | 列出分析实体 |
 | `ae-cli meta +list-metrics` | `te_list_metrics` | 列出预定义指标 |
 | `ae-cli meta +list-tables` | `te_list_tables` | 列出 SQL 可查询表 |
-| `ae-cli meta +get-table-columns` | `te_get_table_columns` | 获取表字段定义 |
+| `ae-cli analysis sql-table columns` | `analysis.sql_table.columns` | 获取服务端授权表的字段定义 |
 
 ### analysis 域（10 commands）
 
@@ -272,8 +272,9 @@ ae-cli api POST /v1/hermes/flow/save --data '{"projectId": 1, ...}'
 - 使用 `cli-table3` 渲染，列宽自适应终端
 
 **jq**（`--jq <expr>`）：
-- 在 format 渲染前应用 jq 过滤
-- 使用 `jq-web`（pure WASM，无需系统 jq 依赖）或轻量 JS 实现如 `@prantlf/jsonpath`；优先选择零系统依赖的方案
+- 在 format 渲染前应用 jq 过滤（过滤对象为命令业务 payload，再包 `{ ok, data }` 信封）
+- 使用 `jq-wasm`（jq 1.8.2 WebAssembly，无需系统 jq 二进制）
+- 多值流（如 `.items[]`）输出为数组；单值自动解包；非法表达式返回 validation 错误
 
 ### Error Handling
 

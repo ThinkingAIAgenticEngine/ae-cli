@@ -14,8 +14,8 @@ Domain: **Query lifecycle**
 
 ## Command
 ```bash
-ae-cli analysis +cancel_query --request_id mcp_0123456789abcdef0123456789abcdef --yes
-ae-cli analysis +cancel_query --request_id mcp_0123456789abcdef0123456789abcdef --reason "agent timeout" --yes
+ae-cli analysis +cancel_query --request_id mcp_0123456789abcdef0123456789abcdef
+ae-cli analysis +cancel_query --request_id mcp_0123456789abcdef0123456789abcdef --reason "agent timeout"
 ae-cli analysis +cancel_query --request_id mcp_0123456789abcdef0123456789abcdef --dry-run
 ```
 
@@ -26,12 +26,12 @@ ae-cli analysis +cancel_query --request_id mcp_0123456789abcdef0123456789abcdef 
 | `--reason` | No | Optional cancellation reason. Default: `MCP_CANCEL_QUERY_TOOL`. |
 
 ## Decision Rules
-- This is a write operation (`risk: write`). Use `--yes` only when the user clearly asked to cancel or stop a running query.
+- This is an ordinary `write` operation and does not require CLI confirmation.
 - The request must belong to the current MCP user. Otherwise the service returns `REQUEST_NOT_FOUND_OR_NOT_OWNED`.
 - Do not invent a request ID. Use the ID from the query response or the ID explicitly supplied to the original query.
 - This command cancels by request ID only. It does not cancel by SQL text, report ID, dashboard ID, BI panel ID, run ID, or tool call ID.
 - For query commands that expose `--request_id`, supplying a stable ID before execution is required. Use `mcp_<32 lowercase hex UUID>`, for example `mcp_0123456789abcdef0123456789abcdef`, so proactive cancellation does not depend on waiting for the response metadata.
-- For query commands that may exceed the CLI/MCP HTTP timeout, preset `--request_id`; if `fetch failed`, HTTP timeout, or caller timeout happens, immediately call `+cancel_query --request_id <same value> --yes`.
+- For query commands that may exceed the CLI/MCP HTTP timeout, preset `--request_id`; if `fetch failed`, HTTP timeout, or caller timeout happens, immediately call `+cancel_query --request_id <same value>`.
 
 ## Next Steps on Failure
 - If `REQUEST_NOT_FOUND_OR_NOT_OWNED` appears, verify the request ID, user identity, host, and whether the original query already finished.

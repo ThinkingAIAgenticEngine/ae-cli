@@ -13,7 +13,7 @@ Domain: **Automations / write**
 - `--id` is required. Obtain the real ID via `+list-automations` — do not guess.
 - At least one update field must be provided (`--name`, `--message`, `--enabled`, `--cron`, or a `--schedule-kind` with its time/day fields).
 - `--cron` and `--schedule-kind` are mutually exclusive.
-- Write operation: keep the confirmation prompt unless `--yes` is explicitly requested.
+- This is an ordinary `write` operation and does not require CLI confirmation.
 - Do not surface raw automation IDs, raw JSON, or concrete detail paths in user-facing replies.
 
 ## Schedule Kinds (when updating schedule)
@@ -27,28 +27,26 @@ Domain: **Automations / write**
 ## Command
 ```bash
 # Pause an automation
-ae-cli agent +update-automation --id <automation-id> --enabled false --yes
+ae-cli agent +update-automation --id <automation-id> --enabled false
 
 # Resume an automation
-ae-cli agent +update-automation --id <automation-id> --enabled true --yes
+ae-cli agent +update-automation --id <automation-id> --enabled true
 
 # Rename and change the instruction
 ae-cli agent +update-automation \
   --id <automation-id> \
   --name "Daily AI Brief v2" \
-  --message "Summarize yesterday's AI news and trends" \
-  --yes
+  --message "Summarize yesterday's AI news and trends"
 
 # Change the schedule to weekly on Sunday
 ae-cli agent +update-automation \
   --id <automation-id> \
   --schedule-kind weekly \
   --time 10:00 \
-  --weekday 0 \
-  --yes
+  --weekday 0
 
 # Switch to a cron expression
-ae-cli agent +update-automation --id <automation-id> --cron "0 9 * * 1-5" --yes
+ae-cli agent +update-automation --id <automation-id> --cron "0 9 * * 1-5"
 
 # Dry-run to inspect the request before executing
 ae-cli agent +update-automation --dry-run --id <automation-id> --enabled false

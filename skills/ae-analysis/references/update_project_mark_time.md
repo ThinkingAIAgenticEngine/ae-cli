@@ -7,6 +7,7 @@ Domain: **Project Configuration**
 ## Use Cases
 - Update an existing project date marker. Returns the updated marker ID, timestamp, content, and visibility status.
 - Update an existing project date marker.
+- Do not use it to create a marker or change analysis data; use `+create_project_mark_time` for a new marker.
 
 ## Command
 ```bash
@@ -26,13 +27,13 @@ ae-cli analysis_meta +update_project_mark_time --dry-run
 | `--is_visible` | No | Whether the marker is visible. Default: 1 |
 
 ## Decision Rules
-- First run should only pass required parameters (`--mark_time_id`, `--project_id`, `--marked_at`), and add optional parameters only after the path is confirmed to work.
+- The smallest valid request also includes required `--content`; use `--dry-run` with `--mark_time_id`, `--project_id`, `--marked_at`, and `--content` before executing.
 - For date/time ranges, first validate with a short range, then expand the range step by step.
 - For cross-project troubleshooting, first confirm whether `--project_id` matches the current permissions and target environment.
-- Write operations keep the confirmation prompt by default; re-evaluate whether to use `--yes` in automation scenarios.
+- This is an ordinary `write` operation and does not require CLI confirmation.
 
 ## Next Steps After Failure
-- If required parameters are missing, fall back to the smallest runnable command and fill them in (focus on `--mark_time_id`, `--project_id`, and `--marked_at`).
+- If required parameters are missing, supply `--mark_time_id`, `--project_id`, `--marked_at`, and `--content` before retrying.
 - If the result after writing is not as expected, immediately read back the corresponding list/get interface for a before-and-after comparison.
 
 ## Recommended Chaining

@@ -7,7 +7,7 @@ Do not use for dashboard lock/version operations; those are intentionally not CL
 Command:
 
 ```bash
-ae-cli analysis dashboard freeze --project-id <project_id> --dashboard-ids '[1001,1002]' [--freeze true] --yes
+ae-cli analysis dashboard freeze --project-id <project_id> --dashboard-ids '[1001,1002]' [--freeze true]
 ```
 
 Input sends `project_id`, `dashboard_ids`, and optional `freeze`.

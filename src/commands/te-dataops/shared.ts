@@ -108,6 +108,39 @@ export function buildDataopsApiDryRun(ctx: RuntimeContext, toolName: string, arg
   };
 }
 
+export async function downloadDataopsApi(
+  ctx: RuntimeContext,
+  path: string,
+  params: Record<string, unknown>,
+  retry = true,
+): Promise<Buffer> {
+  const host = resolveHost(ctx.host());
+  const token = await getCliToken(host);
+  const url = buildUrl(host, path, compactArgs(params));
+  const resp = await fetch(url, {
+    method: 'GET',
+    headers: {
+      'cli-token': token,
+      'Accept': '*/*',
+      
+    },
+  });
+
+  if (resp.status === 403) {
+    const data = parseResponseBody(await resp.text(), url, resp.status, true);
+    throw new PermissionError(permissionMessage(data));
+  }
+  if (resp.status === 401 && retry) {
+    clearCliToken(host);
+    return downloadDataopsApi(ctx, path, params, false);
+  }
+  if (!resp.ok) {
+    const data = parseResponseBody(await resp.text(), url, resp.status, true);
+    throw new Error(formatHttpError(resp.status, resp.statusText, data));
+  }
+  return Buffer.from(await resp.arrayBuffer());
+}
+
 async function dataopsRequest(
   ctx: RuntimeContext,
   method: DataopsApiMethod,

@@ -2,7 +2,7 @@
 
 Use when the user needs to list property metadata change logs.
 
-Do not use this command for unrelated analysis queries, ad-hoc query construction, or MCP metadata discovery when an existing specialized command already fits the user's request.
+Do not use it for the current property definition or historical data values; use `property get` or an analysis query.
 
 Command:
 
@@ -15,7 +15,7 @@ Capability id: `metadata.property.changelog_list`.
 
 Input sends `project_id`, `table_type`, `prop_name`.
 
-Output is the gateway envelope. `data` contains the common-service capability result.
+Output `data.changelogs[]` contains metadata change records for the property.
 
 ## Parameters
 | Parameter | Required | Description |

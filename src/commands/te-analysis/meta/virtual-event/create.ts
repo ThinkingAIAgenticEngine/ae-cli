@@ -2,7 +2,7 @@ import {
   compactInput,
   createAnalysisMetaCapabilityCommand,
   optionalBoolean,
-  payloadFlag,
+  requiredPayloadFlag,
   projectIdFlag,
   projectInput,
 } from '../../capability-shared.js';
@@ -14,7 +14,7 @@ export const metadataVirtualEventCreate = createAnalysisMetaCapabilityCommand({
   description: 'Create a virtual event from events and filters.',
   flags: [
     projectIdFlag,
-    payloadFlag,
+    requiredPayloadFlag,
     { name: 'override', type: 'boolean', required: false, desc: 'Whether to override an existing virtual event rule.' },
   ],
   risk: 'write',

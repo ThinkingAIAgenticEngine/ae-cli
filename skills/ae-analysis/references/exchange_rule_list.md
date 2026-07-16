@@ -2,7 +2,7 @@
 
 Use when the user needs to list exchange-rate conversion rules.
 
-Do not use this command for unrelated analysis queries, ad-hoc query construction, or MCP metadata discovery when an existing specialized command already fits the user's request.
+Do not use it to validate or persist proposed rules; use `exchange rule-validate` then `exchange rule-update`.
 
 Command:
 
@@ -15,7 +15,7 @@ Capability id: `metadata.exchange_rule.list`.
 
 Input sends `project_id`.
 
-Output is the gateway envelope. `data` contains the common-service capability result.
+Output `data.rules[]` contains the project's current exchange rules.
 
 ## Parameters
 | Parameter | Required | Description |

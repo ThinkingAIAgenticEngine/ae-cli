@@ -14,14 +14,14 @@ Domain: **Category & Icon (meta) / write**
 - At least one of `--category` / `--icon-emoji` / `--icon-color` must be provided.
 - `--category` must be one of the market category keys (see below) when provided.
 - Company scope meta requires root; system scope meta is read-only.
-- Write operation: keep the confirmation prompt unless `--yes` is explicitly requested.
+- This is an ordinary `write` operation and does not require CLI confirmation.
 
 ## Market Category Keys
 `ae_preset | dev_tool | search_tool | data_query | content_gen | enterprise | life | automation | other`
 
 ## Command
 ```bash
-ae-cli agent +set-skill-meta --id <skill-cuid> --category data_query --yes
+ae-cli agent +set-skill-meta --id <skill-cuid> --category data_query
 ae-cli agent +set-skill-meta --id <skill-cuid> --icon-emoji robot --icon-color "#1E76F0"
 ae-cli agent +set-skill-meta --dry-run --id <skill-cuid> --category dev_tool
 ```

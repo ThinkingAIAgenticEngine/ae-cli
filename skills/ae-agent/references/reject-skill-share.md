@@ -11,12 +11,12 @@ Domain: **Skill Share (peer-to-peer) / write**
 
 ## Mandatory Rules (MUST)
 - `--id` is required and must reference a **share** record (CUID), not a Skill ID. Obtain it via `+list-skill-shares --direction received` — do not guess.
-- Write operation: keep the confirmation prompt unless `--yes` is explicitly requested.
+- This is an ordinary `write` operation and does not require CLI confirmation.
 - Only `pending` shares can be rejected.
 
 ## Command
 ```bash
-ae-cli agent +reject-skill-share --id <share-cuid> --yes
+ae-cli agent +reject-skill-share --id <share-cuid>
 ae-cli agent +reject-skill-share --dry-run --id <share-cuid>
 ```
 

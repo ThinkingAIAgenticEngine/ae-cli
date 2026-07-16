@@ -9,18 +9,29 @@ export interface Flag {
   default?: any;
   desc: string;
   alias?: string;
+  min?: number;
+  max?: number;
 }
 
 export interface Command {
   service: string;
-  /** Optional resource segment for three-level commands: `ae-cli <service> <resource> <command>`. */
+  /** Optional space-separated resource path before the command. */
   resource?: string;
   command: string;
+  /** Canonical gateway capability ID for machine-readable registry verification. */
+  capabilityId?: string;
   description: string;
   flags: Flag[];
   risk: RiskLevel;
+  /** Local flag / pre-flight checks before validateInput / dryRun / execute. */
   validate?: (ctx: RuntimeContext) => void;
-  dryRun?: (ctx: RuntimeContext) => DryRunResult;
+  /**
+   * Parameter-focused server check (capability gateway `/validate`).
+   * Use to iterate complex input; prefer this over dryRun while still shaping qp/payload.
+   */
+  validateInput?: (ctx: RuntimeContext) => Promise<any>;
+  /** Local request preview (`DryRunResult`) or server dry-run payload (capability gateway `/dry-run`). */
+  dryRun?: (ctx: RuntimeContext) => DryRunResult | Promise<DryRunResult | any>;
   execute: (ctx: RuntimeContext) => Promise<any>;
 }
 
@@ -40,7 +51,7 @@ export interface RuntimeContext {
   mcpUrl(): string | undefined;
   service(): string;
 
-  out(data: any): void;
+  out(data: any): Promise<void>;
 }
 
 export interface DryRunResult {
@@ -55,6 +66,9 @@ export interface GlobalOptions {
   mcpUrl?: string;
   format: OutputFormat;
   jq?: string;
+  /** Capability gateway `/validate` (fix params). Mutually exclusive with dryRun. */
+  validate: boolean;
+  /** Capability gateway `/dry-run` or local transport preview. Mutually exclusive with validate. */
   dryRun: boolean;
   yes: boolean;
 }
@@ -62,6 +76,7 @@ export interface GlobalOptions {
 export interface OutputEnvelope {
   ok: boolean;
   data?: any;
+  meta?: Record<string, unknown>;
   error?: {
     type: 'auth' | 'permission' | 'api' | 'validation' | 'config';
     code?: string | number;

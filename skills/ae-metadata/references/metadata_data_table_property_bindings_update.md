@@ -3,8 +3,8 @@
 > Capability id: `metadata.data_table.property_bindings_update` · Domain: `metadata`.
 
 ```bash
-ae-cli metadata data-table property-bindings-update --project-id <project_id> --data-table-id <id> --bind-properties '<bind_json>' --yes
-ae-cli metadata data-table property-bindings-update --project-id <project_id> --data-table-id <id> --unbind-properties '<unbind_json>' --yes
+ae-cli metadata data-table property-bindings-update --project-id <project_id> --data-table-id <id> --bind-properties '<bind_json>'
+ae-cli metadata data-table property-bindings-update --project-id <project_id> --data-table-id <id> --unbind-properties '<unbind_json>'
 ```
 
 | Parameter | Required | Description |

@@ -7,7 +7,7 @@ Do not use to send immediately. Use `dashboard-daily-report send`.
 Command:
 
 ```bash
-ae-cli analysis dashboard-daily-report update --project-id <project_id> --dashboard-id <dashboard_id> [--enable-send true] [--send-time <time>] [--send-title <title>] [--send-content <content>] [--payload '{...}'] --yes
+ae-cli analysis dashboard-daily-report update --project-id <project_id> --dashboard-id <dashboard_id> [--enable-send true] [--send-time <time>] [--send-title <title>] [--send-content <content>] [--payload '{...}']
 ```
 
 Input sends `project_id`, `dashboard_id`, and optional daily report fields or `payload`.

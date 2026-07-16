@@ -2,7 +2,7 @@
 
 Use when the user needs to get one super event metadata detail.
 
-Do not use this command for unrelated analysis queries, ad-hoc query construction, or MCP metadata discovery when an existing specialized command already fits the user's request.
+Do not use it for event result data, virtual-event-by-ID detail, or fuzzy discovery; use analysis data, `virtual-event get`, or `event list`.
 
 Command:
 
@@ -15,7 +15,7 @@ Capability id: `metadata.event.get`.
 
 Input sends `project_id`, `event_name`.
 
-Output is the gateway envelope. `data` contains the common-service capability result.
+Output `data.event` contains the super-event metadata detail.
 
 ## Parameters
 | Parameter | Required | Description |

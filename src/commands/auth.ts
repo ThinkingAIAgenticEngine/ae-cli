@@ -126,7 +126,7 @@ export function registerAuth(program: Command): void {
           activateHostAfterLogin(host, explicitHost);
           logger.info(`Device flow login successful for ${host} (resumed)`);
           emit('Login successful! Token saved securely.');
-          printOutput(loginSummary(host, tokens), fmt);
+          await printOutput(loginSummary(host, tokens), fmt);
           return;
         }
 
@@ -134,7 +134,7 @@ export function registerAuth(program: Command): void {
         // opts.wait is false when the user passed --no-wait (commander default is true).
         if (opts.wait === false) {
           const authResp = await authorizeDevice(teClaudeBase);
-          printOutput(
+          await printOutput(
             {
               device_code: authResp.device_code,
               user_code: authResp.user_code,
@@ -154,7 +154,7 @@ export function registerAuth(program: Command): void {
         activateHostAfterLogin(host, explicitHost);
         logger.info(`Device flow login successful for ${host}`);
         emit('Login successful! Token saved securely.');
-        printOutput(loginSummary(host, tokens), fmt);
+        await printOutput(loginSummary(host, tokens), fmt);
       } catch (err: any) {
         if (err instanceof DeviceFlowUnsupportedError) {
           printError(
@@ -176,7 +176,7 @@ export function registerAuth(program: Command): void {
     .action(async (opts: AuthHostOpts) => {
       const host = resolveAuthHost(program, opts);
       if (!host) {
-        printOutput({ authenticated: false, host: '(none)', hint: 'Run: ae-cli config set-host <url>' }, program.opts().format || 'json');
+        await printOutput({ authenticated: false, host: '(none)', hint: 'Run: ae-cli config set-host <url>' }, program.opts().format || 'json');
         return;
       }
 
@@ -189,7 +189,7 @@ export function registerAuth(program: Command): void {
         // non-expiring, so MCP/API-based commands stay authenticated regardless of the static access expiry
         // (minted eagerly at login — see hasCliToken).
         const pastStaticExpiry = new Date(secureEntry.accessExpiresAt).getTime() < Date.now();
-        printOutput(
+        await printOutput(
           {
             authenticated: true,
             host,
@@ -206,7 +206,7 @@ export function registerAuth(program: Command): void {
 
       const fallbackCliToken = getFallbackCliToken(host);
       if (fallbackCliToken) {
-        printOutput(
+        await printOutput(
           {
             authenticated: true,
             host,
@@ -219,14 +219,14 @@ export function registerAuth(program: Command): void {
         return;
       }
 
-      printOutput({ authenticated: false, host, source: 'none' }, program.opts().format || 'json');
+      await printOutput({ authenticated: false, host, source: 'none' }, program.opts().format || 'json');
     });
 
   auth
     .command('logout')
     .description('Clear stored credentials (access token, CLI token, and host config) for a host (--host or active host)')
     .option('--host <url>', HOST_OPTION_DESC)
-    .action((opts: AuthHostOpts) => {
+    .action(async (opts: AuthHostOpts) => {
       const host = resolveAuthHost(program, opts);
       if (!host) {
         printError('config', 'No AE host configured.', 'Run: ae-cli config set-host <url>');
@@ -236,6 +236,6 @@ export function registerAuth(program: Command): void {
       secureStoreClear(host);
       removeHost(host);
       process.stderr.write(`[ae-cli] Credentials and config cleared for ${host}\n`);
-      printOutput({ cleared: true, host }, program.opts().format || 'json');
+      await printOutput({ cleared: true, host }, program.opts().format || 'json');
     });
 }

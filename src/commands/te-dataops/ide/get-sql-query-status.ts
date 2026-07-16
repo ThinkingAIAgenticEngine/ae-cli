@@ -1,10 +1,10 @@
 import { mkdir, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import type { Command, RuntimeContext } from '../../../framework/types.js';
-import { resolveHost } from '../../../core/auth.js';
-import { buildDataopsApiDryRun, callDataopsApi } from '../shared.js';
+import { buildDataopsApiDryRun, callDataopsApi, downloadDataopsApi } from '../shared.js';
 
 const toolName = 'ide_get_sql_query_status';
+const downloadPath = '/api/cli/dataops/v1/gaia/ide/sql-query-download';
 
 function optionalString(ctx: RuntimeContext, name: string): string | undefined {
   const value = ctx.str(name);
@@ -24,22 +24,14 @@ function isDownloadReady(data: any): boolean {
 }
 
 async function downloadResult(ctx: RuntimeContext, data: any, targetPath: string): Promise<string> {
-  const token = await ctx.token();
-  const host = resolveHost(ctx.host()).replace(/\/+$/, '');
   const params = data?.downloadParams ?? {};
-  const url = new URL(`${host}/v1/gaia/task/async/download`);
-  url.searchParams.set('accessToken', token);
-  url.searchParams.set('spaceCode', String(params.spaceCode));
-  url.searchParams.set('taskId', String(params.taskId));
-
-  const resp = await fetch(url);
-  if (!resp.ok) {
-    throw new Error(`Download failed: HTTP ${resp.status} ${resp.statusText}`);
-  }
-
+  const bytes = await downloadDataopsApi(ctx, downloadPath, {
+    spaceCode: params.spaceCode,
+    taskId: params.taskId,
+  });
   const absPath = path.resolve(targetPath);
   await mkdir(path.dirname(absPath), { recursive: true });
-  await writeFile(absPath, Buffer.from(await resp.arrayBuffer()));
+  await writeFile(absPath, bytes);
   return absPath;
 }
 

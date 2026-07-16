@@ -16,16 +16,20 @@ export function registerCommands(program: CommanderCommand, commands: Command[])
     let serviceCmd = program.commands.find(c => c.name() === service);
     if (!serviceCmd) {
       serviceCmd = program.command(service).description(`${service} domain commands`);
+      serviceCmd.allowExcessArguments(false);
     }
 
     for (const cmd of cmds) {
       let parent = serviceCmd;
       if (cmd.resource) {
-        let resourceCmd = serviceCmd.commands.find(c => c.name() === cmd.resource);
-        if (!resourceCmd) {
-          resourceCmd = serviceCmd.command(cmd.resource).description(`${cmd.resource} commands`);
+        for (const resource of cmd.resource.split(/\s+/).filter(Boolean)) {
+          let resourceCmd = parent.commands.find(c => c.name() === resource);
+          if (!resourceCmd) {
+            resourceCmd = parent.command(resource).description(`${resource} commands`);
+            resourceCmd.allowExcessArguments(false);
+          }
+          parent = resourceCmd;
         }
-        parent = resourceCmd;
       }
 
       const sub = parent.command(cmd.command).description(cmd.description);
@@ -44,11 +48,15 @@ export function registerCommands(program: CommanderCommand, commands: Command[])
 
       // Each subcommand accepts --host after the command name to override the global host.
       sub.option('--host <url>', 'Override active AE host URL for this command');
+      sub.option('--format <format>', 'Output format: json | table. Default: json.');
+      sub.option('--jq <expr>', 'jq 1.8 filter over command payload, applied before output envelope wrapping.');
 
       // Wire action
       sub.action(async (opts: Record<string, any>) => {
         const globalOpts = extractGlobalOptions(program);
         if (opts.host) globalOpts.host = opts.host;
+        if (opts.format) globalOpts.format = opts.format;
+        if (opts.jq) globalOpts.jq = opts.jq;
         await runCommand(cmd, opts, globalOpts);
       });
     }
@@ -87,6 +95,7 @@ function extractGlobalOptions(program: CommanderCommand): GlobalOptions {
     mcpUrl: opts.mcpUrl,
     format: opts.format || 'json',
     jq: opts.jq,
+    validate: opts.validate || false,
     dryRun: opts.dryRun || false,
     yes: opts.yes || false,
   };

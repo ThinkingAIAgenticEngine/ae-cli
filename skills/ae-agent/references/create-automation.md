@@ -14,7 +14,7 @@ Domain: **Automations / write**
 - A schedule is required: provide either `--cron` or a `--schedule-kind` (with its time/day fields). `--cron` and `--schedule-kind` are mutually exclusive.
 - `--agent-id` and `--agent-name` are mutually exclusive. Obtain a real Agent ID via `+list-agents` — do not guess.
 - JSON flags must be valid JSON strings, usually wrapped in single quotes in shell.
-- Write operation: keep the confirmation prompt unless `--yes` is explicitly requested.
+- This is an ordinary `write` operation and does not require CLI confirmation.
 - Do not surface raw automation IDs, raw JSON, or concrete detail paths in user-facing replies.
 
 ## Schedule Kinds
@@ -32,8 +32,7 @@ ae-cli agent +create-automation \
   --name "Daily AI Brief" \
   --schedule-kind daily \
   --time 09:00 \
-  --message "Summarize yesterday's AI news" \
-  --yes
+  --message "Summarize yesterday's AI news"
 
 # Create but keep paused when the user explicitly asks not to enable it
 ae-cli agent +create-automation \
@@ -41,8 +40,7 @@ ae-cli agent +create-automation \
   --schedule-kind daily \
   --time 09:00 \
   --message "Summarize yesterday's AI news" \
-  --enabled false \
-  --yes
+  --enabled false
 
 # Weekly schedule on Sunday
 ae-cli agent +create-automation \
@@ -50,15 +48,13 @@ ae-cli agent +create-automation \
   --schedule-kind weekly \
   --time 10:00 \
   --weekday 0 \
-  --message "Generate the weekly report" \
-  --yes
+  --message "Generate the weekly report"
 
 # Cron expression
 ae-cli agent +create-automation \
   --name "Cron Task" \
   --cron "0 9 * * 1-5" \
-  --message "Weekday morning brief" \
-  --yes
+  --message "Weekday morning brief"
 
 # Dry-run to inspect the request before executing
 ae-cli agent +create-automation --dry-run --name "Test" --message "x" --schedule-kind daily --time 09:00

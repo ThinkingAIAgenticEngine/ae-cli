@@ -7,7 +7,7 @@ Do not use to share dashboards or folders. Use the matching resource share comma
 Command:
 
 ```bash
-ae-cli analysis bi-panel share --project-id <project_id> --panel-id <panel_id> [--payload '{...}'] --yes
+ae-cli analysis bi-panel share --project-id <project_id> --panel-id <panel_id> [--payload '{...}']
 ```
 
 Input sends `project_id`, `panel_id`, and backend-compatible snake_case `payload`.

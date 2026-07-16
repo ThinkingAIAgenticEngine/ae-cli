@@ -66,9 +66,9 @@ for (const tool of commands) {
 }
 
 const requiredTokensByFile = {
-  'src/commands/te-meta/meta/list-events.ts': ["name: 'authenticated_only'", 'authenticatedOnly', 'authenticationStatus', 'maximum: 50'],
-  'src/commands/te-meta/meta/list-properties.ts': ["name: 'authenticated_only'", 'authenticatedOnly', 'authenticationStatus', 'maximum: 50'],
-  'src/commands/te-meta/meta/list-metrics.ts': ["name: 'authenticated_only'", 'authenticatedOnly', 'authenticationStatus', 'maximum: 50'],
+  'src/commands/te-meta/meta/list-events.ts': ["name: 'authenticated_only'", 'authenticatedOnly', 'authenticationStatus', 'maximum: 200'],
+  'src/commands/te-meta/meta/list-properties.ts': ["name: 'authenticated_only'", 'authenticatedOnly', 'authenticationStatus', 'maximum: 200'],
+  'src/commands/te-meta/meta/list-metrics.ts': ["name: 'authenticated_only'", 'authenticatedOnly', 'authenticationStatus', 'maximum: 200'],
 };
 
 for (const [relPath, tokens] of Object.entries(requiredTokensByFile)) {

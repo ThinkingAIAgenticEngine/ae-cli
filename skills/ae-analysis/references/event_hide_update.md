@@ -2,12 +2,12 @@
 
 Use when the user needs to batch hide or show events.
 
-Do not use this command for unrelated analysis queries, ad-hoc query construction, or MCP metadata discovery when an existing specialized command already fits the user's request.
+Do not use it for deletion: this changes metadata visibility and keeps the event. Review affected assets first when needed.
 
 Command:
 
 ```bash
-ae-cli analysis-meta event hide-update --project-id <project_id> --event-names '{}' --is-hide true
+ae-cli analysis-meta event hide-update --project-id <project_id> --event-names '["purchase"]' --is-hide true
 ae-cli analysis-meta event hide-update --dry-run
 ```
 
@@ -15,7 +15,7 @@ Capability id: `metadata.event.hide_update`.
 
 Input sends `project_id`, `event_names`, `is_hide`.
 
-Output is the gateway envelope. `data` contains the common-service capability result.
+Output is a successful gateway envelope with no business data. Verify visibility with `event list|get`.
 
 ## Parameters
 | Parameter | Required | Description |

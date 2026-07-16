@@ -10,7 +10,7 @@ as `--source-version`. The gateway rejects stale `source_version` values.
 Command:
 
 ```bash
-ae-cli analysis bi-panel-version publish --project-id <project_id> --panel-id <panel_id> --source-version <draft_version> --yes
+ae-cli analysis bi-panel-version publish --project-id <project_id> --panel-id <panel_id> --source-version <draft_version>
 ```
 
 Input sends `project_id`, one of `panel_id` or `panel_uuid`, and required

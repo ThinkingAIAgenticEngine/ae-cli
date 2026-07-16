@@ -33,16 +33,16 @@ const globalSkillRel = 'skills/ae-analysis-global/SKILL.md';
 const analysisSkillRel = 'skills/ae-analysis/SKILL.md';
 const listQueryClustersRel = 'skills/ae-analysis-global/references/list_query_clusters.md';
 const baseListQueryClustersRel = 'skills/ae-analysis/references/list_query_clusters.md';
-const listClustersRefRel = 'skills/ae-analysis/references/list_clusters.md';
+const listClustersRefRel = 'skills/ae-analysis/references/user_cluster_list.md';
 const listQueryClustersCmdRel = 'src/commands/te-analysis/global/list-query-clusters.ts';
-const listClustersCmdRel = 'src/commands/te-audience/cluster/list-clusters.ts';
+const listClustersCmdRel = 'src/commands/te-analysis/user/index.ts';
 
 assertIncludes(globalSkillRel, read(globalSkillRel), [
   'Localized examples',
   'query cluster',
   'audience/user segment cluster',
   'analysis +list_query_clusters',
-  'analysis_audience +list_clusters',
+  'analysis user-cluster list',
 ]);
 
 assertNotIncludes(analysisSkillRel, read(analysisSkillRel), [
@@ -71,8 +71,8 @@ assertIncludes(listQueryClustersRel, assertFile(listQueryClustersRel), [
 ]);
 
 assertIncludes(listClustersRefRel, read(listClustersRefRel), [
-  'Audience/User Segment',
-  'audience/user segment clusters',
+  'user-cluster list',
+  'cluster_name',
 ]);
 
 assertNotIncludes(listClustersRefRel, read(listClustersRefRel), [
@@ -91,7 +91,7 @@ assertIncludes(listQueryClustersCmdRel, read(listQueryClustersCmdRel), [
 ]);
 
 assertIncludes(listClustersCmdRel, read(listClustersCmdRel), [
-  'user cohort/segment cluster',
+  'analysis.user_cluster.list',
 ]);
 
 console.log('OK: analysis cluster routing docs and command descriptions are explicit.');

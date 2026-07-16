@@ -1,7 +1,7 @@
 import {
   createAnalysisCapabilityCommand,
   fieldsFlag,
-  limitFlag,
+  directoryLimitFlag,
   listInput,
   offsetFlag,
   projectIdFlag,
@@ -13,7 +13,7 @@ export const biPanelList = createAnalysisCapabilityCommand({
   command: 'list',
   capabilityId: 'analysis.bi_panel.list',
   description: 'List BI panels visible to the current user through the capability gateway.',
-  flags: [projectIdFlag, queryFlag, fieldsFlag, limitFlag, offsetFlag],
+  flags: [projectIdFlag, queryFlag, fieldsFlag, directoryLimitFlag, offsetFlag],
   risk: 'read',
   buildInput: listInput,
 });

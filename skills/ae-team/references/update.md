@@ -13,13 +13,13 @@ Domain: **Team management / write**
 - At least one optional field must be provided in addition to `--id`.
 - `--config` replaces the entire TeamConfig; provide the complete new config, not a partial patch.
 - `--scope` must be `personal` or `company` if provided.
-- Write operation: keep the confirmation prompt unless `--yes` is explicitly requested.
+- This is an ordinary `write` operation and does not require CLI confirmation.
 
 ## Command
 ```bash
 ae-cli team +update --id <team_id> --name "新名称"
 ae-cli team +update --id <team_id> --enabled false
-ae-cli team +update --id <team_id> --config '<full_new_config_json>' --yes
+ae-cli team +update --id <team_id> --config '<full_new_config_json>'
 ae-cli team +update --dry-run --id <team_id> --name "Test"
 ```
 

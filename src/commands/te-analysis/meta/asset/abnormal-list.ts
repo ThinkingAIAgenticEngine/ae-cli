@@ -5,8 +5,8 @@ import {
 } from '../../capability-shared.js';
 
 export const metadataAssetAbnormalList = createAnalysisMetaCapabilityCommand({
-  resource: 'asset',
-  command: 'abnormal-list',
+  resource: 'asset-abnormal',
+  command: 'list',
   capabilityId: 'metadata.asset_abnormal.list',
   description: 'List abnormal assets by resource type.',
   flags: [

@@ -13,7 +13,7 @@ Domain: **Team management / write**
 - `--name` must be 1–100 characters.
 - `--description` must be ≤2000 characters if provided.
 - `--scope` must be `personal` or `company` if provided; defaults to `personal` on the server.
-- Write operation: keep the confirmation prompt unless `--yes` is explicitly requested.
+- This is an ordinary `write` operation and does not require CLI confirmation.
 
 ## TeamConfig Structure
 
@@ -66,7 +66,7 @@ ae-cli team +create \
   --name "日报分析团队" \
   --config '{"version":1,"mode":"serial","steps":[{"id":"s1","name":"分析师","agentId":"xxx","prompt":"分析数据","role":"agent"}]}'
 
-ae-cli team +create --name "My Team" --config '...' --scope company --yes
+ae-cli team +create --name "My Team" --config '...' --scope company
 ae-cli team +create --dry-run --name "Test" --config '{}'
 ```
 

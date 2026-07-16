@@ -2,7 +2,7 @@
 
 Use when the user needs to list event or user properties.
 
-Do not use this command for unrelated analysis queries, ad-hoc query construction, or MCP metadata discovery when an existing specialized command already fits the user's request.
+Do not use it for property values or across mixed table types; select the event/user scope explicitly.
 
 Command:
 
@@ -15,7 +15,7 @@ Capability id: `metadata.property.list`.
 
 Input sends `project_id`, `table_type`.
 
-Output is the gateway envelope. `data` contains the common-service capability result.
+Output `data.properties[]` contains property metadata for the selected table type.
 
 ## Parameters
 | Parameter | Required | Description |

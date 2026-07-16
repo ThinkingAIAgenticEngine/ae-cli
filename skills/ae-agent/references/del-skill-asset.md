@@ -13,13 +13,13 @@ Domain: **Skills / write**
 - `--id` is required. Obtain the real Skill record ID (CUID) via `+list-skills` — do not guess.
 - `--path` is required and specifies the relative file path within the assets directory.
 - This is a **physical delete** — prefer `--dry-run` before executing.
-- Write operation: keep the confirmation prompt unless `--yes` is explicitly requested.
+- This is a high-risk-write operation; never execute it before the dry-run impact is explicitly confirmed.
 
 ## Command
 ```bash
+ae-cli agent +del-skill-asset --id <skill-cuid> --path icon.png --dry-run
+# Summarize the target and impact, then wait for explicit user confirmation.
 ae-cli agent +del-skill-asset --id <skill-cuid> --path icon.png --yes
-ae-cli agent +del-skill-asset --id <skill-cuid> --path "sub/data.csv" --yes
-ae-cli agent +del-skill-asset --dry-run --id <skill-cuid> --path icon.png
 ```
 
 ## Parameters

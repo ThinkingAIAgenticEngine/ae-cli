@@ -9,7 +9,7 @@ export const dataTableDownload = createCapabilityCommand({
     { name: 'project-id', type: 'number', required: true, desc: 'Numeric project ID.', alias: 'p' },
     { name: 'data-table-id', type: 'number', required: true, desc: 'Data table ID.' },
     { name: 'request-id', type: 'string', required: false, desc: 'Optional request ID. Format: cli_<32 lowercase hex>.' },
-    { name: 'timeout-seconds', type: 'number', required: false, desc: 'Optional timeout in seconds. Range: 1 to 7200.' },
+    { name: 'timeout-seconds', type: 'number', required: false, desc: 'Export timeout seconds. Default and max: 21600 (6 hours).', min: 1, max: 21600 },
   ],
   risk: 'read',
   buildInput: (ctx) => ({

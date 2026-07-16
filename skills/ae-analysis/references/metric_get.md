@@ -2,7 +2,7 @@
 
 Use when the user needs to get metric definition, events, and params.
 
-Do not use this command for unrelated analysis queries, ad-hoc query construction, or MCP metadata discovery when an existing specialized command already fits the user's request.
+Do not use it to query metric values or trends; it returns the saved metric definition only.
 
 Command:
 
@@ -15,7 +15,7 @@ Capability id: `metadata.metric.get`.
 
 Input sends `project_id`, `metric_id`.
 
-Output is the gateway envelope. `data` contains the common-service capability result.
+Output `data.metric` contains the saved metric definition, or no metric when the ID does not resolve.
 
 ## Parameters
 | Parameter | Required | Description |

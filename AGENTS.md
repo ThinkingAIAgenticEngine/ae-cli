@@ -29,6 +29,7 @@
 | `npm test` | 冒烟（执行 `--help`） | ✅ 必跑 |
 | `npm run verify:*` | 各 domain 工具校验脚本 | 改到对应 domain 时跑 |
 | `npm run self-check` | 校验新合入的 CLI 功能合理性 | 建议 |
+| `npm run check:release` | 发布门禁（skill frontmatter 等）；CI 发包前必跑 | ✅ 改 skills frontmatter / 发包前 |
 | `npm run check:agents-docs` | 校验 CLAUDE.md / AGENTS.md 一致 | ✅ 改本文件时必跑 |
 
 本地起步：`npm install` → `npx tsx src/index.ts --help`。
@@ -55,7 +56,7 @@ CLI 同时面向团队成员与 AI agent，**源码内容与所有用户可见�
 | `src/api/` | 原始 API 访问（`api` 命令） |
 | `src/commands/<domain>/` | 各业务域命令（te-analysis、metadata、te-kb…） |
 | `skills/` | 给 AI agent 的 skill 包（与命令同步维护） |
-| `self-check/` | 自检脚本 |
+| `self-check/` | 自检脚本与发布门禁（`release-gate.mjs` + `checks/`） |
 | `tests/`、`test/` | 测试 |
 | `scripts/` | 校验 / 工具脚本 |
 
@@ -115,12 +116,12 @@ CLI 同时面向团队成员与 AI agent，**源码内容与所有用户可见�
 - **唯一凭证是 CLI token**（`src/core/cli-token.ts` 的 `getCliToken()`），不存在独立的 mcp-token 获取/mint 逻辑。取值优先级：进程内缓存 → `secure-store.cliToken` → 沙箱注入的 `cli-token.json` → 用 accessToken 调 `/v1/ta/cli/token/generate` **mint**（`auth login` 成功后立即 mint 并写回 secure-store；若缺失则在首次命令执行时补 mint）。
 - token 按 host 维度存储（per-host）；不要自己实现凭证获取逻辑，统一调用 `getCliToken()`。
 - **旧命令（`createMcpCommand` → MCP JSON-RPC，`src/core/mcp.ts`）**：请求头只带 `cli-token`（值为 CLI token）。KB external 接口走 `kbApi`（`src/core/mcp-access.ts`），同样只发 `cli-token`；**用现成 helper，别手搓鉴权**。
-- **新命令（`createCapabilityCommand` / `createApiCommand` → capability gateway REST，`src/core/capability-api.ts`）**：请求 `/api/cli/<domain>/v1/capabilities/<capabilityId>/execute`（或 `/dry-run`），鉴权用 `cli-token` 请求头。nginx 在 `<domain>` 段做域路由并 strip 后转发到各服务的 `/api/cli/v1/...`。metadata 域示例命令：`ae-cli metadata event get`、`ae-cli metadata property get`。
+- **新命令（`createCapabilityCommand` / `createApiCommand` → capability gateway REST，`src/core/capability-api.ts`）**：请求 `/api/cli/<domain>/v1/capabilities/<capabilityId>/execute`（或 `/validate`、`/dry-run`），鉴权用 `cli-token` 请求头。全局 `--validate` = 改对参数；`--dry-run` = 确认可以跑；二者勿同用。nginx 在 `<domain>` 段做域路由并 strip 后转发到各服务的 `/api/cli/v1/...`。metadata 域示例命令：`ae-cli metadata event get`、`ae-cli metadata property get`。
 - 401/403 统一语义：401 清缓存、重新 `getCliToken()`、重试一次；403 是权限拒绝（`PermissionError`），不重试、不重新 mint。
 
 ### skills 同步
 
-命令对 agent 暴露的能力发生变化时，要同步更新 `skills/` 下对应的 skill 包；`self-check` 用于校验新合入功能。
+命令对 agent 暴露的能力发生变化时，要同步更新 `skills/` 下对应的 skill 包；`self-check` 用于校验新合入功能。改 skill frontmatter 或准备发包时跑 `npm run check:release`（可扩展子检查；CI 发布流水线同一入口）。
 
 ### KB schema/compile 状态查询陷阱（已知坑）
 

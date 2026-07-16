@@ -43,33 +43,28 @@ function writeClusterInfo(clusterInfoFile, enabled) {
 
 console.log('multi-cluster mode tests');
 
-test('defaults to base analysis mapping and hides global-only commands and flags', () => {
+test('defaults to base analysis mapping and hides global-only commands', () => {
   const clusterInfoFile = tempClusterInfoFile();
 
   const analysisHelp = runCli(clusterInfoFile, ['analysis', '--help']);
   assert.equal(analysisHelp.status, 0, analysisHelp.stderr);
   assert.equal(analysisHelp.stdout.includes('+list_query_clusters'), false);
 
-  const reportHelp = runCli(clusterInfoFile, ['analysis', '+query_report_data', '--help']);
-  assert.equal(reportHelp.status, 0, reportHelp.stderr);
-  assert.equal(reportHelp.stdout.includes('cluster_query_scope'), false);
-  assert.equal(reportHelp.stdout.includes('slave_cluster_id'), false);
-
   const dryRun = runCli(clusterInfoFile, [
     '--host',
     'https://ta.example',
     '--dry-run',
     'analysis',
-    '+list_reports',
-    '--project_id',
-    '1',
+    '+cancel_query',
+    '--request_id',
+    'mcp_0123456789abcdef0123456789abcdef',
   ]);
   assert.equal(dryRun.status, 0, dryRun.stderr);
   const payload = JSON.parse(dryRun.stdout);
   assert.equal(payload.data.url, 'https://ta.example/mcp/analysis/http/analysis');
 });
 
-test('enabled cluster-info switches analysis mapping and exposes global-only command and flags', () => {
+test('enabled cluster-info switches analysis mapping and exposes global-only commands', () => {
   const clusterInfoFile = tempClusterInfoFile();
   writeClusterInfo(clusterInfoFile, true);
 
@@ -77,19 +72,14 @@ test('enabled cluster-info switches analysis mapping and exposes global-only com
   assert.equal(analysisHelp.status, 0, analysisHelp.stderr);
   assert.equal(analysisHelp.stdout.includes('+list_query_clusters'), true);
 
-  const reportHelp = runCli(clusterInfoFile, ['analysis', '+query_report_data', '--help']);
-  assert.equal(reportHelp.status, 0, reportHelp.stderr);
-  assert.equal(reportHelp.stdout.includes('cluster_query_scope'), true);
-  assert.equal(reportHelp.stdout.includes('slave_cluster_id'), true);
-
   const dryRun = runCli(clusterInfoFile, [
     '--host',
     'https://ta.example',
     '--dry-run',
     'analysis',
-    '+list_reports',
-    '--project_id',
-    '1',
+    '+cancel_query',
+    '--request_id',
+    'mcp_0123456789abcdef0123456789abcdef',
   ]);
   assert.equal(dryRun.status, 0, dryRun.stderr);
   const payload = JSON.parse(dryRun.stdout);

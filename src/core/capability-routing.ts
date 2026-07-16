@@ -13,6 +13,18 @@ export interface CapabilityGatewayRoute {
 
 const cliServiceRoutes = new Map<string, CapabilityGatewayRoute>();
 
+function envGatewayDomain(cliService: string): string | undefined {
+  const normalized = cliService.replace(/[^a-zA-Z0-9]/g, '_').toUpperCase();
+  const serviceKey = `AE_CLI_CAPABILITY_GATEWAY_DOMAIN_${normalized}`;
+  if (Object.prototype.hasOwnProperty.call(process.env, serviceKey)) {
+    return process.env[serviceKey] ?? '';
+  }
+  if (Object.prototype.hasOwnProperty.call(process.env, 'AE_CLI_CAPABILITY_GATEWAY_DOMAIN')) {
+    return process.env.AE_CLI_CAPABILITY_GATEWAY_DOMAIN ?? '';
+  }
+  return undefined;
+}
+
 export function registerCapabilityGatewayRoute(
   cliService: string,
   route: CapabilityGatewayRoute,
@@ -27,6 +39,10 @@ export function findGatewayDomain(cliService: string): string | undefined {
 export function resolveGatewayDomain(cliService: string, override?: string): string {
   if (override !== undefined) {
     return override;
+  }
+  const envDomain = envGatewayDomain(cliService);
+  if (envDomain !== undefined) {
+    return envDomain;
   }
   const route = cliServiceRoutes.get(cliService);
   if (!route) {

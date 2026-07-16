@@ -8,14 +8,14 @@ import {
 } from '../../capability-shared.js';
 
 export const metadataSuperMetadataExport = createAnalysisMetaCapabilityCommand({
-  resource: 'super-metadata',
+  resource: 'event-property-bundle',
   command: 'export',
-  capabilityId: 'metadata.super_metadata.export',
+  capabilityId: 'metadata.event_property_bundle.export',
   description: 'Export super event and super property configuration as an asynchronous XLSX artifact.',
   flags: [
     projectIdFlag,
     { name: 'request-id', type: 'string', required: false, desc: 'Optional cli_<32 lowercase hex> request ID. Generated when omitted.' },
-    { name: 'timeout-seconds', type: 'number', required: false, desc: 'Export timeout seconds. Default: 3600, max: 7200.' },
+    { name: 'timeout-seconds', type: 'number', required: false, desc: 'Export timeout seconds. Default and max: 21600 (6 hours).', min: 1, max: 21600 },
   ],
   risk: 'read',
   buildInput: (ctx) => compactInput({

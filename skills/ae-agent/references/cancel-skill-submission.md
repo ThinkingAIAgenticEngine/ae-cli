@@ -13,11 +13,11 @@ Domain: **Skill Approval (company-scope publish) / write**
 ## Mandatory Rules (MUST)
 - `--id` is required and must reference a **submission** record (CUID), not a Skill ID. Obtain it via `+list-skill-submissions` — do not guess.
 - Only the submitter or root can cancel a submission.
-- Write operation: keep the confirmation prompt unless `--yes` is explicitly requested.
+- This is an ordinary `write` operation and does not require CLI confirmation.
 
 ## Command
 ```bash
-ae-cli agent +cancel-skill-submission --id <submission-cuid> --yes
+ae-cli agent +cancel-skill-submission --id <submission-cuid>
 ae-cli agent +cancel-skill-submission --dry-run --id <submission-cuid>
 ```
 

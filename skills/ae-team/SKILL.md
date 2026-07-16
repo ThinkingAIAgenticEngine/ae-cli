@@ -30,7 +30,7 @@ Output and errors:
 
 Safety constraints:
 - Read commands (`+list`, `+list-templates`, `+list-projects`, `+run-result`, `+run-artifacts`, `+ai-generate`) can execute directly once required IDs are known.
-- Write commands require explicit user intent and keep the confirmation prompt by default. Pass `--yes` only in fully automated pipelines.
+- Ordinary `write` commands require explicit user intent but no CLI confirmation. Only `high-risk-write` commands use the confirmation gate and may receive `--yes` after explicit user authorization.
 - Never invent team IDs, run IDs, `agentId` values, `mcpServerIds`, `skillIds`, `knowledgeBaseIds`, project IDs, or any resource identifiers. Discover them with list commands or accept them from the user.
 
 ## When to Use
@@ -105,7 +105,7 @@ ae-cli team +list
 ae-cli team +list-projects
 
 # 3. Start a run
-ae-cli team +run-start --team-id <team_id> --input "分析上周用户留存数据" --yes
+ae-cli team +run-start --team-id <team_id> --input "分析上周用户留存数据"
 
 # 4. Stream until done (blocks; no polling needed)
 ae-cli team +run-watch --id <run_id>
@@ -114,7 +114,7 @@ ae-cli team +run-watch --id <run_id>
 # exit 2 → waiting_user → go to step 4a
 
 # 4a. Handle waiting_user: read pendingQuestion from stdout, get user's answer, reply, re-watch
-ae-cli team +run-reply --id <run_id> --input "<user_answer>" --yes
+ae-cli team +run-reply --id <run_id> --input "<user_answer>"
 ae-cli team +run-watch --id <run_id>   # repeat until exit 0 or 1
 
 # 5. Retrieve artifacts
@@ -128,23 +128,23 @@ ae-cli team +run-artifacts --id <run_id> --include-content true
 ae-cli team +ai-generate --prompt "需要一个分析用户行为并自动生成留存报告的团队"
 
 # 2. Create the team (paste / adjust the returned config)
-ae-cli team +create --name "留存分析团队" --config '<config_json>' --yes
+ae-cli team +create --name "留存分析团队" --config '<config_json>'
 
 # 3. Start a run
-ae-cli team +run-start --team-id <new_team_id> --input "分析本月留存" --yes
+ae-cli team +run-start --team-id <new_team_id> --input "分析本月留存"
 ```
 
 ### Workflow C — Multi-turn chat
 
 ```bash
 # First turn
-ae-cli team +run-chat --team-id <team_id> --input "帮我分析DAU趋势" --yes
+ae-cli team +run-chat --team-id <team_id> --input "帮我分析DAU趋势"
 
 # If run status is waiting_user, reply:
-ae-cli team +run-reply --id <run_id> --input "请重点分析周末下降原因" --yes
+ae-cli team +run-reply --id <run_id> --input "请重点分析周末下降原因"
 
 # Continue same session
-ae-cli team +run-chat --team-id <team_id> --session-id <session_id> --input "给出优化建议" --yes
+ae-cli team +run-chat --team-id <team_id> --session-id <session_id> --input "给出优化建议"
 ```
 
 ### Workflow D — Use a template to create a team
@@ -154,7 +154,7 @@ ae-cli team +run-chat --team-id <team_id> --session-id <session_id> --input "给
 ae-cli team +list-templates --locale zh
 
 # 2. Create from a template's config
-ae-cli team +create --name "我的分析团队" --config '<template_config>' --yes
+ae-cli team +create --name "我的分析团队" --config '<template_config>'
 ```
 
 ## Quick Verification

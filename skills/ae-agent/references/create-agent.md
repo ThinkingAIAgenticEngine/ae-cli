@@ -14,7 +14,7 @@ Domain: **Agents / write**
 - `--scope` defaults to `personal`; `company` requires root/agent_admin privileges.
 - `--instructions` maps to the Agent's system prompt; supports `@-` to read from stdin.
 - `--mcp-ids` / `--skill-ids` must be JSON array strings when provided.
-- Write operation: keep the confirmation prompt unless `--yes` is explicitly requested.
+- This is an ordinary `write` operation and does not require CLI confirmation.
 - Do not guess model / MCP / Skill IDs. Discover them with `+list-*` commands first.
 
 ## Command
@@ -28,15 +28,14 @@ ae-cli agent +create-agent \
   --description "Daily report agent" \
   --model-id "cm1uuid" \
   --mcp-ids '["mcp-cuid-1","mcp-cuid-2"]' \
-  --skill-ids '["skill-cuid-1"]' \
-  --yes
+  --skill-ids '["skill-cuid-1"]'
 
 # Instructions from stdin (useful for long prompts)
 echo "You are a helpful assistant that..." | \
   ae-cli agent +create-agent --name helper --instructions @-
 
 # Auto-rename on name conflict (appends -1, -2, ...)
-ae-cli agent +create-agent --name "daily-report" --auto-rename --yes
+ae-cli agent +create-agent --name "daily-report" --auto-rename
 
 # Dry-run to inspect the request before executing
 ae-cli agent +create-agent --dry-run --name "daily-report" --description "x"

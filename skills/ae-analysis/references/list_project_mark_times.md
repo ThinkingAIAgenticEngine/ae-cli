@@ -8,6 +8,7 @@ Domain: **Project Configuration**
 - List project date markers. Returns marker IDs, timestamps, content, and visibility status.
 - Supports pagination with fields/limit/offset for payload governance.
 - Query performs fuzzy matching on markContent.
+- Do not use it for report time ranges or event timestamps; this command only lists project date markers.
 
 ## Commands
 ```bash
@@ -24,7 +25,7 @@ ae-cli analysis_meta +list_project_mark_times --dry-run
 | `--zone_offset` | No | Marker time zone offset |
 | `--query` / `-q` | No | Optional keyword filter. Fuzzy match on markContent. |
 | `--fields` | No | Optional fields to return. Supported: id, projectId, markTime, userZoneTime, zoneOffset, markContent, isShow, creatorName, creatorId, lastModifierName, lastModifierId, createTime, updateTime. Invalid fields cause INVALID_FIELDS error. |
-| `--limit` | No | Optional limit. Default: 20, maximum: 10000. |
+| `--limit` | No | Optional limit. Default: 50, maximum: 200. |
 | `--offset` | No | Optional offset. Default: 0. |
 
 ## Decision Rules

@@ -29,6 +29,8 @@ test('tracking-client uses track program capabilities instead of direct program 
   assert.match(src, /track\.program\.delete/);
   assert.match(src, /track\.program\.excel_save/);
   assert.match(src, /track\.program\.xlsx/);
+  assert.match(src, /lang\?: string/);
+  assert.match(src, /\.\.\.\(args\.lang \? \{ lang: args\.lang \} : \{\}\)/);
   assert.doesNotMatch(src, /\/v1\/ta\/bury\/manage\/program\/query/);
   assert.doesNotMatch(src, /\/v1\/ta\/bury\/manage\/program\/delete/);
   assert.doesNotMatch(src, /\/v1\/ta\/bury\/manage\/program\/excel-save/);
@@ -48,6 +50,7 @@ test('plan upload uses local AE_LANG language resolution only', () => {
   const src = readFileSync(path.join(ROOT, 'src/commands/tracking/plan.ts'), 'utf8');
   assert.match(src, /detectCliLocale/);
   assert.match(src, /draft\.meta\.lang/);
+  assert.match(src, /lang: locale/);
   assert.doesNotMatch(src, /getServerLang|saveUserAutoConfig|cliLocaleToAE/);
   assert.doesNotMatch(src, /readUmilocal|writeUmilocale|setAELang|auto\/config/);
 });

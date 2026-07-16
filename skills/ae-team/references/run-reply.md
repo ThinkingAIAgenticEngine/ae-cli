@@ -11,13 +11,13 @@ Domain: **TeamRun execution / write**
 ## Mandatory Rules (MUST)
 - `--id` is required. The run **must be in `waiting_user` state** — sending a reply to a run in any other state will fail.
 - `--input` is required (1–50000 chars). Pass the user's reply verbatim.
-- Write operation: keep the confirmation prompt unless `--yes` is explicitly requested.
+- This is an ordinary `write` operation and does not require CLI confirmation.
 - After replying, poll `+run-result` until the run reaches a terminal status.
 
 ## Command
 ```bash
-ae-cli team +run-reply --id <run_id> --input "请继续，使用方案A" --yes
-ae-cli team +run-reply --id <run_id> --input "好的，请重点分析周末下降原因" --yes
+ae-cli team +run-reply --id <run_id> --input "请继续，使用方案A"
+ae-cli team +run-reply --id <run_id> --input "好的，请重点分析周末下降原因"
 ae-cli team +run-reply --dry-run --id <run_id> --input "test"
 ```
 

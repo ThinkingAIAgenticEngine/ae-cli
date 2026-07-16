@@ -2,7 +2,7 @@
 
 Use when the user needs to list project super events.
 
-Do not use this command for unrelated analysis queries, ad-hoc query construction, or MCP metadata discovery when an existing specialized command already fits the user's request.
+Do not use it for raw tracked events, event counts, or one full definition; it lists project super-event metadata.
 
 Command:
 
@@ -15,7 +15,7 @@ Capability id: `metadata.event.list`.
 
 Input sends `project_id`.
 
-Output is the gateway envelope. `data` contains the common-service capability result.
+Output `data.events[]` contains project super-event metadata records.
 
 ## Parameters
 | Parameter | Required | Description |

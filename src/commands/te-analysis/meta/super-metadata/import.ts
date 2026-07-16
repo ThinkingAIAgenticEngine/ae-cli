@@ -7,14 +7,14 @@ import {
 } from '../../capability-shared.js';
 
 export const metadataSuperMetadataImport = createAnalysisMetaCapabilityCommand({
-  resource: 'super-metadata',
+  resource: 'event-property-bundle',
   command: 'import',
-  capabilityId: 'metadata.super_metadata.import',
+  capabilityId: 'metadata.event_property_bundle.import',
   description: 'Pre-import and confirm-import super event and super property configuration.',
   flags: [
     projectIdFlag,
     { name: 'operation', type: 'string', required: true, desc: 'Import step: pre_import or ensure_import.' },
-    { name: 'input-file-id', type: 'string', required: false, desc: 'Uploaded XLSX input file ID for pre_import. Upload with purpose=super_metadata.import.xlsx.' },
+    { name: 'input-file-id', type: 'string', required: false, desc: 'Uploaded XLSX input file ID for pre_import. Upload with purpose=event_property_bundle.import.xlsx.' },
     { name: 'pre-import-meta-uuid', type: 'string', required: false, desc: 'UUID returned by pre_import, required for ensure_import.' },
   ],
   risk: 'write',

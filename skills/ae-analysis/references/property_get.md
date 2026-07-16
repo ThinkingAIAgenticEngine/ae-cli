@@ -2,7 +2,7 @@
 
 Use when the user needs to get one event or user property metadata detail.
 
-Do not use this command for unrelated analysis queries, ad-hoc query construction, or MCP metadata discovery when an existing specialized command already fits the user's request.
+Do not use it for property values or fuzzy discovery; use an analysis query or `property list`.
 
 Command:
 
@@ -15,7 +15,7 @@ Capability id: `metadata.property.get`.
 
 Input sends `project_id`, `table_type`, `prop_name`.
 
-Output is the gateway envelope. `data` contains the common-service capability result.
+Output `data.property` contains the event/user property metadata detail.
 
 ## Parameters
 | Parameter | Required | Description |

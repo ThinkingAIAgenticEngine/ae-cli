@@ -13,16 +13,16 @@ Domain: **TeamRun execution / write**
 - `--team-id` is required. Obtain the real team ID via `+list` — do not guess.
 - `--input` is required. Pass the user's message verbatim.
 - To continue an existing session, pass `--session-id` with the `session.id` from the previous turn.
-- Write operation: keep the confirmation prompt unless `--yes` is explicitly requested.
+- This is an ordinary `write` operation and does not require CLI confirmation.
 - After each turn, capture `session.id` and `run.id` for subsequent turns or replies.
 
 ## Command
 ```bash
 # First turn (starts a new session)
-ae-cli team +run-chat --team-id <team_id> --input "帮我分析最近的DAU趋势" --yes
+ae-cli team +run-chat --team-id <team_id> --input "帮我分析最近的DAU趋势"
 
 # Continue the same session
-ae-cli team +run-chat --team-id <team_id> --session-id <session_id> --input "继续上次的分析" --yes
+ae-cli team +run-chat --team-id <team_id> --session-id <session_id> --input "继续上次的分析"
 
 ae-cli team +run-chat --dry-run --team-id <team_id> --input "test"
 ```
@@ -43,7 +43,7 @@ ae-cli team +run-chat --dry-run --team-id <team_id> --input "test"
 ## Waiting User Flow
 ```
 +run-chat → run.status = waiting_user
-→ +run-reply --id <run_id> --input "..." --yes
+→ +run-reply --id <run_id> --input "..."
 → poll +run-result until terminal
 → optionally continue with +run-chat --session-id <session_id>
 ```

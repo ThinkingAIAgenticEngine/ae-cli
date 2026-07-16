@@ -2,7 +2,7 @@
 
 Use when the user needs to list data table historical versions.
 
-Do not use this command for unrelated analysis queries, ad-hoc query construction, or MCP metadata discovery when an existing specialized command already fits the user's request.
+Do not use it for one version's full definition or table row history; use `datatable version-get` for the selected metadata version.
 
 Command:
 
@@ -15,7 +15,7 @@ Capability id: `metadata.data_table_version.list`.
 
 Input sends `project_id`, `datatable_id`.
 
-Output is the gateway envelope. `data` contains the common-service capability result.
+Output `data.versions[]` contains historical metadata versions for the data table.
 
 ## Parameters
 | Parameter | Required | Description |

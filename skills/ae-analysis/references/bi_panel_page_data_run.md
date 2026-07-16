@@ -2,14 +2,18 @@
 
 Use for bounded inline BI panel page chart or summary data.
 
-Do not use for large or long-running page data. Use `bi-panel-page-data export`.
+Routing: read [`analysis_data_retrieval.md`](analysis_data_retrieval.md) before choosing this `run` command instead of `bi-panel-page-data export`.
+
+Do not use this command for full, unknown-size, larger than 1000-row, or long-running page data; use `bi-panel-page-data export`.
 
 Command:
 
 ```bash
-ae-cli analysis bi-panel-page-data run --project-id <project_id> --panel-id <panel_id> --page-key <page_key> --result-type charts [--chart-ids '["chart1"]'] [--limit 100] [--timeout-seconds 60]
+ae-cli analysis bi-panel-page-data run --project-id <project_id> --panel-id <panel_id> --page-key <page_key> --result-type charts [--chart-ids '["chart1"]'] [--row-limit 100] [--limit 100] [--timeout-seconds 120]
 ```
 
-Input sends `project_id`, `panel_id`, `page_key`, `result_type`, and optional control, paging, cache, request, timeout, and limit fields.
+Input sends `project_id`, `panel_id`, `page_key`, `result_type`, and optional control, paging, cache, request, timeout, and limit fields. Control defaults: inline `--limit` default 100 / max 1000, `--timeout-seconds` default 120 / max 180. Chart `--row-limit` default 100 / max 1000. The routing rule lives in [`analysis_data_retrieval.md`](analysis_data_retrieval.md).
 
 Output is the gateway envelope. `data` contains bounded inline page data.
+
+When `result_type=charts` and the backend can resolve chart SQL sources, the response may include `query_context_id` plus `sources`. BI chart sources are SQL contexts, so `drilldown_available` and `result_cluster_available` are false unless the response explicitly says otherwise. Do not call model drilldown commands from a BI SQL context with `drilldown_available=false`.

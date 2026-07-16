@@ -64,7 +64,7 @@ export const watchRun: Command = {
       let evtName = '';
       let evtData = '';
 
-      const flush = () => {
+      const flush = async () => {
         if (!evtName || !evtData) {
           evtName = evtData = '';
           return;
@@ -98,13 +98,13 @@ export const watchRun: Command = {
             const { status } = payload;
             if (!quiet) process.stderr.write(`[status] ${status}\n`);
             if (status === 'waiting_user') {
-              printOutput(payload, 'json');
+              await printOutput(payload, 'json');
               process.exit(2);
             }
             break;
           }
           case 'final': {
-            printOutput(payload, 'json');
+            await printOutput(payload, 'json');
             process.exit(SUCCESS_STATUSES.has(payload.status) ? 0 : 1);
             break;
           }
@@ -128,7 +128,7 @@ export const watchRun: Command = {
           } else if (line.startsWith('data:')) {
             evtData = line.slice(5).trim();
           } else if (line === '') {
-            flush();
+            await flush();
           }
         }
       }

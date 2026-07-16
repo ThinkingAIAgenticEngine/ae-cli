@@ -13,12 +13,12 @@ Domain: **Skill Approval (company-scope publish) / write**
 - `--id` is required and must reference a **submission** record (CUID), not a Skill ID. Obtain it via `+list-skill-submissions` — do not guess.
 - `--reason` is required (1–80 chars) — the rejection reason.
 - **Root only** — non-root users cannot reject submissions.
-- Write operation: keep the confirmation prompt unless `--yes` is explicitly requested.
+- This is an ordinary `write` operation and does not require CLI confirmation.
 - Only `pending` submissions can be rejected.
 
 ## Command
 ```bash
-ae-cli agent +reject-skill --id <submission-cuid> --reason "Needs more detail" --yes
+ae-cli agent +reject-skill --id <submission-cuid> --reason "Needs more detail"
 ae-cli agent +reject-skill --dry-run --id <submission-cuid> --reason "Needs more detail"
 ```
 

@@ -12,12 +12,13 @@ Domain: **Agents / write**
 - `--id` is required. Obtain the real Agent record ID (CUID) via `+list-agents` — do not guess.
 - System Agents cannot be deleted via CLI.
 - Prefer `--dry-run` before executing a destructive delete.
-- Write operation: keep the confirmation prompt unless `--yes` is explicitly requested.
+- This is a high-risk-write operation; never execute it before the dry-run impact is explicitly confirmed.
 
 ## Command
 ```bash
+ae-cli agent +del-agent --id <agent-cuid> --dry-run
+# Summarize the target and impact, then wait for explicit user confirmation.
 ae-cli agent +del-agent --id <agent-cuid> --yes
-ae-cli agent +del-agent --dry-run --id <agent-cuid>
 ```
 
 ## Parameters

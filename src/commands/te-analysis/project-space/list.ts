@@ -1,7 +1,7 @@
 import {
   createAnalysisCapabilityCommand,
   fieldsFlag,
-  limitFlag,
+  directoryLimitFlag,
   listInput,
   offsetFlag,
   projectIdFlag,
@@ -13,7 +13,7 @@ export const projectSpaceList = createAnalysisCapabilityCommand({
   command: 'list',
   capabilityId: 'analysis.project_space.list',
   description: 'List project spaces visible to the current user.',
-  flags: [projectIdFlag, queryFlag, fieldsFlag, limitFlag, offsetFlag],
+  flags: [projectIdFlag, queryFlag, fieldsFlag, directoryLimitFlag, offsetFlag],
   risk: 'read',
   buildInput: listInput,
 });

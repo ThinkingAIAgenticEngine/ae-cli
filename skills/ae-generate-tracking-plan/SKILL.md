@@ -9,8 +9,8 @@ description: "Interactive generation of an AE tracking plan and upload. Trigger 
 > English input → English reply; Chinese input → Chinese reply; Japanese input → Japanese reply.
 > If uncertain, default to English.
 > This applies to all output: section titles, phase names, template prompts, example text, option lists, etc.
-> **⚠️ CRITICAL: Templates and some reference documents are in Chinese. When working with Chinese templates/material for an English/Japanese user, you MUST translate all user-facing content (display_name, event_desc, event_tag, descriptions, etc.) to the user's language. The source material's language is NOT the user's language. Use the Terminology Glossary above to map terms accurately.**
-> Do NOT copy Chinese text verbatim from this document into English/Japanese replies.
+> **⚠️ CRITICAL: Template localization is CLI-owned. Do NOT manually translate imported template content with the model. Use the `src/tracking` i18n pipeline by setting `AE_LANG=<user_lang>`, writing `draft.meta.lang`, and regenerating through `ae-cli tracking code import-template` / `ae-cli tracking plan draft`.**
+> Do NOT copy Chinese text verbatim from this document into English/Japanese replies unless it is an identifier, template name needed for CLI import, or original source material quoted for traceability.
 
 ## Terminology Glossary
 
@@ -66,10 +66,13 @@ Phase 0 → 1 → 2 → 3 → 4, do not skip steps.
 > / `ae-cli auth login` / `ae-cli tracking plan upload` / `ae-cli tracking plan delete`).
 > **All CLI commands must be prefixed with `AE_LANG=<user_lang>`** (e.g. `AE_LANG=en ae-cli tracking plan draft ...`),
 > ensuring CLI output messages and generated xlsx headers match the user's language.
+> Upload commands MUST also pass `--lang <user_lang>` so the server parses the uploaded xlsx with the same sheet/header language.
 > 
-> **Language rules**: All user-facing fields in draft.json (`display_name`, `event_desc`, `event_tag`,
-> property `display_name`, property `desc`, etc.) must be generated in the **user's input language**.
-> Content extracted from Chinese templates/PRDs must be translated to the user's language when written to draft.json.
+> **Language rules**: For newly generated content, user-facing fields in draft.json (`display_name`, `event_desc`, `event_tag`,
+> property `display_name`, property `desc`, etc.) should be generated in the **user's input language**.
+> For imported templates, do NOT translate those fields manually. Template sheet names, headers, property type display values,
+> CLI messages, and auto-track/i18n-owned labels must come from `src/tracking/i18n` via `AE_LANG=<user_lang>` and `draft.meta.lang`.
+> If template business text needs localization and the CLI/i18n resources do not provide it, preserve the imported text and ask the user before rewriting business semantics.
 > Only identifier fields like `event_name`, `prop_name` remain in English snake_case (canonical format).
 > This skill only cares about command behavior, not internal implementation.
 
@@ -81,6 +84,7 @@ Phase 0 → 1 → 2 → 3 → 4, do not skip steps.
 > 
 > Determine `<user_lang>` from user's input language: Chinese→`zh`, English→`en`, Japanese→`ja`, Korean→`ko`. Other languages default to `en`.
 > All subsequent CLI commands must be prefixed with `AE_LANG=<user_lang>` to ensure CLI output and generated xlsx headers match the user's language.
+> When uploading the xlsx, pass `--lang <user_lang>` as well; it must match `draft.meta.lang` / the generated xlsx language.
 
 Collect the following **4 items** sequentially, **do NOT ask all at once**:
 
@@ -493,8 +497,9 @@ Priority from low to high: **template → codebase → prd → chat → autotrac
   - Templates are resolved by ae-cli from the ae-cli package root and user template directory
   - Import command: `AE_LANG=<user_lang> ae-cli tracking code import-template --template-name "<template name>" --out .ae-cli/draft.json`
   - ⚠️ **Must validate immediately after template import** (see Phase 1.6); template content may not be fully correct
-  - ⚠️ **Template content is in Chinese; must translate after import**: Read draft.json, translate `display_name`, `event_desc`, `event_tag`, and property `display_name`/`desc` to user's language, then write back. Only `event_name`, property `name`, `type` identifiers remain as-is.
-  - ⚠️ **event_tag also needs translation**: `业务事件`→user's language (e.g. EN: `Business Event`), `系统事件`→user's language (e.g. EN: `System Event`; autotrack events are handled automatically by CLI, no need to re-translate)
+  - ⚠️ **Do not manually translate template content after import**: Do NOT read draft.json and model-translate `display_name`, `event_desc`, `event_tag`, or property `display_name`/`desc`. Keep imported business content as produced by the CLI/template reader unless the user explicitly asks for semantic rewriting.
+  - ⚠️ **Use `src/tracking` i18n for localization owned by the CLI**: `AE_LANG=<user_lang>` + `draft.meta.lang` control CLI messages, xlsx sheet names, xlsx headers, property type display values, and auto-track/i18n-owned labels. If these are wrong, regenerate with the intended locale instead of editing labels by hand.
+  - ⚠️ **event_tag is not free-form model translation**: Do not manually map `业务事件`/`系统事件` to another language. Preserve template tags, or rely on `src/tracking` i18n/autotrack generation for system labels when the CLI owns them.
 - **codebase**: Scan project source directory, extract events/properties from business logic; **same-name events merge prop_names without overwriting existing fields**; new items `source: "codebase"`
 - **prd**: Read all user-provided product documents (md / pdf / docx / URL / images), extract events and properties from each file; **same-name events merge prop_names without overwriting existing fields**; image files analyzed via multimodal interpretation of UI elements and interaction flows; all new items `source: "prd"`
   - **prd path is a folder**: Recursively scan all files in the directory:
@@ -668,7 +673,7 @@ Run the following command to dynamically discover available templates:
 AE_LANG=<user_lang> ae-cli tracking plan list-templates --json
 ```
 
-**Language rules**: Template file names are in Chinese. When displaying to users, **must translate to user's current language**; **do NOT** include the original Chinese name (e.g. show only "Card Game v1", not "Card Game (卡牌游戏) v1").
+**Language rules**: Template names and template business content must not be model-translated. Use localized names only when they are returned by the CLI / `src/tracking` i18n resources. If `list-templates --json` only returns the original template `name`, display that name as-is and keep it unchanged for import.
 
 Built-in templates are resolved by ae-cli from the ae-cli package root. User templates are resolved from the ae-cli user template directory. Do **not** manually construct `./tracking-plan-template/...` paths from the user's current workspace.
 
@@ -678,7 +683,7 @@ Search directories in order:
 2. `~/.ae-cli/templates/` — user-provided template directory
 
 Each template prefers `.md` distilled file (if same-name `.md` exists, return md path; otherwise return xlsx path).
-Display translated template names to the user, but keep the original `name` from the JSON result for import. Auto-detect format on import:
+Display the template names returned by the CLI, and keep the exact `name` from the JSON result for import. Auto-detect format on import:
 
 ```bash
 AE_LANG=<user_lang> ae-cli tracking code import-template --template-name "<template name>" --out .ae-cli/draft.json
@@ -1105,7 +1110,7 @@ Decide based on conflict detection results:
 
 Upload command:
 ```bash
-AE_LANG=<user_lang> ae-cli tracking plan upload --project <projectId> --xlsx .ae-cli/draft.xlsx --draft .ae-cli/draft.json [--replace]
+AE_LANG=<user_lang> ae-cli tracking plan upload --project <projectId> --xlsx .ae-cli/draft.xlsx --draft .ae-cli/draft.json --lang <user_lang> [--replace]
 ```
 
 - **With `--replace`**: Delete existing project plan first then upload (when user chooses "Replace", or severe conflict switches to replace)
@@ -1114,7 +1119,7 @@ AE_LANG=<user_lang> ae-cli tracking plan upload --project <projectId> --xlsx .ae
 Upload language is controlled locally by `AE_LANG`, `--lang`, or `draft.meta.lang`. Do not call AE user language config APIs and do not use `--switch-lang`. If the xlsx language is wrong, regenerate the xlsx with the intended language before uploading:
 ```bash
 AE_LANG=<user_lang> ae-cli tracking plan draft --in .ae-cli/draft.json --out .ae-cli/draft.xlsx
-AE_LANG=<user_lang> ae-cli tracking plan upload --project <projectId> --xlsx .ae-cli/draft.xlsx --draft .ae-cli/draft.json [--replace]
+AE_LANG=<user_lang> ae-cli tracking plan upload --project <projectId> --xlsx .ae-cli/draft.xlsx --draft .ae-cli/draft.json --lang <user_lang> [--replace]
 ```
 
 On successful upload, prompt user to verify in AE Admin. **Provide the full URL** (tracking plan page URL format: `https://<host>/#/data/plan`).
@@ -1126,7 +1131,7 @@ On successful upload, prompt user to verify in AE Admin. **Provide the full URL*
 Use `--auto-fix` option on upload (enabled by default); CLI auto-detects and fixes errors:
 
 ```bash
-AE_LANG=<user_lang> ae-cli tracking plan upload --project <projectId> --xlsx .ae-cli/draft.xlsx --draft .ae-cli/draft.json [--replace]
+AE_LANG=<user_lang> ae-cli tracking plan upload --project <projectId> --xlsx .ae-cli/draft.xlsx --draft .ae-cli/draft.json --lang <user_lang> [--replace]
 ```
 
 #### AE API Error Types

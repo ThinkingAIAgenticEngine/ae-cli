@@ -7,7 +7,7 @@ Do not use to copy an existing BI panel. Use `bi-panel copy`.
 Command:
 
 ```bash
-ae-cli analysis bi-panel create --project-id <project_id> [--panel-name <name>] [--panel-uuid <uuid>] [--space-id <space_id>] [--folder-id <folder_id>] [--payload '{...}'] --yes
+ae-cli analysis bi-panel create --project-id <project_id> [--panel-name <name>] [--panel-uuid <uuid>] [--space-id <space_id>] [--folder-id <folder_id>] [--payload '{...}']
 ```
 
 Input sends `project_id` plus optional BI panel identifiers, target IDs, and `payload`.

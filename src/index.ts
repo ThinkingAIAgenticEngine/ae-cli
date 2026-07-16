@@ -18,9 +18,18 @@ program
   .option('--host <url>', 'Override active AE host URL (e.g., https://ta.thinkingdata.cn)')
   .option('--mcp-url <url>', 'Override MCP server URL (e.g., http://localhost/mcp/http/example)')
   .option('--format <format>', 'Output format: json | table', 'json')
-  .option('--jq <expr>', 'jq filter expression')
-  .option('--dry-run', 'Show request details without executing', false)
-  .option('--yes', 'Skip confirmation for write operations', false)
+  .option('--jq <expr>', 'jq 1.8 filter over command payload (via jq-wasm), applied before output envelope')
+  .option(
+    '--validate',
+    'Optional: validate/normalize capability input only (gateway /validate). Use alone while fixing complex params/qp; do not stack with --dry-run',
+    false,
+  )
+  .option(
+    '--dry-run',
+    'Optional: pre-execution preview without business logic (gateway /dry-run; other transports preview). Use alone to confirm a run; do not stack with --validate',
+    false,
+  )
+  .option('--yes', 'Skip confirmation for high-risk write operations', false)
   .option('--no-update-check', 'Skip checking for newer ae-cli versions', false);
 
 // Import domain commands
@@ -29,10 +38,6 @@ async function loadCommands(): Promise<Command[]> {
   try {
     const teAnalysis = await import('./commands/te-analysis/index.js');
     commands.push(...teAnalysis.default);
-  } catch {}
-  try {
-    const teAudience = await import('./commands/te-audience/index.js');
-    commands.push(...teAudience.default);
   } catch {}
   try {
     const teMeta = await import('./commands/te-meta/index.js');
@@ -132,7 +137,49 @@ async function main() {
   await registerSyncCommand();
   await registerModelCommand();
   registerTracking(program);
+  rejectUnknownHelpCommandPath(program, process.argv.slice(2));
   program.parse();
 }
 
 main();
+
+function rejectUnknownHelpCommandPath(root: CommanderCommand, args: string[]): void {
+  if (!args.includes('--help') && !args.includes('-h')) {
+    return;
+  }
+
+  let current = root;
+  for (let i = 0; i < args.length; i += 1) {
+    const token = args[i];
+    if (token === '--' || token === '--help' || token === '-h') {
+      return;
+    }
+    if (token.startsWith('-')) {
+      if (optionConsumesValue(token)) {
+        i += 1;
+      }
+      continue;
+    }
+
+    const child = current.commands.find((cmd) => cmd.name() === token || cmd.aliases().includes(token));
+    if (child) {
+      current = child;
+      continue;
+    }
+
+    if (current.commands.length > 0) {
+      process.stderr.write(`error: unknown command '${token}'\n`);
+      process.exit(1);
+    }
+  }
+}
+
+function optionConsumesValue(token: string): boolean {
+  if (token.includes('=')) {
+    return false;
+  }
+  return token === '--host'
+    || token === '--mcp-url'
+    || token === '--format'
+    || token === '--jq';
+}

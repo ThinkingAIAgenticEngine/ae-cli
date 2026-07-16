@@ -13,16 +13,16 @@ Domain: **MCP Credentials / write**
 ## Mandatory Rules (MUST)
 - `--access-token` is optional; when omitted, the current session token is used automatically (via `ctx.token()`).
 - The access token must be valid — an invalid/expired token causes the MCP token generation to fail (reported via `mcpTokenFailed: true` in the response).
-- Write operation: keep the confirmation prompt unless `--yes` is explicitly requested.
+- This is an ordinary `write` operation and does not require CLI confirmation.
 - This is a bulk operation — it upserts credentials for ALL system MCP servers visible to the current user.
 
 ## Command
 ```bash
 # Auto-provision using the current session token (recommended)
-ae-cli agent +auto-provision-mcp-credentials --yes
+ae-cli agent +auto-provision-mcp-credentials
 
 # Explicitly pass an access token
-ae-cli agent +auto-provision-mcp-credentials --access-token "eyJhbGci..." --yes
+ae-cli agent +auto-provision-mcp-credentials --access-token "eyJhbGci..."
 
 # Dry-run to inspect the request
 ae-cli agent +auto-provision-mcp-credentials --dry-run

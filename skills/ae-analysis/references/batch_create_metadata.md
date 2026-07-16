@@ -6,6 +6,10 @@ Domain: **Metadata Query**
 
 ## Use Cases
 - Batch create SYSTEM METADATA in one atomic request (events/eventProperties/userProperties) and apply name-based associations. This tool is only for effective production metadata, not tracking-plan metadata. For bury plan draft/review/publish data, use BuryProgramTool only.
+- Do not use it to edit existing metadata; use `+batch_edit_metadata` after resolving the existing names.
+
+## Output
+The response reports the batch creation outcome. Treat any item-level validation error as a failed item; do not assume the whole requested batch was created from transport success alone.
 
 ## Commands
 ```bash
@@ -27,7 +31,7 @@ ae-cli analysis_meta +batch_create_metadata --dry-run
 - Wrap JSON parameters in single quotes (for example `--events '{}'` and `--event_properties '{}'`) to avoid shell escaping issues.
 - At least one non-empty list among `--events`, `--event_properties`, and `--user_properties` must be provided.
 - For cross-project troubleshooting, first confirm whether `--project_id` matches the current permissions and target environment.
-- Write operations keep confirmation prompts by default; evaluate whether to use `--yes` only for automation scenarios.
+- This is an ordinary `write` operation and does not require CLI confirmation.
 
 ## Next Steps After Failure
 - If required parameters are missing, fall back to the smallest runnable command and fill them in first (focus on `--project_id`).

@@ -1,7 +1,7 @@
 import {
   createAnalysisCapabilityCommand,
   fieldsFlag,
-  limitFlag,
+  directoryLimitFlag,
   listInput,
   offsetFlag,
   projectIdFlag,
@@ -13,7 +13,7 @@ export const publicLinkList = createAnalysisCapabilityCommand({
   command: 'list',
   capabilityId: 'analysis.public_link.list',
   description: 'List public links in a project.',
-  flags: [projectIdFlag, queryFlag, fieldsFlag, limitFlag, offsetFlag],
+  flags: [projectIdFlag, queryFlag, fieldsFlag, directoryLimitFlag, offsetFlag],
   risk: 'read',
   buildInput: listInput,
 });

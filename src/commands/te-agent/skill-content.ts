@@ -238,7 +238,7 @@ function makeAssetDelCommand(
       { name: 'id', type: 'string', required: true, desc: 'Skill record ID (CUID)' },
       { name: 'path', type: 'string', required: true, desc: 'Relative file path within the directory to delete' },
     ],
-    risk: 'write',
+    risk: 'high-risk-write',
     dryRun: (ctx) => ({
       method: 'DELETE',
       url: `${BASE_PATH}/${encodeURIComponent(ctx.str('id'))}/${dirName}/${encodeURIComponent(ctx.str('path'))}`,

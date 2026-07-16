@@ -10,7 +10,7 @@ reads only the released/queryable version. Use `bi-panel-version get` to inspect
 Command:
 
 ```bash
-ae-cli analysis bi-panel update --project-id <project_id> [--panel-name <name>] [--panel-uuid <uuid>] [--payload '{...}'] --yes
+ae-cli analysis bi-panel update --project-id <project_id> [--panel-name <name>] [--panel-uuid <uuid>] [--payload '{...}']
 ```
 
 Input sends `project_id`, optional `panel_name`, `panel_uuid`, and `payload`.

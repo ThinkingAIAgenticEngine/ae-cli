@@ -16,7 +16,7 @@ Domain: **Skills / write**
 - `--instructions` supports `@-` to read from stdin (useful for piping long instruction text).
 - `--category` must be one of the market category keys (see below) when provided.
 - `--scope` controls target scope: `personal` (default) or `company`. Company scope requires root/agent_admin and bypasses the submit-approve flow (directly creates a company Skill, consistent with `+upload-skill --scope company`).
-- Write operation: keep the confirmation prompt unless `--yes` is explicitly requested.
+- This is an ordinary `write` operation and does not require CLI confirmation.
 
 ## Market Category Keys
 `ae_preset | dev_tool | search_tool | data_query | content_gen | enterprise | life | automation | other`
@@ -39,8 +39,7 @@ ae-cli agent +add-skill \
   --description "Reviews code for best practices" \
   --instructions "You are a code reviewer..." \
   --category dev_tool \
-  --icon-emoji robot \
-  --yes
+  --icon-emoji robot
 
 # Dry-run to inspect the request before executing
 ae-cli agent +add-skill --dry-run --name helper --description "Helper" --instructions "x"

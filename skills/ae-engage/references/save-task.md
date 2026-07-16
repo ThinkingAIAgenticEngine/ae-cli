@@ -10,16 +10,17 @@ Recommended workflow:
 
 1. `ae-cli engage +channel_list --project_id <projectId>`
 2. `ae-cli engage +build_task_save_guide --project_id <projectId> --req '{...}'`
-3. If the guide indicates QP-derived fields are needed, call:
+3. If the guide indicates an audience or QP-derived fields are needed, create the audience directly and read it back:
 
 ```bash
-ae-cli analysis_audience +get_cluster_definition_schema --cluster_type condition
+ae-cli analysis user-cluster create --project-id <projectId> --cluster-name <condition_cluster_name> --display-name <display_name> --definition-request '<semantic-definition-json>'
+ae-cli analysis user-cluster get --project-id <projectId> --cluster-names '["<condition_cluster_name>"]'
 ```
 
 4. Build the final grouped `req`
 5. `ae-cli engage +save_task --project_id <projectId> --req '{...}'`
 
-The audience schema query is not a fixed preflight step. Call it only when the guide indicates that you must construct:
+Audience creation is not a fixed preflight step. Use direct create/get only when the guide indicates that you must construct:
 
 - `targetConfig.qp`
 - `triggerConfig.triggerRule`
@@ -98,22 +99,23 @@ Use the guide to determine:
 - current handoff template
 - whether the current payload is already close to submit-ready
 
-### 2.3 Query Audience Condition Schema Only When Needed
+### 2.3 Create and Read the Audience Only When Needed
 
-If the guide indicates that QP-derived fields are needed, run:
+If the guide indicates that an audience or QP-derived fields are needed, run:
 
 ```bash
-ae-cli analysis_audience +get_cluster_definition_schema --cluster_type condition
+ae-cli analysis user-cluster create --project-id <projectId> --cluster-name <condition_cluster_name> --display-name <display_name> --definition-request '<semantic-definition-json>'
+ae-cli analysis user-cluster get --project-id <projectId> --cluster-names '["<condition_cluster_name>"]'
 ```
 
-Use the returned schema to build:
+Prefer the returned `cluster_name`/`clusterKey`. Only when required, use the server-authored definition to build:
 
 - `targetConfig.qp`
 - `triggerConfig.triggerRule`
 - `clientConfig.clientQp`
 - `completionIndicatorDef.event`
 
-Do not call this command by default for every task. It is conditional, not mandatory.
+Do not create an audience by default for every task. It is conditional, not mandatory.
 
 ### 2.4 Build Final `req` and Save
 
@@ -191,10 +193,11 @@ Use the guide to decide which audience shape applies:
 - `targetClusterType=2`: existing cluster, requires `clusterKey`
 - `targetClusterType=3`: all users, forbids both `qp` and `clusterKey`
 
-If `qp` is required, construct it from:
+If `qp` is required, create/read a server-authored audience and copy the saved definition rather than building raw QP:
 
 ```bash
-ae-cli analysis_audience +get_cluster_definition_schema --cluster_type condition
+ae-cli analysis user-cluster create --project-id <projectId> --cluster-name <condition_cluster_name> --display-name <display_name> --definition-request '<semantic-definition-json>'
+ae-cli analysis user-cluster get --project-id <projectId> --cluster-names '["<condition_cluster_name>"]'
 ```
 
 ### 4.4 `triggerConfig`
@@ -210,10 +213,10 @@ Rules:
 
 - `triggerType=6` is not supported
 - use the guide for cron format and wrong-example checks
-- if `triggerRule` is needed, build it from:
+- if `triggerRule` is needed, copy it from the saved server-authored audience definition:
 
 ```bash
-ae-cli analysis_audience +get_cluster_definition_schema --cluster_type condition
+ae-cli analysis user-cluster get --project-id <projectId> --cluster-names '["<condition_cluster_name>"]'
 ```
 
 ### 4.5 `controlConfig`
@@ -222,10 +225,10 @@ Minimum required field:
 
 - `completionIndicatorDef`
 
-When the guide points to event-based completion or experiment-driven main-goal rules, use:
+When the guide points to event-based completion or experiment-driven main-goal rules, use the saved server-authored audience definition:
 
 ```bash
-ae-cli analysis_audience +get_cluster_definition_schema --cluster_type condition
+ae-cli analysis user-cluster get --project-id <projectId> --cluster-names '["<condition_cluster_name>"]'
 ```
 
 to build `completionIndicatorDef.event`.
@@ -243,10 +246,10 @@ Important constraints that still apply:
 
 Use this block only when client-side conditions are needed.
 
-If `clientConfig.clientQp` is required, build it from:
+If `clientConfig.clientQp` is required, copy it from the saved server-authored audience definition:
 
 ```bash
-ae-cli analysis_audience +get_cluster_definition_schema --cluster_type condition
+ae-cli analysis user-cluster get --project-id <projectId> --cluster-names '["<condition_cluster_name>"]'
 ```
 
 Only call that schema query when the guide explicitly shows that the field is needed.
@@ -260,7 +263,7 @@ Before submission, verify:
 1. `channelId` comes from a real channel query.
 2. `build_task_save_guide` has already been called for the current scenario or partial draft.
 3. `fieldRules.channelContentSchema` was used as the source of truth for content structure.
-4. Any required QP-derived fields were built from `ae-cli analysis_audience +get_cluster_definition_schema --cluster_type condition`.
+4. Any required QP-derived fields came from `analysis user-cluster get`, never from hand-built raw QP.
 5. `targetClusterType` matches the presence or absence of `clusterKey` / `qp`.
 6. `triggerType` matches the provided scheduling or event fields.
 7. `completionIndicatorDef` is present and structurally valid for the current scenario.
@@ -280,10 +283,11 @@ ae-cli engage +build_task_save_guide --project_id 1 --req '{"context":{"triggerT
 ae-cli engage +save_task --project_id 1 --req '{...final grouped req...}'
 ```
 
-If the guide indicates QP-derived fields are needed, insert:
+If the guide indicates an audience or QP-derived fields are needed, insert direct create/get:
 
 ```bash
-ae-cli analysis_audience +get_cluster_definition_schema --cluster_type condition
+ae-cli analysis user-cluster create --project-id <projectId> --cluster-name <condition_cluster_name> --display-name <display_name> --definition-request '<semantic-definition-json>'
+ae-cli analysis user-cluster get --project-id <projectId> --cluster-names '["<condition_cluster_name>"]'
 ```
 
 before building the final `req`.
@@ -301,4 +305,4 @@ This command is a write operation.
 - Do not invent `channelId`, `clusterKey`, audience definitions, or content keys
 - Do not use `taskId` for a non-draft task
 - Do not pass `occasionKeys`; Hermes derives them from content
-- Do not call the audience schema query as a reflex; call it only when guide output says QP-derived fields are needed
+- Do not call the semantic cluster definition builder as a reflex; call it only when guide output says QP-derived fields are needed

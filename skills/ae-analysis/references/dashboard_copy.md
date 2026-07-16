@@ -9,7 +9,7 @@ If both `--to-space-id` and `--to-folder-id` are omitted, the gateway copies to 
 Command:
 
 ```bash
-ae-cli analysis dashboard copy --project-id <project_id> --dashboard-id <source_dashboard_id> --dashboard-name <new_name> [--report-copy true] [--to-space-id <space_id>] [--to-folder-id <folder_id>] --yes
+ae-cli analysis dashboard copy --project-id <project_id> --dashboard-id <source_dashboard_id> --dashboard-name <new_name> [--report-copy true] [--to-space-id <space_id>] [--to-folder-id <folder_id>]
 ```
 
 Input sends `project_id`, `dashboard_id`, `dashboard_name`, `report_copy` defaulting to false, and optional `to_space_id`, `to_folder_id`.

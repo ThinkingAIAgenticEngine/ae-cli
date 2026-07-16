@@ -13,7 +13,7 @@ Domain: **Copy to personal / write**
 ## Mandatory Rules (MUST)
 - `--id` is required. Obtain the real source Skill record ID (CUID, system or company scope) via `+list-skill-market` or `+list-skills` — do not guess.
 - `--category` must be one of the market category keys (see below) when provided.
-- Write operation: keep the confirmation prompt unless `--yes` is explicitly requested.
+- This is an ordinary `write` operation and does not require CLI confirmation.
 - MCP has no copy flow (use `+toggle-mcp` to enable a system/company MCP per-user).
 
 ## Market Category Keys
@@ -22,10 +22,10 @@ Domain: **Copy to personal / write**
 ## Command
 ```bash
 # Copy with inherited meta
-ae-cli agent +copy-skill --id <skill-cuid> --yes
+ae-cli agent +copy-skill --id <skill-cuid>
 
 # Copy with overridden category and icon
-ae-cli agent +copy-skill --id <skill-cuid> --category dev_tool --icon-emoji robot --yes
+ae-cli agent +copy-skill --id <skill-cuid> --category dev_tool --icon-emoji robot
 
 # Dry-run to inspect the request before executing
 ae-cli agent +copy-skill --dry-run --id <skill-cuid>

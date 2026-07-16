@@ -11,12 +11,12 @@ Domain: **Skills / write**
 ## Mandatory Rules (MUST)
 - `--id` and `--enabled` are required.
 - Obtain the real Skill record ID (CUID) via `+list-skills` — do not guess.
-- Write operation: keep the confirmation prompt unless `--yes` is explicitly requested.
+- This is an ordinary `write` operation and does not require CLI confirmation.
 
 ## Command
 ```bash
-ae-cli agent +toggle-skill --id <skill-cuid> --enabled true --yes
-ae-cli agent +toggle-skill --id <skill-cuid> --enabled false --yes
+ae-cli agent +toggle-skill --id <skill-cuid> --enabled true
+ae-cli agent +toggle-skill --id <skill-cuid> --enabled false
 ae-cli agent +toggle-skill --dry-run --id <skill-cuid> --enabled false
 ```
 

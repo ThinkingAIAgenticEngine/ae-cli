@@ -14,12 +14,19 @@ import { basename } from 'node:path';
 
 export type CapabilityApiMethod = 'GET' | 'POST' | 'PUT' | 'DELETE';
 
+export interface CapabilityGatewaySuccess<T = any> {
+  ok: true;
+  data: T;
+  meta?: Record<string, unknown>;
+}
+
 export class CapabilityGatewayError extends Error {
   constructor(
     message: string,
     readonly code?: string,
     readonly httpStatus?: number,
     readonly hint?: string,
+    readonly meta?: Record<string, unknown>,
   ) {
     super(message);
     this.name = 'CapabilityGatewayError';
@@ -84,25 +91,43 @@ function parseCapabilityResponse(text: string): any {
   }
 }
 
-function unwrapCapabilityEnvelope(body: any): any {
+function parseCapabilityEnvelope(body: any): CapabilityGatewaySuccess {
   if (body == null) {
     throw new CapabilityGatewayError('Empty capability gateway response');
   }
   if (typeof body.ok === 'boolean') {
     if (body.ok) {
-      return body.data;
+      return {
+        ok: true,
+        data: body.data,
+        ...(isRecord(body.meta) ? { meta: body.meta } : {}),
+      };
     }
     const err = body.error ?? {};
     const code = nonEmptyString(err.code);
     const message = nonEmptyString(err.message) ?? code ?? 'Capability gateway request failed';
     const hint = nonEmptyString(err.hint);
-    throw new CapabilityGatewayError(message, code, err.http_status ?? err.httpStatus, hint);
+    throw new CapabilityGatewayError(
+      message,
+      code,
+      err.http_status ?? err.httpStatus,
+      hint,
+      isRecord(body.meta) ? body.meta : undefined,
+    );
   }
-  return body;
+  return { ok: true, data: body };
+}
+
+function unwrapCapabilityEnvelope(body: any): any {
+  return parseCapabilityEnvelope(body).data;
 }
 
 function nonEmptyString(value: unknown): string | undefined {
   return typeof value === 'string' && value.trim() ? value.trim() : undefined;
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return value !== null && typeof value === 'object' && !Array.isArray(value);
 }
 
 function buildCapabilityHttpError(resp: Response, body: any): CapabilityGatewayError {
@@ -116,7 +141,13 @@ function buildCapabilityHttpError(resp: Response, body: any): CapabilityGatewayE
     const details = [code, message, hint ? `Hint: ${hint}` : undefined].filter(Boolean);
 
     if (details.length > 0) {
-      return new CapabilityGatewayError(message ?? fallback, code, resp.status, hint);
+      return new CapabilityGatewayError(
+        message ?? fallback,
+        code,
+        resp.status,
+        hint,
+        isRecord(body.meta) ? body.meta : undefined,
+      );
     }
   }
 
@@ -137,10 +168,11 @@ async function requestOnce(
   method: CapabilityApiMethod,
   token: string,
   body: any,
+  accept = 'application/json',
 ): Promise<Response> {
   const headers: Record<string, string> = {
     'cli-token': token,
-    'Accept': 'application/json',
+    'Accept': accept,
     
   };
   const init: RequestInit = { method, headers };
@@ -181,6 +213,16 @@ async function callGateway(
   method: CapabilityApiMethod,
   body?: any,
 ): Promise<any> {
+  return (await callGatewayWithEnvelope(host, domain, pathAfterV1, method, body)).data;
+}
+
+async function callGatewayWithEnvelope(
+  host: string,
+  domain: string,
+  pathAfterV1: string,
+  method: CapabilityApiMethod,
+  body?: any,
+): Promise<CapabilityGatewaySuccess> {
   const url = buildCapabilityGatewayUrl(host, domain, pathAfterV1);
   const token = await getCliToken(host);
 
@@ -211,7 +253,66 @@ async function callGateway(
     await throwCapabilityHttpError(resp);
   }
 
+  return parseCapabilityEnvelope(parseCapabilityResponse(await resp.text()));
+}
+
+export async function fetchCapabilityGateway(
+  host: string,
+  domain: string,
+  pathAfterV1: string,
+  method: CapabilityApiMethod = 'GET',
+  body?: any,
+  accept = 'application/json',
+): Promise<Response> {
+  const url = buildCapabilityGatewayUrl(host, domain, pathAfterV1);
+  const token = await getCliToken(host);
+
+  let resp = await requestOnce(url, method, token, body, accept);
+
+  if (resp.status === 403) {
+    throw new PermissionError(await permissionMessage(resp));
+  }
+
+  if (resp.status === 401) {
+    logger.warn(`Capability gateway request failed (HTTP 401) for ${host}, refreshing CLI token`);
+    clearCliToken(host);
+    const newToken = await getCliToken(host);
+    process.stderr.write(`[ae-cli] CLI token refreshed for ${host}\n`);
+
+    resp = await requestOnce(url, method, newToken, body, accept);
+    if (resp.status === 403) {
+      throw new PermissionError(await permissionMessage(resp));
+    }
+    if (!resp.ok) {
+      await throwCapabilityHttpError(resp);
+    }
+  } else if (!resp.ok) {
+    await throwCapabilityHttpError(resp);
+  }
+
+  return resp;
+}
+
+export async function requestCapabilityGateway(
+  host: string,
+  domain: string,
+  pathAfterV1: string,
+  method: CapabilityApiMethod = 'GET',
+  body?: any,
+): Promise<any> {
+  const resp = await fetchCapabilityGateway(host, domain, pathAfterV1, method, body);
   return unwrapCapabilityEnvelope(parseCapabilityResponse(await resp.text()));
+}
+
+export async function requestCapabilityGatewayWithEnvelope(
+  host: string,
+  domain: string,
+  pathAfterV1: string,
+  method: CapabilityApiMethod = 'GET',
+  body?: any,
+): Promise<CapabilityGatewaySuccess> {
+  const resp = await fetchCapabilityGateway(host, domain, pathAfterV1, method, body);
+  return parseCapabilityEnvelope(parseCapabilityResponse(await resp.text()));
 }
 
 export async function listCapabilities(host: string, domain: string): Promise<any> {
@@ -231,6 +332,15 @@ export async function executeCapability(
   return callGateway(host, domain, `capabilities/${capabilityId}/execute`, 'POST', { input });
 }
 
+export async function executeCapabilityWithEnvelope(
+  host: string,
+  domain: string,
+  capabilityId: string,
+  input: Record<string, unknown> = {},
+): Promise<CapabilityGatewaySuccess> {
+  return callGatewayWithEnvelope(host, domain, `capabilities/${capabilityId}/execute`, 'POST', { input });
+}
+
 export async function dryRunCapability(
   host: string,
   domain: string,
@@ -238,6 +348,21 @@ export async function dryRunCapability(
   input: Record<string, unknown> = {},
 ): Promise<any> {
   return callGateway(host, domain, `capabilities/${capabilityId}/dry-run`, 'POST', { input });
+}
+
+/**
+ * Parameter-focused pre-check: validates/normalizes input shape without executing business logic.
+ * Prefer this when iterating on complex payloads (nested objects, QP, share payloads).
+ * Unlike dry-run, the successful response is centered on `valid` + `normalized_input`
+ * (no risk / output_mode / supports_cancel preview). Server still authenticates the caller.
+ */
+export async function validateCapability(
+  host: string,
+  domain: string,
+  capabilityId: string,
+  input: Record<string, unknown> = {},
+): Promise<any> {
+  return callGateway(host, domain, `capabilities/${capabilityId}/validate`, 'POST', { input });
 }
 
 export async function uploadInputFile(
@@ -248,7 +373,20 @@ export async function uploadInputFile(
   filePath: string,
 ): Promise<any> {
   const fileBytes = await readFile(filePath);
-  return uploadInputFileBytes(host, domain, projectId, purpose, fileBytes, basename(filePath));
+  const filename = basename(filePath);
+  return uploadInputFileBytes(host, domain, projectId, purpose, fileBytes, filename,
+    inputFileContentType(filename));
+}
+
+function inputFileContentType(filename: string): string {
+  const lower = filename.toLowerCase();
+  if (lower.endsWith('.csv')) return 'text/csv';
+  if (lower.endsWith('.xlsx')) {
+    return 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+  }
+  if (lower.endsWith('.json')) return 'application/json';
+  if (lower.endsWith('.txt')) return 'text/plain';
+  return 'application/octet-stream';
 }
 
 export async function uploadInputFileBytes(
@@ -345,7 +483,7 @@ export async function downloadCapabilityArtifact(
 
 /**
  * Generic capability-gateway call. GET sends `params` as query string; POST sends JSON body.
- * @deprecated Prefer listCapabilities / inspectCapability / executeCapability / dryRunCapability.
+ * @deprecated Prefer listCapabilities / inspectCapability / executeCapability / dryRunCapability / validateCapability.
  */
 export async function callCapabilityApi(
   host: string,

@@ -58,7 +58,7 @@ ae-cli team +run-watch --id <run_id>
 
 # 2. Read pendingQuestion from stdout, present to user, collect answer
 # 3. Submit the reply
-ae-cli team +run-reply --id <run_id> --input "<user_answer>" --yes
+ae-cli team +run-reply --id <run_id> --input "<user_answer>"
 
 # 4. Resume watching
 ae-cli team +run-watch --id <run_id>

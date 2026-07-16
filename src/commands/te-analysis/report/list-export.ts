@@ -1,0 +1,39 @@
+import {
+  artifactFormatFlag,
+  asyncTimeoutSecondsFlag,
+  compactInput,
+  createAnalysisCapabilityCommand,
+  exportLifecycleInput,
+  fieldsFlag,
+  optionalJson,
+  optionalString,
+  projectIdFlag,
+  projectInput,
+  queryFlag,
+  reportModelTypesFlag,
+  requestIdFlag,
+} from '../capability-shared.js';
+
+export const reportListExport = createAnalysisCapabilityCommand({
+  resource: 'report',
+  command: 'list-export',
+  capabilityId: 'analysis.report.list_export',
+  description: 'Export the accessible report catalog as a gzip artifact.',
+  flags: [
+    projectIdFlag,
+    queryFlag,
+    fieldsFlag,
+    reportModelTypesFlag,
+    requestIdFlag,
+    artifactFormatFlag,
+    asyncTimeoutSecondsFlag,
+  ],
+  risk: 'read',
+  buildInput: (ctx) => compactInput({
+    ...projectInput(ctx),
+    query: optionalString(ctx, 'query'),
+    fields: optionalJson(ctx, 'fields'),
+    model_types: optionalJson(ctx, 'model-types'),
+    ...exportLifecycleInput(ctx),
+  }),
+});

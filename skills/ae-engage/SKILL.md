@@ -26,17 +26,18 @@ Output and errors:
 
 Safety constraints:
 - Read commands can execute directly after required IDs and references are verified.
-- Write commands require explicit user intent and normally keep the confirmation prompt.
+- Write commands require explicit user intent. Ordinary `write` commands execute without CLI confirmation; only `high-risk-write` commands use the confirmation gate.
 - Never invent command names, flags, JSON payloads, `project_id`, resource IDs, field names, event names, property names, metric definitions, or date formats. Read the matching command reference and discover real project metadata first.
 - **NEVER fabricate or guess resource names** (reports, dashboards, events, properties, metrics, clusters, tags, alerts). Always use list commands to discover real resources first. If a resource is not found after fuzzy search and full list fallback, explicitly tell the user "resource not found" and stop - do not proceed with fabricated names.
 
 ## Overview
 
-The `ae-engage` package provides Hermes Engage MCP capabilities across config items, flows, channel settings, and task data. Commands are invoked through `ae-cli engage <command>`.
+The `ae-engage` package provides Hermes Engage MCP capabilities across config items, flows, channel settings, and task data. Legacy MCP tools use `ae-cli engage +<command>`; new capability-gateway commands use `ae-cli engage-flow|engage-task|engage-setting <resource> <action>`.
 
 Typical use cases include:
 
 - Querying and managing channels, config channels, approvers, and whitelists
+- Querying project channel touch-limit or fatigue-control rules
 - Querying task lists, task details, experiment reports, and metric reports
 - Querying config items and strategies, copying templates, and managing strategy status
 - Querying flow lists, node schemas, and flow reports, and saving or managing flows
@@ -72,6 +73,9 @@ ae-cli engage +channel_list --project_id 1 --provider_list '["webhook","fcm"]'
 
 # Query config channels
 ae-cli engage +config_channel_list --project_id 1
+
+# Query project channel touch-limit rules
+ae-cli engage-setting channel-touch-limits list --project-id <project_id>
 ```
 
 ### 2. task
@@ -117,6 +121,19 @@ ae-cli engage +flow_list --project_id 1
 # Query flow details
 ae-cli engage +flow_detail --project_id 1 --flow_uuid flow_uuid_123
 
+# Query flow operation records and application logs
+ae-cli engage-flow operation-log query --project-id 1 --flow-uuid flow_uuid_123
+
+# Query flow versions and task push records
+ae-cli engage-flow version list --project-id 1 --flow-id flow_id_123
+ae-cli engage-task operation-log query --project-id 1 --task-id task_id_123
+ae-cli engage-task push-record query --project-id 1 --task-id task_id_123 --page-num 1 --page-size 20
+ae-cli engage-task segment-list query --project-id 1 --task-id task_id_123
+ae-cli engage-task group list --project-id 1
+ae-cli engage-task metric list --project-id 1 --task-id task_id_123
+ae-cli engage-task channel-ref stats --project-id 1 --channel-id channel_123
+ae-cli engage-task ops delete --project-id 1 --task-id task_id_123 --yes
+
 # Query the node schema
 ae-cli engage +flow_node_config_schema --node_type message_push
 ```
@@ -133,10 +150,11 @@ When the user wants to "create a flow / generate a flow canvas / save a flow", d
    - The touchpoint or delivery method
    - Whether branching is needed, and the branching conditions
 2. Do not jump directly from natural language to `--req`. You must first organize a stable intermediate intent structure, then map it to the final `req`.
-3. Before building any condition-related nodes, you must call:
+3. Before building condition-related nodes, create the reusable audience directly from its semantic definition, then read back the server-authored definition only if the Engage schema explicitly needs QP-derived fields:
 
 ```bash
-ae-cli analysis_audience +get_cluster_definition_schema --cluster_type condition
+ae-cli analysis user-cluster create --project-id <projectId> --cluster-name <condition_cluster_name> --display-name <display_name> --definition-request '<semantic-definition-json>'
+ae-cli analysis user-cluster get --project-id <projectId> --cluster-names '["<condition_cluster_name>"]'
 ```
 
 4. Before building touchpoint nodes such as `message_push`, `wechat_push`, or `webhook_push`, you must call:
@@ -167,7 +185,7 @@ ae-cli engage +channel_list --project_id <projectId>
 ```text
 User request
 -> Organize intent
--> analysis_audience +get_cluster_definition_schema --cluster_type condition
+-> analysis user-cluster create/get
 -> +channel_list --project_id <projectId>
 -> Build nodes / edges
 -> Self-check
@@ -196,11 +214,19 @@ ae-cli --dry-run engage +flow_list --project_id 1
 More detailed single-command guidance is available in the business-oriented `references/` directory:
 
 - `references/channel-list.md`
+- `references/channel_touch_limits_list.md` (`engage-setting.channel-touch-limits.list`)
 - `references/build-task-save-guide.md`
 - `references/save-task.md`
 - `references/task-list.md`
 - `references/config-item-list.md`
 - `references/flow-list.md`
+- `references/operation-log-query.md` (`engage-flow.operation-log.query`)
+- `references/task-operation-log-query.md` (`engage-task.operation-log.query`)
+- `references/version-list.md` (`engage-flow.version.list`)
+- `references/push-record-query.md` (`engage-task.push-record.query`)
+- `references/segment-list-query.md` (`engage-task.segment-list.query`)
+- `references/group-list.md` (`engage-task.group.list`)
+- `references/ops-delete.md` (`engage-task.ops.delete`)
 
 This split documentation structure is easier to extend later, because commands with more complex object inputs can stay centralized in the `references/` root directory.
 
@@ -208,11 +234,13 @@ This split documentation structure is easier to extend later, because commands w
 
 ### setting
 
-`+channel_list`, `+channel_detail`, `+update_channel_status`, `+delete_channel`, `+add_channel`, `+whitelist_list`, `+add_approver`, `+approver_list`, `+cancel_query_by_request_id`, `+config_channel_detail`, `+config_channel_list`, `+delete_config_channel`, `+update_config_channel_status`
+`channel-touch-limits list` (via `engage-setting`), `+channel_list`, `+channel_detail`, `+update_channel_status`, `+delete_channel`, `+add_channel`, `+whitelist_list`, `+add_approver`, `+approver_list`, `+cancel_query_by_request_id`, `+config_channel_detail`, `+config_channel_list`, `+delete_config_channel`, `+update_config_channel_status`
 
 ### task
 
-`+task_data_overview`, `+task_data_detail`, `+task_metric_detail`, `+task_experiment_report`, `+task_detail`, `+task_list`, `+task_stats`, `+build_task_save_guide`, `+save_task`, `+manage_task`
+`operation-log query` / `push-record query` / `segment-list query|get|rename` / `ops delete|modify-group` / `metric list|update` / `channel-ref stats` / `group list|create|update` (via `engage-task`), `+task_data_overview`, `+task_data_detail`, `+task_metric_detail`, `+task_experiment_report`, `+task_detail`, `+task_list`, `+task_stats`, `+build_task_save_guide`, `+save_task`, `+manage_task`
+
+> Temporarily disabled engage-task commands (do not use): `group delete`, `segment-list set-visibility`, `ops submit-approval`, `race release`.
 
 ### config
 
@@ -220,7 +248,7 @@ This split documentation structure is easier to extend later, because commands w
 
 ### flow
 
-`+save_flow`, `+flow_node_config_schema`, `+flow_detail`, `+flow_list`, `+flow_node_overview_report`, `+manage_flow`, `+flow_ab_split_node_report`, `+flow_process_report`, `+validate_flow_node_config`, `+flow_node_detail_report`, `+delete_flow`, `+modify_flow_base_info`
+`operation-log query` / `version list` (via `engage-flow`), `+save_flow`, `+flow_node_config_schema`, `+flow_detail`, `+flow_list`, `+flow_node_overview_report`, `+manage_flow`, `+flow_ab_split_node_report`, `+flow_process_report`, `+validate_flow_node_config`, `+flow_node_detail_report`, `+delete_flow`, `+modify_flow_base_info`
 
 ## Date Format
 
@@ -239,11 +267,11 @@ For task draft creation or update, use this workflow:
 
 1. `ae-cli engage +channel_list --project_id <projectId>`
 2. `ae-cli engage +build_task_save_guide --project_id <projectId> --req '{...}'`
-3. If the guide says QP-derived fields are needed, call `ae-cli analysis_audience +get_cluster_definition_schema --cluster_type condition`
+3. If the guide says QP-derived fields are needed, create the audience with `analysis user-cluster create`, then read its server-authored definition with `analysis user-cluster get`
 4. `ae-cli engage +save_task --project_id <projectId> --req '{...}'`
 
 `+build_task_save_guide` is a read-only helper. It returns scenario-specific required fields, channel content schema, unsupported combinations, examples, and a handoff template for `save_task`.
 
 `+save_task` only saves a draft. It does not submit approval, does not start sending, and does not trigger task execution. If `req.taskId` is omitted it creates a new draft; if `req.taskId` is present it updates an existing draft. Update mode only supports draft tasks, and omitted fields can inherit from the existing draft before validation.
 
-The audience schema query `ae-cli analysis_audience +get_cluster_definition_schema --cluster_type condition` is not a fixed preflight step. Call it only when the guide indicates that you must construct `targetConfig.qp`, `triggerConfig.triggerRule`, `clientConfig.clientQp`, or `completionIndicatorDef.event`.
+Audience creation is not a fixed preflight step. Use direct `analysis user-cluster create` only when the guide requires a condition audience, and prefer the returned `cluster_name`/`clusterKey`. If the Engage schema explicitly requires QP-derived fields such as `targetConfig.qp`, `triggerConfig.triggerRule`, `clientConfig.clientQp`, or `completionIndicatorDef.event`, read the saved server-authored definition with `analysis user-cluster get`; never assemble raw QP manually.

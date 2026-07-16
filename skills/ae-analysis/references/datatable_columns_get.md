@@ -2,7 +2,7 @@
 
 Use when the user needs to get columns for a project table reference.
 
-Do not use this command for unrelated analysis queries, ad-hoc query construction, or MCP metadata discovery when an existing specialized command already fits the user's request.
+Do not use it to read table rows or infer a table reference; discover the exact table first and use a data query for row values.
 
 Command:
 
@@ -15,7 +15,7 @@ Capability id: `metadata.data_table.columns_get`.
 
 Input sends `project_id`, `table_ref`.
 
-Output is the gateway envelope. `data` contains the common-service capability result.
+Output contains resolved `data.table_ref` and `data.columns[]` from SQL IDE metadata.
 
 ## Parameters
 | Parameter | Required | Description |

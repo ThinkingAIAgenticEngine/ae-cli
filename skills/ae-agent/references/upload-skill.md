@@ -18,7 +18,7 @@ Domain: **Skills / write**
 - `--scope` must be `personal` or `company` (default `personal`).
 - `--category` must be one of the market category keys when provided.
 - `--instructions` supports `@-` to read from stdin.
-- Write operation: keep the confirmation prompt unless `--yes` is explicitly requested.
+- This is an ordinary `write` operation and does not require CLI confirmation.
 
 ## Market Category Keys
 `ae_preset | dev_tool | search_tool | data_query | content_gen | enterprise | life | automation | other`
@@ -26,7 +26,7 @@ Domain: **Skills / write**
 ## Command
 ```bash
 # Upload a personal Skill from ZIP
-ae-cli agent +upload-skill --file ./my-skill.zip --yes
+ae-cli agent +upload-skill --file ./my-skill.zip
 
 # Upload with overrides
 ae-cli agent +upload-skill \
@@ -36,18 +36,17 @@ ae-cli agent +upload-skill \
   --display-name "Custom Skill" \
   --description "Override description" \
   --category dev_tool \
-  --icon-emoji robot \
-  --yes
+  --icon-emoji robot
 
 # Instructions from stdin
 echo "You are a helpful assistant..." | \
-  ae-cli agent +upload-skill --file ./my-skill.zip --instructions @- --yes
+  ae-cli agent +upload-skill --file ./my-skill.zip --instructions @-
 
 # Replace an existing Skill
-ae-cli agent +upload-skill --file ./updated.zip --replace-skill-id <skill-cuid> --yes
+ae-cli agent +upload-skill --file ./updated.zip --replace-skill-id <skill-cuid>
 
 # Auto-rename on conflict
-ae-cli agent +upload-skill --file ./my-skill.zip --auto-rename --yes
+ae-cli agent +upload-skill --file ./my-skill.zip --auto-rename
 
 # Dry-run to inspect the request before executing
 ae-cli agent +upload-skill --dry-run --file ./my-skill.zip

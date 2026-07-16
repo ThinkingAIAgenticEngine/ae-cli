@@ -4,15 +4,14 @@ Use when the user wants to modify folder sharing members.
 
 Do not use to inspect members only. Use `analysis.folder.members` via `capability search/inspect/run`; see [`analysis_gateway_assets.md`](analysis_gateway_assets.md) L3 members section.
 
-This capability has no curated `ae-cli analysis` command. Read [`ae-capability`](../../ae-capability/SKILL.md), then:
+This capability has no curated `ae-cli analysis` command. Read [`ae-capability`](../../ae-capability/SKILL.md) (on-demand validate/dry-run table), then:
 
 ```bash
 ae-cli capability inspect analysis.folder.share
-ae-cli capability dry-run analysis.folder.share --input '{"project_id":1,"folder_id":1001,"payload":{...}}'
 ae-cli capability run analysis.folder.share --input '{"project_id":1,"folder_id":1001,"payload":{...}}'
 ```
 
-`risk=write` — no chat confirmation required after dry-run succeeds.
+`risk=write` — no chat confirmation required. Compose nested `payload` from the inspect `input_schema`.
 
 Input uses snake_case JSON. Common fields:
 

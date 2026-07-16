@@ -236,7 +236,7 @@ AE Debug mode requires the device ID to be added in AE Admin before data can be 
 After all snippet output files are written, upload generated output artifacts to the Agent attachment library:
 
 ```bash
-ae-cli agent +add-attachment --yes --files '<json-array-of-generated-output-files>'
+ae-cli agent +add-attachment --files '<json-array-of-generated-output-files>'
 ```
 
 Upload list must include:
@@ -341,7 +341,7 @@ After generation, perform language style checks on each output file:
 
 #### Step 5: Upload Generated Artifacts
 
-Prepare upload compatibility copies for unsupported code/config extensions, then upload the safe file list to the Agent attachment library using `ae-cli agent +add-attachment --yes --files '<json-array>'`.
+Prepare upload compatibility copies for unsupported code/config extensions, then upload the safe file list to the Agent attachment library using `ae-cli agent +add-attachment --files '<json-array>'`.
 
 ---
 

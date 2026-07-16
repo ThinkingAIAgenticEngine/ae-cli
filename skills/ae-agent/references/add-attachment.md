@@ -16,15 +16,15 @@ Domain: **Attachments / write**
 - Each file must exist on disk; non-existent paths raise an error.
 - Attachment upload supports files up to 50MB each, with a 1GB user quota.
 - Batch uploads support partial success — individual file failures don't affect others.
-- Write operation: keep the confirmation prompt unless `--yes` is explicitly requested.
+- This is an ordinary `write` operation and does not require CLI confirmation.
 
 ## Command
 ```bash
 # Single file
-ae-cli agent +add-attachment --file ./output/report.png --yes
+ae-cli agent +add-attachment --file ./output/report.png
 
 # Multiple files
-ae-cli agent +add-attachment --files '["./report.png", "./data.csv", "./chart.pdf"]' --yes
+ae-cli agent +add-attachment --files '["./report.png", "./data.csv", "./chart.pdf"]'
 
 # Dry-run to inspect the request before executing
 ae-cli agent +add-attachment --dry-run --file ./output/report.png

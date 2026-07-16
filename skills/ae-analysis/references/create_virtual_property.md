@@ -56,7 +56,7 @@ ae-cli analysis_meta +create_virtual_property --dry-run
 - First run should only pass required parameters (`--project_id`, `--property_name`, `--table_type`, `--select_type`, `--sql_expression`, `--sql_event_relation_type`), and add optional parameters only after the path is confirmed to work.
 - Wrap JSON arguments in single quotes (for example `--related_events '{}'`) to avoid shell escaping issues.
 - For cross-project troubleshooting, first confirm whether `--project_id` matches the current permissions and target environment.
-- Write operations keep the confirmation prompt by default; re-evaluate whether to use `--yes` in automation scenarios.
+- This is an ordinary `write` operation and does not require CLI confirmation.
 
 ## Next Steps After Failure
 - If required parameters are missing, fall back to the smallest runnable command and fill them in (focus on `--project_id`, `--property_name`, and `--table_type`).

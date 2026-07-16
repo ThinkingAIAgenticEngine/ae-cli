@@ -1,6 +1,6 @@
 import {
   createAnalysisMetaCapabilityCommand,
-  payloadFlag,
+  requiredPayloadFlag,
   projectIdFlag,
   projectInput,
 } from '../../capability-shared.js';
@@ -12,7 +12,7 @@ export const metadataExchangeRuleValidate = createAnalysisMetaCapabilityCommand(
   description: 'Validate affected range before saving exchange-rate rules.',
   flags: [
     projectIdFlag,
-    payloadFlag,
+    requiredPayloadFlag,
   ],
   risk: 'read',
   buildInput: (ctx) => ({ ...projectInput(ctx), payload: ctx.json('payload') }),

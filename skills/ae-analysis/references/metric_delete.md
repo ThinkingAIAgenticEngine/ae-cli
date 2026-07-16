@@ -2,20 +2,21 @@
 
 Use when the user needs to delete a metric.
 
-Do not use this command for unrelated analysis queries, ad-hoc query construction, or MCP metadata discovery when an existing specialized command already fits the user's request.
+Do not use it to remove a metric from one report or to delete by guessed ID; resolve and inspect the metric first.
 
 Command:
 
 ```bash
-ae-cli analysis-meta metric delete --project-id <project_id> --metric-id <metric_id>
-ae-cli analysis-meta metric delete --dry-run
+ae-cli analysis-meta metric delete --project-id <project_id> --metric-id <metric_id> --dry-run
+# Summarize the target and impact, then wait for explicit user confirmation.
+ae-cli analysis-meta metric delete --project-id <project_id> --metric-id <metric_id> --yes
 ```
 
 Capability id: `metadata.metric.delete`.
 
 Input sends `project_id`, `metric_id`.
 
-Output is the gateway envelope. `data` contains the common-service capability result.
+Output is a successful gateway envelope with no business data. Verify with `metric list|get`.
 
 ## Parameters
 | Parameter | Required | Description |

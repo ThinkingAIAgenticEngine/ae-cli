@@ -7,6 +7,8 @@ Do not use for dashboards. Use `dashboard delete`.
 Command:
 
 ```bash
+ae-cli analysis bi-panel delete --project-id <project_id> --panel-ids '[2001,2002]' --dry-run
+# Summarize the target and impact, then wait for explicit user confirmation.
 ae-cli analysis bi-panel delete --project-id <project_id> --panel-ids '[2001,2002]' --yes
 ```
 

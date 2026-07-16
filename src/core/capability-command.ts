@@ -1,12 +1,15 @@
+import { randomBytes } from 'node:crypto';
 import type { Command, Flag, RiskLevel, RuntimeContext } from '../framework/types.js';
 import {
-  buildCapabilityGatewayUrl,
-  executeCapability,
+  dryRunCapability,
+  executeCapabilityWithEnvelope,
+  validateCapability,
 } from './capability-api.js';
 import { resolveGatewayDomain } from './capability-routing.js';
+import { withOutputMetadata } from '../framework/output.js';
 
 export interface CreateCapabilityCommandConfig {
-  /** CLI 注册域，对应 ae-cli <service> */
+  /** CLI registration domain, corresponding to ae-cli <service>. */
   cliService: string;
   /** Resource segment, e.g. `event` → `ae-cli metadata event get`. */
   resource: string;
@@ -17,10 +20,13 @@ export interface CreateCapabilityCommandConfig {
   description: string;
   flags: Flag[];
   risk: RiskLevel;
-  /** Gateway 路由组件；省略时使用 registerCapabilityGatewayRoute(cliService) 默认值 */
+  /** Gateway routing segment; defaults to registerCapabilityGatewayRoute(cliService). */
   gatewayDomain?: string;
+  /** Override request host for direct local service calls. */
+  requestHost?: string;
   validate?: (ctx: RuntimeContext) => void;
   buildInput: (ctx: RuntimeContext) => Record<string, unknown>;
+  postProcess?: (result: unknown, input: Record<string, unknown>) => unknown;
 }
 
 export function createCapabilityCommand(config: CreateCapabilityCommandConfig): Command {
@@ -28,27 +34,54 @@ export function createCapabilityCommand(config: CreateCapabilityCommandConfig): 
     service: config.cliService,
     resource: config.resource,
     command: config.command,
+    capabilityId: config.capabilityId,
     description: config.description,
     flags: config.flags,
     risk: config.risk,
     validate: config.validate,
-    dryRun: (ctx) => {
+    validateInput: async (ctx) => {
       const gatewayDomain = resolveGatewayDomain(config.cliService, config.gatewayDomain);
+      const requestHost = config.requestHost ?? ctx.host();
       const input = config.buildInput(ctx);
-      return {
-        method: 'POST',
-        url: buildCapabilityGatewayUrl(
-          ctx.host(),
-          gatewayDomain,
-          `capabilities/${config.capabilityId}/dry-run`,
-        ),
-        body: { input },
-      };
+      return validateCapability(requestHost, gatewayDomain, config.capabilityId, input);
+    },
+    dryRun: async (ctx) => {
+      const gatewayDomain = resolveGatewayDomain(config.cliService, config.gatewayDomain);
+      const requestHost = config.requestHost ?? ctx.host();
+      const input = config.buildInput(ctx);
+      return dryRunCapability(requestHost, gatewayDomain, config.capabilityId, input);
     },
     execute: async (ctx) => {
       const gatewayDomain = resolveGatewayDomain(config.cliService, config.gatewayDomain);
-      const input = config.buildInput(ctx);
-      return executeCapability(ctx.host(), gatewayDomain, config.capabilityId, input);
+      const requestHost = config.requestHost ?? ctx.host();
+      const input = withLifecycleRequestId(config, config.buildInput(ctx));
+      announceDispatch(config.capabilityId, input);
+      const result = await executeCapabilityWithEnvelope(requestHost, gatewayDomain, config.capabilityId, input);
+      const data = config.postProcess ? config.postProcess(result.data, input) : result.data;
+      return withOutputMetadata(data, result.meta);
     },
   };
+}
+
+function withLifecycleRequestId(
+  config: CreateCapabilityCommandConfig,
+  input: Record<string, unknown>,
+): Record<string, unknown> {
+  if (!config.flags.some((flag) => flag.name === 'request-id')) {
+    return input;
+  }
+  const supplied = input.request_id;
+  const requestId = typeof supplied === 'string' && supplied.length > 0
+    ? supplied
+    : `cli_${randomBytes(16).toString('hex')}`;
+  return { ...input, request_id: requestId };
+}
+
+function announceDispatch(capabilityId: string, input: Record<string, unknown>): void {
+  if (typeof input.request_id !== 'string') {
+    return;
+  }
+  process.stderr.write(
+    `[ae-cli] dispatching capability=${capabilityId} request_id=${input.request_id}\n`,
+  );
 }

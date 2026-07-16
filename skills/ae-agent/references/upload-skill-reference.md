@@ -15,15 +15,15 @@ Domain: **Skills / write**
 - `--file` is required, must be an existing local `.md` file.
 - Non-`.md` files are rejected — use `+upload-skill-asset` for other file types.
 - Max 1MB per file; server enforces `isDangerousFile` checks.
-- Write operation: keep the confirmation prompt unless `--yes` is explicitly requested.
+- This is an ordinary `write` operation and does not require CLI confirmation.
 
 ## Command
 ```bash
 # Upload a single reference
-ae-cli agent +upload-skill-reference --id <skill-cuid> --file ./guide.md --yes
+ae-cli agent +upload-skill-reference --id <skill-cuid> --file ./guide.md
 
 # Upload to a sub-directory
-ae-cli agent +upload-skill-reference --id <skill-cuid> --file ./advanced.md --sub-path "advanced/" --yes
+ae-cli agent +upload-skill-reference --id <skill-cuid> --file ./advanced.md --sub-path "advanced/"
 
 # Dry-run to inspect the request before executing
 ae-cli agent +upload-skill-reference --dry-run --id <skill-cuid> --file ./guide.md

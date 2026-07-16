@@ -84,7 +84,6 @@ ae-cli auth logout
 | Domain | Commands | Description |
 |--------|----------|-------------|
 | `analysis` | 30+ | Analysis workflows: alerts, reports, dashboards, ad-hoc/drilldown, entity/event details, analysis schema |
-| `analysis_audience` | 10+ | Audience operations: clusters, tags, and cluster/tag definition schema |
 | `analysis_meta` | 20+ | Metadata governance: events/properties, metrics, virtual metadata, project config, tracking plan, mark times, entity catalog |
 | `engage` | 40+ | Hermes Engage MCP: channels, tasks, configs, flows, strategies |
 | `dataops_repo` | 1 | DataOps repo utilities: space discovery |
@@ -124,9 +123,10 @@ Retrieval primitives for external agents (`+index` → `+grep` → `+read`); the
 |--------|-------------|---------|
 | `--host <url>` | Override active AE host URL | from config |
 | `--format <json\|table>` | Output format | json |
-| `--jq <expr>` | Filter expression | - |
-| `--dry-run` | Preview request | false |
-| `--yes` | Skip confirmation | false |
+| `--jq <expr>` | jq 1.8 expression (jq-wasm) over command payload before output envelope | - |
+| `--validate` | Fix params: capability gateway `/validate` only (curated gateway commands). Do not combine with `--dry-run` | false |
+| `--dry-run` | Confirm ready to run: capability gateway `/dry-run` (or local transport preview). Do not combine with `--validate` | false |
+| `--yes` | Skip high-risk write confirmation | false |
 | `--no-update-check` | Skip checking for newer ae-cli versions | false |
 
 ## Skills
@@ -188,7 +188,7 @@ ae-cli is built with:
 - **TypeScript** (~8000 lines of code)
 - **Commander.js** for CLI framework
 - **WebSocket** for MCP server integration
-- **Node.js** runtime (v18+)
+- **Node.js** runtime (v20+)
 
 The project structure:
 ```
@@ -200,7 +200,6 @@ src/
     ├── auth.ts
     ├── config.ts
     ├── te-analysis/
-    ├── te-audience/
     ├── te-meta/
     ├── te-engage/
     ├── te-dataops/
@@ -213,7 +212,6 @@ src/
 
 ```bash
 npm run verify:analysis-tools
-npm run verify:analysis-audience-tools
 npm run verify:analysis-meta-tools
 npm run verify:analysis-common-tools
 ```

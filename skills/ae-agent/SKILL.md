@@ -192,12 +192,11 @@ ae-cli agent +create-automation \
   --schedule-kind daily \
   --time 09:00 \
   --message "Summarize yesterday's AI news" \
-  --agent-id <agent-id> \
-  --yes
+  --agent-id <agent-id>
 
 # 3. (Optional) Pause or edit later
 ae-cli agent +list-automations --status active
-ae-cli agent +update-automation --id <automation-id> --enabled false --yes
+ae-cli agent +update-automation --id <automation-id> --enabled false
 ```
 
 ### Add an MCP server with market meta
@@ -209,8 +208,7 @@ ae-cli agent +add-mcp \
   --transport http \
   --headers '{"Authorization":"Bearer token"}' \
   --category dev_tool \
-  --icon-emoji robot \
-  --yes
+  --icon-emoji robot
 ```
 
 ### Publish a personal Skill to the company (root review)
@@ -224,16 +222,16 @@ ae-cli agent +submit-skill --id <skill-cuid> --description "Code reviewer for th
 
 # 3. Root reviews and approves
 ae-cli agent +list-skill-submissions --status pending
-ae-cli agent +approve-skill --id <submission-cuid> --yes
+ae-cli agent +approve-skill --id <submission-cuid>
 ```
 
 ### Share a Skill peer-to-peer
 
 ```bash
-ae-cli agent +share-skill --id <skill-cuid> --to-user-id <user-id> --yes
+ae-cli agent +share-skill --id <skill-cuid> --to-user-id <user-id>
 # Recipient accepts:
 ae-cli agent +list-skill-shares --direction received --status pending
-ae-cli agent +accept-skill-share --id <share-cuid> --yes
+ae-cli agent +accept-skill-share --id <share-cuid>
 ```
 
 ## Quick Verification

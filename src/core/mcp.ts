@@ -304,6 +304,17 @@ export async function callMcpTool(
  * Parse an MCP tool result (attempts JSON parsing)
  */
 export function parseMcpResult(result: McpToolResult): any {
+  if (result.isError) {
+    const firstText = result.content.find((item) => item.type === 'text')?.text || '';
+    let errorMessage = firstText.trim() || 'MCP tool call failed';
+    try {
+      const parsed = safeJsonParse(firstText);
+      errorMessage = mcpResultErrorMessage(parsed) || errorMessage;
+    } catch {
+      // Plain-text MCP errors are already suitable for the CLI error envelope.
+    }
+    throwMcpError(errorMessage);
+  }
   if (result.content.length > 0 && result.content[0].type === 'text') {
     const text = result.content[0].text || '';
     let parsed: any;
@@ -316,10 +327,7 @@ export function parseMcpResult(result: McpToolResult): any {
     // {error:{code,message}}) with no success indicator is a failure, not data — surface it.
     const errMsg = mcpResultErrorMessage(parsed);
     if (errMsg !== null) {
-      if (/no_auth|auth_error|permission|forbidden|unauthor|\u65e0\u6743/i.test(errMsg)) {
-        throw new PermissionError(errMsg);
-      }
-      throw new Error(errMsg);
+      throwMcpError(errMsg);
     }
     return parsed;
   }
@@ -330,6 +338,7 @@ export function parseMcpResult(result: McpToolResult): any {
 function mcpResultErrorMessage(parsed: any): string | null {
   if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return null;
   if (parsed.success === true || parsed.ok === true) return null;
+  const explicitlyFailed = parsed.success === false || parsed.ok === false;
   const e = parsed.error;
   if (typeof e === 'string' && e.trim()) return e;
   if (e && typeof e === 'object') {
@@ -338,5 +347,23 @@ function mcpResultErrorMessage(parsed: any): string | null {
     if (msg && code) return `${code}: ${msg}`;
     if (msg || code) return (msg || code) as string;
   }
+  if (explicitlyFailed) {
+    const msg = typeof parsed.message === 'string' && parsed.message.trim()
+      ? parsed.message.trim()
+      : undefined;
+    const codeValue = parsed.errorCode ?? parsed.error_code ?? parsed.code;
+    const code = typeof codeValue === 'string' && codeValue.trim()
+      ? codeValue.trim()
+      : undefined;
+    if (msg && code) return `${code}: ${msg}`;
+    return msg || code || 'MCP tool call failed';
+  }
   return null;
+}
+
+function throwMcpError(message: string): never {
+  if (/no_auth|auth_error|permission|forbidden|unauthor|\u65e0\u6743/i.test(message)) {
+    throw new PermissionError(message);
+  }
+  throw new Error(message);
 }

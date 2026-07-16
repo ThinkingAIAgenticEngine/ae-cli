@@ -2,7 +2,7 @@
 
 Use when the user needs to update property display names and remarks.
 
-Do not use this command for unrelated analysis queries, ad-hoc query construction, or MCP metadata discovery when an existing specialized command already fits the user's request.
+Do not use it to change source/event relations or select type; use `property relation-update` with the complete definition.
 
 Command:
 
@@ -15,7 +15,7 @@ Capability id: `metadata.property.update`.
 
 Input sends `project_id`, `table_type`, `prop_name`, `prop_desc`, `prop_remark`.
 
-Output is the gateway envelope. `data` contains the common-service capability result.
+Output is a successful gateway envelope with no business data. Read back with `property get`.
 
 ## Parameters
 | Parameter | Required | Description |

@@ -14,13 +14,13 @@ Domain: **Agents / write**
 - Only `personal` Agents can be fully edited by their owner; `company` Agents require root.
 - `--instructions` supports `@-` to read from stdin.
 - `--mcp-ids` / `--skill-ids` must be JSON array strings when provided; they replace the full list.
-- Write operation: keep the confirmation prompt unless `--yes` is explicitly requested.
+- This is an ordinary `write` operation and does not require CLI confirmation.
 - PATCH does NOT support `--auto-rename`; a name conflict returns `409`.
 
 ## Command
 ```bash
 # Rename
-ae-cli agent +update-agent --id <agent-cuid> --name "new-name" --yes
+ae-cli agent +update-agent --id <agent-cuid> --name "new-name"
 
 # Replace instructions from stdin
 echo "You are now a code reviewer..." | \

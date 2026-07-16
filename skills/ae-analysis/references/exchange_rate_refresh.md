@@ -2,7 +2,7 @@
 
 Use when the user needs to refresh exchange-rate data manually.
 
-Do not use this command for unrelated analysis queries, ad-hoc query construction, or MCP metadata discovery when an existing specialized command already fits the user's request.
+Do not use it to change rules/configuration, and do not repeatedly refresh to compensate for an invalid rule.
 
 Command:
 
@@ -15,7 +15,7 @@ Capability id: `metadata.exchange_rate.refresh`.
 
 Input sends `project_id`.
 
-Output is the gateway envelope. `data` contains the common-service capability result.
+Output is a successful gateway envelope with no business data after the refresh request completes.
 
 ## Parameters
 | Parameter | Required | Description |

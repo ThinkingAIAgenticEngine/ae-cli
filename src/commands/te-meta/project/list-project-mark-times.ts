@@ -8,7 +8,7 @@ export const listProjectMarkTimes = createMcpCommand({
     { name: 'zone_offset', type: 'number', required: false, desc: 'Marker time zone offset' },
     { name: 'query', type: 'string', required: false, alias: 'q', desc: 'Optional keyword filter. Fuzzy match on markContent.' },
     { name: 'fields', type: 'json', required: false, desc: 'Optional fields to return. Supported: id, projectId, markTime, userZoneTime, zoneOffset, markContent, isShow, creatorName, creatorId, lastModifierName, lastModifierId, createTime, updateTime.' },
-    { name: 'limit', type: 'number', required: false, desc: 'Optional limit. Default: 20, maximum: 10000.' },
+    { name: 'limit', type: 'number', required: false, desc: 'Optional limit. Default: 50, maximum: 200.', min: 1, max: 200 },
     { name: 'offset', type: 'number', required: false, desc: 'Optional offset. Default: 0.' },
   ],
   risk: 'read',

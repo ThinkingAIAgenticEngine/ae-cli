@@ -1,66 +1,80 @@
 import assert from 'node:assert/strict';
-import os from 'node:os';
-import path from 'node:path';
-import { spawnSync } from 'node:child_process';
+import { reportUpdate } from '../src/commands/te-analysis/report/update.ts';
+import { drilldownUserEventsRun } from '../src/commands/te-analysis/drilldown-user-events/run.ts';
+import { clearCliToken, setCliTokenManual } from '../src/core/cli-token.ts';
+import { registerCapabilityGatewayRoute } from '../src/core/capability-routing.ts';
 
-const ROOT = path.join(path.dirname(new URL(import.meta.url).pathname), '..');
+const HOST = 'https://ta.example';
+registerCapabilityGatewayRoute('analysis', { gatewayDomain: 'analysis' });
 
-function runCli(args) {
-  return spawnSync('npx', ['tsx', 'src/index.ts', '--no-update-check', '--host', 'https://ta.example', '--dry-run', ...args], {
-    cwd: ROOT,
-    env: { ...process.env, HOME: os.tmpdir() },
-    encoding: 'utf-8',
-  });
+function ctx(values) {
+  return {
+    str(name) {
+      const value = values[name];
+      return value === undefined || value === null ? '' : String(value);
+    },
+    num(name) {
+      return Number(values[name]);
+    },
+    optionalNum(name) {
+      const value = values[name];
+      return value === undefined || value === null || value === '' ? undefined : Number(value);
+    },
+    bool(name) {
+      return Boolean(values[name]);
+    },
+    json(name) {
+      const value = values[name];
+      if (value === undefined || value === null || value === '') return undefined;
+      return typeof value === 'string' ? JSON.parse(value) : value;
+    },
+    host() {
+      return HOST;
+    },
+    mcpUrl() {
+      return undefined;
+    },
+    service() {
+      return 'analysis';
+    },
+  };
 }
 
-function payload(result) {
-  assert.equal(result.status, 0, result.stderr || result.stdout);
-  return JSON.parse(result.stdout).data;
+async function captureDryRun(command, values) {
+  let body;
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = async (_url, init) => {
+    body = JSON.parse(String(init?.body));
+    return new Response(JSON.stringify({ ok: true, data: { dry_run: true } }), {
+      status: 200,
+      headers: { 'content-type': 'application/json' },
+    });
+  };
+  setCliTokenManual('cli_test_token', HOST);
+  try {
+    await command.dryRun(ctx(values));
+    return body;
+  } finally {
+    globalThis.fetch = originalFetch;
+    clearCliToken(HOST);
+  }
 }
 
-const createId = payload(runCli([
-  '--yes', 'analysis_audience', '+create_id_cluster',
-  '--project_id', '1', '--display_name', 'Test', '--file_content', 'user_1', '--entity_id', '1',
-]));
-assert.match(createId.url, /analysis-extend$/);
-
-const updateId = payload(runCli([
-  '--yes', 'analysis_audience', '+update_id_cluster',
-  '--project_id', '1', '--cluster_name', 'cluster_1', '--file_content', 'user_2',
-]));
-assert.match(updateId.url, /analysis-extend$/);
-
-const deleteId = payload(runCli([
-  '--yes', 'analysis_audience', '+delete_cluster',
-  '--project_id', '1', '--cluster_name', 'cluster_1',
-]));
-assert.match(deleteId.url, /analysis-extend$/);
-
-const buildCluster = payload(runCli([
-  'analysis_audience', '+build_cluster_definition',
-  '--project_id', '1', '--type', 'sql', '--sql', 'select "#user_id" from hive.ta.v_user_1',
-]));
-assert.deepEqual(buildCluster.body.arguments, {
-  projectId: 1,
-  type: 'sql',
-  sql: 'select "#user_id" from hive.ta.v_user_1',
+const updateReport = await captureDryRun(reportUpdate, {
+  'project-id': 1,
+  'report-id': 2,
+  'report-version': 0,
+  'report-name': 'Renamed',
 });
+assert.equal(updateReport.input.version, 0);
 
-const updateReport = payload(runCli([
-  '--yes', 'analysis', '+update_report',
-  '--project_id', '1', '--report_id', '2', '--report_version', '0', '--report_name', 'Renamed',
-]));
-assert.equal(updateReport.body.arguments.version, 0);
-
-const drilldown = payload(runCli([
-  'analysis', '+drilldown_user_events',
-  '--project_id', '1', '--user_id', 'u1', '--event_names', '["login"]',
-  '--target_dates', '["2026-01-01 00:00:00"]', '--limit', '20', '--offset', '40',
-  '--request_id', 'mcp_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
-]));
-assert.equal(drilldown.body.arguments.limit, 20);
-assert.equal(drilldown.body.arguments.offset, 40);
-assert.equal('pageNum' in drilldown.body.arguments, false);
-assert.equal('pageSize' in drilldown.body.arguments, false);
+const drilldown = await captureDryRun(drilldownUserEventsRun, {
+  'drilldown-context-id': 'drill_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
+  'user-id': 'u1',
+  limit: 20,
+});
+assert.equal(drilldown.input.limit, 20);
+assert.equal('page_num' in drilldown.input, false);
+assert.equal('page_size' in drilldown.input, false);
 
 console.log('OK: analysis contract regression dry-runs passed.');

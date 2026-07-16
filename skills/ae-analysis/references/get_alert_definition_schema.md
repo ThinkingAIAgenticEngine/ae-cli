@@ -10,6 +10,7 @@ Domain: **Metadata queries**
 - Typical follow-up tools: `+create_alert`, `+update_alert`
 - Get the alert definition schema. Returns field definitions, enum descriptions, and examples for creating or updating alerts.
 - Use this to understand the alert definition structure before calling create_alert or update_alert.
+- Do not use the schema response as an alert instance or query result; it only describes valid definition fields.
 
 ## Command
 ```bash

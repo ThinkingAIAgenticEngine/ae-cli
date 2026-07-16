@@ -5,23 +5,21 @@
 Domain: **Metadata Query**
 
 ## Use Cases
-- Before updating `events` / `params`, you must first obtain the corresponding model schema and supplement the project with real event/property metadata.
+- Before updating `events` / `params`, you must supplement the payload with real event/property metadata.
 - Update a metric definition. Currently only the event and retention models are supported. Returns the updated metric information without executing metric calculation.
 - Update a metric definition.
 
 ## MUST Prerequisites
 - Before updating `--events` / `--params`, you must first read and follow these reference documents:
-  - [`./get_analysis_query_schema.md`](./get_analysis_query_schema.md)
   - [`./list_events.md`](./list_events.md)
   - [`./list_properties.md`](./list_properties.md)
 - Do not submit new `events` / `params` until the document review and prerequisite command calls above are complete.
 
 ## Prerequisite Call Chain (Required for Updating events/params)
 1. Determine `--model_type` first (`event` / `retention`).
-2. Read `get_analysis_query_schema.md`, then call `ae-cli analysis +get_analysis_query_schema --model_type <event|retention>` to get the structure.
-3. Read `list_events.md`, then call `ae-cli analysis_meta +list_events --project_id <project_id>`.
-4. Read `list_properties.md`, then call `ae-cli analysis_meta +list_properties --project_id <project_id>`.
-5. Build the new `events` / `params` from the schema + metadata, then execute `+update_metric`.
+2. Read `list_events.md`, then call `ae-cli analysis_meta +list_events --project_id <project_id>`.
+3. Read `list_properties.md`, then call `ae-cli analysis_meta +list_properties --project_id <project_id>`.
+4. Build the new `events` / `params` from the metric API payload shape and verified metadata, then execute `+update_metric`.
 
 ## Commands
 ```bash
@@ -39,23 +37,22 @@ ae-cli analysis_meta +update_metric --dry-run
 | `--display_name` | Yes | Metric display name |
 | `--remark` | No | Optional metric remark |
 | `--model_type` | Yes | Metric model type. Currently supports event and retention. |
-| `--events` | Yes | Metric event JSON. MUST follow `+get_analysis_query_schema` for the selected `model_type`, and use fields validated by `analysis_meta +list_events` / `analysis_meta +list_properties` in the same `project_id`. |
-| `--params` | No | Metric params JSON. If provided, MUST follow the schema from `+get_analysis_query_schema` and use project metadata from `analysis_meta +list_events` / `analysis_meta +list_properties`. |
+| `--events` | Yes | Metric event JSON. Use fields validated by `analysis_meta +list_events` / `analysis_meta +list_properties` in the same `project_id`. |
+| `--params` | No | Metric params JSON. If provided, use project metadata from `analysis_meta +list_events` / `analysis_meta +list_properties`. |
 
 ## Decision Rules
-- `events` / `params` must not be handwritten by intuition alone: they must satisfy both the schema structure and the project's real metadata constraints.
+- `events` / `params` must not be handwritten by intuition alone: they must satisfy the metric API payload shape and the project's real metadata constraints.
 - Set `--model_type` first, then use the matching schema; do not mix event/retention structures.
 - Before calling `list_events` / `list_properties`, you must first study the corresponding reference documents.
-- For the first run, pass only the required parameters (`--project_id`, `--metric_id`, `--name`) to confirm the path works, then add optional parameters.
+- The smallest valid request still requires `--project_id`, `--metric_id`, `--name`, `--display_name`, `--model_type`, and `--events`; do not omit the new definition to “test the path.” Use `--dry-run` with the complete request for preflight.
 - Wrap JSON parameters in single quotes (for example `--events '{}'` and `--params '{}'`) to avoid shell escaping issues.
 - For cross-project troubleshooting, first confirm whether `--project_id` matches the current permissions and target environment.
-- Write operations keep confirmation prompts by default; evaluate whether to use `--yes` only for automation scenarios.
+- This is an ordinary `write` operation and does not require CLI confirmation.
 
 ## Next Steps After Failure
-- If required parameters are missing, fall back to the smallest runnable command and fill them in first (focus on `--project_id`, `--metric_id`, and `--name`).
-- If `Invalid JSON` appears, first check the schema's required fields, then verify whether the event and property names come from metadata query results in the same `project_id`.
+- If required parameters are missing, complete all required fields listed above before retrying.
+- If `Invalid JSON` appears, first check required fields, then verify whether the event and property names come from metadata query results in the same `project_id`.
 - If the result after writing does not match expectations, immediately reread the corresponding list/get interfaces for before-and-after comparison.
 
 ## Recommended Chaining
-- +get_analysis_query_schema -> analysis_meta +list_events -> analysis_meta +list_properties -> +update_metric
 - +list_metrics -> +get_metric -> +update_metric

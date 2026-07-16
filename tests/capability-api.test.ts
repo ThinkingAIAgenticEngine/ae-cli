@@ -13,9 +13,11 @@ import {
   CapabilityGatewayError,
   dryRunCapability,
   executeCapability,
+  executeCapabilityWithEnvelope,
   inspectCapability,
   listCapabilities,
   uploadInputFileBytes,
+  validateCapability,
 } from '../src/core/capability-api.ts';
 import { setCliTokenManual, clearCliToken } from '../src/core/cli-token.ts';
 import { PermissionError } from '../src/core/errors.ts';
@@ -115,14 +117,121 @@ await test('dryRunCapability POSTs { input } to .../dry-run', async () => {
   globalThis.fetch = (async (url, init) => {
     capturedUrl = String(url);
     capturedBody = init?.body;
-    return new Response(JSON.stringify({ ok: true, data: { valid: true } }), { status: 200 });
+    return new Response(JSON.stringify({ ok: true, data: { dry_run: true } }), { status: 200 });
   }) as typeof fetch;
 
   try {
     const result = await dryRunCapability(host, 'analysis', 'analysis.report.list', { project_id: 1 });
     assert.ok(capturedUrl.endsWith('/api/cli/analysis/v1/capabilities/analysis.report.list/dry-run'));
     assert.equal(capturedBody, JSON.stringify({ input: { project_id: 1 } }));
-    assert.equal(JSON.stringify(result), JSON.stringify({ valid: true }));
+    assert.equal(JSON.stringify(result), JSON.stringify({ dry_run: true }));
+  } finally {
+    globalThis.fetch = prevFetch;
+    clearCliToken(host);
+  }
+});
+
+await test('validateCapability POSTs { input } to .../validate', async () => {
+  const host = 'https://test-cap-validate.internal';
+  clearCliToken(host);
+  setCliTokenManual('cli-validate-token', host);
+
+  let capturedUrl = '';
+  let capturedBody: any;
+  const prevFetch = globalThis.fetch;
+  globalThis.fetch = (async (url, init) => {
+    capturedUrl = String(url);
+    capturedBody = init?.body;
+    return new Response(JSON.stringify({
+      ok: true,
+      data: { valid: true, capability_id: 'metadata.data_table.sql_write', normalized_input: { project_id: 1 } },
+    }), { status: 200 });
+  }) as typeof fetch;
+
+  try {
+    const result = await validateCapability(host, 'analysis', 'metadata.data_table.sql_write', {
+      project_id: 1,
+      operation: 'create',
+    });
+    assert.ok(capturedUrl.endsWith('/api/cli/analysis/v1/capabilities/metadata.data_table.sql_write/validate'));
+    assert.equal(
+      capturedBody,
+      JSON.stringify({ input: { project_id: 1, operation: 'create' } }),
+    );
+    assert.equal(result.valid, true);
+    assert.equal(result.capability_id, 'metadata.data_table.sql_write');
+  } finally {
+    globalThis.fetch = prevFetch;
+    clearCliToken(host);
+  }
+});
+
+await test('executeCapabilityWithEnvelope preserves success metadata', async () => {
+  const host = 'https://test-cap-envelope.internal';
+  clearCliToken(host);
+  setCliTokenManual('cli-envelope-token', host);
+
+  const prevFetch = globalThis.fetch;
+  globalThis.fetch = (async () => new Response(JSON.stringify({
+    ok: true,
+    data: { items: [] },
+    meta: {
+      request_id: 'cli_0123456789abcdef0123456789abcdef',
+      invocation_id: 'inv_1',
+    },
+  }), { status: 200 })) as typeof fetch;
+
+  try {
+    const result = await executeCapabilityWithEnvelope(
+      host,
+      'analysis',
+      'analysis.adhoc.run',
+      { project_id: 1 },
+    );
+    assert.deepEqual(JSON.parse(JSON.stringify(result)), {
+      ok: true,
+      data: { items: [] },
+      meta: {
+        request_id: 'cli_0123456789abcdef0123456789abcdef',
+        invocation_id: 'inv_1',
+      },
+    });
+  } finally {
+    globalThis.fetch = prevFetch;
+    clearCliToken(host);
+  }
+});
+
+await test('executeCapability exposes failure metadata on CapabilityGatewayError', async () => {
+  const host = 'https://test-cap-error-meta.internal';
+  clearCliToken(host);
+  setCliTokenManual('cli-error-meta-token', host);
+
+  const prevFetch = globalThis.fetch;
+  globalThis.fetch = (async () => new Response(JSON.stringify({
+    ok: false,
+    error: {
+      code: 'QUERY_FAILED',
+      message: 'Query failed.',
+    },
+    meta: {
+      request_id: 'cli_fedcba9876543210fedcba9876543210',
+      invocation_id: 'inv_2',
+    },
+  }), { status: 422 })) as typeof fetch;
+
+  try {
+    await assert.rejects(
+      () => executeCapability(host, 'analysis', 'analysis.adhoc.run', { project_id: 1 }),
+      (err: Error) => {
+        assert.ok(err instanceof CapabilityGatewayError);
+        assert.deepEqual(JSON.parse(JSON.stringify(err.meta)), {
+          request_id: 'cli_fedcba9876543210fedcba9876543210',
+          invocation_id: 'inv_2',
+        });
+        return true;
+      },
+    );
   } finally {
     globalThis.fetch = prevFetch;
     clearCliToken(host);

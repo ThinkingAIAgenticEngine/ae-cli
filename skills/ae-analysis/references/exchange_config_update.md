@@ -2,7 +2,7 @@
 
 Use when the user needs to update exchange-rate configuration switch or value.
 
-Do not use this command for unrelated analysis queries, ad-hoc query construction, or MCP metadata discovery when an existing specialized command already fits the user's request.
+Do not use it to edit conversion rules or refresh rate data; those are `exchange rule-update` and `exchange rate-refresh`.
 
 Command:
 
@@ -15,7 +15,7 @@ Capability id: `metadata.exchange_config.update`.
 
 Input sends `project_id`, `config_val`.
 
-Output is the gateway envelope. `data` contains the common-service capability result.
+Output is a successful gateway envelope with no business data.
 
 ## Parameters
 | Parameter | Required | Description |

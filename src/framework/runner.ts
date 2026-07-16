@@ -37,29 +37,70 @@ export async function runCommand(cmd: Command, opts: Record<string, any>, global
       cmd.validate(ctx);
     }
 
-    // Validate pagination/limit flags: all must be <= 10000
+    // Validate numeric flags. Reject NaN early (Number('abc') -> NaN -> JSON null looks like a
+    // confusing gateway "expected integer, got null" error). Pagination-like flags also default
+    // to <= 10000 unless a command supplies a stricter flag-level max.
     const LIMIT_FLAG_PATTERNS = [/limit/i, /page_size/i, /pagesize/i, /row_limit/i, /block_limit/i, /top[-_]?k/i];
     for (const flag of cmd.flags) {
+      if (flag.type !== 'number') continue;
+      const val = opts[camelCase(flag.name)];
+      if (val === undefined || val === null || val === '') continue;
+      const num = Number(val);
+      if (!Number.isFinite(num)) {
+        printError('validation', `--${flag.name} must be a number (got: ${val})`);
+        process.exit(1);
+      }
       const isLimitFlag = LIMIT_FLAG_PATTERNS.some((p) => p.test(flag.name));
-      if (isLimitFlag && flag.type === 'number') {
-        const val = opts[camelCase(flag.name)];
-        if (val !== undefined && val !== null) {
-          const num = Number(val);
-          if (!Number.isInteger(num) || num < 1 || num > 10000) {
-            printError('validation', `--${flag.name} must be an integer between 1 and 10000 (got: ${val})`);
-            process.exit(1);
-          }
+      if (isLimitFlag) {
+        const min = flag.min ?? 1;
+        const max = flag.max ?? 10000;
+        if (!Number.isInteger(num) || num < min || num > max) {
+          printError('validation', `--${flag.name} must be an integer between ${min} and ${max} (got: ${val})`);
+          process.exit(1);
+        }
+      } else if (flag.min !== undefined || flag.max !== undefined) {
+        const min = flag.min ?? Number.NEGATIVE_INFINITY;
+        const max = flag.max ?? Number.POSITIVE_INFINITY;
+        if (num < min || num > max) {
+          const lower = flag.min === undefined ? '-Infinity' : String(min);
+          const upper = flag.max === undefined ? 'Infinity' : String(max);
+          printError('validation', `--${flag.name} must be a number between ${lower} and ${upper} (got: ${val})`);
+          process.exit(1);
         }
       }
     }
 
-    // Dry run
+    // --validate and --dry-run are mutually exclusive
+    if (globalOpts.validate && globalOpts.dryRun) {
+      printError(
+        'validation',
+        'Cannot combine --validate and --dry-run.',
+        'Use --validate to fix parameters; use --dry-run as the pre-execution confirmation.',
+      );
+      process.exit(1);
+    }
+
+    // Parameter validate (capability commands hit gateway .../validate)
+    if (globalOpts.validate) {
+      if (cmd.validateInput) {
+        const validateResult = await cmd.validateInput(ctx);
+        await printOutput(validateResult, globalOpts.format, globalOpts.jq);
+      } else {
+        await printOutput(
+          { message: 'No --validate implementation for this command (capability gateway commands only)' },
+          globalOpts.format,
+        );
+      }
+      return;
+    }
+
+    // Dry run (capability commands hit gateway .../dry-run; MCP/REST may return a local preview)
     if (globalOpts.dryRun) {
       if (cmd.dryRun) {
-        const dryResult = cmd.dryRun(ctx);
-        printOutput(dryResult, globalOpts.format, globalOpts.jq);
+        const dryResult = await cmd.dryRun(ctx);
+        await printOutput(dryResult, globalOpts.format, globalOpts.jq);
       } else {
-        printOutput({ message: 'No dry-run implementation for this command' }, globalOpts.format);
+        await printOutput({ message: 'No dry-run implementation for this command' }, globalOpts.format);
       }
       return;
     }
@@ -75,8 +116,12 @@ export async function runCommand(cmd: Command, opts: Record<string, any>, global
 
     // Execute
     const result = await cmd.execute(ctx);
-    ctx.out(result);
+    await ctx.out(result);
   } catch (err: any) {
+    if (err?.type === 'validation' && typeof err?.hint === 'string' && String(err.message || '').includes('--jq')) {
+      printError('validation', err.message, err.hint);
+      process.exit(1);
+    }
     const message = err.message || String(err);
     logger.error(`Command failed: ${message}`);
     // F-018: classify by structured error type (instanceof), NOT by substring-matching the message —
@@ -89,7 +134,7 @@ export async function runCommand(cmd: Command, opts: Record<string, any>, global
       // authenticated-but-forbidden — surface the server's reason; re-login won't help
       printError('permission', message);
     } else if (err instanceof CapabilityGatewayError) {
-      printError('api', message, err.hint, err.code);
+      printError('api', message, err.hint ?? capabilityGatewayHint(err), err.code, err.meta);
     } else if (err instanceof SecureStoreAuthError) {
       printError('auth', message, 'Run: ae-cli auth login');
     } else if (err instanceof TeAgentApiError) {
@@ -109,6 +154,16 @@ export async function runCommand(cmd: Command, opts: Record<string, any>, global
     }
     process.exit(1);
   }
+}
+
+export function capabilityGatewayHint(err: CapabilityGatewayError): string | undefined {
+  if (err.code === 'CAPABILITY_NOT_FOUND') {
+    return 'The current host does not expose this capability. Do not retry with different parameters; use a supported command path or ask the platform/backend owner to enable the capability.';
+  }
+  if (err.httpStatus === 404 && !err.code) {
+    return 'The current host returned 404 for this capability route. Do not keep retrying the same command; verify the backend route/capability deployment.';
+  }
+  return undefined;
 }
 
 /** Narrow heuristic: does a plain-Error message indicate a genuine auth/session failure (not a 403/permission)? */
@@ -201,8 +256,8 @@ function createRuntimeContext(cmd: Command, opts: Record<string, any>, globalOpt
       return cmd.service;
     },
 
-    out(data: any): void {
-      printOutput(data, globalOpts.format, globalOpts.jq);
+    async out(data: any): Promise<void> {
+      await printOutput(data, globalOpts.format, globalOpts.jq);
     },
   };
 

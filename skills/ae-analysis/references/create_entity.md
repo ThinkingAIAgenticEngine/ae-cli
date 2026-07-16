@@ -27,7 +27,7 @@ ae-cli analysis_meta +create_entity --dry-run
 - `--table_type` must be `0` (event property) or `1` (user property); no other values are accepted.
 - Before using `--column_name`, call `analysis_meta +list_properties` to verify it exists. If the same column name appears in **both** event properties and user properties, **stop and ask the user which table type to use** — do not guess `--table_type`. Ask every time this condition is met; never carry over the answer from a previous request.
 - For the first run, pass only the required parameters and confirm before adding others.
-- Write operations keep the confirmation prompt by default; use `--yes` only for automation.
+- This is an ordinary `write` operation and does not require CLI confirmation.
 
 ## Next Steps After Failure
 - If `PROJECT_ID_REQUIRED` or `ENTITY_NAME_REQUIRED` appears, check that all required parameters are provided.

@@ -7,13 +7,14 @@ Domain: **Entity Query**
 ## Use Cases
 - List entities in the project. Returns entity details such as entity ID, name, column name, column description, and type. Can be filtered by event name.
 - List entities in the project.
+- Do not use it to list user members or event rows; it returns entity metadata only.
 
 ## Command
 ```bash
 ae-cli analysis_meta +list_entities --project_id <project_id>
 ae-cli analysis_meta +list_entities --project_id <project_id> --query demo
 ae-cli analysis_meta +list_entities --project_id <project_id> --event_name demo
-ae-cli analysis_meta +list_entities --project_id <project_id> --fields '["entityId", "entityName", "columnName", "columnDesc", "selectType"]' --limit 20 --offset 0
+ae-cli analysis_meta +list_entities --project_id <project_id> --fields '["entityId", "entityName", "columnName", "columnDesc", "selectType"]' --limit 50 --offset 0
 ae-cli analysis_meta +list_entities --dry-run
 ```
 
@@ -24,7 +25,7 @@ ae-cli analysis_meta +list_entities --dry-run
 | `--event_name` | No | Optional event name filter |
 | `--query` / `-q` | No | Optional keyword filter. Fuzzy match is applied to entityName, columnName, and columnDesc; if omitted, all accessible dashboards are returned. |
 | `--fields` / `-f` | No | Optional fields to return (JSON array). Supported fields: `entityId`, `entityName`, `columnName`, `columnDesc`, `selectType`, `tableType`, `entityType`. Default fields when omitted: `entityId`, `entityName`, `columnName`, `columnDesc`, `selectType`. Entity metadata exposes `columnDesc` as the description field; no remark field is available in this list response. |
-| `--limit` / `-l` | No | Optional page size. Default: 20, maximum: 10000. |
+| `--limit` / `-l` | No | Optional page size. Default: 50, maximum: 200. |
 | `--offset` / `-o` | No | Optional page offset. Default: 0. |
 
 

@@ -14,15 +14,15 @@ Domain: **Skills / write**
 - `--id` is required. Obtain the real Skill record ID (CUID) via `+list-skills` — do not guess.
 - `--file` is required and must point to an existing local file.
 - Max 1MB per file; server enforces `isDangerousFile` checks.
-- Write operation: keep the confirmation prompt unless `--yes` is explicitly requested.
+- This is an ordinary `write` operation and does not require CLI confirmation.
 
 ## Command
 ```bash
 # Upload a single script
-ae-cli agent +upload-skill-script --id <skill-cuid> --file ./helper.sh --yes
+ae-cli agent +upload-skill-script --id <skill-cuid> --file ./helper.sh
 
 # Upload to a sub-directory
-ae-cli agent +upload-skill-script --id <skill-cuid> --file ./run.py --sub-path "tools/" --yes
+ae-cli agent +upload-skill-script --id <skill-cuid> --file ./run.py --sub-path "tools/"
 
 # Dry-run to inspect the request before executing
 ae-cli agent +upload-skill-script --dry-run --id <skill-cuid> --file ./helper.sh

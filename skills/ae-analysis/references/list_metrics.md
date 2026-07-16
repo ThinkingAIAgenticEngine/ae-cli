@@ -8,13 +8,13 @@ Domain: **Metadata Query**
 
 **Fuzzy Search Fallback:** If `--query` returns no results, retry with broader keywords (max 3 attempts), then fall back to full list. See [SKILL.md § C. FUZZY_SEARCH_FALLBACK](../SKILL.md#c-fuzzy_search_fallback).
 
-**Not a builder pre-step:** Do not call `+list_metrics` before non-SQL ad-hoc analysis. The matching builder resolves referenced metrics internally; the event builder accepts a saved metric name in `metrics[].event`. If the builder fails, stop and ask for clarification instead of using this command as a fallback.
+**Not an ad-hoc pre-step:** Do not call `+list_metrics` just to prepare normal ad-hoc analysis. Pass the saved metric wording directly in `analysis adhoc run/export --definition`; the backend compiler resolves saved metric names internally. If compilation fails, stop and ask for clarification instead of using this command as a fallback.
 
 ## Use Cases
 - List metric metadata in the project. Supports keyword filtering and returns metric IDs, names, display names, model types, remarks, and related metadata, but not metric calculation results.
 - Supports pagination with fields/limit/offset for payload governance.
 - Query performs fuzzy matching on metricName, metricDesc, and metricRemark.
-- Use this command for metric metadata management, metric editing, auditing, or when the user explicitly asks to inspect/search metric metadata. Do not use it merely to prepare a builder-supported ad-hoc query.
+- Use this command for metric metadata management, metric editing, auditing, or when the user explicitly asks to inspect/search metric metadata. Do not use it merely to prepare an ad-hoc query.
 
 ## Command
 ```bash
@@ -30,7 +30,7 @@ ae-cli analysis_meta +list_metrics --dry-run
 | `--project_id` / `-p` | Yes | Project ID |
 | `--query` / `-q` | No | Optional keyword filter. Fuzzy match on metricName, metricDesc, metricRemark. |
 | `--fields` | No | Optional fields to return. Supported: metricId, metricName, metricDesc, metricRemark, metricMode, authenticationStatus, openId, creator, creatorLoginName, updateOpenId, updateCreator, updateLoginName, createTime, updateTime. Default fields when omitted: metricId, metricName, metricDesc, metricRemark, metricMode, authenticationStatus. Invalid fields cause INVALID_FIELDS error. |
-| `--limit` | No | Optional limit. Default: 20, maximum: 50. |
+| `--limit` | No | Optional limit. Default: 50, maximum: 200. |
 | `--offset` | No | Optional offset. Default: 0. |
 | `--authenticated_only` | No | When true, return only authenticated metrics. |
 
@@ -39,7 +39,7 @@ ae-cli analysis_meta +list_metrics --dry-run
 - First run should only pass the required parameter (`--project_id`), and add optional parameters only after the path is confirmed to work.
 - For pagination, use `--limit` and `--offset` together. Default limit is 20.
 - Use `--fields` to select specific columns for lighter response payloads.
-- For builder-supported ad-hoc analysis, do not search metrics here first. Pass the user-provided metric name directly to the builder.
+- For ad-hoc analysis, do not search metrics here first. Pass the user-provided metric name directly to `analysis adhoc run/export`.
 - For cross-project troubleshooting, first confirm whether `--project_id` matches the current permissions and target environment.
 
 ## Next Steps After Failure
@@ -49,4 +49,4 @@ ae-cli analysis_meta +list_metrics --dry-run
 
 ## Recommended Chaining
 - +list_metrics -> +create_metric -> +get_metric
-- For ad-hoc event metric query: +build_event_analysis_qp -> +query_adhoc
+- For ad-hoc event metric query: analysis adhoc run/export

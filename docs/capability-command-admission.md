@@ -194,7 +194,7 @@ ae-cli analysis dashboard list --project-id 1
 
 ## 10. Skill / Reference 收录规则
 
-Gateway 能力的默认入口是 **L3 动态发现**（`capability search` → `inspect` → `dry-run` → `run`），**不**为每个 capability 新建 skill reference。
+Gateway 能力的默认入口是 **L3 动态发现**（`capability search` → `inspect` →（按需二选一：`validate` **或** `dry-run`，默认不叠打）→ `run`），**不**为每个 capability 新建 skill reference。
 
 ### 默认：不建 reference
 

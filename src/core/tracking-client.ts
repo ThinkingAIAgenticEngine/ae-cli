@@ -266,6 +266,7 @@ export class TrackingClient {
     projectId: number;
     file: Buffer;
     filename: string;
+    lang?: string;
     retry?: boolean;
   }): Promise<TEUploadResponse> {
     const inputFile = await uploadInputFileBytes(
@@ -284,6 +285,7 @@ export class TrackingClient {
     const data = await executeCapability(this.host, TRACK_CAPABILITY_DOMAIN, TRACK_PROGRAM_EXCEL_SAVE, {
       project_id: args.projectId,
       input_file_id: inputFileId,
+      ...(args.lang ? { lang: args.lang } : {}),
     });
     const env = normalizeUploadResponse(data);
     if (env.return_code !== 0 && env.return_code !== undefined && !env.data?.eventErrorMap && !env.data?.userErrorMap) {

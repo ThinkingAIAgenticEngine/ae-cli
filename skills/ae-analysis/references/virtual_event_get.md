@@ -2,7 +2,7 @@
 
 Use when the user needs to get virtual event rule.
 
-Do not use this command for unrelated analysis queries, ad-hoc query construction, or MCP metadata discovery when an existing specialized command already fits the user's request.
+Do not use it for super-event-by-name detail or event result data; this resolves one virtual event by numeric ID.
 
 Command:
 
@@ -15,7 +15,7 @@ Capability id: `metadata.virtual_event.get`.
 
 Input sends `project_id`, `v_event_id`.
 
-Output is the gateway envelope. `data` contains the common-service capability result.
+Output `data.virtual_event` contains the virtual-event metadata and rule.
 
 ## Parameters
 | Parameter | Required | Description |

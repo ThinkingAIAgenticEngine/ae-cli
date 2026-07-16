@@ -13,13 +13,13 @@ Domain: **Skills / write**
 ## Mandatory Rules (MUST)
 - This command takes no flags.
 - **Root-only operation**: non-root users will receive a 403 error.
-- Write operation: keep the confirmation prompt unless `--yes` is explicitly requested.
+- This is an ordinary `write` operation and does not require CLI confirmation.
 - Prefer `--dry-run` before executing — rescan has filesystem side effects.
 
 ## Command
 ```bash
 # Rescan and sync
-ae-cli agent +rescan-skills --yes
+ae-cli agent +rescan-skills
 
 # Dry-run to inspect the request before executing
 ae-cli agent +rescan-skills --dry-run

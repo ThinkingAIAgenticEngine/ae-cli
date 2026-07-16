@@ -21,21 +21,21 @@ Domain: **MCP Servers / write**
 - `--enabled` accepts `true` or `false`; **omit it to leave the enabled state unchanged**. To simply toggle, prefer `+toggle-mcp`.
 - `--headers` / `--secret-headers` must be valid JSON objects when provided. `--secret-headers` values are encrypted server-side.
 - The server runs a connectivity check on update; an unreachable URL fails with `connectivity_failed`.
-- Write operation: keep the confirmation prompt unless `--yes` is explicitly requested.
+- This is an ordinary `write` operation and does not require CLI confirmation.
 
 ## Command
 ```bash
 # Rename + update URL
-ae-cli agent +update-mcp --id <mcp-cuid> --name my-mcp-renamed --url "https://mcp.example.com/mcp" --yes
+ae-cli agent +update-mcp --id <mcp-cuid> --name my-mcp-renamed --url "https://mcp.example.com/mcp"
 
 # Update transport + headers
 ae-cli agent +update-mcp --id <mcp-cuid> --transport streamable-http --headers '{"Authorization":"Bearer token"}'
 
 # Enable with auto-rename on conflict
-ae-cli agent +update-mcp --id <mcp-cuid> --enabled true --auto-rename --yes
+ae-cli agent +update-mcp --id <mcp-cuid> --enabled true --auto-rename
 
 # Disable (explicit)
-ae-cli agent +update-mcp --id <mcp-cuid> --enabled false --yes
+ae-cli agent +update-mcp --id <mcp-cuid> --enabled false
 
 # Dry-run to inspect the request before executing
 ae-cli agent +update-mcp --dry-run --id <mcp-cuid> --name new-name

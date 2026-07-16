@@ -13,7 +13,7 @@ Domain: **Models / write**
 - `--model-id`, `--name`, and `--base-url` are required.
 - `--base-url` must be a valid URL.
 - `--scope` controls target scope: `personal` (default) or `company`. Company scope requires root/agent_admin; system models are read-only.
-- Write operation: keep the confirmation prompt unless `--yes` is explicitly requested.
+- This is an ordinary `write` operation and does not require CLI confirmation.
 
 ## Command
 ```bash
@@ -29,8 +29,7 @@ ae-cli agent +add-model \
   --name "Claude Sonnet" \
   --base-url "https://api.anthropic.com/v1" \
   --provider anthropic \
-  --context-length 200000 \
-  --yes
+  --context-length 200000
 
 # Dry-run to inspect the request before executing
 ae-cli agent +add-model --dry-run --model-id gpt-4o --name "GPT-4o" --base-url "https://api.openai.com/v1"
@@ -41,8 +40,7 @@ ae-cli agent +add-model \
   --name "GPT-4o (company)" \
   --base-url "https://api.openai.com/v1" \
   --provider openai \
-  --scope company \
-  --yes
+  --scope company
 ```
 
 ## Parameters

@@ -24,6 +24,7 @@ import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { execSync } from 'child_process';
+import { checkSkillFrontmatter } from './checks/skill-frontmatter.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const args = process.argv.slice(2);
@@ -228,7 +229,7 @@ function checkSkills(domains, focus) {
     const sdir = path.join(skillsRoot, skill);
     if (!fs.statSync(sdir).isDirectory()) continue;
     const skillMd = read(path.join(sdir, 'SKILL.md'));
-    if (!skillMd) { add('P2', 'D4', `skill '${skill}' is missing SKILL.md`); continue; }
+    if (!skillMd) continue; // missing file reported by checkSkillFrontmatter below
 
     const refFiles = listDir(path.join(sdir, 'references')).filter((f) => f.endsWith('.md'));
     const refNames = refFiles.map((f) => f.replace(/\.md$/, ''));
@@ -273,33 +274,11 @@ function checkSkills(domains, focus) {
     if (deadLinks.length) {
       add('P2', 'D4', `skill '${skill}' has broken doc links: ${deadLinks.map((l) => 'references/' + l + '.md').join(', ')}`);
     }
+  }
 
-    // D4c: frontmatter required fields
-    if (!/^---[\s\S]*?name:\s*\S+[\s\S]*?description:\s*\S+[\s\S]*?---/m.test(skillMd)) {
-      add('P3', 'D4', `skill '${skill}' SKILL.md frontmatter is missing name/description`);
-    }
-
-    // D4d: description must be YAML-safe when it contains ": " (external skill hubs parse frontmatter as YAML)
-    const fm = skillMd.match(/^---\r?\n([\s\S]*?)\r?\n---/);
-    if (fm) {
-      for (const line of fm[1].split(/\r?\n/)) {
-        const dm = line.match(/^description:\s*(.*)$/);
-        if (!dm) continue;
-        const val = dm[1];
-        const quoted =
-          (val.startsWith('"') && val.endsWith('"')) ||
-          (val.startsWith("'") && val.endsWith("'")) ||
-          val === '>' ||
-          val === '|';
-        if (!quoted && /:\s/.test(val)) {
-          add(
-            'P1',
-            'D4',
-            `skill '${skill}' SKILL.md description is unquoted but contains ": " — external YAML parsers will fail (quote the description)`,
-          );
-        }
-      }
-    }
+  // D4c + D4d: frontmatter + YAML-safe description (shared with release-gate)
+  for (const f of checkSkillFrontmatter(ROOT).findings) {
+    add(f.level, f.dim || 'D4', f.msg);
   }
 }
 

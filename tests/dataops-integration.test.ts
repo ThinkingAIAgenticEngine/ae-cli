@@ -6,14 +6,18 @@
  */
 
 import assert from 'node:assert/strict';
+import { mkdtemp, readFile, rm } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import type { RuntimeContext } from '../src/framework/types.js';
 import { callDataopsApi } from '../src/commands/te-dataops/shared.js';
 import { addSyncSolution } from '../src/commands/te-dataops/integration/add-sync-solution.js';
 import { getTableStructure } from '../src/commands/te-dataops/integration/get-table-structure.js';
+import { getSqlQueryStatus } from '../src/commands/te-dataops/ide/get-sql-query-status.js';
 import { getTaskInstanceDetail } from '../src/commands/te-dataops/operations/get-task-instance-detail.js';
-import { clearToken, saveToken } from '../src/core/auth.js';
 import { clearCliToken, setCliTokenManual } from '../src/core/cli-token.js';
 import { PermissionError } from '../src/core/errors.js';
+import { clear as clearSecureToken, save as saveSecureToken } from '../src/core/secure-store.js';
 
 let pass = 0;
 let fail = 0;
@@ -30,7 +34,11 @@ async function test(name: string, fn: () => void | Promise<void>): Promise<void>
   }
 }
 
-function ctx(values: Record<string, string>, hostUrl = 'http://example.test'): RuntimeContext {
+function ctx(
+  values: Record<string, string>,
+  hostUrl = 'http://example.test',
+  token: () => Promise<string> = async () => '',
+): RuntimeContext {
   return {
     str: (name) => values[name] ?? '',
     num: (name) => Number(values[name] ?? 0),
@@ -40,7 +48,7 @@ function ctx(values: Record<string, string>, hostUrl = 'http://example.test'): R
     api: async () => undefined,
     querySql: async () => undefined,
     queryReportData: async () => undefined,
-    token: async () => '',
+    token,
     host: () => hostUrl,
     mcpUrl: () => undefined,
     service: () => 'dataops_integration',
@@ -150,9 +158,13 @@ await test('callDataopsApi treats 403 as PermissionError without retry', async (
 await test('callDataopsApi refreshes cli-token once on 401', async () => {
   const host = 'https://test-dataops-401.internal';
   clearCliToken(host);
-  clearToken(host);
+  clearSecureToken(host);
   setCliTokenManual('stale-dataops-token', host);
-  saveToken('fake-access-token-for-dataops-401-test', host);
+  saveSecureToken(host, {
+    accessToken: 'fake-access-token-for-dataops-401-test',
+    refreshToken: '',
+    accessExpiresAt: new Date(Date.now() + 60_000).toISOString(),
+  });
 
   let apiCallCount = 0;
   const seenTokens: string[] = [];
@@ -180,7 +192,59 @@ await test('callDataopsApi refreshes cli-token once on 401', async () => {
   } finally {
     globalThis.fetch = prevFetch;
     clearCliToken(host);
-    clearToken(host);
+    clearSecureToken(host);
+  }
+});
+
+await test('get_sql_query_status downloads with cli-token and never requests an access token', async () => {
+  const host = 'https://test-dataops-download.internal';
+  const targetDir = await mkdtemp(join(tmpdir(), 'ae-cli-dataops-download-'));
+  const targetFile = join(targetDir, 'result.zip');
+  const expected = Buffer.from('zip-result');
+  clearCliToken(host);
+  setCliTokenManual('cli-download-token', host);
+
+  let accessTokenCalls = 0;
+  const requestUrls: string[] = [];
+  const requestHeaders: Record<string, string>[] = [];
+  const previousFetch = globalThis.fetch;
+  globalThis.fetch = (async (url, init) => {
+    requestUrls.push(String(url));
+    requestHeaders.push((init?.headers as Record<string, string>) ?? {});
+    if (String(url).includes('/sql-query-status')) {
+      return new Response(JSON.stringify({
+        returnCode: 0,
+        data: {
+          downloadStatus: 'SUCCESS',
+          downloadParams: { spaceCode: 'test_ly', taskId: 40 },
+        },
+      }), { status: 200 });
+    }
+    return new Response(expected, { status: 200 });
+  }) as typeof fetch;
+
+  try {
+    const result = await getSqlQueryStatus.execute(ctx({
+      spaceCode: 'test_ly',
+      downloadTaskId: '40',
+      downloadTo: targetFile,
+    }, host, async () => {
+      accessTokenCalls++;
+      throw new Error('access token must not be requested');
+    }));
+
+    assert.equal(accessTokenCalls, 0);
+    assert.equal((result as any).localFile, targetFile);
+    assert.deepEqual(await readFile(targetFile), expected);
+    assert.match(requestUrls[1], /\/api\/cli\/dataops\/v1\/gaia\/ide\/sql-query-download/);
+    assert.match(requestUrls[1], /spaceCode=test_ly/);
+    assert.match(requestUrls[1], /taskId=40/);
+    assert.equal(requestHeaders[1]['cli-token'], 'cli-download-token');
+    assert.equal(requestHeaders[1].Authorization, undefined);
+  } finally {
+    globalThis.fetch = previousFetch;
+    clearCliToken(host);
+    await rm(targetDir, { recursive: true, force: true });
   }
 });
 

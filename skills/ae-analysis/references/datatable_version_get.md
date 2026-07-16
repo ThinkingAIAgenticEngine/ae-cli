@@ -2,7 +2,7 @@
 
 Use when the user needs to get data table version detail.
 
-Do not use this command for unrelated analysis queries, ad-hoc query construction, or MCP metadata discovery when an existing specialized command already fits the user's request.
+Do not use it for the current table definition without a verified version ID; list versions first.
 
 Command:
 
@@ -15,7 +15,7 @@ Capability id: `metadata.data_table_version.get`.
 
 Input sends `project_id`, `version_id`.
 
-Output is the gateway envelope. `data` contains the common-service capability result.
+Output `data.version` contains the selected historical version detail.
 
 ## Parameters
 | Parameter | Required | Description |

@@ -1,7 +1,12 @@
 import type { Command, Flag, RiskLevel, RuntimeContext } from '../../framework/types.js';
-import { isGlobalQueryModeEnabled } from '../../core/cluster-info.js';
 import { callMcpTool, parseMcpResult, resolveMcpUrl } from '../../core/mcp.js';
-import { buildApiUrl, callCapabilityApi, type CapabilityApiMethod } from '../../core/capability-api.js';
+import {
+  buildApiUrl,
+  callCapabilityApi,
+  dryRunCapability,
+  validateCapability,
+  type CapabilityApiMethod,
+} from '../../core/capability-api.js';
 
 interface CreateMcpCommandConfig {
   command: `+${string}`;
@@ -71,11 +76,32 @@ export function createApiCommand(config: CreateApiCommandConfig): Command {
     flags: config.flags,
     risk: config.risk,
     validate: config.validate,
-    dryRun: (ctx) => ({
-      method: 'POST',
-      url: buildApiUrl(ctx.host(), domain, capabilityAction.replace(/\/execute$/, '/dry-run')),
-      body: { input: config.buildArgs(ctx) },
-    }),
+    validateInput: async (ctx) => {
+      const input = config.buildArgs(ctx);
+      const validatePath = capabilityAction.replace(/\/execute$/, '/validate');
+      const match = validatePath.match(/^capabilities\/(.+)\/validate$/);
+      if (match) {
+        return validateCapability(ctx.host(), domain, match[1], input);
+      }
+      return {
+        message: 'No --validate implementation for this command action path',
+        action: capabilityAction,
+      };
+    },
+    dryRun: async (ctx) => {
+      const input = config.buildArgs(ctx);
+      const dryRunPath = capabilityAction.replace(/\/execute$/, '/dry-run');
+      const match = dryRunPath.match(/^capabilities\/(.+)\/dry-run$/);
+      if (match) {
+        return dryRunCapability(ctx.host(), domain, match[1], input);
+      }
+      // Fallback local preview when action is not a standard capability execute path.
+      return {
+        method: 'POST',
+        url: buildApiUrl(ctx.host(), domain, dryRunPath),
+        body: { input },
+      };
+    },
     execute: async (ctx) => {
       const input = config.buildArgs(ctx);
       if (method === 'GET') {
@@ -113,26 +139,6 @@ export function optionalJsonString(ctx: RuntimeContext, name: string): string | 
 
 export function requiredJsonString(ctx: RuntimeContext, name: string): string {
   return JSON.stringify(ctx.json(name));
-}
-
-export function clusterQueryFlags(scopeDesc: string): Flag[] {
-  if (!isGlobalQueryModeEnabled()) {
-    return [];
-  }
-  return [
-    { name: 'cluster_query_scope', type: 'string', required: false, desc: scopeDesc },
-    { name: 'slave_cluster_id', type: 'string', required: false, desc: 'Slave cluster ID. Required when cluster_query_scope=SLAVE. Use +list_query_clusters first to choose this value.' },
-  ];
-}
-
-export function optionalClusterQueryArgs(ctx: RuntimeContext): Record<string, unknown> {
-  if (!isGlobalQueryModeEnabled()) {
-    return {};
-  }
-  return {
-    clusterQueryScope: optionalString(ctx, 'cluster_query_scope'),
-    slaveClusterId: optionalString(ctx, 'slave_cluster_id'),
-  };
 }
 
 // Row-count limits for data-query commands. Default is agent-friendly; the
