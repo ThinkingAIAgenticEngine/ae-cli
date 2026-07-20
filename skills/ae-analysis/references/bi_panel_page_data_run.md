@@ -16,4 +16,4 @@ Input sends `project_id`, `panel_id`, `page_key`, `result_type`, and optional co
 
 Output is the gateway envelope. `data` contains bounded inline page data.
 
-When `result_type=charts` and the backend can resolve chart SQL sources, the response may include `query_context_id` plus `sources`. BI chart sources are SQL contexts, so `drilldown_available` and `result_cluster_available` are false unless the response explicitly says otherwise. Do not call model drilldown commands from a BI SQL context with `drilldown_available=false`.
+BI page/chart sources are SQL and do not support analysis drilldown or result-cluster creation. Do not call model drilldown commands from this result.

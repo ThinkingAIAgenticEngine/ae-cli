@@ -23,7 +23,7 @@ ae-cli analysis adhoc export \
 
 Read [`ai_models.md`](ai_models.md) for the single 12-model `model_type` registry, AI-facing `definition`, and SQL dynamic params contract.
 
-For SQL model definitions, do not invent table or column names. If the table is unknown, call `analysis sql-table list --project-id <project_id>`; then inspect the selected `table_ref` with `analysis sql-table columns --project-id <project_id> --table-ref <table_ref>` before writing SQL.
+For SQL model definitions, do not invent table or column names. If the table reference is known, inspect columns with `analysis-meta datatable columns-get`; if the table is unknown, ask for it instead of guessing.
 
 ## Definition contract
 
@@ -49,12 +49,9 @@ The response is an async artifact descriptor:
 - `run_id`: poll or cancel this run.
 - `artifact_id`: download this artifact after completion.
 - `status` / `artifact_status`: initial lifecycle states.
-- `format`: actual logical artifact format (`jsonl` or `csv`).
-- `compression` / `content_encoding`: actual compression/encoding; analysis ad-hoc exports currently return `gzip`.
-- `file_name` / `content_type`: actual downloadable file contract. Do not infer compression from `--artifact-format` alone.
 - `expires_at` / `expires_at_iso`: artifact expiration.
 - `effective_timeout_seconds`, `timeout_source`, `deadline_at`: effective lifecycle policy.
-- `query_context_id` / `query_context_expires_at`: reusable follow-up context when Redis context creation succeeds.
+- Export descriptors contain lifecycle/artifact metadata only. They do not create `query_context_id` or selectable drilldown options.
 
 Preserve the `run_id` and `artifact_id` from this exact submit response as one pair. Do not infer either ID from a path or reuse an ID from another export.
 
@@ -68,4 +65,4 @@ ae-cli analysis query cancel --run-id <run_id>
 
 If query execution fails, `run inspect` reaches `FAILED`; it must not produce a completed empty artifact. Download only after the successful terminal states documented in `analysis_data_retrieval.md`.
 
-Use the submit response `query_context_id` immediately with `analysis drilldown-users run` or `analysis query create-result-cluster` when present. JSONL artifacts repeat query context plus `format`, `compression`, `content_type`, and `content_encoding` in the first metadata line. Source metadata includes `effective_time_range`, `time_range_adjustments`, and `clipping_reasons`. Date rows expose stable `drilldown_date` and separate `display_date`; copy only `drilldown_date` into a drilldown target. CSV remains pure CSV and carries context/format metadata only in the submit and run-inspect descriptors. Do not pass raw QP.
+Exported rows are durable data, not interactive preview coordinates. Never drill down or create a result cluster from the submit response or downloaded artifact. Run a bounded synchronous preview containing the desired cell first.

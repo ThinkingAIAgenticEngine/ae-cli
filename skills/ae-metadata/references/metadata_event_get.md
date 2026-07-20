@@ -35,18 +35,18 @@ Gateway request body uses snake_case `input`:
 
 ## Decision Rules
 
-- Prefer **`metadata event get`** over `analysis_meta +list_events` when you need **full detail + virtual definition**, not browsing or fuzzy search.
-- Use `ae-analysis` → `analysis_meta +list_events` first when the event name is unknown or you need keyword search / pagination.
+- Prefer **`metadata event get`** over `analysis-meta event list` when you need **full detail + virtual definition**, not browsing or fuzzy search.
+- Use `ae-analysis` → `analysis-meta event list` first when the event name is unknown or you need keyword search / pagination.
 - If the gateway returns `EVENT_NOT_FOUND`, verify `event_name` spelling and `project_id`; do not invent names.
 - Auth: `cli-token` header (ae-cli injects automatically in sandbox; local CLI uses `getCliToken()`).
 
 ## Recommended Chaining
 
-- `ae-analysis`: `analysis_meta +list_events` (discover name) → `metadata event get` (detail)
+- `ae-analysis`: `analysis-meta event list` (discover name) → `metadata event get` (detail)
 - `metadata event get` → `metadata property get` (inspect properties listed in response)
 
 ## Next Steps After Failure
 
-- Empty or not found: confirm project id and exact `event_name` from `+list_events`.
+- Empty or not found: confirm project id and exact `event_name` from `analysis-meta event list`.
 - Permission error: confirm metadata view permission in the project.
 - Gateway unavailable: confirm nginx routes `/api/cli/metadata/` and backend capability catalog is deployed.

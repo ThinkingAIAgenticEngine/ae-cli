@@ -99,6 +99,31 @@ async function captureCapabilityDryRun(cmd, opts) {
   }
 }
 
+async function captureCapabilityExecute(cmd, opts, responseData) {
+  const { setCliTokenManual, clearCliToken } = await import(
+    pathToFileURL(path.join(ROOT, 'src/core/cli-token.ts')).href
+  );
+  setCliTokenManual('cli-test-token', HOST);
+  let capturedUrl = '';
+  let capturedBody;
+  const prevFetch = globalThis.fetch;
+  globalThis.fetch = (async (url, init) => {
+    capturedUrl = String(url);
+    capturedBody = init?.body ? JSON.parse(String(init.body)) : undefined;
+    return new Response(JSON.stringify({ ok: true, data: responseData, meta: {} }), {
+      status: 200,
+      headers: { 'Content-Type': 'application/json' },
+    });
+  });
+  try {
+    const result = await cmd.execute(makeCtx(opts));
+    return { url: capturedUrl, body: capturedBody, result };
+  } finally {
+    globalThis.fetch = prevFetch;
+    clearCliToken(HOST);
+  }
+}
+
 function runMcpDryRun(args) {
   const result = spawnSync('npx', ['tsx', 'src/index.ts', '--host', HOST, '--dry-run', ...args], {
     cwd: ROOT,
@@ -117,6 +142,59 @@ await test('metadata data-table list maps to analysis gateway component', async 
   const { url, body } = await captureCapabilityDryRun(cmd, { projectId: 1 });
   assert.equal(url, `${HOST}/api/cli/analysis/v1/capabilities/metadata.data_table.list/dry-run`);
   assert.deepEqual(body, { input: { project_id: 1 } });
+});
+
+await test('analysis-meta datatable columns-get sends table_ref to gateway', async () => {
+  const cmd = await importCmd('src/commands/te-analysis/meta/datatable/columns-get.ts', 'metadataDataTableColumnsGet');
+  const { url, body } = await captureCapabilityDryRun(cmd, { projectId: 1, tableRef: 'hive.ta.v_event_1' });
+  assert.equal(url, `${HOST}/api/cli/analysis/v1/capabilities/metadata.data_table.columns_get/dry-run`);
+  assert.deepEqual(body, { input: { project_id: 1, table_ref: 'hive.ta.v_event_1' } });
+});
+
+await test('analysis-meta event list sends search pagination projection and auth filter', async () => {
+  const cmd = await importCmd('src/commands/te-analysis/meta/event/list.ts', 'metadataEventList');
+  const { url, body } = await captureCapabilityDryRun(cmd, {
+    projectId: 1,
+    query: 'login',
+    fields: ['event_name', 'authentication_status'],
+    limit: 20,
+    offset: 0,
+    authenticatedOnly: true,
+  });
+  assert.equal(url, `${HOST}/api/cli/analysis/v1/capabilities/metadata.event.list/dry-run`);
+  assert.deepEqual(body.input, {
+    project_id: 1,
+    query: 'login',
+    fields: ['event_name', 'authentication_status'],
+    limit: 20,
+    offset: 0,
+    authenticated_only: true,
+  });
+});
+
+await test('analysis-meta property list sends search pagination projection and auth filter', async () => {
+  const cmd = await importCmd('src/commands/te-analysis/meta/property/list.ts', 'metadataPropertyList');
+  const { url, body } = await captureCapabilityDryRun(cmd, {
+    projectId: 1,
+    scope: 'event',
+    eventName: 'purchase',
+    query: 'login',
+    fields: ['prop_name', 'authentication_status'],
+    limit: 20,
+    offset: 0,
+    authenticatedOnly: true,
+  });
+  assert.equal(url, `${HOST}/api/cli/analysis/v1/capabilities/metadata.property.list/dry-run`);
+  assert.deepEqual(body.input, {
+    project_id: 1,
+    scope: 'event',
+    event_name: 'purchase',
+    query: 'login',
+    fields: ['prop_name', 'authentication_status'],
+    limit: 20,
+    offset: 0,
+    authenticated_only: true,
+  });
 });
 
 await test('analysis dashboard get uses analysis capability gateway', async () => {
@@ -188,6 +266,129 @@ await test('analysis-meta metric create sends typed snake_case fields', async ()
   });
 });
 
+await test('analysis-meta metric create maps model-type to metric_mode', async () => {
+  const cmd = await importCmd('src/commands/te-analysis/meta/metric/create.ts', 'metadataMetricCreate');
+  const { url, body } = await captureCapabilityDryRun(cmd, {
+    projectId: 1,
+    metricName: 'retention_count',
+    metricDesc: 'Retention Count',
+    modelType: 'retention',
+    metricEvents: [{ eventName: 'login', type: 'first' }],
+    metricParams: { retentionType: 'retention' },
+  });
+  assert.equal(url, `${HOST}/api/cli/analysis/v1/capabilities/metadata.metric.create/dry-run`);
+  assert.deepEqual(body.input, {
+    project_id: 1,
+    metric_name: 'retention_count',
+    metric_desc: 'Retention Count',
+    metric_mode: 1,
+    metric_events: [{ eventName: 'login', type: 'first' }],
+    metric_params: { retentionType: 'retention' },
+  });
+});
+
+await test('analysis-meta metric get sends metric_id to gateway', async () => {
+  const cmd = await importCmd('src/commands/te-analysis/meta/metric/get.ts', 'metadataMetricGet');
+  const { url, body } = await captureCapabilityDryRun(cmd, {
+    projectId: 1,
+    metricId: 1001,
+  });
+  assert.equal(url, `${HOST}/api/cli/analysis/v1/capabilities/metadata.metric.get/dry-run`);
+  assert.deepEqual(body.input, {
+    project_id: 1,
+    metric_id: 1001,
+  });
+});
+
+await test('analysis-meta metric list sends search pagination projection and auth filter', async () => {
+  const cmd = await importCmd('src/commands/te-analysis/meta/metric/list.ts', 'metadataMetricList');
+  const { url, body } = await captureCapabilityDryRun(cmd, {
+    projectId: 1,
+    query: 'pay',
+    fields: ['metric_name', 'authentication_status'],
+    limit: 20,
+    offset: 0,
+    authenticatedOnly: true,
+  });
+  assert.equal(url, `${HOST}/api/cli/analysis/v1/capabilities/metadata.metric.list/dry-run`);
+  assert.deepEqual(body.input, {
+    project_id: 1,
+    query: 'pay',
+    fields: ['metric_name', 'authentication_status'],
+    limit: 20,
+    offset: 0,
+    authenticated_only: true,
+  });
+});
+
+await test('analysis-meta metric update maps legacy model-type fields to gateway input', async () => {
+  const cmd = await importCmd('src/commands/te-analysis/meta/metric/update.ts', 'metadataMetricUpdate');
+  const { url, body } = await captureCapabilityDryRun(cmd, {
+    projectId: 1,
+    metricId: 1001,
+    metricName: 'pay_count',
+    metricDesc: 'Pay Count',
+    metricRemark: 'Core pay',
+    modelType: 'retention',
+    metricEvents: [{ eventName: 'login', type: 'first' }],
+    metricParams: { retentionType: 'retention' },
+  });
+  assert.equal(url, `${HOST}/api/cli/analysis/v1/capabilities/metadata.metric.update/dry-run`);
+  assert.deepEqual(body.input, {
+    project_id: 1,
+    metric_id: 1001,
+    metric_name: 'pay_count',
+    metric_desc: 'Pay Count',
+    metric_remark: 'Core pay',
+    metric_mode: 1,
+    metric_events: [{ eventName: 'login', type: 'first' }],
+    metric_params: { retentionType: 'retention' },
+  });
+});
+
+await test('analysis-meta metric delete sends metric_id to gateway', async () => {
+  const cmd = await importCmd('src/commands/te-analysis/meta/metric/delete.ts', 'metadataMetricDelete');
+  const { url, body } = await captureCapabilityDryRun(cmd, {
+    projectId: 1,
+    metricId: 1001,
+  });
+  assert.equal(url, `${HOST}/api/cli/analysis/v1/capabilities/metadata.metric.delete/dry-run`);
+  assert.deepEqual(body.input, {
+    project_id: 1,
+    metric_id: 1001,
+  });
+});
+
+await test('analysis-meta virtual-event create builds payload from typed fields', async () => {
+  const cmd = await importCmd(
+    'src/commands/te-analysis/meta/virtual-event/create.ts',
+    'metadataVirtualEventCreate',
+  );
+  const { url, body } = await captureCapabilityDryRun(cmd, {
+    projectId: 1,
+    eventName: 'ta@pay_or_cart',
+    eventDesc: 'Pay Or Cart',
+    remark: 'Demo virtual event',
+    events: [{ eventName: 'purchase' }, { eventName: 'add_to_cart' }],
+    filter: { relation: 'and', conditions: [] },
+    override: true,
+  });
+  assert.equal(url, `${HOST}/api/cli/analysis/v1/capabilities/metadata.virtual_event.create/dry-run`);
+  assert.deepEqual(body.input, {
+    project_id: 1,
+    payload: {
+      event_name: 'ta@pay_or_cart',
+      event_desc: 'Pay Or Cart',
+      remark: 'Demo virtual event',
+      rule: {
+        events: [{ eventName: 'purchase' }, { eventName: 'add_to_cart' }],
+        filter: { relation: 'and', conditions: [] },
+      },
+    },
+    override: true,
+  });
+});
+
 await test('analysis-meta virtual-property create sends typed snake_case fields', async () => {
   const cmd = await importCmd(
     'src/commands/te-analysis/meta/virtual-property/create.ts',
@@ -208,6 +409,40 @@ await test('analysis-meta virtual-property create sends typed snake_case fields'
     v_prop: { property: { column_name: 'v_pay', column_desc: 'V Pay', table_type: 'event', select_type: 'string' } },
     sql_event_relation_type: 'relation_by_setting',
     related_events: [{ event_name: 'pay', event_desc: 'Pay' }],
+  });
+});
+
+await test('analysis-meta virtual-property create builds v_prop from legacy typed fields', async () => {
+  const cmd = await importCmd(
+    'src/commands/te-analysis/meta/virtual-property/create.ts',
+    'metadataVirtualPropertyCreate',
+  );
+  const { url, body } = await captureCapabilityDryRun(cmd, {
+    projectId: 1,
+    sqlExpression: 'CASE WHEN status = 1 THEN "active" ELSE "inactive" END',
+    propertyName: '#vp@status_label',
+    propertyDesc: 'Status Label',
+    propertyRemark: 'Demo virtual property',
+    tableType: 'event',
+    selectType: 'string',
+    sqlEventRelationType: 'relation_by_setting',
+    relatedEvents: [{ eventName: 'purchase' }],
+  });
+  assert.equal(url, `${HOST}/api/cli/analysis/v1/capabilities/metadata.virtual_property.create/dry-run`);
+  assert.deepEqual(body.input, {
+    project_id: 1,
+    sql_expression: 'CASE WHEN status = 1 THEN "active" ELSE "inactive" END',
+    v_prop: {
+      property: {
+        column_name: '#vp@status_label',
+        column_desc: 'Status Label',
+        column_remark: 'Demo virtual property',
+        table_type: 'event',
+        select_type: 'string',
+      },
+    },
+    sql_event_relation_type: 'relation_by_setting',
+    related_events: [{ eventName: 'purchase' }],
   });
 });
 
@@ -275,6 +510,49 @@ await test('analysis-meta asset-abnormal get uses standalone metadata resource',
     resource_type: 'event',
     resource_id: 'pay',
   });
+});
+
+await test('analysis-meta asset url-get sends resource identity to gateway', async () => {
+  const cmd = await importCmd(
+    'src/commands/te-analysis/meta/asset/url-get.ts',
+    'analysisMetaAssetUrlGet',
+  );
+  const { url, body } = await captureCapabilityDryRun(cmd, {
+    projectId: 1,
+    resourceType: 'dashboard',
+    resourceId: '10',
+  });
+  assert.equal(url, `${HOST}/api/cli/analysis/v1/capabilities/analysis_meta.asset_url.get/dry-run`);
+  assert.deepEqual(body.input, {
+    project_id: 1,
+    resource_type: 'dashboard',
+    resource_id: '10',
+  });
+});
+
+await test('analysis-meta asset url-get absolutizes relative resource links', async () => {
+  const cmd = await importCmd(
+    'src/commands/te-analysis/meta/asset/url-get.ts',
+    'analysisMetaAssetUrlGet',
+  );
+  const { result } = await captureCapabilityExecute(
+    cmd,
+    {
+      projectId: 1,
+      resourceType: 'dashboard',
+      resourceId: '10',
+    },
+    {
+      raw_url: '/#/panel/panel/1_10',
+      markdown_link: '[View Resource](/#/panel/panel/1_10)',
+      nested: {
+        share_link: '/#/share/10',
+      },
+    },
+  );
+  assert.equal(result.raw_url, `${HOST}/#/panel/panel/1_10`);
+  assert.equal(result.markdown_link, `[View Resource](${HOST}/#/panel/panel/1_10)`);
+  assert.equal(result.nested.share_link, `${HOST}/#/share/10`);
 });
 
 await test('analysis input-file upload uses analysis gateway input-files endpoint', () => {
@@ -365,10 +643,185 @@ await test('legacy analysis MCP builder commands remain unavailable', () => {
   assert.notEqual(result.status, 0);
   assert.match(result.stderr, /unknown command '\+build_event_analysis_qp'/);
 });
-await test('analysis_meta list commands pass authenticatedOnly to MCP arguments', () => {
-  const data = runMcpDryRun(['analysis_meta', '+list_events', '--project_id', '1', '--authenticated_only', 'true']);
-  assert.equal(data.body.name, 'list_events');
-  assert.equal(data.body.arguments.authenticatedOnly, true);
+await test('legacy analysis_common get_resource_url command remains unavailable', () => {
+  const result = spawnSync('npx', ['tsx', 'src/index.ts', '--host', HOST, '--dry-run',
+    'analysis_common',
+    '+get_resource_url',
+    '--project_id',
+    '1',
+    '--resource_type',
+    'dashboard',
+    '--resource_id',
+    '10',
+  ], {
+    cwd: ROOT,
+    encoding: 'utf-8',
+  });
+  assert.notEqual(result.status, 0);
+  assert.match(result.stderr, /unknown command '\+get_resource_url'/);
+});
+await test('legacy analysis_meta list_events command remains unavailable', () => {
+  const result = spawnSync('npx', ['tsx', 'src/index.ts', '--host', HOST, '--dry-run',
+    'analysis_meta',
+    '+list_events',
+    '--project_id',
+    '1',
+    '--authenticated_only',
+    'true',
+  ], {
+    cwd: ROOT,
+    encoding: 'utf-8',
+  });
+  assert.notEqual(result.status, 0);
+  assert.match(result.stderr, /unknown command '\+list_events'/);
+});
+await test('legacy analysis_meta list_properties command remains unavailable', () => {
+  const result = spawnSync('npx', ['tsx', 'src/index.ts', '--host', HOST, '--dry-run',
+    'analysis_meta',
+    '+list_properties',
+    '--project_id',
+    '1',
+    '--authenticated_only',
+    'true',
+  ], {
+    cwd: ROOT,
+    encoding: 'utf-8',
+  });
+  assert.notEqual(result.status, 0);
+  assert.match(result.stderr, /unknown command '\+list_properties'/);
+});
+await test('legacy analysis_meta create_metric command remains unavailable', () => {
+  const result = spawnSync('npx', ['tsx', 'src/index.ts', '--host', HOST, '--dry-run',
+    'analysis_meta',
+    '+create_metric',
+    '--project_id',
+    '1',
+    '--name',
+    'demo',
+    '--display_name',
+    'Demo',
+    '--model_type',
+    'event',
+    '--events',
+    '[]',
+    '--params',
+    '{}',
+  ], {
+    cwd: ROOT,
+    encoding: 'utf-8',
+  });
+  assert.notEqual(result.status, 0);
+  assert.match(result.stderr, /unknown command '\+create_metric'/);
+});
+await test('legacy analysis_meta get_metric command remains unavailable', () => {
+  const result = spawnSync('npx', ['tsx', 'src/index.ts', '--host', HOST, '--dry-run',
+    'analysis_meta',
+    '+get_metric',
+    '--project_id',
+    '1',
+    '--metric_id',
+    '1001',
+  ], {
+    cwd: ROOT,
+    encoding: 'utf-8',
+  });
+  assert.notEqual(result.status, 0);
+  assert.match(result.stderr, /unknown command '\+get_metric'/);
+});
+await test('legacy analysis_meta list_metrics command remains unavailable', () => {
+  const result = spawnSync('npx', ['tsx', 'src/index.ts', '--host', HOST, '--dry-run',
+    'analysis_meta',
+    '+list_metrics',
+    '--project_id',
+    '1',
+    '--authenticated_only',
+    'true',
+  ], {
+    cwd: ROOT,
+    encoding: 'utf-8',
+  });
+  assert.notEqual(result.status, 0);
+  assert.match(result.stderr, /unknown command '\+list_metrics'/);
+});
+await test('legacy analysis_meta update_metric command remains unavailable', () => {
+  const result = spawnSync('npx', ['tsx', 'src/index.ts', '--host', HOST, '--dry-run',
+    'analysis_meta',
+    '+update_metric',
+    '--project_id',
+    '1',
+    '--metric_id',
+    '1001',
+    '--name',
+    'pay_count',
+    '--display_name',
+    'Pay Count',
+    '--model_type',
+    'event',
+    '--events',
+    '[]',
+  ], {
+    cwd: ROOT,
+    encoding: 'utf-8',
+  });
+  assert.notEqual(result.status, 0);
+  assert.match(result.stderr, /unknown command '\+update_metric'/);
+});
+await test('legacy analysis_meta delete_metric command remains unavailable', () => {
+  const result = spawnSync('npx', ['tsx', 'src/index.ts', '--host', HOST, '--dry-run',
+    'analysis_meta',
+    '+delete_metric',
+    '--project_id',
+    '1',
+    '--metric_id',
+    '1001',
+  ], {
+    cwd: ROOT,
+    encoding: 'utf-8',
+  });
+  assert.notEqual(result.status, 0);
+  assert.match(result.stderr, /unknown command '\+delete_metric'/);
+});
+await test('legacy analysis_meta create_virtual_event command remains unavailable', () => {
+  const result = spawnSync('npx', ['tsx', 'src/index.ts', '--host', HOST, '--dry-run',
+    'analysis_meta',
+    '+create_virtual_event',
+    '--project_id',
+    '1',
+    '--event_name',
+    'ta@demo',
+    '--event_desc',
+    'Demo',
+    '--events',
+    '[]',
+  ], {
+    cwd: ROOT,
+    encoding: 'utf-8',
+  });
+  assert.notEqual(result.status, 0);
+  assert.match(result.stderr, /unknown command '\+create_virtual_event'/);
+});
+await test('legacy analysis_meta create_virtual_property command remains unavailable', () => {
+  const result = spawnSync('npx', ['tsx', 'src/index.ts', '--host', HOST, '--dry-run',
+    'analysis_meta',
+    '+create_virtual_property',
+    '--project_id',
+    '1',
+    '--property_name',
+    '#vp@demo',
+    '--table_type',
+    'event',
+    '--select_type',
+    'string',
+    '--sql_expression',
+    'event_name',
+    '--sql_event_relation_type',
+    'relation_default',
+  ], {
+    cwd: ROOT,
+    encoding: 'utf-8',
+  });
+  assert.notEqual(result.status, 0);
+  assert.match(result.stderr, /unknown command '\+create_virtual_property'/);
 });
 
 process.stdout.write(`\n${pass} passed, ${fail} failed\n`);

@@ -8,6 +8,8 @@ export interface Flag {
   required?: boolean;
   default?: any;
   desc: string;
+  /** Shown in validation errors when this required flag is missing. */
+  hint?: string;
   alias?: string;
   min?: number;
   max?: number;
@@ -25,6 +27,12 @@ export interface Command {
   risk: RiskLevel;
   /** Local flag / pre-flight checks before validateInput / dryRun / execute. */
   validate?: (ctx: RuntimeContext) => void;
+  /**
+   * Force early input parsing (e.g. JSON flags) before the high-risk-write confirmation gate,
+   * so invalid parameters surface as validation errors instead of being hidden behind the prompt.
+   * Only invoked on the execute path; pure/local — must not perform network calls.
+   */
+  preflight?: (ctx: RuntimeContext) => void;
   /**
    * Parameter-focused server check (capability gateway `/validate`).
    * Use to iterate complex input; prefer this over dryRun while still shaping qp/payload.

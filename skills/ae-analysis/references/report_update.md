@@ -19,4 +19,4 @@ Output is the gateway envelope. `data` contains update status, `report_id`, and 
 
 For the shortest safe update, read the current `version` exactly once with `analysis report get` immediately before the write; do not reuse a version from an older list or conversation turn. If a SQL dynamic parameter definition changed, query the saved default before applying an override so default persistence and override behavior are verified separately.
 
-After a successful update, call `analysis_common +get_resource_url` with the updated `report_id` and output its `markdown_link`.
+After a successful update, call `analysis-meta asset url-get` with the updated `report_id` and output its `markdown_link`.

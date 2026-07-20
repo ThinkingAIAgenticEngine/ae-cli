@@ -10,7 +10,7 @@ export const dashboardReportDataExport = createAnalysisCapabilityCommand({
   resource: 'dashboard-report-data',
   command: 'export',
   capabilityId: 'analysis.dashboard_report_data.export',
-  description: `Submit dashboard report data as an asynchronous gzip JSONL artifact. Filters and time overrides do not apply to SQL reports; the artifact still contains data plus structured warnings. The submit response and artifact metadata line contain query_context_id when Redis context creation succeeds. ${analysisDataExportRoutingHelp}`,
+  description: `Submit dashboard report data as an asynchronous gzip JSONL artifact. Filters and time overrides do not apply to SQL reports; the artifact still contains data plus structured warnings. Exports do not create interactive drilldown contexts. ${analysisDataExportRoutingHelp}`,
   flags: [
     projectIdFlag,
     { name: 'dashboard-id', type: 'number', required: true, desc: 'Dashboard ID.' },

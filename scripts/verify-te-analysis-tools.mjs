@@ -96,10 +96,6 @@ if (coreCommands.length !== EXPECTED_CORE_COUNT) {
   fail(`analysis tool count mismatch: expected ${EXPECTED_CORE_COUNT}, got ${coreCommands.length}`);
 }
 const REQUIRED_FOUR_MODULE_CAPABILITIES = [
-  'analysis.sql_table.list',
-  'analysis.sql_table.columns',
-  'analysis.entity.id_import_options',
-  'analysis.input_file.purpose.list',
   'analysis.dashboard.list',
   'analysis.dashboard.get',
   'analysis.dashboard_report_data.run',
@@ -112,8 +108,12 @@ const REQUIRED_FOUR_MODULE_CAPABILITIES = [
   'analysis.report_data.export',
   'analysis.adhoc.run',
   'analysis.adhoc.export',
-  'analysis.query.drilldown_users',
+  'analysis.query.drilldown_events',
+  'analysis.query.drilldown_events_export',
+  'analysis.query.drilldown_entities',
+  'analysis.query.drilldown_entities_export',
   'analysis.query.drilldown_user_events',
+  'analysis.query.drilldown_user_events_export',
   'analysis.query.create_result_cluster',
   'analysis.user_cluster.list',
   'analysis.user_cluster.create',
@@ -140,13 +140,13 @@ if (gatewayLifecycleCommands.length !== EXPECTED_GATEWAY_LIFECYCLE_COUNT) {
   fail(`analysis gateway lifecycle command count mismatch: expected ${EXPECTED_GATEWAY_LIFECYCLE_COUNT}, got ${gatewayLifecycleCommands.length}`);
 }
 
-const EXPECTED_CAPABILITY_COUNT = 163;
+const EXPECTED_CAPABILITY_COUNT = 207;
 if (capabilityCommands.length !== EXPECTED_CAPABILITY_COUNT) {
   fail(`analysis capability command count mismatch: expected ${EXPECTED_CAPABILITY_COUNT}, got ${capabilityCommands.length}`);
 }
 
 const EXPECTED_CAPABILITY_COUNTS_BY_SERVICE = {
-  analysis: 95,
+  analysis: 139,
   'analysis-meta': 48,
   'analysis-governance': 20,
 };
@@ -256,9 +256,7 @@ for (const item of [...capabilityCommands, ...gatewayLifecycleCommands]) {
   const requiredTokens = [
     `# ${item.service} ${item.resource} ${item.command}`,
     `ae-cli ${item.service} ${item.resource} ${item.command}`,
-    ...(['analysis-meta', 'analysis-governance'].includes(item.service)
-      ? ['Use', 'Do not use', 'Input', 'Output']
-      : []),
+    ...(item.service === 'analysis-meta' ? ['Use', 'Do not use', 'Input', 'Output'] : []),
   ];
   for (const token of requiredTokens) {
     if (!content.includes(token)) {
@@ -277,11 +275,14 @@ const criticalReferenceTokens = {
   'skills/ae-analysis/references/user_cluster_member_export.md': ['has_more=false', 'final metadata line'],
   'skills/ae-analysis/references/user_tag_member_export.md': ['has_more=false', 'final metadata line'],
   'skills/ae-analysis/references/history_tag_batch_refresh.md': ['start_time', 'end_time', 'only_abnormal', 'use_user_table_type'],
-  'skills/ae-analysis/references/drilldown_users_run.md': ['sources[]', 'target_contract.default_target', 'target_contract.copy_from_selected_result'],
-  'skills/ae-analysis/references/drilldown_users_export.md': ['does not accept `--limit` or `--offset`', 'one JSONL artifact'],
-  'skills/ae-analysis/references/drilldown_user_events_export.md': ['does not accept `--limit`, `--page-num`, or `--page-size`', 'one JSONL artifact'],
-  'skills/ae-analysis/references/query_create_result_cluster.md': ['sources[].target_contract', 'query_context_id'],
-  'skills/ae-analysis/references/analysis_data_retrieval.md': ['Default and maximum runtime is 21600 seconds (6 hours)', 'sources', 'target_contract'],
+  'skills/ae-analysis/references/analysis_drilldown_contract.md': ['synchronous_preview_only', 'row_options[]', 'metric_options[]', 'ENTITY_LIST', '`attribution_event_id`'],
+  'skills/ae-analysis/references/drilldown_events_run.md': ['analysis_angle=EVENT_LIST', '`target_id`'],
+  'skills/ae-analysis/references/drilldown_events_export.md': ['does not accept `--limit`', 'one full-download query', '`csv.gz`'],
+  'skills/ae-analysis/references/drilldown_entities_run.md': ['subject.type=user', 'subject.type=entity', 'shallow-merge'],
+  'skills/ae-analysis/references/drilldown_entities_export.md': ['does not accept `--limit`', 'never creates a query context'],
+  'skills/ae-analysis/references/drilldown_user_events_export.md': ['does not accept `--limit`, `--offset`, `--page-num`, or `--page-size`', 'without the synchronous 1000-row preview cap', '`csv.gz`'],
+  'skills/ae-analysis/references/query_create_result_cluster.md': ['custom-entity', 'query_context_id', 'coordinate'],
+  'skills/ae-analysis/references/analysis_data_retrieval.md': ['Default and maximum runtime is 21600 seconds (6 hours)', 'sources', 'synchronous'],
   'skills/ae-analysis/references/report_create.md': ['SQL dynamic parameter', 'query the saved default first', '`report_id` returned by this exact create response'],
   'skills/ae-analysis/references/report_update.md': ['read the current `version` exactly once', 'query the saved default before applying an override'],
   'skills/ae-analysis/references/report_list.md': ['narrow with `--query` or `--model-types` before paging', 'do not enumerate every report page'],
@@ -291,8 +292,15 @@ const criticalReferenceTokens = {
   'skills/ae-analysis/references/adhoc_export.md': ['Preserve the `run_id` and `artifact_id` from this exact submit response'],
   'skills/ae-analysis/references/run_inspect.md': ['same export response'],
   'skills/ae-analysis/references/artifact_download.md': ['same export response'],
-  'skills/ae-analysis/references/get_resource_url.md': ['report create/update', 'returned `report_id`'],
-  'skills/ae-analysis/references/ai_models.md': ['`tag_name` is the only tag-report name field'],
+  'skills/ae-analysis/references/asset_url_get.md': ['post-write resource link completion', 'raw_url', 'markdown_link'],
+  'skills/ae-analysis/references/report_get.md': ['agent-facing `time_particle_size`', 'internal `T0` through `T9` codes must never leak', 'Do not infer a granularity'],
+  'skills/ae-analysis/references/ai_models.md': [
+    '`tag_name` is the only tag-report name field',
+    '`second`: `1..999`',
+    '`minute`: `1..999`',
+    '`hour`: `1..24`',
+    'never relabel it as `user_property`',
+  ],
 };
 for (const [relPath, tokens] of Object.entries(criticalReferenceTokens)) {
   const content = fs.readFileSync(path.join(ROOT, relPath), 'utf-8');
@@ -361,8 +369,10 @@ const currentDocsTokens = [
   'analysis dashboard-report-data export',
   'analysis bi-panel-page-data run',
   'analysis bi-panel-page-data export',
-  'analysis drilldown-users run',
-  'analysis drilldown-users export',
+  'analysis drilldown-events run',
+  'analysis drilldown-events export',
+  'analysis drilldown-entities run',
+  'analysis drilldown-entities export',
   'analysis drilldown-user-events run',
   'analysis drilldown-user-events export',
   'analysis query create-result-cluster',

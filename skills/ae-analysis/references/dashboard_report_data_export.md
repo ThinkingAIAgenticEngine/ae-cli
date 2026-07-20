@@ -22,11 +22,11 @@ Input sends `project_id`, `dashboard_id`, and optional `report_ids`, `filters`, 
 
 Dashboard `filters`, `start_time`, and `end_time` do not apply to SQL reports. Export still completes with SQL report data; the JSONL result object includes `warnings[]` with `OVERRIDE_IGNORED_FOR_MODEL`, affected SQL `report_ids`, and `ignored_fields`. Query SQL reports directly with report-data `--sql-params` when SQL conditions must change.
 
-Output is the gateway envelope. `data` contains an async export descriptor with `run_id`, `artifact_id`, status fields, expiration fields, and `query_context_id` / `query_context_expires_at` when Redis context creation succeeds. It does not expose inspect/download API paths; use the CLI commands below.
+Output is the gateway envelope. `data` contains an async export descriptor with `run_id`, `artifact_id`, status fields, and expiration fields. Exports do not create `query_context_id`. It does not expose inspect/download API paths; use the CLI commands below.
 
 An empty artifact is successful and means the requested time range has no data. The run reaches `FAILED` only when every returned dashboard report entry contains an explicit execution error. Mixed dashboard exports retain successful data and explicit per-report failure entries.
 
-Use the submit response `query_context_id` immediately with `analysis drilldown-users run` or `analysis query create-result-cluster` when present. After the run completes, the downloaded artifact's first metadata line repeats the query context for file consumers. Do not pass raw QP.
+Never use the export response or downloaded rows as a drilldown/result-cluster source. Run a bounded synchronous dashboard report preview containing the desired cell first.
 
 Follow-up workflow:
 

@@ -75,6 +75,18 @@ await test('resolveGatewayDomain honors generic env override', () => {
   }
 });
 
+await test('resolveGatewayDomain env override beats call-site override (local Hermes)', () => {
+  clearCapabilityGatewayRoutesForTest();
+  registerCapabilityGatewayRoute('engage-task', { gatewayDomain: 'engage' });
+  process.env.AE_CLI_CAPABILITY_GATEWAY_DOMAIN = '';
+  try {
+    // engage commands pass gatewayDomain:'engage'; empty env must still force /api/cli/v1
+    assert.equal(resolveGatewayDomain('engage-task', 'engage'), '');
+  } finally {
+    delete process.env.AE_CLI_CAPABILITY_GATEWAY_DOMAIN;
+  }
+});
+
 await test('resolveGatewayDomain throws when cliService is not registered', () => {
   clearCapabilityGatewayRoutesForTest();
   assert.throws(

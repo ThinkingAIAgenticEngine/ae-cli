@@ -51,6 +51,8 @@ Use `{"mode":"relative","relative_date_range":"0-7"}` for recent-day queries.
 
 Do not pass raw QP, `eventView`, `taFilters`, `columnName`, or `tableType`.
 
+When `definition.properties` is present, it is an exact projection: required system event columns remain, requested properties are appended, and unrelated properties must not be returned.
+
 Do not use this command for full, unknown-size, or later-page detail retrieval. Use `analysis event-detail export` and check its artifact metadata for `truncated`.
 
 Output:

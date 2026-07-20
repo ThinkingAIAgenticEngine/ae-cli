@@ -76,6 +76,53 @@ ae-cli engage +config_channel_list --project_id 1
 
 # Query project channel touch-limit rules
 ae-cli engage-setting channel-touch-limits list --project-id <project_id>
+
+# Update a channel's config / reach-funnel settings
+ae-cli engage-setting channel update-config --project-id <project_id> --channel-id <channel_id> --enable-touch-event 1
+
+# Send a test message to a channel
+ae-cli engage-setting channel test-send --project-id <project_id> --channel-id <channel_id> --push-id <send_id> --content-list '[{"key":"title","value":"hello"}]'
+
+# Batch update / toggle / save channel touch-limit (fatigue-control) rules
+ae-cli engage-setting channel-touch-limits batch-update --project-id <project_id> --items '[{"rule_id":"r1","enable":true,"rule_def":"[]"}]'
+ae-cli engage-setting channel-touch-limits toggle --project-id <project_id> --rule-id <rule_id> --enable false
+ae-cli engage-setting channel-touch-limits save --project-id <project_id> --channel-biz-type <biz_type> --rule-def '[]' --enable true
+
+# Remove an approver from a project
+ae-cli engage-setting approval-approver delete --project-id <project_id> --approver <open_id> --yes
+
+# Whitelist add / update / delete / verify
+ae-cli engage-setting whitelist add --project-id <project_id> --prop-code <prop_code> --column-name <column_name> --column-type string --whitelist-list '[{"entity_id":"u1","source_value":"v1"}]'
+ae-cli engage-setting whitelist update --project-id <project_id> --whitelist-id <id> --note-name <name>
+ae-cli engage-setting whitelist delete --project-id <project_id> --whitelist-ids '["wl-1"]' --yes
+ae-cli engage-setting whitelist verify --project-id <project_id> --prop-code <prop_code> --column-type string --whitelist-prop-list '["v1"]'
+
+# Push-language (本地化) get / set
+ae-cli engage-setting push-language get --project-id <project_id>
+ae-cli engage-setting push-language set --project-id <project_id> --push-language-column <prop_code>
+
+# Client param (客户端参数) update / delete / list
+ae-cli engage-setting client-param update --project-id <project_id> --column-name level --column-type string --select-type single --column-desc Level
+ae-cli engage-setting client-param delete --project-id <project_id> --column-name level --yes
+ae-cli engage-setting client-param list --project-id <project_id>
+
+# Config table (配置表) upload / save / list / query-data / update-data / delete
+ae-cli engage-setting config-table upload --project-id <project_id> --request-id <rid> --file-name data.csv --file-content "$(base64 -i data.csv)"
+ae-cli engage-setting config-table save --project-id <project_id> --request-id <rid> --info-name <table_name>
+ae-cli engage-setting config-table list --project-id <project_id>
+ae-cli engage-setting config-table query-data --project-id <project_id> --info-id <info_id>
+ae-cli engage-setting config-table update-data --project-id <project_id> --request-id <rid> --info-name <table_name> --info-id <info_id>
+ae-cli engage-setting config-table delete --project-id <project_id> --info-id <info_id> --yes
+
+# Preset event (预置事件) list / update
+ae-cli engage-setting preset-event list --project-id <project_id>
+ae-cli engage-setting preset-event update --project-id <project_id> --add-event-desc <qp>
+
+# Common metric (常用指标) list / get / update / delete
+ae-cli engage-setting common-metric list --project-id <project_id>
+ae-cli engage-setting common-metric get --project-id <project_id> --metric-name <name>
+ae-cli engage-setting common-metric update --project-id <project_id> --metric-type <type> --metric-name <name> --metric-qp <qp> --metric-window-num 1 --metric-window-time-unit DAY --display-name <display>
+ae-cli engage-setting common-metric delete --project-id <project_id> --metric-name <name> --yes
 ```
 
 ### 2. task
@@ -122,7 +169,7 @@ ae-cli engage +flow_list --project_id 1
 ae-cli engage +flow_detail --project_id 1 --flow_uuid flow_uuid_123
 
 # Query flow operation records and application logs
-ae-cli engage-flow operation-log query --project-id 1 --flow-uuid flow_uuid_123
+ae-cli engage-flow operation-log query --project-id 1 --flow-id flow_id_123
 
 # Query flow versions and task push records
 ae-cli engage-flow version list --project-id 1 --flow-id flow_id_123
@@ -132,10 +179,121 @@ ae-cli engage-task segment-list query --project-id 1 --task-id task_id_123
 ae-cli engage-task group list --project-id 1
 ae-cli engage-task metric list --project-id 1 --task-id task_id_123
 ae-cli engage-task channel-ref stats --project-id 1 --channel-id channel_123
-ae-cli engage-task ops delete --project-id 1 --task-id task_id_123 --yes
+ae-cli engage-task task delete --project-id 1 --task-id task_id_123 --yes
 
 # Query the node schema
 ae-cli engage +flow_node_config_schema --node_type message_push
+```
+
+### 5. scene (场景管理 / 配置中心)
+
+New capability-gateway command group `engage-scene` covers 配置中心 (config center): config items, params, groups, preset/related metrics, config channels, strategies, and templates. Complex DTOs are passed with `--payload` (native camelCase JSON).
+
+```bash
+# Config item (配置项) list / create / update
+ae-cli engage-scene config-item list --project-id <project_id>
+ae-cli engage-scene config-item create --project-id <project_id> --config-id <config_id> --config-name <name> --business-type params
+ae-cli engage-scene config-item update --project-id <project_id> --config-id <config_id> --config-name <name>
+
+# Config param (配置项参数) list / batch-add / update / batch-delete
+ae-cli engage-scene config-param list --project-id <project_id> --config-id <config_id>
+ae-cli engage-scene config-param batch-add --project-id <project_id> --config-id <config_id> --params '[{"param_name":"a","param_type":"string"}]'
+ae-cli engage-scene config-param update --project-id <project_id> --config-id <config_id> --param-id <param_id> --param-name a
+ae-cli engage-scene config-param batch-delete --project-id <project_id> --param-ids '[1,2]' --yes
+
+# Config group (配置项分组) list / batch-add / update / batch-delete
+ae-cli engage-scene config-group list --project-id <project_id>
+ae-cli engage-scene config-group batch-add --project-id <project_id> --group-names '["g1"]'
+ae-cli engage-scene config-group update --project-id <project_id> --group-id <group_id> --group-name g2
+ae-cli engage-scene config-group batch-delete --project-id <project_id> --group-ids '[1,2]' --yes
+
+# Preset metric (预置指标) get / set
+ae-cli engage-scene preset-metric get --project-id <project_id> --config-id <config_id>
+ae-cli engage-scene preset-metric set --project-id <project_id> --config-id <config_id> --impression-event-qp '<qp>'
+
+# Config metric (关联指标) list / get / batch-add / update-rule / batch-delete
+ae-cli engage-scene config-metric list --project-id <project_id> --config-id <config_id>
+ae-cli engage-scene config-metric get --project-id <project_id> --metric-id <metric_id>
+ae-cli engage-scene config-metric batch-add --project-id <project_id> --config-id <config_id> --ta-metric-ids '[1,2]'
+ae-cli engage-scene config-metric update-rule --project-id <project_id> --metric-id <metric_id> --event-list '[{"event_name":"e1","filter":"true"}]'
+ae-cli engage-scene config-metric batch-delete --project-id <project_id> --config-id <config_id> --metric-ids '[1,2]' --yes
+
+# Config channel (配置通道) create / update / query-log
+ae-cli engage-scene config-channel create --project-id <project_id> --channel-name <name> --channel-type 0 --config '<json>'
+ae-cli engage-scene config-channel update --project-id <project_id> --channel-id <channel_id> --channel-name <name> [--config '<json>']
+ae-cli engage-scene config-channel query-log --project-id <project_id> --channel-id <channel_id>
+
+# Strategy (策略) create / update / log / batch-copy
+ae-cli engage-scene strategy create --project-id <project_id> --payload '{"configId":"cfg-1","templateId":"tpl-1","strategyName":"s1"}'
+ae-cli engage-scene strategy update --project-id <project_id> --payload '{"strategyUuid":"uuid-1"}'
+ae-cli engage-scene strategy log --project-id <project_id> --strategy-uuid <uuid>
+ae-cli engage-scene strategy batch-copy --project-id <project_id> --config-id <config_id> --strategy-ids '["s1"]'
+
+# Template (模板) list / get / create / update / update-status / delete
+ae-cli engage-scene template list --project-id <project_id> --config-id <config_id>
+ae-cli engage-scene template get --project-id <project_id> --config-id <config_id> --template-id <template_id>
+ae-cli engage-scene template create --project-id <project_id> --payload '{"configId":"cfg-1","templateId":"tpl-1","templateName":"t1"}'
+ae-cli engage-scene template update --project-id <project_id> --payload '{"configId":"cfg-1","templateId":"tpl-1","config":[]}'
+ae-cli engage-scene template update-status --project-id <project_id> --config-id <config_id> --template-id <template_id> --status 1
+ae-cli engage-scene template delete --project-id <project_id> --config-id <config_id> --template-id <template_id> --yes
+```
+
+### 6. activity (运营活动)
+
+New capability-gateway command group `engage-activity` covers 运营活动: activities, approval workflow, topics, activity types, and standalone tasks. Complex DTOs are passed with `--payload` (native camelCase JSON).
+
+```bash
+# Activity (运营活动) create / update / delete / list / get / pause / end / stats / info-list
+ae-cli engage-activity activity create --project-id <project_id> --payload '{"activityName":"a1","activityType":"other_type","tzOffset":8,"periodType":0}'
+ae-cli engage-activity activity update --project-id <project_id> --payload '{"activityId":"act-1","activityName":"a1","activityType":"other_type","tzOffset":8,"periodType":0}'
+ae-cli engage-activity activity delete --project-id <project_id> --activity-id <activity_id> --yes
+ae-cli engage-activity activity list --project-id <project_id> --page 1 --page-size 20
+ae-cli engage-activity activity get --project-id <project_id> --activity-id <activity_id>
+ae-cli engage-activity activity pause --project-id <project_id> --activity-id <activity_id>
+ae-cli engage-activity activity end --project-id <project_id> --activity-id <activity_id>
+ae-cli engage-activity activity stats --project-id <project_id>
+ae-cli engage-activity activity info-list --project-id <project_id> --activity-id <activity_id>
+
+# Approval (活动审批) submit / approve / reject / cancel
+ae-cli engage-activity approval submit --project-id <project_id> --activity-id <activity_id>
+ae-cli engage-activity approval approve --project-id <project_id> --activity-id <activity_id>
+ae-cli engage-activity approval reject --project-id <project_id> --activity-id <activity_id> --reason <reason>
+ae-cli engage-activity approval cancel --project-id <project_id> --activity-id <activity_id>
+
+# Topic (活动主题) remove-task / delete / get / copy
+# Temporarily disabled: topic create / topic update
+# See references/activity-topic.md for topicClusterKey vs task clusterKey and remaining commands.
+# ae-cli engage-activity topic create --project-id <project_id> --payload '{"activityId":"act-1","topicName":"t1","targetClusterType":2,"topicClusterKey":"<cluster>","channelType":1,"channelId":"c1","triggerType":0,"enableChannelTouchLimits":false,"frequencyLimits":"{}","tasks":[...]}'
+# ae-cli engage-activity topic update --project-id <project_id> --payload '{"topicId":"topic-1", ...}'
+ae-cli engage-activity topic remove-task --project-id <project_id> --task-id <task_id> --yes
+ae-cli engage-activity topic delete --project-id <project_id> --topic-id <topic_id> --yes
+ae-cli engage-activity topic get --project-id <project_id> --topic-id <topic_id>
+ae-cli engage-activity topic copy --project-id <project_id> --topic-id <topic_id> [--new-name <name>]
+
+# Activity type (活动类型) list / batch-add / update / batch-delete
+ae-cli engage-activity activity-type list --project-id <project_id>
+ae-cli engage-activity activity-type batch-add --project-id <project_id> --type-names '["t1","t2"]'
+ae-cli engage-activity activity-type update --project-id <project_id> --id <type_id> --type-name t3
+ae-cli engage-activity activity-type batch-delete --project-id <project_id> --ids '["id1","id2"]' --yes
+
+# Standalone task (独立任务) get / copy
+# Temporarily disabled: task create / task update
+ae-cli engage-activity task get --project-id <project_id> --task-id <task_id>
+# ae-cli engage-activity task create --project-id <project_id> --payload '{"taskName":"t1","activityId":"act-1", ...}'
+# ae-cli engage-activity task update --project-id <project_id> --payload '{"taskId":"task-1", ...}'
+ae-cli engage-activity task copy --project-id <project_id> --task-id <task_id> [--new-name <name>]
+```
+
+### 7. workbench (工作台)
+
+New capability-gateway command group `engage-workbench` covers 工作台 metric slots (指标卡槽): each user configures up to 4 metric cards per project. Slots are per-user; `update`/`delete` only affect the caller's own slots. The first `list` auto-initialises 4 default slots.
+
+```bash
+# Workbench slot (工作台卡槽) list / add / update / delete
+ae-cli engage-workbench workbench list --project-id <project_id>
+ae-cli engage-workbench workbench add --project-id <project_id> --metric-type <metric_type> --date-type <date_type> --order-id 1
+ae-cli engage-workbench workbench update --project-id <project_id> --slot-id <slot_id> --metric-type <metric_type> --date-type <date_type> --order-id 1
+ae-cli engage-workbench workbench delete --project-id <project_id> --slot-id <slot_id> --yes
 ```
 
 ## `+save_flow` Critical Constraints
@@ -215,6 +373,32 @@ More detailed single-command guidance is available in the business-oriented `ref
 
 - `references/channel-list.md`
 - `references/channel_touch_limits_list.md` (`engage-setting.channel-touch-limits.list`)
+- `references/channel-touch-limits-batch-update.md` (`engage-setting.channel-touch-limits.batch-update`)
+- `references/channel-touch-limits-toggle.md` (`engage-setting.channel-touch-limits.toggle`)
+- `references/channel-touch-limits-save.md` (`engage-setting.channel-touch-limits.save`)
+- `references/channel-update-config.md` (`engage-setting.channel.update-config`)
+- `references/channel-test-send.md` (`engage-setting.channel.test-send`)
+- `references/approval-approver-delete.md` (`engage-setting.approval-approver.delete`)
+- `references/whitelist.md` (`engage-setting.whitelist.{add,update,delete,verify}`)
+- `references/push-language.md` (`engage-setting.push-language.{get,set}`)
+- `references/client-param.md` (`engage-setting.client-param.{update,delete,list}`; create temporarily disabled)
+- `references/config-table.md` (`engage-setting.config-table.{upload,save,list,query-data,update-data,delete}`)
+- `references/preset-event.md` (`engage-setting.preset-event.{list,update}`)
+- `references/common-metric.md` (`engage-setting.common-metric.{list,get,update,delete}`; create temporarily disabled)
+- `references/scene-config-item.md` (`engage-scene.config-item.{list,create,update}`)
+- `references/scene-config-param.md` (`engage-scene.config-param.{list,batch-add,update,batch-delete}`)
+- `references/scene-config-group.md` (`engage-scene.config-group.{list,batch-add,update,batch-delete}`)
+- `references/scene-preset-metric.md` (`engage-scene.preset-metric.{get,set}`)
+- `references/scene-config-metric.md` (`engage-scene.config-metric.{list,get,batch-add,update-rule,batch-delete}`)
+- `references/scene-config-channel.md` (`engage-scene.config-channel.{create,update,query-log}`)
+- `references/scene-strategy.md` (`engage-scene.strategy.{create,update,log,batch-copy}`)
+- `references/scene-template.md` (`engage-scene.template.{list,get,create,update,update-status,delete}`)
+- `references/activity-activity.md` (`engage-activity.activity.{create,update,delete,list,get,pause,end,stats,info-list}`)
+- `references/activity-approval.md` (`engage-activity.approval.{submit,approve,reject,cancel}`)
+- `references/activity-topic.md` (`engage-activity.topic.{remove-task,delete,get,copy}`; create/update temporarily disabled)
+- `references/activity-activity-type.md` (`engage-activity.activity-type.{list,batch-add,update,batch-delete}`)
+- `references/activity-task.md` (`engage-activity.task.{get,copy}`; create/update temporarily disabled)
+- `references/workbench-workbench.md` (`engage-workbench.workbench.{list,add,update,delete}`)
 - `references/build-task-save-guide.md`
 - `references/save-task.md`
 - `references/task-list.md`
@@ -226,7 +410,7 @@ More detailed single-command guidance is available in the business-oriented `ref
 - `references/push-record-query.md` (`engage-task.push-record.query`)
 - `references/segment-list-query.md` (`engage-task.segment-list.query`)
 - `references/group-list.md` (`engage-task.group.list`)
-- `references/ops-delete.md` (`engage-task.ops.delete`)
+- `references/task-delete.md` (`engage-task.task.delete`)
 
 This split documentation structure is easier to extend later, because commands with more complex object inputs can stay centralized in the `references/` root directory.
 
@@ -234,17 +418,28 @@ This split documentation structure is easier to extend later, because commands w
 
 ### setting
 
-`channel-touch-limits list` (via `engage-setting`), `+channel_list`, `+channel_detail`, `+update_channel_status`, `+delete_channel`, `+add_channel`, `+whitelist_list`, `+add_approver`, `+approver_list`, `+cancel_query_by_request_id`, `+config_channel_detail`, `+config_channel_list`, `+delete_config_channel`, `+update_config_channel_status`
+`channel-touch-limits list` / `channel-touch-limits batch-update` / `channel-touch-limits toggle` / `channel-touch-limits save` / `channel update-config` / `channel test-send` / `approval-approver delete` / `whitelist add` / `whitelist update` / `whitelist delete` / `whitelist verify` / `push-language get` / `push-language set` / `client-param update` / `client-param delete` / `client-param list` / `config-table upload` / `config-table save` / `config-table list` / `config-table query-data` / `config-table update-data` / `config-table delete` / `preset-event list` / `preset-event update` / `common-metric list` / `common-metric get` / `common-metric update` / `common-metric delete` (via `engage-setting`), `+channel_list`, `+channel_detail`, `+update_channel_status`, `+delete_channel`, `+add_channel`, `+whitelist_list`, `+add_approver`, `+approver_list`, `+cancel_query_by_request_id`, `+config_channel_detail`, `+config_channel_list`, `+delete_config_channel`, `+update_config_channel_status`
 
 ### task
 
-`operation-log query` / `push-record query` / `segment-list query|get|rename` / `ops delete|modify-group` / `metric list|update` / `channel-ref stats` / `group list|create|update` (via `engage-task`), `+task_data_overview`, `+task_data_detail`, `+task_metric_detail`, `+task_experiment_report`, `+task_detail`, `+task_list`, `+task_stats`, `+build_task_save_guide`, `+save_task`, `+manage_task`
-
-> Temporarily disabled engage-task commands (do not use): `group delete`, `segment-list set-visibility`, `ops submit-approval`, `race release`.
+`operation-log query` / `push-record query` / `segment-list *` / `ops *` / `metric *` / `race release` / `channel-ref stats` / `group *` (via `engage-task`), `+task_data_overview`, `+task_data_detail`, `+task_metric_detail`, `+task_experiment_report`, `+task_detail`, `+task_list`, `+task_stats`, `+build_task_save_guide`, `+save_task`, `+manage_task`
 
 ### config
 
 `+config_item_trigger_report`, `+config_item_analysis_report`, `+config_item_strategy_comparison`, `+config_item_list`, `+config_item_detail`, `+delete_config_item`, `+copy_config_template`, `+strategy_list`, `+strategy_detail`, `+manage_strategy`
+
+### scene
+
+`config-item list` / `config-item create` / `config-item update` / `config-param list` / `config-param batch-add` / `config-param update` / `config-param batch-delete` / `config-group list` / `config-group batch-add` / `config-group update` / `config-group batch-delete` / `preset-metric get` / `preset-metric set` / `config-metric list` / `config-metric get` / `config-metric batch-add` / `config-metric update-rule` / `config-metric batch-delete` / `config-channel create` / `config-channel update` / `config-channel query-log` / `strategy create` / `strategy update` / `strategy log` / `strategy batch-copy` / `template list` / `template get` / `template create` / `template update` / `template update-status` / `template delete` (via `engage-scene`), capability ids `engage-scene.config-item.{list,create,update}`, `engage-scene.config-param.{list,batch-add,update,batch-delete}`, `engage-scene.config-group.{list,batch-add,update,batch-delete}`, `engage-scene.preset-metric.{get,set}`, `engage-scene.config-metric.{list,get,batch-add,update-rule,batch-delete}`, `engage-scene.config-channel.{create,update,query-log}`, `engage-scene.strategy.{create,update,log,batch-copy}`, `engage-scene.template.{list,get,create,update,update-status,delete}`
+
+### activity
+
+`activity create` / `activity update` / `activity delete` / `activity list` / `activity get` / `activity pause` / `activity end` / `activity stats` / `activity info-list` / `approval submit` / `approval approve` / `approval reject` / `approval cancel` / `topic remove-task` / `topic delete` / `topic get` / `topic copy` / `activity-type list` / `activity-type batch-add` / `activity-type update` / `activity-type batch-delete` / `task get` / `task copy` (via `engage-activity`), capability ids `engage-activity.activity.{create,update,delete,list,get,pause,end,stats,info-list}`, `engage-activity.approval.{submit,approve,reject,cancel}`, `engage-activity.topic.{remove-task,delete,get,copy}`, `engage-activity.activity-type.{list,batch-add,update,batch-delete}`, `engage-activity.task.{get,copy}`
+<!-- Temporarily disabled: topic create / topic update / task create / task update -->
+
+### workbench
+
+`workbench list` / `workbench add` / `workbench update` / `workbench delete` (via `engage-workbench`), capability ids `engage-workbench.workbench.{list,add,update,delete}`
 
 ### flow
 

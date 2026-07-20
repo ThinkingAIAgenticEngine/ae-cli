@@ -18,7 +18,7 @@ export const entityDetailDefinitionFlag: Flag = {
   name: 'definition',
   type: 'json',
   required: true,
-  desc: 'Bounded entity detail definition: {"entity":"user","cohort":{"relation":"and","items":[{"field":{"name":"level","type":"user_property"},"operator":"gte","values":[1]}]},"properties":["#user_id",{"name":"country","type":"user_property"}],"sort":[{"field":"#user_id","order":"asc"}]}. cohort is AI-facing for user_property/tag/cluster filters; do not pass raw QP at the capability top level.',
+  desc: 'Bounded entity detail definition. properties is supported only for entity="user" (#user_id); user rows always include #user_id, #account_id, and #distinct_id plus requested user properties. Custom entities reject properties and return only their entity value column. cohort is AI-facing for user_property/tag/cluster filters; do not pass raw QP.',
 };
 
 export function entityDetailRunInput(ctx: RuntimeContext): Record<string, unknown> {

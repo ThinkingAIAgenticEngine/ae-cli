@@ -10,6 +10,7 @@ import {
   resourceIdFlag,
   resourceTypeFlag,
 } from './shared.js';
+import { normalizeResourceUrlFields } from '../../../../core/resource-url.js';
 
 export const analysisMetaAssetUrlGet = createAnalysisMetaCapabilityCommand({
   resource: 'asset',
@@ -19,4 +20,8 @@ export const analysisMetaAssetUrlGet = createAnalysisMetaCapabilityCommand({
   flags: [projectIdFlag, nodeIdFlag, resourceIdFlag, resourceTypeFlag, linkInfoFlag, payloadFlag],
   risk: 'read',
   buildInput: (ctx) => assetGovernanceInput(ctx, ["node_id","resource_id","resource_type","link_info"]),
+  postProcess: (result, _input, ctx) => {
+    normalizeResourceUrlFields(result, ctx.host());
+    return result;
+  },
 });

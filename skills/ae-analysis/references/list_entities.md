@@ -39,4 +39,4 @@ ae-cli analysis_meta +list_entities --dry-run
 - If the result is empty, first confirm the project ID/keyword, then try loosening the filter conditions.
 
 ## Recommended Chaining
-- +list_entities -> +create_virtual_property / +create_virtual_event
+- +list_entities -> analysis-meta virtual-property create / analysis-meta virtual-event create

@@ -1,47 +1,29 @@
 # analysis query create-result-cluster
 
-Precondition: the upstream response must have `result_cluster_available=true` and the selected source must contain `target_contract`. If either is absent, do not call this command or reconstruct a target from display text.
+Save the user or custom-entity population behind one selected synchronous-preview cell as that subject's reusable result cluster.
 
-Save users matched by a previous analysis result target as a reusable result cluster.
-
-Use this after any analysis data command that returns `query_context_id`:
-
-- `analysis adhoc run`
-- `analysis adhoc export`
-- `analysis report-data run`
-- `analysis report-data export`
-- `analysis dashboard-report-data run`
-- `analysis dashboard-report-data export`
-
-Do not pass raw QP.
+Read [`analysis_drilldown_contract.md`](analysis_drilldown_contract.md) first. The selected metric/action must advertise `create_result_cluster`. `EVENT_LIST` and `NONE` analysis angles cannot be saved as a result cluster.
 
 ## Command
 
 ```bash
 ae-cli analysis query create-result-cluster \
-  --query-context-id <query_context_id> \
-  --target '<json>' \
-  --cluster-name <cluster_name> \
+  --query-context-id <sync_preview_query_context_id> \
+  [--source '{"report_id":1001}'] \
+  --coordinate '<merged returned row/column/metric coordinate>' \
+  --cluster-name <unique_name> \
   [--display-name <display_name>] \
   [--zone-offset 8] \
-  [--timeout-seconds 60]
+  [--timeout-seconds 180]
 ```
 
-## Input
+## Input rules
 
-- `--query-context-id`: returned by an analysis data run/export submit response, or by the first metadata line of a JSONL artifact.
-- `--target`: pass the selected source's `target_contract.default_target` directly, or copy it and replace only fields named by `target_contract.copy_from_selected_result` for a specific row or cell.
-- `--cluster-name`: result cluster name.
-- `--display-name`: optional display name.
+- `--query-context-id`, `--source`, and all coordinate fragments must come from the same synchronous `adhoc run`, `report-data run`, or `dashboard-report-data run` response.
+- Match the desired visible row and column in `source.drilldown.row_options`/`column_options`, select the correct metric option, and shallow-merge only their `coordinate` fragments.
+- Never pass `target_id`, raw QP, display-only dates, option presentation fields, or data from an export/download. Exports do not create query contexts.
+- `--cluster-name` must be unique in the project and contain the backend-supported identifier characters.
 
-Do not use raw QP or reconstruct the first query request. The server resolves the source QP from Redis by `query_context_id`.
+The saved cluster subject is `source.drilldown.subject` or the selected event metric's `subject`. `USER_LIST` creates a user result cluster. `ENTITY_LIST` creates a result cluster for that custom entity; do not relabel it as a user cluster.
 
-## Target
-
-`--target` uses the same machine-readable `sources[].target_contract` contract as [`drilldown_users_run.md`](drilldown_users_run.md).
-
-If one `query_context_id` contains multiple report sources, include `report_id`. If it contains multiple BI chart sources, include `chart_id`. BI SQL chart contexts normally return `result_cluster_available=false`; do not create a result cluster unless the first response explicitly says `result_cluster_available=true`.
-
-## Output
-
-The response contains the result cluster creation result from the analysis service.
+The response must contain the backend cluster creation result. A successful capability envelope without a created cluster identifier/result is not sufficient evidence of completion.

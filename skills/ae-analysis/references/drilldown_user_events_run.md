@@ -1,8 +1,8 @@
 # analysis drilldown-user-events run
 
-Query event sequence details for one user after `analysis drilldown-users run`.
+Query event sequence details for one user after a user-subject `analysis drilldown-entities run`.
 
-Use this only after `analysis drilldown-users run` returns a `drilldown_context_id`.
+Use this only when `analysis drilldown-entities run` returns `subject.type=user`, a `drilldown_context_id`, and the user-event follow-up action. Custom entities do not have event sequences.
 
 Do not pass raw QP.
 
@@ -19,15 +19,15 @@ ae-cli analysis drilldown-user-events run \
 
 ## Input
 
-- `--drilldown-context-id`: returned by `analysis drilldown-users run`.
-- `--user-id`: user id returned by `analysis drilldown-users run`.
-- `--properties`: optional backend property request object array. Omit this in normal agent calls and use the default returned columns. Do not pass string-name arrays such as `["event_time"]`.
+- `--drilldown-context-id`: returned by the same user-subject `analysis drilldown-entities run`.
+- `--user-id`: canonical `user_id` from one item in that same response. Never substitute `entity_value`, `#distinct_id`, account ID, or another identity field.
+- `--properties`: optional exact event-property projection. Omit it to use the default event columns. If present, each item uses backend keys `columnName` and `tableType`, for example `[{"columnName":"<event_property_name>","tableType":"event"}]`. `#user_id`, account ID, visitor ID, event name, and event time remain present; unrelated event properties must not be returned. `#user_id` is an internal association key, so Agents should normally display account ID and visitor ID to customers. Do not pass numeric table-type codes, string-name arrays, or snake_case nested keys.
 - `--sort-order`: `asc` or `desc`.
 - `--event-name-filter`, `--time-filter`, `--time-filter-before-nums`, `--time-filter-after-nums`: optional event sequence filters.
 
 Do not use raw QP, `query_context_id`, or guessed user IDs for this command.
 
-The `drilldown_context_id` must come from a `drilldown-users` target that includes date context, such as `drilldown_date` or `target_dates`. A context created from `include_total` alone can list users, but may fail event-sequence lookup with `TARGET_DATES_REQUIRED`.
+Do not call this command merely because an entity row looks like a user. The explicit subject and follow-up context are the authority.
 
 ## Output
 

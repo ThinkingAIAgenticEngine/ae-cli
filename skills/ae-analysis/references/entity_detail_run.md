@@ -9,7 +9,7 @@ Use this command for the first small entity detail preview that fits inline. It 
 ```bash
 ae-cli analysis entity-detail run \
   --project-id <project_id> \
-  --definition '{"entity":"user","cohort":{"relation":"and","items":[{"field":{"name":"level","type":"user_property"},"operator":"gte","values":[1]}]},"properties":["#user_id",{"name":"country","type":"user_property"}],"sort":[{"field":"#user_id","order":"asc"}]}' \
+  --definition '{"entity":"user","cohort":{"relation":"and","items":[{"field":{"name":"level","type":"user_property"},"operator":"gte","values":[1]}]},"properties":[{"name":"country","type":"user_property"}],"sort":[{"field":"#user_id","order":"asc"}]}' \
   --limit 100
 ```
 
@@ -23,6 +23,13 @@ Input:
 - `--timeout-seconds` sync timeout, default 120, max 180.
 
 `entity` may be `"user"` for the default user entity or `{ "id": 123 }` in multi-entity projects.
+
+Property and identity rules depend on the entity:
+
+- `entity="user"` resolves to the `#user_id` user entity. `properties` may contain user properties. Every row always contains `#user_id`, `#account_id`, and `#distinct_id` plus the requested properties.
+- A custom entity (`{"id":123}` whose entity column is not `#user_id`) returns only its entity value column. Do not provide `properties`; doing so returns `CUSTOM_ENTITY_PROPERTIES_UNSUPPORTED`.
+
+`#user_id` is an internal association key and is normally not meaningful to customers. In user-facing output, Agents should show account ID and visitor ID by default; retain `#user_id` for machine linkage or explicit troubleshooting.
 
 `cohort` is AI-facing for simple entity-set filters and uses the same filter item shape as report/detail filters:
 

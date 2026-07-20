@@ -11,13 +11,14 @@ const dashboardRun = readFileSync(
 const reportCreate = readFileSync(new URL('../skills/ae-analysis/references/report_create.md', import.meta.url), 'utf8');
 const reportUpdate = readFileSync(new URL('../skills/ae-analysis/references/report_update.md', import.meta.url), 'utf8');
 const reportList = readFileSync(new URL('../skills/ae-analysis/references/report_list.md', import.meta.url), 'utf8');
+const reportGet = readFileSync(new URL('../skills/ae-analysis/references/report_get.md', import.meta.url), 'utf8');
 const reportDataRun = readFileSync(new URL('../skills/ae-analysis/references/report_data_run.md', import.meta.url), 'utf8');
 const reportDataExport = readFileSync(new URL('../skills/ae-analysis/references/report_data_export.md', import.meta.url), 'utf8');
 const adhocRun = readFileSync(new URL('../skills/ae-analysis/references/adhoc_run.md', import.meta.url), 'utf8');
 const adhocExport = readFileSync(new URL('../skills/ae-analysis/references/adhoc_export.md', import.meta.url), 'utf8');
 const runInspect = readFileSync(new URL('../skills/ae-analysis/references/run_inspect.md', import.meta.url), 'utf8');
 const artifactDownload = readFileSync(new URL('../skills/ae-analysis/references/artifact_download.md', import.meta.url), 'utf8');
-const resourceUrl = readFileSync(new URL('../skills/ae-analysis/references/get_resource_url.md', import.meta.url), 'utf8');
+const assetUrl = readFileSync(new URL('../skills/ae-analysis/references/asset_url_get.md', import.meta.url), 'utf8');
 const aiModels = readFileSync(new URL('../skills/ae-analysis/references/ai_models.md', import.meta.url), 'utf8');
 const commandIndex = readFileSync(
   new URL('../skills/ae-analysis/references/command_index.md', import.meta.url),
@@ -62,6 +63,9 @@ assert.match(reportUpdate, /read the current `version` exactly once/);
 assert.match(reportUpdate, /query the saved default before applying an override/);
 assert.match(reportList, /narrow with `--query` or `--model-types` before paging/);
 assert.match(reportList, /do not enumerate every report page/);
+assert.match(reportGet, /agent-facing `time_particle_size`/);
+assert.match(reportGet, /internal `T0` through `T9` codes must never leak/);
+assert.match(reportGet, /Do not infer a granularity/);
 
 assert.match(reportDataRun, /omit `--sql-params` to execute the saved default/);
 assert.match(reportDataRun, /then make one second call with `--sql-params`/);
@@ -76,11 +80,18 @@ assert.match(adhocExport, /Preserve the `run_id` and `artifact_id` from this exa
 assert.match(runInspect, /same export response/);
 assert.match(artifactDownload, /same export response/);
 
-assert.match(resourceUrl, /report create[/]update/);
-assert.match(resourceUrl, /returned `report_id`/);
+assert.match(assetUrl, /post-write resource link completion/);
+assert.match(assetUrl, /`raw_url` plus `markdown_link`/);
 assert.match(aiModels, /`tag_name` is the only tag-report name field/);
 assert.match(aiModels, /最近7天.*近7天.*"mode":"recent".*`recentDay=0-7`.*是/);
 assert.match(aiModels, /过去7天.*前7天.*"mode":"previous".*`recentDay=1-7`.*否/);
+assert.match(aiModels, /`second`: `1\.\.999`/);
+assert.match(aiModels, /`minute`: `1\.\.999`/);
+assert.match(aiModels, /`hour`: `1\.\.24`/);
+assert.match(aiModels, /Do not use `day`.*`session_interval=24`.*`session_unit=hour`/);
+assert.match(aiModels, /never relabel it as `user_property`/);
+assert.match(commandIndex, /global filters support user_property, cluster, and tag only/);
+assert.match(commandIndex, /express one day as session_interval=24 and session_unit=hour/);
 assert.doesNotMatch(capabilitySkill, /sql-write .*--yes/);
 assert.doesNotMatch(capabilityCommandSource, /dashboard\.list .*--yes/);
 

@@ -9,7 +9,8 @@ description: "Interactive generation of an AE tracking plan and upload. Trigger 
 > English input → English reply; Chinese input → Chinese reply; Japanese input → Japanese reply.
 > If uncertain, default to English.
 > This applies to all output: section titles, phase names, template prompts, example text, option lists, etc.
-> **⚠️ CRITICAL: Template localization is CLI-owned. Do NOT manually translate imported template content with the model. Use the `src/tracking` i18n pipeline by setting `AE_LANG=<user_lang>`, writing `draft.meta.lang`, and regenerating through `ae-cli tracking code import-template` / `ae-cli tracking plan draft`.**
+> **⚠️ CRITICAL: Template localization is CLI-owned. Do NOT manually translate imported template content with the model. Use the `src/tracking/i18n` module as the source of truth by setting `AE_LANG=<user_lang>`, writing `draft.meta.lang`, and regenerating through `ae-cli tracking code import-template` / `ae-cli tracking plan draft`.**
+> **Before changing any template-owned localized label, first look up the corresponding translation in `src/tracking/i18n` (for example `resources/xlsx/sheets.ts`, `resources/xlsx/headers.ts`, `resources/xlsx/types.ts`, and `resources/cli/*.json`). If no matching translation exists there, preserve the imported text and ask before rewriting business semantics.**
 > Do NOT copy Chinese text verbatim from this document into English/Japanese replies unless it is an identifier, template name needed for CLI import, or original source material quoted for traceability.
 
 ## Terminology Glossary
@@ -72,6 +73,7 @@ Phase 0 → 1 → 2 → 3 → 4, do not skip steps.
 > property `display_name`, property `desc`, etc.) should be generated in the **user's input language**.
 > For imported templates, do NOT translate those fields manually. Template sheet names, headers, property type display values,
 > CLI messages, and auto-track/i18n-owned labels must come from `src/tracking/i18n` via `AE_LANG=<user_lang>` and `draft.meta.lang`.
+> When a localized label is needed, inspect `src/tracking/i18n` and use the existing resource key/value; do not invent translations from the model.
 > If template business text needs localization and the CLI/i18n resources do not provide it, preserve the imported text and ask the user before rewriting business semantics.
 > Only identifier fields like `event_name`, `prop_name` remain in English snake_case (canonical format).
 > This skill only cares about command behavior, not internal implementation.
@@ -498,8 +500,9 @@ Priority from low to high: **template → codebase → prd → chat → autotrac
   - Import command: `AE_LANG=<user_lang> ae-cli tracking code import-template --template-name "<template name>" --out .ae-cli/draft.json`
   - ⚠️ **Must validate immediately after template import** (see Phase 1.6); template content may not be fully correct
   - ⚠️ **Do not manually translate template content after import**: Do NOT read draft.json and model-translate `display_name`, `event_desc`, `event_tag`, or property `display_name`/`desc`. Keep imported business content as produced by the CLI/template reader unless the user explicitly asks for semantic rewriting.
-  - ⚠️ **Use `src/tracking` i18n for localization owned by the CLI**: `AE_LANG=<user_lang>` + `draft.meta.lang` control CLI messages, xlsx sheet names, xlsx headers, property type display values, and auto-track/i18n-owned labels. If these are wrong, regenerate with the intended locale instead of editing labels by hand.
-  - ⚠️ **event_tag is not free-form model translation**: Do not manually map `业务事件`/`系统事件` to another language. Preserve template tags, or rely on `src/tracking` i18n/autotrack generation for system labels when the CLI owns them.
+  - ⚠️ **Use `src/tracking/i18n` for localization owned by the CLI**: `AE_LANG=<user_lang>` + `draft.meta.lang` control CLI messages, xlsx sheet names, xlsx headers, property type display values, and auto-track/i18n-owned labels. If these are wrong, inspect the existing translations under `src/tracking/i18n`, then regenerate with the intended locale instead of editing labels by hand.
+  - ⚠️ **No model-invented translations for template labels**: When replacing or explaining a localized template-owned label, use the exact value from `src/tracking/i18n` resources. If no corresponding resource exists, preserve the template text and ask the user before changing semantics.
+  - ⚠️ **event_tag is not free-form model translation**: Do not manually map `业务事件`/`系统事件` to another language. Preserve template tags, or rely on `src/tracking/i18n` and autotrack generation for system labels when the CLI owns them.
 - **codebase**: Scan project source directory, extract events/properties from business logic; **same-name events merge prop_names without overwriting existing fields**; new items `source: "codebase"`
 - **prd**: Read all user-provided product documents (md / pdf / docx / URL / images), extract events and properties from each file; **same-name events merge prop_names without overwriting existing fields**; image files analyzed via multimodal interpretation of UI elements and interaction flows; all new items `source: "prd"`
   - **prd path is a folder**: Recursively scan all files in the directory:
@@ -673,7 +676,7 @@ Run the following command to dynamically discover available templates:
 AE_LANG=<user_lang> ae-cli tracking plan list-templates --json
 ```
 
-**Language rules**: Template names and template business content must not be model-translated. Use localized names only when they are returned by the CLI / `src/tracking` i18n resources. If `list-templates --json` only returns the original template `name`, display that name as-is and keep it unchanged for import.
+**Language rules**: Template names and template business content must not be model-translated. Use localized names only when they are returned by the CLI or found in `src/tracking/i18n` resources. If `list-templates --json` only returns the original template `name`, display that name as-is and keep it unchanged for import. Before presenting or modifying any localized template-owned label, look it up in `src/tracking/i18n`; do not invent a translation.
 
 Built-in templates are resolved by ae-cli from the ae-cli package root. User templates are resolved from the ae-cli user template directory. Do **not** manually construct `./tracking-plan-template/...` paths from the user's current workspace.
 
@@ -1116,7 +1119,7 @@ AE_LANG=<user_lang> ae-cli tracking plan upload --project <projectId> --xlsx .ae
 - **With `--replace`**: Delete existing project plan first then upload (when user chooses "Replace", or severe conflict switches to replace)
 - **Without `--replace`**: AE merge-by-name merge (no conflicts, or advisory only with user confirmation to append)
 
-Upload language is controlled locally by `AE_LANG`, `--lang`, or `draft.meta.lang`. Do not call AE user language config APIs and do not use `--switch-lang`. If the xlsx language is wrong, regenerate the xlsx with the intended language before uploading:
+Upload commands MUST pass `--lang <user_lang>` explicitly. `--lang` must match the generated xlsx language and `draft.meta.lang`; `AE_LANG` is only used for CLI messages and xlsx regeneration context. Do not call AE user language config APIs and do not use `--switch-lang`. If the xlsx language is wrong, regenerate the xlsx with the intended language before uploading:
 ```bash
 AE_LANG=<user_lang> ae-cli tracking plan draft --in .ae-cli/draft.json --out .ae-cli/draft.xlsx
 AE_LANG=<user_lang> ae-cli tracking plan upload --project <projectId> --xlsx .ae-cli/draft.xlsx --draft .ae-cli/draft.json --lang <user_lang> [--replace]

@@ -17,7 +17,7 @@ This document records the current `ae-cli analysis` surface exposed to agents. I
 - `analysis adhoc run`: bounded inline query. Default limit is 100, max 1000. Default timeout is 60 seconds, max 180 seconds.
 - `analysis adhoc export`: async artifact query. Default and maximum runtime is 21600 seconds (6 hours); pass a smaller `--timeout-seconds` only when requested. Cancel earlier with `analysis query cancel --run-id <run_id>`.
 
-Both commands return or materialize `query_context_id` when Redis context creation succeeds. Use that id for follow-up drilldown or result-cluster creation.
+Only the bounded `run` preview may return `query_context_id` and finite `sources[].drilldown` choices. Export never creates an interactive follow-up context.
 
 ### Report definitions and data
 
@@ -36,25 +36,27 @@ Report data supports AI-facing override inputs for filters, group-by, time range
 - `analysis bi-panel-page-data run`: bounded inline BI panel page data. Inline limit default is 100, max 1000; chart `row_limit` default is 100, max 1000; timeout default is 60 seconds, max 180 seconds.
 - `analysis bi-panel-page-data export`: async BI panel page data artifact. Default and maximum runtime is 21600 seconds (6 hours); cancel earlier with `analysis query cancel --run-id <run_id>`.
 
-BI panel page data is executed from BI SQL/page state, not from the saved-report AI QP model registry. Do not infer saved-report drilldown support for BI page data unless the response includes a `query_context_id` that explicitly supports the requested follow-up.
+BI panel page data is executed from BI SQL/page state, not from the saved-report AI QP model registry, and does not support analysis model drilldown/result-cluster creation.
 
 ### Follow-up query context commands
 
-- `analysis drilldown-users run`: preview users from a previous analysis result by `query_context_id`. Do not pass raw QP or paginate the preview.
-- `analysis drilldown-users export`: asynchronously export all matching users as one artifact.
+- `analysis drilldown-events run`: preview raw events only for a synchronous event-analysis metric whose returned angle is `EVENT_LIST`.
+- `analysis drilldown-events export`: stream all matching raw events for that returned coordinate into one `csv.gz` artifact; no paging parameters.
+- `analysis drilldown-entities run`: preview users or custom entities for an advertised synchronous-preview coordinate.
+- `analysis drilldown-entities export`: asynchronously export all entities for the same returned coordinate as one artifact.
 - `analysis drilldown-user-events run`: preview one user's event sequence by `drilldown_context_id`. Do not pass raw QP or reconstruct the first query.
 - `analysis drilldown-user-events export`: asynchronously export the complete event sequence as one artifact.
-- `analysis query create-result-cluster`: save users matched by a previous analysis data result into a reusable result cluster by `query_context_id`. Do not pass raw QP.
+- `analysis query create-result-cluster`: save an advertised user/custom-entity coordinate as that subject's reusable result cluster.
 - `analysis query cancel`: cancel an async run/export by `run_id`.
 - `analysis run inspect`: inspect an async run/export by `run_id`.
 - `analysis artifact download`: download an async artifact by the bound `run_id + artifact_id` pair.
 
 The intended flow is:
 
-1. Run `analysis adhoc run/export`, `analysis report-data run/export`, or `analysis dashboard-report-data run/export`.
-2. Read `query_context_id` from the response or artifact metadata.
-3. Pass that `query_context_id` to `analysis drilldown-users run/export` or `analysis query create-result-cluster`.
-4. Pass returned `drilldown_context_id` to `analysis drilldown-user-events run/export`.
+1. Run a bounded synchronous `analysis adhoc run`, `analysis report-data run`, or `analysis dashboard-report-data run`.
+2. Read `query_context_id`, select one returned source, and shallow-merge only that source's returned row/column/metric coordinate fragments. The sync preview limit is the hard selection boundary; never use export/download rows.
+3. Call only the selected metric/source action: `analysis drilldown-events run|export`, `analysis drilldown-entities run|export`, or `analysis query create-result-cluster`. Do not pass raw QP or `target_id`.
+4. Only a user-subject entity preview may return `drilldown_context_id`; pass it with a canonical returned `user_id` to `analysis drilldown-user-events run|export`. Custom entities have no user event sequence.
 
 For async exports, inspect with `analysis run inspect --run-id <run_id>` and download with `analysis artifact download --run-id <run_id> --artifact-id <artifact_id> --output <file>`.
 

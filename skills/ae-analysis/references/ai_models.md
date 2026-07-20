@@ -139,6 +139,12 @@ Formula metric example:
 }
 ```
 
+Formula rules:
+
+- Write **bare aliases** only in `formula` (e.g. `"revenue / users"` or `"pay / dau"`).
+- **Do not** write `alias.Axxx` (e.g. `"pay.A103"` / `"revenue.A103"`). Aggregation codes come from each dependency's `aggregation`; the builder expands aliases to real event tokens such as `purchase.amount.A103/login.A101`.
+- After the builder returns `status=generated`, hard-validate by querying (`analysis adhoc run` / report-data / dashboard-report-data). Do not save a report or dashboard from an unqueried formula QP.
+
 ### `retention`
 
 Use for retained/lost users from an initial event to a return event.
@@ -277,6 +283,16 @@ Use for behavior paths before or after a source event.
 
 Path `filters` are global member filters compiled to the original QP `user_filter`. They support `user_property`, `cluster`, and `tag`, but not `event_property`. Do not move a user filter into the source event's event-property filter.
 
+Path session timeout accepts only these unit/value ranges:
+
+- `second`: `1..999`
+- `minute`: `1..999`
+- `hour`: `1..24`
+
+Do not use `day`. Express one day as `session_interval=24` with `session_unit=hour`.
+
+Property types come from project metadata. If resolution says a field is an `event_property`, never relabel it as `user_property` just to satisfy the path schema. Remove the unsupported global filter, choose a model that supports event-property filtering, or ask the user to clarify the intended constraint. A familiar name such as `channel` is not universally an event or user property across projects.
+
 For every non-SQL intent model, do not call `list_events` or `list_properties` as an execution prerequisite. The successful response must expose every internally resolved event/property in `resolved`, including `input`, `resolved_name`, `match_type`, and `path`. Use metadata discovery only after a structured `need_clarification` response or an explicit resolution capability error.
 
 ### `prop_analysis`
@@ -373,7 +389,7 @@ Rules:
 - Do not pass SQL-IDE internals such as `sqlVoParams`, `sqlViewParams`, `paramType`, `paramName`, `paramExpress`, `commonFilter`, or `requiredEvents`.
 - Delimit any Trino identifier containing `#`, `$`, `@`, spaces, or punctuation with double quotes, for example `"#user_id"` and `"$part_event"`. Single quotes create string literals, not identifiers. Escape a literal double quote inside an identifier by doubling it. The CLI preserves the submitted SQL and does not rewrite identifiers.
 - For an event table, include a date-partition predicate on the discovered `"$part_date"` column, for example `WHERE "$part_date" BETWEEN '2026-07-01' AND '2026-07-07'`. The backend rejects event-table SQL without this condition.
-- Do not invent table or column names. If the table is unknown, call `analysis sql-table list --project-id <project_id>` and select an exact returned `table_ref`. Then use `analysis sql-table columns --project-id <project_id> --table-ref <table_ref>` before writing SQL. Ask the user only when multiple authorized tables remain semantically plausible after discovery.
+- Do not invent table or column names. If the user already provides a concrete table reference, use `analysis-meta datatable columns-get --project-id <project_id> --table-ref <table_ref>` to inspect columns before writing SQL. If the table itself is unknown, call `analysis sql-table list --project-id <project_id>` when available and select an exact returned `table_ref`; otherwise stop and ask for the table/data source. Ask the user only when multiple authorized tables remain semantically plausible after discovery.
 - For a saved dynamic SQL report, put the default values in `analysis report create/update --definition`. Verify the default once with `analysis report-data run` without `--sql-params`, then verify a changed value with one value-only `--sql-params` override.
 - SQL tags and SQL clusters do not use this general parameter contract. They accept only `${PartDate:name}` with `type=part_date`, and their tables must be discovered with `analysis sql-table list/columns --usage tag_cluster`; see `user_tag_models.md` and `user_cluster_models.md`.
 

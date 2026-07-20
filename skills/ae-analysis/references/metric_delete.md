@@ -23,3 +23,10 @@ Output is a successful gateway envelope with no business data. Verify with `metr
 |---|---|---|
 | `--project-id` | Yes | Numeric project ID. |
 | `--metric-id` | Yes | Metric ID. |
+
+## Decision Rules
+- Use `analysis-meta metric list` first to confirm the metric ID before deleting.
+- This is a destructive operation; keep the confirmation prompt unless automation is explicitly required.
+
+## Recommended Chain
+- `analysis-meta metric list` -> `analysis-meta metric delete`

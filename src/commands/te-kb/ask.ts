@@ -6,7 +6,7 @@ const VALID_LOCALES = new Set(['zh', 'en', 'ja', 'ko']);
 const MIN_QUESTION_LEN = 1;
 const MAX_QUESTION_LEN = 2000;
 const MIN_MAX_TURNS = 1;
-const MAX_MAX_TURNS = 20;
+const MAX_MAX_TURNS = 100;
 
 interface KnowledgeBaseRef {
   scope: string;
@@ -80,7 +80,7 @@ export const ask: Command = {
       name: 'max-turns',
       type: 'number',
       required: false,
-      desc: 'Optional agent turn limit (1-20, default 10 on server when omitted).',
+      desc: 'Optional agent turn limit (1-100, default 50 on server when omitted).',
     },
     { name: 'locale', type: 'string', required: false, desc: 'Optional locale: zh | en | ja | ko' },
   ],

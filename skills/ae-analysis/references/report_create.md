@@ -26,4 +26,4 @@ ae-cli analysis report create --project-id <project_id> --report-name "Recent SQ
 
 After creation, keep the `report_id` returned by this exact create response. To verify the report, query the saved default first with `analysis report-data run` and omit `--sql-params`; then make one second query with a value-only `--sql-params` override. Do not rebuild internal `sqlViewParams` or guess an ID.
 
-After any successful report create, call `analysis_common +get_resource_url` with that returned `report_id` and output its `markdown_link`.
+After any successful report create, call `analysis-meta asset url-get` with that returned `report_id` and output its `markdown_link`.

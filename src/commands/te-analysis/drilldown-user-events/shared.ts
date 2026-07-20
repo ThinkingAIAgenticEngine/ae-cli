@@ -16,14 +16,14 @@ const drilldownContextIdFlag: Flag = {
   name: 'drilldown-context-id',
   type: 'string',
   required: true,
-  desc: 'drilldown_context_id returned by analysis drilldown-users run.',
+  desc: 'drilldown_context_id returned by analysis drilldown-entities run for the user subject. Custom entities have no user event sequence.',
 };
 
 const userIdFlag: Flag = {
   name: 'user-id',
   type: 'string',
   required: true,
-  desc: 'User ID returned by analysis drilldown-users run/export.',
+  desc: 'Canonical user_id returned by analysis drilldown-entities run. Never guess or substitute another identity field.',
 };
 
 const sequenceFlags: Flag[] = [
@@ -35,11 +35,11 @@ const sequenceFlags: Flag[] = [
   { name: 'time-filter-after-nums', type: 'number', required: false, desc: 'Optional events after the time filter point.' },
 ];
 
-const jsonlArtifactFormatFlag: Flag = {
+const csvArtifactFormatFlag: Flag = {
   name: 'artifact-format',
   type: 'string',
   required: false,
-  desc: 'Artifact format. Only jsonl is supported.',
+  desc: 'Artifact format. Only csv is supported; the downloaded artifact is csv.gz.',
 };
 
 export const drilldownUserEventsBaseFlags = [
@@ -58,7 +58,7 @@ export const drilldownUserEventsRunFlags = [
 
 export const drilldownUserEventsExportFlags = [
   ...drilldownUserEventsBaseFlags,
-  jsonlArtifactFormatFlag,
+  csvArtifactFormatFlag,
   asyncTimeoutSecondsFlag,
 ] as const;
 

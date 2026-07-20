@@ -38,8 +38,8 @@ A homogeneous SQL request that includes `filters`, `group_by`, `start_time`, `en
 
 For a newly created or updated dynamic SQL report, omit `--sql-params` to execute the saved default first. After that succeeds, then make one second call with `--sql-params` to change only the requested value. This separates a broken saved default from a broken override and avoids repeating the same query.
 
-Output is the gateway envelope. `data` contains bounded inline report result items plus `query_context_id`, `drilldown_available`, and `result_cluster_available` when a context can be created.
+Output is the gateway envelope. `data` contains bounded inline report result items plus `query_context_id` and `sources[].drilldown` when the returned preview exposes follow-up actions. Each source is evaluated independently; SQL and other unsupported models have no actions.
 
 An empty batch or report result with no rows is a successful query: it means the requested time range has no data. The command fails only when every returned report entry contains an explicit execution error. Mixed batches keep successful items and return `meta.partial`, counts, and per-report `meta.failures` for partial-result handling.
 
-Use `query_context_id` with `analysis drilldown-users run` or `analysis query create-result-cluster`. Do not pass raw QP.
+Read [`analysis_drilldown_contract.md`](analysis_drilldown_contract.md). Select only returned row/column/metric options and call only the advertised event, entity, or result-cluster action. Do not pass raw QP.

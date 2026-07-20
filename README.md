@@ -95,7 +95,7 @@ ae-cli auth logout
 | `community` | 10+ | Community analysis: posts search, sentiment analysis, topic trends, livestream data |
 | `analysis_common` | 2 | Cross-module common constraints: resource link completion, project ID gate |
 | `team` | 14 | AI Agent Team: manage teams (list/create/update/delete/ai-generate/templates/projects) and execute TeamRuns (start/watch/chat/reply/cancel/result/artifacts) |
-| `kb` | 10 | Knowledge base lifecycle: query / new / add (md/dir/url) / schema / compile / rm-source / remove; retrieval primitives: index / grep / read |
+| `kb` | 11 | Knowledge base lifecycle: query / new / add (md/dir/url) / schema / compile / rm-source / remove; retrieval primitives: list / index / grep / read |
 | `auth` / `config` | 2 | Authentication and host configuration |
 
 ### kb
@@ -111,8 +111,9 @@ Knowledge base lifecycle (`+new` → `+add` → `+schema` → `+compile` → `+s
 - **Remove source** (`+rm-source`): `--name`, `--display-name`
 - **Remove KB** (`+remove`): `--name`
 
-Retrieval primitives for external agents (`+index` → `+grep` → `+read`); these are deterministic file-search endpoints with no server-side LLM, designed for agents (Claude Code / Codex / Cursor) to explore a KB the way they explore a codebase:
+Retrieval primitives for external agents (`+list` → `+index` → `+grep` → `+read`); these are deterministic file-search endpoints with no server-side LLM, designed for agents (Claude Code / Codex / Cursor) to explore a KB the way they explore a codebase:
 
+- **List** (`+list`): optional `--build-status` (default `compiled`), optional `--locale`. Returns accessible knowledge base metadata including `buildStatus`, without `index.md` navigation maps.
 - **Index** (`+index`): optional `--sources` JSON refs (omit to list all accessible KBs), optional `--locale`. Returns each KB's metadata plus its `index.md` navigation map.
 - **Grep** (`+grep`): `--query` / `-q`, optional `--sources`, `--top-k` (1-50, default 10), `--locale`. Returns matched lines with path, line number, breadcrumb and context snippet.
 - **Read** (`+read`): `--source` JSON ref (exactly one KB), `--path` (page path relative to the KB root), optional `--offset` / `--limit` (line window), `--locale`. Returns the full page or a line window.

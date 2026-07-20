@@ -22,8 +22,8 @@ Input sends `project_id`, `dashboard_id`, and optional `report_ids`, `filters`, 
 
 Dashboard `filters`, `start_time`, and `end_time` do not apply to SQL reports. The query still succeeds and returns those SQL report results. Inspect `data.warnings[]`; `OVERRIDE_IGNORED_FOR_MODEL` contains the affected SQL `report_ids` and `ignored_fields`. To change SQL conditions, query the SQL report directly with `analysis report-data run` and saved `definition.params` through `--sql-params`.
 
-Output is the gateway envelope. `data` contains bounded inline report data, optional structured `warnings`, plus `query_context_id`, `drilldown_available`, and `result_cluster_available` when a context can be created.
+Output is the gateway envelope. `data` contains bounded inline report data, optional structured `warnings`, plus `query_context_id` and per-report `sources[].drilldown` options when a returned report exposes follow-up actions. Unsupported report models have empty actions.
 
 An empty dashboard batch or report result with no rows is a successful query: it means the requested time range has no data. The command fails only when every returned report entry contains an explicit execution error. Mixed dashboard batches keep successful data and return `meta.partial`, counts, and per-report `meta.failures`.
 
-Use `query_context_id` with `analysis drilldown-users run` or `analysis query create-result-cluster`. Do not pass raw QP.
+Read [`analysis_drilldown_contract.md`](analysis_drilldown_contract.md). Pass the selected report source and merge only its returned coordinate fragments for the advertised action. Do not pass raw QP.

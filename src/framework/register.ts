@@ -72,7 +72,7 @@ function buildFlagString(flag: Flag): string {
   return `${short}${long} <value>`;
 }
 
-function parseBooleanValue(value: string | undefined, flagName: string): boolean {
+function parseBooleanValue(value: string | undefined, flagName: string): boolean | string {
   if (value === undefined) {
     return true;
   }
@@ -85,7 +85,9 @@ function parseBooleanValue(value: string | undefined, flagName: string): boolean
     return false;
   }
 
-  throw new Error(`Invalid boolean for --${flagName}: ${value}. Use true/false.`);
+  // Return the raw value unchanged; the runner validates boolean flags and emits a unified
+  // JSON validation error. Throwing here escapes commander as an uncaught Node stack trace.
+  return value;
 }
 
 function extractGlobalOptions(program: CommanderCommand): GlobalOptions {

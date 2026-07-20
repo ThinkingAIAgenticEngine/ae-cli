@@ -13,6 +13,7 @@ const checkOnly = process.argv.includes('--check');
 const sharedReferences = new Set([
   'ai_models.md',
   'analysis_data_retrieval.md',
+  'analysis_drilldown_contract.md',
   'analysis_gateway_assets.md',
   'analysis_interpretation.md',
   'audience_models.md',

@@ -25,8 +25,10 @@ import { eventDetailRun } from '../src/commands/te-analysis/event-detail/run.ts'
 import { eventDetailExport } from '../src/commands/te-analysis/event-detail/export.ts';
 import { entityDetailRun } from '../src/commands/te-analysis/entity-detail/run.ts';
 import { entityDetailExport } from '../src/commands/te-analysis/entity-detail/export.ts';
-import { drilldownUsersRun } from '../src/commands/te-analysis/drilldown-users/run.ts';
-import { drilldownUsersExport } from '../src/commands/te-analysis/drilldown-users/export.ts';
+import { drilldownEventsRun } from '../src/commands/te-analysis/drilldown-events/run.ts';
+import { drilldownEventsExport } from '../src/commands/te-analysis/drilldown-events/export.ts';
+import { drilldownEntitiesRun } from '../src/commands/te-analysis/drilldown-entities/run.ts';
+import { drilldownEntitiesExport } from '../src/commands/te-analysis/drilldown-entities/export.ts';
 import { drilldownUserEventsRun } from '../src/commands/te-analysis/drilldown-user-events/run.ts';
 import { drilldownUserEventsExport } from '../src/commands/te-analysis/drilldown-user-events/export.ts';
 import { queryCreateResultCluster } from '../src/commands/te-analysis/query/create-result-cluster.ts';
@@ -520,6 +522,10 @@ await test('adhoc exposes 12 AI models and report write exposes 12 plus tag', ()
   assert.match(definitionDesc, /\{"sql":"select/);
   assert.match(definitionDesc, /params/);
   assert.match(definitionDesc, /Text:name/);
+  assert.match(definitionDesc, /global filters support user_property, cluster, and tag only/);
+  assert.match(definitionDesc, /event_property is not supported/);
+  assert.match(definitionDesc, /session_unit accepts second \(1\.\.999\), minute \(1\.\.999\), or hour \(1\.\.24\)/);
+  assert.match(definitionDesc, /express one day as session_interval=24 and session_unit=hour/);
   assert.equal(REPORT_WRITE_MODEL_TYPE_VALUES.length, 13);
   assert.deepEqual([...REPORT_WRITE_MODEL_TYPE_VALUES], [
     ...AI_MODEL_TYPE_VALUES,
@@ -536,14 +542,42 @@ await test('adhoc exposes 12 AI models and report write exposes 12 plus tag', ()
 
 await test('query follow-up commands use context ids instead of raw QP', async () => {
   assert.deepEqual(
-    (await dryBody(drilldownUsersRun, {
+    (await dryBody(drilldownEventsRun, {
       'query-context-id': 'ctx_0123456789abcdef0123456789abcdef',
-      target: '{"report_id":10,"drilldown_date":"2026-07-01","drilldown_groups":["总体"]}',
+      source: '{"report_id":10}',
+      coordinate: '{"date":"2026-07-01","group_values":["Beijing"],"metric_index":0}',
       limit: 20,
     })).body.input,
     {
       query_context_id: 'ctx_0123456789abcdef0123456789abcdef',
-      target: { report_id: 10, drilldown_date: '2026-07-01', drilldown_groups: ['总体'] },
+      source: { report_id: 10 },
+      coordinate: { date: '2026-07-01', group_values: ['Beijing'], metric_index: 0 },
+      limit: 20,
+    },
+  );
+  assert.deepEqual(
+    (await dryBody(drilldownEventsExport, {
+      'query-context-id': 'ctx_0123456789abcdef0123456789abcdef',
+      source: '{"report_id":10}',
+      coordinate: '{"date":"2026-07-01","group_values":["Beijing"],"metric_index":0}',
+      'artifact-format': 'csv',
+    })).body.input,
+    {
+      query_context_id: 'ctx_0123456789abcdef0123456789abcdef',
+      source: { report_id: 10 },
+      coordinate: { date: '2026-07-01', group_values: ['Beijing'], metric_index: 0 },
+      format: 'csv',
+    },
+  );
+  assert.deepEqual(
+    (await dryBody(drilldownEntitiesRun, {
+      'query-context-id': 'ctx_0123456789abcdef0123456789abcdef',
+      coordinate: '{"cohort_date":"2026-07-01","group_values":[],"period_index":1,"population":"retained"}',
+      limit: 20,
+    })).body.input,
+    {
+      query_context_id: 'ctx_0123456789abcdef0123456789abcdef',
+      coordinate: { cohort_date: '2026-07-01', group_values: [], period_index: 1, population: 'retained' },
       limit: 20,
     },
   );
@@ -560,39 +594,43 @@ await test('query follow-up commands use context ids instead of raw QP', async (
     },
   );
   assert.deepEqual(
-    (await dryBody(drilldownUsersExport, {
+    (await dryBody(drilldownEntitiesExport, {
       'query-context-id': 'ctx_0123456789abcdef0123456789abcdef',
-      target: '{"report_id":10,"drilldown_date":"2026-07-01"}',
-      'artifact-format': 'jsonl',
+      source: '{"report_id":10}',
+      coordinate: '{"date":"2026-07-01","group_values":[],"step":2,"population":"completed"}',
+      'artifact-format': 'csv',
     })).body.input,
     {
       query_context_id: 'ctx_0123456789abcdef0123456789abcdef',
-      target: { report_id: 10, drilldown_date: '2026-07-01' },
-      format: 'jsonl',
+      source: { report_id: 10 },
+      coordinate: { date: '2026-07-01', group_values: [], step: 2, population: 'completed' },
+      format: 'csv',
     },
   );
   assert.deepEqual(
     (await dryBody(drilldownUserEventsExport, {
       'drilldown-context-id': 'drill_0123456789abcdef0123456789abcdef',
       'user-id': 'u1',
-      'artifact-format': 'jsonl',
+      'artifact-format': 'csv',
     })).body.input,
     {
       drilldown_context_id: 'drill_0123456789abcdef0123456789abcdef',
       user_id: 'u1',
-      format: 'jsonl',
+      format: 'csv',
     },
   );
   assert.deepEqual(
     (await dryBody(queryCreateResultCluster, {
       'query-context-id': 'ctx_0123456789abcdef0123456789abcdef',
-      target: '{"report_id":10,"drilldown_date":"2026-07-01","drilldown_groups":["总体"]}',
+      source: '{"report_id":10}',
+      coordinate: '{"date":"2026-07-01","group_values":["Beijing"],"metric_index":1}',
       'cluster-name': 'ai_saved_users',
       'display-name': 'AI saved users',
     })).body.input,
     {
       query_context_id: 'ctx_0123456789abcdef0123456789abcdef',
-      target: { report_id: 10, drilldown_date: '2026-07-01', drilldown_groups: ['总体'] },
+      source: { report_id: 10 },
+      coordinate: { date: '2026-07-01', group_values: ['Beijing'], metric_index: 1 },
       cluster_name: 'ai_saved_users',
       display_name: 'AI saved users',
     },
@@ -601,9 +639,17 @@ await test('query follow-up commands use context ids instead of raw QP', async (
 
 await test('analysis result run commands do not expose pagination offsets', () => {
   assert.equal(adhocRun.flags.some((flag) => flag.name === 'offset'), false);
-  assert.equal(drilldownUsersRun.flags.some((flag) => flag.name === 'offset'), false);
+  assert.equal(drilldownEventsRun.flags.some((flag) => flag.name === 'offset'), false);
+  assert.equal(drilldownEventsExport.flags.some((flag) => flag.name === 'limit'), false);
+  assert.equal(drilldownEventsExport.flags.some((flag) => flag.name === 'offset'), false);
+  assert.equal(drilldownEntitiesRun.flags.some((flag) => flag.name === 'offset'), false);
+  assert.equal(drilldownEntitiesExport.flags.some((flag) => flag.name === 'limit'), false);
+  assert.equal(drilldownEntitiesExport.flags.some((flag) => flag.name === 'offset'), false);
   assert.equal(drilldownUserEventsRun.flags.some((flag) => flag.name === 'page-num'), false);
   assert.equal(drilldownUserEventsRun.flags.some((flag) => flag.name === 'page-size'), false);
+  assert.equal(drilldownUserEventsExport.flags.some((flag) => flag.name === 'limit'), false);
+  assert.equal(drilldownUserEventsExport.flags.some((flag) => flag.name === 'page-num'), false);
+  assert.equal(drilldownUserEventsExport.flags.some((flag) => flag.name === 'page-size'), false);
 });
 
 process.stdout.write(`\n${pass} passed, ${fail} failed\n`);

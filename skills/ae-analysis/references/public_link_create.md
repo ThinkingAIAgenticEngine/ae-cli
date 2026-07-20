@@ -2,7 +2,7 @@
 
 Use when the user explicitly wants to generate a public link for a dashboard or BI panel.
 
-Do not use for internal resource URLs. Use `analysis_common +get_resource_url` when applicable.
+Do not use for internal resource URLs. Use `analysis-meta asset url-get` when applicable.
 
 Command:
 

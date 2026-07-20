@@ -8,6 +8,7 @@ import { rmSource } from './rm-source.js';
 import { schema } from './schema.js';
 import { status } from './status.js';
 import { kbIndex } from './kb-index.js';
+import { kbList } from './kb-list.js';
 import { kbGrep } from './kb-grep.js';
 import { kbRead } from './kb-read.js';
 import { ask } from './ask.js';
@@ -22,10 +23,11 @@ const commands: Command[] = [
   rmSource,
   schema,
   status,
+  kbList,
   kbIndex,
   kbGrep,
   kbRead,
 ];
 
 export default commands;
-export { query, ask, add, compile, remove, create, rmSource, schema, status, kbIndex, kbGrep, kbRead };
+export { query, ask, add, compile, remove, create, rmSource, schema, status, kbList, kbIndex, kbGrep, kbRead };

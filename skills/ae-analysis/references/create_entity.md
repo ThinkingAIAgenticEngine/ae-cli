@@ -25,7 +25,7 @@ ae-cli analysis_meta +create_entity --dry-run
 
 ## Decision Rules
 - `--table_type` must be `0` (event property) or `1` (user property); no other values are accepted.
-- Before using `--column_name`, call `analysis_meta +list_properties` to verify it exists. If the same column name appears in **both** event properties and user properties, **stop and ask the user which table type to use** — do not guess `--table_type`. Ask every time this condition is met; never carry over the answer from a previous request.
+- Before using `--column_name`, call `analysis-meta property list` to verify it exists. If the same column name appears in **both** event properties and user properties, **stop and ask the user which table type to use** — do not guess `--table_type`. Ask every time this condition is met; never carry over the answer from a previous request.
 - For the first run, pass only the required parameters and confirm before adding others.
 - This is an ordinary `write` operation and does not require CLI confirmation.
 
@@ -36,4 +36,4 @@ ae-cli analysis_meta +create_entity --dry-run
 
 ## Recommended Chaining
 - `analysis_meta +list_entities` → `+create_entity`
-- `analysis_meta +list_properties` → `+create_entity`
+- `analysis-meta property list` → `+create_entity`

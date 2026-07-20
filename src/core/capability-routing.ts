@@ -36,13 +36,20 @@ export function findGatewayDomain(cliService: string): string | undefined {
   return cliServiceRoutes.get(cliService)?.gatewayDomain;
 }
 
+/**
+ * Resolve gateway route domain for a CLI service.
+ * Priority: env (`AE_CLI_CAPABILITY_GATEWAY_DOMAIN[_SERVICE]`) > call-site override > registered route.
+ * Empty env value means root gateway `/api/cli/v1` (direct Hermes without nginx domain segment).
+ */
 export function resolveGatewayDomain(cliService: string, override?: string): string {
-  if (override !== undefined) {
-    return override;
-  }
+  // Env must win over call-site override: engage-* commands always pass gatewayDomain:'engage',
+  // which would otherwise make AE_CLI_CAPABILITY_GATEWAY_DOMAIN= unusable for local Hermes.
   const envDomain = envGatewayDomain(cliService);
   if (envDomain !== undefined) {
     return envDomain;
+  }
+  if (override !== undefined) {
+    return override;
   }
   const route = cliServiceRoutes.get(cliService);
   if (!route) {

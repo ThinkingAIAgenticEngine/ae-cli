@@ -7,8 +7,8 @@ import { drilldownUserEventsExportFlags, drilldownUserEventsExportInput } from '
 export const drilldownUserEventsExport = createAnalysisCapabilityCommand({
   resource: 'drilldown-user-events',
   command: 'export',
-  capabilityId: 'analysis.query.drilldown_user_events.export',
-  description: `Export one user's event sequence from a drilldown context as a jsonl artifact. ${analysisDataExportRoutingHelp}`,
+  capabilityId: 'analysis.query.drilldown_user_events_export',
+  description: `Stream one user's complete event sequence from a drilldown context into one csv.gz artifact. ${analysisDataExportRoutingHelp}`,
   flags: [...drilldownUserEventsExportFlags],
   risk: 'read',
   buildInput: drilldownUserEventsExportInput,

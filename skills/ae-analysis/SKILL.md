@@ -1,7 +1,7 @@
 ---
 name: ae-analysis
-version: 4.0.2
-description: "Use ae-cli for AE/TE analysis-side data questions and asset operations: reports, dashboards, ad-hoc models, drilldown, detail data, alerts, clusters, tags, metrics, metadata, project configuration, tracking plans, projects, and resource links. Use when the user asks to query data, explain a change, export evidence, or inspect/create/update analysis assets."
+version: 4.0.3
+description: "Use ae-cli for AE/TE analysis-side data questions, asset operations, and asset governance: reports, dashboards, ad-hoc models, drilldown, detail data, alerts, clusters, tags, metrics, metadata, project configuration, tracking plans, governance asset lists/rules/lineage/impact/dependency, batch asset operations, projects, and resource links. Use when the user asks to query data, explain a change, export evidence, or inspect/create/update/govern analysis assets."
 ---
 
 # ae-analysis
@@ -12,7 +12,7 @@ This is the single entry skill for analysis intent and command execution.
 
 1. If the command family is already known, open its dedicated reference directly. Otherwise search only the matching row in [`references/command_index.md`](references/command_index.md) (for example with `rg`); do not read the exhaustive index end to end.
 2. Read the selected command's dedicated reference before composing it:
-   - `+list_events` -> `references/list_events.md`
+   - `event list` -> `references/event_list.md`
    - `analysis dashboard list` -> `references/dashboard_list.md`
    - replace hyphens with underscores in gateway filenames.
 3. For an AI-facing ad-hoc definition, also read [`references/ai_models.md`](references/ai_models.md).
@@ -27,8 +27,9 @@ Use this skill for these CLI services:
 
 - `analysis`: reports, dashboards, BI panels, ad-hoc analysis, drilldown, detail data, alerts, clusters, tags, and async runs/artifacts.
 - `analysis-meta`: gateway metadata assets, events, properties, virtual metadata, metrics, data tables, exchange rules, and super metadata.
+- `analysis-governance`: gateway asset governance operations, including governed asset lists/exports, lineage, dependency, impact, query history, rule schema/list/create/update/delete, batch asset actions, and operation records. Use this service for asset governance workflows, not for metadata event/property/metric CRUD.
 - `analysis_meta`: metadata governance, metrics, virtual metadata, project config, tracking plans, mark times, and entity catalog.
-- `analysis_common`: project discovery and resource links.
+- `analysis_common`: project discovery.
 
 For metadata gateway detail outside the commands in the generated index, use the metadata skill. For Engage, DataOps, or Community work, use the corresponding skill.
 
@@ -46,6 +47,7 @@ ae-cli analysis_meta +<command> [options]
 ae-cli analysis_common +<command> [options]
 ae-cli analysis <resource> <action> [options]
 ae-cli analysis-meta <resource> <action> [options]
+ae-cli analysis-governance <resource> <action> [options]
 ae-cli capability search|inspect|validate|dry-run|run [options]
 ```
 
@@ -110,7 +112,7 @@ Do not call removed QP builders or schema helpers for ad-hoc analysis. `--defini
 - Metric value, trend, comparison, or anomaly -> saved report/dashboard first, then ad-hoc data.
 - Metric definition search/create/update -> metadata commands.
 - Event/entity rows -> `event-detail run|export` or `entity-detail run|export`.
-- User members from a query result -> follow the returned `query_context_id` and `sources[].target_contract`; never reconstruct raw QP.
+- Events/entities from a query result -> follow the returned synchronous `query_context_id` and `sources[].drilldown`; never reconstruct raw QP or use export rows as coordinates.
 - Cluster/tag definition -> matching gateway cluster/tag commands and matching model reference.
 - Alert/configuration/tracking-plan requests -> dedicated legacy command reference from the index.
 
@@ -118,8 +120,9 @@ Do not call removed QP builders or schema helpers for ad-hoc analysis. `--defini
 
 - `run` is a bounded inline preview for known-small work that can complete within the synchronous limits.
 - `export` is for complete, unknown-size, over-limit, or long-running results. It returns `run_id` and `artifact_id`.
+- Drilldown event/entity/user-event exports are `csv.gz` full-download streams bounded by `model_full_download_limit`; never pass or simulate `limit`, `offset`, `page_num`, or `page_size`.
 - Inspect with `analysis run inspect`, download with `analysis artifact download`, and cancel with `analysis query cancel`. Do not call raw lifecycle URLs.
-- Drilldown requires the context IDs and target contracts returned by a supported data result. If they are absent, report that drilldown/result-cluster creation is unavailable.
+- Drilldown requires a synchronous preview context and the selected source's returned row/column/metric coordinate options. If they are absent or the action is not advertised, report that drilldown/result-cluster creation is unavailable.
 
 ### Writes and destructive operations
 
@@ -127,7 +130,7 @@ Write only with explicit user intent. Use `--validate` alone while correcting co
 
 Project-space and folder create/delete/share are L3 capabilities rather than curated `analysis` commands. Read the matching command reference, then use `ae-cli capability inspect|dry-run|run`; discover `*.members` through `capability search|inspect|run` and [`references/analysis_gateway_assets.md`](references/analysis_gateway_assets.md). For `risk=high-risk-write`, dry-run first, summarize the impact, and execute with `--yes` only after a later explicit confirmation.
 
-After a successful create/update, if a resource ID and supported resource type are available, call `analysis_common +get_resource_url` and return the link. Explicitly state when link generation is skipped because no resource ID exists or when it fails.
+After a successful create/update, if a resource ID and supported resource type are available, call `analysis-meta asset url-get` and return the link. Explicitly state when link generation is skipped because no resource ID exists or when it fails.
 
 ## Analysis workflow
 

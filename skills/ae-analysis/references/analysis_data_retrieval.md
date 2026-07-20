@@ -12,7 +12,8 @@ This policy applies to:
 - `analysis bi-panel-page-data run` / `analysis bi-panel-page-data export`
 - `analysis event-detail run` / `analysis event-detail export`
 - `analysis entity-detail run` / `analysis entity-detail export`
-- `analysis drilldown-users run` / `analysis drilldown-users export`
+- `analysis drilldown-events run` / `analysis drilldown-events export`
+- `analysis drilldown-entities run` / `analysis drilldown-entities export`
 - `analysis drilldown-user-events run` / `analysis drilldown-user-events export`
 - `analysis user-cluster-member list` / `analysis user-cluster-member export`
 - `analysis user-tag-member list` / `analysis user-tag-member export`
@@ -39,7 +40,7 @@ The dashboard report-data sync timeout defaults to 180 seconds because one call 
 
 Detail `run` commands (`event-detail run` and `entity-detail run`) return only the first bounded preview rows. They do not support `--offset` or stable pagination. If the response has `truncated=true`, switch to the matching `export` command instead of trying to fetch later pages. For detail run, `truncated=true` can mean the preview hit its row cap even when the backend total is not an exact full count.
 
-User member, history-tag drilldown, and result drilldown `list/run` commands are bounded previews. They do not expose pagination. Use the matching `export` command for full or unknown-size data; Common advances backend batches internally and writes one artifact.
+User member, history-tag drilldown, and result drilldown `list/run` commands are bounded previews. They do not expose pagination. Use the matching `export` command for full or unknown-size data.
 
 Use `export` when any condition is true:
 
@@ -71,26 +72,25 @@ If `analysis run inspect` or `analysis artifact download` returns HTTP 404 for a
 
 If the current host returns `CAPABILITY_NOT_FOUND` for a documented command, treat it as host/backend capability unavailability. Do not retry with different JSON shapes or flags; choose another supported path only when it satisfies the user's request, otherwise report the backend gap.
 
-Detail, drilldown, user-member, and history-tag exports read backend batches until completion. Backend paging is an implementation detail and must not appear as `offset`, `page_num`, or `page_size` in the caller contract. Do not collect full data by repeated `list/run` calls.
+Drilldown event/entity/user-event exports use Common's full-download stream and write `csv.gz` directly; they do not collect synchronous preview pages. They accept no `limit`, `offset`, `page_num`, or `page_size`, and remain bounded by `model_full_download_limit`. Other detail, user-member, and history-tag exports may advance backend batches internally, but paging is never part of the caller contract. Do not collect full data by repeated `list/run` calls.
 
 ## Follow-up context
 
-Analysis data `run` responses, export submit responses, and JSONL export artifact metadata may include `query_context_id` and `sources` when Redis context creation succeeds. Follow-up commands are allowed only when `drilldown_available=true` and the selected source includes `target_contract`; otherwise read `drilldown_unavailable_reason` and do not infer source IDs, dates, groups, or model fields from display text.
+Only synchronous `adhoc run`, `report-data run`, and `dashboard-report-data run` previews create `query_context_id`, `sources`, and selectable `sources[].drilldown` options. Exports and downloaded artifacts never create this context and never expand the selectable result. The sync `--limit` is the drilldown boundary.
 
-For date-based drilldown, copy the stable machine field `drilldown_date`, never parse `display_date`. The machine format follows the query particle: day/week `yyyy-MM-dd`, month/quarter `yyyy-MM`, year `yyyy`, hour/minute `yyyy-MM-dd HH:mm`, and millisecond `yyyy-MM-dd HH:mm:ss.SSS`.
+Follow-up commands are allowed only when the selected source/metric advertises the exact action. Read [`analysis_drilldown_contract.md`](analysis_drilldown_contract.md), select only returned row/column/metric options, and never infer source IDs, dates, groups, model fields, or analysis angles from display text.
 
 When present, compare `effective_time_range` with `data_time_range`. `effective_time_range` is the resolved query scope, while `data_time_range` is the observed returned-row range. `clipping_reasons=[]` means the gateway applied no silent range cap; a narrower `data_time_range` then reflects available/returned data rather than a gateway range clamp.
 
-Use that `query_context_id` for:
+Use that synchronous `query_context_id` for the advertised action only:
 
-- `analysis drilldown-users run` or `analysis drilldown-users export`
+- `analysis drilldown-events run` or `analysis drilldown-events export`
+- `analysis drilldown-entities run` or `analysis drilldown-entities export`
 - `analysis query create-result-cluster`
 
 Do not reconstruct or pass raw QP for follow-up drilldown or result-cluster creation.
 
-CSV artifacts intentionally contain only CSV data; obtain `query_context_id` and `sources` from the export submit response instead of looking for a metadata line in CSV.
-
-If the response does not include `query_context_id` and does not explicitly expose `drilldown_available=true`, stop before drilldown/result-cluster commands. Report that this result cannot be followed up with context-based drilldown in the current response.
+If the synchronous response does not include `query_context_id`, source options, and the required action, stop before drilldown/result-cluster commands. Report that this preview does not expose that follow-up.
 
 For sync `run`, ae-cli may add `_cli_inline_limit` and `_cli_truncation` metadata when it has to truncate returned `rows` arrays locally to enforce the requested inline limit. Use `export` for full data.
 
@@ -98,4 +98,4 @@ For sync `run`, ae-cli may add `_cli_inline_limit` and `_cli_truncation` metadat
 
 For `analysis bi-panel-page-data`, `--row-limit`, `--row-offset`, `--block-limit`, and `--block-offset` are BI page/chart/summary window controls. They are not the generic sync-vs-async routing policy and do not change the rule above: use `run` for bounded inline results, and `export` for full, unknown-size, larger than 1000-row, or long-running data retrieval.
 
-BI page `charts` results may return `query_context_id` for SQL chart-source traceability. Treat it as drilldown-capable only when `drilldown_available=true`; BI SQL chart contexts normally return `drilldown_available=false` and `result_cluster_available=false`.
+BI SQL page/chart data does not support this analysis drilldown contract.

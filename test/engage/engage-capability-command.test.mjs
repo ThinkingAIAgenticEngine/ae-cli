@@ -4,8 +4,11 @@ import { channelTouchLimitsList } from '../../src/commands/te-engage/engage-sett
 import { operationLogQuery } from '../../src/commands/te-engage/engage-flow/operation-log/query.ts';
 import { operationLogQuery as taskOperationLogQuery } from '../../src/commands/te-engage/engage-task/operation-log/query.ts';
 import { segmentListQuery } from '../../src/commands/te-engage/engage-task/segment-list/query.ts';
-import { opsDelete } from '../../src/commands/te-engage/engage-task/ops/delete.ts';
+import { taskDelete } from '../../src/commands/te-engage/engage-task/task/delete.ts';
 import { groupList } from '../../src/commands/te-engage/engage-task/group/list.ts';
+import { clientParamUpdate } from '../../src/commands/te-engage/engage-setting/client-param/update.ts';
+import { capabilityGatewayHint } from '../../src/framework/runner.ts';
+import { CapabilityGatewayError } from '../../src/core/capability-api.ts';
 import {
   clearCapabilityGatewayRoutesForTest,
   registerCapabilityGatewayRoute,
@@ -19,6 +22,9 @@ clearCapabilityGatewayRoutesForTest();
 registerCapabilityGatewayRoute('engage-flow', { gatewayDomain: 'engage' });
 registerCapabilityGatewayRoute('engage-task', { gatewayDomain: 'engage' });
 registerCapabilityGatewayRoute('engage-setting', { gatewayDomain: 'engage' });
+registerCapabilityGatewayRoute('engage-scene', { gatewayDomain: 'engage' });
+registerCapabilityGatewayRoute('engage-activity', { gatewayDomain: 'engage' });
+registerCapabilityGatewayRoute('engage-workbench', { gatewayDomain: 'engage' });
 
 function runCli(args) {
   return spawnSync('npx', ['tsx', 'src/index.ts', '--host', HOST, '--no-update-check', ...args], {
@@ -39,6 +45,10 @@ function makeCtx(opts) {
     num(name) {
       const val = opts[camelCase(name)];
       return val !== undefined ? Number(val) : 0;
+    },
+    optionalNum(name) {
+      const val = opts[camelCase(name)];
+      return val !== undefined && val !== null && val !== '' ? Number(val) : undefined;
     },
     bool(name) {
       return Boolean(opts[camelCase(name)]);
@@ -95,14 +105,14 @@ assert.deepEqual(touchLimitsDryRun.body, { input: { project_id: 1 } });
 
 const opLogDryRun = await captureCapabilityDryRun(operationLogQuery, {
   projectId: 1,
-  flowUuid: 'flow_uuid_123',
+  flowId: 'flow_id_123',
 });
 assert.equal(
   opLogDryRun.url,
   `${HOST}/api/cli/engage/v1/capabilities/engage-flow.operation-log.query/dry-run`,
 );
 assert.deepEqual(opLogDryRun.body, {
-  input: { project_id: 1, flow_uuid: 'flow_uuid_123' },
+  input: { project_id: 1, flow_id: 'flow_id_123' },
 });
 
 const taskLogDryRun = await captureCapabilityDryRun(taskOperationLogQuery, {
@@ -121,6 +131,69 @@ const help = runCli(['engage-setting', 'channel-touch-limits', 'list', '--help']
 assert.equal(help.status, 0, help.stderr || help.stdout);
 assert.match(help.stdout, /-p, --project-id <value>/);
 
+const badChannelTestSendContent = runCli([
+  '--dry-run',
+  'engage-setting',
+  'channel',
+  'test-send',
+  '--project-id',
+  '1',
+  '--channel-id',
+  'channel-1',
+  '--push-id',
+  'recipient-1',
+  '--content-list',
+  '[{"pushLanguageCode":"default","content":"[]"}]',
+]);
+assert.notEqual(badChannelTestSendContent.status, 0);
+const badChannelTestSendContentError = JSON.parse(badChannelTestSendContent.stderr);
+assert.equal(badChannelTestSendContentError.error.type, 'validation');
+assert.match(badChannelTestSendContentError.error.message, /expects direct key\/value entries/);
+assert.match(badChannelTestSendContentError.error.hint, /\{"key":"obj","value":"\[\]"\}/);
+
+const emptyCommonMetricQp = runCli([
+  '--dry-run',
+  'engage-setting',
+  'common-metric',
+  'update',
+  '--project-id',
+  '1',
+  '--metric-type',
+  '1',
+  '--metric-name',
+  'm1',
+  '--metric-qp',
+  '{}',
+  '--metric-window-num',
+  '1',
+  '--metric-window-time-unit',
+  'DAY',
+  '--display-name',
+  'M1',
+]);
+assert.notEqual(emptyCommonMetricQp.status, 0);
+const emptyCommonMetricQpError = JSON.parse(emptyCommonMetricQp.stderr);
+assert.equal(emptyCommonMetricQpError.error.type, 'validation');
+assert.match(emptyCommonMetricQpError.error.message, /--metric-qp cannot be an empty JSON object/);
+
+const configTableMissingUploadHint = capabilityGatewayHint(new CapabilityGatewayError(
+  'No data to save, please upload again.',
+  'UPLOAD_NOT_EXIST',
+  400,
+  undefined,
+  { capability_id: 'engage-setting.config-table.save' },
+));
+assert.match(configTableMissingUploadHint, /config-table upload first/);
+assert.match(configTableMissingUploadHint, /same --project-id and --request-id/);
+
+const clientParamUpdateWithoutDesc = await captureCapabilityDryRun(clientParamUpdate, {
+  projectId: 1,
+  columnName: 'client_level',
+  columnType: 'VARCHAR',
+  selectType: 'INPUT',
+});
+assert.equal(clientParamUpdateWithoutDesc.body.input.column_desc, '');
+
 const versionHelp = runCli(['engage-flow', 'version', 'list', '--help']);
 assert.equal(versionHelp.status, 0, versionHelp.stderr || versionHelp.stdout);
 assert.match(versionHelp.stdout, /-p, --project-id <value>/);
@@ -134,7 +207,8 @@ assert.doesNotMatch(flowHelp.stdout, /engage-flow test|^\s+test\s*$/m);
 
 const opLogHelp = runCli(['engage-flow', 'operation-log', 'query', '--help']);
 assert.equal(opLogHelp.status, 0, opLogHelp.stderr || opLogHelp.stdout);
-assert.match(opLogHelp.stdout, /--flow-uuid <value>/);
+assert.match(opLogHelp.stdout, /--flow-id <value>/);
+assert.doesNotMatch(opLogHelp.stdout, /--flow-uuid <value>/);
 
 const taskLogHelp = runCli(['engage-task', 'operation-log', 'query', '--help']);
 assert.equal(taskLogHelp.status, 0, taskLogHelp.stderr || taskLogHelp.stdout);
@@ -152,13 +226,13 @@ assert.deepEqual(segmentDryRun.body, {
   input: { project_id: 1, task_id: 'task-1' },
 });
 
-const opsDeleteDryRun = await captureCapabilityDryRun(opsDelete, {
+const taskDeleteDryRun = await captureCapabilityDryRun(taskDelete, {
   projectId: 1,
   taskId: 'task-1',
 });
 assert.equal(
-  opsDeleteDryRun.url,
-  `${HOST}/api/cli/engage/v1/capabilities/engage-task.ops.delete/dry-run`,
+  taskDeleteDryRun.url,
+  `${HOST}/api/cli/engage/v1/capabilities/engage-task.task.delete/dry-run`,
 );
 
 const groupListDryRun = await captureCapabilityDryRun(groupList, {
@@ -172,28 +246,431 @@ assert.equal(
 const taskHelp = runCli(['engage-task', '--help']);
 assert.equal(taskHelp.status, 0, taskHelp.stderr || taskHelp.stdout);
 assert.match(taskHelp.stdout, /segment-list/);
-assert.match(taskHelp.stdout, /ops/);
+assert.match(taskHelp.stdout, /task/);
 assert.match(taskHelp.stdout, /group/);
 assert.match(taskHelp.stdout, /metric/);
 assert.match(taskHelp.stdout, /channel-ref/);
-assert.doesNotMatch(taskHelp.stdout, /^\s+race\s+/m);
+assert.match(taskHelp.stdout, /race/);
 
-const raceHelp = runCli(['engage-task', 'race', '--help']);
-assert.notEqual(raceHelp.status, 0);
-
-const disabledHelps = [
+const enabledHelps = [
   ['engage-task', 'group', 'delete', '--help'],
   ['engage-task', 'segment-list', 'set-visibility', '--help'],
-  ['engage-task', 'ops', 'submit-approval', '--help'],
   ['engage-task', 'race', 'release', '--help'],
 ];
-for (const args of disabledHelps) {
-  const disabled = runCli(args);
-  assert.notEqual(disabled.status, 0, `expected disabled: ${args.join(' ')}`);
+for (const args of enabledHelps) {
+  const enabled = runCli(args);
+  assert.equal(enabled.status, 0, `expected enabled: ${args.join(' ')} -> ${enabled.stderr || enabled.stdout}`);
 }
+
+const blockedSubmitApproval = runCli(['engage-task', 'task', 'submit-approval', '--help']);
+assert.notEqual(blockedSubmitApproval.status, 0);
 
 const settingHelp = runCli(['engage-setting', '--help']);
 assert.equal(settingHelp.status, 0, settingHelp.stderr || settingHelp.stdout);
 assert.match(settingHelp.stdout, /channel-touch-limits/);
+
+// ---- 28 engage-setting capabilities: registration + help coverage ----
+const engageSettingCommands = (await import('../../src/commands/te-engage/engage-setting/index.ts')).default;
+const settingCapabilityIds = engageSettingCommands
+  .map((cmd) => cmd.capabilityId)
+  .filter((id) => typeof id === 'string' && id.startsWith('engage-setting.'));
+const expectedSettingCapabilityIds = [
+  'engage-setting.channel.update-config',
+  'engage-setting.channel.test-send',
+  'engage-setting.channel-touch-limits.list',
+  'engage-setting.channel-touch-limits.batch-update',
+  'engage-setting.channel-touch-limits.toggle',
+  'engage-setting.channel-touch-limits.save',
+  'engage-setting.approval-approver.delete',
+  'engage-setting.whitelist.add',
+  'engage-setting.whitelist.update',
+  'engage-setting.whitelist.delete',
+  'engage-setting.whitelist.verify',
+  'engage-setting.push-language.get',
+  'engage-setting.push-language.set',
+  'engage-setting.client-param.update',
+  'engage-setting.client-param.delete',
+  'engage-setting.client-param.list',
+  'engage-setting.config-table.upload',
+  'engage-setting.config-table.save',
+  'engage-setting.config-table.list',
+  'engage-setting.config-table.query-data',
+  'engage-setting.config-table.update-data',
+  'engage-setting.config-table.delete',
+  'engage-setting.preset-event.list',
+  'engage-setting.preset-event.update',
+  'engage-setting.common-metric.list',
+  'engage-setting.common-metric.get',
+  'engage-setting.common-metric.update',
+  'engage-setting.common-metric.delete',
+];
+assert.equal(expectedSettingCapabilityIds.length, 28, 'expected 28 engage-setting capabilities');
+const missingCapabilityIds = expectedSettingCapabilityIds.filter(
+  (id) => !settingCapabilityIds.includes(id),
+);
+assert.equal(missingCapabilityIds.length, 0,
+  `missing engage-setting capabilities: ${missingCapabilityIds.join(', ')}`);
+assert.equal(settingCapabilityIds.length, 28,
+  `expected exactly 28 engage-setting capabilities, got ${settingCapabilityIds.length}`);
+
+// Each new command must surface in `engage-setting` help: resource in the top-level help,
+// and each action under its resource subcommand help.
+const settingHelpText = settingHelp.stdout;
+const resourcesByCommand = new Map();
+for (const cmd of engageSettingCommands) {
+  if (!cmd.capabilityId || !cmd.capabilityId.startsWith('engage-setting.') || !cmd.resource) {
+    continue;
+  }
+  if (!resourcesByCommand.has(cmd.resource)) {
+    resourcesByCommand.set(cmd.resource, []);
+  }
+  resourcesByCommand.get(cmd.resource).push(cmd.command);
+}
+for (const resource of resourcesByCommand.keys()) {
+  assert.ok(settingHelpText.includes(resource),
+    `engage-setting --help missing resource: ${resource}`);
+  const resourceHelp = runCli(['engage-setting', resource, '--help']);
+  assert.equal(resourceHelp.status, 0,
+    `engage-setting ${resource} --help -> ${resourceHelp.stderr || resourceHelp.stdout}`);
+  for (const command of resourcesByCommand.get(resource)) {
+    assert.ok(resourceHelp.stdout.includes(command),
+      `engage-setting ${resource} --help missing command: ${command}`);
+  }
+}
+
+// Sample a handful of new command --help screens to confirm flags render.
+const settingFlagHelps = [
+  ['engage-setting', 'whitelist', 'verify', '--help'],
+  ['engage-setting', 'push-language', 'set', '--help'],
+  ['engage-setting', 'client-param', 'update', '--help'],
+  ['engage-setting', 'config-table', 'upload', '--help'],
+  ['engage-setting', 'preset-event', 'update', '--help'],
+  ['engage-setting', 'common-metric', 'update', '--help'],
+  ['engage-setting', 'approval-approver', 'delete', '--help'],
+];
+for (const args of settingFlagHelps) {
+  const result = runCli(args);
+  assert.equal(result.status, 0, `${args.join(' ')} -> ${result.stderr || result.stdout}`);
+}
+
+// Dry-run routing for a couple of new setting capabilities.
+const whitelistVerifyDryRun = await captureCapabilityDryRun(
+  (await import('../../src/commands/te-engage/engage-setting/whitelist/verify.ts')).whitelistVerify,
+  { projectId: 1, propCode: '#account_id', columnType: 'string', whitelistPropList: '["v1"]' },
+);
+assert.equal(
+  whitelistVerifyDryRun.url,
+  `${HOST}/api/cli/engage/v1/capabilities/engage-setting.whitelist.verify/dry-run`,
+);
+assert.deepEqual(whitelistVerifyDryRun.body, {
+  input: {
+    project_id: 1,
+    prop_code: '#account_id',
+    column_type: 'string',
+    whitelist_prop_list: ['v1'],
+  },
+});
+
+const pushLanguageGetDryRun = await captureCapabilityDryRun(
+  (await import('../../src/commands/te-engage/engage-setting/push-language/get.ts')).pushLanguageGet,
+  { projectId: 1 },
+);
+assert.equal(
+  pushLanguageGetDryRun.url,
+  `${HOST}/api/cli/engage/v1/capabilities/engage-setting.push-language.get/dry-run`,
+);
+assert.deepEqual(pushLanguageGetDryRun.body, { input: { project_id: 1 } });
+
+// ---- 34 engage-scene (场景管理/配置中心) capabilities: registration + help coverage ----
+const engageSceneCommands = (await import('../../src/commands/te-engage/engage-scene/index.ts')).default;
+const sceneCapabilityIds = engageSceneCommands
+  .map((cmd) => cmd.capabilityId)
+  .filter((id) => typeof id === 'string' && id.startsWith('engage-scene.'));
+const expectedSceneCapabilityIds = [
+  'engage-scene.config-item.list',
+  'engage-scene.config-item.create',
+  'engage-scene.config-item.update',
+  'engage-scene.config-param.list',
+  'engage-scene.config-param.batch-add',
+  'engage-scene.config-param.update',
+  'engage-scene.config-param.batch-delete',
+  'engage-scene.config-group.list',
+  'engage-scene.config-group.batch-add',
+  'engage-scene.config-group.update',
+  'engage-scene.config-group.batch-delete',
+  'engage-scene.preset-metric.get',
+  'engage-scene.preset-metric.set',
+  'engage-scene.config-metric.list',
+  'engage-scene.config-metric.get',
+  'engage-scene.config-metric.batch-add',
+  'engage-scene.config-metric.update-rule',
+  'engage-scene.config-metric.batch-delete',
+  'engage-scene.config-channel.create',
+  'engage-scene.config-channel.update',
+  'engage-scene.config-channel.query-log',
+  'engage-scene.strategy.create',
+  'engage-scene.strategy.update',
+  'engage-scene.strategy.log',
+  'engage-scene.strategy.batch-copy',
+  'engage-scene.template.list',
+  'engage-scene.template.get',
+  'engage-scene.template.create',
+  'engage-scene.template.update',
+  'engage-scene.template.update-status',
+  'engage-scene.template.delete',
+];
+assert.equal(expectedSceneCapabilityIds.length, 31, 'expected 31 engage-scene capabilities');
+const missingSceneCapabilityIds = expectedSceneCapabilityIds.filter(
+  (id) => !sceneCapabilityIds.includes(id),
+);
+assert.equal(missingSceneCapabilityIds.length, 0,
+  `missing engage-scene capabilities: ${missingSceneCapabilityIds.join(', ')}`);
+assert.equal(sceneCapabilityIds.length, 31,
+  `expected exactly 31 engage-scene capabilities, got ${sceneCapabilityIds.length}`);
+
+const sceneHelp = runCli(['engage-scene', '--help']);
+assert.equal(sceneHelp.status, 0, sceneHelp.stderr || sceneHelp.stdout);
+const sceneHelpText = sceneHelp.stdout;
+const sceneResourcesByCommand = new Map();
+for (const cmd of engageSceneCommands) {
+  if (!cmd.capabilityId || !cmd.capabilityId.startsWith('engage-scene.') || !cmd.resource) {
+    continue;
+  }
+  if (!sceneResourcesByCommand.has(cmd.resource)) {
+    sceneResourcesByCommand.set(cmd.resource, []);
+  }
+  sceneResourcesByCommand.get(cmd.resource).push(cmd.command);
+}
+for (const resource of sceneResourcesByCommand.keys()) {
+  assert.ok(sceneHelpText.includes(resource),
+    `engage-scene --help missing resource: ${resource}`);
+  const resourceHelp = runCli(['engage-scene', resource, '--help']);
+  assert.equal(resourceHelp.status, 0,
+    `engage-scene ${resource} --help -> ${resourceHelp.stderr || resourceHelp.stdout}`);
+  for (const command of sceneResourcesByCommand.get(resource)) {
+    assert.ok(resourceHelp.stdout.includes(command),
+      `engage-scene ${resource} --help missing command: ${command}`);
+  }
+}
+
+// Dry-run routing for a few engage-scene capabilities.
+const configParamListDryRun = await captureCapabilityDryRun(
+  (await import('../../src/commands/te-engage/engage-scene/config-param/list.ts')).configParamList,
+  { projectId: 1, configId: 'cfg-1' },
+);
+assert.equal(
+  configParamListDryRun.url,
+  `${HOST}/api/cli/engage/v1/capabilities/engage-scene.config-param.list/dry-run`,
+);
+assert.deepEqual(configParamListDryRun.body, {
+  input: { project_id: 1, config_id: 'cfg-1' },
+});
+
+const strategyLogDryRun = await captureCapabilityDryRun(
+  (await import('../../src/commands/te-engage/engage-scene/strategy/log.ts')).strategyLog,
+  { projectId: 1, strategyUuid: 'uuid-1' },
+);
+assert.equal(
+  strategyLogDryRun.url,
+  `${HOST}/api/cli/engage/v1/capabilities/engage-scene.strategy.log/dry-run`,
+);
+assert.deepEqual(strategyLogDryRun.body, {
+  input: { project_id: 1, strategy_uuid: 'uuid-1' },
+});
+
+const templateListDryRun = await captureCapabilityDryRun(
+  (await import('../../src/commands/te-engage/engage-scene/template/list.ts')).templateList,
+  { projectId: 1, configId: 'cfg-1' },
+);
+assert.equal(
+  templateListDryRun.url,
+  `${HOST}/api/cli/engage/v1/capabilities/engage-scene.template.list/dry-run`,
+);
+assert.deepEqual(templateListDryRun.body, {
+  input: { project_id: 1, config_id: 'cfg-1' },
+});
+
+// ---- 27 engage-activity (运营活动) capabilities: registration + help coverage ----
+const engageActivityCommands = (await import('../../src/commands/te-engage/engage-activity/index.ts')).default;
+const activityCapabilityIds = engageActivityCommands
+  .map((cmd) => cmd.capabilityId)
+  .filter((id) => typeof id === 'string' && id.startsWith('engage-activity.'));
+const expectedActivityCapabilityIds = [
+  'engage-activity.activity.create',
+  'engage-activity.activity.update',
+  'engage-activity.activity.delete',
+  'engage-activity.activity.list',
+  'engage-activity.activity.get',
+  'engage-activity.activity.pause',
+  'engage-activity.activity.end',
+  'engage-activity.activity.stats',
+  'engage-activity.activity.info-list',
+  'engage-activity.approval.submit',
+  'engage-activity.approval.approve',
+  'engage-activity.approval.reject',
+  'engage-activity.approval.cancel',
+  // 'engage-activity.topic.create', // temporarily disabled
+  // 'engage-activity.topic.update', // temporarily disabled
+  'engage-activity.topic.remove-task',
+  'engage-activity.topic.delete',
+  'engage-activity.topic.get',
+  'engage-activity.topic.copy',
+  'engage-activity.activity-type.list',
+  'engage-activity.activity-type.batch-add',
+  'engage-activity.activity-type.update',
+  'engage-activity.activity-type.batch-delete',
+  'engage-activity.task.get',
+  // 'engage-activity.task.create', // temporarily disabled
+  // 'engage-activity.task.update', // temporarily disabled
+  'engage-activity.task.copy',
+];
+assert.equal(expectedActivityCapabilityIds.length, 23, 'expected 23 engage-activity capabilities');
+const missingActivityCapabilityIds = expectedActivityCapabilityIds.filter(
+  (id) => !activityCapabilityIds.includes(id),
+);
+assert.equal(missingActivityCapabilityIds.length, 0,
+  `missing engage-activity capabilities: ${missingActivityCapabilityIds.join(', ')}`);
+assert.equal(activityCapabilityIds.length, 23,
+  `expected exactly 23 engage-activity capabilities, got ${activityCapabilityIds.length}`);
+
+const activityHelp = runCli(['engage-activity', '--help']);
+assert.equal(activityHelp.status, 0, activityHelp.stderr || activityHelp.stdout);
+const activityHelpText = activityHelp.stdout;
+const activityResourcesByCommand = new Map();
+for (const cmd of engageActivityCommands) {
+  if (!cmd.capabilityId || !cmd.capabilityId.startsWith('engage-activity.') || !cmd.resource) {
+    continue;
+  }
+  if (!activityResourcesByCommand.has(cmd.resource)) {
+    activityResourcesByCommand.set(cmd.resource, []);
+  }
+  activityResourcesByCommand.get(cmd.resource).push(cmd.command);
+}
+for (const resource of activityResourcesByCommand.keys()) {
+  assert.ok(activityHelpText.includes(resource),
+    `engage-activity --help missing resource: ${resource}`);
+  const resourceHelp = runCli(['engage-activity', resource, '--help']);
+  assert.equal(resourceHelp.status, 0,
+    `engage-activity ${resource} --help -> ${resourceHelp.stderr || resourceHelp.stdout}`);
+  for (const command of activityResourcesByCommand.get(resource)) {
+    assert.ok(resourceHelp.stdout.includes(command),
+      `engage-activity ${resource} --help missing command: ${command}`);
+  }
+}
+
+// Dry-run routing for a few engage-activity capabilities.
+const activityListDryRun = await captureCapabilityDryRun(
+  (await import('../../src/commands/te-engage/engage-activity/activity/list.ts')).activityList,
+  { projectId: 1, page: 1, pageSize: 20 },
+);
+assert.equal(
+  activityListDryRun.url,
+  `${HOST}/api/cli/engage/v1/capabilities/engage-activity.activity.list/dry-run`,
+);
+assert.deepEqual(activityListDryRun.body, {
+  input: { project_id: 1, page: 1, page_size: 20 },
+});
+
+const activityGetDryRun = await captureCapabilityDryRun(
+  (await import('../../src/commands/te-engage/engage-activity/activity/get.ts')).activityGet,
+  { projectId: 1, activityId: 'act-1' },
+);
+assert.equal(
+  activityGetDryRun.url,
+  `${HOST}/api/cli/engage/v1/capabilities/engage-activity.activity.get/dry-run`,
+);
+assert.deepEqual(activityGetDryRun.body, {
+  input: { project_id: 1, activity_id: 'act-1' },
+});
+
+const activityTypeListDryRun = await captureCapabilityDryRun(
+  (await import('../../src/commands/te-engage/engage-activity/activity-type/list.ts')).activityTypeList,
+  { projectId: 1 },
+);
+assert.equal(
+  activityTypeListDryRun.url,
+  `${HOST}/api/cli/engage/v1/capabilities/engage-activity.activity-type.list/dry-run`,
+);
+assert.deepEqual(activityTypeListDryRun.body, { input: { project_id: 1 } });
+
+const taskGetDryRun = await captureCapabilityDryRun(
+  (await import('../../src/commands/te-engage/engage-activity/task/get.ts')).taskGet,
+  { projectId: 1, taskId: 'task-1' },
+);
+assert.equal(
+  taskGetDryRun.url,
+  `${HOST}/api/cli/engage/v1/capabilities/engage-activity.task.get/dry-run`,
+);
+assert.deepEqual(taskGetDryRun.body, {
+  input: { project_id: 1, task_id: 'task-1' },
+});
+
+// ---- 4 engage-workbench (工作台) capabilities: registration + help coverage ----
+const engageWorkbenchCommands = (await import('../../src/commands/te-engage/engage-workbench/index.ts')).default;
+const workbenchCapabilityIds = engageWorkbenchCommands
+  .map((cmd) => cmd.capabilityId)
+  .filter((id) => typeof id === 'string' && id.startsWith('engage-workbench.'));
+const expectedWorkbenchCapabilityIds = [
+  'engage-workbench.workbench.list',
+  'engage-workbench.workbench.add',
+  'engage-workbench.workbench.update',
+  'engage-workbench.workbench.delete',
+];
+assert.equal(expectedWorkbenchCapabilityIds.length, 4, 'expected 4 engage-workbench capabilities');
+const missingWorkbenchCapabilityIds = expectedWorkbenchCapabilityIds.filter(
+  (id) => !workbenchCapabilityIds.includes(id),
+);
+assert.equal(missingWorkbenchCapabilityIds.length, 0,
+  `missing engage-workbench capabilities: ${missingWorkbenchCapabilityIds.join(', ')}`);
+assert.equal(workbenchCapabilityIds.length, 4,
+  `expected exactly 4 engage-workbench capabilities, got ${workbenchCapabilityIds.length}`);
+
+const workbenchHelp = runCli(['engage-workbench', '--help']);
+assert.equal(workbenchHelp.status, 0, workbenchHelp.stderr || workbenchHelp.stdout);
+const workbenchHelpText = workbenchHelp.stdout;
+const workbenchResourcesByCommand = new Map();
+for (const cmd of engageWorkbenchCommands) {
+  if (!cmd.capabilityId || !cmd.capabilityId.startsWith('engage-workbench.') || !cmd.resource) {
+    continue;
+  }
+  if (!workbenchResourcesByCommand.has(cmd.resource)) {
+    workbenchResourcesByCommand.set(cmd.resource, []);
+  }
+  workbenchResourcesByCommand.get(cmd.resource).push(cmd.command);
+}
+for (const resource of workbenchResourcesByCommand.keys()) {
+  assert.ok(workbenchHelpText.includes(resource),
+    `engage-workbench --help missing resource: ${resource}`);
+  const resourceHelp = runCli(['engage-workbench', resource, '--help']);
+  assert.equal(resourceHelp.status, 0,
+    `engage-workbench ${resource} --help -> ${resourceHelp.stderr || resourceHelp.stdout}`);
+  for (const command of workbenchResourcesByCommand.get(resource)) {
+    assert.ok(resourceHelp.stdout.includes(command),
+      `engage-workbench ${resource} --help missing command: ${command}`);
+  }
+}
+
+// Dry-run routing for engage-workbench capabilities.
+const workbenchListDryRun = await captureCapabilityDryRun(
+  (await import('../../src/commands/te-engage/engage-workbench/workbench/list.ts')).workbenchList,
+  { projectId: 1 },
+);
+assert.equal(
+  workbenchListDryRun.url,
+  `${HOST}/api/cli/engage/v1/capabilities/engage-workbench.workbench.list/dry-run`,
+);
+assert.deepEqual(workbenchListDryRun.body, { input: { project_id: 1 } });
+
+const workbenchAddDryRun = await captureCapabilityDryRun(
+  (await import('../../src/commands/te-engage/engage-workbench/workbench/add.ts')).workbenchAdd,
+  { projectId: 1, metricType: 5, dateType: 8, orderId: 1 },
+);
+assert.equal(
+  workbenchAddDryRun.url,
+  `${HOST}/api/cli/engage/v1/capabilities/engage-workbench.workbench.add/dry-run`,
+);
+assert.deepEqual(workbenchAddDryRun.body, {
+  input: { project_id: 1, metric_type: 5, date_type: 8, order_id: 1 },
+});
 
 process.stdout.write('engage capability command contract: OK\n');

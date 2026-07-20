@@ -1,5 +1,5 @@
 import * as readline from 'readline';
-import type { Command, RuntimeContext, GlobalOptions, OutputFormat } from './types.js';
+import type { Command, Flag, RuntimeContext, GlobalOptions, OutputFormat } from './types.js';
 import { printOutput, printError } from './output.js';
 import { getActiveHost } from '../core/config.js';
 import { safeJsonParse } from '../core/json-utils.js';
@@ -11,6 +11,26 @@ import { TeAgentApiError } from '../core/te-agent-client.js';
 import { CapabilityGatewayError } from '../core/capability-api.js';
 import { requiresConfirmation } from '../core/capability-risk.js';
 
+/** Build message/hint when one or more required flags are missing. */
+export function missingRequiredFlagsError(
+  cmdName: string,
+  missing: Flag[],
+): { message: string; hint: string } {
+  const names = missing.map((flag) => `--${flag.name}`);
+  const message =
+    missing.length === 1
+      ? `Missing required flag: ${names[0]}`
+      : `Missing required flags: ${names.join(', ')}`;
+  const hintParts = missing
+    .map((flag) => flag.hint?.trim())
+    .filter((hint): hint is string => Boolean(hint));
+  const hint =
+    hintParts.length > 0
+      ? hintParts.join(' ')
+      : `Usage: ae-cli ${cmdName} ${names.map((name) => `${name} <value>`).join(' ')}`;
+  return { message, hint };
+}
+
 export async function runCommand(cmd: Command, opts: Record<string, any>, globalOpts: GlobalOptions): Promise<void> {
   try {
     const ctx = createRuntimeContext(cmd, opts, globalOpts);
@@ -21,15 +41,16 @@ export async function runCommand(cmd: Command, opts: Record<string, any>, global
       : `${cmd.service} ${cmd.command}`;
     logger.command(cmdName, opts);
 
-    // Validate required flags
-    for (const flag of cmd.flags) {
-      if (flag.required) {
-        const val = opts[camelCase(flag.name)];
-        if (val === undefined || val === null || val === '') {
-          printError('validation', `Missing required flag: --${flag.name}`, `Usage: ae-cli ${cmdName} --${flag.name} <value>`);
-          process.exit(1);
-        }
-      }
+    // Validate required flags (report all missing at once so agents can fix in one retry)
+    const missingRequired = cmd.flags.filter((flag) => {
+      if (!flag.required) return false;
+      const val = opts[camelCase(flag.name)];
+      return val === undefined || val === null || val === '';
+    });
+    if (missingRequired.length > 0) {
+      const { message, hint } = missingRequiredFlagsError(cmdName, missingRequired);
+      printError('validation', message, hint);
+      process.exit(1);
     }
 
     // Custom validation
@@ -42,8 +63,19 @@ export async function runCommand(cmd: Command, opts: Record<string, any>, global
     // to <= 10000 unless a command supplies a stricter flag-level max.
     const LIMIT_FLAG_PATTERNS = [/limit/i, /page_size/i, /pagesize/i, /row_limit/i, /block_limit/i, /top[-_]?k/i];
     for (const flag of cmd.flags) {
-      if (flag.type !== 'number') continue;
       const val = opts[camelCase(flag.name)];
+
+      // Boolean flags: parseBooleanValue returns the raw string when the value is not a
+      // recognized boolean. Surface a unified JSON validation error instead of a Node stack trace.
+      if (flag.type === 'boolean') {
+        if (val !== undefined && typeof val !== 'boolean') {
+          printError('validation', `Invalid boolean for --${flag.name}: ${val}. Use true/false.`);
+          process.exit(1);
+        }
+        continue;
+      }
+
+      if (flag.type !== 'number') continue;
       if (val === undefined || val === null || val === '') continue;
       const num = Number(val);
       if (!Number.isFinite(num)) {
@@ -106,11 +138,16 @@ export async function runCommand(cmd: Command, opts: Record<string, any>, global
     }
 
     // Confirm for high-risk-write operations (delete)
-    if (requiresConfirmation(cmd.risk) && !globalOpts.yes) {
-      const confirmed = await confirm(`This is a high-risk-write operation (${cmdName}). Continue?`);
-      if (!confirmed) {
-        process.stderr.write('Aborted.\n');
-        process.exit(0);
+    if (requiresConfirmation(cmd.risk)) {
+      // Pre-flight: force input parsing (JSON/boolean flags) before prompting, so invalid
+      // parameters surface as validation errors instead of being hidden behind the confirmation.
+      cmd.preflight?.(ctx);
+      if (!globalOpts.yes) {
+        const confirmed = await confirm(`This is a high-risk-write operation (${cmdName}). Continue?`);
+        if (!confirmed) {
+          process.stderr.write('Aborted.\n');
+          process.exit(0);
+        }
       }
     }
 
@@ -157,6 +194,15 @@ export async function runCommand(cmd: Command, opts: Record<string, any>, global
 }
 
 export function capabilityGatewayHint(err: CapabilityGatewayError): string | undefined {
+  if (
+    err.code === 'UPLOAD_NOT_EXIST'
+    && (
+      err.meta?.capability_id === 'engage-setting.config-table.save'
+      || err.meta?.capability_id === 'engage-setting.config-table.update-data'
+    )
+  ) {
+    return 'Run config-table upload first with the same --project-id and --request-id, then retry this command within 10 minutes. The upload cache is consumed after a successful save/update.';
+  }
   if (err.code === 'CAPABILITY_NOT_FOUND') {
     return 'The current host does not expose this capability. Do not retry with different parameters; use a supported command path or ask the platform/backend owner to enable the capability.';
   }

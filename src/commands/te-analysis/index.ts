@@ -24,13 +24,15 @@ import publicLink from './public-link/index.js';
 import model from './model/index.js';
 import eventDetail from './event-detail/index.js';
 import entityDetail from './entity-detail/index.js';
-import drilldownUsers from './drilldown-users/index.js';
+import drilldownEvents from './drilldown-events/index.js';
+import drilldownEntities from './drilldown-entities/index.js';
 import drilldownUserEvents from './drilldown-user-events/index.js';
 import user from './user/index.js';
 import global from './global/index.js';
 import sqlTable from './sql-table/index.js';
 import entity from './entity/index.js';
 import inputFile from './input-file/index.js';
+import project from './project/index.js';
 import { isGlobalQueryModeEnabled } from '../../core/cluster-info.js';
 import { registerCapabilityGatewayRoute } from '../../core/capability-routing.js';
 
@@ -62,12 +64,14 @@ export const baseCommands: Command[] = [
   ...model,
   ...eventDetail,
   ...entityDetail,
-  ...drilldownUsers,
+  ...drilldownEvents,
+  ...drilldownEntities,
   ...drilldownUserEvents,
   ...user,
   ...sqlTable,
   ...entity,
   ...inputFile,
+  ...project,
 ];
 
 const commands: Command[] = [

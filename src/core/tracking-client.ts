@@ -61,7 +61,8 @@ export interface DeviceDataResponse {
 }
 
 const DEBUG_BASE = '/v1/ta/bury/manage/debug';
-const TRACK_CAPABILITY_DOMAIN = 'analysis';
+const TRACK_LOCAL_HOST = 'http://localhost:8992';
+const TRACK_CAPABILITY_DOMAIN = '';
 const TRACK_PROGRAM_QUERY = 'track.program.query';
 const TRACK_PROGRAM_DELETE = 'track.program.delete';
 const TRACK_PROGRAM_EXCEL_SAVE = 'track.program.excel_save';
@@ -331,5 +332,5 @@ export class TrackingClient {
 }
 
 export async function createTrackingClient(host: string): Promise<TrackingClient> {
-  return new TrackingClient(host);
+  return new TrackingClient(TRACK_LOCAL_HOST);
 }

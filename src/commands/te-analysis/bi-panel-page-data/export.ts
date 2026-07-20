@@ -10,7 +10,7 @@ export const biPanelPageDataExport = createAnalysisCapabilityCommand({
   resource: 'bi-panel-page-data',
   command: 'export',
   capabilityId: 'analysis.bi_panel_page_data.export',
-  description: `Submit a BI panel page data query as an asynchronous gzip JSONL artifact. Chart exports may include query_context_id metadata; BI SQL chart contexts are not model-drilldown contexts unless drilldown_available=true. ${analysisDataExportRoutingHelp}`,
+  description: `Submit a BI panel page data query as an asynchronous gzip JSONL artifact. BI SQL chart exports do not create analysis drilldown contexts. ${analysisDataExportRoutingHelp}`,
   flags: [
     projectIdFlag,
     { name: 'panel-id', type: 'number', required: true, desc: 'BI panel ID.' },

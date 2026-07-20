@@ -24,7 +24,8 @@ test('tracking-client uses track program capabilities instead of direct program 
   const src = readFileSync(path.join(ROOT, 'src/core/tracking-client.ts'), 'utf8');
   assert.match(src, /executeCapability/);
   assert.match(src, /uploadInputFileBytes/);
-  assert.match(src, /TRACK_CAPABILITY_DOMAIN = 'analysis'/);
+  assert.match(src, /TRACK_LOCAL_HOST = 'http:\/\/localhost:8992'/);
+  assert.match(src, /TRACK_CAPABILITY_DOMAIN = ''/);
   assert.match(src, /track\.program\.query/);
   assert.match(src, /track\.program\.delete/);
   assert.match(src, /track\.program\.excel_save/);

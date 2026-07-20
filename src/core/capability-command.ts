@@ -26,7 +26,7 @@ export interface CreateCapabilityCommandConfig {
   requestHost?: string;
   validate?: (ctx: RuntimeContext) => void;
   buildInput: (ctx: RuntimeContext) => Record<string, unknown>;
-  postProcess?: (result: unknown, input: Record<string, unknown>) => unknown;
+  postProcess?: (result: unknown, input: Record<string, unknown>, ctx: RuntimeContext) => unknown;
 }
 
 export function createCapabilityCommand(config: CreateCapabilityCommandConfig): Command {
@@ -39,6 +39,11 @@ export function createCapabilityCommand(config: CreateCapabilityCommandConfig): 
     flags: config.flags,
     risk: config.risk,
     validate: config.validate,
+    preflight: (ctx) => {
+      // Force parsing of all flags (e.g. JSON arrays) so invalid input surfaces as a clean
+      // validation error before the high-risk-write confirmation gate.
+      config.buildInput(ctx);
+    },
     validateInput: async (ctx) => {
       const gatewayDomain = resolveGatewayDomain(config.cliService, config.gatewayDomain);
       const requestHost = config.requestHost ?? ctx.host();
@@ -57,7 +62,7 @@ export function createCapabilityCommand(config: CreateCapabilityCommandConfig): 
       const input = withLifecycleRequestId(config, config.buildInput(ctx));
       announceDispatch(config.capabilityId, input);
       const result = await executeCapabilityWithEnvelope(requestHost, gatewayDomain, config.capabilityId, input);
-      const data = config.postProcess ? config.postProcess(result.data, input) : result.data;
+      const data = config.postProcess ? config.postProcess(result.data, input, ctx) : result.data;
       return withOutputMetadata(data, result.meta);
     },
   };

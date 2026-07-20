@@ -28,10 +28,10 @@ Override model:
 
 Mixed-model export batches are best-effort rather than rejected only for being mixed. Prefer one model per overridden export because artifact formats cannot surface submission-time warnings as prominently as inline `meta.warnings`.
 
-Output is the gateway envelope. `data` contains opaque `run_id` and `artifact_id`, lifecycle status and expiration, effective timeout/deadline fields, plus `query_context_id` and `query_context_expires_at` when Redis context creation succeeds. Inspect/download through the dedicated CLI commands using the IDs.
+Output is the gateway envelope. `data` contains opaque `run_id` and `artifact_id`, lifecycle status and expiration, and effective timeout/deadline fields. Exports do not create `query_context_id`. Inspect/download through the dedicated CLI commands using the IDs.
 
 Keep `run_id` and `artifact_id` from the same export response. Inspect that exact `run_id`, then download only that paired `artifact_id`; never combine IDs from different exports.
 
 An empty artifact is a successful query and means the requested time range has no data. If every requested report explicitly fails, the run reaches `FAILED` instead of completing an error-only artifact. Mixed exports may contain explicit per-report error markers alongside successful report data.
 
-Use the submit response `query_context_id` immediately with `analysis drilldown-users run` or `analysis query create-result-cluster` when present. JSONL artifacts repeat `query_context_id` and `query_context_expires_at` in the first metadata line; CSV remains pure CSV and carries context only in the submit descriptor. Do not pass raw QP.
+Never use the export response or downloaded rows as a drilldown/result-cluster source. Run a bounded synchronous preview containing the desired cell first.

@@ -1,20 +1,40 @@
 import {
   compactInput,
   createAnalysisMetaCapabilityCommand,
+  fieldsFlag,
+  limitFlag,
+  offsetFlag,
   optionalBoolean,
+  optionalJson,
+  optionalNumber,
+  optionalString,
   projectIdFlag,
   projectInput,
+  queryFlag,
 } from '../../capability-shared.js';
 
 export const metadataMetricList = createAnalysisMetaCapabilityCommand({
   resource: 'metric',
   command: 'list',
   capabilityId: 'metadata.metric.list',
-  description: 'List project metrics.',
+  description: 'List project metrics with optional search, projection, pagination, and authentication filtering.',
   flags: [
     projectIdFlag,
     { name: 'ignore-authentication', type: 'boolean', required: false, desc: 'Whether to skip asset authentication status decoration.' },
+    queryFlag,
+    fieldsFlag,
+    limitFlag,
+    offsetFlag,
+    { name: 'authenticated-only', type: 'boolean', required: false, desc: 'When true, return only authenticated metrics.' },
   ],
   risk: 'read',
-  buildInput: (ctx) => (compactInput({ ...projectInput(ctx), ignore_authentication: optionalBoolean(ctx, 'ignore-authentication') })),
+  buildInput: (ctx) => (compactInput({
+    ...projectInput(ctx),
+    ignore_authentication: optionalBoolean(ctx, 'ignore-authentication'),
+    query: optionalString(ctx, 'query'),
+    fields: optionalJson(ctx, 'fields'),
+    limit: optionalNumber(ctx, 'limit'),
+    offset: optionalNumber(ctx, 'offset'),
+    authenticated_only: optionalBoolean(ctx, 'authenticated-only'),
+  })),
 });

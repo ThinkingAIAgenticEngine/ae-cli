@@ -1,3 +1,29 @@
+### 6.0.32
+**Date:** 2026-07-20
+
+**Changes:**
+
+#### CLI architecture
+* Prefer `AE_CLI_CAPABILITY_GATEWAY_DOMAIN*` env when resolving capability gateway domain (overrides call-site default)
+* Validate flags before high-risk confirmation; reject illegal boolean values with a unified JSON error
+* Align asset-governance capabilities with the new gateway surface and remove superseded legacy CLI entry points
+
+#### Analysis
+* CLI-ize report capabilities and align drilldown / detail command contracts with Agent docs
+* Add project-management capability commands and related bug fixes
+* Clarify cluster/tag auto-compute status in audience docs; fix `ai_models` skill guidance
+
+#### Engage
+* Add engage-setting / engage-scene / activity / workbench capability commands and skill docs
+* Add `engage-scene config-item list`; re-enable temporarily disabled engage-task commands; regroup ops tasks under `task`
+* Change engage-flow operation-log query to `--flow-id`; make config-channel `--config` optional and document `channel_type` / config constraints
+* Harden channel test-send errors, common-metric empty-QP checks, client-param display-name defaults, and config-table save upload hints
+* Expand activity topic/task/copy/approval docs (rich-text TEXT fields, reject reason, whitelist verify risk)
+
+#### Knowledge base & DataOps
+* Add knowledge-base list command
+* Unify DataOps SQL download authentication
+
 ### 6.0.31
 **Date:** 2026-07-16
 

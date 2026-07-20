@@ -43,7 +43,7 @@ if (commandSet.size !== commands.length) {
   fail('duplicate analysis_common command names found in source files');
 }
 
-const EXPECTED_COUNT = 2;
+const EXPECTED_COUNT = 1;
 if (commands.length !== EXPECTED_COUNT) {
   fail(`analysis_common tool count mismatch: expected ${EXPECTED_COUNT}, got ${commands.length}`);
 }

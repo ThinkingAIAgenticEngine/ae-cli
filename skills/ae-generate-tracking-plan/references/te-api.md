@@ -99,7 +99,7 @@ Upload is a two-step capability-gateway flow:
 { "project_id": 1603, "input_file_id": "...", "lang": "zh" }
 ```
 
-- `lang` is optional for backward compatibility, but Agents should pass the generated xlsx language (`zh` / `en` / `ja` / `ko`) so the backend resolves localized sheet names and headers consistently.
+- Agents MUST pass `lang` with the generated xlsx language (`zh` / `en` / `ja` / `ko`) so the backend resolves localized sheet names and headers consistently.
 - Response: `{ return_code: 0, return_message: "success" }` on success.
 
 **合并语义**：对事件走 **merge-by-name**（同名不覆盖、新名新增）。若要完全替换，

@@ -37,18 +37,18 @@ Gateway request body uses snake_case `input`:
 
 ## Decision Rules
 
-- Prefer **`metadata property get`** over `analysis_meta +list_properties` when you need **full detail + virtual definition**, not browsing or fuzzy search.
-- Use `ae-analysis` → `analysis_meta +list_properties` first when the property name is unknown or you need keyword search / pagination.
+- Prefer **`metadata property get`** over `analysis-meta property list` when you need **full detail + virtual definition**, not browsing or fuzzy search.
+- Use `ae-analysis` → `analysis-meta property list` first when the property name is unknown or you need keyword search / pagination.
 - `property_scope` must be exactly `event` or `user` (backend accepts case-insensitive).
 - Virtual / dict / exchange-rate properties are addressed by `property-name` only; do not pass legacy `prop_name`.
 - Event-scoped names like `#account_id` must be passed literally (quote in shell when `#` is present).
 
 ## Recommended Chaining
 
-- `ae-analysis`: `analysis_meta +list_properties` (discover name + scope) → `metadata property get` (detail)
+- `ae-analysis`: `analysis-meta property list` (discover name + scope) → `metadata property get` (detail)
 - `metadata event get` → `metadata property get` (follow properties from event detail)
 
 ## Next Steps After Failure
 
-- Not found: confirm scope (`event` vs `user`) and exact name from `+list_properties`.
+- Not found: confirm scope (`event` vs `user`) and exact name from `analysis-meta property list`.
 - Permission error: confirm metadata view permission in the project.

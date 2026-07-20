@@ -26,6 +26,8 @@ Do not pass `--limit`; async export rejects inline limits. Use `--artifact-forma
 
 Export does not accept `--limit` or `--offset`; backend batching is internal.
 
+`definition.properties` uses the same exact projection as `event-detail run`. The artifact may include required system event columns, but it must not expand to every visible event property.
+
 Output:
 
 Returns an async descriptor with opaque `run_id` / `artifact_id`, lifecycle status, expiration, and effective timeout/deadline fields. JSONL artifacts start with metadata and schema lines; CSV artifacts start directly with the header and contain only valid CSV records.

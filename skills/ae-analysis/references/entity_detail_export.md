@@ -26,6 +26,8 @@ Do not pass `--limit`; async export rejects inline limits. Use `--artifact-forma
 
 Export does not accept `--limit` or `--offset`; backend batching is internal.
 
+For `entity="user"`, every artifact row includes `#user_id`, `#account_id`, and `#distinct_id` plus requested user properties. For a custom entity, omit `properties`; the artifact contains only the entity value column and rejects additional properties. When presenting user artifacts, Agents should display account ID and visitor ID instead of exposing internal `#user_id` as the only visible identity.
+
 Output:
 
 Returns an async descriptor with opaque `run_id` / `artifact_id`, lifecycle status, expiration, and effective timeout/deadline fields. JSONL artifacts start with metadata and schema lines; CSV artifacts start directly with the header and contain only valid CSV records.

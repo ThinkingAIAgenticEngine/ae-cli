@@ -22,6 +22,6 @@ ae-cli metadata property bind-existing-dimension-table --project-id <project_id>
 
 ## Decision Rules
 
-- Confirm the property with `metadata property get` or `analysis_meta +list_properties`.
+- Confirm the property with `metadata property get` or `analysis-meta property list`.
 - Confirm the data table with `metadata data-table get`.
 - This is an ordinary `write` command and does not require CLI confirmation.

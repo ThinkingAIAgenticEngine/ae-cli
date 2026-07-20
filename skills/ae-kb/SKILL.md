@@ -1,7 +1,7 @@
 ---
 name: ae-kb
 version: 1.0.0
-description: "AE/TE knowledge base CLI manual for creating, querying, LLM-powered ask, deterministic index/grep/read retrieval, checking status, uploading, compiling, schema generation, URL sources, source deletion, and knowledge base deletion. Use when the user asks to manage TE/AE/ThinkingEngine knowledge bases, upload documents or URLs to a knowledge base, query knowledge, ask knowledge bases with an LLM, inspect knowledge base indexes, search knowledge base pages, read a specific knowledge base page, check knowledge base status, generate schemas, compile knowledge, remove sources, or delete a knowledge base. Must use ae-cli kb commands and must not guess knowledge base names, scopes, page paths, source display names, JSON payload shapes, or URL formats."
+description: "AE/TE knowledge base CLI manual for creating, querying, LLM-powered ask, listing accessible knowledge bases, deterministic index/grep/read retrieval, checking status, uploading, compiling, schema generation, URL sources, source deletion, and knowledge base deletion. Use when the user asks to manage TE/AE/ThinkingEngine knowledge bases, upload documents or URLs to a knowledge base, query knowledge, ask knowledge bases with an LLM, list accessible knowledge bases, inspect knowledge base indexes, search knowledge base pages, read a specific knowledge base page, check knowledge base status, generate schemas, compile knowledge, remove sources, or delete a knowledge base. Must use ae-cli kb commands and must not guess knowledge base names, scopes, page paths, source display names, JSON payload shapes, or URL formats."
 ---
 
 # ae-kb
@@ -14,8 +14,8 @@ ae-cli kb +<command> [options]
 
 ## Global Rules
 
-- Use this skill for TE/AE knowledge base tasks: create, query, ask with LLM, inspect indexes, grep pages, read pages, check status, upload sources, add URL sources, generate schema, compile, remove source files, and delete knowledge bases.
-- Read and ordinary `write` operations can run directly after required inputs and user intent are known. Only `high-risk-write` operations use the confirmation gate.
+- Use this skill for TE/AE knowledge base tasks: create, query, ask with LLM, list accessible knowledge bases, inspect indexes, grep pages, read pages, check status, upload sources, add URL sources, generate schema, compile, remove source files, and delete knowledge bases.
+- Read operations can run directly after required inputs are known. Write operations require explicit user intent and normally keep the confirmation prompt unless the user asks to bypass it.
 - Prefer `--dry-run` before destructive or broad writes when the user has not already validated the target.
 - Do not invent knowledge base names, scopes, source display names, or JSON payloads. Ask the user or query known context when values are missing.
 - JSON flags must be valid JSON strings, usually wrapped in single quotes in shell commands.
@@ -29,6 +29,7 @@ ae-cli kb +<command> [options]
 |---|---:|---|
 | `+query` | read | Query one or more knowledge bases with a natural-language question. |
 | `+ask` | read | LLM-powered Q&A over knowledge bases. Consumes platform tokens. |
+| `+list` | read | List accessible knowledge bases filtered by buildStatus (default: compiled). |
 | `+index` | read | List accessible knowledge bases and their `index.md` navigation maps. |
 | `+grep` | read | Keyword-search knowledge base pages and return matched lines with context. |
 | `+read` | read | Read a full knowledge base page or a line window. |
@@ -145,21 +146,35 @@ ae-cli kb +ask \
   --question "How do we troubleshoot payment alerts?" \
   --sources '[{"scope":"company","name":"engineering-handbook"}]' \
   --model-id claude-sonnet-4-6 \
-  --max-turns 10 \
+  --max-turns 50 \
   --locale zh
 ```
 
 - `--question`, alias `-q`: required natural-language question (1-2000 characters).
 - `--sources`: optional JSON array of knowledge base refs. Omit to search all accessible knowledge bases.
 - `--model-id`: optional LLM model ID. Omit to use the platform default.
-- `--max-turns`: optional agent turn limit (1-20, server default 10).
+- `--max-turns`: optional agent turn limit (1-100, server default 50).
 - `--locale`: optional locale: `zh`, `en`, `ja`, or `ko`.
+
+### List Accessible Knowledge Bases
+
+Use `+list` when you only need accessible knowledge base metadata without loading `index.md` navigation maps. By default it returns knowledge bases with `buildStatus: compiled`:
+
+```bash
+ae-cli kb +list
+ae-cli kb +list --locale zh
+ae-cli kb +list --build-status compiled
+```
 
 ### Explore Knowledge Base Pages
 
 Use the deterministic retrieval primitives when an agent needs to explore knowledge base content like a code repository. These endpoints do not call an LLM on the server side.
 
-Start with `+index` to see accessible knowledge bases and navigation maps:
+Start with `+list` or `+index` to discover accessible knowledge bases. Use `+index` when you also need navigation maps:
+
+```bash
+ae-cli kb +list
+```
 
 ```bash
 ae-cli kb +index \
@@ -187,6 +202,7 @@ ae-cli kb +read \
 
 Retrieval rules:
 
+- `+list` accepts optional `--build-status` (default `compiled`) and `--locale`. Returns accessible knowledge base metadata including `buildStatus`, without `index.md` navigation maps.
 - `+index` accepts optional `--sources` and `--locale`; omit `--sources` to list all accessible knowledge bases.
 - `+grep` requires `--query` / `-q`; optional `--sources`, `--top-k` (1-50, default 10), and `--locale`.
 - `+read` requires `--source` pointing to exactly one knowledge base and `--path` relative to the knowledge base root; optional `--offset`, `--limit` (1-10000), and `--locale`.
@@ -226,15 +242,25 @@ ae-cli kb +query --query "<question>" --sources '[{"scope":"company","name":"kb-
 ### `+ask`
 
 ```bash
-ae-cli kb +ask --question "<question>" [--sources '[{"scope":"company","name":"kb-name"}]'] [--model-id claude-sonnet-4-6] [--max-turns 10] [--locale zh|en|ja|ko]
+ae-cli kb +ask --question "<question>" [--sources '[{"scope":"company","name":"kb-name"}]'] [--model-id claude-sonnet-4-6] [--max-turns 50] [--locale zh|en|ja|ko]
 ```
 
 - `--question`, alias `-q`: required natural-language question (1-2000 characters).
 - `--sources`: optional JSON array of knowledge base refs. Omit to search all accessible knowledge bases.
 - `--model-id`: optional LLM model ID. Omit to use the platform default.
-- `--max-turns`: optional agent turn limit, 1-20, server default 10.
+- `--max-turns`: optional agent turn limit (1-100, server default 50).
 - `--locale`: optional locale: `zh`, `en`, `ja`, or `ko`.
 - **Token cost**: this command invokes an LLM on the server and consumes platform tokens. Prefer `+index` -> `+grep` -> `+read` for token-free deterministic retrieval.
+
+### `+list`
+
+```bash
+ae-cli kb +list [--build-status compiled] [--locale zh|en|ja|ko]
+```
+
+- `--build-status`: optional build status filter (default: `compiled`).
+- `--locale`: optional locale: `zh`, `en`, `ja`, or `ko`.
+- Response items include `buildStatus`.
 
 ### `+index`
 

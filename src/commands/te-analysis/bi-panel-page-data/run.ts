@@ -12,7 +12,7 @@ export const biPanelPageDataRun = createAnalysisCapabilityCommand({
   resource: 'bi-panel-page-data',
   command: 'run',
   capabilityId: 'analysis.bi_panel_page_data.run',
-  description: `Run a bounded BI panel page data query and return inline JSON. Chart results may include query_context_id; BI SQL chart contexts are not model-drilldown contexts unless drilldown_available=true. ${analysisDataRunRoutingHelp}`,
+  description: `Run a bounded BI panel page data query and return inline JSON. BI SQL chart data does not support analysis model drilldown or result-cluster creation. ${analysisDataRunRoutingHelp}`,
   flags: [
     projectIdFlag,
     { name: 'panel-id', type: 'number', required: true, desc: 'BI panel ID.' },
