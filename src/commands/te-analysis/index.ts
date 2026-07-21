@@ -33,10 +33,17 @@ import sqlTable from './sql-table/index.js';
 import entity from './entity/index.js';
 import inputFile from './input-file/index.js';
 import project from './project/index.js';
+import tracking from './tracking/index.js';
+import alert from './alert/index.js';
+import alertDefinitionSchema from './alert-definition-schema/index.js';
+import alertDetail from './alert-detail/index.js';
+import alertJob from './alert-job/index.js';
+import alertNoticeConfig from './alert-notice-config/index.js';
 import { isGlobalQueryModeEnabled } from '../../core/cluster-info.js';
 import { registerCapabilityGatewayRoute } from '../../core/capability-routing.js';
 
 registerCapabilityGatewayRoute('analysis', { gatewayDomain: 'analysis' });
+registerCapabilityGatewayRoute('tracking', { gatewayDomain: 'analysis' });
 
 export const baseCommands: Command[] = [
   ...meta,
@@ -72,6 +79,12 @@ export const baseCommands: Command[] = [
   ...entity,
   ...inputFile,
   ...project,
+  ...tracking,
+  ...alert,
+  ...alertDefinitionSchema,
+  ...alertDetail,
+  ...alertJob,
+  ...alertNoticeConfig,
 ];
 
 const commands: Command[] = [

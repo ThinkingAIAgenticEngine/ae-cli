@@ -24,9 +24,19 @@ ae-cli analysis report-data run --project-id <project_id> --report-ids '[1001]' 
 
 # SQL report, after analysis report get confirms definition.params contains platform
 ae-cli analysis report-data run --project-id <project_id> --report-ids '[2001]' --sql-params '[{"name":"platform","value":"ios"}]' --limit 20
+
+# Explicit local-time mode (not UTC+99)
+ae-cli analysis report-data run --project-id <project_id> --report-ids '[1001]' --zone-offset 99 --limit 20
 ```
 
-Input sends `project_id`, `report_ids`, optional `request_id`, `filters`, `group_by`, `sql_params`, `start_time`, `end_time`, `time_granularity`, `use_cache`, `limit`, and `timeout_seconds`. Control defaults: `--limit` default 100 / max 1000, `--timeout-seconds` default 120 / max 180. The routing rule lives in [`analysis_data_retrieval.md`](analysis_data_retrieval.md).
+Input sends `project_id`, `report_ids`, optional `request_id`, `filters`, `group_by`, `sql_params`, `start_time`, `end_time`, `time_granularity`, `zone_offset`, `use_cache`, `limit`, and `timeout_seconds`. Control defaults: `--limit` default 100 / max 1000, `--timeout-seconds` default 120 / max 180. The routing rule lives in [`analysis_data_retrieval.md`](analysis_data_retrieval.md).
+
+Timezone contract:
+
+- Omit `--zone-offset` to match the report UI for the current user. The backend uses that user's selected timezone when it is available for the project, otherwise the project default.
+- Pass an integer from `-12` through `14` for a fixed UTC offset that is enabled in the project.
+- Pass `--zone-offset 99` for local-time mode: event timestamps retain their reported local time instead of being converted to one fixed UTC offset. `99` is a mode identifier, not `UTC+99`.
+- The option changes only this execution. It does not update the saved report or the user's UI preference.
 
 Override model:
 
@@ -38,7 +48,7 @@ A homogeneous SQL request that includes `filters`, `group_by`, `start_time`, `en
 
 For a newly created or updated dynamic SQL report, omit `--sql-params` to execute the saved default first. After that succeeds, then make one second call with `--sql-params` to change only the requested value. This separates a broken saved default from a broken override and avoids repeating the same query.
 
-Output is the gateway envelope. `data` contains bounded inline report result items plus `query_context_id` and `sources[].drilldown` when the returned preview exposes follow-up actions. Each source is evaluated independently; SQL and other unsupported models have no actions.
+Output is the gateway envelope. `data` contains bounded inline report result items plus `query_context_id` and `sources[]`. Each source includes `effective_zone_offset`, the timezone value actually used for that query. When `zone_offset` is omitted, this is the resolved current-user timezone when available, otherwise the project default; when `zone_offset` is explicit, this is its resolved effective value. `sources[].drilldown` is present when the returned preview exposes follow-up actions. Each source is evaluated independently; SQL and other unsupported models have no actions.
 
 An empty batch or report result with no rows is a successful query: it means the requested time range has no data. The command fails only when every returned report entry contains an explicit execution error. Mixed batches keep successful items and return `meta.partial`, counts, and per-report `meta.failures` for partial-result handling.
 

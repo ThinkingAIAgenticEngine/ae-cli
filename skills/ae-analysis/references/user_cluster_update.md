@@ -8,6 +8,8 @@ The response distinguishes both paths. A definition update returns `computation.
 
 Flags: `--project-id`, `--cluster-name` required. Optional: `--display-name`, `--definition-request`, `--authenticated-only`, `--remark`, `--zone-offset`. The cluster type comes from `definition_request.type` when the definition changes.
 
+`display_name` is at most 80 characters and `remark` is at most 400 characters. The CLI rejects violations before dispatch. `cluster_name` is an existing exact identifier and cannot be renamed by update.
+
 Read `user_cluster_models.md` before changing the definition. The backend validates and compiles `definition_request` inside update and refuses to modify the cluster if clarification is required. Condition definitions are saved as mixed-condition clusters.
 
 ```bash

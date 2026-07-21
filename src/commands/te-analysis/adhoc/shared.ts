@@ -27,7 +27,7 @@ export const zoneOffsetFlag: Flag = {
   name: 'zone-offset',
   type: 'number',
   required: false,
-  desc: 'Optional timezone offset. UTC+8 is 8; UTC-5 is -5.',
+  desc: 'Optional timezone mode. Fixed UTC offsets are -12..14; 99 means stored local time without fixed UTC conversion (not UTC+99). Omit to use the project analysis default.',
 };
 
 export function adhocRunInput(ctx: RuntimeContext): Record<string, unknown> {

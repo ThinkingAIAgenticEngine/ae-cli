@@ -10,6 +10,8 @@ import {
   projectInput,
 } from '../capability-shared.js';
 
+export const reportDataZoneOffsetDescription = 'Query execution timezone. Omit it to match the report UI for the current user (user selection when available, otherwise project default). Use a fixed UTC offset from -12 through 14, or 99 for local-time mode with no conversion to one fixed UTC offset; 99 is not UTC+99. This is not persisted in the report definition.';
+
 export function reportDataInput(ctx: RuntimeContext): Record<string, unknown> {
   return compactInput({
     ...projectInput(ctx),

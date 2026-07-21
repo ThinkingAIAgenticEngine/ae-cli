@@ -225,6 +225,7 @@ export function dashboardReportDataInput(ctx: RuntimeContext): Record<string, un
     filters: optionalJson(ctx, 'filters'),
     start_time: optionalString(ctx, 'start-time'),
     end_time: optionalString(ctx, 'end-time'),
+    zone_offset: optionalNumber(ctx, 'zone-offset'),
     use_cache: optionalBoolean(ctx, 'use-cache'),
     request_id: optionalString(ctx, 'request-id'),
     timeout_seconds: optionalNumber(ctx, 'timeout-seconds'),

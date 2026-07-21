@@ -212,8 +212,9 @@ async function callGateway(
   pathAfterV1: string,
   method: CapabilityApiMethod,
   body?: any,
+  queryParams: Record<string, any> = {},
 ): Promise<any> {
-  return (await callGatewayWithEnvelope(host, domain, pathAfterV1, method, body)).data;
+  return (await callGatewayWithEnvelope(host, domain, pathAfterV1, method, body, queryParams)).data;
 }
 
 async function callGatewayWithEnvelope(
@@ -222,8 +223,9 @@ async function callGatewayWithEnvelope(
   pathAfterV1: string,
   method: CapabilityApiMethod,
   body?: any,
+  queryParams: Record<string, any> = {},
 ): Promise<CapabilityGatewaySuccess> {
-  const url = buildCapabilityGatewayUrl(host, domain, pathAfterV1);
+  const url = buildCapabilityGatewayUrl(host, domain, pathAfterV1, queryParams);
   const token = await getCliToken(host);
 
   let resp = await requestOnce(url, method, token, body);
@@ -315,12 +317,24 @@ export async function requestCapabilityGatewayWithEnvelope(
   return parseCapabilityEnvelope(parseCapabilityResponse(await resp.text()));
 }
 
-export async function listCapabilities(host: string, domain: string): Promise<any> {
-  return callGateway(host, domain, 'capabilities', 'GET');
+export async function listCapabilities(host: string, domain: string, projectId?: number): Promise<any> {
+  return callGateway(host, domain, 'capabilities', 'GET', undefined, { project_id: projectId });
 }
 
-export async function inspectCapability(host: string, domain: string, capabilityId: string): Promise<any> {
-  return callGateway(host, domain, `capabilities/${capabilityId}`, 'GET');
+export async function inspectCapability(
+  host: string,
+  domain: string,
+  capabilityId: string,
+  projectId?: number,
+): Promise<any> {
+  return callGateway(
+    host,
+    domain,
+    `capabilities/${capabilityId}`,
+    'GET',
+    undefined,
+    { project_id: projectId },
+  );
 }
 
 export async function executeCapability(

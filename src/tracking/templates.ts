@@ -6,6 +6,8 @@ import { getConfigDir, getPackageRoot } from './paths.js';
 export interface TrackingTemplate {
   name: string;
   path: string;
+  xlsxPath: string;
+  mdPath?: string;
   hasMd: boolean;
 }
 
@@ -29,10 +31,13 @@ export async function listTrackingTemplates(): Promise<TrackingTemplate[]> {
     for (const f of entries) {
       if (!f.endsWith('.xlsx')) continue;
       const base = f.replace(/\.xlsx$/i, '');
+      const xlsxPath = resolve(dir, f);
       const mdPath = resolve(dir, base + '.md');
       const hasMd = existsSync(mdPath);
       found.push({
-        path: hasMd ? mdPath : resolve(dir, f),
+        path: hasMd ? mdPath : xlsxPath,
+        xlsxPath,
+        ...(hasMd ? { mdPath } : {}),
         name: base,
         hasMd,
       });

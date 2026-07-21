@@ -65,7 +65,7 @@ CLI 同时面向团队成员与 AI agent，**源码内容与所有用户可见�
 每个命令是一个 `Command` 对象（定义见 `src/framework/types.ts`）：
 
 ```
-{ service, command, description, flags[], risk, validate?, dryRun?, execute }
+{ service, command, description, flags[], risk, usesAeHost?, validate?, dryRun?, execute }
 ```
 
 - `command` 用 `+` 前缀，如 `+query`、`+list_events`。
@@ -89,6 +89,7 @@ CLI 同时面向团队成员与 AI agent，**源码内容与所有用户可见�
 
 - Gateway 已覆盖的能力默认使用 `capability search/inspect/dry-run/run`，只有具备明确编排价值时进入 L1，具备额外类型、安全或输出价值时进入 L2。
 - Gateway 尚未覆盖的必要命令可以暂用现有 transport，但必须按 Transitional 规则记录维护模块、迁移目标、复审日期和退出条件。
+- 稳定 ingestion data-plane 是正式 L2 例外：服务端前置网关负责接入安全，CLI 不外发平台凭证，并提供类型化输入、redacted dry-run、日志保护和稳定 transport 测试；满足这些条件的命令不标记 Transitional。
 - 现有 `+` 命令不会因新规则被直接删除；Gateway 等价能力上线后再判定保留 L1、迁移 L2 或退回 L3。
 
 ### 一切走 RuntimeContext
@@ -97,6 +98,8 @@ CLI 同时面向团队成员与 AI agent，**源码内容与所有用户可见�
 
 - 取参：`ctx.str(name)` / `ctx.num` / `ctx.bool` / `ctx.json`
 - 发请求：`ctx.api(method, path, params, body)`（KB external 接口用 `kbApi`，见下）
+- 稳定 ingestion data-plane 使用专用 `RuntimeContext` 方法，不在命令内裸用 `fetch`，也不复用会附加平台凭证或记录正文的通用 client。
+- 与 active AE host 无关的稳定 data-plane 命令设置 `usesAeHost: false`，不在子命令帮助中暴露误导性的 `--host` override。
 - 上下文：`ctx.host()` / `ctx.token()` / `ctx.service()`
 - 输出：`ctx.out(data)`
 
@@ -114,6 +117,7 @@ CLI 同时面向团队成员与 AI agent，**源码内容与所有用户可见�
 ### 鉴权
 
 - **唯一凭证是 CLI token**（`src/core/cli-token.ts` 的 `getCliToken()`），不存在独立的 mcp-token 获取/mint 逻辑。取值优先级：进程内缓存 → `secure-store.cliToken` → 沙箱注入的 `cli-token.json` → 用 accessToken 调 `/v1/ta/cli/token/generate` **mint**（`auth login` 成功后立即 mint 并写回 secure-store；若缺失则在首次命令执行时补 mint）。
+- 上述凭证规则适用于 AE 控制面。通过正式 L2 例外接入的稳定 ingestion data-plane 必须完全不发送 AE access token、CLI token 或自定义认证头，由服务端前置网关承担接入安全。
 - token 按 host 维度存储（per-host）；不要自己实现凭证获取逻辑，统一调用 `getCliToken()`。
 - **旧命令（`createMcpCommand` → MCP JSON-RPC，`src/core/mcp.ts`）**：请求头只带 `cli-token`（值为 CLI token）。KB external 接口走 `kbApi`（`src/core/mcp-access.ts`），同样只发 `cli-token`；**用现成 helper，别手搓鉴权**。
 - **新命令（`createCapabilityCommand` / `createApiCommand` → capability gateway REST，`src/core/capability-api.ts`）**：请求 `/api/cli/<domain>/v1/capabilities/<capabilityId>/execute`（或 `/validate`、`/dry-run`），鉴权用 `cli-token` 请求头。全局 `--validate` = 改对参数；`--dry-run` = 确认可以跑；二者勿同用。nginx 在 `<domain>` 段做域路由并 strip 后转发到各服务的 `/api/cli/v1/...`。metadata 域示例命令：`ae-cli metadata event get`、`ae-cli metadata property get`。

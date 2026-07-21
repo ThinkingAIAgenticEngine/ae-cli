@@ -1,5 +1,6 @@
 import { homedir } from 'node:os';
 import { join } from 'node:path';
+import fs from 'node:fs';
 
 /** Linux AE sandbox runtime root; aligned with te-agent-sandbox ConfigService / env-persist. */
 export const LINUX_SANDBOX_RUNTIME_ROOT = '/home/ta/te_agent_ta';
@@ -39,4 +40,22 @@ export function getSandboxCliTokenFilePath(): string {
 
 export function getSandboxClusterInfoFilePath(): string {
   return join(getSandboxAeConfigDir(), 'cluster-info.json');
+}
+
+/**
+ * True when running inside an AE agent sandbox (cluster-provisioned runtime).
+ * Personal terminals / personal agents should return false so host compat-check runs.
+ */
+export function isAeSandboxRuntime(): boolean {
+  if (process.env.SANDBOX_RUNTIME_ROOT) {
+    return true;
+  }
+  try {
+    if (fs.existsSync(getSandboxCliTokenFilePath())) {
+      return true;
+    }
+  } catch {
+    // ignore
+  }
+  return false;
 }

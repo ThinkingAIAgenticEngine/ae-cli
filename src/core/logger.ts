@@ -83,12 +83,14 @@ class Logger {
   }
 
   /** Log command execution (sensitive flags redacted to ***) */
-  command(name: string, args: Record<string, any>): void {
-    // 敏感 flag 名（小写包含匹配，覆盖 apiKey/api-key/api_key 等变体）
+  command(name: string, args: Record<string, any>, sensitiveFlags: Iterable<string> = []): void {
+    // Normalize separators so kebab-case declarations match Commander camelCase option keys.
+    const normalizeFlagName = (name: string) => name.toLowerCase().replace(/[-_]/g, '');
+    const explicitSensitive = new Set(Array.from(sensitiveFlags, normalizeFlagName));
     const SENSITIVE = ['token', 'apikey', 'secret', 'accesstoken', 'headers'];
     const isSensitive = (k: string) => {
-      const lk = k.toLowerCase();
-      return SENSITIVE.some((s) => lk.includes(s));
+      const normalized = normalizeFlagName(k);
+      return explicitSensitive.has(normalized) || SENSITIVE.some((s) => normalized.includes(s));
     };
     const filtered = Object.entries(args)
       .filter(([, v]) => v !== undefined && v !== null && v !== '')

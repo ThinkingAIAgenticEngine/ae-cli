@@ -8,6 +8,8 @@ The response reports this directly: `computation.triggered_automatically=true`, 
 
 Flags: `--project-id`, `--tag-name`, `--display-name`, `--definition-request` required. Optional: `--authenticated-only`, `--zone-offset`, `--entity-id`. The tag type comes from `definition_request.type`.
 
+`tag_name` is a machine identifier: 1-80 characters, starts with a letter, and contains only letters, digits, or underscores. `display_name` is 1-80 characters. The CLI rejects violations before dispatch.
+
 Read `user_tag_models.md` before constructing `--definition-request`. Create does not accept `--remark`; set it later with `user-tag update` when needed.
 
 The backend validates and compiles the definition inside the create operation; if metadata is ambiguous or missing, creation fails without creating the tag.

@@ -3,6 +3,8 @@ import { createRequire } from 'module';
 import { registerCommands } from './framework/register.js';
 import type { Command } from './framework/types.js';
 import { notifyIfUpdateAvailable } from './core/update-check.js';
+import { runHostCompatCheck } from './core/compat-check.js';
+import { getLocalCliPackageInfo } from './core/package-info.js';
 import { registerTracking } from './commands/tracking/index.js';
 
 const require = createRequire(import.meta.url);
@@ -130,7 +132,9 @@ async function registerModelCommand(): Promise<void> {
 }
 
 async function main() {
+  const pkgInfo = getLocalCliPackageInfo();
   notifyIfUpdateAvailable({ name: pkg.name, version: pkg.version });
+  await runHostCompatCheck(pkgInfo);
 
   const commands = await loadCommands();
   registerCommands(program, commands);

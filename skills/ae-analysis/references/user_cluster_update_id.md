@@ -1,5 +1,7 @@
 # analysis user-cluster update-id
 
+`display_name` is at most 80 characters and `remarks` is at most 400 characters. The CLI rejects violations before uploading or dispatching the replacement file.
+
 Update a cluster by remapping imported values to its analysis entity.
 
 Do not use it for a condition/SQL cluster. The existing entity binding cannot be changed by this command.

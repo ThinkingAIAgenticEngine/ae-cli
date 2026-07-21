@@ -94,9 +94,10 @@
     "raw_header": "# 生データ"
   },
   "code": {
-    "inferred_sdk_mode": "[import-xlsx] sdk_integration_mode を推論: {mode}",
-    "default_sdk_mode": "[import-xlsx] sdk_integration_mode: {mode}（デフォルト、xlsx に platform 情報なし）",
-    "wrote_events": "[import-xlsx] {count} イベントを {path} に書き込みました"
+    "inferred_sdk_mode": "[import-template] sdk_integration_mode を推論: {mode}",
+    "default_sdk_mode": "[import-template] sdk_integration_mode: {mode}（デフォルト、xlsx に platform 情報なし）",
+    "wrote_events": "[import-template] {count} イベントを {path} に書き込みました",
+    "xlsx_import_empty_warning": "[import-template] ⚠️ 警告：{path} からイベントがインポートされませんでした。このファイルはAEトラッキングプランxlsxではない可能性があります（#イベントデータ などの # プレフィックスシートがありません）"
   },
   "wiki": {
     "sync_not_supported": "wiki sync: リポジトリのチェックアウト内で実行してください（scripts/wiki-plan.ts）；",

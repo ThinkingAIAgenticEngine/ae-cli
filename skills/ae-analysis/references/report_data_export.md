@@ -18,7 +18,9 @@ ae-cli analysis report-data export --project-id <project_id> --report-ids '[1001
 ae-cli analysis report-data export --project-id <project_id> --report-ids '[2001]' --sql-params '[{"name":"platform","value":"ios"}]' --artifact-format jsonl
 ```
 
-Input sends `project_id`, `report_ids`, optional `request_id`, `filters`, `group_by`, `sql_params`, `start_time`, `end_time`, `time_granularity`, `use_cache`, artifact `format`, and `timeout_seconds`. Async export has no inline row limit. Runtime defaults to and is capped at 21600 seconds (6 hours); cancel earlier with `analysis query cancel --run-id <run_id>`. The routing rule lives in [`analysis_data_retrieval.md`](analysis_data_retrieval.md).
+Input sends `project_id`, `report_ids`, optional `request_id`, `filters`, `group_by`, `sql_params`, `start_time`, `end_time`, `time_granularity`, `zone_offset`, `use_cache`, artifact `format`, and `timeout_seconds`. Async export has no inline row limit. Runtime defaults to and is capped at 21600 seconds (6 hours); cancel earlier with `analysis query cancel --run-id <run_id>`. The routing rule lives in [`analysis_data_retrieval.md`](analysis_data_retrieval.md).
+
+Timezone contract is identical to `report-data run`: omit `--zone-offset` to match the current user's report UI timezone (falling back to the project default); use an enabled integer from `-12` through `14` for a fixed UTC offset; use `--zone-offset 99` for local-time mode, where rows are not converted to one fixed UTC offset. `99` is a mode identifier, not `UTC+99`, and the option is not persisted.
 
 Override model:
 

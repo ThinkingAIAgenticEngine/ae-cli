@@ -29,7 +29,12 @@ export function dailyReportFlags(update: boolean): Flag[] {
     { name: 'enable-wx', type: 'boolean', required: false, desc: `Whether to send by WeCom webhook.${falseDefault}` },
     { name: 'wx-url', type: 'json', required: false, desc: 'WeCom webhook URL array, e.g. ["https://..."].' },
     { name: 'enable-feishu', type: 'boolean', required: false, desc: `Whether to send by Feishu webhook.${falseDefault}` },
-    { name: 'feishu-info', type: 'json', required: false, desc: 'Feishu config object, e.g. {"webhook":["https://..."]}.' },
+    {
+      name: 'feishu-info',
+      type: 'json',
+      required: false,
+      desc: 'Required with --enable-feishu true. Feishu image upload and bot config, e.g. {"app_id":"cli_xxx","app_secret":"secret_xxx","webhook":["https://..."]}. app_secret is sensitive.',
+    },
     { name: 'enable-kim', type: 'boolean', required: false, desc: `Whether to send by KIM/custom webhook.${falseDefault}` },
     { name: 'kim-url', type: 'json', required: false, desc: 'KIM/custom webhook URL array, e.g. ["https://..."].' },
     { name: 'enable-slack', type: 'boolean', required: false, desc: `Whether to send by Slack webhook.${falseDefault}` },

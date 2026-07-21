@@ -47,8 +47,9 @@ ae-cli agent +create-automation --help
 
 ### Output and Errors
 
-- Successful commands return machine-readable JSON by default. Use `--format table` when a table is easier to scan.
+- Successful commands return machine-readable JSON by default. Use `--format table` when a table is easier to scan. Envelope may include optional `_notice.host_compat`.
 - Failed commands return `{ "ok": false, "error": { "type": "...", "message": "...", "hint": "..." } }` and exit non-zero.
+- **CRITICAL — Host compat (do this first):** After each `ae-cli` run, check stderr and `_notice.host_compat`. If either is present, open the user reply with a short ⚠️ version warning and **quote the `npm i -g` / `npx skills add` (or update-cluster) lines verbatim**, then present the business result. Soft tip; `ok: true` can still carry the notice.
 
 ## When to Use
 

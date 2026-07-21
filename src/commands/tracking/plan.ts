@@ -98,7 +98,7 @@ export function registerPlan(cmd: Command, rootProgram: Command): void {
         console.log(t('plan.validate_passed'));
       } catch (e) {
         const errorMsg = e instanceof Error ? e.message : String(e);
-        console.log(t('plan.validate_failed') + '\n' + errorMsg);
+        console.error(t('plan.validate_failed') + '\n' + errorMsg);
 
         if (opts.fix) {
           console.log('\n' + t('plan.attempting_auto_fix') + '...');
@@ -113,11 +113,15 @@ export function registerPlan(cmd: Command, rootProgram: Command): void {
               validateDraft(draft);
               console.log(t('plan.validate_passed_after_fix'));
             } catch (e2) {
-              console.log(t('plan.validate_still_errors_after_fix', { error: e2 instanceof Error ? e2.message : String(e2) }));
+              console.error(t('plan.validate_still_errors_after_fix', { error: e2 instanceof Error ? e2.message : String(e2) }));
+              process.exitCode = 1;
             }
           } else {
             console.log(t('plan.no_auto_fix_available'));
+            process.exitCode = 1;
           }
+        } else {
+          process.exitCode = 1;
         }
       }
     });

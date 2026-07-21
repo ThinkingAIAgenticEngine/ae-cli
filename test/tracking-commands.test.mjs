@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
-import { existsSync, mkdtempSync, rmSync } from 'node:fs';
+import { existsSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 
@@ -59,6 +59,49 @@ test('tracking code import-template resolves template by name', () => {
     ]);
     assert.equal(r.status, 0, r.stderr);
     assert.ok(existsSync(out));
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('tracking code import-template imports an explicit xlsx file', () => {
+  const help = runCli(['tracking', 'code', 'import-template', '--help']);
+  assert.equal(help.status, 0, help.stderr);
+  assert.match(help.stdout, /--template/);
+
+  const dir = mkdtempSync(path.join(tmpdir(), 'ae-cli-import-xlsx-'));
+  const out = path.join(dir, 'draft.json');
+  try {
+    const r = runCli([
+      'tracking',
+      'code',
+      'import-template',
+      '--template',
+      path.join(ROOT, 'tracking-plan-template', 'TE 埋点示例模板.xlsx'),
+      '--out',
+      out,
+    ]);
+    assert.equal(r.status, 0, r.stderr);
+    assert.ok(existsSync(out));
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('tracking plan validate exits non-zero for an invalid draft', () => {
+  const dir = mkdtempSync(path.join(tmpdir(), 'ae-cli-invalid-draft-'));
+  const input = path.join(dir, 'draft.json');
+  try {
+    writeFileSync(input, JSON.stringify({
+      meta: { app_type: '', sdk_integration_mode: 'client_only', plan_name: 'invalid' },
+      events: [{ event_name: 'Invalid Event', source: 'chat', prop_names: [] }],
+      event_properties: [],
+      common_event_properties: [],
+      user_properties: [],
+    }));
+    const r = runCli(['tracking', 'plan', 'validate', '--in', input]);
+    assert.notEqual(r.status, 0);
+    assert.match(r.stderr + r.stdout, /validation failed|校验失败/i);
   } finally {
     rmSync(dir, { recursive: true, force: true });
   }

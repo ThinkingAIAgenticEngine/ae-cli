@@ -1,3 +1,19 @@
+### 6.0.33
+**Date:** 2026-07-21
+
+**Changes:**
+
+* Add host version compatibility check (soft tip when local CLI drifts from cluster `te_module_version`); surface tips via `meta._notice` for Agent skills
+* Add community chat analysis and community data-report capabilities (including standard v5 report workflow and skill guardrails)
+* Add tracking-plan and alert capability commands; fix related plan import / tracking-client / property-get contracts
+* Support project-scoped capability discovery (`capability list/search` by project)
+* Improve `generate-tracking-plan`: start from an existing plan file, refine event-tag logic, and improve archived xlsx layout
+* Align analysis timezone / audience validation and effective-timezone contracts; distinguish dashboard vs BI-panel create routes
+* Document Feishu credentials (`app_id` / `app_secret` / `webhook`) for dashboard daily-report send/update
+* Preserve long decimals as strings in JSON parsing to avoid precision loss
+* Register missing knowledge-base `+url` command; complete high-risk confirmation docs for alert / check / plan delete
+* Drop `--yes` from write-only engage activity skill examples
+
 ### 6.0.32
 **Date:** 2026-07-20
 

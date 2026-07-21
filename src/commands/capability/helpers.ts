@@ -32,6 +32,27 @@ export function resolveCapabilityGatewayDomain(capabilityId: string, domainOverr
   return findGatewayDomain(cliDomain) ?? cliDomain;
 }
 
+export function parseOptionalProjectId(raw?: string): number | undefined {
+  if (raw === undefined) {
+    return undefined;
+  }
+  const value = raw.trim();
+  if (!/^[1-9]\d*$/.test(value)) {
+    throw new CapabilityCommandValidationError(
+      '--project-id must be a positive integer.',
+      'Example: --project-id 1',
+    );
+  }
+  const projectId = Number(value);
+  if (!Number.isSafeInteger(projectId)) {
+    throw new CapabilityCommandValidationError(
+      '--project-id is outside the supported integer range.',
+      'Pass a positive safe integer.',
+    );
+  }
+  return projectId;
+}
+
 export function normalizeCapabilityList(value: unknown): CapabilitySummary[] {
   if (!Array.isArray(value)) {
     throw new Error('Capability gateway returned an invalid catalog: expected an array.');

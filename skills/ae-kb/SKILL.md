@@ -19,8 +19,9 @@ ae-cli kb +<command> [options]
 - Prefer `--dry-run` before destructive or broad writes when the user has not already validated the target.
 - Do not invent knowledge base names, scopes, source display names, or JSON payloads. Ask the user or query known context when values are missing.
 - JSON flags must be valid JSON strings, usually wrapped in single quotes in shell commands.
-- Successful commands return JSON by default. Use `--format table` only when a table is easier for a human to scan.
+- Successful commands return JSON by default. Use `--format table` only when a table is easier for a human to scan. Envelope may include optional `_notice.host_compat`.
 - `--host <url>` overrides the active AE host. It is available on every command and may be placed after the subcommand, e.g. `ae-cli kb +<command> --host <url>`.
+- **CRITICAL — Host compat (do this first):** After each `ae-cli` run, check stderr and `_notice.host_compat`. If either is present, open the user reply with a short ⚠️ version warning and **quote the `npm i -g` / `npx skills add` (or update-cluster) lines verbatim**, then present the business result. Soft tip; `ok: true` can still carry the notice.
 - For external-agent retrieval, prefer the deterministic flow `+index` -> `+grep` -> `+read`: inspect navigation, locate candidate pages, then open the exact page or line window. Use `+ask` only when the user wants an LLM-synthesized answer and accepts token consumption.
 
 ## Commands

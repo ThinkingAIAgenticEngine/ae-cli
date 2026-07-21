@@ -19,6 +19,7 @@ import {
   filterCapabilities,
   normalizeCapabilityList,
   parseCapabilityInput,
+  parseOptionalProjectId,
   resolveCapabilityGatewayDomain,
 } from './helpers.js';
 import { normalizeRiskLevel, requiresConfirmation } from '../../core/capability-risk.js';
@@ -45,43 +46,63 @@ export function registerCapability(program: Command): void {
     .command('list')
     .description('List capability summaries in a domain')
     .requiredOption('--domain <domain>', 'Capability namespace, such as analysis or metadata')
-    .action(async (opts: { domain: string }) => {
+    .option('--project-id <project-id>', 'Filter by project membership, permissions, and enabled features')
+    .action(async (opts: { domain: string; projectId?: string }) => {
       await executeAndPrint(program, async (host) => {
         const gatewayDomain = findGatewayDomain(opts.domain) ?? opts.domain;
-        const catalog = normalizeCapabilityList(await listCapabilities(host, gatewayDomain));
+        const projectId = parseOptionalProjectId(opts.projectId);
+        const catalog = normalizeCapabilityList(await listCapabilities(host, gatewayDomain, projectId));
         const capabilities = filterCapabilities(catalog, opts.domain);
         return { domain: opts.domain, count: capabilities.length, capabilities };
       });
     })
-    .addHelpText('after', '\nExample:\n  ae-cli capability list --domain analysis');
+    .addHelpText(
+      'after',
+      '\nExamples:\n' +
+      '  ae-cli capability list --domain analysis\n' +
+      '  ae-cli capability list --domain analysis --project-id 1',
+    );
 
   capability
     .command('search')
     .description('Search capability IDs and descriptions in a domain')
     .argument('<query>', 'Case-insensitive search terms')
     .requiredOption('--domain <domain>', 'Capability namespace, such as analysis or metadata')
-    .action(async (query: string, opts: { domain: string }) => {
+    .option('--project-id <project-id>', 'Filter by project membership, permissions, and enabled features')
+    .action(async (query: string, opts: { domain: string; projectId?: string }) => {
       await executeAndPrint(program, async (host) => {
         const gatewayDomain = findGatewayDomain(opts.domain) ?? opts.domain;
-        const catalog = normalizeCapabilityList(await listCapabilities(host, gatewayDomain));
+        const projectId = parseOptionalProjectId(opts.projectId);
+        const catalog = normalizeCapabilityList(await listCapabilities(host, gatewayDomain, projectId));
         const capabilities = filterCapabilities(catalog, opts.domain, query);
         return { domain: opts.domain, query, count: capabilities.length, capabilities };
       });
     })
-    .addHelpText('after', '\nExample:\n  ae-cli capability search "dashboard list" --domain analysis');
+    .addHelpText(
+      'after',
+      '\nExamples:\n' +
+      '  ae-cli capability search "dashboard list" --domain analysis\n' +
+      '  ae-cli capability search "dashboard list" --domain analysis --project-id 1',
+    );
 
   capability
     .command('inspect')
     .description('Inspect one capability schema, risk, auth, and output metadata')
     .argument('<capability-id>', 'Capability ID, such as analysis.report.list')
     .option('--domain <domain>', 'Override the capability namespace used for gateway routing')
-    .action(async (capabilityId: string, opts: { domain?: string }) => {
+    .option('--project-id <project-id>', 'Check availability in a project before returning metadata')
+    .action(async (capabilityId: string, opts: { domain?: string; projectId?: string }) => {
       await executeAndPrint(program, async (host) => {
         const gatewayDomain = resolveCapabilityGatewayDomain(capabilityId, opts.domain);
-        return inspectCapability(host, gatewayDomain, capabilityId);
+        return inspectCapability(host, gatewayDomain, capabilityId, parseOptionalProjectId(opts.projectId));
       });
     })
-    .addHelpText('after', '\nExample:\n  ae-cli capability inspect analysis.dashboard.list');
+    .addHelpText(
+      'after',
+      '\nExamples:\n' +
+      '  ae-cli capability inspect analysis.dashboard.list\n' +
+      '  ae-cli capability inspect analysis.dashboard.list --project-id 1',
+    );
 
   capability
     .command('validate')

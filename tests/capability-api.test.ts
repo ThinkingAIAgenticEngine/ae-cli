@@ -63,15 +63,39 @@ await test('listCapabilities sends cli-token header', async () => {
   setCliTokenManual('cli-list-token', host);
 
   let capturedHeader: string | undefined;
+  let capturedUrl = '';
   const prevFetch = globalThis.fetch;
-  globalThis.fetch = (async (_url, init) => {
+  globalThis.fetch = (async (url, init) => {
+    capturedUrl = String(url);
     capturedHeader = (init?.headers as Record<string, string>)?.['cli-token'];
     return new Response(JSON.stringify({ ok: true, data: [] }), { status: 200 });
   }) as typeof fetch;
 
   try {
-    await listCapabilities(host, 'metadata');
+    await listCapabilities(host, 'metadata', 42);
     assert.equal(capturedHeader, 'cli-list-token');
+    assert.equal(new URL(capturedUrl).searchParams.get('project_id'), '42');
+  } finally {
+    globalThis.fetch = prevFetch;
+    clearCliToken(host);
+  }
+});
+
+await test('listCapabilities omits project_id for company-level discovery', async () => {
+  const host = 'https://test-cap-list-company.internal';
+  clearCliToken(host);
+  setCliTokenManual('cli-list-company-token', host);
+
+  let capturedUrl = '';
+  const prevFetch = globalThis.fetch;
+  globalThis.fetch = (async (url) => {
+    capturedUrl = String(url);
+    return new Response(JSON.stringify({ ok: true, data: [] }), { status: 200 });
+  }) as typeof fetch;
+
+  try {
+    await listCapabilities(host, 'metadata');
+    assert.equal(new URL(capturedUrl).searchParams.has('project_id'), false);
   } finally {
     globalThis.fetch = prevFetch;
     clearCliToken(host);
@@ -100,6 +124,31 @@ await test('executeCapability POSTs { input } to .../execute', async () => {
     assert.ok(capturedUrl.includes('/api/cli/metadata/v1/capabilities/metadata.event.get/execute'));
     assert.equal(capturedBody, JSON.stringify({ input: { project_id: 1, event_name: 'purchase' } }));
     assert.equal(JSON.stringify(result), JSON.stringify({ event_name: 'x' }));
+  } finally {
+    globalThis.fetch = prevFetch;
+    clearCliToken(host);
+  }
+});
+
+await test('executeCapability preserves unsafe IDs and keeps long decimals numeric', async () => {
+  const host = 'https://test-cap-numeric-contract.internal';
+  clearCliToken(host);
+  setCliTokenManual('cli-numeric-token', host);
+
+  const prevFetch = globalThis.fetch;
+  globalThis.fetch = (async () => {
+    return new Response(
+      '{"ok":true,"data":{"id":1524788894514548736,'
+        + '"average_response_seconds":5401.925531914893}}',
+      { status: 200 },
+    );
+  }) as typeof fetch;
+
+  try {
+    const result = await executeCapability(host, 'community', 'community.chat.service_metrics', {});
+    assert.equal(result.id, '1524788894514548736');
+    assert.equal(typeof result.average_response_seconds, 'number');
+    assert.equal(result.average_response_seconds, Number('5401.925531914893'));
   } finally {
     globalThis.fetch = prevFetch;
     clearCliToken(host);

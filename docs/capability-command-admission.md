@@ -53,6 +53,19 @@ Transitional 表示能力尚未接入 Gateway，当前仍通过 MCP 或其他现
 
 Gateway 未覆盖时，不因缺少 L3 通道阻塞必要业务命令；但不得借过渡期重复建设同义命令。
 
+### 稳定 ingestion data-plane L2 例外
+
+稳定的数据接入面可以不经过 Capability Gateway，直接调用由业务域长期维护的 ingestion endpoint，并作为正式 L2 命令长期支持。这类命令不是 Transitional，但必须同时满足：
+
+- endpoint 的契约和维护业务域稳定，接入安全由服务端前置网关负责；
+- CLI 不读取、推导或外发 AE access token、CLI token 及其他平台凭证；
+- 提供类型化输入、文件或 stdin 处理、本地 schema 校验和稳定的结构化输出；
+- 写操作提供不含业务正文的 dry-run，flag、命令日志和 HTTP 日志均保护业务数据；
+- transport 有稳定测试覆盖，包含无认证头、超时、禁止重试、错误响应和 lossless 数据序列化；
+- 成功输出准确表达接入边界，不把排队成功解释为逐条接收或持久化成功。
+
+该例外只适用于稳定 ingestion data-plane，不得扩展为绕过 Gateway 的通用控制面 REST 入口。
+
 ## 2. 先判断 Gateway 覆盖状态
 
 每次新增或修改命令，先按能力而不是整个域判断覆盖状态。
@@ -75,6 +88,7 @@ Gateway 未覆盖时，不因缺少 L3 通道阻塞必要业务命令；但不�
 - 必要业务命令可以继续使用当前 MCP/REST transport。
 - 新增命令必须满足现有 risk、测试、文档、结构化输出和非交互调用约束。
 - 命令必须标记为 Transitional，并记录迁移出口。
+- 符合“稳定 ingestion data-plane L2 例外”全部条件的正式接入命令除外，不标记 Transitional。
 
 ## 3. L2 硬门槛
 
@@ -88,6 +102,8 @@ L2 必须同时满足：
 6. 仓库中不存在语义相同的 L1/L2 命令。
 7. 写能力支持 Gateway dry-run；确实无法支持时，必须在命令文档中写明替代安全机制。
 8. 相比 L3 至少提供一项本规则定义的额外价值。
+
+稳定 ingestion data-plane L2 不要求 capability ID、Gateway metadata 或 Gateway dry-run，但必须满足 §1 对应例外的全部安全、输入、日志、测试和输出边界，其余 L2 门槛仍适用。
 
 以下情况不得进入 L2：
 
@@ -161,7 +177,7 @@ Schema 自动生成只面向通过 L2 门槛的精选命令，不为全部 L3 �
 按以下顺序判断，不使用评分：
 
 1. Gateway 是否已覆盖该能力？
-2. 如果未覆盖：是否确有必要提供 CLI？是则使用 Transitional，否则不新增。
+2. 如果未覆盖：是否满足稳定 ingestion data-plane L2 例外？满足则进入正式 L2；否则确有必要时使用 Transitional，不必要则不新增。
 3. 如果已覆盖：一次 capability 调用是否足以完成用户任务？
 4. 如果不足且存在真实编排：进入 L1。
 5. 如果足够：L3 是否缺少本规则定义的类型、安全、文件、分页或输出增益？

@@ -22,7 +22,8 @@ ae-cli analysis query create-result-cluster \
 - `--query-context-id`, `--source`, and all coordinate fragments must come from the same synchronous `adhoc run`, `report-data run`, or `dashboard-report-data run` response.
 - Match the desired visible row and column in `source.drilldown.row_options`/`column_options`, select the correct metric option, and shallow-merge only their `coordinate` fragments.
 - Never pass `target_id`, raw QP, display-only dates, option presentation fields, or data from an export/download. Exports do not create query contexts.
-- `--cluster-name` must be unique in the project and contain the backend-supported identifier characters.
+- `--cluster-name` must be unique in the project, start with a lowercase letter, contain only lowercase letters, digits, and underscores, and be at most 24 characters. This legacy result-cluster path is stricter than ordinary cluster creation.
+- `--display-name`, when provided, must be at most 80 characters.
 
 The saved cluster subject is `source.drilldown.subject` or the selected event metric's `subject`. `USER_LIST` creates a user result cluster. `ENTITY_LIST` creates a result cluster for that custom entity; do not relabel it as a user cluster.
 

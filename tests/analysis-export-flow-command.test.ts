@@ -185,5 +185,14 @@ await test('dashboard daily report send keeps payload authoritative', async () =
   });
 });
 
+await test('dashboard daily report help documents complete Feishu image upload credentials', () => {
+  const feishuInfo = dashboardDailyReportSend.flags.find((flag) => flag.name === 'feishu-info');
+
+  assert.ok(feishuInfo);
+  assert.match(feishuInfo.desc, /app_id/);
+  assert.match(feishuInfo.desc, /app_secret/);
+  assert.match(feishuInfo.desc, /webhook/);
+});
+
 process.stdout.write(`\n${pass} passed, ${fail} failed\n`);
 if (fail > 0) process.exit(1);

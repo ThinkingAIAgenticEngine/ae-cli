@@ -7,7 +7,7 @@ import {
   syncLimitFlag,
   syncTimeoutSecondsFlag,
 } from '../capability-shared.js';
-import { reportDataInput } from './shared.js';
+import { reportDataInput, reportDataZoneOffsetDescription } from './shared.js';
 
 export const reportDataRun = createAnalysisCapabilityCommand({
   resource: 'report-data',
@@ -24,7 +24,7 @@ export const reportDataRun = createAnalysisCapabilityCommand({
     { name: 'start-time', type: 'string', required: false, desc: 'Non-SQL analysis-model date override start, yyyy-MM-dd. SQL dates must be saved parameters overridden through --sql-params.' },
     { name: 'end-time', type: 'string', required: false, desc: 'Non-SQL analysis-model date override end, yyyy-MM-dd. SQL dates must be saved parameters overridden through --sql-params.' },
     { name: 'time-granularity', type: 'string', required: false, desc: 'Non-SQL analysis-model time granularity override. SQL accepts only --sql-params.' },
-    { name: 'zone-offset', type: 'number', required: false, desc: 'Query execution timezone offset in hours. This is not persisted in the report definition.' },
+    { name: 'zone-offset', type: 'number', required: false, desc: reportDataZoneOffsetDescription },
     { name: 'use-cache', type: 'boolean', required: false, desc: 'Whether to use cache. Default: true.' },
     syncLimitFlag,
     syncTimeoutSecondsFlag,

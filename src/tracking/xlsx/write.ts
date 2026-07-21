@@ -1,7 +1,8 @@
 import ExcelJS from 'exceljs';
-import type { Draft, PropType, UpdateType, EventPlatform } from '../plan/types.js';
+import type { Draft, PropType, UpdateType, EventPlatform, Event } from '../plan/types.js';
 import { type Locale, sheetName, headerName, typeToDisplay } from '../i18n/xlsx.js';
 import { t } from '../i18n/translate.js';
+import { getTagPriority } from './tag-priority.js';
 
 // EventPlatform → xlsx value（始终用英文 canonical，各语言通用）
 const PLATFORM_TO_XLSX: Record<EventPlatform, string> = {
@@ -14,6 +15,66 @@ const VALID_PROP_TYPES = new Set<PropType>(['string', 'number', 'bool', 'datetim
 const VALID_UPDATE_TYPES = new Set<UpdateType>(['user_set', 'user_setOnce', 'user_add']);
 const SNAKE_CASE_RE = /^[a-z][a-z0-9_]*$/;
 const PROP_NAME_RE = /^[a-zA-Z#][a-zA-Z0-9_.]*$/;
+
+// ---- Column width helpers ----
+
+const MIN_COL_WIDTH = 10;
+const PADDING = 3;
+
+/** Quick check: is this codepoint a wide (CJK/fullwidth) character? */
+function isWideChar(code: number): boolean {
+  return (code >= 0x4E00 && code <= 0x9FFF) || // CJK Unified Ideographs
+    (code >= 0x3400 && code <= 0x4DBF) || // CJK Ext-A
+    (code >= 0x3040 && code <= 0x309F) || // Hiragana
+    (code >= 0x30A0 && code <= 0x30FF) || // Katakana
+    (code >= 0xAC00 && code <= 0xD7AF) || // Hangul
+    (code >= 0xFF00 && code <= 0xFFEF); // Fullwidth forms
+}
+
+/** Approximate display width: CJK/fullwidth ≈ 2, ASCII ≈ 1 */
+function displayWidth(s: string): number {
+  let w = 0;
+  for (const ch of s) {
+    w += isWideChar(ch.charCodeAt(0)) ? 2 : 1;
+  }
+  return w;
+}
+
+/**
+ * Auto-fit column widths for a worksheet.
+ *
+ * Each column is sized to its longest cell, capped at `maxWidth`.
+ * Columns whose content exceeds the cap get wrapText alignment.
+ *
+ * @param maxWidth  Default 55 — description columns benefit from a wider cap.
+ *                  Pass a smaller value for type/short columns (e.g. 22).
+ */
+function autoFitSheet(ws: ExcelJS.Worksheet, maxWidth: number = 55): void {
+  const colCount = ws.columnCount;
+  if (colCount === 0) return;
+  for (let i = 1; i <= colCount; i++) {
+    const col = ws.getColumn(i);
+    let maxDisplay = 0;
+    let needsWrap = false;
+    col.eachCell({ includeEmpty: false }, (cell) => {
+      const text = String(cell.value ?? '');
+      if (!text) return;
+      const dw = displayWidth(text);
+      if (dw > maxDisplay) maxDisplay = dw;
+    });
+    if (maxDisplay === 0) {
+      col.width = MIN_COL_WIDTH;
+      continue;
+    }
+    const capped = maxDisplay + PADDING > maxWidth;
+    col.width = Math.max(MIN_COL_WIDTH, Math.min(maxWidth, maxDisplay + PADDING));
+    if (capped) {
+      col.eachCell({ includeEmpty: false }, (cell) => {
+        cell.alignment = { ...cell.alignment, wrapText: true };
+      });
+    }
+  }
+}
 
 export function validateDraft(d: Draft): void {
   const errors: string[] = [];
@@ -224,9 +285,28 @@ export async function writeDraftXlsx(d: Draft, outPath: string, locale: Locale =
   // Build a prop map for quick lookup
   const propByName = new Map(d.event_properties.map(p => [p.name, p]));
 
-  // AE 后端规则：同一事件跨多行时，事件名列（A-D）必须合并单元格，否则判重拒收。
+  // Group events by event_tag for ordered output.
+  // Autotrack (SDK auto-collected) events first, then business events
+  // grouped by tag, ordered by business importance:
+  // Basic → core gameplay → monetization → supporting → genre-specific → non-game.
+  const autotrackEvents: Event[] = d.events.filter(e => e.source === 'autotrack');
+  const businessEvents: Event[] = d.events.filter(e => e.source !== 'autotrack');
+  const tagGroups = new Map<string, Event[]>();
+  const tagOrder: string[] = [];
+  for (const evt of businessEvents) {
+    const tag = evt.event_tag || '';
+    if (!tagGroups.has(tag)) { tagGroups.set(tag, []); tagOrder.push(tag); }
+    tagGroups.get(tag)!.push(evt);
+  }
+  tagOrder.sort((a, b) => getTagPriority(a) - getTagPriority(b));
+  const sorted: Event[] = [...autotrackEvents];
+  for (const tag of tagOrder) {
+    for (const evt of tagGroups.get(tag)!) { sorted.push(evt); }
+  }
+
+  // AE 后端规则：同一事件跨多行时，事件名列（A-E）必须合并单元格，否则判重拒收。
   // 用 ExcelJS 的 mergeCells 实现；property-less 事件仍写一行，不合并。
-  for (const evt of d.events) {
+  for (const evt of sorted) {
     const startRow = eventSheet.rowCount + 1;
     const platformStr = evt.platform ? PLATFORM_TO_XLSX[evt.platform] : '';
     if (evt.prop_names.length === 0) {
@@ -259,9 +339,18 @@ export async function writeDraftXlsx(d: Draft, outPath: string, locale: Locale =
         for (const col of ['A', 'B', 'C', 'D', 'E']) {
           eventSheet.mergeCells(`${col}${startRow}:${col}${endRow}`);
         }
+        // Center merged cells vertically
+        for (let r = startRow; r <= endRow; r++) {
+          const row = eventSheet.getRow(r);
+          for (const col of ['A', 'B', 'C', 'D', 'E']) {
+            const cell = row.getCell(col);
+            cell.alignment = { ...cell.alignment, vertical: 'middle' };
+          }
+        }
       }
     }
   }
+  autoFitSheet(eventSheet, 50);
 
   // === Sheet: #公共事件属性 ===
   const commonSheet = workbook.addWorksheet(sheetName('common_props', locale));
@@ -279,6 +368,7 @@ export async function writeDraftXlsx(d: Draft, outPath: string, locale: Locale =
       prop.desc ?? '',
     ]);
   }
+  autoFitSheet(commonSheet, 50);
 
   // === Sheet: #用户数据 ===
   const userSheet = workbook.addWorksheet(sheetName('user_data', locale));
@@ -300,6 +390,7 @@ export async function writeDraftXlsx(d: Draft, outPath: string, locale: Locale =
       prop.prop_tag ?? '',
     ]);
   }
+  autoFitSheet(userSheet, 50);
 
   // #用户ID体系 — AE 后端要求此 sheet 至少有 #account_id 和 #distinct_id 两行数据。
   const userIdSheet = workbook.addWorksheet(sheetName('user_id', locale));
@@ -311,6 +402,7 @@ export async function writeDraftXlsx(d: Draft, outPath: string, locale: Locale =
   ]);
   userIdSheet.addRow(['#account_id', t('user_id.account_id_display', {}, locale), t('user_id.system_property', {}, locale), t('user_id.set_to', { field: d.meta.user_identity?.account_id_field ?? 'account ID' }, locale)]);
   userIdSheet.addRow(['#distinct_id', t('user_id.distinct_id_display', {}, locale), t('user_id.system_property', {}, locale), t('user_id.auto_generated', {}, locale)]);
+  autoFitSheet(userIdSheet, 50);
 
   await workbook.xlsx.writeFile(outPath);
 }

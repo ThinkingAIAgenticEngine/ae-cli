@@ -1,7 +1,7 @@
 ---
 name: ae-analysis
 version: 4.0.3
-description: "Use ae-cli for AE/TE analysis-side data questions, asset operations, and asset governance: reports, dashboards, ad-hoc models, drilldown, detail data, alerts, clusters, tags, metrics, metadata, project configuration, tracking plans, governance asset lists/rules/lineage/impact/dependency, batch asset operations, projects, and resource links. Use when the user asks to query data, explain a change, export evidence, or inspect/create/update/govern analysis assets."
+description: "Use ae-cli for AE/TE analysis-side data questions, asset operations, and asset governance: reports, analysis boards, BI dashboards, ad-hoc models, drilldown, detail data, alerts, clusters, tags, metrics, metadata, project configuration, tracking plans, governance asset lists/rules/lineage/impact/dependency, batch asset operations, projects, and resource links. Use when the user asks to query data, explain a change, export evidence, or inspect/create/update/govern analysis assets."
 ---
 
 # ae-analysis
@@ -28,6 +28,7 @@ Use this skill for these CLI services:
 - `analysis`: reports, dashboards, BI panels, ad-hoc analysis, drilldown, detail data, alerts, clusters, tags, and async runs/artifacts.
 - `analysis-meta`: gateway metadata assets, events, properties, virtual metadata, metrics, data tables, exchange rules, and super metadata.
 - `analysis-governance`: gateway asset governance operations, including governed asset lists/exports, lineage, dependency, impact, query history, rule schema/list/create/update/delete, batch asset actions, and operation records. Use this service for asset governance workflows, not for metadata event/property/metric CRUD.
+- `tracking`: gateway tracking plan, checking, ingest, live-data, and event blacklist operations. Some legacy tracking commands still exist under the same service; prefer the dedicated reference for the exact command form.
 - `analysis_meta`: metadata governance, metrics, virtual metadata, project config, tracking plans, mark times, and entity catalog.
 - `analysis_common`: project discovery.
 
@@ -48,6 +49,7 @@ ae-cli analysis_common +<command> [options]
 ae-cli analysis <resource> <action> [options]
 ae-cli analysis-meta <resource> <action> [options]
 ae-cli analysis-governance <resource> <action> [options]
+ae-cli tracking <resource> <action> [options]
 ae-cli capability search|inspect|validate|dry-run|run [options]
 ```
 
@@ -56,6 +58,7 @@ ae-cli capability search|inspect|validate|dry-run|run [options]
 - JSON values must be JSON string literals.
 - Global flags include `--host`, `--format json|table`, `--jq`, `--validate`, `--dry-run`, and `--yes`. Use `--validate` alone to normalize complex capability input; use `--dry-run` alone for execution or risk preview.
 - JSON is the default machine-readable output. On failure, preserve the structured error and non-zero exit.
+- **CRITICAL — Host compat (do this first):** After each `ae-cli` run, check stderr and `_notice.host_compat`. If either is present, your reply **MUST open with** a short ⚠️ version warning and **quote the `npm i -g` / `npx skills add` (or update-cluster) lines verbatim**, then present the business result. Never answer with only a project/table summary when a host_compat notice exists. Soft tip; `ok: true` can still carry the notice.
 - Never invent command names, flags, payload fields, projects, resource IDs, asset names, event/property names, metric definitions, or dates.
 - 中文时间表达必须按固定语义映射：最近7天/近7天 -> `mode=recent` -> QP `recentDay=0-7`，含今天；过去7天/前7天 -> `mode=previous` -> QP `recentDay=1-7`，不含今天。用户明确说明是否包含今天时，以该说明为准。完整映射见 [`references/ai_models.md`](references/ai_models.md)。
 
@@ -79,6 +82,14 @@ For every gateway command that exposes `--request-id`, ae-cli generates a `reque
 - For black-box coverage audits, maintain an explicit module × model × outcome matrix. Mark coverage complete only from observed responses; missing assets, permissions, or fixtures are environment gaps, not passing coverage.
 
 ## Mandatory routing
+
+### Product terminology gate
+
+- The Chinese product term `看板` means an analysis board backed by saved reports. Route it to `ae-cli analysis dashboard ...` and capability IDs under `analysis.dashboard.*`.
+- The Chinese product terms `仪表盘` and `BI 仪表盘` mean a BI dashboard with worksheets, charts, and pages. Route them to `ae-cli analysis bi-panel ...` and capability IDs under `analysis.bi_panel.*`.
+- These assets are not aliases. Never substitute an analysis board for a BI dashboard, or a BI dashboard for an analysis board.
+- The standalone English word `dashboard` is ambiguous in this product. Before a write, ask whether the user means an analysis board (`看板`) or a BI dashboard (`仪表盘`) unless the surrounding context already makes the product asset explicit.
+- If the requested BI-panel capability is unavailable or unauthorized, report that constraint. Do not fall back to creating an analysis board.
 
 ### Project gate
 

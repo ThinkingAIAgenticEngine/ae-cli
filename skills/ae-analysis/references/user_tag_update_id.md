@@ -1,5 +1,7 @@
 # analysis user-tag update-id
 
+`display_name` is at most 80 characters and `remarks` is at most 400 characters. The CLI rejects violations before uploading or dispatching the replacement file.
+
 Update a tag by remapping imported values to its analysis entity.
 
 Do not use it for condition/metric/first-last/SQL definition changes.

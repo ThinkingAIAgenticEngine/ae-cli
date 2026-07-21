@@ -254,6 +254,21 @@ function clearPersistedCliToken(hostUrl: string): void {
  * After a token is resolved, the first call each local calendar day best-effort renews it via
  * `/v1/ta/cli/token/renew`. Renew failure never blocks returning the token.
  */
+/**
+ * Best-effort read of an existing CLI token without minting.
+ * Used by host compat-check so we never trigger login side-effects on startup.
+ */
+export function peekCliToken(hostOverride?: string): string | undefined {
+  const hostUrl = hostOverride || getActiveHost();
+  if (!hostUrl) return undefined;
+  return (
+    _cliTokenCache.get(hostUrl) ||
+    loadSecureCliToken(hostUrl) ||
+    getFallbackCliToken(hostUrl) ||
+    undefined
+  );
+}
+
 export async function getCliToken(hostOverride?: string): Promise<string> {
   const hostUrl = hostOverride || getActiveHost();
 

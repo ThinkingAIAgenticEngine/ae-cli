@@ -31,6 +31,11 @@ const authenticatedOnlyFlag: Flag = {
   desc: 'Return only resources whose metadata can be resolved under the current identity.',
 };
 
+const AUDIENCE_NAME_PATTERN = '^[a-zA-Z][a-zA-Z0-9_]*$';
+const AUDIENCE_NAME_MAX_LENGTH = 80;
+const AUDIENCE_DISPLAY_NAME_MAX_LENGTH = 80;
+const AUDIENCE_REMARK_MAX_LENGTH = 400;
+
 const tagListFieldsFlag: Flag = {
   ...fieldsFlag,
   desc: 'Optional tag inventory projection. Use tag_name, display_name, users_num, and other tag fields. cluster_name is reserved for user clusters and is rejected here.',
@@ -53,6 +58,14 @@ const clusterNameFlag: Flag = {
   desc: 'Exact cluster_name. Discover real values with analysis user-cluster list first.',
 };
 
+const newClusterNameFlag: Flag = {
+  ...clusterNameFlag,
+  minLength: 1,
+  maxLength: AUDIENCE_NAME_MAX_LENGTH,
+  pattern: AUDIENCE_NAME_PATTERN,
+  desc: 'New cluster_name. Must start with a letter, contain only letters, digits, and underscores, and be at most 80 characters.',
+};
+
 const tagNameFlag: Flag = {
   name: 'tag-name',
   type: 'string',
@@ -60,17 +73,27 @@ const tagNameFlag: Flag = {
   desc: 'Exact tag_name. Discover real values with analysis user-tag list first.',
 };
 
+const newTagNameFlag: Flag = {
+  ...tagNameFlag,
+  minLength: 1,
+  maxLength: AUDIENCE_NAME_MAX_LENGTH,
+  pattern: AUDIENCE_NAME_PATTERN,
+  desc: 'New tag_name. Must start with a letter, contain only letters, digits, and underscores, and be at most 80 characters.',
+};
+
 const displayNameFlag: Flag = {
   name: 'display-name',
   type: 'string',
   required: true,
-  desc: 'Human-readable display name.',
+  minLength: 1,
+  maxLength: AUDIENCE_DISPLAY_NAME_MAX_LENGTH,
+  desc: 'Human-readable display name. Maximum: 80 characters.',
 };
 
 const optionalDisplayNameFlag: Flag = {
   ...displayNameFlag,
   required: false,
-  desc: 'Optional new display name.',
+  desc: 'Optional new display name. Maximum: 80 characters.',
 };
 
 const clusterDefinitionRequestFlag: Flag = {
@@ -156,14 +179,16 @@ const remarksFlag: Flag = {
   name: 'remarks',
   type: 'string',
   required: false,
-  desc: 'Optional remarks.',
+  maxLength: AUDIENCE_REMARK_MAX_LENGTH,
+  desc: 'Optional remarks. Maximum: 400 characters.',
 };
 
 const remarkFlag: Flag = {
   name: 'remark',
   type: 'string',
   required: false,
-  desc: 'Optional new remark.',
+  maxLength: AUDIENCE_REMARK_MAX_LENGTH,
+  desc: 'Optional new remark. Maximum: 400 characters.',
 };
 
 const propertyNamesFlag: Flag = {
@@ -494,7 +519,7 @@ const commands: Command[] = [
   ], 'read', (ctx) => memberInput(ctx, 'cluster', false)),
   capability('user-cluster', 'create', 'analysis.user_cluster.create', 'Create a condition or SQL user cluster directly from an AI-facing definition request.', [
     projectIdFlag,
-    clusterNameFlag,
+    newClusterNameFlag,
     displayNameFlag,
     clusterDefinitionRequestFlag,
     authenticatedOnlyFlag,
@@ -512,7 +537,7 @@ const commands: Command[] = [
   ], 'write', (ctx) => clusterWriteInput(ctx, false)),
   idImportCapability(capability('user-cluster', 'create-id', 'analysis.user_cluster.create_id', 'Create a cluster by mapping imported values to an analysis entity.', [
     projectIdFlag,
-    { ...clusterNameFlag, required: false, desc: 'Optional cluster_name; generated if omitted.' },
+    { ...newClusterNameFlag, required: false, desc: 'Optional cluster_name; generated if omitted. When provided, it must satisfy the 1-80 character machine-name contract.' },
     displayNameFlag,
     requiredEntityIdFlag,
     inputFileIdFlag,
@@ -563,7 +588,7 @@ const commands: Command[] = [
   ], 'read', (ctx) => memberInput(ctx, 'tag', false)),
   capability('user-tag', 'create', 'analysis.user_tag.create', 'Create a user tag directly from an AI-facing definition request.', [
     projectIdFlag,
-    tagNameFlag,
+    newTagNameFlag,
     displayNameFlag,
     tagDefinitionRequestFlag,
     authenticatedOnlyFlag,
@@ -585,7 +610,7 @@ const commands: Command[] = [
   ], 'write', (ctx) => ({ project_id: ctx.num('project-id'), tag_name: ctx.str('tag-name') })),
   idImportCapability(capability('user-tag', 'create-id', 'analysis.user_tag.create_id', 'Create a tag by mapping imported values to an analysis entity.', [
     projectIdFlag,
-    { ...tagNameFlag, required: false, desc: 'Optional tag_name; generated if omitted.' },
+    { ...newTagNameFlag, required: false, desc: 'Optional tag_name; generated if omitted. When provided, it must satisfy the 1-80 character machine-name contract.' },
     displayNameFlag,
     requiredEntityIdFlag,
     inputFileIdFlag,

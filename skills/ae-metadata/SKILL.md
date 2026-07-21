@@ -21,8 +21,9 @@ Parallel to **`ae-analysis`** (MCP `analysis_meta` for metadata lists/governance
 | `--dry-run` | Optional: confirm ready to run (`/dry-run`). Alone for risk/output preview. Do not stack with `--validate`. |
 
 Output and errors:
-- Success: JSON envelope (default).
+- Success: JSON envelope (default). May include optional `_notice.host_compat`.
 - Failure: `{ "ok": false, "error": { "type", "message", "hint" } }`, non-zero exit.
+- **CRITICAL — Host compat (do this first):** After each `ae-cli` run, check stderr and `_notice.host_compat`. If either is present, open the user reply with a short ⚠️ version warning and **quote the `npm i -g` / `npx skills add` (or update-cluster) lines verbatim**, then present the business result. Soft tip; `ok: true` can still carry the notice.
 
 Safety:
 - Read-only commands can run directly after IDs/names are verified.

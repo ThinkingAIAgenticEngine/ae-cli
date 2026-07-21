@@ -118,15 +118,15 @@ First, check if both `.ae-cli/draft.json` and `.ae-cli/draft.xlsx` exist:
    - Reference: tracking plan document (Feishu: https://www.feishu.cn/docx/Jt0VdhNB6oSJ4TxISs1cq2Ebnmg)
 
 2. **If you already have a tracking plan**
-   - Provide the xlsx file path and use `ae-cli tracking code import-xlsx` to import
+   - Provide the xlsx file path and use `ae-cli tracking code import-template --template` to import
    - Or place the xlsx file at `.ae-cli/draft.xlsx` and re-run
 
-**If xlsx file exists** (provided via `ae-cli tracking code import-xlsx` or placed at `.ae-cli/draft.xlsx`):
+**If xlsx file exists** (provided via `ae-cli tracking code import-template --template` or placed at `.ae-cli/draft.xlsx`):
 
 **Step 1: Parse the xlsx file**
 
 ```bash
-ae-cli tracking code import-xlsx --xlsx <xlsx-path> --out .ae-cli/draft.json
+ae-cli tracking code import-template --template <xlsx-path> --out .ae-cli/draft.json
 ```
 
 This command:
@@ -155,7 +155,7 @@ This command:
 - `服务端` / `server` → server-only collection, parsed as `platform: "server"`
 - `客户端,服务端` / `client,server` / `服务端,客户端` / `server,client` → both platforms, parsed as `platform: "both"`
 
-**Internal representation**: xlsx "Platform" column values are parsed by `ae-cli tracking code import-xlsx` into internal `platform` field values:
+**Internal representation**: xlsx "Platform" column values are parsed by `ae-cli tracking code import-template --template` into internal `platform` field values:
 - `client` → client-side collection
 - `server` → server-side collection
 - `both` → both platforms

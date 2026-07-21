@@ -8,11 +8,16 @@ export interface Flag {
   required?: boolean;
   default?: any;
   desc: string;
+  /** Always redact this flag's value from command logs. */
+  sensitive?: boolean;
   /** Shown in validation errors when this required flag is missing. */
   hint?: string;
   alias?: string;
   min?: number;
   max?: number;
+  minLength?: number;
+  maxLength?: number;
+  pattern?: string;
 }
 
 export interface Command {
@@ -20,9 +25,13 @@ export interface Command {
   /** Optional space-separated resource path before the command. */
   resource?: string;
   command: string;
+  /** Set false for commands whose transport is intentionally unrelated to the active AE host. */
+  usesAeHost?: boolean;
   /** Canonical gateway capability ID for machine-readable registry verification. */
   capabilityId?: string;
   description: string;
+  /** Optional command-specific text appended to the leaf command's --help output. */
+  helpText?: string;
   flags: Flag[];
   risk: RiskLevel;
   /** Local flag / pre-flight checks before validateInput / dryRun / execute. */
@@ -51,6 +60,7 @@ export interface RuntimeContext {
   json(name: string): any;
 
   api(method: string, path: string, params?: Record<string, any>, data?: any): Promise<any>;
+  communityReport(endpoint: string, rawBody: string): Promise<any>;
   querySql(projectId: number, sql: string): Promise<any>;
   queryReportData(projectId: number, reportId: number, qp: any, eventModel: number, options?: Record<string, any>): Promise<any>;
 
@@ -85,6 +95,8 @@ export interface OutputEnvelope {
   ok: boolean;
   data?: any;
   meta?: Record<string, unknown>;
+  /** Soft notices for Agents / non-interactive consumers (e.g. host version compat). */
+  _notice?: Record<string, unknown>;
   error?: {
     type: 'auth' | 'permission' | 'api' | 'validation' | 'config';
     code?: string | number;

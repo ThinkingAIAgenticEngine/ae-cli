@@ -94,9 +94,10 @@
     "raw_header": "# raw"
   },
   "code": {
-    "inferred_sdk_mode": "[import-xlsx] inferred sdk_integration_mode: {mode}",
-    "default_sdk_mode": "[import-xlsx] sdk_integration_mode: {mode} (default, xlsx has no platform info)",
-    "wrote_events": "[import-xlsx] wrote {count} events to {path}"
+    "inferred_sdk_mode": "[import-template] inferred sdk_integration_mode: {mode}",
+    "default_sdk_mode": "[import-template] sdk_integration_mode: {mode} (default, xlsx has no platform info)",
+    "wrote_events": "[import-template] wrote {count} events to {path}",
+    "xlsx_import_empty_warning": "[import-template] WARNING: No events imported from {path}. The file may not be an AE tracking plan xlsx (missing #-prefixed sheets like #event data)"
   },
   "wiki": {
     "sync_not_supported": "wiki sync: run in a repo checkout with scripts/wiki-plan.ts available;",

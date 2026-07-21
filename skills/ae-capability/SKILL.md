@@ -18,6 +18,8 @@ Use this skill for progressive capability discovery and generic gateway invocati
 
 Never guess a capability ID, input field, enum value, resource ID, or project ID.
 
+**CRITICAL — Host compat (do this first):** After each `ae-cli` run, check stderr and `_notice.host_compat`. If either is present, open the user reply with a short ⚠️ version warning and **quote the `npm i -g` / `npx skills add` (or update-cluster) lines verbatim**, then present the business result. Soft tip; `ok: true` can still carry the notice.
+
 ### On-demand pre-check (pick one)
 
 Motto: **validate = fix params; dry-run = confirm ready to run.**
@@ -41,14 +43,14 @@ Create or keep a standalone reference only when at least one applies: L2 hard ba
 ## Commands
 
 ```bash
-# List summaries for one capability namespace.
-ae-cli capability list --domain <domain>
+# List company-level summaries, or the capabilities available in one project.
+ae-cli capability list --domain <domain> [--project-id <id>]
 
 # Search capability IDs and descriptions. All terms must match.
-ae-cli capability search "<terms>" --domain <domain>
+ae-cli capability search "<terms>" --domain <domain> [--project-id <id>]
 
 # Read input_schema, risk, auth, output, and dry-run support.
-ae-cli capability inspect <capability-id>
+ae-cli capability inspect <capability-id> [--project-id <id>]
 
 # Optional — fix params only (gateway /validate). Curated: global --validate.
 ae-cli capability validate <capability-id> --input '<json-object>'
@@ -69,7 +71,7 @@ ae-cli capability run <capability-id> --input '<json-object>'
 - `@<path>`.
 - `-` to read JSON from stdin.
 
-The capability namespace is inferred from `<capability-id>` for `inspect`, `validate`, `dry-run`, and `run`. Use `--domain <domain>` only to override routing.
+The capability namespace is inferred from `<capability-id>` for `inspect`, `validate`, `dry-run`, and `run`. Use `--domain <domain>` only to override routing. For `list`, `search`, and `inspect`, omit `--project-id` for company License/Feature visibility; pass it to include project membership, project Feature, and user permission filtering.
 
 ## validate vs dry-run
 

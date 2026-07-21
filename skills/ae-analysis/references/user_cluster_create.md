@@ -8,6 +8,8 @@ The response reports this directly: `computation.triggered_automatically=true`, 
 
 Flags: `--project-id`, `--cluster-name`, `--display-name`, `--definition-request` required. Optional: `--authenticated-only`, `--zone-offset`, `--entity-id`. The cluster type comes from `definition_request.type`.
 
+`cluster_name` is a machine identifier: 1-80 characters, starts with a letter, and contains only letters, digits, or underscores. `display_name` is 1-80 characters. The CLI rejects violations before dispatch.
+
 Read `user_cluster_models.md` before constructing `--definition-request`. Create does not accept `--remark`; set it later with `user-cluster update` when needed.
 
 The backend validates and compiles the definition inside the create operation; if metadata is ambiguous or missing, creation fails without creating the cluster. Condition clusters are saved as mixed-condition clusters (`clusterType=CONDITION`, `clusterSubType=MIX_CONDITION`).

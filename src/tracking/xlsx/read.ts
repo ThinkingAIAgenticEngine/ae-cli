@@ -411,6 +411,31 @@ function parseUserDataSheet(rows: Row[], source: Source, sheetName: string): Use
   return props;
 }
 
+/**
+ * Fill down merged cell values in a 2D row array using worksheet merge info.
+ * SheetJS returns null for non-top-left cells in merged ranges.
+ * This function propagates the top-left value to all cells in each merge range.
+ */
+function fillDownMergedCells(
+  rows: Row[],
+  merges: Array<{ s: { r: number; c: number }; e: { r: number; c: number } }>,
+): void {
+  for (const merge of merges) {
+    const { s, e } = merge;
+    const topLeftValue = rows[s.r]?.[s.c];
+    if (topLeftValue === null || topLeftValue === undefined) continue;
+    for (let r = s.r; r <= e.r; r++) {
+      if (!rows[r]) continue;
+      for (let c = s.c; c <= e.c; c++) {
+        if (r === s.r && c === s.c) continue; // skip top-left
+        if (rows[r][c] === null || rows[r][c] === undefined) {
+          rows[r][c] = topLeftValue;
+        }
+      }
+    }
+  }
+}
+
 export async function readTemplateXlsx(filePath: string): Promise<Draft> {
   let wb: ReturnType<typeof XLSX.readFile>;
   try {
@@ -439,6 +464,14 @@ export async function readTemplateXlsx(filePath: string): Promise<Draft> {
       raw: false,
       defval: null,
     }) as Row[];
+
+    // Fill down merged cell values (SheetJS returns null for non-top-left cells)
+    const merges = (ws as Record<string, unknown>)['!merges'] as
+      | Array<{ s: { r: number; c: number }; e: { r: number; c: number } }>
+      | undefined;
+    if (merges && merges.length > 0) {
+      fillDownMergedCells(rows, merges);
+    }
 
     if (allSheetNames('event_data').includes(sName)) {
       const result = parseEventSheet(rows, source, sName);

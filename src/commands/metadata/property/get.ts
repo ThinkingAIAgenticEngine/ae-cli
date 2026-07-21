@@ -9,22 +9,22 @@ export const propertyGet = createCapabilityCommand({
   flags: [
     { name: 'project-id', type: 'number', required: true, desc: 'Numeric project ID.', alias: 'p' },
     {
-      name: 'property-name',
+      name: 'prop-name',
       type: 'string',
       required: true,
-      desc: 'Super-property technical name. Virtual, dict, and exchange-rate properties use the same field.',
+      desc: 'Property column name.',
     },
     {
-      name: 'property-scope',
+      name: 'table-type',
       type: 'string',
       required: true,
-      desc: 'Property owner table: event (super event properties) or user (super user properties).',
+      desc: 'Property table type: event or user.',
     },
   ],
   risk: 'read',
   buildInput: (ctx) => ({
     project_id: ctx.num('project-id'),
-    property_name: ctx.str('property-name'),
-    property_scope: ctx.str('property-scope'),
+    table_type: ctx.str('table-type'),
+    prop_name: ctx.str('prop-name'),
   }),
 });

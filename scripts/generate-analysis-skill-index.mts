@@ -134,6 +134,9 @@ function renderFlag(flag: Flag): string {
     flag.default !== undefined ? `default=${JSON.stringify(flag.default)}` : '',
     flag.min !== undefined ? `min=${flag.min}` : '',
     flag.max !== undefined ? `max=${flag.max}` : '',
+    flag.minLength !== undefined ? `minLength=${flag.minLength}` : '',
+    flag.maxLength !== undefined ? `maxLength=${flag.maxLength}` : '',
+    flag.pattern !== undefined ? `pattern=${flag.pattern}` : '',
   ].filter(Boolean).join(', ');
   return `\`--${flag.name}\` (${escapeCell(flag.type)}; ${constraints}) — ${escapeCell(flag.desc)}`;
 }

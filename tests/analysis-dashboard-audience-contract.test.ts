@@ -11,8 +11,10 @@ import { dashboardList } from '../src/commands/te-analysis/dashboard/list.ts';
 import { dashboardShare } from '../src/commands/te-analysis/dashboard/share.ts';
 import { dashboardUpdate } from '../src/commands/te-analysis/dashboard/update.ts';
 import { dashboardReportDataRun } from '../src/commands/te-analysis/dashboard-report-data/run.ts';
+import { dashboardReportDataExport } from '../src/commands/te-analysis/dashboard-report-data/export.ts';
 import { queryCreateResultCluster } from '../src/commands/te-analysis/query/create-result-cluster.ts';
 import userCommands from '../src/commands/te-analysis/user/index.ts';
+import { stringFlagValidationError } from '../src/framework/runner.ts';
 
 let pass = 0;
 let fail = 0;
@@ -83,6 +85,10 @@ await test('result cluster has one canonical capability', () => {
   assert.equal(queryCreateResultCluster.capabilityId, 'analysis.query.create_result_cluster');
   assert.equal(userCommands.some((item) => item.capabilityId === 'analysis.user_cluster.create_from_result'), false);
   assert.equal(userCommands.some((item) => item.command === 'create-from-result'), false);
+  const machineName = queryCreateResultCluster.flags.find((item) => item.name === 'cluster-name')!;
+  assert.equal(machineName.maxLength, 24);
+  assert.equal(machineName.pattern, '^[a-z][a-z0-9_]*$');
+  assert.equal(queryCreateResultCluster.flags.find((item) => item.name === 'display-name')!.maxLength, 80);
 });
 
 await test('dashboard list forwards snake_case projection fields', async () => {
@@ -131,6 +137,45 @@ await test('condition create and update expose only fields accepted by Common', 
   }
   assert.equal(flagNames(user('user-cluster', 'update-id')).includes('entity-id'), false);
   assert.equal(flagNames(user('user-tag', 'update-id')).includes('entity-id'), true);
+});
+
+await test('audience writes publish the UI-compatible string limits', () => {
+  for (const resource of ['user-cluster', 'user-tag']) {
+    const create = user(resource, 'create');
+    const createId = user(resource, 'create-id');
+    const update = user(resource, 'update');
+    const updateId = user(resource, 'update-id');
+    const machineName = resource === 'user-cluster' ? 'cluster-name' : 'tag-name';
+    for (const command of [create, createId]) {
+      const flag = command.flags.find((item) => item.name === machineName)!;
+      assert.equal(flag.minLength, 1);
+      assert.equal(flag.maxLength, 80);
+      assert.equal(flag.pattern, '^[a-zA-Z][a-zA-Z0-9_]*$');
+    }
+    for (const command of [create, createId, update, updateId]) {
+      assert.equal(command.flags.find((item) => item.name === 'display-name')!.maxLength, 80);
+    }
+    assert.equal(update.flags.find((item) => item.name === 'remark')!.maxLength, 400);
+    assert.equal(createId.flags.find((item) => item.name === 'remarks')!.maxLength, 400);
+    assert.equal(updateId.flags.find((item) => item.name === 'remarks')!.maxLength, 400);
+  }
+});
+
+await test('audience string limits fail locally before dispatch', () => {
+  const clusterName = user('user-cluster', 'create').flags.find((item) => item.name === 'cluster-name')!;
+  const resultClusterName = queryCreateResultCluster.flags.find((item) => item.name === 'cluster-name')!;
+  const displayName = user('user-tag', 'create').flags.find((item) => item.name === 'display-name')!;
+  const remark = user('user-cluster', 'update').flags.find((item) => item.name === 'remark')!;
+  assert.match(stringFlagValidationError(clusterName, `a${'b'.repeat(80)}`)!.message, /must not exceed 80/);
+  assert.match(stringFlagValidationError(clusterName, '1_invalid')!.message, /invalid format/);
+  assert.match(stringFlagValidationError(resultClusterName, `a${'b'.repeat(24)}`)!.message, /must not exceed 24/);
+  assert.match(stringFlagValidationError(resultClusterName, 'A_result')!.message, /invalid format/);
+  assert.match(stringFlagValidationError(displayName, '显'.repeat(81))!.message, /must not exceed 80/);
+  assert.match(stringFlagValidationError(remark, 'r'.repeat(401))!.message, /must not exceed 400/);
+  assert.equal(stringFlagValidationError(clusterName, `a${'b'.repeat(79)}`), undefined);
+  assert.equal(stringFlagValidationError(resultClusterName, `a${'b'.repeat(23)}`), undefined);
+  assert.equal(stringFlagValidationError(displayName, '显'.repeat(80)), undefined);
+  assert.equal(stringFlagValidationError(remark, 'r'.repeat(400)), undefined);
 });
 
 await test('inline ID CSV help exposes the exact no-header column contract', () => {
@@ -186,6 +231,24 @@ await test('dashboard report-data help warns that SQL reports ignore shared over
     const flag = dashboardReportDataRun.flags.find((item) => item.name === name)!;
     assert.match(flag.desc, /SQL reports ignore/);
     assert.match(flag.desc, /warnings/);
+  }
+});
+
+await test('dashboard report-data run and export expose and forward the unified timezone override', async () => {
+  for (const command of [dashboardReportDataRun, dashboardReportDataExport]) {
+    const flag = command.flags.find((item) => item.name === 'zone-offset');
+    assert.ok(flag, `${command.command} must expose --zone-offset`);
+    assert.match(flag.desc, /current user/);
+    assert.match(flag.desc, /project default/);
+    assert.match(flag.desc, /99/);
+
+    const { body } = await dryBody(command, {
+      'project-id': 5,
+      'dashboard-id': 903,
+      'report-ids': [1616],
+      'zone-offset': 0,
+    });
+    assert.equal(body.input.zone_offset, 0, `${command.command} must forward zone_offset=0`);
   }
 });
 

@@ -39,6 +39,10 @@ function tasksFor(files) {
     tasks.push(['npm', ['run', 'check:agents-docs']]);
   }
 
+  if (needs(files, [/^src\/core\/json-utils\.ts$/, /^tests\/json-utils\.test\.ts$/])) {
+    tasks.push(['npm', ['run', 'verify:json-utils']]);
+  }
+
   if (needs(files, [/^src\/commands\/te-analysis\//, /^skills\/ae-analysis\//, /^docs\/te-analysis\//, /^scripts\/verify-te-analysis/, /^test\/multi-cluster-mode\.test\.mjs$/])) {
     tasks.push(
       ['npm', ['run', 'verify:analysis-tools']],
@@ -48,6 +52,22 @@ function tasksFor(files) {
       ['npm', ['run', 'verify:analysis-meta-tools']],
       ['npm', ['run', 'verify:analysis-common-tools']]
     );
+  }
+
+  if (needs(files, [/^src\/commands\/te-community\//, /^skills\/ae-community\//, /^test\/community-capability-routing\.test\.mjs$/])) {
+    tasks.push(['npm', ['run', 'verify:community-capability']]);
+  }
+
+  if (needs(files, [
+    /^src\/commands\/te-community\/data\//,
+    /^src\/core\/(community-report-client|errors|logger)\.ts$/,
+    /^src\/framework\/(types|runner|output|register)\.ts$/,
+    /^skills\/ae-community\/(SKILL\.md|references\/community-data-report\.md)$/,
+    /^(test|tests)\/community-(data-)?report-/,
+    /^docs\/capability-command-admission\.md$/,
+    /^(AGENTS|CLAUDE)\.md$/,
+  ])) {
+    tasks.push(['npm', ['run', 'verify:community-report']]);
   }
 
   if (needs(files, [/^src\/commands\/team\//, /^scripts\/verify-te-team-tools\.mjs$/])) {
@@ -80,7 +100,7 @@ function formatTask([command, commandArgs]) {
 }
 
 if (args.has('--help')) {
-  console.log('Usage: npm run qa:changed [-- --list]');
+  console.log('Usage: npm run qa-changed [-- --list]');
   console.log('Runs build, smoke test, and changed-domain verify scripts.');
   process.exit(0);
 }

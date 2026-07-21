@@ -137,6 +137,23 @@ function runMcpDryRun(args) {
 
 process.stdout.write('\nmetadata capability command tests\n');
 
+await test('metadata property get uses the common-service property contract', async () => {
+  const cmd = await importCmd('src/commands/metadata/property/get.ts', 'propertyGet');
+  const { url, body } = await captureCapabilityDryRun(cmd, {
+    projectId: 1,
+    tableType: 'event',
+    propName: '#revenue',
+  });
+  assert.equal(url, `${HOST}/api/cli/analysis/v1/capabilities/metadata.property.get/dry-run`);
+  assert.deepEqual(body, {
+    input: {
+      project_id: 1,
+      table_type: 'event',
+      prop_name: '#revenue',
+    },
+  });
+});
+
 await test('metadata data-table list maps to analysis gateway component', async () => {
   const cmd = await importCmd('src/commands/metadata/data-table/list.ts', 'dataTableList');
   const { url, body } = await captureCapabilityDryRun(cmd, { projectId: 1 });

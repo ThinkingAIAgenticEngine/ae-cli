@@ -41,7 +41,7 @@ test('Phase 0 Item 2 hides codebase in sandbox and renumbers visibly', () => {
   assert.match(sandboxPrompt, /1 - Product document/);
   assert.match(sandboxPrompt, /2 - Detailed description/);
   assert.match(sandboxPrompt, /3 - Pre-built template/);
-  assert.match(sandboxPrompt, /1,3/);
+  assert.match(sandboxPrompt, /1,4/);
   assert.doesNotMatch(sandboxPrompt, /Codebase/);
 });
 

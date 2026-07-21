@@ -60,6 +60,11 @@ export function registerCode(cmd: Command): void {
         ? await readTemplateMd(templatePath)
         : await readTemplateXlsx(templatePath);
 
+      // Warn if xlsx import produced no data (likely not an AE-format file)
+      if (!templatePath.endsWith('.md') && draft.events.length === 0) {
+        process.stderr.write(t('code.xlsx_import_empty_warning', { path: templatePath }) + '\n');
+      }
+
       // Infer sdk_integration_mode from events (if platform info available)
       const inferredMode = inferSdkMode(draft.events);
       if (inferredMode) {

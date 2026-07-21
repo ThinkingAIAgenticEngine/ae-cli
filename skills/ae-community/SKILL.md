@@ -1,18 +1,21 @@
 ---
 name: ae-community
-version: 2.0.0
-description: "AE community analysis: post search, comment sentiment, topic trends, risky content, livestream data."
+description: "AE community analysis and data reporting for posts, comments, topics, livestreams, customer-service chats, WeCom after-sales groups, and in-game chat. Use for community content insight, sentiment, intent, evidence drill-down, community data ingestion/import/submission, and WeCom chat data integration (社区数据上报、导入、提交社区数据、企微聊天数据接入)."
 ---
 
 # ae-community
 
-The AE Community domain provides social data analysis: post/video search, comment analytics, sentiment and topics, risk monitoring, and livestream metrics. Commands run as **`ae-cli community +<subcommand>`** — every community subcommand uses the **`+` prefix**.
+Skill revision: 2.4.1.
 
-| Route (MCP) | CLI service | Responsibility |
-|-------------|-------------|----------------|
+The AE Community domain provides social and chat data analysis plus validated community data reporting. Curated analysis commands run as **`ae-cli community +<subcommand>`**; chat analysis uses dynamic Capability Gateway commands; reporting uses the direct **`ae-cli community data report`** ingestion command.
+
+| Route | CLI service | Responsibility |
+|-------|-------------|----------------|
 | `community_content` | `community` | Posts, comments, corpus tags, search, livestream content, risk content |
 | `community_analysis` | `community` | Channel list, overview metrics, sentiment, tag trends |
 | `community_hot` | `community` | Daily summary, hot topics, topic drill-down |
+| `community.chat.*` | `community` Capability Gateway | Chat overview, participant discovery, roster-driven service metrics, intent/risk drill-down, raw evidence |
+| Direct ingestion data plane | `community data report` | Validate, normalize, and submit community records to an explicit Iris `/sync_content` endpoint |
 
 ---
 
@@ -26,11 +29,12 @@ Global parameters:
 |---|---|
 | `--format <json\|table>` | Output format. Default is JSON. |
 | `--jq <expr>` | jq filter expression for JSON output. |
-| `--host <url>` | Override the active AE host. Available on every command and may be placed after the subcommand, e.g. `ae-cli community +<command> --host <url>`. |
+| `--host <url>` | Override the active AE host for analysis-side commands and place it after the subcommand, e.g. `ae-cli community +<command> --host <url>`. It is intentionally unavailable for `community data report`; use `--endpoint` there. |
 
 Output and errors:
-- Successful commands return machine-readable JSON by default.
+- Successful commands return machine-readable JSON by default. Envelope may include optional `_notice.host_compat`.
 - Failed commands return `{ "ok": false, "error": { "type": "...", "message": "...", "hint": "..." } }` and exit non-zero.
+- **CRITICAL — Host compat (do this first):** After each `ae-cli` run, check stderr and `_notice.host_compat`. If either is present, open the user reply with a short ⚠️ version warning and **quote the `npm i -g` / `npx skills add` (or update-cluster) lines verbatim**, then present the business result. Soft tip; `ok: true` can still carry the notice.
 
 Safety constraints:
 - Read commands can execute directly after required IDs and references are verified.
@@ -50,6 +54,7 @@ Typical use cases:
 - Track sentiment, keywords/tags, and macro overview metrics by time range
 - Monitor risky or moderated content
 - Analyze livestream rooms, sessions, and AI-generated session reports
+- Analyze customer-service DMs, customer after-sales groups, and in-game chat
 - Produce daily/weekly/activity-style reports via composite references under `references/community-*.md`
 
 For per-command flags and copy-paste examples, use the files in [`references/`](references/).
@@ -67,6 +72,10 @@ For per-command flags and copy-paste examples, use the files in [`references/`](
 
 - **Lists (comma-separated):** e.g. `--channel-id-list 1,2,3`, `--keywords a,b`, `--sentiment-types 0,1`
 - **Dates:** `yyyy-MM-dd` for range endpoints (e.g. `--start-time`, `--end-time`, `--date`)
+- **Data reporting:** `community data report` requires `--space-id`, `--channel-id`, and `--source-id` as positive int64 identifiers. Here `--space-id` maps to Iris `game_id`.
+- **Reporting endpoint:** use `--endpoint` or `AE_IRIS_SYNC_ENDPOINT`. `--host` does not select, derive, or modify the ingestion endpoint.
+- **Reporting input:** use exactly one mode: `--data-type <type> --data <inline|path|@path|->`, or `--payload <inline|path|@path|->`.
+- **Reporting schema:** run `ae-cli community data report --help` before building input to check the required record fields for every supported `data_type`; use the reporting reference for field limits and normalization behavior.
 
 ---
 
@@ -97,6 +106,8 @@ Route users to composite workflows when intent matches:
 | Single topic timeline + actions | [`community-hottopic-insight.md`](references/community-hottopic-insight.md) |
 | Official post taxonomy | [`community-analyzing-official-content.md`](references/community-analyzing-official-content.md) |
 | Comment thread deep dive | [`community-analyzing-theme-comment.md`](references/community-analyzing-theme-comment.md) |
+| Customer service, after-sales group, or in-game chat | [`community-chat-analysis.md`](references/community-chat-analysis.md) |
+| Report, import, or submit community/WeCom chat data | [`community-data-report.md`](references/community-data-report.md) |
 
 ---
 
@@ -145,6 +156,51 @@ ae-cli community +get_livestream_detail --space-id 1 --game-id 1 --stream-id <id
 ae-cli community +get_livestream_analysis --space-id 1 --game-id 1 --stream-id <id>
 ```
 
+### 5. Chat analysis
+
+Chat capabilities are L3 and must be discovered before use. Read
+[`community-chat-analysis.md`](references/community-chat-analysis.md) for scenario selection,
+call-scoped identity classification, comparison windows, metric definitions, evidence limits, and
+report templates. Never report customer-service performance without a staff identity list.
+The list must be the complete staff roster for the selected service scope, even for a single-agent
+question; a partial roster is discovery context, not permission to calculate KPIs.
+
+```bash
+ae-cli capability search "chat" --domain community
+ae-cli capability inspect community.chat.overview
+ae-cli capability run community.chat.overview \
+  --input '{"game_id":3,"start":"<start-yyyy-MM-dd>","end":"<end-yyyy-MM-dd>"}'
+```
+
+### 6. Data reporting
+
+Read [`community-data-report.md`](references/community-data-report.md) before building input. Use an
+explicit ingestion endpoint and verified IDs; do not derive them from the active AE host or analysis
+results.
+
+```bash
+ae-cli --dry-run community data report \
+  --endpoint https://<iris-ingress>/sync_content \
+  --space-id <space-id> --channel-id <channel-id> --source-id <source-id> \
+  --data-type chat --data @chat.json
+
+ae-cli community data report \
+  --endpoint https://<iris-ingress>/sync_content \
+  --space-id <space-id> --channel-id <channel-id> --source-id <source-id> \
+  --data-type chat --data @chat.json
+```
+
+### Data Reporting Workflow
+
+1. Obtain the complete `/sync_content` endpoint from the user or `AE_IRIS_SYNC_ENDPOINT`. Never guess, derive, or concatenate it.
+2. Verify the real space, channel, and source IDs. Never fabricate identifiers; `--space-id` becomes Iris `game_id`.
+3. Run `ae-cli community data report --help` before constructing records. Use the installed command's required-field list for each `data_type` as the source of truth, then consult the reporting reference for detailed limits and normalization.
+4. Prefer `@file` or stdin (`-`) for sensitive records so payloads do not enter shell history.
+5. Before the first submission of a dataset, run `--dry-run`. Its summary is redacted and does not print business content.
+6. After the user has clearly requested submission, run the `risk: write` command directly. It does not need `--yes` or another confirmation.
+7. Interpret success only as `status: "queued"` with `persistence_verified: false`, never as per-record acceptance or durable storage.
+8. A timeout leaves delivery state unknown. Check the downstream query/storage side before considering another submission, and never retry automatically.
+
 ---
 
 ## Dry-run debugging
@@ -175,6 +231,8 @@ ae-cli --dry-run community +search_posts --space-id 1 --game-id 1 \
 | Daily summary | [`get_daily_summary.md`](references/get_daily_summary.md) |
 | Risk content | [`get_risk_content.md`](references/get_risk_content.md) |
 | Live rooms / list / detail / analysis / overview / room metrics | [`get_livestream_rooms.md`](references/get_livestream_rooms.md), [`get_livestream_list.md`](references/get_livestream_list.md), [`get_livestream_detail.md`](references/get_livestream_detail.md), [`get_livestream_analysis.md`](references/get_livestream_analysis.md), [`get_livestream_overview.md`](references/get_livestream_overview.md), [`get_livestream_room_metrics.md`](references/get_livestream_room_metrics.md) |
+| Customer-service, after-sales group, and in-game chat workflows | [`community-chat-analysis.md`](references/community-chat-analysis.md) |
+| Community data reporting, schemas, and queued semantics | [`community-data-report.md`](references/community-data-report.md) |
 
 ---
 
@@ -193,6 +251,12 @@ Commands below are shown **without** the `ae-cli community` prefix; all use the 
 ### Hot (`community_hot`)
 
 `+get_daily_summary`, `+get_hot_topics`, `+get_topic_detail`
+
+### Data reporting (direct ingestion data plane)
+
+| Command | Risk | Endpoint | Input |
+|---------|------|----------|-------|
+| `data report` | `write` | `--endpoint` or `AE_IRIS_SYNC_ENDPOINT`; never `--host` | `--data-type` + `--data`, or `--payload` |
 
 ---
 
@@ -214,4 +278,4 @@ Structured multi-step reports (MCP tool chains) — open the linked reference fo
 
 ## Write operations
 
-Most community commands are **read-only**. If new write-capable commands are added later, confirm user intent and use `--yes` where the CLI marks **`risk: high-risk-write`**.
+Most community commands are **read-only**. `community data report` is an ordinary **`risk: write`** command: explicit user intent is sufficient and no confirmation or `--yes` is required. Only commands marked **`risk: high-risk-write`** use the confirmation gate.

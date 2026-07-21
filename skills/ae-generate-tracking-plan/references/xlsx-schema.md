@@ -95,20 +95,22 @@ A-E 在 writer 里用 `mergeCells` 合并。
 
 ## 类型枚举
 
-### PropType（xlsx 中文值 ↔ canonical）
+### PropType（canonical ↔ 各语言显示值）
 
-| canonical（draft.json） | xlsx 写入值 | xlsx 读取可接受值（含行业 alias） |
-|---|---|---|
-| `string` | `文本` | `文本` / `字符串` |
-| `number` | `数值` | `数值` |
-| `bool` | `布尔` | `布尔` |
-| `datetime` | `时间` | `时间` |
-| `object` | `对象` | `对象` |
-| `array_row` | `对象组` | `对象组` |
-| `array_string` | `列表` | `列表` |
+> Writer 按 `draft.meta.lang` 输出对应语言列的值。
 
-Writer 方向统一用第二列（官方中文正式名），不输出 alias。
-Reader 方向对 alias / 未知值做 fallback 并打 stderr warning。
+| canonical（draft.json） | zh | en | ja | ko | 读取额外兼容（alias） |
+|---|---|---|---|---|---|
+| `string` | `文本` | `String` | `ストリング` | `String` | `字符串` / `string` / `文字列` / `テキスト` / `텍스트` / `문자열` |
+| `number` | `数值` | `Number` | `数値` | `Number` | `number` / `숫자` |
+| `bool` | `布尔` | `Boolean` | `ブール値` | `Boolean` | `boolean` / `Bool` / `ブール` / `부울` |
+| `datetime` | `时间` | `Date` | `時間` | `Date` | `datetime` / `DateTime` / `Time` / `日時` / `날짜시간` / `time` |
+| `object` | `对象` | `Row` | `オブジェクト` | `Row` | `object` / `Object` |
+| `array_row` | `对象组` | `Array Row` | `オブジェクトグループ` | `Array Row` | `object[]` / `Object Array` / `オブジェクト配列` / `object_array` / `객체 배열` |
+| `array_string` | `列表` | `List` | `リスト` | `List` | `string[]` / `String Array` / `配列` / `string_array` / `리스트` |
+
+> 旧值兼容（2026-07-15 前生成的 xlsx）：`en` 旧值 `string`/`number`/`boolean`/`datetime`/`object`/`object[]`/`string[]`，
+> `ja` 旧值 `オブジェクト配列`/`配列`，`ko` 旧值 `time`/`object_array`/`string_array` 在 reader 中仍可识别。
 
 ### UpdateType（用户属性 `更新方式`）
 

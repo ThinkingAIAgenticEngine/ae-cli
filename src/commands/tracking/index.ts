@@ -7,14 +7,21 @@ import { registerWiki } from './wiki.js';
 import { registerLang } from './lang.js';
 
 export function registerTracking(program: Command): void {
-  const tracking = program
-    .command('tracking')
-    .description('AE tracking plan lifecycle (xlsx, debug, wiki)');
+  const tracking = getOrCreateCommand(program, 'tracking', 'AE tracking plan lifecycle (xlsx, debug, wiki)');
 
-  registerPlan(tracking.command('plan'), program);
-  registerCode(tracking.command('code'));
-  registerWiki(tracking.command('wiki'));
-  // registerDebug(tracking.command('debug'), program);
-  // registerInit(tracking.command('init'));
-  registerLang(tracking.command('lang'), program);
+  registerPlan(getOrCreateCommand(tracking, 'plan', 'manage AE tracking plans'), program);
+  registerCode(getOrCreateCommand(tracking, 'code', 'tracking code commands'));
+  registerWiki(getOrCreateCommand(tracking, 'wiki', 'tracking wiki commands'));
+  // registerDebug(getOrCreateCommand(tracking, 'debug', 'tracking debug commands'), program);
+  // registerInit(getOrCreateCommand(tracking, 'init', 'tracking init commands'));
+  registerLang(getOrCreateCommand(tracking, 'lang', 'tracking language commands'), program);
+}
+
+function getOrCreateCommand(parent: Command, name: string, description: string): Command {
+  const existing = parent.commands.find((command) => command.name() === name);
+  if (existing) {
+    existing.description(description);
+    return existing;
+  }
+  return parent.command(name).description(description);
 }

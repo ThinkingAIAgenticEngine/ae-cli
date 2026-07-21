@@ -10,20 +10,20 @@
 
 ## 一、Revenue Model → Required Events
 
-| 收入模型 | 注入事件 | 事件显示名 | platform | 必带属性 |
-|---|---|---|---|---|
-| `IAA` | `ad_show` | 广告展示 | client | `ad_type`、`ad_placement`、`is_filled` |
-| `IAA` | `ad_click` | 广告点击 | client | `ad_type`、`ad_placement`、`ad_network` |
-| `IAA` | `ad_reward_get` | 激励广告奖励领取 | client | `ad_type`、`ad_placement`、`reward_type`、`reward_amount` |
-| `IAP` | `payment` | 支付成功 | server | `order_id`、`pay_amount`、`currency_type`、`payment_name`、`payment_type` |
-| `IAP` | `payment_fail` | 支付失败 | server | `order_id`、`fail_reason`、`payment_name` |
-| `mixed` | 同 IAA + IAP 所有事件 | | | |
-| `subscription` | `subscription_start` | 订阅开始 | server | `subscription_id`、`plan_name`、`start_time` |
-| `subscription` | `subscription_renew` | 订阅续费 | server | `subscription_id`、`renew_amount`、`currency_type` |
-| `subscription` | `subscription_cancel` | 订阅取消 | server | `subscription_id`、`cancel_time`、`cancel_reason` |
-| `commission` | `order_create` | 订单创建 | server | `order_id`、`order_amount`、`commission_rate` |
-| `commission` | `order_paid` | 订单支付 | server | `order_id`、`pay_amount`、`commission_amount` |
-| `commission` | `commission_settled` | 佣金结算 | server | `settlement_id`、`commission_amount`、`settle_time` |
+| 收入模型 | 注入事件 | 事件显示名 | event_tag | platform | 必带属性 |
+|---|---|---|---|---|---|
+| `IAA` | `ad_show` | 广告展示 | 广告 | client | `ad_type`、`ad_placement`、`is_filled` |
+| `IAA` | `ad_click` | 广告点击 | 广告 | client | `ad_type`、`ad_placement`、`ad_network` |
+| `IAA` | `ad_reward_get` | 激励广告奖励领取 | 广告 | client | `ad_type`、`ad_placement`、`reward_type`、`reward_amount` |
+| `IAP` | `payment` | 支付成功 | 支付 | server | `order_id`、`pay_amount`、`currency_type`、`payment_name`、`payment_type` |
+| `IAP` | `payment_fail` | 支付失败 | 支付 | server | `order_id`、`fail_reason`、`payment_name` |
+| `mixed` | 同 IAA + IAP 所有事件 | | | | |
+| `subscription` | `subscription_start` | 订阅开始 | 订阅 | server | `subscription_id`、`plan_name`、`start_time` |
+| `subscription` | `subscription_renew` | 订阅续费 | 订阅 | server | `subscription_id`、`renew_amount`、`currency_type` |
+| `subscription` | `subscription_cancel` | 订阅取消 | 订阅 | server | `subscription_id`、`cancel_time`、`cancel_reason` |
+| `commission` | `order_create` | 订单创建 | 交易 | server | `order_id`、`order_amount`、`commission_rate` |
+| `commission` | `order_paid` | 订单支付 | 交易 | server | `order_id`、`pay_amount`、`commission_amount` |
+| `commission` | `commission_settled` | 佣金结算 | 交易 | server | `settlement_id`、`commission_amount`、`settle_time` |
 
 ---
 
@@ -52,17 +52,19 @@
 **解析结果**：
 
 ```
-节点1: 刷关卡 → stage_start / stage_complete / stage_fail
-节点2: 获得金币 → token_get (token_type=gold, source=关卡)
-节点3: 抽卡 → gacha_draw (pool_type, draw_count)
-节点4: 获取角色 → hero_get (hero_id, hero_star)
+节点1: 刷关卡 → stage_start / stage_complete / stage_fail  [event_tag: 关卡/Stage]
+节点2: 获得金币 → token_get (token_type=gold, source=关卡)  [event_tag: 资源/Resource]
+节点3: 抽卡 → gacha_draw (pool_type, draw_count)  [event_tag: 抽卡/Gacha]
+节点4: 获取角色 → hero_get (hero_id, hero_star)  [event_tag: 养成/Growth]
 ```
 
 ---
 
 ## 三、功能入口 → 模块事件组
 
-| 功能入口 | 事件名 | 显示名 | platform | 典型属性 |
+> 第一列"模块"即该事件的 `event_tag` 值。注入时翻译为用户语言。
+
+| 模块 (event_tag) | 事件名 | 显示名 | platform | 典型属性 |
 |---|---|---|---|---|
 | 关卡 | `stage_start` | 关卡开始 | client | `stage_id`、`stage_type`、`difficulty` |
 | 关卡 | `stage_complete` | 关卡完成 | server | `stage_id`、`star_rating`、`score` |
@@ -200,26 +202,36 @@
 
 > 根据应用类型/游戏品类，自动注入对应模块的事件组。
 > 品类由 Phase 0 的 `meta.scenario` 或用户描述推断。
+>
+> **event_tag 规则**：本表中每行的"模块"列即该事件的 `event_tag` 值。注入时需翻译为用户语言。
+> 例如 战斗→`Battle`, 养成→`Growth`, 抽卡→`Gacha`, 资源→`Resource`, 广告→`Ads`, 支付→`Payment`。
 
-### 8.1 游戏类 — 通用基础模块（所有游戏必选）
+### 8.0 通用基础模块（所有品类适用）
+
+> 以下事件不属于任何具体功能模块（关卡/商城/抽卡等），统一使用 `基础事件`（Basic）标签。
+> 区别于 `系统事件`（System Event，SDK 自动采集的 `ta_*` 事件）。
 
 **用户生命周期**：
 
-| 事件名 | 显示名 | platform | 必带属性 |
-|---|---|---|---|
-| `new_device` | 设备激活 | client | `channel` |
-| `register` | 用户注册 | server | `register_type` |
-| `login` | 用户登录 | both | `account_id` |
-| `logout` | 用户登出 | both | `session_duration` |
+| 模块 | 事件名 | 显示名 | platform | 必带属性 |
+|---|---|---|---|---|
+| 基础事件 | `new_device` | 设备激活 | client | `channel` |
+| 基础事件 | `register` | 用户注册 | server | `register_type` |
+| 基础事件 | `login` | 用户登录 | both | `account_id` |
+| 基础事件 | `logout` | 用户登出 | both | `session_duration` |
 
 **成长模块**：
 
-| 事件名 | 显示名 | platform | 必带属性 |
-|---|---|---|---|
-| `create_role` | 创建角色 | server | `role_id`、`role_name`、`server_id` |
-| `guide_complete` | 完成新手引导 | client | `guide_id`、`guide_step` |
-| `level_up` | 升级 | server | `level`、`level_before` |
-| `vip_levelup` | VIP升级 | server | `vip_level` |
+| 模块 | 事件名 | 显示名 | platform | 必带属性 |
+|---|---|---|---|---|
+| 基础事件 | `create_role` | 创建角色 | server | `role_id`、`role_name`、`server_id` |
+| 基础事件 | `guide_complete` | 完成新手引导 | client | `guide_id`、`guide_step` |
+| 基础事件 | `level_up` | 升级 | server | `level`、`level_before` |
+| 基础事件 | `vip_levelup` | VIP升级 | server | `vip_level` |
+
+### 8.1 游戏类 — 通用基础模块（所有游戏必选）
+
+> 以下为游戏品类通用的基础事件，所有游戏品类均应包含。详见 8.0 通用基础模块。
 
 ### 8.2 游戏类 — 按品类
 
@@ -423,3 +435,56 @@
 - 必须有 ≥2 个自定义属性
 - 必须标注事件标签（模块归属）和采集端
 - 命名符合 snake_case
+
+---
+
+## 附录：event_tag 多语言对照表
+
+> 生成 event_tag 时，根据用户语言从本表选取对应翻译。
+> 代码层（`src/xlsx/write.ts` 的 `CANONICAL_TAG`）也同步维护此表，用于 xlsx 输出时按业务重要性排序。
+
+| 中文 | English | 日本語 | 한국어 |
+|---|---|---|---|
+| 基础事件 | Basic | 基本イベント | 기본 이벤트 |
+| 系统事件 | System Event | システムイベント | 시스템 이벤트 |
+| 战斗 | Battle | 戦闘 | 전투 |
+| 关卡 | Stage | ステージ | 스테이지 |
+| 副本 | Dungeon | ダンジョン | 던전 |
+| 抽卡 | Gacha | ガチャ | 가챠 |
+| 养成 | Growth | 育成 | 육성 |
+| 资源 | Resource | リソース | 리소스 |
+| 广告 | Ads | 広告 | 광고 |
+| 支付 | Payment | 支払い | 결제 |
+| 订阅 | Subscription | サブスクリプション | 구독 |
+| 商城 | Shop | ショップ | 상점 |
+| 任务 | Quest | クエスト | 퀘스트 |
+| 成就 | Achievement | 実績 | 업적 |
+| 签到 | Check-in | チェックイン | 출석체크 |
+| 排行榜 | Leaderboard | ランキング | 리더보드 |
+| 公会 | Guild | ギルド | 길드 |
+| 社交 | Social | ソーシャル | 소셜 |
+| 建筑 | Building | 建築 | 건설 |
+| 联盟 | Alliance | 同盟 | 연맹 |
+| 装备 | Equipment | 装備 | 장비 |
+| 交易 | Trade | トレード | 거래 |
+| 复活 | Revive | 復活 | 부활 |
+| Slots | Slots | スロット | 슬롯 |
+| 抽奖 | Lottery | 抽選 | 추첨 |
+| 奖励 | Reward | 報酬 | 보상 |
+| 提现 | Withdraw | 引き出し | 출금 |
+| 发现 | Discovery | 発見 | 발견 |
+| 商品 | Product | 商品 | 상품 |
+| 订单 | Order | 注文 | 주문 |
+| 售后 | After-sales | アフターサービス | A/S |
+| 内容 | Content | コンテンツ | 콘텐츠 |
+| 互动 | Interaction | インタラクション | 인터랙션 |
+| 关系 | Relationship | 関係 | 관계 |
+| 直播 | Live | ライブ | 라이브 |
+| 引导 | Onboarding | オンボーディング | 온보딩 |
+| 课程 | Course | コース | 코스 |
+| 报名 | Enrollment | 申し込み | 신청 |
+| 测验 | Quiz | クイズ | 퀴즈 |
+| 创作 | Creation | 創作 | 창작 |
+| 素材 | Material | 素材 | 소재 |
+| 导出 | Export | エクスポート | 내보내기 |
+| 内容播放 | Playback | 再生 | 재생 |

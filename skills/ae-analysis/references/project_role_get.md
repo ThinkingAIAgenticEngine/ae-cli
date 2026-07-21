@@ -7,17 +7,18 @@ Do not use it for unrelated project-management actions or for fields not present
 Command:
 
 ```bash
-ae-cli analysis project role get --role-name <role_name>
-ae-cli analysis project role get --dry-run --role-name <role_name>
+ae-cli analysis project role get --project-id <project_id> --role-name <role_name>
+ae-cli analysis project role get --dry-run --project-id <project_id> --role-name <role_name>
 ```
 
 Capability id: `project.role.get`.
 
-Input sends `role_name`. Payload keys, JSON arrays, and projection fields must follow the common-service snake_case input schema.
+Input sends `project_id`, `role_name`. Payload keys, JSON arrays, and projection fields must follow the common-service snake_case input schema.
 
 Output uses the gateway envelope: success is `ok=true,data,meta`; failure is `ok=false,error`. Preserve `request_id` and `invocation_id` when present.
 
 ## Parameters
 | Parameter | Required | Description |
 |---|---|---|
+| `--project-id` | Yes | Numeric project ID. |
 | `--role-name` | Yes | Role name. |

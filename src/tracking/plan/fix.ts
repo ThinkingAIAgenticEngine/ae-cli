@@ -197,6 +197,57 @@ function fixDisplayNameDuplicates(draft: Draft): string[] {
 }
 
 /**
+ * 修复跨属性池 display_name 不一致（内部校验用，无需 API 响应）
+ * 同一个 name 在 event_properties 和 common_event_properties 中出现时，display_name 必须一致。
+ * 优先采用 common_event_properties 的 display_name（作为全局定义）。
+ */
+function fixCrossPoolDisplayNameInconsistency(draft: Draft): string[] {
+  const fixed: string[] = [];
+  const commonProps = draft.common_event_properties ?? [];
+  const eventProps = draft.event_properties ?? [];
+
+  for (const cp of commonProps) {
+    if (!cp.display_name) continue;
+    const ep = eventProps.find(p => p.name === cp.name);
+    if (!ep) continue;
+    if (ep.display_name && ep.display_name !== cp.display_name) {
+      const oldName = ep.display_name;
+      ep.display_name = cp.display_name;
+      fixed.push(
+        `Aligned display_name for "${cp.name}" in event_properties: "${oldName}" → "${cp.display_name}" (from common_event_properties)`
+      );
+    }
+  }
+  return fixed;
+}
+
+/**
+ * 根据 sdk_integration_mode 自动填充事件的 platform 字段
+ * - client_only → 全部设为 "client"
+ * - server_only → 全部设为 "server"
+ * - both / none → 不自动填充（需用户手动指定）
+ */
+function fixEventPlatforms(draft: Draft): string[] {
+  const fixed: string[] = [];
+  const mode = draft.meta.sdk_integration_mode;
+  if (mode !== 'client_only' && mode !== 'server_only') return fixed;
+  const targetPlatform = mode === 'client_only' ? 'client' : 'server';
+  let count = 0;
+  for (const event of draft.events) {
+    if (!event.platform) {
+      event.platform = targetPlatform;
+      count++;
+    }
+  }
+  if (count > 0) {
+    fixed.push(
+      `Auto-filled platform="${targetPlatform}" for ${count} event(s) based on sdk_integration_mode="${mode}"`
+    );
+  }
+  return fixed;
+}
+
+/**
  * 修复事件属性名不合法（转为 snake_case）
  * 将驼峰命名如 Identity/userID/VIPLevel 转为 snake_case
  */
@@ -319,6 +370,18 @@ export function validateAndFix(draft: Draft): string[] {
   const displayFixes = fixDisplayNameDuplicates(draft);
   if (displayFixes.length > 0) {
     fixed.push(t('fix.display_name_dedup'));
+  }
+
+  // 2.5 修复跨池 display_name 不一致
+  const crossPoolFixes = fixCrossPoolDisplayNameInconsistency(draft);
+  if (crossPoolFixes.length > 0) {
+    fixed.push(`Cross-pool display_name consistency: ${crossPoolFixes.length} property(s) aligned`);
+  }
+
+  // 2.6 根据 sdk_integration_mode 自动填充事件 platform
+  const platformFixes = fixEventPlatforms(draft);
+  if (platformFixes.length > 0) {
+    fixed.push(...platformFixes);
   }
 
   // 3. 修复复合类型（对象/对象组）子属性不一致

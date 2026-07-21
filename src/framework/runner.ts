@@ -6,10 +6,11 @@ import { safeJsonParse } from '../core/json-utils.js';
 import { logger } from '../core/logger.js';
 import { TeAgentCredentialsError } from '../core/te-agent-credentials.js';
 import { SecureStoreAuthError } from '../core/secure-store.js';
-import { PermissionError } from '../core/errors.js';
+import { CliValidationError, CommunityReportError, PermissionError } from '../core/errors.js';
 import { TeAgentApiError } from '../core/te-agent-client.js';
 import { CapabilityGatewayError } from '../core/capability-api.js';
 import { requiresConfirmation } from '../core/capability-risk.js';
+import { formatCapabilityMissCompatHint } from '../core/compat-check.js';
 
 /** Build message/hint when one or more required flags are missing. */
 export function missingRequiredFlagsError(
@@ -39,7 +40,11 @@ export async function runCommand(cmd: Command, opts: Record<string, any>, global
     const cmdName = cmd.resource
       ? `${cmd.service} ${cmd.resource} ${cmd.command}`
       : `${cmd.service} ${cmd.command}`;
-    logger.command(cmdName, opts);
+    logger.command(
+      cmdName,
+      opts,
+      cmd.flags.filter((flag) => flag.sensitive).map((flag) => flag.name),
+    );
 
     // Validate required flags (report all missing at once so agents can fix in one retry)
     const missingRequired = cmd.flags.filter((flag) => {
@@ -102,6 +107,18 @@ export async function runCommand(cmd: Command, opts: Record<string, any>, global
       }
     }
 
+    // Validate string contract constraints before any local dry-run or remote request.
+    for (const flag of cmd.flags) {
+      if (flag.type !== 'string') continue;
+      const val = opts[camelCase(flag.name)];
+      if (val === undefined || val === null || val === '') continue;
+      const error = stringFlagValidationError(flag, String(val));
+      if (error) {
+        printError('validation', error.message, error.hint);
+        process.exit(1);
+      }
+    }
+
     // --validate and --dry-run are mutually exclusive
     if (globalOpts.validate && globalOpts.dryRun) {
       printError(
@@ -160,11 +177,21 @@ export async function runCommand(cmd: Command, opts: Record<string, any>, global
       process.exit(1);
     }
     const message = err.message || String(err);
-    logger.error(`Command failed: ${message}`);
+    if (!(err instanceof CommunityReportError)) {
+      logger.error(`Command failed: ${message}`);
+    }
     // F-018: classify by structured error type (instanceof), NOT by substring-matching the message —
     // string matching mislabeled permission denials (403, message contains "403"/"auth") as session
     // expiry and prompted a useless re-login.
-    if (err instanceof TeAgentCredentialsError) {
+    if (err instanceof CliValidationError) {
+      printError(
+        'validation',
+        message,
+        err.hint,
+        err.code,
+        err.location ? { location: err.location } : undefined,
+      );
+    } else if (err instanceof TeAgentCredentialsError) {
       // F-001: forward hint to guide the user to configure credentials or log in
       printError('config', message, err.hint);
     } else if (err instanceof PermissionError) {
@@ -172,6 +199,10 @@ export async function runCommand(cmd: Command, opts: Record<string, any>, global
       printError('permission', message);
     } else if (err instanceof CapabilityGatewayError) {
       printError('api', message, err.hint ?? capabilityGatewayHint(err), err.code, err.meta);
+    } else if (err instanceof CommunityReportError) {
+      // The message/hint may come from the ingestion response. Keep it visible to the caller but
+      // never persist it to CLI logs; the dedicated client records only URL/status/byte counts.
+      printError('api', message, err.hint, err.code, err.meta, { log: false });
     } else if (err instanceof SecureStoreAuthError) {
       printError('auth', message, 'Run: ae-cli auth login');
     } else if (err instanceof TeAgentApiError) {
@@ -193,6 +224,23 @@ export async function runCommand(cmd: Command, opts: Record<string, any>, global
   }
 }
 
+export function stringFlagValidationError(
+  flag: Command['flags'][number],
+  value: string,
+): { message: string; hint?: string } | undefined {
+  if (flag.type !== 'string') return undefined;
+  if (flag.minLength !== undefined && value.length < flag.minLength) {
+    return { message: `--${flag.name} must contain at least ${flag.minLength} characters` };
+  }
+  if (flag.maxLength !== undefined && value.length > flag.maxLength) {
+    return { message: `--${flag.name} must not exceed ${flag.maxLength} characters (got: ${value.length})` };
+  }
+  if (flag.pattern !== undefined && !new RegExp(flag.pattern).test(value)) {
+    return { message: `--${flag.name} has an invalid format`, hint: `Expected pattern: ${flag.pattern}` };
+  }
+  return undefined;
+}
+
 export function capabilityGatewayHint(err: CapabilityGatewayError): string | undefined {
   if (
     err.code === 'UPLOAD_NOT_EXIST'
@@ -203,11 +251,16 @@ export function capabilityGatewayHint(err: CapabilityGatewayError): string | und
   ) {
     return 'Run config-table upload first with the same --project-id and --request-id, then retry this command within 10 minutes. The upload cache is consumed after a successful save/update.';
   }
+  const compatExtra = formatCapabilityMissCompatHint();
   if (err.code === 'CAPABILITY_NOT_FOUND') {
-    return 'The current host does not expose this capability. Do not retry with different parameters; use a supported command path or ask the platform/backend owner to enable the capability.';
+    const base =
+      'The current host does not expose this capability. Do not retry with different parameters; use a supported command path or ask the platform/backend owner to enable the capability.';
+    return compatExtra ? `${base}\n${compatExtra}` : base;
   }
   if (err.httpStatus === 404 && !err.code) {
-    return 'The current host returned 404 for this capability route. Do not keep retrying the same command; verify the backend route/capability deployment.';
+    const base =
+      'The current host returned 404 for this capability route. Do not keep retrying the same command; verify the backend route/capability deployment.';
+    return compatExtra ? `${base}\n${compatExtra}` : base;
   }
   return undefined;
 }
@@ -235,6 +288,14 @@ function createRuntimeContext(cmd: Command, opts: Record<string, any>, globalOpt
       _clientModule = await import('../core/client.js');
     }
     return _clientModule;
+  }
+
+  let _communityReportModule: typeof import('../core/community-report-client.js') | null = null;
+  async function getCommunityReportClient() {
+    if (!_communityReportModule) {
+      _communityReportModule = await import('../core/community-report-client.js');
+    }
+    return _communityReportModule;
   }
 
   const ctx: RuntimeContext = {
@@ -272,6 +333,11 @@ function createRuntimeContext(cmd: Command, opts: Record<string, any>, globalOpt
       } else {
         return client.httpRequest(method, path, params, data, ctx.host());
       }
+    },
+
+    async communityReport(endpoint: string, rawBody: string): Promise<any> {
+      const client = await getCommunityReportClient();
+      return client.communityReport(endpoint, rawBody);
     },
 
     async querySql(projectId: number, sql: string): Promise<any> {

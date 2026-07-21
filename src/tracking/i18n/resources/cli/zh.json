@@ -94,9 +94,10 @@
     "raw_header": "# 原始数据"
   },
   "code": {
-    "inferred_sdk_mode": "[import-xlsx] 推断 sdk_integration_mode: {mode}",
-    "default_sdk_mode": "[import-xlsx] sdk_integration_mode: {mode}（默认，xlsx 无 platform 信息）",
-    "wrote_events": "[import-xlsx] 写入 {count} 个事件至 {path}"
+    "inferred_sdk_mode": "[import-template] 推断 sdk_integration_mode: {mode}",
+    "default_sdk_mode": "[import-template] sdk_integration_mode: {mode}（默认，xlsx 无 platform 信息）",
+    "wrote_events": "[import-template] 写入 {count} 个事件至 {path}",
+    "xlsx_import_empty_warning": "[import-template] ⚠️ 警告：未从 {path} 导入到任何事件。该文件可能不是 AE 埋点方案 xlsx（缺少 #事件数据 等带 # 前缀的 sheet）"
   },
   "wiki": {
     "sync_not_supported": "wiki sync: 需要在仓库 checkout 中运行（scripts/wiki-plan.ts）；",

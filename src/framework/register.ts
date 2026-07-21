@@ -46,10 +46,16 @@ export function registerCommands(program: CommanderCommand, commands: Command[])
         }
       }
 
-      // Each subcommand accepts --host after the command name to override the global host.
-      sub.option('--host <url>', 'Override active AE host URL for this command');
+      // Most subcommands accept a local host override; stable data-plane commands may opt out.
+      if (cmd.usesAeHost !== false) {
+        sub.option('--host <url>', 'Override active AE host URL for this command');
+      }
       sub.option('--format <format>', 'Output format: json | table. Default: json.');
       sub.option('--jq <expr>', 'jq 1.8 filter over command payload, applied before output envelope wrapping.');
+
+      if (cmd.helpText) {
+        sub.addHelpText('after', `\n${cmd.helpText}\n`);
+      }
 
       // Wire action
       sub.action(async (opts: Record<string, any>) => {

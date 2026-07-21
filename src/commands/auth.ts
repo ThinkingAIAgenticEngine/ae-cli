@@ -4,6 +4,8 @@ import { normalizeUrl } from '../core/url-utils.js';
 import { loadConfig, saveConfig, removeHost, getFallbackCliToken } from '../core/config.js';
 import { printOutput, printError } from '../framework/output.js';
 import { clearCliToken, mintCliToken } from '../core/cli-token.js';
+import { runHostCompatCheck } from '../core/compat-check.js';
+import { getLocalCliPackageInfo } from '../core/package-info.js';
 import { logger } from '../core/logger.js';
 import {
   runDeviceFlow,
@@ -60,6 +62,7 @@ async function persistDeviceTokens(host: string, tokens: DeviceTokenResponse): P
     accessExpiresAt: expiresAt,
   });
   await mintCliToken(host);
+  await runHostCompatCheck(getLocalCliPackageInfo(), host);
 }
 
 /** Build the machine-readable login summary printed on success. */

@@ -27,6 +27,8 @@ For commands added only by this overlay, read this skill's matching reference fi
 
 Every command accepts `--host <url>` to override the active AE host, and it may be placed after the subcommand (e.g. `ae-cli analysis +list_query_clusters --project_id <id> --host <url>`). Host selection is independent of `--cluster_query_scope`: `--host` chooses which AE instance to call, while `--cluster_query_scope` / `--slave_cluster_id` choose which cluster within global mode.
 
+**CRITICAL — Host compat (do this first):** After each `ae-cli` run, check stderr and `_notice.host_compat`. If either is present, open the user reply with a short ⚠️ version warning and **quote the `npm i -g` / `npx skills add` (or update-cluster) lines verbatim**, then present the business result. Soft tip; `ok: true` can still carry the notice. (Also covered by `ae-analysis` Global Rules when both skills are loaded.)
+
 ## Routing Rules
 
 - In this overlay, **query cluster / service cluster / deployment cluster** means multi-cluster routing for analysis queries. **audience/user segment cluster** means user membership assets under `analysis user-cluster`.

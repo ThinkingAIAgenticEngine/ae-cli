@@ -33,8 +33,9 @@ description: "Interactive generation of an AE tracking plan and upload. Trigger 
 | 用户属性 | User Property | Property on the user profile (persistent state) |
 | 预置属性 | Preset Property | System property prefixed with `#` (`#device_id`, `#time`, etc.) |
 | 自动采集事件 | Auto-track Event | SDK auto-collected events (`ta_app_start`, `ta_page_show`, etc.) |
-| 系统事件 | System Event | Auto-track event tag category |
-| 业务事件 | Business Event | Custom business event tag category |
+| 系统事件 | System Event | event_tag value reserved for SDK auto-track events (`ta_*`). One of two non-module tags (together with 基础事件). |
+| 基础事件 | Basic | event_tag value for account-level lifecycle/progression events (register, login, level_up, create_role, etc.). Not tied to any functional module. |
+| 功能模块 | Functional Module | event_tag value for feature-specific business events; identifies which module the event belongs to (e.g. Battle, Shop, Ads, Payment, Basic) |
 | SDK 集成模式 | SDK Integration Mode | `client_only` / `server_only` / `both` / `none` |
 | 客户端平台 | Client Platform | Android, iOS, Web, Unity, Mini-program, etc. |
 | 服务端语言 | Server Language | Java, Python, Go, Node.js, PHP, etc. |
@@ -54,7 +55,7 @@ description: "Interactive generation of an AE tracking plan and upload. Trigger 
 | xlsx 格式契约 | xlsx Format Contract | Column rules for AE-compatible Excel generation |
 | draft.json | draft.json | Internal intermediate representation (JSON) of the tracking plan |
 | display_name | Display Name | Human-readable name in the user's language |
-| event_tag | Event Tag | Category label for grouping events |
+| event_tag | Event Tag | Functional module the event belongs to (e.g. Battle, Shop, Ads, Payment). Auto-track events use "System Event". |
 | snake_case | snake_case | Canonical naming format: `lowercase_with_underscores` |
 
 ## When to Trigger
@@ -88,7 +89,7 @@ Phase 0 → 1 → 2 → 3 → 4, do not skip steps.
 > All subsequent CLI commands must be prefixed with `AE_LANG=<user_lang>` to ensure CLI output and generated xlsx headers match the user's language.
 > When uploading the xlsx, pass `--lang <user_lang>` as well; it must match `draft.meta.lang` / the generated xlsx language.
 
-Collect the following **4 items** sequentially, **do NOT ask all at once**:
+Collect the following **5 items** sequentially, **do NOT ask all at once**:
 
 ### Item 1 — Application Scenario
 
@@ -111,8 +112,9 @@ Choose your source material (up to 2):
 2 - Detailed description (conversational) — Describe app business flow, core features, user behaviors, monetization model, etc.
 3 - Codebase (local project path; hidden in sandbox) — Analyze source code to extract events and properties
 4 - Pre-built template (built-in industry and game genre templates) — Select a built-in template
+5 - Modify existing tracking plan (local AE format xlsx file) — Import an existing tracking plan xlsx as baseline for modification; can be combined with Product doc / Description / Codebase, but NOT with Pre-built template
 
-Reply with number(s), e.g. 1 or 1,4. Select up to 2.
+Reply with number(s), e.g. 1,5 or 4. Select up to 2.
 ```
 
 If in a sandbox environment, ask exactly:
@@ -123,8 +125,9 @@ Choose your source material (up to 2):
 1 - Product document (sandbox workspace path, uploaded attachment, URL, image file, or folder) — Extract events and properties from product docs; supports md/pdf/docx/URL/images (png/jpg/jpeg/webp). You can attach/upload relevant files here.
 2 - Detailed description (conversational) — Describe app business flow, core features, user behaviors, monetization model, etc.
 3 - Pre-built template (built-in industry and game genre templates) — Select a built-in template
+4 - Modify existing tracking plan (sandbox workspace path) — Import an existing tracking plan xlsx as baseline for modification; can be combined with Product doc / Description, but NOT with Pre-built template
 
-Reply with number(s), e.g. 1 or 1,3. Select up to 2.
+Reply with number(s), e.g. 1,4 or 3. Select up to 2.
 ```
 
 Do not rewrite this source material list as unnumbered bullets, cards, or prose. The user must be able to reply with the visible numbers.
@@ -147,9 +150,11 @@ Based on user selection, determine source material type and record to `meta.sour
 | Description only | `chat` | Construct events in Draft phase based on description |
 | Codebase only | `codebase` | Scan source code, extract events/properties from business logic |
 | Template only | `template` | Provide built-in template selection |
-| Any two-item combo | Join two types with `_` | First as baseline, second as supplement (priority: template → codebase → prd → chat) |
+| Existing plan only | `existing_plan` | Import xlsx as baseline (see "Modify Existing Tracking Plan Flow" below) |
+| Any two-item combo | Join two types with `_` | First as baseline, second as supplement (priority: existing_plan → template → codebase → prd → chat) |
+| Existing plan + Pre-built template | **NOT allowed** | Both provide event baselines; semantic conflict |
 
-**Follow-up questions** (ask in selection order):
+**Follow-up questions** (ask in follow-up order defined in Multi-Source Combination Rules below):
 - Product doc → if not in a sandbox environment, ask exactly:
   ```text
   What is the product document path?
@@ -176,6 +181,49 @@ Based on user selection, determine source material type and record to `meta.sour
 - Detailed description → If too vague, follow up on core features, user behaviors, business flows, monetization
 - Codebase → ask **"What is the project directory path?"**, then scan source to extract business logic
 - Pre-built template → display matching templates for user confirmation
+- Modify existing tracking plan → ask **"Please provide the xlsx file path of your existing tracking plan"**, then follow the flow below
+
+**Modify Existing Tracking Plan Flow** (when user selects this option):
+
+1. **Import**: Ask user for the file path, then immediately import:
+   ```bash
+   AE_LANG=<user_lang> ae-cli tracking code import-template --template <path> --out .ae-cli/draft.json
+   ```
+2. **Check result**:
+   - If CLI errors (file not found / parse failure) → report error, ask user to fix the file and retry
+   - If `draft.json` has `events` array empty → 🛑 **Severe: No AE-format sheets found** (missing `#` prefix sheets like `#事件数据`). Tell user the file does not appear to be an AE tracking plan xlsx. User must fix the original file and re-import.
+3. **Content validation** (when events are non-empty):
+   ```bash
+   AE_LANG=<user_lang> ae-cli tracking plan validate --in .ae-cli/draft.json --fix
+   ```
+4. **Handle validation results by severity**:
+   - If validate passes with **no issues at all** → skip to Step 5.
+
+   | Severity | Examples | Handling | User Action |
+   |---|---|---|---|
+   | 🔧 **Minor** (auto-fixable) | `display_name` duplicate, `array_row` sub-property inconsistency, event name duplicate | `--fix` auto-fixes, writes to `draft.json`. Inform user of what was fixed. | None (informed) |
+   | ⚠️ **Medium** (needs confirmation) | snake_case violation, property name duplicate, invalid property type, nested property parent is not a composite type | List each issue with current value → suggested fix. User confirms item by item before writing to `draft.json`. | Confirm each fix |
+   | 🛑 **Severe** | File cannot be parsed, or events array is empty after import | Reject. Tell user the specific issue. User fixes **original file** and re-imports. | Fix original file |
+
+   **Medium issue confirmation format**:
+   ```
+   ⚠️ The following content needs to be fixed:
+
+   | # | Issue | Location | Current | Suggested |
+   |---|-------|----------|---------|------------|
+   | 1 | snake_case | event_name | UserLogin | user_login |
+   | 2 | snake_case | prop_name | vipLevel | vip_level |
+   | 3 | invalid type | property "level" | integer | number |
+
+   Apply all suggested fixes? ok / specify per item / skip
+   ```
+   - `ok` → apply all suggested fixes to `draft.json`
+   - `specify per item` → confirm each item one by one
+   - `skip` → keep current values, handle in Refine phase later
+
+   ⚠️ **Never modify the user's original xlsx file.** All changes go into `draft.json`.
+
+5. **Re-validate** after fixes → loop until clean, then continue to the next follow-up question (if combined with another source material), or Item 3 (if existing_plan is the only source).
 
 **Codebase analysis flow** (when source_type includes `codebase`):
 
@@ -196,9 +244,11 @@ After source material is confirmed, **must** process business dimension info bas
 | source_type | Handling |
 |---|---|
 | `template` | Directly display template's inherited business dimensions; skip detailed inference |
+| `existing_plan` | Infer business dimensions from existing plan content (analyze event modules, payment events, currency properties); follow up on missing items; event injection preview |
 | `prd` / `codebase` / `chat` | Infer business dimensions → follow up on missing items → event injection preview |
+| Combo (e.g. `template_prd`) | See detailed rules below — baseline source's method is primary, supplementary source contributes additional context |
 
-**If source_type = template**:
+**If source_type is template or starts with template_** (covers `template`, `template_prd`, `template_codebase`, `template_chat`):
 
 Display template's preset business dimensions:
 
@@ -215,6 +265,27 @@ Confirm using these business dimensions? ok / modify
 
 - User `ok` → proceed to next step
 - User says "modify" → switch to prd/chat flow for user to supplement
+- For combos (e.g. `template_prd`): after confirming template dimensions, also note any supplementary insights from `prd`/`chat` as context for Phase 1.2.
+
+**If source_type includes existing_plan**:
+
+Infer business dimensions from the imported plan content:
+
+1. **Analyze existing events**: Examine `event_tag` values to identify functional modules (e.g. events tagged "Battle" → 战斗 module). Examine event names for payment/ad-related patterns to infer revenue model.
+2. **Inference display**: Format inference results as a summary:
+   ```
+   Business Dimension (inferred from existing plan: <filename>)
+
+   Revenue Model: <inferred from payment/ad events>
+   Core Loop: <inferred from event flow>
+   Functional Entries: <inferred from event_tag values>
+   Currency System: <inferred from currency-related properties>
+
+   Confirm these business dimensions? ok / modify
+   ```
+3. **Follow up missing**: Only ask about items that could not be inferred
+4. **Event injection preview**: Show suggested injected event modules (only add events not already in the plan); user `ok` to proceed
+- For combos (e.g. `existing_plan_prd`): after confirming dimensions from the plan, also note any supplementary insights from `prd`/`chat` as context for Phase 1.2.
 
 **If source_type is prd / codebase / chat**:
 
@@ -224,7 +295,7 @@ Confirm using these business dimensions? ok / modify
 
 Platform validation: Use `business-dimension-mapping.md` Chapter 5 decision rules to check if injected events' platform assignments are reasonable.
 
-**Template matching** (prd / codebase / chat scenarios, optional):
+**Template matching** (prd / codebase / chat scenarios, optional; **NOT applicable to existing_plan or template scenarios**):
 
 After business dimension confirmation, auto-detect matching templates based on app type:
 ```bash
@@ -232,6 +303,51 @@ AE_LANG=<user_lang> ae-cli tracking plan list-templates --json
 ```
 
 Show matching templates to user for confirmation. Confirmed templates serve as baseline and participate in Phase 1 event merging.
+
+### Multi-Source Combination Rules (when user selects 2 source materials)
+
+**Follow-up Order** (Phase 0 questioning sequence):
+
+Do **not** follow user's selection order. Instead, use this order:
+
+```
+existing_plan（blocking validation, always first）→ codebase/prd（user's selection order）→ chat → template
+```
+
+Rationale:
+- `existing_plan` must go first — import + validate may require the user to fix their file; processing it early avoids wasted context
+- `codebase` / `prd` — directly reflect actual business requirements, prioritized over generic descriptions and templates
+- `chat` — conversational description, supplements business context
+- `template` — generic industry template, least specific to the user's business
+
+Source material processing happens primarily in Phase 1.2 (Merge Source Materials). The one exception is `existing_plan`: it is imported and validated in Phase 0 because user-provided files may need fixing before proceeding. All other sources are processed in Phase 1.2 per their standard flow.
+
+Merge priority (Phase 1.2): `existing_plan → template → codebase → prd → chat → autotrack`
+Earlier sources take precedence — same-name events keep the earlier version, later sources only add new events or merge `prop_names` without overwriting.
+
+**Business Dimension Inference (combined scenarios)**:
+
+Use the baseline source's inference method as primary. Supplementary sources (especially prd/chat) may contribute additional information — present a merged view for user confirmation.
+
+**Valid Combinations**:
+
+> The "Baseline" column identifies which source has higher merge priority (see Phase 1.2 merge order), which may differ from the user's selection order. Follow-up questioning uses the fixed order in "Multi-Source Combination Rules" above, not the user's selection order.
+
+| Baseline | Supplementary | Phase 0 for supplementary |
+|---|---|---|
+| existing_plan | codebase | Collect path + quick tech stack detection |
+| existing_plan | prd | Collect path |
+| existing_plan | chat | Collect description; participates in dimension inference |
+| template | codebase | Collect path + quick tech stack detection; template matching/import deferred to Phase 1.2 |
+| template | prd | Collect path; template matching/import deferred to Phase 1.2 |
+| template | chat | Collect description |
+| codebase | prd | Collect path |
+| codebase | chat | Collect description |
+| prd | chat | Collect description |
+| codebase | template | Same as template+codebase row above (template is baseline per merge priority) |
+| prd | template | Same as template+prd row above (template is baseline per merge priority) |
+
+**Forbidden**: `existing_plan + template` (both provide event baselines; semantic conflict).
 
 **Record business dimension info to `meta.business_dimension`**:
 ```json
@@ -493,8 +609,11 @@ Draft
 
 ### 1.2 Merge Source Materials
 
-Priority from low to high: **template → codebase → prd → chat → autotrack**
+Merge order: **existing_plan → template → codebase → prd → chat → autotrack**
 
+Earlier sources take precedence — same-name events keep the earlier version, later sources only add new events or merge `prop_names` without overwriting.
+
+- **existing_plan**: Already imported and validated in Phase 0 (see "Modify Existing Tracking Plan Flow"). Events are in draft.json as the baseline; each item marked `source: "existing_plan"`. Higher-priority sources supplement with new events only; same-name events keep the existing_plan version.
 - **template**: User-selected industry template (see "Template Lookup Convention" below) as baseline; each item marked `source: "template"`
   - Templates are resolved by ae-cli from the ae-cli package root and user template directory
   - Import command: `AE_LANG=<user_lang> ae-cli tracking code import-template --template-name "<template name>" --out .ae-cli/draft.json`
@@ -656,6 +775,8 @@ AE_LANG=<user_lang> ae-cli tracking plan draft --in .ae-cli/draft.json --out .ae
 4. No issues → proceed to Phase 1.7
 
 **Note**: Display names can be the same across different property pools (e.g. `vip_level` can be both an event property and a user property).
+
+> **Relationship to Phase 0 existing_plan validation**: The underlying rule engine is the same, but Phase 0 uses **interactive 3-tier** (Minor/Medium/Severe) because the user is present to confirm each fix. Phase 1.6 uses **batch 2-tier** (auto-fixable / manual-fix-needed) because it runs as part of the automated draft generation. Rules that are "Medium (needs confirmation)" in Phase 0 appear as "❌ Manual fix needed" here — the same rule, just without the interactive prompt.
 
 ### 1.7 Show Summary
 

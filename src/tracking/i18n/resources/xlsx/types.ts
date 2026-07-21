@@ -1,18 +1,18 @@
 // src/i18n/resources/xlsx/types.ts
-// 属性类型显示值映射 — 从 AE 后台各语言官方模板提取
-// 来源：en/ja/ko 项目导出 xlsx（2026-06-09），zh 来自现有代码
+// 属性类型显示值映射 — 来自 AE 产品侧官方定义
+// 2026-07-15 按产品规范修正 en/ja/ko（旧值保留在 ALIASES 做 reader 兼容）
 
 import type { Locale } from './sheets.js';
 import type { PropType } from '../../../plan/types.js';
 
 export const PROP_TYPE_DISPLAY: Record<PropType, Record<Locale, string>> = {
-  string:       { zh: '文本',     en: 'string',     ja: 'ストリング',  ko: 'string' },
-  number:       { zh: '数值',     en: 'number',     ja: '数値',        ko: 'number' },
-  bool:         { zh: '布尔',     en: 'boolean',    ja: 'ブール値',     ko: 'boolean' },
-  datetime:     { zh: '时间',     en: 'datetime',   ja: '時間',        ko: 'time' },
-  object:       { zh: '对象',     en: 'object',     ja: 'オブジェクト',  ko: 'object' },
-  array_row:    { zh: '对象组',   en: 'object[]',   ja: 'オブジェクト配列', ko: 'object_array' },
-  array_string: { zh: '列表',     en: 'string[]',   ja: '配列',        ko: 'string_array' },
+  string:       { zh: '文本', en: 'String', ja: 'ストリング',  ko: 'String' },
+  number:       { zh: '数值', en: 'Number', ja: '数値',        ko: 'Number' },
+  bool:         { zh: '布尔', en: 'Boolean', ja: 'ブール値',    ko: 'Boolean' },
+  datetime:     { zh: '时间', en: 'Date',   ja: '時間',        ko: 'Date' },
+  object:       { zh: '对象', en: 'Row',    ja: 'オブジェクト',  ko: 'Row' },
+  array_row:    { zh: '对象组', en: 'Array Row', ja: 'オブジェクトグループ', ko: 'Array Row' },
+  array_string: { zh: '列表',   en: 'List',      ja: 'リスト',              ko: 'List' },
 };
 
 /** canonical → 显示值（写 xlsx 用） */
@@ -34,24 +34,29 @@ for (const [canonical, locales] of Object.entries(PROP_TYPE_DISPLAY)) {
 const ALIASES: Record<string, PropType> = {
   // zh alias（行业模板）
   '字符串': 'string',
-  '对象': 'object',
-  // en alias
-  'String': 'string',
-  'Number': 'number',
-  'Boolean': 'bool',
+  // en alias（旧值兼容 — 2026-07-15 前生成的老 xlsx）
+  'string': 'string',
+  'number': 'number',
+  'boolean': 'bool',
+  'datetime': 'datetime',
+  'object': 'object',
+  'object[]': 'array_row',
+  'string[]': 'array_string',
+  // en 额外 alias
   'Bool': 'bool',
   'DateTime': 'datetime',
   'Time': 'datetime',
   'Object': 'object',
-  'Row': 'object',
   'Object Array': 'array_row',
-  'List': 'array_string',
   'String Array': 'array_string',
   // ja alias
   '文字列': 'string',
   'テキスト': 'string',
   'ブール': 'bool',
   '日時': 'datetime',
+  // ja 旧值兼容
+  'オブジェクト配列': 'array_row',
+  '配列': 'array_string',
   // ko alias
   '텍스트': 'string',
   '문자열': 'string',
@@ -60,6 +65,10 @@ const ALIASES: Record<string, PropType> = {
   '날짜시간': 'datetime',
   '객체 배열': 'array_row',
   '리스트': 'array_string',
+  // ko 旧值兼容
+  'time': 'datetime',
+  'object_array': 'array_row',
+  'string_array': 'array_string',
 };
 Object.assign(ALL_DISPLAY_TO_TYPE, ALIASES);
 

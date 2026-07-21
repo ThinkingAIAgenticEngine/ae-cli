@@ -1,4 +1,5 @@
 import type { Command } from '../../framework/types.js';
+import { registerCapabilityGatewayRoute } from '../../core/capability-routing.js';
 import { registerMcpMappings } from '../../core/mcp.js';
 import { getChannelInfo } from './get_channel_info.js';
 import { searchPosts } from './search_posts.js';
@@ -19,6 +20,9 @@ import { getCommentsSummary } from './get_comments_summary.js';
 import { getCommentTagAnalysis } from './get_comment_tag_analysis.js';
 import { getCorpusTags } from './get_corpus_tags.js';
 import { getRiskContent } from './get_risk_content.js';
+import { communityDataReport } from './data/index.js';
+
+registerCapabilityGatewayRoute('community', { gatewayDomain: 'community' });
 
 // Register MCP mappings for community services
 registerMcpMappings({
@@ -28,6 +32,7 @@ registerMcpMappings({
 });
 
 const commands: Command[] = [
+  communityDataReport,
   // Content commands
   getLivestreamList,
   getLivestreamDetail,

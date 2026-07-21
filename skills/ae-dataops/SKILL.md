@@ -39,8 +39,9 @@ Global parameters:
 | `--host <url>` | Override the active AE host. Available on every command and may be placed after the subcommand, e.g. `ae-cli dataops_ide +<command> --host <url>`. |
 
 Output and errors:
-- Successful commands return machine-readable JSON by default.
+- Successful commands return machine-readable JSON by default. Envelope may include optional `_notice.host_compat`.
 - Failed commands return `{ "ok": false, "error": { "type": "...", "message": "...", "hint": "..." } }` and exit non-zero.
+- **CRITICAL — Host compat (do this first):** After each `ae-cli` run, check stderr and `_notice.host_compat`. If either is present, open the user reply with a short ⚠️ version warning and **quote the `npm i -g` / `npx skills add` (or update-cluster) lines verbatim**, then present the business result. Soft tip; `ok: true` can still carry the notice.
 
 Safety constraints:
 - Read commands can execute directly after required IDs and references are verified.

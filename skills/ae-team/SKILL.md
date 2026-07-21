@@ -25,8 +25,9 @@ Global parameters:
 | `--dry-run` | Show request details without executing. |
 
 Output and errors:
-- Successful commands return machine-readable JSON by default.
+- Successful commands return machine-readable JSON by default. Envelope may include optional `_notice.host_compat`.
 - Failed commands return `{ "ok": false, "error": { "type": "...", "message": "...", "hint": "..." } }` and exit non-zero.
+- **CRITICAL — Host compat (do this first):** If stderr or `_notice.host_compat` has a version warning, open the user reply with ⚠️ and **quote `npm i -g` / `npx skills add` (or update-cluster) lines verbatim**, then list projects/results. Never omit when summarizing. Soft tip; `ok: true` may still include the notice.
 
 Safety constraints:
 - Read commands (`+list`, `+list-templates`, `+list-projects`, `+run-result`, `+run-artifacts`, `+ai-generate`) can execute directly once required IDs are known.

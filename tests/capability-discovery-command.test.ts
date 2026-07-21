@@ -15,6 +15,7 @@ import {
   filterCapabilities,
   normalizeCapabilityList,
   parseCapabilityInput,
+  parseOptionalProjectId,
   resolveCapabilityGatewayDomain,
 } from '../src/commands/capability/helpers.ts';
 import {
@@ -48,6 +49,10 @@ await test('registerCapability exposes the six discovery and invocation commands
     capability.commands.map((command) => command.name()),
     ['list', 'search', 'inspect', 'validate', 'dry-run', 'run'],
   );
+  for (const commandName of ['list', 'search', 'inspect']) {
+    const command = capability.commands.find((candidate) => candidate.name() === commandName);
+    assert.ok(command?.options.some((option) => option.long === '--project-id'));
+  }
 });
 
 await test('resolveCapabilityGatewayDomain uses a registered CLI domain route', () => {
@@ -59,6 +64,14 @@ await test('resolveCapabilityGatewayDomain uses a registered CLI domain route', 
 await test('resolveCapabilityGatewayDomain falls back to the capability namespace', () => {
   clearCapabilityGatewayRoutesForTest();
   assert.equal(resolveCapabilityGatewayDomain('engage.flow.list'), 'engage');
+});
+
+await test('parseOptionalProjectId accepts positive safe integers and rejects invalid values', () => {
+  assert.equal(parseOptionalProjectId(undefined), undefined);
+  assert.equal(parseOptionalProjectId(' 42 '), 42);
+  for (const value of ['', '0', '-1', '1.5', 'abc', '9007199254740992']) {
+    assert.throws(() => parseOptionalProjectId(value), /--project-id/);
+  }
 });
 
 await test('filterCapabilities limits results to the namespace and all search terms', () => {

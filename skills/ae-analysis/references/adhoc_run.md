@@ -39,6 +39,8 @@ If the user asks for more than 1000 rows, or the SQL text requests `LIMIT 2000` 
 
 Do not use raw QP, `events`, `event_view`, `visual_view`, removed ad-hoc QP builder outputs, or schema helper outputs as `--definition`.
 
+Timezone contract: fixed `--zone-offset` values are integers from `-12` through `14`. Use `--zone-offset 99` for local-time mode, which analyzes timestamps as stored local time without applying a fixed UTC offset conversion; it does not mean UTC+99. Omit the flag to use the project's analysis default.
+
 ## Output
 
 The response may include:

@@ -8,6 +8,8 @@ The response distinguishes both paths. A definition update returns `computation.
 
 Flags: `--project-id`, `--tag-name` required. Optional: `--display-name`, `--definition-request`, `--authenticated-only`, `--remark`, `--zone-offset`. The tag type comes from `definition_request.type` when the definition changes.
 
+`display_name` is at most 80 characters and `remark` is at most 400 characters. The CLI rejects violations before dispatch. `tag_name` is an existing exact identifier and cannot be renamed by update.
+
 Read `user_tag_models.md` before changing the definition. The backend validates and compiles `definition_request` inside update and refuses to modify the tag if clarification is required.
 
 ```bash

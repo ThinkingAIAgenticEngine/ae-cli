@@ -4,6 +4,14 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 
 const skill = readFileSync(new URL('../skills/ae-analysis/SKILL.md', import.meta.url), 'utf8');
+const dashboardCreate = readFileSync(
+  new URL('../skills/ae-analysis/references/dashboard_create.md', import.meta.url),
+  'utf8',
+);
+const biPanelCreate = readFileSync(
+  new URL('../skills/ae-analysis/references/bi_panel_create.md', import.meta.url),
+  'utf8',
+);
 const dashboardRun = readFileSync(
   new URL('../skills/ae-analysis/references/dashboard_report_data_run.md', import.meta.url),
   'utf8',
@@ -35,6 +43,7 @@ const capabilityCommandSource = readFileSync(
 
 assert.match(skill, /search only the matching row/);
 assert.match(skill, /do not read the exhaustive index end to end/);
+assert.match(skill, /analysis boards, BI dashboards/);
 assert.match(skill, /native `analysis user-tag \.\.\.` and `analysis user-cluster \.\.\.`/);
 assert.doesNotMatch(skill, /analysis_audience/);
 
@@ -52,6 +61,14 @@ assert.match(skill, /successful or empty items/);
 assert.match(skill, /module × model × outcome/);
 assert.match(skill, /最近7天.*`mode=recent`.*`recentDay=0-7`.*含今天/);
 assert.match(skill, /过去7天.*`mode=previous`.*`recentDay=1-7`.*不含今天/);
+assert.match(skill, /`看板`.*`ae-cli analysis dashboard \.\.\.`.*`analysis\.dashboard\.\*`/);
+assert.match(skill, /`仪表盘`.*`BI 仪表盘`.*`ae-cli analysis bi-panel \.\.\.`.*`analysis\.bi_panel\.\*`/);
+assert.match(skill, /standalone English word `dashboard` is ambiguous/);
+assert.match(skill, /Do not fall back to creating an analysis board/);
+assert.match(dashboardCreate, /analysis board \(`看板`\)/);
+assert.match(dashboardCreate, /Do not use for a BI dashboard \(`仪表盘`\)/);
+assert.match(biPanelCreate, /BI dashboard \(`仪表盘`\)/);
+assert.match(biPanelCreate, /Do not use for an analysis board \(`看板`\)/);
 
 assert.match(dashboardRun, /empty dashboard batch or report result with no rows is a successful query/i);
 assert.doesNotMatch(dashboardRun, /selected report IDs return no entries.*fails/i);
@@ -70,6 +87,8 @@ assert.match(reportGet, /Do not infer a granularity/);
 assert.match(reportDataRun, /omit `--sql-params` to execute the saved default/);
 assert.match(reportDataRun, /then make one second call with `--sql-params`/);
 assert.match(reportDataRun, /"recent_day":"1-7"/);
+assert.match(reportDataRun, /`effective_zone_offset`/);
+assert.match(reportDataRun, /resolved current-user timezone.*project default/);
 assert.doesNotMatch(reportDataRun, /"recent_day":"past7"/);
 assert.match(reportDataExport, /same export response/);
 

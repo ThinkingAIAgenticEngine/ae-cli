@@ -2,6 +2,7 @@ import Table from 'cli-table3';
 import { JqError, json as jqJson } from 'jq-wasm';
 import type { OutputFormat, OutputEnvelope } from './types.js';
 import { logger } from '../core/logger.js';
+import { getPendingHostCompatNotice } from '../core/compat-check.js';
 
 const KNOWN_ARRAY_FIELDS = [
   'items', 'events', 'reports', 'dashboards', 'tags', 'clusters',
@@ -104,10 +105,13 @@ export async function formatOutput(data: any, format: OutputFormat, jqExpr?: str
   if (format === 'table') {
     return formatTable(processed);
   }
+  const hostCompat = getPendingHostCompatNotice();
   const envelope: OutputEnvelope = {
     ok: true,
     data: processed,
     ...(meta ? { meta } : {}),
+    // Soft tip lives only under _notice (not mirrored into meta) to avoid duplicate fields.
+    ...(hostCompat ? { _notice: { host_compat: hostCompat } } : {}),
   };
   return JSON.stringify(envelope, null, 2);
 }
@@ -133,13 +137,21 @@ export function printError(
   hint?: string,
   code?: string | number,
   meta?: Record<string, unknown>,
+  options: { log?: boolean } = {},
 ): void {
   const formatted = formatError(type, message, hint, code, meta);
   process.stderr.write(formatted + '\n');
-  // Also write to the error log file
-  logger.error(`[${type}] ${message}${hint ? ' | ' + hint : ''}`);
+  if (options.log !== false) {
+    logger.error(`[${type}] ${message}${hint ? ' | ' + hint : ''}`);
+  }
 }
 
 export async function printOutput(data: any, format: OutputFormat, jqExpr?: string): Promise<void> {
   process.stdout.write(await formatOutput(data, format, jqExpr) + '\n');
+  // Non-interactive (Agent) shells often merge streams and skim the end of output;
+  // re-emit host compat after stdout so it is not lost above a large JSON payload.
+  const hostCompat = getPendingHostCompatNotice();
+  if (hostCompat && (!process.stdout.isTTY || !process.stderr.isTTY)) {
+    process.stderr.write(`${hostCompat}\n`);
+  }
 }

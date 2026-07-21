@@ -94,9 +94,10 @@
     "raw_header": "# 원시 데이터"
   },
   "code": {
-    "inferred_sdk_mode": "[import-xlsx] sdk_integration_mode 추론: {mode}",
-    "default_sdk_mode": "[import-xlsx] sdk_integration_mode: {mode} (기본값, xlsx에 platform 정보 없음)",
-    "wrote_events": "[import-xlsx] {count}개 이벤트를 {path}에 작성했습니다"
+    "inferred_sdk_mode": "[import-template] sdk_integration_mode 추론: {mode}",
+    "default_sdk_mode": "[import-template] sdk_integration_mode: {mode} (기본값, xlsx에 platform 정보 없음)",
+    "wrote_events": "[import-template] {count}개 이벤트를 {path}에 작성했습니다",
+    "xlsx_import_empty_warning": "[import-template] ⚠️ 경고: {path}에서 이벤트를 가져오지 못했습니다. 이 파일은 AE 트래킹 플랜 xlsx가 아닐 수 있습니다 (#이벤트 데이터 등 # 접두사 시트가 없습니다)"
   },
   "wiki": {
     "sync_not_supported": "wiki sync: 리포지토리 체크아웃 내에서 실행하세요 (scripts/wiki-plan.ts);",
