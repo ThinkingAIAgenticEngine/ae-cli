@@ -1,15 +1,15 @@
-# ae-engage +task_list
+# ae-cli engage-task task list
 
 
 Query the paginated task list.
 
-Mapped command: `ae-cli engage +task_list`
+Mapped command: `ae-cli engage-task task list`
 
 ## Flags
 
 | Flag | Type | Required | Description |
 |------|------|------|------|
-| `--project_id` / `-p` | number | Yes | Project ID |
+| `--project-id` / `-p` | number | Yes | Project ID |
 | `--req` | json | Yes | query-condition JSON object |
 
 ## `--req` Object Fields
@@ -86,5 +86,5 @@ Common fields are listed below; provide them as needed:
 ## Examples
 
 ```bash
-ae-cli engage +task_list --project_id 1 --req '{"pageNum":1,"pageSize":20}'
+ae-cli engage-task task list --project-id 1 --req '{"pageNum":1,"pageSize":20}'
 ```

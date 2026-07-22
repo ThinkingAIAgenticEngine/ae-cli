@@ -1,20 +1,25 @@
-# ae-engage +flow_detail
+# ae-cli engage-flow flow get
 
 
 Query flow details.
 
-Mapped command: `ae-cli engage +flow_detail`
+Mapped command: `ae-cli engage-flow flow get`
+
+## Response shape
+
+The flow detail is under `data.flow`. Every response key is snake_case, for example
+`data.flow.mapping_status`, `data.flow.version_type`, and `data.flow.node_list[].type`.
 
 ## Flags
 
 | Flag | Type | Required | Description |
 |------|------|------|------|
-| `--project_id` / `-p` | number | Yes | Project ID |
-| `--flow_uuid` | string | Yes | Flow UUID |
+| `--project-id` / `-p` | number | Yes | Project ID |
+| `--flow-uuid` | string | Yes | Flow UUID |
 
 ## Common enums in the response
 
-### `status`
+### `data.flow.status`
 
 - `0`: `DRAFT`
 - `1`: `WAITING`
@@ -22,7 +27,7 @@ Mapped command: `ae-cli engage +flow_detail`
 - `3`: `PENDING`
 - `4`: `COMPLETE`
 
-### `mappingStatus`
+### `data.flow.mapping_status`
 
 - `0`: `DRAFT`
 - `1`: `APPROVE`
@@ -34,7 +39,7 @@ Mapped command: `ae-cli engage +flow_detail`
 - `7`: `PENDING`
 - `8`: `COMPLETE`
 
-### `versionType`
+### `data.flow.version_type`
 
 - `0`: history version
 - `1`: current version
@@ -42,13 +47,13 @@ Mapped command: `ae-cli engage +flow_detail`
 - `3`: new version
 - `4`: test version
 
-### `entryTriggerType`
+### `data.flow.entry_trigger_type`
 
 - `0`: scheduled single trigger
 - `1`: scheduled recurring trigger
 - `2`: event trigger
 
-### `nodeList[].type`
+### `data.flow.node_list[].type`
 
 Common node types include:
 
@@ -74,5 +79,5 @@ Common node types include:
 ## Examples
 
 ```bash
-ae-cli engage +flow_detail --project_id 1 --flow_uuid flow_uuid_123
+ae-cli engage-flow flow get --project-id 1 --flow-uuid flow_uuid_123
 ```

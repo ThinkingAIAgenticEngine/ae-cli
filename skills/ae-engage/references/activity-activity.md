@@ -2,7 +2,7 @@
 
 > Capability ids: `engage-activity.activity.{create,update,delete,list,get,pause,end,stats,info-list}` · Domain: `engage`.
 
-运营活动 - 活动主体管理。`create`/`update` 使用 `--payload` 直传后端 DTO（原生 camelCase 结构，`project_id` 单独作为参数）。
+Campaign activities — activity entity management. `create`/`update` pass backend DTOs via `--payload` (native camelCase structure; `project_id` is supplied separately as a flag).
 
 ## Commands
 

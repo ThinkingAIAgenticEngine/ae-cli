@@ -1,49 +1,11 @@
-# ae-engage +task_metric_detail
+# engage-task.task-data.metric-detail
 
+Query a task metric detail report through the L3 Capability Gateway.
 
-Query the metric-oriented detail report for a task.
+Mapped command: `ae-cli capability run engage-task.task-data.metric-detail --input '<json>'`
 
-Mapped command: `ae-cli engage +task_metric_detail`
-
-## Flags
-
-| Flag | Type | Required | Description |
-|------|------|------|------|
-| `--project_id` / `-p` | number | Yes | Project ID |
-| `--task_id` | string | Yes | task ID |
-| `--start_time` | string | Yes | Start date |
-| `--end_time` | string | Yes | End date |
-| `--request_id` | string | No | query requestId |
-| `--push_language_code` | string | No | push language code |
-| `--metric_id_list` | json | No | metric ID JSON array |
-| `--group_type` | number | No | group type |
-| `--show_time_zone` | string | No | Display timezone offset |
-
-## Enum Notes
-
-### `--group_type`
-
-- `1`: group by batch
-- `2`: group by date
-- `3`: group by trigger
-- `4`: group by experiment result
-
-### `--push_language_code`
-
-Common values include:
-
-- `default`
-- `en`
-- `zh-Hans`
-- `zh-Hant`
-- `ja`
-- `ko`
-
-## Examples
+Required input: `project_id`, `task_id`, `start_time`, `end_time`. Optional input includes `request_id`, `push_language_code`, `metric_id_list`, `group_type`, and `show_time_zone`.
 
 ```bash
-ae-cli engage +task_metric_detail \
-  --project_id 1 --task_id task_123 \
-  --start_time 2026-04-01 --end_time 2026-04-07 \
-  --metric_id_list '["metric_1"]'
+ae-cli capability run engage-task.task-data.metric-detail --input '{"project_id":1,"task_id":"task_123","start_time":"2026-04-01","end_time":"2026-04-07"}'
 ```

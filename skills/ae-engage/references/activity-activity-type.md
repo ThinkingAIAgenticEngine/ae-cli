@@ -2,7 +2,7 @@
 
 > Capability ids: `engage-activity.activity-type.{list,batch-add,update,batch-delete}` · Domain: `engage`.
 
-运营活动 - 活动类型（系统 + 自定义）。批量增删在 capability service 内循环调用现有单条后端方法（无批量后端 API）。
+Campaign activities — activity types (system + custom). Batch add/delete loops single-item backend calls inside the capability service (no dedicated batch backend API).
 
 ## Commands
 

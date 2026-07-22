@@ -5,17 +5,10 @@ export const testRun = createEngageFlowCapabilityCommand({
   resource: 'test',
   command: 'run',
   capabilityId: 'engage-flow.test.run',
-  description:
-    'Submit a flow canvas test run to validate node configuration, delivery channels, and user paths.',
+  description: 'Submit an existing flow canvas test version by flow UUID.',
   flags: [
-    { name: 'project-id', type: 'number', required: true, alias: 'p', desc: 'Numeric project ID.' },
-    {
-      name: 'request',
-      type: 'json',
-      required: true,
-      desc: 'Snake_case FlowOpReqDTO JSON object containing the complete test flow definition.',
-    },
+    { name: 'flow-uuid', type: 'string', required: true, desc: 'Existing test flow UUID to submit.' },
   ],
   risk: 'write',
-  buildInput: (ctx) => ({ project_id: ctx.num('project-id'), request: ctx.json('request') }),
+  buildInput: (ctx) => ({ flow_uuid: ctx.str('flow-uuid') }),
 });

@@ -1,14 +1,28 @@
 import { createEngageSettingCapabilityCommand } from '../../shared.js';
 import type { Flag } from '../../../../framework/types.js';
-import { validateMetricQpFlag } from './metric-qp-validation.js';
+import {
+  validateMetricQpFlag,
+  validateMetricWindowTimeUnitFlag,
+  validatePresetMetricTypeFlag,
+} from './metric-qp-validation.js';
 
 const writeFlags: Flag[] = [
   { name: 'project-id', type: 'number', required: true, alias: 'p', desc: 'Numeric project ID.' },
-  { name: 'metric-type', type: 'number', required: true, desc: 'Metric type (see MetricTypeEunm).' },
-  { name: 'metric-name', type: 'string', required: true, desc: 'Metric name.' },
-  { name: 'metric-qp', type: 'string', required: true, desc: 'Metric qp (event/property expression).' },
+  { name: 'metric-type', type: 'number', required: true, desc: 'Metric type; create requires 1 (PRESET).' },
+  { name: 'metric-name', type: 'string', required: true, desc: 'Metric name (^[a-z][0-9a-z_]{0,79}$).' },
+  {
+    name: 'metric-qp',
+    type: 'string',
+    required: true,
+    desc: 'Complete metric QP JSON object string (type=0 event or type=1 formula).',
+  },
   { name: 'metric-window-num', type: 'number', required: true, desc: 'Metric window number.' },
-  { name: 'metric-window-time-unit', type: 'string', required: true, desc: 'Metric window time unit (MINUTE/HOUR/DAY).' },
+  {
+    name: 'metric-window-time-unit',
+    type: 'string',
+    required: true,
+    desc: 'Metric window time unit (minute/hour/day).',
+  },
   { name: 'display-name', type: 'string', required: true, desc: 'Display name of the metric.' },
   { name: 'note', type: 'string', required: false, desc: 'Metric note/remark.' },
   { name: 'order-id', type: 'number', required: false, desc: 'Sort order id.' },
@@ -30,16 +44,18 @@ const buildWriteInput = (ctx: any) => ({
   metric_params: ctx.str('metric-params') || undefined,
 });
 
-/** Creates a common metric with its type, event/property expression, time window, and display metadata. */
+/** Creates a PRESET common metric with type=0/1 QP, time window, and display metadata. */
 export const commonMetricCreate = createEngageSettingCapabilityCommand({
   resource: 'common-metric',
   command: 'create',
   capabilityId: 'engage-setting.common-metric.create',
-  description: 'Create a common metric with its type, event/property expression, time window, and display metadata.',
+  description: 'Create a PRESET common metric with its event/formula QP, time window, and display metadata.',
   flags: writeFlags,
   risk: 'write',
   validate: (ctx) => {
+    validatePresetMetricTypeFlag(ctx.num('metric-type'));
     validateMetricQpFlag(ctx.str('metric-qp'));
+    validateMetricWindowTimeUnitFlag(ctx.str('metric-window-time-unit'));
   },
   buildInput: buildWriteInput,
 });

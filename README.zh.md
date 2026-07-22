@@ -52,7 +52,8 @@ ae-cli kb +add --name engineering-handbook --files '["./docs/guide.md","https://
 ae-cli kb +schema --name engineering-handbook
 ae-cli kb +compile --name engineering-handbook
 ae-cli kb +query -q "如何配置 sandbox 容器？" \
-  --sources '[{"scope":"company","name":"engineering-handbook"}]'
+  --sources '[{"scope":"company","name":"engineering-handbook"}]' \
+  --top-k 10
 
 # 面向外部 agent 的检索原语（读 index → grep 定位 → read 翻页）
 ae-cli kb +index --sources '[{"scope":"company","name":"engineering-handbook"}]'
@@ -108,7 +109,7 @@ ae-cli auth logout
 - **生成 schema** (`+schema`)：`--name`，可选 `--force`、`--model`
 - **编译** (`+compile`)：`--name`，`--mode incremental|full`（默认 incremental）
 - **查询状态** (`+status`)：`--name`
-- **查询** (`+query`)：`--query` / `-q`，`--sources` JSON 引用，如 `[{"scope":"company","name":"engineering-handbook"}]`
+- **查询** (`+query`)：`--query` / `-q`，可选 `--sources` JSON 引用（省略则搜索全部可访问知识库）、`--top-k`（1-50，默认 10）、`--locale`
 - **删除源** (`+rm-source`)：`--name`，`--display-name`
 - **删除知识库** (`+remove`)：`--name`
 

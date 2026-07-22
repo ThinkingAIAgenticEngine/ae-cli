@@ -1,3 +1,19 @@
+### 6.0.34
+**Date:** 2026-07-22
+
+**Changes:**
+
+#### Engage
+* Continue capability-gateway migration: move config-channel list/get/status/delete to `engage-scene`, and remove leftover legacy MCP setting/task/flow entry points
+* Add `engage-flow flow update-remark` for flow version remarks
+* Re-enable activity topic/task create+update; re-enable common-metric create (tighten QP / time-unit contracts) and client-param create (`column_type` only)
+* Require `--project-id` on flow node-config schema/validate; align channel `update-status` with backend enums (`1`=on, `2`=off)
+* Temporarily disable `engage-activity approval submit` and `engage-flow test run` due to testing issues
+* Translate `ae-engage` skill docs to English
+
+#### Knowledge base
+* Align `kb +query` with grep-style optional flags: `sources` optional; add `--top-k` and `--locale`
+
 ### 6.0.33
 **Date:** 2026-07-21
 

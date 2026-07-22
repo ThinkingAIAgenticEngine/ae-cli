@@ -1,41 +1,11 @@
-# ae-engage +task_data_overview
+# engage-task.task-data.overview
 
+Query a task performance overview through the L3 Capability Gateway.
 
-Query the funnel-style task data overview.
+Mapped command: `ae-cli capability run engage-task.task-data.overview --input '<json>'`
 
-Mapped command: `ae-cli engage +task_data_overview`
-
-## Flags
-
-| Flag | Type | Required | Description |
-|------|------|------|------|
-| `--project_id` / `-p` | number | Yes | Project ID |
-| `--task_id` | string | Yes | task ID |
-| `--request_id` | string | No | Query requestId |
-| `--push_language_code` | string | No | push language code |
-| `--data_dim_type` | string | No | data dimension type |
-| `--show_time_zone` | string | No | display timezone offset |
-
-## Enum Notes
-
-### `--data_dim_type`
-
-- `uv`: count by unique users
-- `pv`: count by events/occurrences
-
-### `--push_language_code`
-
-Common values include:
-
-- `default`
-- `en`
-- `zh-Hans`
-- `zh-Hant`
-- `ja`
-- `ko`
-
-## Examples
+Required input: `project_id`, `task_id`. Optional input: `request_id`, `push_language_code`, `data_dim_type`, `show_time_zone`.
 
 ```bash
-ae-cli engage +task_data_overview --project_id 1 --task_id task_123
+ae-cli capability run engage-task.task-data.overview --input '{"project_id":1,"task_id":"task_123"}'
 ```

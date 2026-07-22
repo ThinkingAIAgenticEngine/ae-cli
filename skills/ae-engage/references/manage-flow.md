@@ -1,35 +1,35 @@
-# ae-engage +manage_flow
+# ae-cli engage-flow flow manage
 
 
 Batch manage flow status or review actions.
 
-Mapped command: `ae-cli engage +manage_flow`
+Mapped command: `ae-cli engage-flow flow manage`
 
 ## Flags
 
 | Flag | Type | Required | Description |
 |------|------|------|------|
-| `--project_id` / `-p` | number | Yes | Project ID |
+| `--project-id` / `-p` | number | Yes | Project ID |
 | `--action` | string | Yes | action type |
-| `--flow_list` | json | No | Review list JSON array |
-| `--pause_flow_list` | json | No | pause list JSON array |
-| `--flow_id_list` | json | No | Flow ID JSON array |
+| `--flow-list` | json | No | Review list JSON array |
+| `--pause-flow-list` | json | No | pause list JSON array |
+| `--flow-id-list` | json | No | Flow ID JSON array |
 | `--reason` | string | No | review reason |
 
 ## Enum Notes
 
 ### `--action`
 
-- `approve`: review approved, requires `--flow_list`
-- `deny`: review denied, requires `--flow_list`
-- `cancel`: cancel review, requires `--flow_list`
-- `pause`: pause flow, requires `--pause_flow_list`
-- `recover`: resume flow, requires `--flow_id_list`
-- `end`: end flow, requires `--flow_id_list`
+- `approve`: review approved, requires `--flow-list`
+- `deny`: review denied, requires `--flow-list`
+- `cancel`: cancel review, requires `--flow-list`
+- `pause`: pause flow, requires `--pause-flow-list`
+- `recover`: resume flow, requires `--flow-id-list`
+- `end`: end flow, requires `--flow-id-list`
 
 ## JSON Parameter Notes
 
-### `--flow_list`
+### `--flow-list`
 
 Used for review actions such as `approve`, `deny`, and `cancel`. Each array item is an object:
 
@@ -46,7 +46,7 @@ Examples:
 ]
 ```
 
-### `--pause_flow_list`
+### `--pause-flow-list`
 
 Used for the `pause` action. Each array item is an object:
 
@@ -68,7 +68,7 @@ Examples:
 ]
 ```
 
-### `--flow_id_list`
+### `--flow-id-list`
 
 Used for batch operations by ID such as `recover` and `end`:
 
@@ -82,12 +82,12 @@ This command is a **write operation** and changes the flow status.
 
 Different `action` values require different parameters:
 
-- `approve` / `deny` / `cancel`: must include `--flow_list`
-- `pause`: must include `--pause_flow_list`
-- `recover` / `end`: must include `--flow_id_list`
+- `approve` / `deny` / `cancel`: must include `--flow-list`
+- `pause`: must include `--pause-flow-list`
+- `recover` / `end`: must include `--flow-id-list`
 
 ## Examples
 
 ```bash
-ae-cli engage +manage_flow --project_id 1 --action end --flow_id_list '["flow_id_1"]'
+ae-cli engage-flow flow manage --project-id 1 --action end --flow-id-list '["flow_id_1"]'
 ```

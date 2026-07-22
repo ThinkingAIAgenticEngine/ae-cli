@@ -1,20 +1,20 @@
-# ae-engage +task_stats
+# ae-cli engage-task task stats
 
 
 Query task status statistics.
 
-Mapped command: `ae-cli engage +task_stats`
+Mapped command: `ae-cli engage-task task stats`
 
 ## Flags
 
 | Flag | Type | Required | Description |
 |------|------|------|------|
-| `--project_id` / `-p` | number | Yes | Project ID |
+| `--project-id` / `-p` | number | Yes | Project ID |
 | `--req` | json | Yes | statistics-condition JSON object |
 
 ## `--req` Object Fields
 
-The `--req` structure of `+task_stats` is broadly the same as `+task_list`, and common fields include:
+The `--req` structure of `engage-task task stats` is broadly the same as `engage-task task list`, and common fields include:
 
 | Field | Type | Required | Description |
 |------|------|------|------|
@@ -84,5 +84,5 @@ The `--req` structure of `+task_stats` is broadly the same as `+task_list`, and 
 ## Examples
 
 ```bash
-ae-cli engage +task_stats --project_id 1 --req '{"pageNum":1,"pageSize":20}'
+ae-cli engage-task task stats --project-id 1 --req '{"pageNum":1,"pageSize":20}'
 ```

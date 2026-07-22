@@ -125,15 +125,17 @@ ae-cli kb +status --name engineering-handbook
 
 ### Query Knowledge
 
-Use `+query` with a natural-language question and a JSON array of source refs.
+Use `+query` with a natural-language question. Optionally scope to specific knowledge bases or tune result count and locale.
 
 ```bash
 ae-cli kb +query \
   --query "How do we release a dashboard?" \
-  --sources '[{"scope":"company","name":"engineering-handbook"}]'
+  --sources '[{"scope":"company","name":"engineering-handbook"}]' \
+  --top-k 10 \
+  --locale zh
 ```
 
-`--sources` entries require:
+When `--sources` is provided, each entry requires:
 
 - `scope`: knowledge base scope such as `personal` or `company`.
 - `name`: knowledge base name.
@@ -234,11 +236,13 @@ ae-cli kb +remove --name engineering-handbook
 ### `+query`
 
 ```bash
-ae-cli kb +query --query "<question>" --sources '[{"scope":"company","name":"kb-name"}]'
+ae-cli kb +query --query "<question>" [--sources '[{"scope":"company","name":"kb-name"}]'] [--top-k 10] [--locale zh|en|ja|ko]
 ```
 
 - `--query`, alias `-q`: required natural-language question.
-- `--sources`: required JSON array of knowledge base refs.
+- `--sources`: optional JSON array of knowledge base refs. Omit to search all accessible knowledge bases.
+- `--top-k`: optional max number of hits, 1-50, default 10.
+- `--locale`: optional locale: `zh`, `en`, `ja`, or `ko`.
 
 ### `+ask`
 

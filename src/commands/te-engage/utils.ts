@@ -1,35 +1,4 @@
-import type { DryRunResult, RuntimeContext } from '../../framework/types.js';
-import { callMcpTool, parseMcpResult, resolveMcpUrl } from '../../core/mcp.js';
-
-export function buildMcpDryRun(
-  ctx: RuntimeContext,
-  serviceName: string,
-  toolName: string,
-  args: Record<string, any>
-): DryRunResult {
-  const host = ctx.host();
-  return {
-    method: 'MCP tools/call',
-    url: resolveMcpUrl(ctx.mcpUrl(), host, serviceName),
-    body: {
-      serviceName,
-      toolName,
-      arguments: args,
-    },
-  };
-}
-
-export async function executeMcpCommand(
-  ctx: RuntimeContext,
-  serviceName: string,
-  toolName: string,
-  args: Record<string, any>
-): Promise<any> {
-  const host = ctx.host();
-  const mcpUrl = resolveMcpUrl(ctx.mcpUrl(), host, serviceName);
-  const result = await callMcpTool(mcpUrl, toolName, args, host);
-  return parseMcpResult(result);
-}
+import type { RuntimeContext } from '../../framework/types.js';
 
 export function hasFlag(ctx: RuntimeContext, name: string): boolean {
   return ctx.str(name) !== '';

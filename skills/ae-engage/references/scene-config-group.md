@@ -2,7 +2,7 @@
 
 > Capability ids: `engage-scene.config-group.{list,batch-add,update,batch-delete}` · Domain: `engage`.
 
-场景管理 / 配置中心 - 配置项分组管理。
+Scene management / config center — config item group management.
 
 ## Commands
 

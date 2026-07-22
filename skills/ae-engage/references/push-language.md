@@ -34,6 +34,6 @@ ae-cli engage-setting push-language set --project-id <project_id> --push-languag
 
 ## Decision Rules
 
-- Use these commands when the user asks to query or configure the project push-language (本地化) property field.
+- Use these commands when the user asks to query or configure the project push-language (localization) property field.
 - `--push-language-column` must be a real user property code; discover available properties via the analysis metadata commands first.
 - `set` is `write`; ordinary update, no confirmation gate.

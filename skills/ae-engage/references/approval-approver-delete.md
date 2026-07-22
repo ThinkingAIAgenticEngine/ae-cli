@@ -22,5 +22,5 @@ ae-cli engage-setting approval-approver delete --project-id <project_id> --appro
 ## Decision Rules
 
 - Use this command when the user asks to remove/delete an approver from a project.
-- Discover the real approver OpenID with `ae-cli engage +approver_list --project_id <project_id>` first; never invent an OpenID.
+- Discover the real approver OpenID with `ae-cli engage-setting approval-approver list --project-id <project_id>` first; never invent an OpenID.
 - Risk is `high-risk-write`; the CLI confirmation gate requires `--yes` (or interactive confirmation) before executing.

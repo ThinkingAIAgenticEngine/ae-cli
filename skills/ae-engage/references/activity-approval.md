@@ -1,15 +1,14 @@
 # engage-activity approval
 
-> Capability ids: `engage-activity.approval.{submit,approve,reject,cancel}` · Domain: `engage`.
+> Capability ids: `engage-activity.approval.{approve,reject,cancel}` · Domain: `engage`.
+>
+> **Temporarily disabled:** `engage-activity.approval.submit` — do not call until re-enabled.
 
-运营活动 - 活动审批流。所有操作均针对活动（`ApprovalActivityIdDealDTO`：`projectId` + `activityId` + `reason`），均为状态变更 `write`，不支持 dry-run。`reject` 的 `reason` 必填；其余操作 `reason` 可选。
+Campaign activities — activity approval workflow. Current actions target an activity (`ApprovalActivityIdDealDTO`: `projectId` + `activityId` + `reason`); each is a state-changing `write` and does not support dry-run. `reject` requires `reason`; other actions treat `reason` as optional.
 
 ## Commands
 
 ```bash
-# Submit an activity for approval
-ae-cli engage-activity approval submit --project-id <project_id> --activity-id <activity_id>
-
 # Approve an activity
 ae-cli engage-activity approval approve --project-id <project_id> --activity-id <activity_id>
 
@@ -24,7 +23,6 @@ ae-cli engage-activity approval cancel --project-id <project_id> --activity-id <
 
 | Command | Required flags | Notes |
 |---|---|---|
-| submit | `--project-id`, `--activity-id` | `--reason` optional. |
 | approve | `--project-id`, `--activity-id` | `--reason` optional. |
 | reject | `--project-id`, `--activity-id`, `--reason` | `--reason` required, max 72 characters. |
 | cancel | `--project-id`, `--activity-id` | `--reason` optional. |
@@ -37,13 +35,13 @@ ae-cli engage-activity approval cancel --project-id <project_id> --activity-id <
 
 - All approval actions are `write` (real state changes) and do not support dry-run; they do not require `--yes` (only `high-risk-write` does).
 - Approve/reject require the caller to be a valid approver of the activity (enforced server-side).
+- Do **not** call `engage-activity.approval.submit`; it is temporarily unavailable.
 
 ## Common Errors
 
 | code | when |
 |---|---|
 | `ACTIVITY_NOT_FOUND` | activity id missing in project |
-| `ACTIVITY_NO_APPROVAL_TASK` | submit with no standalone/topic tasks |
 | `ACTIVITY_STATUS_INVALID` | activity not in draft/pending |
 | `APPROVAL_NOT_PENDING` | no under-approval record |
 | `NOT_APPROVER` | caller is not a project approver |

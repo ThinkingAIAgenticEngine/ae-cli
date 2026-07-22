@@ -1,10 +1,8 @@
 # engage-activity task
 
-> Capability ids: `engage-activity.task.{get,copy}` · Domain: `engage`.
->
-> Temporarily disabled: `task create` / `task update` (command registration + skill guidance).
+> Capability ids: `engage-activity.task.{get,create,update,copy}` · Domain: `engage`.
 
-运营活动 - 独立任务（活动下不属于主题的任务）。`copy` 读取源任务详情、改名后重新创建（无后端复制 API）。
+Campaign activities — standalone tasks (tasks under an activity that do not belong to a topic). `copy` loads the source task detail, renames it, and re-creates it (no dedicated backend copy API).
 
 ## Commands
 
@@ -12,12 +10,6 @@
 # Get a standalone task detail
 ae-cli engage-activity task get --project-id <project_id> --task-id <task_id>
 
-# Copy a standalone task (loads detail, renames, re-creates)
-ae-cli engage-activity task copy --project-id <project_id> --task-id <task_id> [--new-name <name>]
-```
-
-<!-- Temporarily disabled: task create / task update
-```bash
 # Create a standalone task under an activity (webhook + existing cluster)
 ae-cli engage-activity task create --project-id <project_id> \
   --payload '{ ... }'
@@ -25,24 +17,25 @@ ae-cli engage-activity task create --project-id <project_id> \
 # Update a standalone task
 ae-cli engage-activity task update --project-id <project_id> \
   --payload '{"taskId":"task-1","taskName":"t1", ...}'
+
+# Copy a standalone task (loads detail, renames, re-creates)
+ae-cli engage-activity task copy --project-id <project_id> --task-id <task_id> [--new-name <name>]
 ```
--->
 
 ## Parameters
 
 | Command | Required flags | Notes |
 |---|---|---|
 | get | `--project-id`, `--task-id` | read. |
+| create | `--project-id`, `--payload` | payload = `OperationTaskOpDTO`; set `activityId`, leave `topicId` empty. Missing `expConfig` is auto-filled as `{"enableExp":false}`. |
+| update | `--project-id`, `--payload` | payload = `OperationTaskOpDTO` including `taskId`. Prefer get detail as base. Missing `expConfig` is auto-filled as `{"enableExp":false}`. |
 | copy | `--project-id`, `--task-id` | `--new-name` optional (default source name + `_copy`). |
-
-<!-- Temporarily disabled
-| create | `--project-id`, `--payload` | payload = `OperationTaskOpDTO`; set `activityId`, leave `topicId` empty. |
-| update | `--project-id`, `--payload` | payload = `OperationTaskOpDTO` including `taskId`. |
--->
 
 ## Output
 
 - `get`: `data.task`.
+- `create`: `data.task_id`.
+- `update`: `data.success`.
 - `copy`: `data.task_id`, optional `data.trigger_time_stale` (true when source schedule-single time is already past).
 
 ## Payload notes (for copy / detail shape)
@@ -53,6 +46,7 @@ ae-cli engage-activity task update --project-id <project_id> \
 - `groupContentList[].contentList[].content` must be a JSON **array string**.
 - **TEXT (rich text) params** must include both `value` and `config` (Slate.js JSON **string**). If `config` is missing, Hermes copy auto-fills  
   `config = [{"type":"paragraph","children":[{"text":"<value>"}]}]` as a JSON string.
+- Missing `expConfig` on create/update is auto-filled as `{"enableExp":false}` (same shape as task `get`).
 
 ### Audience (`targetClusterType`)
 
@@ -66,8 +60,8 @@ ae-cli engage-activity task update --project-id <project_id> \
 
 - Discover a real `task_id` via `get`/activity `info-list` first; never invent IDs.
 - `copy` duplicates the editable task config (not runtime/trigger state).
-- `copy` saves via **draft** add (`draft=true`), so a past schedule-single `triggerTime` is allowed; output may include `trigger_time_stale=true`. Update the time before `approval submit`.
-- Standalone tasks must **not** include `topicId`; topic tasks use `engage-activity topic copy` (topic create/update are temporarily disabled).
+- `copy` saves via **draft** add (`draft=true`), so a past schedule-single `triggerTime` is allowed; output may include `trigger_time_stale=true`. Update the time before submitting for approval (`engage-activity.approval.submit` is temporarily unavailable).
+- Standalone tasks must **not** include `topicId`; topic tasks use `engage-activity topic create` / `topic copy`.
 
 ## Copy errors
 

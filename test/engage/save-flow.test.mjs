@@ -1,41 +1,31 @@
 import assert from 'node:assert/strict';
 
-const { registerMcpMapping } = await import('../../src/core/mcp.ts');
-const { saveFlow } = await import('../../src/commands/te-engage/flow/save-flow.ts');
+const { flowSave } = await import('../../src/commands/te-engage/engage-flow/flow/save.ts');
+const { clearCliToken, setCliTokenManual } = await import('../../src/core/cli-token.ts');
 
-registerMcpMapping('engage_flow', { componentName: 'engage', mappingPath: 'flow' });
+const HOST = 'https://example.test';
 
 function ctxWithReq(req) {
   return {
-    str() {
-      return '';
-    },
+    str() { return ''; },
     num(name) {
-      assert.equal(name, 'project_id');
+      assert.equal(name, 'project-id');
       return 1;
     },
-    optionalNum() {
-      return undefined;
-    },
-    bool() {
-      return false;
-    },
+    optionalNum() { return undefined; },
+    bool() { return false; },
     json(name) {
       assert.equal(name, 'req');
       return req;
     },
-    host() {
-      return 'https://example.test';
-    },
-    mcpUrl() {
-      return undefined;
-    },
+    host() { return HOST; },
+    mcpUrl() { return undefined; },
   };
 }
 
-function test(name, fn) {
+async function test(name, fn) {
   try {
-    fn();
+    await fn();
     console.log(`  OK: ${name}`);
   } catch (err) {
     console.error(`  FAIL: ${name}`);
@@ -43,51 +33,56 @@ function test(name, fn) {
   }
 }
 
-console.log('engage save_flow tests');
+console.log('engage flow save capability tests');
 
-test('validate rejects request without operation', () => {
+await test('validate rejects request without operation', () => {
   assert.throws(
-    () => saveFlow.validate(ctxWithReq({ flowName: 'demo' })),
+    () => flowSave.validate(ctxWithReq({ flowName: 'demo' })),
     /Flag --req\.operation must be one of: build, preview, commit/,
   );
 });
 
-test('validate rejects legacy nodeList and edgeList fields', () => {
+await test('validate rejects legacy nodeList and edgeList fields', () => {
   assert.throws(
-    () => saveFlow.validate(ctxWithReq({
-      operation: 'build',
-      nodeList: [],
-      edgeList: [],
-    })),
+    () => flowSave.validate(ctxWithReq({ operation: 'build', nodeList: [], edgeList: [] })),
     /Flag --req must use nodes\/edges instead of legacy nodeList\/edgeList/,
   );
 });
 
-test('validate rejects removed sourceFlowUuid clone mode', () => {
+await test('validate rejects removed sourceFlowUuid clone mode', () => {
   assert.throws(
-    () => saveFlow.validate(ctxWithReq({
-      operation: 'build',
-      sourceFlowUuid: 'flow_uuid_1',
-    })),
-    /Flag --req\.sourceFlowUuid is no longer supported; call \+flow_detail and build nodes\/edges instead/,
+    () => flowSave.validate(ctxWithReq({ operation: 'build', sourceFlowUuid: 'flow_uuid_1' })),
+    /Flag --req\.sourceFlowUuid is unsupported/,
   );
 });
 
-test('validate accepts operation values handled by backend normalization', () => {
-  assert.doesNotThrow(() => saveFlow.validate(ctxWithReq({ operation: ' Build ' })));
+await test('validate accepts operation values handled by backend normalization', () => {
+  assert.doesNotThrow(() => flowSave.validate(ctxWithReq({ operation: ' Build ' })));
 });
 
-test('dry-run keeps operation-based request shape', () => {
-  const dryRun = saveFlow.dryRun(ctxWithReq({
-    operation: 'build',
-    flowName: 'demo',
-    nodes: [{ id: 'n1', type: 'exit_flow', config: {} }],
-    edges: [],
-  }));
-  assert.equal(dryRun.body.toolName, 'save_flow');
-  assert.equal(dryRun.body.arguments.req.projectId, 1);
-  assert.equal(dryRun.body.arguments.req.operation, 'build');
-  assert.equal(dryRun.body.arguments.req.nodes[0].id, 'n1');
+await test('dry-run uses the capability endpoint and stable input shape', async () => {
+  setCliTokenManual('cli-test-token', HOST);
+  const previousFetch = globalThis.fetch;
+  let capturedUrl;
+  let capturedBody;
+  globalThis.fetch = async (url, init) => {
+    capturedUrl = String(url);
+    capturedBody = JSON.parse(String(init.body));
+    return new Response(JSON.stringify({ ok: true, data: { dry_run: true } }), {
+      status: 200,
+      headers: { 'Content-Type': 'application/json' },
+    });
+  };
+  try {
+    await flowSave.dryRun(ctxWithReq({ operation: 'build', flowName: 'demo' }));
+    assert.equal(capturedUrl, `${HOST}/api/cli/engage/v1/capabilities/engage-flow.flow.save/dry-run`);
+    assert.deepEqual(capturedBody, {
+      input: { project_id: 1, req: { operation: 'build', flowName: 'demo' } },
+    });
+  } finally {
+    globalThis.fetch = previousFetch;
+    clearCliToken(HOST);
+  }
 });
 
-console.log('All engage save_flow tests passed.');
+console.log('All engage flow save capability tests passed.');

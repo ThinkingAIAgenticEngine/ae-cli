@@ -1,16 +1,16 @@
-# ae-engage +task_detail
+# ae-cli engage-task task get
 
 
 Query the details of a single task.
 
-Mapped command: `ae-cli engage +task_detail`
+Mapped command: `ae-cli engage-task task get`
 
 ## Flags
 
 | Flag | Type | Required | Description |
 |------|------|------|------|
-| `--project_id` / `-p` | number | Yes | Project ID |
-| `--task_id` | string | Yes | task ID |
+| `--project-id` / `-p` | number | Yes | Project ID |
+| `--task-id` | string | Yes | task ID |
 
 ## Common enums in the response
 
@@ -56,5 +56,5 @@ Mapped command: `ae-cli engage +task_detail`
 ## Examples
 
 ```bash
-ae-cli engage +task_detail --project_id 1 --task_id task_123
+ae-cli engage-task task get --project-id 1 --task-id task_123
 ```

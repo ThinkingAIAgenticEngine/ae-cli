@@ -1,15 +1,15 @@
-# ae-engage `+save_task`
+# ae-cli `engage-task task save`
 
 Create or update a Hermes task draft.
 
-Mapped command: `ae-cli engage +save_task`
+Mapped command: `ae-cli engage-task task save`
 
 This command is the final write step. Do not use it as the first step in task construction.
 
 Recommended workflow:
 
-1. `ae-cli engage +channel_list --project_id <projectId>`
-2. `ae-cli engage +build_task_save_guide --project_id <projectId> --req '{...}'`
+1. `ae-cli engage-setting channel list --project-id <projectId>`
+2. `ae-cli engage-task task build-save-guide --project-id <projectId> --req '{...}'`
 3. If the guide indicates an audience or QP-derived fields are needed, create the audience directly and read it back:
 
 ```bash
@@ -18,7 +18,7 @@ ae-cli analysis user-cluster get --project-id <projectId> --cluster-names '["<co
 ```
 
 4. Build the final grouped `req`
-5. `ae-cli engage +save_task --project_id <projectId> --req '{...}'`
+5. `ae-cli engage-task task save --project-id <projectId> --req '{...}'`
 
 Audience creation is not a fixed preflight step. Use direct create/get only when the guide indicates that you must construct:
 
@@ -35,7 +35,7 @@ For the full guide contract, request format, return sections, and handoff usage,
 
 ## 1. General Principles
 
-`+save_task` accepts only the final grouped draft-save payload that Hermes can validate and persist.
+`engage-task task save` accepts only the final grouped draft-save payload that Hermes can validate and persist.
 
 The command supports two modes:
 
@@ -51,16 +51,22 @@ Regardless of mode, this tool only saves a draft:
 The CLI call shape is:
 
 ```bash
-ae-cli engage +save_task --project_id <projectId> --req '<req-json>'
+ae-cli engage-task task save --project-id <projectId> --req '<req-json>'
 ```
 
 Notes:
 
-- `projectId` is injected into top-level `req` by the CLI
-- if the caller also passes `req.projectId`, the outer `--project_id` wins
+- the outer Capability input uses `project_id` and `req`; fields inside `req` keep the native camelCase DTO shape shown below
+- Hermes assigns the outer `--project-id` to `req.projectId`; if `req.projectId` is also present, the outer value wins
 - the whole `req` must be a JSON object, not a stringified JSON string
 - for update mode, Hermes only allows modifying draft tasks
 - in update mode, omitted fields are backfilled from the existing draft before validation, so partial draft updates are allowed
+
+### Response shape
+
+The save result is under `data.result`, and any object keys inside it are recursively snake_case.
+A successful create/update commonly yields the task ID as `data.result`; validation failures use
+fields such as `data.result.operation_mode`, `data.result.errors`, and `data.result.warnings`.
 
 ---
 
@@ -71,7 +77,7 @@ Notes:
 Run:
 
 ```bash
-ae-cli engage +channel_list --project_id <projectId>
+ae-cli engage-setting channel list --project-id <projectId>
 ```
 
 Purpose:
@@ -87,7 +93,7 @@ Never invent a `channelId`.
 Run:
 
 ```bash
-ae-cli engage +build_task_save_guide --project_id <projectId> --req '{...}'
+ae-cli engage-task task build-save-guide --project-id <projectId> --req '{...}'
 ```
 
 Use the guide to determine:
@@ -119,7 +125,7 @@ Do not create an audience by default for every task. It is conditional, not mand
 
 ### 2.4 Build Final `req` and Save
 
-Only after the above steps should you construct the final grouped `req` and submit it with `+save_task`.
+Only after the above steps should you construct the final grouped `req` and submit it with `engage-task task save`.
 
 ---
 
@@ -256,7 +262,7 @@ Only call that schema query when the guide explicitly shows that the field is ne
 
 ---
 
-## 5. Final Self-Check Before `+save_task`
+## 5. Final Self-Check Before `engage-task task save`
 
 Before submission, verify:
 
@@ -275,12 +281,12 @@ Before submission, verify:
 
 ## 6. Standard Example Flow
 
-Use this style of workflow, rather than jumping directly to `+save_task`:
+Use this style of workflow, rather than jumping directly to `engage-task task save`:
 
 ```bash
-ae-cli engage +channel_list --project_id 1
-ae-cli engage +build_task_save_guide --project_id 1 --req '{"context":{"triggerType":2,"channelId":"channel_123"}}'
-ae-cli engage +save_task --project_id 1 --req '{...final grouped req...}'
+ae-cli engage-setting channel list --project-id 1
+ae-cli engage-task task build-save-guide --project-id 1 --req '{"context":{"triggerType":2,"channelId":"channel_123"}}'
+ae-cli engage-task task save --project-id 1 --req '{...final grouped req...}'
 ```
 
 If the guide indicates an audience or QP-derived fields are needed, insert direct create/get:

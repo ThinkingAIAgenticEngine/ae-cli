@@ -1,0 +1,11 @@
+import { createEngageTaskCapabilityCommand } from '../../shared.js';
+import { readRequiredJsonObject } from '../../utils.js';
+
+/** Saves a task draft. */
+export const taskSave = createEngageTaskCapabilityCommand({
+  resource: 'task', command: 'save', capabilityId: 'engage-task.task.save', description: 'Create or update a task draft.',
+  flags: [{ name: 'project-id', type: 'number', required: true, alias: 'p', desc: 'Numeric project ID.' },
+    { name: 'req', type: 'json', required: true, desc: 'Task save request JSON object.' }],
+  risk: 'write', validate: (ctx) => { readRequiredJsonObject(ctx, 'req'); },
+  buildInput: (ctx) => ({ project_id: ctx.num('project-id'), req: readRequiredJsonObject(ctx, 'req') }),
+});

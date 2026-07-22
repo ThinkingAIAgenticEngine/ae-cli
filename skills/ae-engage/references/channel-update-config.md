@@ -32,5 +32,5 @@ ae-cli engage-setting channel update-config \
 ## Decision Rules
 
 - Use this command when the user asks to edit/update an existing channel's name, config, push-id type, or reach-funnel settings.
-- `--config` is the channel-specific JSON config; discover the existing config with `ae-cli engage +channel_detail` first rather than inventing it.
+- `--config` is the channel-specific JSON config; discover the existing config with `ae-cli engage-setting channel get` first rather than inventing it.
 - Risk is `write`; ordinary update, no confirmation gate.

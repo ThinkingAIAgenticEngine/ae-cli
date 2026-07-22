@@ -1,24 +1,24 @@
-# ae-engage +update_channel_status
+# ae-engage engage-setting channel update-status
 
 
 Update the status of an Engage channel.
 
-Mapped command: `ae-cli engage +update_channel_status`
+Mapped command: `ae-cli engage-setting channel update-status`
 
 ## Flags
 
 | Flag | Type | Required | Description |
 |------|------|------|------|
-| `--project_id` / `-p` | number | Yes | Project ID |
-| `--channel_id` | string | Yes | channel ID |
+| `--project-id` / `-p` | number | Yes | Project ID |
+| `--channel-id` | string | Yes | channel ID |
 | `--status` | number | Yes | channel status |
 
 ## Enum Notes
 
 ### `--status`
 
-- `0`: disabled
 - `1`: enabled
+- `2`: disabled
 
 ## Safety Constraints
 
@@ -27,5 +27,5 @@ This command is a **write operation** and Before executing, confirm that the use
 ## Examples
 
 ```bash
-ae-cli engage +update_channel_status --project_id 1 --channel_id <channel_id> --status 1
+ae-cli engage-setting channel update-status --project-id 1 --channel-id <channel_id> --status 1
 ```

@@ -32,6 +32,6 @@ ae-cli engage-setting channel test-send \
 ## Decision Rules
 
 - Use this command when the user asks to send a test message to a channel / verify channel delivery.
-- Discover the real channel id with `ae-cli engage +channel_list` first; never invent a channel id.
+- Discover the real channel id with `ae-cli engage-setting channel list` first; never invent a channel id.
 - `--mock-push` is useful to inspect the request body/headers without actually delivering a message.
 - Risk is `write`; sending a real test push to a recipient is a write action.

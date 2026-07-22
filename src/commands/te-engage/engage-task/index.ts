@@ -15,9 +15,22 @@ import { segmentListRename } from './segment-list/rename.js';
 import { segmentListSetVisibility } from './segment-list/set-visibility.js';
 import { taskDelete } from './task/delete.js';
 import { taskModifyGroup } from './task/modify-group.js';
+// Temporarily disabled: testing issues — re-enable with skill docs when fixed.
 // import { taskSubmitApproval } from './task/submit-approval.js';
+import { taskBuildSaveGuide } from './task/build-save-guide.js';
+import { taskGet } from './task/get.js';
+import { taskList } from './task/list.js';
+import { taskManage } from './task/manage.js';
+import { taskSave } from './task/save.js';
+import { taskStats } from './task/stats.js';
 
 const commands: Command[] = [
+  taskList,
+  taskGet,
+  taskStats,
+  taskBuildSaveGuide,
+  taskSave,
+  taskManage,
   channelRefStats,
   groupCreate,
   groupDelete,
@@ -54,5 +67,11 @@ export { segmentListSetVisibility } from './segment-list/set-visibility.js';
 export { taskDelete } from './task/delete.js';
 export { taskModifyGroup } from './task/modify-group.js';
 // export { taskSubmitApproval } from './task/submit-approval.js';
+export { taskBuildSaveGuide } from './task/build-save-guide.js';
+export { taskGet } from './task/get.js';
+export { taskList } from './task/list.js';
+export { taskManage } from './task/manage.js';
+export { taskSave } from './task/save.js';
+export { taskStats } from './task/stats.js';
 
 export default commands;

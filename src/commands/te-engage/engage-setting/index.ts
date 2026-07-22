@@ -5,15 +5,22 @@ import { channelTouchLimitsToggle } from './channel-touch-limits/toggle.js';
 import { channelTouchLimitsSave } from './channel-touch-limits/save.js';
 import { channelUpdateConfig } from './channel/update-config.js';
 import { channelTestSend } from './channel/test-send.js';
+import { channelList } from './channel/list.js';
+import { channelGet } from './channel/get.js';
+import { channelCreate } from './channel/create.js';
+import { channelUpdateStatus } from './channel/update-status.js';
+import { channelDelete } from './channel/delete.js';
 import { approvalApproverDelete } from './approval-approver/delete.js';
+import { approvalApproverAdd } from './approval-approver/add.js';
+import { approvalApproverList } from './approval-approver/list.js';
 import { whitelistAdd } from './whitelist/add.js';
 import { whitelistUpdate } from './whitelist/update.js';
 import { whitelistDelete } from './whitelist/delete.js';
 import { whitelistVerify } from './whitelist/verify.js';
+import { whitelistList } from './whitelist/list.js';
 import { pushLanguageGet } from './push-language/get.js';
 import { pushLanguageSet } from './push-language/set.js';
-// Disabled: high-risk write; re-enable after validation and approval flow are ready.
-// import { clientParamCreate } from './client-param/create.js';
+import { clientParamCreate } from './client-param/create.js';
 import { clientParamUpdate } from './client-param/update.js';
 import { clientParamDelete } from './client-param/delete.js';
 import { clientParamList } from './client-param/list.js';
@@ -27,7 +34,7 @@ import { presetEventList } from './preset-event/list.js';
 import { presetEventUpdate } from './preset-event/update.js';
 import { commonMetricList } from './common-metric/list.js';
 import { commonMetricGet } from './common-metric/get.js';
-// import { commonMetricCreate } from './common-metric/create.js';
+import { commonMetricCreate } from './common-metric/create.js';
 import { commonMetricUpdate } from './common-metric/update.js';
 import { commonMetricDelete } from './common-metric/delete.js';
 
@@ -38,14 +45,22 @@ const commands: Command[] = [
   channelTouchLimitsSave,
   channelUpdateConfig,
   channelTestSend,
+  channelList,
+  channelGet,
+  channelCreate,
+  channelUpdateStatus,
+  channelDelete,
+  approvalApproverAdd,
+  approvalApproverList,
   approvalApproverDelete,
+  whitelistList,
   whitelistAdd,
   whitelistUpdate,
   whitelistDelete,
   whitelistVerify,
   pushLanguageGet,
   pushLanguageSet,
-  // clientParamCreate,
+  clientParamCreate,
   clientParamUpdate,
   clientParamDelete,
   clientParamList,
@@ -59,7 +74,7 @@ const commands: Command[] = [
   presetEventUpdate,
   commonMetricList,
   commonMetricGet,
-  // commonMetricCreate,
+  commonMetricCreate,
   commonMetricUpdate,
   commonMetricDelete,
 ];
@@ -70,14 +85,22 @@ export { channelTouchLimitsToggle } from './channel-touch-limits/toggle.js';
 export { channelTouchLimitsSave } from './channel-touch-limits/save.js';
 export { channelUpdateConfig } from './channel/update-config.js';
 export { channelTestSend } from './channel/test-send.js';
+export { channelList } from './channel/list.js';
+export { channelGet } from './channel/get.js';
+export { channelCreate } from './channel/create.js';
+export { channelUpdateStatus } from './channel/update-status.js';
+export { channelDelete } from './channel/delete.js';
+export { approvalApproverAdd } from './approval-approver/add.js';
+export { approvalApproverList } from './approval-approver/list.js';
 export { approvalApproverDelete } from './approval-approver/delete.js';
+export { whitelistList } from './whitelist/list.js';
 export { whitelistAdd } from './whitelist/add.js';
 export { whitelistUpdate } from './whitelist/update.js';
 export { whitelistDelete } from './whitelist/delete.js';
 export { whitelistVerify } from './whitelist/verify.js';
 export { pushLanguageGet } from './push-language/get.js';
 export { pushLanguageSet } from './push-language/set.js';
-// export { clientParamCreate } from './client-param/create.js';
+export { clientParamCreate } from './client-param/create.js';
 export { clientParamUpdate } from './client-param/update.js';
 export { clientParamDelete } from './client-param/delete.js';
 export { clientParamList } from './client-param/list.js';
@@ -91,7 +114,7 @@ export { presetEventList } from './preset-event/list.js';
 export { presetEventUpdate } from './preset-event/update.js';
 export { commonMetricList } from './common-metric/list.js';
 export { commonMetricGet } from './common-metric/get.js';
-// export { commonMetricCreate } from './common-metric/create.js';
+export { commonMetricCreate } from './common-metric/create.js';
 export { commonMetricUpdate } from './common-metric/update.js';
 export { commonMetricDelete } from './common-metric/delete.js';
 

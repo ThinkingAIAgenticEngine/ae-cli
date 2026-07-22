@@ -52,7 +52,8 @@ ae-cli kb +add --name engineering-handbook --files '["./docs/guide.md","https://
 ae-cli kb +schema --name engineering-handbook
 ae-cli kb +compile --name engineering-handbook
 ae-cli kb +query -q "How to configure sandbox?" \
-  --sources '[{"scope":"company","name":"engineering-handbook"}]'
+  --sources '[{"scope":"company","name":"engineering-handbook"}]' \
+  --top-k 10
 
 # Retrieval primitives for external agents (read index → grep → read page)
 ae-cli kb +index --sources '[{"scope":"company","name":"engineering-handbook"}]'
@@ -107,7 +108,7 @@ Knowledge base lifecycle (`+new` → `+add` → `+schema` → `+compile` → `+s
 - **Schema** (`+schema`): `--name`, optional `--force`, `--model`
 - **Compile** (`+compile`): `--name`, `--mode incremental|full` (default: incremental)
 - **Status** (`+status`): `--name`
-- **Query** (`+query`): `--query` / `-q`, `--sources` JSON refs e.g. `[{"scope":"company","name":"engineering-handbook"}]`
+- **Query** (`+query`): `--query` / `-q`, optional `--sources` JSON refs (omit to search all accessible KBs), `--top-k` (1-50, default 10), `--locale`
 - **Remove source** (`+rm-source`): `--name`, `--display-name`
 - **Remove KB** (`+remove`): `--name`
 

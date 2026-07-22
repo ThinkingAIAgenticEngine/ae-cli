@@ -1,15 +1,15 @@
-# ae-engage +add_channel
+# ae-engage engage-setting channel create
 
 
 Create a new Engage channel.
 
-Mapped command: `ae-cli engage +add_channel`
+Mapped command: `ae-cli engage-setting channel create`
 
 ## Flags
 
 | Flag | Type | Required | Description |
 |------|------|------|------|
-| `--project_id` / `-p` | number | Yes | Project ID |
+| `--project-id` / `-p` | number | Yes | Project ID |
 | `--req` | json | Yes | Channel creation request JSON object |
 
 ## `--req` Object Fields
@@ -26,7 +26,12 @@ Mapped command: `ae-cli engage +add_channel`
 | `eventDeliveryName` | string | Yes | delivery event name |
 | `touchEventSource` | string | Yes | touch event source |
 
-`projectId` is automatically written into the `--req` object by the CLI, so you do not need to fill it manually. If you provide a field with the same name, the top-level `--project_id` takes precedence.
+The outer Capability input uses `project_id` and `req`; fields inside `req` keep the native camelCase DTO shape in this table. The Hermes Capability handler assigns the outer `--project-id` to `req.projectId`, so you do not need to fill it manually and the outer value takes precedence.
+
+## Response shape
+
+The created channel is under `data.item`; its response keys recursively use snake_case, such as
+`channel_id`, `channel_status`, and `channel_type`.
 
 ## Enum Notes
 
@@ -68,6 +73,6 @@ This command is a **write operation** and creates a new channel. Check that the 
 ## Examples
 
 ```bash
-ae-cli engage +add_channel --project_id 1 \
+ae-cli engage-setting channel create --project-id 1 \
   --req '{"channelType":1,"channelSubBizType":"webhook","channelName":"demo","pushIdType":"user_id","config":"{}","enableTouchEvent":0,"eventClickName":"","eventDeliveryName":"","touchEventSource":""}'
 ```

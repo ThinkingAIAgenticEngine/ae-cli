@@ -35,7 +35,7 @@ function validateContentListShape(contentList: unknown): void {
       printError(
         'validation',
         `--content-list[${index}] must include a non-empty string key and a value field.`,
-        'The key must match a channel template param from engage +channel_detail data.config.paramsList[].key.',
+        'The key must match a channel template param from engage-setting channel get data.item.config.params_list[].key.',
       );
       process.exit(1);
     }

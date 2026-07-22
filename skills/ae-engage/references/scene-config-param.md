@@ -2,7 +2,7 @@
 
 > Capability ids: `engage-scene.config-param.{list,batch-add,update,batch-delete}` · Domain: `engage`.
 
-场景管理 / 配置中心 - 配置项参数管理。
+Scene management / config center — config item parameter management.
 
 ## Commands
 
@@ -13,7 +13,7 @@ ae-cli engage-scene config-param list --project-id <project_id> --config-id <con
 # Batch-add params to a config item
 ae-cli engage-scene config-param batch-add \
   --project-id <project_id> --config-id <config_id> \
-  --params '[{"param_name":"title","param_display_name":"标题","param_type":"STRING","param_sub_type":"SHORT_TEXT","is_required":1}]'
+  --params '[{"param_name":"title","param_display_name":"Title","param_type":"STRING","param_sub_type":"SHORT_TEXT","is_required":1}]'
 
 # Update a param
 ae-cli engage-scene config-param update \

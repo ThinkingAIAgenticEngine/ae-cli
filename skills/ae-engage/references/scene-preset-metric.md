@@ -2,7 +2,7 @@
 
 > Capability ids: `engage-scene.preset-metric.{get,set}` · Domain: `engage`.
 
-场景管理 / 配置中心 - 配置项预置指标（曝光/点击/参与）QP 配置。
+Scene management / config center — config item preset metrics (impression / click / engagement) QP configuration.
 
 ## Commands
 

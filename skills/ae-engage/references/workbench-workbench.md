@@ -2,7 +2,7 @@
 
 > Capability ids: `engage-workbench.workbench.{list,add,update,delete}` · Domain: `engage`.
 
-工作台 - 工作台指标卡槽（workbench slot）管理。每个用户在每个项目下最多 4 个指标卡；卡槽按当前登录用户隔离，`update`/`delete` 只能操作本人卡槽。首次 `list` 会自动初始化 4 个默认卡槽。
+Workbench — workbench metric slot management. Each user may configure up to 4 metric cards per project; slots are scoped to the current login user, so `update`/`delete` only affect the caller's own slots. The first `list` auto-initialises 4 default slots.
 
 ## Commands
 

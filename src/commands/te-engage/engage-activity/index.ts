@@ -8,12 +8,13 @@ import { activityPause } from './activity/pause.js';
 import { activityEnd } from './activity/end.js';
 import { activityStats } from './activity/stats.js';
 import { activityInfoList } from './activity/info-list.js';
-import { approvalSubmit } from './approval/submit.js';
+// Temporarily disabled: testing issues — re-enable with skill docs when fixed.
+// import { approvalSubmit } from './approval/submit.js';
 import { approvalApprove } from './approval/approve.js';
 import { approvalReject } from './approval/reject.js';
 import { approvalCancel } from './approval/cancel.js';
-// import { topicCreate } from './topic/create.js'; // temporarily disabled
-// import { topicUpdate } from './topic/update.js'; // temporarily disabled
+import { topicCreate } from './topic/create.js';
+import { topicUpdate } from './topic/update.js';
 import { topicRemoveTask } from './topic/remove-task.js';
 import { topicDelete } from './topic/delete.js';
 import { topicGet } from './topic/get.js';
@@ -23,8 +24,8 @@ import { activityTypeBatchAdd } from './activity-type/batch-add.js';
 import { activityTypeUpdate } from './activity-type/update.js';
 import { activityTypeBatchDelete } from './activity-type/batch-delete.js';
 import { taskGet } from './task/get.js';
-// import { taskCreate } from './task/create.js'; // temporarily disabled
-// import { taskUpdate } from './task/update.js'; // temporarily disabled
+import { taskCreate } from './task/create.js';
+import { taskUpdate } from './task/update.js';
 import { taskCopy } from './task/copy.js';
 
 const commands: Command[] = [
@@ -37,12 +38,12 @@ const commands: Command[] = [
   activityEnd,
   activityStats,
   activityInfoList,
-  approvalSubmit,
+  // approvalSubmit,
   approvalApprove,
   approvalReject,
   approvalCancel,
-  // topicCreate, // temporarily disabled: ae-cli engage-activity topic create
-  // topicUpdate, // temporarily disabled: ae-cli engage-activity topic update
+  topicCreate,
+  topicUpdate,
   topicRemoveTask,
   topicDelete,
   topicGet,
@@ -52,8 +53,8 @@ const commands: Command[] = [
   activityTypeUpdate,
   activityTypeBatchDelete,
   taskGet,
-  // taskCreate, // temporarily disabled: ae-cli engage-activity task create
-  // taskUpdate, // temporarily disabled: ae-cli engage-activity task update
+  taskCreate,
+  taskUpdate,
   taskCopy,
 ];
 
@@ -66,12 +67,12 @@ export { activityPause } from './activity/pause.js';
 export { activityEnd } from './activity/end.js';
 export { activityStats } from './activity/stats.js';
 export { activityInfoList } from './activity/info-list.js';
-export { approvalSubmit } from './approval/submit.js';
+// export { approvalSubmit } from './approval/submit.js';
 export { approvalApprove } from './approval/approve.js';
 export { approvalReject } from './approval/reject.js';
 export { approvalCancel } from './approval/cancel.js';
-// export { topicCreate } from './topic/create.js'; // temporarily disabled
-// export { topicUpdate } from './topic/update.js'; // temporarily disabled
+export { topicCreate } from './topic/create.js';
+export { topicUpdate } from './topic/update.js';
 export { topicRemoveTask } from './topic/remove-task.js';
 export { topicDelete } from './topic/delete.js';
 export { topicGet } from './topic/get.js';
@@ -81,8 +82,8 @@ export { activityTypeBatchAdd } from './activity-type/batch-add.js';
 export { activityTypeUpdate } from './activity-type/update.js';
 export { activityTypeBatchDelete } from './activity-type/batch-delete.js';
 export { taskGet } from './task/get.js';
-// export { taskCreate } from './task/create.js'; // temporarily disabled
-// export { taskUpdate } from './task/update.js'; // temporarily disabled
+export { taskCreate } from './task/create.js';
+export { taskUpdate } from './task/update.js';
 export { taskCopy } from './task/copy.js';
 
 export default commands;

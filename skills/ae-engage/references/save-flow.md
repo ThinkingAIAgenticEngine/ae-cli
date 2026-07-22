@@ -1,32 +1,32 @@
-# ae-engage `+save_flow`
+# ae-cli `engage-flow flow save`
 
 Create, edit, preview, or commit a flow canvas draft.
 
-Mapped command: `ae-cli engage +save_flow --project_id <projectId> --req '<req-json>'`
+Mapped command: `ae-cli engage-flow flow save --project-id <projectId> --req '<req-json>'`
 
 > **Protocol v2 (current).** `save_flow` is now **operation-based**. The `--req` object must carry an `operation` of `build`, `preview`, or `commit`. Do **not** use the old `nodeList` / `edgeList` field names -- send `nodes` / `edges` instead. Posting a legacy `nodeList`/`edgeList` payload (or omitting `operation`) makes the backend reject the call with `Unsupported save_flow operation: null`.
 
-The CLI injects `projectId` and rejects missing/unsupported `operation` values, legacy `nodeList`/`edgeList` fields, and the removed `sourceFlowUuid` clone mode; otherwise it passes your `--req` through to the backend. So everything in this document is about building the correct `req` object.
+The outer Capability input uses `project_id` and `req`; fields inside `req` keep the native camelCase DTO shape documented below. Hermes uses the outer `--project-id` as authoritative. The CLI rejects missing/unsupported `operation` values, legacy `nodeList`/`edgeList` fields, and the removed `sourceFlowUuid` clone mode; otherwise it passes `req` through to Hermes.
 
 ---
 
 ## 1. General Principles
 
-`+save_flow` does not accept natural language or vague business descriptions directly. It accepts a **flow canvas request whose `req.operation` drives a three-step lifecycle**:
+`engage-flow flow save` does not accept natural language or vague business descriptions directly. It accepts a **flow canvas request whose `req.operation` drives a three-step lifecycle**:
 
 ```text
-build  ──► status = ready_to_preview ──► preview ──► commit ──► flowUuid
+build  ──► status = ready_to_preview ──► preview ──► commit ──► flow_uuid
    │                                                              │
-   └──► status = need_input ──► (answer slot, build again)        └──► +flow_detail (verify)
+   └──► status = need_input ──► (answer slot, build again)        └──► engage-flow flow get (verify)
 ```
 
 You still organize user requirements into an intermediate intent first, then map the intent to `nodes` / `edges`, then run the lifecycle.
 
-- `build`: assemble/edit a draft from `nodes` + `edges` (or topology-only `dsl`). Returns `ready_to_preview` (with `draftId`, `draftVersion`, `confirmToken`, `preview.mainPath`) or `need_input` (one more slot required).
-- `preview`: validate the draft; **re-issues** a fresh `draftVersion` + `confirmToken`.
-- `commit`: finalize the draft into a flow version using the **preview** `draftVersion` + `confirmToken`; returns the final `flowUuid`.
-- Always verify with `ae-cli engage +flow_detail --project_id <projectId> --flow_uuid <flowUuid>`.
-- To copy an existing flow, first call `+flow_detail`, convert the returned `nodeList` / `edgeList` into compact `nodes` / `edges`, then call `operation=build` as normal creation input. Do not pass `sourceFlowUuid`.
+- `build`: assemble/edit a draft from `nodes` + `edges` (or topology-only `dsl`). `data.result` returns `ready_to_preview` with `draft_id`, `draft_version`, `confirm_token`, and `preview.main_path`, or `need_input` with one more slot required.
+- `preview`: validate the draft; **re-issues** fresh `data.result.draft_version` and `data.result.confirm_token` values.
+- `commit`: finalize the draft using preview's returned values, mapped back to request fields `draftVersion` and `confirmToken`; the final ID is `data.result.result.flow_uuid`.
+- Always verify with `ae-cli engage-flow flow get --project-id <projectId> --flow-uuid <flow_uuid>`.
+- To copy an existing flow, first call `engage-flow flow get`, convert `data.flow.node_list` / `data.flow.edge_list` into compact request fields `nodes` / `edges`, then call `operation=build` as normal creation input. Do not pass `sourceFlowUuid`.
 
 ---
 
@@ -34,10 +34,10 @@ You still organize user requirements into an intermediate intent first, then map
 
 1. Identify the flow intent from the user input and produce a unified intent JSON.
 2. Build a semantic condition request from `ae-analysis/references/user_cluster_models.md`, create the audience directly with `analysis user-cluster create`, and prefer its `cluster_name`/`clusterKey`. Read the saved server-authored definition with `analysis user-cluster get` only when an Engage node schema explicitly requires QP-derived fields; never assemble raw QP.
-3. Run `ae-cli engage +channel_list --project_id <projectId>` to get the available channels and match real `channelId` values for touchpoint nodes. For `webhook_push`, also run `ae-cli engage +channel_detail` and use `data.config.paramsList` to build `contentList`.
-4. Query `ae-cli engage +flow_node_config_schema --node_type <type>` before constructing each non-trivial node config, then run `ae-cli engage +validate_flow_node_config --node_type <type> --operation_mode save_flow --config '<config-json-string>'` before placing the config into `nodes` or `nodeConfigs`.
+3. Run `ae-cli engage-setting channel list --project-id <projectId>` to get the available channels and match real `channel_id` values for touchpoint nodes. For `webhook_push`, also run `ae-cli engage-setting channel get` and use `data.item.config.params_list` to build request field `contentList`.
+4. Query `ae-cli engage-flow node-config schema --project-id <project_id> --node-type <type>` before constructing each non-trivial node config, then run `ae-cli engage-flow node-config validate --project-id <project_id> --node-type <type> --operation-mode save_flow --config '<config-json-string>'` before placing the config into `nodes` or `nodeConfigs`.
 5. Map the intent JSON to `nodes` and `edges` (compact form, see §7 / §8).
-6. `build` → resolve any `need_input` slot → `preview` → `commit`, then verify with `+flow_detail`.
+6. `build` → resolve any `need_input` slot → `preview` → `commit`, then verify with `engage-flow flow get`.
 
 ---
 
@@ -70,22 +70,24 @@ You still organize user requirements into an intermediate intent first, then map
 
 `flowUuid` and `parentFlowUuid` are mutually exclusive; when creating a brand-new draft, provide neither.
 
-### Response Fields
+### Response shape
 
-Common response fields include:
+The Capability envelope is `data.result`, and every key below it is recursively snake_case. When
+feeding a returned value into the next `req`, map it back to the camelCase request field shown in §3.
+Common response paths include:
 
 | Field | Meaning |
 |---|---|
-| `status` | Draft state, such as `need_input`, `ready_to_preview`, `previewed`, or `committed` |
-| `draftId` / `draftVersion` | Server draft identity and version |
-| `selectedMode` | Server-selected authoring mode, such as structured build, wizard, or draft edit |
-| `confidence` / `reason` | Router confidence and explanation for the selected mode |
-| `nextSlot` | One missing slot to answer when `status=need_input` |
-| `preview` | Human-readable preview; use it for user confirmation |
-| `confirmToken` | Token returned by `preview`; required for `commit` |
-| `warnings` / `errors` | Soft warnings and hard validation failures |
-| `supportedOperations` | Server-advertised `build`, `preview`, and `commit` contract |
-| `result` | Commit result, including the final `flowUuid` when committed |
+| `data.result.status` | Draft state, such as `need_input`, `ready_to_preview`, `previewed`, or `committed` |
+| `data.result.draft_id` / `data.result.draft_version` | Server draft identity and version; use as request `draftId` / `draftVersion` |
+| `data.result.selected_mode` | Server-selected authoring mode, such as structured build, wizard, or draft edit |
+| `data.result.confidence` / `data.result.reason` | Router confidence and explanation for the selected mode |
+| `data.result.next_slot` | One missing slot to answer when `status=need_input`; use as request `slotAnswer` |
+| `data.result.preview` | Human-readable preview; use it for user confirmation |
+| `data.result.confirm_token` | Token returned by preview; use as request `confirmToken` for commit |
+| `data.result.warnings` / `data.result.errors` | Soft warnings and hard validation failures |
+| `data.result.supported_operations` | Server-advertised `build`, `preview`, and `commit` contract |
+| `data.result.result.flow_uuid` | Final flow UUID after commit |
 
 ### Compact node (`nodes[]`)
 
@@ -179,12 +181,12 @@ Prefer the created cluster reference. Only when the node schema requires `target
 ### 5.2 Project Channels
 
 ```bash
-ae-cli engage +channel_list --project_id <projectId>
+ae-cli engage-setting channel list --project-id <projectId>
 ```
 
-Match a real `channelId` for touchpoint nodes (priority: exact name match → keyword match → fallback by node/channel type). For `webhook_push`, also call `ae-cli engage +channel_detail` and drive `contentList` from `data.config.paramsList`.
+Match a real `channel_id` for touchpoint nodes (priority: exact name match → keyword match → fallback by node/channel type), then place it in request field `channelId`. For `webhook_push`, also call `ae-cli engage-setting channel get` and drive request field `contentList` from `data.item.config.params_list`.
 
-**The channel must be enabled.** A node referencing a disabled channel (`channelStatus = 2`) fails with `disabled_channel: channelId must reference an enabled channel`, and `build` stalls on a `need_input` channel slot. Enable it first via `ae-cli engage +update_channel_status --status 1` (write op — requires explicit user intent).
+**The channel must be enabled.** A node referencing a disabled channel (`channel_status = 0`) fails with `disabled_channel: channelId must reference an enabled channel`, and `build` stalls on a `need_input` channel slot. Enable it first via `ae-cli engage-setting channel update-status --status 1` (write op — requires explicit user intent).
 
 ---
 
@@ -242,7 +244,7 @@ Inside action nodes: `channel_name` → real `channelId`; `content` → `content
 
 `single_trigger`, `repeat_trigger`, `event_trigger`, `event_split_flow`, `feature_split_flow`, `ab_split_flow`, `event_judge`, `feature_judge`, `message_push`, `wechat_push`, `webhook_push`, `time_control`, `exit_flow`.
 
-Before writing any config below, call `+flow_node_config_schema` for the exact node type. The backend schema is the source of truth for required fields, defaults, allowed enum values, submit-time requirements, and examples.
+Before writing any config below, call `engage-flow node-config schema` for the exact node type. The backend schema is the source of truth for required fields, defaults, allowed enum values, submit-time requirements, and examples.
 
 ### 7.3 Common `config` Templates
 
@@ -312,7 +314,7 @@ Fallback branch keeps only `branchId` + `branchType: 2`.
 { "channelId": "<matched channelId>", "channelType": "<matched channelType>", "contentList": [ { "pushLanguageCode": "default", "content": [] } ] }
 ```
 
-`channel_name` → real `channelId`; `content` → the param that best matches body text. `processType` defaults to `1`, `enableChannelTouchLimits` defaults to `0`, and `isOccasionUp` defaults to `false`. `enableChannelTouchLimits` may be supplied as a boolean for compatibility, but `normalizedConfigObject` will convert it to `1` or `0`. When the param `type = TEXT`, also add `{ "config": "[{\"type\":\"paragraph\",\"children\":[{\"text\":\"<same as value>\"}]}]" }`. `contentList[].content` should be a JSON array; validation also accepts a JSON-stringified array for compatibility. When the param `type = OBJ_ARRAY`, `value` must be a JSON array, and the item must copy the complete child field definition from `query_channel_detail data.config.paramsList[].objArray`. First `contentList` entry must use `"pushLanguageCode": "default"`; generate extra languages per `languages`.
+`channel_name` → real response `channel_id` → request `channelId`; `content` → the param that best matches body text. `processType` defaults to `1`, `enableChannelTouchLimits` defaults to `0`, and `isOccasionUp` defaults to `false`. `enableChannelTouchLimits` may be supplied as a boolean for compatibility, but `normalizedConfigObject` will convert it to `1` or `0`. When the param `type = TEXT`, also add `{ "config": "[{\"type\":\"paragraph\",\"children\":[{\"text\":\"<same as value>\"}]}]" }`. `contentList[].content` should be a JSON array; validation also accepts a JSON-stringified array for compatibility. When the param `type = OBJ_ARRAY`, `value` must be a JSON array, and the item must copy the complete child field definition from `data.item.config.params_list[].obj_array`. First `contentList` entry must use `"pushLanguageCode": "default"`; generate extra languages per `languages`.
 
 #### `wechat_push`
 
@@ -413,11 +415,11 @@ A working event-condition leaf (used inside `triggerRule[].events[]` for `event_
   "conditionType": "event",
   "eventCondition": {
     "eventName": "ta@active_user",
-    "eventDesc": "用户活跃",
+    "eventDesc": "User active",
     "eventType": "event",
     "uceCalcuSymbol": "C030",
     "num": "1",
-    "taPropQuota": { "analysis": "A200", "analysisDesc": "次数", "quota": "", "quotaDesc": "", "analysisParams": "" },
+    "taPropQuota": { "analysis": "A200", "analysisDesc": "Count", "quota": "", "quotaDesc": "", "analysisParams": "" },
     "recentDay": "0-30",
     "startTime": "",
     "endTime": "",
@@ -449,7 +451,7 @@ Before `preview`/`commit`, self-check:
 
 | Flag | Type | Required | Description |
 |---|---|---|---|
-| `--project_id` / `-p` | number | Yes | Project ID |
+| `--project-id` / `-p` | number | Yes | Project ID |
 | `--req` | json | Yes | operation-based request object |
 
 The CLI injects `projectId` into both the top level and `req`; you do not write `req.projectId` yourself.
@@ -458,14 +460,14 @@ The CLI injects `projectId` into both the top level and `req`; you do not write 
 
 `need_input` is a **soft prompt**, not a hard error:
 
-- **`errors` empty + `nextSlot` present** → server needs one more node config (trigger / channel / targetCluster). Answer with `operation=build` + `draftId` + `expectedVersion` + `slotAnswer`. If `nextSlot.targetNodeId` is present, `slotAnswer.nodeConfig` may contain only `config`; otherwise include `nodeId` or `id`.
-- **`errors` non-empty** → hard validation failure. Fix `nodes`/`edges` and `build` again (a new `draftId` is issued; the stale draft is cleaned by TTL).
+- **`data.result.errors` empty + `data.result.next_slot` present** → server needs one more node config (trigger / channel / targetCluster). Answer with request fields `operation=build` + `draftId` + `expectedVersion` + `slotAnswer`. If response `next_slot.target_node_id` is present, request `slotAnswer.nodeConfig` may contain only `config`; otherwise include `nodeId` or `id`.
+- **`data.result.errors` non-empty** → hard validation failure. Fix `nodes`/`edges` and `build` again (a new `data.result.draft_id` is issued; the stale draft is cleaned by TTL).
 
 ### 11.3 Minimal Working Example
 
 ```bash
 # 1) build
-ae-cli engage +save_flow --project_id 1 --req '{
+ae-cli engage-flow flow save --project-id 1 --req '{
   "operation": "build",
   "flowName": "Welcome Flow",
   "flowDesc": "New user welcome flow",
@@ -476,24 +478,24 @@ ae-cli engage +save_flow --project_id 1 --req '{
   ],
   "edges": [ { "source": "n1", "target": "n2" } ]
 }'
-# → status = ready_to_preview, draftId = D, draftVersion = V0, confirmToken = T0
+# → data.result: status = ready_to_preview, draft_id = D, draft_version = V0, confirm_token = T0
 
-# 2) preview (re-issues draftVersion V1 + confirmToken T1)
-ae-cli engage +save_flow --project_id 1 --req '{ "operation": "preview", "draftId": "D", "expectedVersion": 0 }'
+# 2) preview (response re-issues draft_version V1 + confirm_token T1)
+ae-cli engage-flow flow save --project-id 1 --req '{ "operation": "preview", "draftId": "D", "expectedVersion": 0 }'
 
-# 3) commit (use the preview draftVersion + confirmToken)
-ae-cli engage +save_flow --project_id 1 --req '{ "operation": "commit", "draftId": "D", "draftVersion": 1, "confirmToken": "T1" }'
-# → status = committed, result = flowUuid
+# 3) commit (map preview draft_version/confirm_token to request draftVersion/confirmToken)
+ae-cli engage-flow flow save --project-id 1 --req '{ "operation": "commit", "draftId": "D", "draftVersion": 1, "confirmToken": "T1" }'
+# → data.result.status = committed, data.result.result.flow_uuid = <flow_uuid>
 
 # 4) verify
-ae-cli engage +flow_detail --project_id 1 --flow_uuid <flowUuid>
+ae-cli engage-flow flow get --project-id 1 --flow-uuid <flow_uuid>
 ```
 
-> ⚠️ `commit` must use the `draftVersion` **and** `confirmToken` returned by **preview**, not by build. Build's values cause a token/version mismatch.
+> ⚠️ `commit` must map preview's `data.result.draft_version` and `data.result.confirm_token` to request fields `draftVersion` and `confirmToken`. Build's values cause a token/version mismatch.
 
 ### 11.4 Output After Successful Commit
 
-The committed flow has `status = 0` (draft) — `commit` only freezes the draft into a flow version, it does **not** start delivery. To actually run it, enable it separately via `ae-cli engage +manage_flow` (with explicit user intent).
+The committed flow has `status = 0` (draft) — `commit` only freezes the draft into a flow version, it does **not** start delivery. To actually run it, enable it separately via `ae-cli engage-flow flow manage` (with explicit user intent).
 
 Show the user the canvas name and a **clickable Markdown link**:
 
@@ -518,15 +520,15 @@ Output the complete `req` JSON for debugging plus a clear failure reason.
 | Symptom | Cause | Fix |
 |---|---|---|
 | `Unsupported save_flow operation: null` | Legacy `nodeList`/`edgeList` payload, or `operation` missing | Put `operation` = `build`/`preview`/`commit` in `req`, use `nodes`/`edges` |
-| `Flag --req.sourceFlowUuid is no longer supported` | Removed clone mode from an older protocol | Call `+flow_detail`, convert detail `nodeList`/`edgeList` into compact `nodes`/`edges`, then create with `operation=build` |
+| `Flag --req.sourceFlowUuid is no longer supported` | Removed clone mode from an older protocol | Call `engage-flow flow get`, convert `data.flow.node_list`/`data.flow.edge_list` into compact request `nodes`/`edges`, then create with `operation=build` |
 | operation rejected (`SAVE`/`DRAFT`/`SUBMIT`/`mode`/`action`…) | Wrong field or wrong enum | `operation` is at `req.operation`; enum is only `build`/`preview`/`commit` |
 | `invalid_qp_relation: QP relation must be number 0 or 1` | `relation` sent as string | Use integer `0`/`1` |
 | `invalid_qp_leaf: QP property leaf must contain columnType/columnDesc` | userCondition leaf missing fields | Add `columnType` + `columnDesc` |
 | `required_by_minimal_valid` | `taPropQuota` missing fields | Add `quotaDesc` + `quota` + `analysisParams` |
 | `invalid_preset_count_expression` | Event count condition (`A200`) with empty quota uses wrong operator/num | Use `uceCalcuSymbol = C030` + `num = "1"` (see §9.2) |
 | `... branch must use its own dedicated exit ...` | Multiple paths share one `exit_flow` | Give every terminal branch its own `exit_flow` node (see §10.4) |
-| `disabled_channel: channelId must reference an enabled channel` | Channel status = 2 | `+update_channel_status --status 1` first |
-| commit token/version mismatch | Used build's `confirmToken`/`draftVersion` | Use the values returned by **preview** |
+| `disabled_channel: channelId must reference an enabled channel` | Response `channel_status = 0` | `engage-setting channel update-status --status 1` first |
+| commit token/version mismatch | Used build's `confirm_token`/`draft_version` | Use the values returned by **preview** |
 | `flowDesc` rejected | Over 200 chars | Trim to ≤ 200 |
 | `config` rejected as object where string expected | Wrong shape for `targetClusterQp` / TEXT rich-text | `JSON.stringify` those inner values |
 
@@ -535,9 +537,9 @@ Output the complete `req` JSON for debugging plus a clear failure reason.
 ## 13. Most Common Mistakes
 
 1. **Legacy `nodeList`/`edgeList`** — use `nodes`/`edges` with `operation=build`.
-2. **Removed clone mode** — do not pass `sourceFlowUuid`; copy flows via `+flow_detail` and a fresh `operation=build` request.
+2. **Removed clone mode** — do not pass `sourceFlowUuid`; copy flows via `engage-flow flow get` and a fresh `operation=build` request.
 3. **Time units must be lowercase** — `day`, `hour`, `minute`, `week`, `month` (not `DAY`/`HOUR`).
-4. **Do not invent `channelId`** — get it from `ae-cli engage +channel_list`.
+4. **Do not invent `channelId`** — get it from `ae-cli engage-setting channel list`.
 5. **Define branch IDs before referencing them** — `edge.sourceBranchId` must already exist in the upstream node `config`; for two-edge push action nodes, use `meetBranchId` and `notMeetBranchId`.
 6. **`targetClusterQp` is usually a string** — `JSON.stringify` the QP object.
 7. **TEXT rich-text `config` must also be a string** — not an object.
@@ -548,4 +550,4 @@ Output the complete `req` JSON for debugging plus a clear failure reason.
 
 ## 14. One-Sentence Summary
 
-Drive `+save_flow` as a state machine — `build` (`nodes`/`edges`, not `nodeList`/`edgeList` or `sourceFlowUuid`) → resolve any `need_input` slots → `preview` (take its fresh `draftVersion` + `confirmToken`) → `commit` → verify with `+flow_detail`; keep QP `relation` integer, fill `columnType`/`columnDesc` on userCondition leaves and `quotaDesc`/`quota`/`analysisParams` on `taPropQuota`, and ensure touchpoint channels are enabled before referencing them.
+Drive `engage-flow flow save` as a state machine — `build` (`nodes`/`edges`, not `nodeList`/`edgeList` or `sourceFlowUuid`) → resolve any `need_input` slots → `preview` (map response `draft_version` + `confirm_token` to request `draftVersion` + `confirmToken`) → `commit` → verify with `engage-flow flow get`; keep QP `relation` integer, fill `columnType`/`columnDesc` on userCondition leaves and `quotaDesc`/`quota`/`analysisParams` on `taPropQuota`, and ensure touchpoint channels are enabled before referencing them.

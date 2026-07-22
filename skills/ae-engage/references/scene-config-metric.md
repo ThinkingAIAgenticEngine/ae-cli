@@ -2,7 +2,7 @@
 
 > Capability ids: `engage-scene.config-metric.{list,get,batch-add,update-rule,batch-delete}` · Domain: `engage`.
 
-场景管理 / 配置中心 - 配置项关联指标管理。
+Scene management / config center — config item related-metric management.
 
 ## Commands
 

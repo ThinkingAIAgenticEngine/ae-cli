@@ -1,16 +1,16 @@
-# ae-engage +delete_channel
+# ae-engage engage-setting channel delete
 
 
 Delete an Engage channel.
 
-Mapped command: `ae-cli engage +delete_channel`
+Mapped command: `ae-cli engage-setting channel delete`
 
 ## Flags
 
 | Flag | Type | Required | Description |
 |------|------|------|------|
-| `--project_id` / `-p` | number | Yes | Project ID |
-| `--channel_id` | string | Yes | channel ID |
+| `--project-id` / `-p` | number | Yes | Project ID |
+| `--channel-id` | string | Yes | channel ID |
 
 ## Safety Constraints
 
@@ -19,5 +19,5 @@ This command is a **write operation** and Before executing, confirm that this ch
 ## Examples
 
 ```bash
-ae-cli engage +delete_channel --project_id 1 --channel_id <channel_id>
+ae-cli engage-setting channel delete --project-id 1 --channel-id <channel_id>
 ```

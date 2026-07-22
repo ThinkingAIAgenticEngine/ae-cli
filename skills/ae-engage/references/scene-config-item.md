@@ -1,14 +1,17 @@
 # engage-scene config-item
 
-> Capability ids: `engage-scene.config-item.{list,create,update}` · Domain: `engage`.
+> Capability ids: `engage-scene.config-item.{list,get,create,update,delete}` · Domain: `engage`.
 
-场景管理 / 配置中心 - 配置项管理。
+Scene management / config center — config item management.
 
 ## Commands
 
 ```bash
 # List config items of a project
 ae-cli engage-scene config-item list --project-id <project_id>
+
+# Get config item detail
+ae-cli engage-scene config-item get --project-id <project_id> --config-id <config_id>
 
 # Create a config item (business type, group, optional avatar)
 ae-cli engage-scene config-item create \
@@ -22,6 +25,10 @@ ae-cli engage-scene config-item update \
   --project-id <project_id> --config-id <config_id> \
   [--config-name <name>] [--config-remark <remark>] [--business-type <type>] \
   [--group-id <group_id>] [--channel-id <channel_id>]
+
+# Delete a config item (high-risk)
+ae-cli engage-scene config-item delete \
+  --project-id <project_id> --config-id <config_id> --open-id <operator_open_id> --yes
 ```
 
 ## Parameters
@@ -46,6 +53,13 @@ ae-cli engage-scene config-item update \
 | `--file-name` | No | Avatar file name including extension. |
 | `--file-content` | No | Base64-encoded avatar file content. |
 
+### get
+
+| Parameter | Required | Description |
+|---|---|---|
+| `--project-id` / `-p` | Yes | Numeric project ID. |
+| `--config-id` | Yes | Config item ID. |
+
 ### update
 
 | Parameter | Required | Description |
@@ -58,11 +72,20 @@ ae-cli engage-scene config-item update \
 | `--group-id` | No | New group ID. |
 | `--channel-id` | No | Config channel ID to bind. |
 
+### delete
+
+| Parameter | Required | Description |
+|---|---|---|
+| `--project-id` / `-p` | Yes | Numeric project ID. |
+| `--config-id` | Yes | Config item ID to delete. |
+| `--open-id` | Yes | Operator open ID retained by the original deletion workflow. |
+
 ## Output
 
 - `list`: `data.items` + `data.total`.
-- `create` / `update`: `data.success` — whether the operation succeeded.
+- `get`: `data.item`.
+- `create` / `update` / `delete`: `data.success` — whether the operation succeeded.
 
 ## Decision Rules
 
-- `create` / `update` are `write`; `list` is read. Use `config-item list` (or `engage +config_item_list`) to discover real `config_id`s and group IDs; never invent IDs.
+- `create` / `update` are `write`; `delete` is `high-risk-write` and requires `--yes`; `list` / `get` are read. Use `config-item list` to discover real `config_id`s and group IDs; never invent IDs.

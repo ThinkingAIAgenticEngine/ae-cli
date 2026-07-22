@@ -1,30 +1,31 @@
-# ae-engage +validate_flow_node_config
+# ae-cli engage-flow node-config validate
 
 
 Validate and normalize a single node configuration before placing it into a `save_flow` request.
 
-Mapped command: `ae-cli engage +validate_flow_node_config`
+Mapped command: `ae-cli engage-flow node-config validate`
 
 ## Flags
 
 | Flag | Type | Required | Description |
 |------|------|------|------|
-| `--node_type` | string | Yes | Flow node type |
+| `--project-id` / `-p` | number | Yes | Project ID |
+| `--node-type` | string | Yes | Flow node type |
 | `--config` | string | Yes | Node config JSON object encoded as a string |
-| `--operation_mode` | string | Yes | Validation mode |
+| `--operation-mode` | string | Yes | Validation mode |
 
 ## When To Use
 
-Use this after `+flow_node_config_schema` and before passing a config into `+save_flow`.
+Use this after `engage-flow node-config schema` and before passing a config into `engage-flow flow save`.
 
 The command validates one node config only; it does not validate the full canvas topology. It returns:
 
 - `valid`: whether the candidate config passed validation
 - `normalizedConfigObject`: backend-normalized config with defaulted fields
-- `errors`: hard validation failures to fix before calling `+save_flow`
+- `errors`: hard validation failures to fix before calling `engage-flow flow save`
 - `warnings`: issues that depend on live channel/template/config data
 
-Use `--operation_mode save_flow` for the current exposed MCP protocol. Use `save_submit_flow` only when you intentionally want stricter submit-time checks.
+Use `--operation-mode save_flow` for the current exposed MCP protocol. Use `save_submit_flow` only when you intentionally want stricter submit-time checks.
 
 Important current rules:
 
@@ -38,7 +39,7 @@ Important current rules:
 
 ## Enum Notes
 
-### `--node_type`
+### `--node-type`
 
 Schema-backed node types include:
 
@@ -56,7 +57,7 @@ Schema-backed node types include:
 - `ab_split_flow`
 - `exit_flow`
 
-### `--operation_mode`
+### `--operation-mode`
 
 - `save_flow`
 - `save_submit_flow`
@@ -64,6 +65,6 @@ Schema-backed node types include:
 ## Examples
 
 ```bash
-ae-cli engage +validate_flow_node_config \
-  --node_type message_push --operation_mode save_flow --config '{}'
+ae-cli engage-flow node-config validate \
+  --project-id 1 --node-type message_push --operation-mode save_flow --config '{}'
 ```

@@ -1,15 +1,16 @@
-# ae-engage +flow_node_config_schema
+# ae-cli engage-flow node-config schema
 
 
 Query the configuration schema for one flow node type before constructing a `save_flow` node config.
 
-Mapped command: `ae-cli engage +flow_node_config_schema`
+Mapped command: `ae-cli engage-flow node-config schema`
 
 ## Flags
 
 | Flag | Type | Required | Description |
 |------|------|------|------|
-| `--node_type` | string | Yes | Flow node type |
+| `--project-id` / `-p` | number | Yes | Project ID |
+| `--node-type` | string | Yes | Flow node type |
 
 ## When To Use
 
@@ -34,7 +35,7 @@ Do not use this command to build an old full `FlowSaveReqDTO`, `nodeList`, or `e
 
 ## Enum Notes
 
-### `--node_type`
+### `--node-type`
 
 Schema-backed node types include:
 
@@ -55,13 +56,13 @@ Schema-backed node types include:
 ## Examples
 
 ```bash
-ae-cli engage +flow_node_config_schema --node_type message_push
+ae-cli engage-flow node-config schema --project-id 1 --node-type message_push
 ```
 
 Typical flow:
 
 ```bash
-ae-cli engage +flow_node_config_schema --node_type event_trigger
-ae-cli engage +validate_flow_node_config \
-  --node_type event_trigger --operation_mode save_flow --config '<config-json-string>'
+ae-cli engage-flow node-config schema --project-id 1 --node-type event_trigger
+ae-cli engage-flow node-config validate \
+  --project-id 1 --node-type event_trigger --operation-mode save_flow --config '<config-json-string>'
 ```

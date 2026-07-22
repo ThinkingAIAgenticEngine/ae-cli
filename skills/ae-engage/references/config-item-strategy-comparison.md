@@ -1,24 +1,13 @@
-# ae-engage +config_item_strategy_comparison
+# engage-scene.report.strategy-comparison
 
+Compare config strategy results through the L3 Capability Gateway.
 
-Compare multiple strategies under the same config item.
+Mapped command: `ae-cli capability run engage-scene.report.strategy-comparison --input '<json>'`
 
-Mapped command: `ae-cli engage +config_item_strategy_comparison`
-
-## Flags
-
-| Flag | Type | Required | Description |
-|------|------|------|------|
-| `--project_id` / `-p` | number | Yes | Project ID |
-| `--config_id` | string | Yes | config item ID |
-| `--strategy_id_list` | json | Yes | strategy ID JSON array with at least two entries |
-| `--request_id` | string | No | query requestId |
-| `--show_time_zone` | number | No | display timezone offset |
-
-## Examples
+Required input: `project_id`, `config_id`, `strategy_id_list` with at least two IDs. Optional input:
+`request_id`, `show_time_zone`.
 
 ```bash
-ae-cli engage +config_item_strategy_comparison \
-  --project_id 1 --config_id cfg_123 \
-  --strategy_id_list '["strategy_a","strategy_b"]'
+ae-cli capability run engage-scene.report.strategy-comparison \
+  --input '{"project_id":1,"config_id":"cfg_123","strategy_id_list":["strategy_a","strategy_b"]}'
 ```

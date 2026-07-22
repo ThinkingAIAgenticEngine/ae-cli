@@ -1,14 +1,24 @@
 import { createEngageSettingCapabilityCommand } from '../../shared.js';
 import type { Flag } from '../../../../framework/types.js';
-import { validateMetricQpFlag } from './metric-qp-validation.js';
+import { validateMetricQpFlag, validateMetricWindowTimeUnitFlag } from './metric-qp-validation.js';
 
 const writeFlags: Flag[] = [
   { name: 'project-id', type: 'number', required: true, alias: 'p', desc: 'Numeric project ID.' },
-  { name: 'metric-type', type: 'number', required: true, desc: 'Metric type (see MetricTypeEunm).' },
-  { name: 'metric-name', type: 'string', required: true, desc: 'Metric name.' },
-  { name: 'metric-qp', type: 'string', required: true, desc: 'Metric qp (event/property expression).' },
+  { name: 'metric-type', type: 'number', required: true, desc: 'Metric type; use 1 (PRESET) for common metrics.' },
+  { name: 'metric-name', type: 'string', required: true, desc: 'Metric name (existing PRESET metric).' },
+  {
+    name: 'metric-qp',
+    type: 'string',
+    required: true,
+    desc: 'Complete metric QP JSON object string (type=0 event or type=1 formula).',
+  },
   { name: 'metric-window-num', type: 'number', required: true, desc: 'Metric window number.' },
-  { name: 'metric-window-time-unit', type: 'string', required: true, desc: 'Metric window time unit (MINUTE/HOUR/DAY).' },
+  {
+    name: 'metric-window-time-unit',
+    type: 'string',
+    required: true,
+    desc: 'Metric window time unit (minute/hour/day).',
+  },
   { name: 'display-name', type: 'string', required: true, desc: 'Display name of the metric.' },
   { name: 'note', type: 'string', required: false, desc: 'Metric note/remark.' },
   { name: 'order-id', type: 'number', required: false, desc: 'Sort order id.' },
@@ -40,6 +50,7 @@ export const commonMetricUpdate = createEngageSettingCapabilityCommand({
   risk: 'write',
   validate: (ctx) => {
     validateMetricQpFlag(ctx.str('metric-qp'));
+    validateMetricWindowTimeUnitFlag(ctx.str('metric-window-time-unit'));
   },
   buildInput: buildWriteInput,
 });

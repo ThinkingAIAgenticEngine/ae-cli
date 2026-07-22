@@ -1,26 +1,31 @@
-# ae-engage +channel_list
+# ae-engage engage-setting channel list
 
 
 Query the list of Engage channels in a project.
 
-Mapped command: `ae-cli engage +channel_list`
+Mapped command: `ae-cli engage-setting channel list`
+
+## Response shape
+
+The result is `{ data: { items, total } }`. Channel fields recursively use snake_case, for
+example `data.items[].channel_id`, `data.items[].channel_status`, and `data.items[].channel_type`.
 
 ## Flags
 
 | Flag | Type | Required | Description |
 |------|------|------|------|
-| `--project_id` / `-p` | number | Yes | Project ID |
-| `--provider_list` | json | No | Provider list JSON array |
-| `--channel_status` | number | No | Channel status filter |
+| `--project-id` / `-p` | number | Yes | Project ID |
+| `--provider-list` | json | No | Provider list JSON array |
+| `--channel-status` | number | No | Channel status filter |
 
 ## Enum Notes
 
-### `--channel_status`
+### `--channel-status`
 
-- `0`: disabled
 - `1`: enabled
+- `2`: disabled
 
-### `--provider_list`
+### `--provider-list`
 
 Common provider / channelSubBizType values:
 
@@ -35,6 +40,6 @@ Common provider / channelSubBizType values:
 ## Examples
 
 ```bash
-ae-cli engage +channel_list --project_id 1
-ae-cli engage +channel_list --project_id 1 --provider_list '["webhook","fcm"]'
+ae-cli engage-setting channel list --project-id 1
+ae-cli engage-setting channel list --project-id 1 --provider-list '["webhook","fcm"]'
 ```

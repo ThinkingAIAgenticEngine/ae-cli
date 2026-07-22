@@ -1,25 +1,30 @@
-# ae-engage +channel_detail
+# ae-engage engage-setting channel get
 
 
 Query the details of a single Engage channel.
 
-Mapped command: `ae-cli engage +channel_detail`
+Mapped command: `ae-cli engage-setting channel get`
+
+## Response shape
+
+The channel detail is under `data.item`. Every response key is snake_case, for example
+`data.item.channel_status`, `data.item.channel_type`, and `data.item.config.params_list`.
 
 ## Flags
 
 | Flag | Type | Required | Description |
 |------|------|------|------|
-| `--project_id` / `-p` | number | Yes | Project ID |
-| `--channel_id` | string | Yes | channel ID |
+| `--project-id` / `-p` | number | Yes | Project ID |
+| `--channel-id` | string | Yes | channel ID |
 
 ## Common enums in the response
 
-### `channelStatus`
+### `data.item.channel_status`
 
 - `0`: disabled
 - `1`: enabled
 
-### `channelType`
+### `data.item.channel_type`
 
 - `1`: `WEBHOOK`
 - `2`: `APP_PUSH`
@@ -27,7 +32,7 @@ Mapped command: `ae-cli engage +channel_detail`
 - `4`: `WECHAT`
 - `5`: `DOU_YIN`
 
-### `channelSubBizType`
+### `data.item.channel_sub_biz_type`
 
 Common values include:
 
@@ -39,7 +44,7 @@ Common values include:
 - `wechat_mini_game`
 - `dou_yin_recommended_game_card`
 
-### `enableTouchEvent`
+### `data.item.enable_touch_event`
 
 - `0`: disable the touch funnel
 - `1`: enable the touch funnel
@@ -47,5 +52,5 @@ Common values include:
 ## Examples
 
 ```bash
-ae-cli engage +channel_detail --project_id 1 --channel_id <channel_id>
+ae-cli engage-setting channel get --project-id 1 --channel-id <channel_id>
 ```

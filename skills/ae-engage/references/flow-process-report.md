@@ -1,58 +1,20 @@
-# ae-engage +flow_process_report
+# engage-flow.report.process
 
+Query a process-level flow report through the L3 Capability Gateway.
 
-Query the process-level report for a flow.
+Mapped command: `ae-cli capability run engage-flow.report.process --input '<json>'`
 
-Mapped command: `ae-cli engage +flow_process_report`
+## Input
 
-## Flags
+- Required: `project_id`, `report_type`.
+- Provide at least one of `flow_id` or `flow_uuid`.
+- `report_type`: `overview`, `detail`, `exit_detail`, or `push_detail`.
+- Optional: `request_id`, `push_language_code`, `data_dim_type`, `start_time`, `end_time`, `show_time_zone`.
+- Detail report types require both dates; overview accepts no dates or a complete date pair.
 
-| Flag | Type | Required | Description |
-|------|------|------|------|
-| `--project_id` / `-p` | number | Yes | Project ID |
-| `--report_type` | string | Yes | report type |
-| `--flow_id` | string | No | Flow ID |
-| `--flow_uuid` | string | No | Flow UUID |
-| `--request_id` | string | No | Query requestId |
-| `--push_language_code` | string | No | push language code |
-| `--data_dim_type` | string | No | data dimension type |
-| `--start_time` | string | No | Start date |
-| `--end_time` | string | No | End date |
-| `--show_time_zone` | string | No | display timezone offset |
-
-## Enum Notes
-
-### `--report_type`
-
-- `overview`: flow overview
-- `detail`: flow detail
-- `exit_detail`: exit detail
-- `push_detail`: push detail
-
-### `--data_dim_type`
-
-- `uv`: count by unique users
-- `pv`: count by events/occurrences
-
-### `--push_language_code`
-
-Common values include:
-
-- `default`
-- `en`
-- `zh-Hans`
-- `zh-Hant`
-- `ja`
-- `ko`
-
-## Parameter Constraints
-
-- `--flow_id` At least one of `--flow_id` and `--flow_uuid` must be provided.
-- When `--report_type` is `detail`, `exit_detail`, or `push_detail`, both `--start_time` and `--end_time` are required.
-- When `--report_type` is `overview`, you may omit time or provide `--start_time` and `--end_time` as a pair.
-
-## Examples
+## Example
 
 ```bash
-ae-cli engage +flow_process_report --project_id 1 --flow_uuid flow_uuid_123 --report_type overview
+ae-cli capability run engage-flow.report.process --input \
+  '{"project_id":1,"flow_uuid":"flow_uuid_123","report_type":"overview"}'
 ```

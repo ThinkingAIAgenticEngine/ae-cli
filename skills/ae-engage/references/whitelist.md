@@ -68,5 +68,5 @@ ae-cli engage-setting whitelist verify \
 ## Decision Rules
 
 - Use these commands when the user asks to add / edit / delete / verify project whitelist entries.
-- Discover existing whitelist IDs with `ae-cli engage +whitelist_list --project_id <project_id>` first; never invent IDs.
+- Discover existing whitelist IDs with `ae-cli engage-setting whitelist list --project-id <project_id>` first; never invent IDs.
 - `delete` is `high-risk-write` and requires `--yes` (or interactive confirmation).

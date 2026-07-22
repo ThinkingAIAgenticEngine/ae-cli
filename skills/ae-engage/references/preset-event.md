@@ -38,5 +38,5 @@ At least one `*-event-desc` must be provided for `update`.
 
 ## Decision Rules
 
-- Use these commands when the user asks to query or configure preset events (预置事件) for the analysis workbench.
+- Use these commands when the user asks to query or configure preset events for the analysis workbench.
 - `update` replaces the provided desc fields; omitting a field clears it. Before clearing a field that is in use, the backend rejects the update if metrics still depend on it.

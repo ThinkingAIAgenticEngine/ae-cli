@@ -1,10 +1,18 @@
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
 import { channelTouchLimitsList } from '../../src/commands/te-engage/engage-setting/channel-touch-limits/list.ts';
+import { channelList } from '../../src/commands/te-engage/engage-setting/channel/list.ts';
+import { approvalApproverAdd } from '../../src/commands/te-engage/engage-setting/approval-approver/add.ts';
+import { flowUpdateRemark } from '../../src/commands/te-engage/engage-flow/flow/update-remark.ts';
+import { flowDelete } from '../../src/commands/te-engage/engage-flow/flow/delete.ts';
+import { flowList } from '../../src/commands/te-engage/engage-flow/flow/list.ts';
 import { operationLogQuery } from '../../src/commands/te-engage/engage-flow/operation-log/query.ts';
+import { testRun } from '../../src/commands/te-engage/engage-flow/test/run.ts';
 import { operationLogQuery as taskOperationLogQuery } from '../../src/commands/te-engage/engage-task/operation-log/query.ts';
 import { segmentListQuery } from '../../src/commands/te-engage/engage-task/segment-list/query.ts';
 import { taskDelete } from '../../src/commands/te-engage/engage-task/task/delete.ts';
+import { taskList } from '../../src/commands/te-engage/engage-task/task/list.ts';
+import { taskManage } from '../../src/commands/te-engage/engage-task/task/manage.ts';
 import { groupList } from '../../src/commands/te-engage/engage-task/group/list.ts';
 import { clientParamUpdate } from '../../src/commands/te-engage/engage-setting/client-param/update.ts';
 import { capabilityGatewayHint } from '../../src/framework/runner.ts';
@@ -103,6 +111,34 @@ assert.equal(
 );
 assert.deepEqual(touchLimitsDryRun.body, { input: { project_id: 1 } });
 
+const channelListDryRun = await captureCapabilityDryRun(channelList, {
+  projectId: 1,
+  providerList: ['webhook'],
+  channelStatus: 0,
+});
+assert.equal(
+  channelListDryRun.url,
+  `${HOST}/api/cli/engage/v1/capabilities/engage-setting.channel.list/dry-run`,
+);
+assert.deepEqual(channelListDryRun.body, {
+  input: { project_id: 1, provider_list: ['webhook'], channel_status: 0 },
+});
+
+const approverAddDryRun = await captureCapabilityDryRun(approvalApproverAdd, {
+  projectId: 1,
+  approvers: ['ou_1', 'ou_2'],
+});
+assert.equal(
+  approverAddDryRun.url,
+  `${HOST}/api/cli/engage/v1/capabilities/engage-setting.approval-approver.add/dry-run`,
+);
+assert.deepEqual(approverAddDryRun.body, {
+  input: { project_id: 1, approvers: ['ou_1', 'ou_2'] },
+});
+
+const removedSettingCommand = runCli(['engage', '+channel_list', '--help']);
+assert.notEqual(removedSettingCommand.status, 0, 'legacy +channel_list must no longer be registered');
+
 const opLogDryRun = await captureCapabilityDryRun(operationLogQuery, {
   projectId: 1,
   flowId: 'flow_id_123',
@@ -113,6 +149,49 @@ assert.equal(
 );
 assert.deepEqual(opLogDryRun.body, {
   input: { project_id: 1, flow_id: 'flow_id_123' },
+});
+
+const testRunDryRun = await captureCapabilityDryRun(testRun, {
+  flowUuid: 'flow_uuid_123',
+});
+assert.equal(
+  testRunDryRun.url,
+  `${HOST}/api/cli/engage/v1/capabilities/engage-flow.test.run/dry-run`,
+);
+assert.deepEqual(testRunDryRun.body, {
+  input: { flow_uuid: 'flow_uuid_123' },
+});
+
+const flowUpdateRemarkDryRun = await captureCapabilityDryRun(flowUpdateRemark, {
+  projectId: 1,
+  flowUuid: 'flow_uuid_123',
+  flowVersionDesc: 'new remark',
+});
+
+const flowListDryRun = await captureCapabilityDryRun(flowList, { projectId: 1 });
+assert.equal(
+  flowListDryRun.url,
+  `${HOST}/api/cli/engage/v1/capabilities/engage-flow.flow.list/dry-run`,
+);
+assert.deepEqual(flowListDryRun.body, { input: { project_id: 1 } });
+
+const flowDeleteDryRun = await captureCapabilityDryRun(flowDelete, {
+  projectId: 1,
+  flowUuidList: ['flow_uuid_123'],
+});
+assert.equal(
+  flowDeleteDryRun.url,
+  `${HOST}/api/cli/engage/v1/capabilities/engage-flow.flow.delete/dry-run`,
+);
+assert.deepEqual(flowDeleteDryRun.body, {
+  input: { project_id: 1, flow_uuid_list: ['flow_uuid_123'] },
+});
+assert.equal(
+  flowUpdateRemarkDryRun.url,
+  `${HOST}/api/cli/engage/v1/capabilities/engage-flow.version.update-remark/dry-run`,
+);
+assert.deepEqual(flowUpdateRemarkDryRun.body, {
+  input: { project_id: 1, flow_uuid: 'flow_uuid_123', flow_version_desc: 'new remark' },
 });
 
 const taskLogDryRun = await captureCapabilityDryRun(taskOperationLogQuery, {
@@ -126,6 +205,39 @@ assert.equal(
 assert.deepEqual(taskLogDryRun.body, {
   input: { project_id: 1, task_id: 'task-1' },
 });
+
+const taskListDryRun = await captureCapabilityDryRun(taskList, {
+  projectId: 1,
+  req: { pageNum: 1, pageSize: 20 },
+});
+assert.equal(
+  taskListDryRun.url,
+  `${HOST}/api/cli/engage/v1/capabilities/engage-task.task.list/dry-run`,
+);
+assert.deepEqual(taskListDryRun.body, {
+  input: { project_id: 1, req: { pageNum: 1, pageSize: 20 } },
+});
+
+const taskManageDryRun = await captureCapabilityDryRun(taskManage, {
+  projectId: 1,
+  taskId: 'task-1',
+  action: 'pause',
+  reason: 'maintenance',
+});
+assert.equal(
+  taskManageDryRun.url,
+  `${HOST}/api/cli/engage/v1/capabilities/engage-task.task.manage/dry-run`,
+);
+assert.deepEqual(taskManageDryRun.body, {
+  input: { project_id: 1, task_id: 'task-1', action: 'pause', reason: 'maintenance' },
+});
+
+const migratedTaskHelp = runCli(['engage-task', 'task', 'list', '--help']);
+assert.equal(migratedTaskHelp.status, 0, migratedTaskHelp.stderr || migratedTaskHelp.stdout);
+assert.match(migratedTaskHelp.stdout, /--req <value>/);
+
+const removedTaskCommand = runCli(['engage', '+task_list', '--help']);
+assert.notEqual(removedTaskCommand.status, 0, 'legacy +task_list must no longer be registered');
 
 const help = runCli(['engage-setting', 'channel-touch-limits', 'list', '--help']);
 assert.equal(help.status, 0, help.stderr || help.stdout);
@@ -167,7 +279,7 @@ const emptyCommonMetricQp = runCli([
   '--metric-window-num',
   '1',
   '--metric-window-time-unit',
-  'DAY',
+  'day',
   '--display-name',
   'M1',
 ]);
@@ -175,6 +287,81 @@ assert.notEqual(emptyCommonMetricQp.status, 0);
 const emptyCommonMetricQpError = JSON.parse(emptyCommonMetricQp.stderr);
 assert.equal(emptyCommonMetricQpError.error.type, 'validation');
 assert.match(emptyCommonMetricQpError.error.message, /--metric-qp cannot be an empty JSON object/);
+
+const invalidCommonMetricQp = runCli([
+  '--dry-run',
+  'engage-setting',
+  'common-metric',
+  'create',
+  '--project-id',
+  '1',
+  '--metric-type',
+  '1',
+  '--metric-name',
+  'm1',
+  '--metric-qp',
+  'event',
+  '--metric-window-num',
+  '1',
+  '--metric-window-time-unit',
+  'day',
+  '--display-name',
+  'M1',
+]);
+assert.notEqual(invalidCommonMetricQp.status, 0);
+const invalidCommonMetricQpError = JSON.parse(invalidCommonMetricQp.stderr);
+assert.equal(invalidCommonMetricQpError.error.type, 'validation');
+assert.match(invalidCommonMetricQpError.error.message, /--metric-qp must be a valid JSON object string/);
+
+const invalidCommonMetricWindowUnit = runCli([
+  '--dry-run',
+  'engage-setting',
+  'common-metric',
+  'create',
+  '--project-id',
+  '1',
+  '--metric-type',
+  '1',
+  '--metric-name',
+  'm1',
+  '--metric-qp',
+  '{"type":0,"eventName":"purchase","analysis":"A100"}',
+  '--metric-window-num',
+  '1',
+  '--metric-window-time-unit',
+  'DAY',
+  '--display-name',
+  'M1',
+]);
+assert.notEqual(invalidCommonMetricWindowUnit.status, 0);
+const invalidCommonMetricWindowUnitError = JSON.parse(invalidCommonMetricWindowUnit.stderr);
+assert.equal(invalidCommonMetricWindowUnitError.error.type, 'validation');
+assert.match(invalidCommonMetricWindowUnitError.error.message, /minute, hour, day/);
+
+const invalidCommonMetricType = runCli([
+  '--dry-run',
+  'engage-setting',
+  'common-metric',
+  'create',
+  '--project-id',
+  '1',
+  '--metric-type',
+  '2',
+  '--metric-name',
+  'm1',
+  '--metric-qp',
+  '{"type":0,"eventName":"purchase","analysis":"A100"}',
+  '--metric-window-num',
+  '1',
+  '--metric-window-time-unit',
+  'day',
+  '--display-name',
+  'M1',
+]);
+assert.notEqual(invalidCommonMetricType.status, 0);
+const invalidCommonMetricTypeError = JSON.parse(invalidCommonMetricType.stderr);
+assert.equal(invalidCommonMetricTypeError.error.type, 'validation');
+assert.match(invalidCommonMetricTypeError.error.message, /--metric-type must be 1/);
 
 const configTableMissingUploadHint = capabilityGatewayHint(new CapabilityGatewayError(
   'No data to save, please upload again.',
@@ -189,26 +376,55 @@ assert.match(configTableMissingUploadHint, /same --project-id and --request-id/)
 const clientParamUpdateWithoutDesc = await captureCapabilityDryRun(clientParamUpdate, {
   projectId: 1,
   columnName: 'client_level',
-  columnType: 'VARCHAR',
-  selectType: 'INPUT',
 });
-assert.equal(clientParamUpdateWithoutDesc.body.input.column_desc, '');
+assert.equal(clientParamUpdateWithoutDesc.body.input.column_desc, undefined);
+assert.equal(clientParamUpdateWithoutDesc.body.input.column_type, undefined);
+assert.equal(
+  clientParamUpdateWithoutDesc.url,
+  `${HOST}/api/cli/engage/v1/capabilities/engage-setting.client-param.update/dry-run`,
+);
+
+const clientParamCreateDryRun = await captureCapabilityDryRun(
+  (await import('../../src/commands/te-engage/engage-setting/client-param/create.ts')).clientParamCreate,
+  { projectId: 1, columnName: 'client_level', columnType: 'varchar', columnDesc: 'Level' },
+);
+assert.equal(
+  clientParamCreateDryRun.url,
+  `${HOST}/api/cli/engage/v1/capabilities/engage-setting.client-param.create/dry-run`,
+);
+assert.deepEqual(clientParamCreateDryRun.body, {
+  input: {
+    project_id: 1,
+    column_name: 'client_level',
+    column_type: 'varchar',
+    column_desc: 'Level',
+  },
+});
 
 const versionHelp = runCli(['engage-flow', 'version', 'list', '--help']);
 assert.equal(versionHelp.status, 0, versionHelp.stderr || versionHelp.stdout);
 assert.match(versionHelp.stdout, /-p, --project-id <value>/);
 assert.match(versionHelp.stdout, /--flow-id <value>/);
 
+const flowUpdateRemarkHelp = runCli(['engage-flow', 'flow', 'update-remark', '--help']);
+assert.equal(flowUpdateRemarkHelp.status, 0, flowUpdateRemarkHelp.stderr || flowUpdateRemarkHelp.stdout);
+assert.match(flowUpdateRemarkHelp.stdout, /-p, --project-id <value>/);
+assert.match(flowUpdateRemarkHelp.stdout, /--flow-uuid <value>/);
+assert.match(flowUpdateRemarkHelp.stdout, /--flow-version-desc <value>/);
+
 const flowHelp = runCli(['engage-flow', '--help']);
 assert.equal(flowHelp.status, 0, flowHelp.stderr || flowHelp.stdout);
 assert.match(flowHelp.stdout, /version/);
 assert.match(flowHelp.stdout, /operation-log/);
-assert.doesNotMatch(flowHelp.stdout, /engage-flow test|^\s+test\s*$/m);
+assert.doesNotMatch(flowHelp.stdout, /\btest\b/);
 
 const opLogHelp = runCli(['engage-flow', 'operation-log', 'query', '--help']);
 assert.equal(opLogHelp.status, 0, opLogHelp.stderr || opLogHelp.stdout);
 assert.match(opLogHelp.stdout, /--flow-id <value>/);
 assert.doesNotMatch(opLogHelp.stdout, /--flow-uuid <value>/);
+
+const testRunHelp = runCli(['engage-flow', 'test', 'run', '--help']);
+assert.notEqual(testRunHelp.status, 0, 'engage-flow test run temporarily disabled');
 
 const taskLogHelp = runCli(['engage-task', 'operation-log', 'query', '--help']);
 assert.equal(taskLogHelp.status, 0, taskLogHelp.stderr || taskLogHelp.stdout);
@@ -261,15 +477,19 @@ for (const args of enabledHelps) {
   const enabled = runCli(args);
   assert.equal(enabled.status, 0, `expected enabled: ${args.join(' ')} -> ${enabled.stderr || enabled.stdout}`);
 }
-
-const blockedSubmitApproval = runCli(['engage-task', 'task', 'submit-approval', '--help']);
-assert.notEqual(blockedSubmitApproval.status, 0);
-
+const disabledHelps = [
+  ['engage-task', 'task', 'submit-approval', '--help'],
+  ['engage-activity', 'approval', 'submit', '--help'],
+];
+for (const args of disabledHelps) {
+  const disabled = runCli(args);
+  assert.notEqual(disabled.status, 0, `expected disabled: ${args.join(' ')}`);
+}
 const settingHelp = runCli(['engage-setting', '--help']);
 assert.equal(settingHelp.status, 0, settingHelp.stderr || settingHelp.stdout);
 assert.match(settingHelp.stdout, /channel-touch-limits/);
 
-// ---- 28 engage-setting capabilities: registration + help coverage ----
+// ---- 38 engage-setting capabilities: registration + help coverage ----
 const engageSettingCommands = (await import('../../src/commands/te-engage/engage-setting/index.ts')).default;
 const settingCapabilityIds = engageSettingCommands
   .map((cmd) => cmd.capabilityId)
@@ -277,17 +497,26 @@ const settingCapabilityIds = engageSettingCommands
 const expectedSettingCapabilityIds = [
   'engage-setting.channel.update-config',
   'engage-setting.channel.test-send',
+  'engage-setting.channel.list',
+  'engage-setting.channel.get',
+  'engage-setting.channel.create',
+  'engage-setting.channel.update-status',
+  'engage-setting.channel.delete',
   'engage-setting.channel-touch-limits.list',
   'engage-setting.channel-touch-limits.batch-update',
   'engage-setting.channel-touch-limits.toggle',
   'engage-setting.channel-touch-limits.save',
   'engage-setting.approval-approver.delete',
+  'engage-setting.approval-approver.add',
+  'engage-setting.approval-approver.list',
+  'engage-setting.whitelist.list',
   'engage-setting.whitelist.add',
   'engage-setting.whitelist.update',
   'engage-setting.whitelist.delete',
   'engage-setting.whitelist.verify',
   'engage-setting.push-language.get',
   'engage-setting.push-language.set',
+  'engage-setting.client-param.create',
   'engage-setting.client-param.update',
   'engage-setting.client-param.delete',
   'engage-setting.client-param.list',
@@ -301,17 +530,18 @@ const expectedSettingCapabilityIds = [
   'engage-setting.preset-event.update',
   'engage-setting.common-metric.list',
   'engage-setting.common-metric.get',
+  'engage-setting.common-metric.create',
   'engage-setting.common-metric.update',
   'engage-setting.common-metric.delete',
 ];
-assert.equal(expectedSettingCapabilityIds.length, 28, 'expected 28 engage-setting capabilities');
+assert.equal(expectedSettingCapabilityIds.length, 38, 'expected 38 engage-setting capabilities');
 const missingCapabilityIds = expectedSettingCapabilityIds.filter(
   (id) => !settingCapabilityIds.includes(id),
 );
 assert.equal(missingCapabilityIds.length, 0,
   `missing engage-setting capabilities: ${missingCapabilityIds.join(', ')}`);
-assert.equal(settingCapabilityIds.length, 28,
-  `expected exactly 28 engage-setting capabilities, got ${settingCapabilityIds.length}`);
+assert.equal(settingCapabilityIds.length, 38,
+  `expected exactly 38 engage-setting capabilities, got ${settingCapabilityIds.length}`);
 
 // Each new command must surface in `engage-setting` help: resource in the top-level help,
 // and each action under its resource subcommand help.
@@ -342,9 +572,11 @@ for (const resource of resourcesByCommand.keys()) {
 const settingFlagHelps = [
   ['engage-setting', 'whitelist', 'verify', '--help'],
   ['engage-setting', 'push-language', 'set', '--help'],
+  ['engage-setting', 'client-param', 'create', '--help'],
   ['engage-setting', 'client-param', 'update', '--help'],
   ['engage-setting', 'config-table', 'upload', '--help'],
   ['engage-setting', 'preset-event', 'update', '--help'],
+  ['engage-setting', 'common-metric', 'create', '--help'],
   ['engage-setting', 'common-metric', 'update', '--help'],
   ['engage-setting', 'approval-approver', 'delete', '--help'],
 ];
@@ -381,15 +613,17 @@ assert.equal(
 );
 assert.deepEqual(pushLanguageGetDryRun.body, { input: { project_id: 1 } });
 
-// ---- 34 engage-scene (场景管理/配置中心) capabilities: registration + help coverage ----
+// ---- 41 engage-scene (场景管理/配置中心) L2 capabilities: registration + help coverage ----
 const engageSceneCommands = (await import('../../src/commands/te-engage/engage-scene/index.ts')).default;
 const sceneCapabilityIds = engageSceneCommands
   .map((cmd) => cmd.capabilityId)
   .filter((id) => typeof id === 'string' && id.startsWith('engage-scene.'));
 const expectedSceneCapabilityIds = [
   'engage-scene.config-item.list',
+  'engage-scene.config-item.get',
   'engage-scene.config-item.create',
   'engage-scene.config-item.update',
+  'engage-scene.config-item.delete',
   'engage-scene.config-param.list',
   'engage-scene.config-param.batch-add',
   'engage-scene.config-param.update',
@@ -405,28 +639,36 @@ const expectedSceneCapabilityIds = [
   'engage-scene.config-metric.batch-add',
   'engage-scene.config-metric.update-rule',
   'engage-scene.config-metric.batch-delete',
+  'engage-scene.config-channel.list',
+  'engage-scene.config-channel.get',
   'engage-scene.config-channel.create',
   'engage-scene.config-channel.update',
+  'engage-scene.config-channel.update-status',
+  'engage-scene.config-channel.delete',
   'engage-scene.config-channel.query-log',
   'engage-scene.strategy.create',
+  'engage-scene.strategy.get',
+  'engage-scene.strategy.list',
+  'engage-scene.strategy.manage',
   'engage-scene.strategy.update',
   'engage-scene.strategy.log',
   'engage-scene.strategy.batch-copy',
   'engage-scene.template.list',
+  'engage-scene.template.copy',
   'engage-scene.template.get',
   'engage-scene.template.create',
   'engage-scene.template.update',
   'engage-scene.template.update-status',
   'engage-scene.template.delete',
 ];
-assert.equal(expectedSceneCapabilityIds.length, 31, 'expected 31 engage-scene capabilities');
+assert.equal(expectedSceneCapabilityIds.length, 41, 'expected 41 engage-scene L2 capabilities');
 const missingSceneCapabilityIds = expectedSceneCapabilityIds.filter(
   (id) => !sceneCapabilityIds.includes(id),
 );
 assert.equal(missingSceneCapabilityIds.length, 0,
   `missing engage-scene capabilities: ${missingSceneCapabilityIds.join(', ')}`);
-assert.equal(sceneCapabilityIds.length, 31,
-  `expected exactly 31 engage-scene capabilities, got ${sceneCapabilityIds.length}`);
+assert.equal(sceneCapabilityIds.length, 41,
+  `expected exactly 41 engage-scene L2 capabilities, got ${sceneCapabilityIds.length}`);
 
 const sceneHelp = runCli(['engage-scene', '--help']);
 assert.equal(sceneHelp.status, 0, sceneHelp.stderr || sceneHelp.stdout);
@@ -490,7 +732,35 @@ assert.deepEqual(templateListDryRun.body, {
   input: { project_id: 1, config_id: 'cfg-1' },
 });
 
-// ---- 27 engage-activity (运营活动) capabilities: registration + help coverage ----
+const strategyListDryRun = await captureCapabilityDryRun(
+  (await import('../../src/commands/te-engage/engage-scene/strategy/list.ts')).strategyList,
+  { projectId: 1, configId: 'cfg-1', strategyUuidList: ['uuid-1'] },
+);
+assert.equal(
+  strategyListDryRun.url,
+  `${HOST}/api/cli/engage/v1/capabilities/engage-scene.strategy.list/dry-run`,
+);
+assert.deepEqual(strategyListDryRun.body, {
+  input: { project_id: 1, config_id: 'cfg-1', strategy_uuid_list: ['uuid-1'] },
+});
+
+const configItemDeleteDryRun = await captureCapabilityDryRun(
+  (await import('../../src/commands/te-engage/engage-scene/config-item/delete.ts')).configItemDelete,
+  { projectId: 1, configId: 'cfg-1', openId: 'ou-1' },
+);
+assert.equal(
+  configItemDeleteDryRun.url,
+  `${HOST}/api/cli/engage/v1/capabilities/engage-scene.config-item.delete/dry-run`,
+);
+assert.deepEqual(configItemDeleteDryRun.body, {
+  input: { project_id: 1, config_id: 'cfg-1', open_id: 'ou-1' },
+});
+
+const removedConfigCommand = runCli(['engage', '+config_item_list', '--help']);
+assert.notEqual(removedConfigCommand.status, 0,
+  'legacy +config_item_list must no longer be registered');
+
+// ---- 26 engage-activity (运营活动) capabilities: registration + help coverage ----
 const engageActivityCommands = (await import('../../src/commands/te-engage/engage-activity/index.ts')).default;
 const activityCapabilityIds = engageActivityCommands
   .map((cmd) => cmd.capabilityId)
@@ -505,12 +775,11 @@ const expectedActivityCapabilityIds = [
   'engage-activity.activity.end',
   'engage-activity.activity.stats',
   'engage-activity.activity.info-list',
-  'engage-activity.approval.submit',
   'engage-activity.approval.approve',
   'engage-activity.approval.reject',
   'engage-activity.approval.cancel',
-  // 'engage-activity.topic.create', // temporarily disabled
-  // 'engage-activity.topic.update', // temporarily disabled
+  'engage-activity.topic.create',
+  'engage-activity.topic.update',
   'engage-activity.topic.remove-task',
   'engage-activity.topic.delete',
   'engage-activity.topic.get',
@@ -520,18 +789,19 @@ const expectedActivityCapabilityIds = [
   'engage-activity.activity-type.update',
   'engage-activity.activity-type.batch-delete',
   'engage-activity.task.get',
-  // 'engage-activity.task.create', // temporarily disabled
-  // 'engage-activity.task.update', // temporarily disabled
+  'engage-activity.task.create',
+  'engage-activity.task.update',
   'engage-activity.task.copy',
 ];
-assert.equal(expectedActivityCapabilityIds.length, 23, 'expected 23 engage-activity capabilities');
+assert.equal(expectedActivityCapabilityIds.length, 26, 'expected 26 engage-activity capabilities');
 const missingActivityCapabilityIds = expectedActivityCapabilityIds.filter(
   (id) => !activityCapabilityIds.includes(id),
 );
 assert.equal(missingActivityCapabilityIds.length, 0,
   `missing engage-activity capabilities: ${missingActivityCapabilityIds.join(', ')}`);
-assert.equal(activityCapabilityIds.length, 23,
-  `expected exactly 23 engage-activity capabilities, got ${activityCapabilityIds.length}`);
+assert.equal(activityCapabilityIds.length, 26,
+  `expected exactly 26 engage-activity capabilities, got ${activityCapabilityIds.length}`);
+assert.ok(!activityCapabilityIds.includes('engage-activity.approval.submit'));
 
 const activityHelp = runCli(['engage-activity', '--help']);
 assert.equal(activityHelp.status, 0, activityHelp.stderr || activityHelp.stdout);

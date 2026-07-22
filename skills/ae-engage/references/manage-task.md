@@ -1,16 +1,16 @@
-# ae-engage +manage_task
+# ae-cli engage-task task manage
 
 
 Perform task lifecycle actions such as send, pause, end, or review.
 
-Mapped command: `ae-cli engage +manage_task`
+Mapped command: `ae-cli engage-task task manage`
 
 ## Flags
 
 | Flag | Type | Required | Description |
 |------|------|------|------|
-| `--project_id` / `-p` | number | Yes | Project ID |
-| `--task_id` | string | Yes | task ID |
+| `--project-id` / `-p` | number | Yes | Project ID |
+| `--task-id` | string | Yes | task ID |
 | `--action` | string | Yes | action type |
 | `--reason` | string | No | reason for review actions |
 
@@ -32,5 +32,5 @@ This command is a **write operation** and and changes the task status.
 ## Examples
 
 ```bash
-ae-cli engage +manage_task --project_id 1 --task_id task_123 --action pause
+ae-cli engage-task task manage --project-id 1 --task-id task_123 --action pause
 ```

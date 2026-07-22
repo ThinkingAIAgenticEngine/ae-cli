@@ -1,14 +1,18 @@
 # engage-activity topic
 
-> Capability ids: `engage-activity.topic.{remove-task,delete,get,copy}` · Domain: `engage`.
->
-> Temporarily disabled: `topic create` / `topic update` (command registration + skill guidance).
+> Capability ids: `engage-activity.topic.{create,update,remove-task,delete,get,copy}` · Domain: `engage`.
 
 Activity topics and tasks under a topic. `copy` loads the source topic, renames it, and re-creates (no dedicated backend copy API).
 
 ## Commands
 
 ```bash
+# Create a topic and its tasks under an activity
+ae-cli engage-activity topic create --project-id <project_id> --payload '{ ... }'
+
+# Update a topic and its task relations
+ae-cli engage-activity topic update --project-id <project_id> --payload '{"topicId":"topic-1", ...}'
+
 # Remove a task from its topic (high-risk)
 ae-cli engage-activity topic remove-task --project-id <project_id> --task-id <task_id> --yes
 
@@ -22,41 +26,44 @@ ae-cli engage-activity topic get --project-id <project_id> --topic-id <topic_id>
 ae-cli engage-activity topic copy --project-id <project_id> --topic-id <topic_id> [--new-name <name>]
 ```
 
-<!-- Temporarily disabled: topic create / topic update
-```bash
-# Create a topic and its tasks under an activity
-ae-cli engage-activity topic create --project-id <project_id> --payload '{ ... }'
-
-# Update a topic and its task relations
-ae-cli engage-activity topic update --project-id <project_id> --payload '{"topicId":"topic-1", ...}'
-```
--->
-
 ## Parameters
 
 | Command | Required flags | Notes |
 |---|---|---|
+| create | `--project-id`, `--payload` | payload = `TopicAddDTO` (camelCase). Prefer `triggerType` `0` (schedule single) or `1` (schedule repeat); activity topics do not use manual (`2`). |
+| update | `--project-id`, `--payload` | payload = `TopicModifyReq` (`topicId` + fields + task lists). |
 | remove-task | `--project-id`, `--task-id` | high-risk; requires `--yes`; no dry-run. Only tasks with a non-empty `topicId`. |
 | delete | `--project-id`, `--topic-id` | high-risk; requires `--yes`; no dry-run. |
 | get | `--project-id`, `--topic-id` | read. |
 | copy | `--project-id`, `--topic-id` | `--new-name` optional (default source name + `_copy`). |
 
-<!-- Temporarily disabled
-| create | `--project-id`, `--payload` | payload = `TopicAddDTO` (camelCase). |
-| update | `--project-id`, `--payload` | payload = `TopicModifyReq` (`topicId` + fields + task lists). |
--->
+## Notes for get / copy / create
 
-## Notes for get / copy
-
-TEXT (rich text) params inside `groupContentList[].contentList[].content` need both `value` and Slate `config` (JSON string). If `config` is omitted, Hermes copy auto-fills  
+TEXT (rich text) params inside `groupContentList[].contentList[].content` need both `value` and Slate `config` (JSON string). If `config` is omitted, Hermes copy/create auto-fills  
 `[{"type":"paragraph","children":[{"text":"<value>"}]}]`. See `activity-task.md` Channel content.
 
 Topic-level audience uses `topicClusterKey` / `topicQp`; do **not** pass task-level `clusterKey` at topic root.
 
+### Audience (`targetClusterType`)
+
+| Value | Required | Notes |
+|---|---|---|
+| `1` (custom) | `topicQp` | Valid condition JSON object string (not `{}`). |
+| `2` (existed) | `topicClusterKey` | From an existing user cluster. |
+| `3` (all) | — | **Not supported for activity topics** → `TOPIC_TARGET_CLUSTER_TYPE_UNSUPPORTED`. Use standalone `engage-activity task create` for all-users. |
+
+### Trigger (`triggerType`)
+
+| Value | Required | Notes |
+|---|---|---|
+| `0` (schedule single) | `triggerTime` (`yyyy-MM-dd HH:mm`, future) | Preferred for CLI create. |
+| `1` (schedule repeat) | `startDate`, `endDate`, `triggerCrontab` | |
+| `2` (manual) | — | **Not supported for activity topics** (UI only offers 0/1). Using it without `endDate` causes `CAPABILITY_EXECUTION_FAILED`. |
+
 ## Output
 
 - `get`: `data.topic` (includes `topicClusterKey` for topic audience).
-- `remove-task` / `delete` / `copy`: `data.success`.
+- `create` / `update` / `remove-task` / `delete` / `copy`: `data.success`.
 - `copy` may include `data.trigger_time_stale=true` when source schedule-single time is already past.
 
 ## Decision Rules
@@ -64,8 +71,18 @@ Topic-level audience uses `topicClusterKey` / `topicQp`; do **not** pass task-le
 - `remove-task` and `delete` are `high-risk-write` — require `--yes`, no dry-run.
 - `remove-task` only deletes **topic tasks** (`topicId` present). Standalone tasks → use `engage-task task delete`.
 - `copy` duplicates the editable topic config and its tasks (not runtime/approval state).
-- `copy` saves via **draft** add (`isDraft=true`), so a past schedule-single `triggerTime` is allowed; output may include `trigger_time_stale=true`. Update the time before `approval submit`.
+- `copy` saves via **draft** add (`isDraft=true`), so a past schedule-single `triggerTime` is allowed; output may include `trigger_time_stale=true`. Update the time before submitting for approval (`engage-activity.approval.submit` is temporarily unavailable).
 - Prefer `topic get` as a template when inspecting channel/content fields.
+
+## Create / update audience errors
+
+| code | when |
+|---|---|
+| `TOPIC_TARGET_CLUSTER_TYPE_UNSUPPORTED` | `targetClusterType=3` (all); topics only allow 1/2 |
+| `TOPIC_CLUSTER_KEY_REQUIRED` | `targetClusterType=2` missing `topicClusterKey`, or topic-root `clusterKey` alias |
+| `TOPIC_QP_REQUIRED` | `targetClusterType=1` missing `topicQp` |
+| `TOPIC_QP_INVALID` | `topicQp` is not a JSON object string |
+| `TARGET_CLUSTER_TYPE_INVALID` | `targetClusterType` not a known enum value |
 
 ## Copy errors
 

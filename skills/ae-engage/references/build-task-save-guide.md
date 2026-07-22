@@ -1,8 +1,8 @@
-# ae-engage `+build_task_save_guide`
+# ae-cli `engage-task task build-save-guide`
 
 Build a scenario-specific guide for constructing `save_task.req`.
 
-Mapped command: `ae-cli engage +build_task_save_guide`
+Mapped command: `ae-cli engage-task task build-save-guide`
 
 This is a read-only helper. It does not save tasks, submit approvals, or trigger execution. Its job is to tell you how to build a valid `save_task` request for the current scenario.
 
@@ -12,8 +12,8 @@ This is a read-only helper. It does not save tasks, submit approvals, or trigger
 
 Use this sequence when creating or updating a task draft:
 
-1. Query channels with `ae-cli engage +channel_list --project_id <projectId>`.
-2. Call `ae-cli engage +build_task_save_guide --project_id <projectId> --req '{...}'`.
+1. Query channels with `ae-cli engage-setting channel list --project-id <projectId>`.
+2. Call `ae-cli engage-task task build-save-guide --project-id <projectId> --req '{...}'`.
 3. If the guide says an audience or QP-derived fields are required, create the audience directly and read it back:
 
 ```bash
@@ -22,7 +22,7 @@ ae-cli analysis user-cluster get --project-id <projectId> --cluster-names '["<co
 ```
 
 4. Build the final grouped `save_task.req`.
-5. Submit with `ae-cli engage +save_task --project_id <projectId> --req '{...}'`.
+5. Submit with `ae-cli engage-task task save --project-id <projectId> --req '{...}'`.
 
 Important:
 
@@ -40,7 +40,7 @@ Important:
 The CLI call shape is:
 
 ```bash
-ae-cli engage +build_task_save_guide --project_id <projectId> --req '<req-json>'
+ae-cli engage-task task build-save-guide --project-id <projectId> --req '<req-json>'
 ```
 
 This CLI requires `--req`, but `{}` is valid when you want a generic guide without scenario context.
@@ -48,9 +48,9 @@ This CLI requires `--req`, but `{}` is valid when you want a generic guide witho
 Common request patterns:
 
 ```bash
-ae-cli engage +build_task_save_guide --project_id 1 --req '{}'
-ae-cli engage +build_task_save_guide --project_id 1 --req '{"context":{"triggerType":2,"channelId":"channel_123"}}'
-ae-cli engage +build_task_save_guide --project_id 1 --req '{"draft":{"baseInfo":{"taskName":"Demo Task"}}}'
+ae-cli engage-task task build-save-guide --project-id 1 --req '{}'
+ae-cli engage-task task build-save-guide --project-id 1 --req '{"context":{"triggerType":2,"channelId":"channel_123"}}'
+ae-cli engage-task task build-save-guide --project-id 1 --req '{"draft":{"baseInfo":{"taskName":"Demo Task"}}}'
 ```
 
 Supported request fields:
@@ -259,8 +259,8 @@ Important fields:
 
 Recommended usage pattern:
 
-1. resolve a real `channelId` with `+channel_list`
-2. call `+build_task_save_guide`
+1. resolve a real `channelId` with `engage-setting channel list`
+2. call `engage-task task build-save-guide`
 3. read `fieldRules.channelContentSchema`
 4. read `handoff.reqTemplate`
 5. fix everything in `blockingPlaceholders`
@@ -272,13 +272,13 @@ ae-cli analysis user-cluster get --project-id <projectId> --cluster-names '["<co
 ```
 
 7. prefer the created cluster reference; only copy server-authored fields from `user-cluster get` when the guide explicitly requires QP-derived fields
-8. call `+save_task`
+8. call `engage-task task save`
 
 ---
 
 ## 6. Safety Notes
 
-- `+build_task_save_guide` is read-only; it does not save a draft
+- `engage-task task build-save-guide` is read-only; it does not save a draft
 - do not skip the guide and build `save_task.req` from memory alone
 - do not treat the semantic cluster definition builder as mandatory for every task
 - do not invent `channelId`, `clusterKey`, content keys, or QP structures

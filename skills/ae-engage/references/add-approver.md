@@ -1,15 +1,15 @@
-# ae-engage +add_approver
+# ae-engage engage-setting approval-approver add
 
 
 Batch add approvers.
 
-Mapped command: `ae-cli engage +add_approver`
+Mapped command: `ae-cli engage-setting approval-approver add`
 
 ## Flags
 
 | Flag | Type | Required | Description |
 |------|------|------|------|
-| `--project_id` / `-p` | number | Yes | Project ID |
+| `--project-id` / `-p` | number | Yes | Project ID |
 | `--approvers` | json | Yes | approver open ID JSON array |
 
 ## Safety Constraints
@@ -19,5 +19,5 @@ This command is a **write operation** and and modifies the project approver conf
 ## Examples
 
 ```bash
-ae-cli engage +add_approver --project_id 1 --approvers '["ou_xxx","ou_yyy"]'
+ae-cli engage-setting approval-approver add --project-id 1 --approvers '["ou_xxx","ou_yyy"]'
 ```

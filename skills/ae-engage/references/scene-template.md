@@ -1,8 +1,8 @@
 # engage-scene template
 
-> Capability ids: `engage-scene.template.{list,get,create,update,update-status,delete}` · Domain: `engage`.
+> Capability ids: `engage-scene.template.{list,get,copy,create,update,update-status,delete}` · Domain: `engage`.
 
-场景管理 / 配置中心 - 配置项模板管理。create/update 使用 `--payload` 直传后端 DTO（原生 camelCase 结构），`project_id` 会注入 payload。
+Scene management / config center — config item template management. `create`/`update` pass backend DTOs via `--payload` (native camelCase structure); `project_id` is injected into the payload.
 
 ## Commands
 
@@ -12,6 +12,11 @@ ae-cli engage-scene template list --project-id <project_id> --config-id <config_
 
 # Get a template's detail
 ae-cli engage-scene template get --project-id <project_id> --config-id <config_id> --template-id <template_id>
+
+# Copy a template to a target config item
+ae-cli engage-scene template copy \
+  --source-project-id <source_project_id> --source-config-id <source_config_id> \
+  --source-template-id <source_template_id> --project-id <target_project_id> --config-id <target_config_id>
 
 # Create a template
 ae-cli engage-scene template create --project-id <project_id> \
@@ -26,7 +31,7 @@ ae-cli engage-scene template update --project-id <project_id> \
     "config":[{
       "paramId":48,
       "paramName":"title",
-      "paramDisplayName":"标题",
+      "paramDisplayName":"Title",
       "paramType":"STRING",
       "paramSubType":"SHORT_TEXT",
       "isRequired":1,
@@ -48,6 +53,7 @@ ae-cli engage-scene template delete --project-id <project_id> --config-id <confi
 |---|---|---|
 | list | `--project-id`, `--config-id` | read. |
 | get | `--project-id`, `--config-id`, `--template-id` | read. |
+| copy | `--source-project-id`, `--source-config-id`, `--source-template-id`, `--project-id`, `--config-id` | write. |
 | create | `--project-id`, `--payload` | payload = `ConfigTemplateAddDTO`. |
 | update | `--project-id`, `--payload` | payload = `ConfigTemplateModifyDTO`. |
 | update-status | `--project-id`, `--config-id`, `--template-id`, `--status` | status 1 enable / 0 disable. |
@@ -59,7 +65,7 @@ ae-cli engage-scene template delete --project-id <project_id> --config-id <confi
 
 - `list`: `data.items` + `data.total`.
 - `get`: `data.template`.
-- `create` / `update` / `update-status` / `delete`: `data.success`.
+- `copy` / `create` / `update` / `update-status` / `delete`: `data.success`.
 
 ## Decision Rules
 
