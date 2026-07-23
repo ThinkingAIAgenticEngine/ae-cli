@@ -43,47 +43,29 @@ function writeClusterInfo(clusterInfoFile, enabled) {
 
 console.log('multi-cluster mode tests');
 
-test('defaults to base analysis mapping and hides global-only commands', () => {
+test('query-cluster gateway command is available without a local mode switch', () => {
   const clusterInfoFile = tempClusterInfoFile();
 
   const analysisHelp = runCli(clusterInfoFile, ['analysis', '--help']);
   assert.equal(analysisHelp.status, 0, analysisHelp.stderr);
+  assert.equal(analysisHelp.stdout.includes('query-cluster'), true);
   assert.equal(analysisHelp.stdout.includes('+list_query_clusters'), false);
 
-  const dryRun = runCli(clusterInfoFile, [
-    '--host',
-    'https://ta.example',
-    '--dry-run',
-    'analysis',
-    '+cancel_query',
-    '--request_id',
-    'mcp_0123456789abcdef0123456789abcdef',
-  ]);
-  assert.equal(dryRun.status, 0, dryRun.stderr);
-  const payload = JSON.parse(dryRun.stdout);
-  assert.equal(payload.data.url, 'https://ta.example/mcp/analysis/http/analysis');
+  const commandHelp = runCli(clusterInfoFile, ['analysis', 'query-cluster', 'list', '--help']);
+  assert.equal(commandHelp.status, 0, commandHelp.stderr);
+  assert.equal(commandHelp.stdout.includes('analysis query-cluster list'), true);
 });
 
-test('enabled cluster-info switches analysis mapping and exposes global-only commands', () => {
+test('local cluster-info does not restore removed MCP commands', () => {
   const clusterInfoFile = tempClusterInfoFile();
   writeClusterInfo(clusterInfoFile, true);
 
   const analysisHelp = runCli(clusterInfoFile, ['analysis', '--help']);
   assert.equal(analysisHelp.status, 0, analysisHelp.stderr);
-  assert.equal(analysisHelp.stdout.includes('+list_query_clusters'), true);
-
-  const dryRun = runCli(clusterInfoFile, [
-    '--host',
-    'https://ta.example',
-    '--dry-run',
-    'analysis',
-    '+cancel_query',
-    '--request_id',
-    'mcp_0123456789abcdef0123456789abcdef',
-  ]);
-  assert.equal(dryRun.status, 0, dryRun.stderr);
-  const payload = JSON.parse(dryRun.stdout);
-  assert.equal(payload.data.url, 'https://ta.example/mcp/analysis/http/analysis-global');
+  assert.equal(analysisHelp.stdout.includes('query-cluster'), true);
+  assert.equal(analysisHelp.stdout.includes('+list_query_clusters'), false);
+  assert.equal(analysisHelp.stdout.includes('+cancel_query'), false);
+  assert.equal(analysisHelp.stdout.includes('+load_filters'), false);
 });
 
 test('config cluster-mode command toggles cluster-info.json', () => {

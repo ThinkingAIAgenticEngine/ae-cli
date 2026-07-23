@@ -73,19 +73,21 @@ Prefer the run/artifact commands over hand-written HTTP, Python, or curl. Analys
 
 | Command | Capability ID | Use for | Key input | Output |
 | --- | --- | --- | --- | --- |
-| `adhoc run` | `analysis.adhoc.run` | Unified ad-hoc inline query for 12 AI models: 9 common + 3 scenario models | `--project-id`, `--model-type`, AI-facing `--definition` | Inline data plus optional `query_context_id` |
+| `filter-value list` | `analysis.filter_value.list` | Resolve exact stored values for one known event/user property before building a filter; not property discovery or aggregation | `--property-name`, `--table-type`, optional event/prefix/snapshot inputs | Candidate values in `items` |
+| `query-cluster list` | `analysis.query_cluster.list` | List physical 查询集群/data-routing options; not 用户分群/audience assets | `--project-id` | Current/accessible slave clusters and allowed routing parameters |
+| `adhoc run` | `analysis.adhoc.run` | Unified ad-hoc inline query for 12 AI models: 9 common + 3 scenario models | `--project-id`, `--model-type`, AI-facing `--definition`, optional physical cluster route | Inline data plus actual route and optional `query_context_id` |
 | `adhoc export` | `analysis.adhoc.export` | Unified ad-hoc async export for 12 AI models: 9 common + 3 scenario models | same as run, plus optional `--artifact-format`; no inline `--limit` | Async artifact descriptor; no drilldown context |
-| `drilldown-events run/export` | `analysis.query.drilldown_events` / `analysis.query.drilldown_events_export` | Preview or full-stream events for an advertised `EVENT_LIST` cell | `--query-context-id`, optional `--source`, `--coordinate` | Bounded event rows or `csv.gz` artifact |
-| `drilldown-entities run/export` | `analysis.query.drilldown_entities` / `analysis.query.drilldown_entities_export` | Preview/export users or custom entities for an advertised entity cell | `--query-context-id`, optional `--source`, `--coordinate` | Subject plus entity rows/artifact |
-| `query drilldown-user-events` | `analysis.query.drilldown_user_events` | Query one drilldown user's event sequence | `--drilldown-context-id`, `--user-id` | Event sequence rows |
-| `query create-result-cluster` | `analysis.query.create_result_cluster` | Save the advertised user/custom-entity cell population as its result cluster | `--query-context-id`, optional `--source`, `--coordinate`, `--cluster-name` | Result cluster creation result |
+| `drilldown-events run/export` | `analysis.query.drilldown_events` / `analysis.query.drilldown_events_export` | Preview or full-stream events for an advertised `EVENT_LIST` cell | `--project-id`, `--query-context-id`, optional `--source`, `--coordinate` | Bounded event rows or `csv.gz` artifact |
+| `drilldown-entities run/export` | `analysis.query.drilldown_entities` / `analysis.query.drilldown_entities_export` | Preview/export users or custom entities for an advertised entity cell | `--project-id`, `--query-context-id`, optional `--source`, `--coordinate` | Subject plus entity rows/artifact |
+| `query drilldown-user-events` | `analysis.query.drilldown_user_events` | Query one drilldown user's event sequence | `--project-id`, `--drilldown-context-id`, `--user-id` | Event sequence rows |
+| `query create-result-cluster` | `analysis.query.create_result_cluster` | Save the advertised user/custom-entity cell population as its result cluster | `--project-id`, `--query-context-id`, optional `--source`, `--coordinate`, `--cluster-name` | Result cluster creation result |
 | `report list` | `analysis.report.list` | Find accessible reports | `--project-id`, optional `--query`, `--fields`, `--limit`, `--offset` | Paginated report summaries |
 | `report list-export` | `analysis.report.list_export` | Export report catalog | same as list, plus optional `--artifact-format`, `--request-id` | Async artifact descriptor |
 | `report get` | `analysis.report.get` | Inspect current report definition as AI QP | `--project-id`, `--report-id` | Report metadata plus `model_type` and `definition` |
 | `report create` | `analysis.report.create` | Create a report from AI QP definition | `--report-name`, `--model-type`, `--definition` | Created report ID and normalized definition |
 | `report update` | `analysis.report.update` | Update metadata or AI QP definition | `--report-id`, `--report-version`, update fields | Update result |
 | `report delete` | `analysis.report.delete` | Delete reports | `--report-ids '[...]'` | Delete result |
-| `report-data run` | `analysis.report_data.run` | Bounded inline report data | `--report-ids`, optional AI-facing `--filters`, `--group-by`, SQL dynamic parameter value-only `--sql-params`, time/limit | Inline data plus optional `query_context_id` |
+| `report-data run` | `analysis.report_data.run` | Bounded inline report data | `--report-ids`, optional overrides, `--cluster-query-scope`, conditional `--slave-cluster-id`, time/limit | Inline data plus actual route and optional `query_context_id` |
 | `report-data export` | `analysis.report_data.export` | Large/long report data | same as run, plus optional `--artifact-format` | Async artifact descriptor; no drilldown context |
 | `query cancel` | `analysis.query.cancel` | Cancel any async analysis export | `--run-id`, optional `--reason` | Cancellation result |
 | `report-change-log list` | `analysis.report_change_log.list` | List one report's change logs | `--report-id` | Change log summaries |
@@ -105,7 +107,7 @@ Prefer the run/artifact commands over hand-written HTTP, Python, or curl. Analys
 | `dashboard freeze` | `analysis.dashboard.freeze` | Freeze/unfreeze dashboards | `--dashboard-ids`, optional `--freeze false` | Freeze status |
 | `dashboard abnormal-get` | `analysis.dashboard.abnormal_get` | Inspect abnormal dependencies | `--dashboard-id` | Abnormal info |
 | `dashboard task-status` | `analysis.dashboard.task_status` | Inspect scheduled task status | `--dashboard-id` | Task status |
-| `dashboard-report-data run` | `analysis.dashboard_report_data.run` | Bounded inline dashboard report data; `--filters` is analysis Filter JSON from `+get_filter_schema` | `--dashboard-id`, optional `--report-ids`, `--filters`, `--start-time`, `--end-time`, `--limit` | Inline data plus optional `query_context_id` |
+| `dashboard-report-data run` | `analysis.dashboard_report_data.run` | Bounded inline dashboard report data; omitted route follows saved dashboard configuration | `--dashboard-id`, optional reports/filters/time and physical cluster route | Inline data plus actual route and optional `query_context_id` |
 | `dashboard-report-data export` | `analysis.dashboard_report_data.export` | Large/long dashboard report data | same as run, plus optional `--artifact-format jsonl` | Async artifact descriptor; no drilldown context |
 | `run inspect` | `analysis.run.inspect` | Poll async export status | `--run-id` | Run and artifact status |
 | `artifact download` | `analysis.artifact.download` | Download run-bound export artifact | `--run-id`, `--artifact-id`, `--output` | Local output file info |

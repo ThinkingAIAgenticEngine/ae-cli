@@ -19,13 +19,13 @@ function buildArgs(ctx: RuntimeContext) {
 export const saveSyncSolution: Command = {
   service: 'dataops_integration',
   command: '+save_sync_solution',
-  description: 'Update a sync solution. Requires complete sourceConfig and sinkConfig JSON; not a partial patch. Call +get_sync_detail --withParams true first',
+  description: 'Update a sync solution. Requires complete sourceConfig and sinkConfig JSON; not a partial patch. Call +get_sync_detail --withParams true first. syncName is accepted for compatibility but ignored',
   flags: [
     { name: 'spaceCode', type: 'string', required: true, desc: 'Space code' },
     { name: 'syncId', type: 'string', required: true, desc: 'Sync solution ID' },
-    { name: 'syncName', type: 'string', required: false, desc: 'New sync solution name' },
-    { name: 'sourceConfig', type: 'string', required: true, desc: 'Complete source configuration JSON' },
-    { name: 'sinkConfig', type: 'string', required: true, desc: 'Complete sink configuration JSON' },
+    { name: 'syncName', type: 'string', required: false, desc: 'Ignored on update; the current name is preserved' },
+    { name: 'sourceConfig', type: 'string', required: true, desc: 'Complete source configuration JSON. Include component and follow the source-specific template in the ae-dataops integration skill' },
+    { name: 'sinkConfig', type: 'string', required: true, desc: 'Complete sink configuration JSON. Include component and follow the sink-specific template in the ae-dataops integration skill' },
     { name: 'channelConfig', type: 'string', required: false, desc: 'Complete channel configuration JSON; pass it to keep or update custom channel settings' },
     { name: 'fieldsMapping', type: 'string', required: false, desc: 'Complete field mapping JSON; pass it to keep or update field mappings' },
     { name: 'remark', type: 'string', required: false, desc: 'Updated remark' },

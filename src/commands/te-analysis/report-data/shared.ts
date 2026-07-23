@@ -23,6 +23,8 @@ export function reportDataInput(ctx: RuntimeContext): Record<string, unknown> {
     start_time: optionalString(ctx, 'start-time'),
     end_time: optionalString(ctx, 'end-time'),
     time_granularity: optionalString(ctx, 'time-granularity'),
+    cluster_query_scope: optionalString(ctx, 'cluster-query-scope'),
+    slave_cluster_id: optionalString(ctx, 'slave-cluster-id'),
     zone_offset: optionalNumber(ctx, 'zone-offset'),
     use_cache: optionalBoolean(ctx, 'use-cache'),
     limit: optionalNumber(ctx, 'limit'),

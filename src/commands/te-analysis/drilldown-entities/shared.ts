@@ -7,6 +7,7 @@ import {
   optionalJson,
   optionalNumber,
   optionalString,
+  projectIdFlag,
   requestIdFlag,
   syncTimeoutSecondsFlag,
 } from '../capability-shared.js';
@@ -27,6 +28,7 @@ const csvArtifactFormatFlag: Flag = {
 };
 
 export const drilldownEntitiesBaseFlags = [
+  projectIdFlag,
   queryContextIdFlag,
   sourceFlag,
   coordinateFlag,
@@ -65,6 +67,7 @@ export function drilldownEntitiesExportInput(ctx: RuntimeContext): Record<string
 
 function baseInput(ctx: RuntimeContext): Record<string, unknown> {
   return {
+    project_id: ctx.num('project-id'),
     query_context_id: ctx.str('query-context-id'),
     source: optionalJson(ctx, 'source'),
     coordinate: ctx.json('coordinate'),

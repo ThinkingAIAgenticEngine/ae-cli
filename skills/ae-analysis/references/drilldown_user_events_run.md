@@ -10,6 +10,7 @@ Do not pass raw QP.
 
 ```bash
 ae-cli analysis drilldown-user-events run \
+  --project-id <project_id> \
   --drilldown-context-id <drilldown_context_id> \
   --user-id <user_id> \
   [--sort-order desc] \
@@ -20,6 +21,7 @@ ae-cli analysis drilldown-user-events run \
 ## Input
 
 - `--drilldown-context-id`: returned by the same user-subject `analysis drilldown-entities run`.
+- `--project-id`: the project used by that drilldown; it must match the project stored by `drilldown_context_id`.
 - `--user-id`: canonical `user_id` from one item in that same response. Never substitute `entity_value`, `#distinct_id`, account ID, or another identity field.
 - `--properties`: optional exact event-property projection. Omit it to use the default event columns. If present, each item uses backend keys `columnName` and `tableType`, for example `[{"columnName":"<event_property_name>","tableType":"event"}]`. `#user_id`, account ID, visitor ID, event name, and event time remain present; unrelated event properties must not be returned. `#user_id` is an internal association key, so Agents should normally display account ID and visitor ID to customers. Do not pass numeric table-type codes, string-name arrays, or snake_case nested keys.
 - `--sort-order`: `asc` or `desc`.

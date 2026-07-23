@@ -26,7 +26,9 @@ function walk(dir) {
   }
 }
 
-walk(commandsDir);
+if (fs.existsSync(commandsDir)) {
+  walk(commandsDir);
+}
 
 const commands = [];
 for (const file of commandFiles) {
@@ -43,9 +45,14 @@ if (commandSet.size !== commands.length) {
   fail('duplicate analysis_common command names found in source files');
 }
 
-const EXPECTED_COUNT = 1;
+const EXPECTED_COUNT = 0;
 if (commands.length !== EXPECTED_COUNT) {
   fail(`analysis_common tool count mismatch: expected ${EXPECTED_COUNT}, got ${commands.length}`);
+}
+
+if (commands.length === 0) {
+  console.log('OK: verified analysis_common has no registered tools.');
+  process.exit(0);
 }
 
 const help = spawnSync('npx', ['tsx', 'src/index.ts', 'analysis_common', '--help'], {

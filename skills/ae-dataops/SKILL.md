@@ -182,7 +182,8 @@ Detailed datasource, metadata browsing, sync solution, execution, and monitoring
 
 Key constraints:
 - Generate `sourceConfig`, `sinkConfig`, `channelConfig`, and `fieldsMapping` from the reference templates; do not invent keys.
-- `+save_sync_solution` is not a partial patch: call `+get_sync_detail --withParams true` first, then submit complete configs.
+- MySQL Source read partitioning uses `sourceConfig.splitColumn`; `fieldsMapping.shardingKey` is column metadata and must not be used for it.
+- `+save_sync_solution` is not a partial patch: call `+get_sync_detail --withParams true` first, then submit complete configs. `syncName` is accepted for compatibility but ignored.
 - Preset repository sync uses `te_etl@TASK_ENGINE_TRINO` and requires gateway configuration.
 - Use `+list_sync_runs` to get `taskId` before stopping a running sync.
 

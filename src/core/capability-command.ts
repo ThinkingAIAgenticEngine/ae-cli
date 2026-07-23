@@ -11,7 +11,7 @@ import { withOutputMetadata } from '../framework/output.js';
 export interface CreateCapabilityCommandConfig {
   /** CLI registration domain, corresponding to ae-cli <service>. */
   cliService: string;
-  /** Resource segment, e.g. `event` → `ae-cli metadata event get`. */
+  /** Resource segment, e.g. `event` → `ae-cli analysis-meta event get`. */
   resource: string;
   /** Action name under the resource, e.g. `get`. */
   command: string;

@@ -80,6 +80,8 @@ Only synchronous `adhoc run`, `report-data run`, and `dashboard-report-data run`
 
 Follow-up commands are allowed only when the selected source/metric advertises the exact action. Read [`analysis_drilldown_contract.md`](analysis_drilldown_contract.md), select only returned row/column/metric options, and never infer source IDs, dates, groups, model fields, or analysis angles from display text.
 
+Pass the original `--project-id` with every query-context or drilldown-context follow-up. Gateway uses it for project authorization, and Common rejects it if it does not match the project stored by the context ID.
+
 When present, compare `effective_time_range` with `data_time_range`. `effective_time_range` is the resolved query scope, while `data_time_range` is the observed returned-row range. `clipping_reasons=[]` means the gateway applied no silent range cap; a narrower `data_time_range` then reflects available/returned data rather than a gateway range clamp.
 
 Use that synchronous `query_context_id` for the advertised action only:

@@ -2,6 +2,8 @@
 
 Submit dashboard report data as a downloadable async artifact. Dashboard report data follows report-data model coverage: the 12 analysis report models from `ai_models.md` plus tag report data.
 
+Typical closed loop: find the dashboard and target reports -> resolve exact filters and optional physical route -> submit export -> preserve IDs -> inspect -> download the completed artifact -> verify actual route fields inside the exported result.
+
 Routing: read [`analysis_data_retrieval.md`](analysis_data_retrieval.md) before choosing this `export` command instead of `dashboard-report-data run`.
 
 Do not use this command for bounded inline previews; use `dashboard-report-data run` when the requested result fits the sync data retrieval rule.
@@ -9,10 +11,10 @@ Do not use this command for bounded inline previews; use `dashboard-report-data 
 Command:
 
 ```bash
-ae-cli analysis dashboard-report-data export --project-id <project_id> --dashboard-id <dashboard_id> [--report-ids '[1,2]'] [--filters '{...}'] [--start-time <time>] [--end-time <time>] [--zone-offset <offset>] [--artifact-format jsonl]
+ae-cli analysis dashboard-report-data export --project-id <project_id> --dashboard-id <dashboard_id> [--report-ids '[1,2]'] [--filters '{...}'] [--cluster-query-scope GLOBAL|SLAVE] [--slave-cluster-id <id>] [--artifact-format jsonl]
 ```
 
-Input sends `project_id`, `dashboard_id`, and optional `report_ids`, `filters`, `start_time`, `end_time`, `zone_offset`, `use_cache`, `request_id`, `timeout_seconds`, `format`. When `--zone-offset` is specified, that timezone is used for every selected non-SQL report. When omitted, the current user's `currentTimezone` is used when available, otherwise the project default. Fixed UTC offsets are `-12` through `14`; `99` is local-time mode and is not UTC+99. Use CLI flag `--artifact-format` for the gateway `format` input; `--format` is the CLI output formatter. Async export has no inline row limit. Runtime defaults to and is capped at 21600 seconds (6 hours); cancel earlier with `analysis query cancel --run-id <run_id>`. The routing rule lives in [`analysis_data_retrieval.md`](analysis_data_retrieval.md).
+Omit cluster routing to follow the saved dashboard configuration. For an explicit route, use `GLOBAL` or `SLAVE` plus one physical cluster ID returned by `analysis query-cluster list`. SQL reports reject effective `GLOBAL`. Use CLI flag `--artifact-format` for the gateway `format` input; `--format` is only the CLI output formatter.
 
 `--filters` uses the same AI-facing filter model as report data. The gateway resolves fields and compiles it to the dashboard backend filter. Do not pass a dashboard UI control dump or raw QP filter. Minimal shape:
 

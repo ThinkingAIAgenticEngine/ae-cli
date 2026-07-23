@@ -8,6 +8,7 @@ Read [`analysis_drilldown_contract.md`](analysis_drilldown_contract.md) first. C
 
 ```bash
 ae-cli analysis drilldown-events run \
+  --project-id <project_id> \
   --query-context-id <sync_preview_query_context_id> \
   [--source '{"report_id":1001}'] \
   --coordinate '{"group_values":["Beijing"],"date":"2026-07-16","metric_index":0}' \
@@ -16,7 +17,7 @@ ae-cli analysis drilldown-events run \
   [--timeout-seconds 120]
 ```
 
-`--query-context-id` must come from the same synchronous preview that returned the selected source and options. `--source` is required only to disambiguate multiple returned sources. Assemble `--coordinate` only by merging the selected returned option fragments. Do not pass `target_id`, raw QP, display-only dates, or values from an export/download.
+`--project-id` must be the project used by that synchronous preview; Common rejects it if it does not match the stored query context. `--query-context-id` must come from the same synchronous preview that returned the selected source and options. `--source` is required only to disambiguate multiple returned sources. Assemble `--coordinate` only by merging the selected returned option fragments. Do not pass `target_id`, raw QP, display-only dates, or values from an export/download.
 
 `--properties` is an optional exact event-property projection. Omit it for default columns; string arrays such as `["#event_time"]` are invalid. Each item uses the backend field names `columnName` and `tableType`, for example `[{"columnName":"<event_property_name>","tableType":"event"}]`. `tableType` uses the documented name `event`, not a numeric enum code. Required system event columns remain present, but unrelated event properties must not be returned.
 

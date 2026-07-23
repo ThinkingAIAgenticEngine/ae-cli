@@ -29,7 +29,7 @@ description: "Interactive generation of an AE tracking plan and upload. Trigger 
 | 货币体系 | Currency System | Hard currency (diamonds), soft currency (gold), etc. |
 | 事件 | Event | Named user action or system occurrence (`event_name`) |
 | 事件属性 | Event Property | Data attached to an event (`prop_names`) |
-| 公共事件属性 | Common/Super Property | Property attached to every event automatically |
+| 公共事件属性 | Common/Super Property | Property attached to every event automatically. ⚠️ The correct Chinese AE term is "公共事件属性" or "公共属性". Never translate "Super Property" as "超级属性" — that is NOT a valid AE term. |
 | 用户属性 | User Property | Property on the user profile (persistent state) |
 | 预置属性 | Preset Property | System property prefixed with `#` (`#device_id`, `#time`, etc.) |
 | 自动采集事件 | Auto-track Event | SDK auto-collected events (`ta_app_start`, `ta_page_show`, etc.) |
@@ -700,7 +700,10 @@ Based on SDK integration mode collected in Phase 0, decide whether to inject aut
 3. Auto-track event `event_tag` set to `"System Event"`
 4. Auto-track events only carry preset properties (`prop_names` is empty or contains only preset property names)
 5. Preset properties prefixed with `#` are not added to `event_properties` pool (auto-collected by SDK)
-6. **Deduplication**: Templates may already contain same-name auto-track events (e.g. `ta_app_start` marked `source: "template"`); CLI deduplicates by event name globally and will not inject duplicates
+6. **Cleanup + Deduplication**: The CLI will:
+   - **Remove** auto-track events inherited from templates or existing plans that don't match the user's selected SDKs. For example: if a template built for Android/iOS contains `ta_app_install`, `ta_app_start`, `ta_app_end` but the user selects JavaScript SDK, those `ta_app_*` events will be automatically removed since JavaScript SDK does not support them.
+   - **Inject** the correct auto-track events for the user's selected SDKs.
+   - **Deduplicate** by event name globally — won't inject events that already exist in the draft (correct auto-track events inherited from templates are kept).
 
 **SDK type → Recommended events** (see `references/autotrack-events.md` for details):
 
@@ -1300,6 +1303,7 @@ The tracking plan has been uploaded successfully. Would you like to generate tra
 - Asking all anchor questions at once
 - Skipping Phase 3 and uploading directly
 - Manually assembling xlsx bypassing `.ae-cli/draft.json`
+- Translating "Super Property" as "超级属性" in any user-facing output (interaction prompts, plan summaries, event/property descriptions) — the correct AE Chinese term is "公共事件属性" or "公共属性"
 - Calling `fetch` AE API directly within the skill — all AE communication must go through project scripts / CLI
 
 ---

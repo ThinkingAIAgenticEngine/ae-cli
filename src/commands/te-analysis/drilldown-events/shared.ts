@@ -7,6 +7,7 @@ import {
   optionalJson,
   optionalNumber,
   optionalString,
+  projectIdFlag,
   requestIdFlag,
   syncTimeoutSecondsFlag,
 } from '../capability-shared.js';
@@ -20,6 +21,7 @@ const queryContextIdFlag: Flag = {
 };
 
 export const drilldownEventsRunFlags = [
+  projectIdFlag,
   queryContextIdFlag,
   sourceFlag,
   coordinateFlag,
@@ -38,6 +40,7 @@ const csvArtifactFormatFlag: Flag = {
 };
 
 export const drilldownEventsExportFlags = [
+  projectIdFlag,
   queryContextIdFlag,
   sourceFlag,
   coordinateFlag,
@@ -50,6 +53,7 @@ export const drilldownEventsExportFlags = [
 
 export function drilldownEventsRunInput(ctx: RuntimeContext): Record<string, unknown> {
   return compactInput({
+    project_id: ctx.num('project-id'),
     query_context_id: ctx.str('query-context-id'),
     source: optionalJson(ctx, 'source'),
     coordinate: ctx.json('coordinate'),
@@ -63,6 +67,7 @@ export function drilldownEventsRunInput(ctx: RuntimeContext): Record<string, unk
 
 export function drilldownEventsExportInput(ctx: RuntimeContext): Record<string, unknown> {
   return compactInput({
+    project_id: ctx.num('project-id'),
     query_context_id: ctx.str('query-context-id'),
     source: optionalJson(ctx, 'source'),
     coordinate: ctx.json('coordinate'),

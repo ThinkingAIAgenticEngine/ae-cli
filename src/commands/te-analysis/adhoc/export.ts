@@ -1,6 +1,7 @@
 import {
   analysisDataExportRoutingHelp,
   createAnalysisCapabilityCommand,
+  validateClusterQueryRouting,
 } from '../capability-shared.js';
 import {
   adhocExportFlags,
@@ -16,5 +17,6 @@ export const adhocExport = createAnalysisCapabilityCommand({
     ...adhocExportFlags,
   ],
   risk: 'read',
+  validate: validateClusterQueryRouting,
   buildInput: adhocExportInput,
 });

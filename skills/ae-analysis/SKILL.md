@@ -1,6 +1,6 @@
 ---
 name: ae-analysis
-version: 4.0.3
+version: 4.0.4
 description: "Use ae-cli for AE/TE analysis-side data questions, asset operations, and asset governance: reports, analysis boards, BI dashboards, ad-hoc models, drilldown, detail data, alerts, clusters, tags, metrics, metadata, project configuration, tracking plans, governance asset lists/rules/lineage/impact/dependency, batch asset operations, projects, and resource links. Use when the user asks to query data, explain a change, export evidence, or inspect/create/update/govern analysis assets."
 ---
 
@@ -28,9 +28,8 @@ Use this skill for these CLI services:
 - `analysis`: reports, dashboards, BI panels, ad-hoc analysis, drilldown, detail data, alerts, clusters, tags, and async runs/artifacts.
 - `analysis-meta`: gateway metadata assets, events, properties, virtual metadata, metrics, data tables, exchange rules, and super metadata.
 - `analysis-governance`: gateway asset governance operations, including governed asset lists/exports, lineage, dependency, impact, query history, rule schema/list/create/update/delete, batch asset actions, and operation records. Use this service for asset governance workflows, not for metadata event/property/metric CRUD.
-- `tracking`: gateway tracking plan, checking, ingest, live-data, and event blacklist operations. Some legacy tracking commands still exist under the same service; prefer the dedicated reference for the exact command form.
-- `analysis_meta`: metadata governance, metrics, virtual metadata, project config, tracking plans, mark times, and entity catalog.
-- `analysis_common`: project discovery.
+- `tracking`: gateway tracking plan, checking, ingest, live-data, and event blacklist operations.
+- `analysis_meta`: legacy metadata batch operations not yet covered by gateway commands.
 
 For metadata gateway detail outside the commands in the generated index, use the metadata skill. For Engage, DataOps, or Community work, use the corresponding skill.
 
@@ -45,7 +44,6 @@ Command forms:
 ```bash
 ae-cli analysis +<command> [options]
 ae-cli analysis_meta +<command> [options]
-ae-cli analysis_common +<command> [options]
 ae-cli analysis <resource> <action> [options]
 ae-cli analysis-meta <resource> <action> [options]
 ae-cli analysis-governance <resource> <action> [options]
@@ -96,7 +94,7 @@ For every gateway command that exposes `--request-id`, ae-cli generates a `reque
 Before a project-scoped command:
 
 1. Reuse a project only when its ID and host/environment were already verified in the same continuous conversation.
-2. Otherwise call `analysis_common +list_projects` and resolve the supplied ID/name.
+2. Otherwise call `analysis project info list` and resolve the supplied ID/name.
 3. If there are multiple plausible projects, the host is unclear, or no project matches, show the candidates and ask; never guess.
 4. Re-verify after the user changes project, host, or environment.
 
@@ -123,9 +121,10 @@ Do not call removed QP builders or schema helpers for ad-hoc analysis. `--defini
 - Metric value, trend, comparison, or anomaly -> saved report/dashboard first, then ad-hoc data.
 - Metric definition search/create/update -> metadata commands.
 - Event/entity rows -> `event-detail run|export` or `entity-detail run|export`.
-- Events/entities from a query result -> follow the returned synchronous `query_context_id` and `sources[].drilldown`; never reconstruct raw QP or use export rows as coordinates.
+- Events/entities from a query result -> pass the original `--project-id`, then follow the returned synchronous `query_context_id` and `sources[].drilldown`; never reconstruct raw QP or use export rows as coordinates.
 - Cluster/tag definition -> matching gateway cluster/tag commands and matching model reference.
-- Alert/configuration/tracking-plan requests -> dedicated legacy command reference from the index.
+- Tag/cluster candidate values, including requests phrased as "latest version" or "latest result" -> resolve the exact asset, then use `analysis filter-value list` with `cluster_date_policy=LATEST`. This means the latest computed data snapshot, never a definition or configuration release; do not invent version lists, version IDs, draft states, or publish states.
+- Alert/configuration/tracking-plan requests -> the dedicated gateway command reference from the index.
 
 ### Run, export, and follow-up
 
@@ -133,7 +132,7 @@ Do not call removed QP builders or schema helpers for ad-hoc analysis. `--defini
 - `export` is for complete, unknown-size, over-limit, or long-running results. It returns `run_id` and `artifact_id`.
 - Drilldown event/entity/user-event exports are `csv.gz` full-download streams bounded by `model_full_download_limit`; never pass or simulate `limit`, `offset`, `page_num`, or `page_size`.
 - Inspect with `analysis run inspect`, download with `analysis artifact download`, and cancel with `analysis query cancel`. Do not call raw lifecycle URLs.
-- Drilldown requires a synchronous preview context and the selected source's returned row/column/metric coordinate options. If they are absent or the action is not advertised, report that drilldown/result-cluster creation is unavailable.
+- Drilldown requires the original `--project-id`, a synchronous preview context, and the selected source's returned row/column/metric coordinate options. Common rejects a project ID that does not match the stored context. If the context/options are absent or the action is not advertised, report that drilldown/result-cluster creation is unavailable.
 
 ### Writes and destructive operations
 

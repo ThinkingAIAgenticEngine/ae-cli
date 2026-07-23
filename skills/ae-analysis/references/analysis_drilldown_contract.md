@@ -6,6 +6,8 @@ This contract controls every follow-up from an analysis result. Read it before c
 
 Only a synchronous `adhoc run`, `report-data run`, or `dashboard-report-data run` preview can create `query_context_id` and selectable drilldown coordinates. The selectable population is exactly the returned preview, after its `--limit` is applied. If `--limit 10` returns ten rows, only coordinates represented by those ten rows may be selected.
 
+Every query-context or drilldown-context follow-up must also pass the original `--project-id`. Gateway uses it for project authorization, then Common verifies that it matches the project stored by the context ID. Never substitute a different project ID.
+
 Exports never create a query context. A downloaded file, export submit response, or export artifact must never be used to invent or extend drilldown coordinates. To drill into a large result, first run a bounded synchronous preview containing the desired row; do not raise the limit merely to manufacture a complete target catalog.
 
 SQL, `heat_map`, `rank_list`, `revenue`, and scenario models do not support this analysis drilldown contract. Stop when `source.drilldown.actions` is empty or `unavailable_reason` is present.

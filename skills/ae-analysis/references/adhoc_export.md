@@ -2,6 +2,8 @@
 
 Submit one unified ad-hoc analysis export from an AI-facing model definition.
 
+Typical closed loop: define and validate the analysis -> resolve an authorized physical query route if needed -> submit once -> keep the returned run/artifact pair -> inspect -> download -> analyze the complete artifact. Use a separate synchronous run when interactive drilldown is required.
+
 Routing: read [`analysis_data_retrieval.md`](analysis_data_retrieval.md) before choosing this `export` command instead of `adhoc run`.
 
 ## Command
@@ -15,6 +17,8 @@ ae-cli analysis adhoc export \
   [--use-cache true|false] \
   [--zone-offset <hours>] \
   [--fields '["列名"]'] \
+  [--cluster-query-scope GLOBAL|SLAVE] \
+  [--slave-cluster-id <id>] \
   [--artifact-format jsonl|csv] \
   [--timeout-seconds <n>]
 ```
@@ -44,6 +48,8 @@ Do not use raw QP, `events`, `event_view`, `visual_view`, removed ad-hoc QP buil
 
 Timezone contract: fixed `--zone-offset` values are integers from `-12` through `14`. Use `--zone-offset 99` for local-time mode, which analyzes timestamps as stored local time without applying a fixed UTC offset conversion; it does not mean UTC+99. Omit the flag to use the project's analysis default.
 
+Cluster routing is identical to `adhoc run`: omit for current self; discover permissions and physical IDs with `analysis query-cluster list`; `SLAVE` requires an ID. SQL, attribution, and default-interval distribution reject unsupported `GLOBAL` rather than silently changing scope.
+
 ## Output
 
 The response is an async artifact descriptor:
@@ -56,6 +62,8 @@ The response is an async artifact descriptor:
 - Export descriptors contain lifecycle/artifact metadata only. They do not create `query_context_id` or selectable drilldown options.
 
 Preserve the `run_id` and `artifact_id` from this exact submit response as one pair. Do not infer either ID from a path or reuse an ID from another export.
+
+Export submission compiles the definition before creating an artifact or run. The execute, `--validate`, and `--dry-run` paths return `AI_QP_COMPILE_FAILED` immediately when clarification is required, with `meta.compile_status`, full `meta.errors[]` (including `candidates` and `suggestions`), `meta.resolved`, and `meta.warnings`. A compile failure has no `run_id` or `artifact_id`; resolve the ambiguity and submit a new request.
 
 Use:
 

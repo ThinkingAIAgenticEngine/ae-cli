@@ -6,6 +6,7 @@ import { notifyIfUpdateAvailable } from './core/update-check.js';
 import { runHostCompatCheck } from './core/compat-check.js';
 import { getLocalCliPackageInfo } from './core/package-info.js';
 import { registerTracking } from './commands/tracking/index.js';
+import { parseProgram } from './framework/program-lifecycle.js';
 
 const require = createRequire(import.meta.url);
 const pkg = require('../package.json');
@@ -44,10 +45,6 @@ async function loadCommands(): Promise<Command[]> {
   try {
     const teMeta = await import('./commands/te-meta/index.js');
     commands.push(...teMeta.default);
-  } catch {}
-  try {
-    const teCommon = await import('./commands/te-common/index.js');
-    commands.push(...teCommon.default);
   } catch {}
   try {
     const engage = await import('./commands/te-engage/index.js');
@@ -146,10 +143,10 @@ async function main() {
   await registerModelCommand();
   registerTracking(program);
   rejectUnknownHelpCommandPath(program, process.argv.slice(2));
-  program.parse();
+  await parseProgram(program);
 }
 
-main();
+await main();
 
 function rejectUnknownHelpCommandPath(root: CommanderCommand, args: string[]): void {
   if (!args.includes('--help') && !args.includes('-h')) {

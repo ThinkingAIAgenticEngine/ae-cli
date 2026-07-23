@@ -1,6 +1,6 @@
 # Mode A — Client SDK Code Insertion
 
-> **Terminology**: 客户端 SDK = client SDK | 代码插入 = code insertion/injection | 前置检查 = pre-check | 集成方式 = integration method | 埋点 = tracking/event tracking | 业务触发点 = business trigger point | 公共属性 = super property | 用户属性 = user property | 自动采集事件 = auto-track event | 插入位置预览 = insertion site preview | 语言风格校验 = language style check
+> **Terminology**: 客户端 SDK = client SDK | 代码插入 = code insertion/injection | 前置检查 = pre-check | 集成方式 = integration method | 埋点 = tracking/event tracking | 业务触发点 = business trigger point | 公共属性 = super property (公共事件属性; never "超级属性") | 用户属性 = user property | 自动采集事件 = auto-track event | 插入位置预览 = insertion site preview | 语言风格校验 = language style check
 
 ## ⚠️ Mandatory Pre-checks (do not skip)
 

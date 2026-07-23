@@ -124,6 +124,38 @@ async function captureCapabilityExecute(cmd, opts, responseData) {
   }
 }
 
+async function captureCapabilityError(fn, responseBody) {
+  const { setCliTokenManual, clearCliToken } = await import(
+    pathToFileURL(path.join(ROOT, 'src/core/cli-token.ts')).href
+  );
+  setCliTokenManual('cli-test-token', HOST);
+  let capturedUrl = '';
+  let capturedBody;
+  const prevFetch = globalThis.fetch;
+  globalThis.fetch = (async (url, init) => {
+    capturedUrl = String(url);
+    capturedBody = init?.body ? JSON.parse(String(init.body)) : undefined;
+    return new Response(JSON.stringify(responseBody), {
+      status: 200,
+      headers: { 'Content-Type': 'application/json' },
+    });
+  });
+  try {
+    await assert.rejects(
+      fn(),
+      (err) => {
+        assert.equal(err.code, responseBody.error.code);
+        assert.equal(err.message, responseBody.error.message);
+        return true;
+      },
+    );
+    return { url: capturedUrl, body: capturedBody };
+  } finally {
+    globalThis.fetch = prevFetch;
+    clearCliToken(HOST);
+  }
+}
+
 function runMcpDryRun(args) {
   const result = spawnSync('npx', ['tsx', 'src/index.ts', '--host', HOST, '--dry-run', ...args], {
     cwd: ROOT,
@@ -136,23 +168,6 @@ function runMcpDryRun(args) {
 }
 
 process.stdout.write('\nmetadata capability command tests\n');
-
-await test('metadata property get uses the common-service property contract', async () => {
-  const cmd = await importCmd('src/commands/metadata/property/get.ts', 'propertyGet');
-  const { url, body } = await captureCapabilityDryRun(cmd, {
-    projectId: 1,
-    tableType: 'event',
-    propName: '#revenue',
-  });
-  assert.equal(url, `${HOST}/api/cli/analysis/v1/capabilities/metadata.property.get/dry-run`);
-  assert.deepEqual(body, {
-    input: {
-      project_id: 1,
-      table_type: 'event',
-      prop_name: '#revenue',
-    },
-  });
-});
 
 await test('metadata data-table list maps to analysis gateway component', async () => {
   const cmd = await importCmd('src/commands/metadata/data-table/list.ts', 'dataTableList');
@@ -211,6 +226,71 @@ await test('analysis-meta property list sends search pagination projection and a
     limit: 20,
     offset: 0,
     authenticated_only: true,
+  });
+});
+
+await test('analysis-meta property get sends table_type and prop_name to gateway', async () => {
+  const cmd = await importCmd('src/commands/te-analysis/meta/property/get.ts', 'metadataPropertyGet');
+  const { url, body } = await captureCapabilityDryRun(cmd, {
+    projectId: 1,
+    tableType: 'event',
+    propName: 'amount',
+  });
+  assert.equal(url, `${HOST}/api/cli/analysis/v1/capabilities/metadata.property.get/dry-run`);
+  assert.deepEqual(body.input, {
+    project_id: 1,
+    table_type: 'event',
+    prop_name: 'amount',
+  });
+});
+
+await test('analysis-meta property get preserves invalid table_type backend error', async () => {
+  const cmd = await importCmd('src/commands/te-analysis/meta/property/get.ts', 'metadataPropertyGet');
+  const error = {
+    ok: false,
+    error: {
+      type: 'validation',
+      code: 'INVALID_TABLE_TYPE',
+      message: 'table_type must be event or user',
+    },
+  };
+  const { url, body } = await captureCapabilityError(
+    () => cmd.execute(makeCtx({ projectId: 1, tableType: 'invalid', propName: 'amount' })),
+    error,
+  );
+  assert.equal(url, `${HOST}/api/cli/analysis/v1/capabilities/metadata.property.get/execute`);
+  assert.deepEqual(body.input, {
+    project_id: 1,
+    table_type: 'invalid',
+    prop_name: 'amount',
+  });
+});
+
+await test('metadata.property.get legacy request body is rejected by gateway contract', async () => {
+  const { validateCapability } = await import(
+    pathToFileURL(path.join(ROOT, 'src/core/capability-api.ts')).href
+  );
+  const error = {
+    ok: false,
+    error: {
+      type: 'validation',
+      code: 'INVALID_CAPABILITY_INPUT',
+      message: 'Unsupported input fields: property_name, property_scope',
+    },
+  };
+  const { url, body } = await captureCapabilityError(
+    () => validateCapability(HOST, 'analysis', 'metadata.property.get', {
+      project_id: 1,
+      property_name: 'amount',
+      property_scope: 'event',
+    }),
+    error,
+  );
+  assert.equal(url, `${HOST}/api/cli/analysis/v1/capabilities/metadata.property.get/validate`);
+  assert.deepEqual(body.input, {
+    project_id: 1,
+    property_name: 'amount',
+    property_scope: 'event',
   });
 });
 
@@ -386,8 +466,8 @@ await test('analysis-meta virtual-event create builds payload from typed fields'
     eventName: 'ta@pay_or_cart',
     eventDesc: 'Pay Or Cart',
     remark: 'Demo virtual event',
-    events: [{ eventName: 'purchase' }, { eventName: 'add_to_cart' }],
-    filter: { relation: 'and', conditions: [] },
+    events: [{ event_name: 'purchase' }, { event_name: 'add_to_cart' }],
+    filter: { relation: 'and', items: [] },
     override: true,
   });
   assert.equal(url, `${HOST}/api/cli/analysis/v1/capabilities/metadata.virtual_event.create/dry-run`);
@@ -398,8 +478,8 @@ await test('analysis-meta virtual-event create builds payload from typed fields'
       event_desc: 'Pay Or Cart',
       remark: 'Demo virtual event',
       rule: {
-        events: [{ eventName: 'purchase' }, { eventName: 'add_to_cart' }],
-        filter: { relation: 'and', conditions: [] },
+        events: [{ event_name: 'purchase' }, { event_name: 'add_to_cart' }],
+        filter: { relation: 'and', items: [] },
       },
     },
     override: true,
@@ -675,7 +755,7 @@ await test('legacy analysis_common get_resource_url command remains unavailable'
     encoding: 'utf-8',
   });
   assert.notEqual(result.status, 0);
-  assert.match(result.stderr, /unknown command '\+get_resource_url'/);
+  assert.match(result.stderr, /unknown command 'analysis_common'/);
 });
 await test('legacy analysis_meta list_events command remains unavailable', () => {
   const result = spawnSync('npx', ['tsx', 'src/index.ts', '--host', HOST, '--dry-run',

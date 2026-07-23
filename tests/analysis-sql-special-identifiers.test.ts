@@ -10,6 +10,8 @@ assert.match(AI_DEFINITION_DESCRIPTION, /event table/i);
 assert.match(AI_DEFINITION_DESCRIPTION, /"\$part_date"/);
 assert.match(AI_DEFINITION_DESCRIPTION, /reject/i);
 assert.match(AI_DEFINITION_DESCRIPTION, /never auto-quotes identifiers/);
+assert.match(AI_DEFINITION_DESCRIPTION, /use_timezone/);
+assert.match(AI_DEFINITION_DESCRIPTION, /boolean/);
 assert.match(sqlTableColumns.description, /"#user_id"/);
 assert.match(sqlTableColumns.description, /"\$part_event"/);
 assert.match(sqlTableColumns.description, /"\$part_date"/);

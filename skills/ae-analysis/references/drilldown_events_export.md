@@ -6,6 +6,7 @@ Use this only when the selected synchronous preview metric advertises `drilldown
 
 ```bash
 ae-cli analysis drilldown-events export \
+  --project-id <project_id> \
   --query-context-id <sync_preview_query_context_id> \
   [--source '{"report_id":1001}'] \
   --coordinate '<same returned coordinate>' \
@@ -13,6 +14,8 @@ ae-cli analysis drilldown-events export \
   [--artifact-format csv] \
   [--timeout-seconds 21600]
 ```
+
+`--project-id` must match the project stored by `query_context_id`; a mismatch is rejected before export execution.
 
 This command does not accept `--limit`, `--offset`, `--page-num`, or `--page-size`. Common executes one full-download query and streams its result directly into the artifact; it does not repeatedly call the synchronous preview. “All” follows the platform full-download ceiling (`model_full_download_limit`), not an unbounded query.
 

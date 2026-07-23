@@ -2,8 +2,6 @@ import fs from 'node:fs';
 import path from 'node:path';
 import type { Command, Flag } from '../src/framework/types.js';
 import { baseCommands as analysisCommands } from '../src/commands/te-analysis/index.js';
-import metaCommands from '../src/commands/te-meta/index.js';
-import commonCommands from '../src/commands/te-common/index.js';
 
 const root = process.cwd();
 const referencesDir = path.join(root, 'skills/ae-analysis/references');
@@ -28,11 +26,8 @@ const sharedReferences = new Set([
   'user_tag_models.md',
 ]);
 
-const commands = deduplicate([
-  ...analysisCommands,
-  ...metaCommands,
-  ...commonCommands,
-]).sort((left, right) => commandPath(left).localeCompare(commandPath(right)));
+const commands = deduplicate(analysisCommands)
+  .sort((left, right) => commandPath(left).localeCompare(commandPath(right)));
 
 const expectedCommandReferences = new Set(commands.map(referenceName));
 const missingReferences = [...expectedCommandReferences]

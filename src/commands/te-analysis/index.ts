@@ -21,14 +21,14 @@ import biPanelPageData from './bi-panel-page-data/index.js';
 import projectSpace from './project-space/index.js';
 import favorite from './favorite/index.js';
 import publicLink from './public-link/index.js';
-import model from './model/index.js';
+import filterValue from './filter-value/index.js';
 import eventDetail from './event-detail/index.js';
 import entityDetail from './entity-detail/index.js';
 import drilldownEvents from './drilldown-events/index.js';
 import drilldownEntities from './drilldown-entities/index.js';
 import drilldownUserEvents from './drilldown-user-events/index.js';
 import user from './user/index.js';
-import global from './global/index.js';
+import queryCluster from './query-cluster/index.js';
 import sqlTable from './sql-table/index.js';
 import entity from './entity/index.js';
 import inputFile from './input-file/index.js';
@@ -39,7 +39,6 @@ import alertDefinitionSchema from './alert-definition-schema/index.js';
 import alertDetail from './alert-detail/index.js';
 import alertJob from './alert-job/index.js';
 import alertNoticeConfig from './alert-notice-config/index.js';
-import { isGlobalQueryModeEnabled } from '../../core/cluster-info.js';
 import { registerCapabilityGatewayRoute } from '../../core/capability-routing.js';
 
 registerCapabilityGatewayRoute('analysis', { gatewayDomain: 'analysis' });
@@ -68,7 +67,7 @@ export const baseCommands: Command[] = [
   ...projectSpace,
   ...favorite,
   ...publicLink,
-  ...model,
+  ...filterValue,
   ...eventDetail,
   ...entityDetail,
   ...drilldownEvents,
@@ -76,6 +75,7 @@ export const baseCommands: Command[] = [
   ...drilldownUserEvents,
   ...user,
   ...sqlTable,
+  ...queryCluster,
   ...entity,
   ...inputFile,
   ...project,
@@ -87,9 +87,6 @@ export const baseCommands: Command[] = [
   ...alertNoticeConfig,
 ];
 
-const commands: Command[] = [
-  ...baseCommands,
-  ...(isGlobalQueryModeEnabled() ? global : []),
-];
+const commands: Command[] = [...baseCommands];
 
 export default commands;

@@ -17,6 +17,7 @@ import { reportList } from '../src/commands/te-analysis/report/list.ts';
 import { reportListExport } from '../src/commands/te-analysis/report/list-export.ts';
 import { reportDataRun } from '../src/commands/te-analysis/report-data/run.ts';
 import { reportDataExport } from '../src/commands/te-analysis/report-data/export.ts';
+import { dashboardReportDataRun } from '../src/commands/te-analysis/dashboard-report-data/run.ts';
 import { reportChangeLogGet } from '../src/commands/te-analysis/report-change-log/get.ts';
 import { dashboardReportAdd } from '../src/commands/te-analysis/dashboard-report/add.ts';
 import { adhocRun } from '../src/commands/te-analysis/adhoc/run.ts';
@@ -32,6 +33,8 @@ import { drilldownEntitiesExport } from '../src/commands/te-analysis/drilldown-e
 import { drilldownUserEventsRun } from '../src/commands/te-analysis/drilldown-user-events/run.ts';
 import { drilldownUserEventsExport } from '../src/commands/te-analysis/drilldown-user-events/export.ts';
 import { queryCreateResultCluster } from '../src/commands/te-analysis/query/create-result-cluster.ts';
+import { filterValueList } from '../src/commands/te-analysis/filter-value/list.ts';
+import { queryClusterList } from '../src/commands/te-analysis/query-cluster/list.ts';
 import { runInspect } from '../src/commands/te-analysis/run/inspect.ts';
 import { artifactDownload } from '../src/commands/te-analysis/artifact/download.ts';
 import {
@@ -235,6 +238,87 @@ await test('report-data run sends SQL params separately from generic model overr
       { name: 'part_date', start_time: '2026-07-01 00:00:00', end_time: '2026-07-09 23:59:59' },
     ],
   });
+});
+
+await test('analysis data consumers forward one explicit physical cluster route', async () => {
+  const reportDryRun = await dryBody(reportDataRun, {
+    'project-id': 1,
+    'report-ids': '[1001]',
+    'cluster-query-scope': 'SLAVE',
+    'slave-cluster-id': 'jp',
+  });
+  assert.equal(reportDryRun.body.input.cluster_query_scope, 'SLAVE');
+  assert.equal(reportDryRun.body.input.slave_cluster_id, 'jp');
+
+  const dashboardDryRun = await dryBody(dashboardReportDataRun, {
+    'project-id': 1,
+    'dashboard-id': 2001,
+    'cluster-query-scope': 'GLOBAL',
+  });
+  assert.equal(dashboardDryRun.body.input.cluster_query_scope, 'GLOBAL');
+  assert.equal(dashboardDryRun.body.input.slave_cluster_id, undefined);
+
+  const adhocDryRun = await dryBody(adhocRun, {
+    'project-id': 1,
+    'model-type': 'event',
+    definition: '{"metrics":[]}',
+    'cluster-query-scope': 'SLAVE',
+    'slave-cluster-id': 'jp',
+  });
+  assert.equal(adhocDryRun.body.input.cluster_query_scope, 'SLAVE');
+  assert.equal(adhocDryRun.body.input.slave_cluster_id, 'jp');
+});
+
+await test('analysis data consumers reject ambiguous physical cluster routes locally', () => {
+  for (const command of [reportDataRun, dashboardReportDataRun, adhocRun]) {
+    assert.throws(
+      () => command.validate!(ctx({
+        'cluster-query-scope': 'SLAVE',
+      })),
+      /--slave-cluster-id is required/,
+    );
+    assert.throws(
+      () => command.validate!(ctx({
+        'cluster-query-scope': 'GLOBAL',
+        'slave-cluster-id': 'jp',
+      })),
+      /--slave-cluster-id is allowed only/,
+    );
+  }
+});
+
+await test('analysis lookup commands use gateway capabilities and snake_case input', async () => {
+  const filterValues = await dryBody(filterValueList, {
+    'project-id': 1,
+    'property-name': 'country',
+    'table-type': 'event',
+    'event-name': 'payment',
+    'search-prefix': 'J',
+    'cluster-date-policy': 'LATEST',
+  });
+  assert.match(filterValues.url, /analysis\.filter_value\.list\/dry-run$/);
+  assert.deepEqual(filterValues.body.input, {
+    project_id: 1,
+    property_name: 'country',
+    table_type: 'event',
+    event_name: 'payment',
+    search_prefix: 'J',
+    cluster_date_policy: 'LATEST',
+  });
+
+  const queryClusters = await dryBody(queryClusterList, {
+    'project-id': 1,
+  });
+  assert.match(queryClusters.url, /analysis\.query_cluster\.list\/dry-run$/);
+  assert.deepEqual(queryClusters.body.input, { project_id: 1 });
+});
+
+await test('filter-value help defines LATEST as a computed tag or cluster snapshot', () => {
+  const policy = filterValueList.flags.find((flag) => flag.name === 'cluster-date-policy')?.desc ?? '';
+
+  assert.match(policy, /user tag\/cluster/i);
+  assert.match(policy, /latest available computed result snapshot/i);
+  assert.match(policy, /not a tag definition or configuration release/i);
 });
 
 await test('report-data command help describes AI-facing overrides and SQL value-only params', () => {
@@ -543,12 +627,14 @@ await test('adhoc exposes 12 AI models and report write exposes 12 plus tag', ()
 await test('query follow-up commands use context ids instead of raw QP', async () => {
   assert.deepEqual(
     (await dryBody(drilldownEventsRun, {
+      'project-id': 1,
       'query-context-id': 'ctx_0123456789abcdef0123456789abcdef',
       source: '{"report_id":10}',
       coordinate: '{"date":"2026-07-01","group_values":["Beijing"],"metric_index":0}',
       limit: 20,
     })).body.input,
     {
+      project_id: 1,
       query_context_id: 'ctx_0123456789abcdef0123456789abcdef',
       source: { report_id: 10 },
       coordinate: { date: '2026-07-01', group_values: ['Beijing'], metric_index: 0 },
@@ -557,12 +643,14 @@ await test('query follow-up commands use context ids instead of raw QP', async (
   );
   assert.deepEqual(
     (await dryBody(drilldownEventsExport, {
+      'project-id': 1,
       'query-context-id': 'ctx_0123456789abcdef0123456789abcdef',
       source: '{"report_id":10}',
       coordinate: '{"date":"2026-07-01","group_values":["Beijing"],"metric_index":0}',
       'artifact-format': 'csv',
     })).body.input,
     {
+      project_id: 1,
       query_context_id: 'ctx_0123456789abcdef0123456789abcdef',
       source: { report_id: 10 },
       coordinate: { date: '2026-07-01', group_values: ['Beijing'], metric_index: 0 },
@@ -571,11 +659,13 @@ await test('query follow-up commands use context ids instead of raw QP', async (
   );
   assert.deepEqual(
     (await dryBody(drilldownEntitiesRun, {
+      'project-id': 1,
       'query-context-id': 'ctx_0123456789abcdef0123456789abcdef',
       coordinate: '{"cohort_date":"2026-07-01","group_values":[],"period_index":1,"population":"retained"}',
       limit: 20,
     })).body.input,
     {
+      project_id: 1,
       query_context_id: 'ctx_0123456789abcdef0123456789abcdef',
       coordinate: { cohort_date: '2026-07-01', group_values: [], period_index: 1, population: 'retained' },
       limit: 20,
@@ -583,11 +673,13 @@ await test('query follow-up commands use context ids instead of raw QP', async (
   );
   assert.deepEqual(
     (await dryBody(drilldownUserEventsRun, {
+      'project-id': 1,
       'drilldown-context-id': 'drill_0123456789abcdef0123456789abcdef',
       'user-id': 'u1',
       limit: 50,
     })).body.input,
     {
+      project_id: 1,
       drilldown_context_id: 'drill_0123456789abcdef0123456789abcdef',
       user_id: 'u1',
       limit: 50,
@@ -595,12 +687,14 @@ await test('query follow-up commands use context ids instead of raw QP', async (
   );
   assert.deepEqual(
     (await dryBody(drilldownEntitiesExport, {
+      'project-id': 1,
       'query-context-id': 'ctx_0123456789abcdef0123456789abcdef',
       source: '{"report_id":10}',
       coordinate: '{"date":"2026-07-01","group_values":[],"step":2,"population":"completed"}',
       'artifact-format': 'csv',
     })).body.input,
     {
+      project_id: 1,
       query_context_id: 'ctx_0123456789abcdef0123456789abcdef',
       source: { report_id: 10 },
       coordinate: { date: '2026-07-01', group_values: [], step: 2, population: 'completed' },
@@ -609,11 +703,13 @@ await test('query follow-up commands use context ids instead of raw QP', async (
   );
   assert.deepEqual(
     (await dryBody(drilldownUserEventsExport, {
+      'project-id': 1,
       'drilldown-context-id': 'drill_0123456789abcdef0123456789abcdef',
       'user-id': 'u1',
       'artifact-format': 'csv',
     })).body.input,
     {
+      project_id: 1,
       drilldown_context_id: 'drill_0123456789abcdef0123456789abcdef',
       user_id: 'u1',
       format: 'csv',
@@ -621,6 +717,7 @@ await test('query follow-up commands use context ids instead of raw QP', async (
   );
   assert.deepEqual(
     (await dryBody(queryCreateResultCluster, {
+      'project-id': 1,
       'query-context-id': 'ctx_0123456789abcdef0123456789abcdef',
       source: '{"report_id":10}',
       coordinate: '{"date":"2026-07-01","group_values":["Beijing"],"metric_index":1}',
@@ -628,6 +725,7 @@ await test('query follow-up commands use context ids instead of raw QP', async (
       'display-name': 'AI saved users',
     })).body.input,
     {
+      project_id: 1,
       query_context_id: 'ctx_0123456789abcdef0123456789abcdef',
       source: { report_id: 10 },
       coordinate: { date: '2026-07-01', group_values: ['Beijing'], metric_index: 1 },

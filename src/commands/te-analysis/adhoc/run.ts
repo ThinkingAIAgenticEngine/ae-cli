@@ -4,6 +4,7 @@ import {
   createAnalysisCapabilityCommand,
   syncLimitFlag,
   syncTimeoutSecondsFlag,
+  validateClusterQueryRouting,
 } from '../capability-shared.js';
 import {
   adhocBaseFlags,
@@ -21,6 +22,7 @@ export const adhocRun = createAnalysisCapabilityCommand({
     syncTimeoutSecondsFlag,
   ],
   risk: 'read',
+  validate: validateClusterQueryRouting,
   buildInput: adhocRunInput,
   postProcess: applyAnalysisInlineLimit,
 });

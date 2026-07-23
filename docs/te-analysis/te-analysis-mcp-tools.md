@@ -55,30 +55,20 @@ The intended flow is:
 
 1. Run a bounded synchronous `analysis adhoc run`, `analysis report-data run`, or `analysis dashboard-report-data run`.
 2. Read `query_context_id`, select one returned source, and shallow-merge only that source's returned row/column/metric coordinate fragments. The sync preview limit is the hard selection boundary; never use export/download rows.
-3. Call only the selected metric/source action: `analysis drilldown-events run|export`, `analysis drilldown-entities run|export`, or `analysis query create-result-cluster`. Do not pass raw QP or `target_id`.
-4. Only a user-subject entity preview may return `drilldown_context_id`; pass it with a canonical returned `user_id` to `analysis drilldown-user-events run|export`. Custom entities have no user event sequence.
+3. Call only the selected metric/source action with the original `--project-id`: `analysis drilldown-events run|export`, `analysis drilldown-entities run|export`, or `analysis query create-result-cluster`. Common rejects a project ID that does not match the stored context. Do not pass raw QP or `target_id`.
+4. Only a user-subject entity preview may return `drilldown_context_id`; pass it with the same `--project-id` and a canonical returned `user_id` to `analysis drilldown-user-events run|export`. Custom entities have no user event sequence.
 
 For async exports, inspect with `analysis run inspect --run-id <run_id>` and download with `analysis artifact download --run-id <run_id> --artifact-id <artifact_id> --output <file>`.
 
-## Legacy MCP query cancellation
+## CLI query cancellation
 
-`analysis +cancel_query` remains for canceling the MCP-only queries that are still registered.
-
-For cancellable MCP query tools, request lifecycle is caller-owned:
-
-- Generate `requestId` before starting the query.
-- `requestId` is not auto-generated for MCP query tools.
-- Use `mcp_<32 lowercase hex UUID>`, for example `mcp_0123456789abcdef0123456789abcdef`.
-- If the caller stops waiting, sees `fetch failed`, or hits `HTTP timeout`, the backend query may still be running.
-- Use `+cancel_query --request_id <same value>` for proactive cancellation.
-- Responses include `metadata.requestId`.
-- Missing request id returns `REQUEST_ID_REQUIRED`; invalid format returns `INVALID_REQUEST_ID`.
-
-`+cancel_query` itself also requires the id supplied before starting the original query. It is for MCP request cancellation; capability-gateway async run/export cancellation uses `analysis query cancel --run-id <run_id>`.
+ae-cli no longer exposes MCP query cancellation by `request_id`. All CLI analysis queries use capability-gateway lifecycle commands; cancel an async run/export only with `analysis query cancel --run-id <run_id>`. The Common service's MCP tools and their internal lifecycle support remain available to direct MCP clients.
 
 ## Routing references
 
 - Main agent skill: `skills/ae-analysis/SKILL.md`.
 - Shared model registry and SQL dynamic parameter examples: `skills/ae-analysis/references/ai_models.md`.
 - Analysis data retrieval run/export routing: `skills/ae-analysis/references/analysis_data_retrieval.md`.
+- Exact filter-value discovery: `analysis filter-value list`, documented in `skills/ae-analysis/references/filter_value_list.md`.
+- Physical query-cluster routing: `analysis query-cluster list`, documented in `skills/ae-analysis/references/query_cluster_list.md`.
 - Per-command references live under `skills/ae-analysis/references/*`.

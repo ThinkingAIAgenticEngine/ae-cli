@@ -24,6 +24,10 @@ const reportDataRun = readFileSync(new URL('../skills/ae-analysis/references/rep
 const reportDataExport = readFileSync(new URL('../skills/ae-analysis/references/report_data_export.md', import.meta.url), 'utf8');
 const adhocRun = readFileSync(new URL('../skills/ae-analysis/references/adhoc_run.md', import.meta.url), 'utf8');
 const adhocExport = readFileSync(new URL('../skills/ae-analysis/references/adhoc_export.md', import.meta.url), 'utf8');
+const filterValueList = readFileSync(
+  new URL('../skills/ae-analysis/references/filter_value_list.md', import.meta.url),
+  'utf8',
+);
 const runInspect = readFileSync(new URL('../skills/ae-analysis/references/run_inspect.md', import.meta.url), 'utf8');
 const artifactDownload = readFileSync(new URL('../skills/ae-analysis/references/artifact_download.md', import.meta.url), 'utf8');
 const assetUrl = readFileSync(new URL('../skills/ae-analysis/references/asset_url_get.md', import.meta.url), 'utf8');
@@ -65,6 +69,8 @@ assert.match(skill, /`看板`.*`ae-cli analysis dashboard \.\.\.`.*`analysis\.da
 assert.match(skill, /`仪表盘`.*`BI 仪表盘`.*`ae-cli analysis bi-panel \.\.\.`.*`analysis\.bi_panel\.\*`/);
 assert.match(skill, /standalone English word `dashboard` is ambiguous/);
 assert.match(skill, /Do not fall back to creating an analysis board/);
+assert.match(skill, /Tag\/cluster candidate values.*`cluster_date_policy=LATEST`/i);
+assert.match(skill, /latest computed data snapshot.*never.*definition or configuration release/i);
 assert.match(dashboardCreate, /analysis board \(`看板`\)/);
 assert.match(dashboardCreate, /Do not use for a BI dashboard \(`仪表盘`\)/);
 assert.match(biPanelCreate, /BI dashboard \(`仪表盘`\)/);
@@ -74,6 +80,8 @@ assert.match(dashboardRun, /empty dashboard batch or report result with no rows 
 assert.doesNotMatch(dashboardRun, /selected report IDs return no entries.*fails/i);
 
 assert.match(reportCreate, /SQL dynamic parameter/);
+assert.match(reportCreate, /"use_timezone":true/);
+assert.match(reportCreate, /definition field.*`--sql-params`/i);
 assert.match(reportCreate, /query the saved default first/);
 assert.match(reportCreate, /`report_id` returned by this exact create response/);
 assert.match(reportUpdate, /read the current `version` exactly once/);
@@ -96,6 +104,9 @@ assert.match(adhocRun, /SQL text requests `LIMIT 2000`/);
 assert.match(adhocRun, /go directly to `analysis adhoc export`/);
 assert.match(adhocRun, /Do not lower the SQL limit to 1000/);
 assert.match(adhocExport, /Preserve the `run_id` and `artifact_id` from this exact submit response/);
+assert.match(filterValueList, /LATEST.*latest available computed result snapshot/i);
+assert.match(filterValueList, /not a tag definition or configuration release/i);
+assert.match(filterValueList, /查询标签 X 最新版本\/最新结果有哪些值/);
 assert.match(runInspect, /same export response/);
 assert.match(artifactDownload, /same export response/);
 
@@ -109,6 +120,8 @@ assert.match(aiModels, /`minute`: `1\.\.999`/);
 assert.match(aiModels, /`hour`: `1\.\.24`/);
 assert.match(aiModels, /Do not use `day`.*`session_interval=24`.*`session_unit=hour`/);
 assert.match(aiModels, /never relabel it as `user_property`/);
+assert.match(aiModels, /`use_timezone`.*boolean.*default.*`false`/i);
+assert.match(aiModels, /only valid for `part_date`/i);
 assert.match(commandIndex, /global filters support user_property, cluster, and tag only/);
 assert.match(commandIndex, /express one day as session_interval=24 and session_unit=hour/);
 assert.doesNotMatch(capabilitySkill, /sql-write .*--yes/);

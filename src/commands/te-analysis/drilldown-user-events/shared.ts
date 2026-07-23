@@ -7,6 +7,7 @@ import {
   optionalJson,
   optionalNumber,
   optionalString,
+  projectIdFlag,
   requestIdFlag,
   syncTimeoutSecondsFlag,
 } from '../capability-shared.js';
@@ -43,6 +44,7 @@ const csvArtifactFormatFlag: Flag = {
 };
 
 export const drilldownUserEventsBaseFlags = [
+  projectIdFlag,
   drilldownContextIdFlag,
   userIdFlag,
   ...sequenceFlags,
@@ -80,6 +82,7 @@ export function drilldownUserEventsExportInput(ctx: RuntimeContext): Record<stri
 
 function baseInput(ctx: RuntimeContext): Record<string, unknown> {
   return {
+    project_id: ctx.num('project-id'),
     drilldown_context_id: ctx.str('drilldown-context-id'),
     user_id: ctx.str('user-id'),
     properties: optionalJson(ctx, 'properties'),

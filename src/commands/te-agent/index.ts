@@ -1,9 +1,9 @@
 /**
  * ae-cli agent command domain
  *
- * Unified export of 66 commands across Agent CRUD, automations, models,
+ * Unified export of 67 commands across Agent CRUD, automations, models,
  * MCP CRUD + market + OAuth + credentials, Skills CRUD + market + copy +
- * content + assets + approval + share, attachments.
+ * content + assets + approval + share, attachments, sandbox tools.
  */
 
 import type { Command } from '../../framework/types.js';
@@ -76,6 +76,7 @@ import {
 } from './skill-shares.js';
 import { listAttachments, addAttachment, delAttachment, attachmentStats } from './attachments.js';
 import { createAutomation, listAutomations, updateAutomation } from './automations.js';
+import { listSandboxTools } from './sandbox-tools.js';
 
 const commands: Command[] = [
   // Agent CRUD
@@ -102,6 +103,8 @@ const commands: Command[] = [
   listAttachments, addAttachment, delAttachment, attachmentStats,
   // Automate tasks
   listAutomations, createAutomation, updateAutomation,
+  // Sandbox tools (local scan of /home/ta/.local/bin managed shims)
+  listSandboxTools,
 ];
 
 export default commands;

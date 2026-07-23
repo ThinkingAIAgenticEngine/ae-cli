@@ -6,6 +6,7 @@ Read [`analysis_drilldown_contract.md`](analysis_drilldown_contract.md) and firs
 
 ```bash
 ae-cli analysis drilldown-entities export \
+  --project-id <project_id> \
   --query-context-id <sync_preview_query_context_id> \
   [--source '{"report_id":1001}'] \
   --coordinate '<same returned coordinate>' \
@@ -13,6 +14,8 @@ ae-cli analysis drilldown-entities export \
   [--artifact-format csv] \
   [--timeout-seconds 21600]
 ```
+
+`--project-id` must match the project stored by `query_context_id`; a mismatch is rejected before export execution.
 
 Property support matches the synchronous preview exactly:
 

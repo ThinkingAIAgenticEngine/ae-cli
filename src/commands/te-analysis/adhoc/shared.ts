@@ -6,6 +6,7 @@ import {
 import {
   artifactFormatFlag,
   asyncTimeoutSecondsFlag,
+  clusterQueryScopeFlag,
   compactInput,
   fieldsFlag,
   optionalBoolean,
@@ -14,6 +15,7 @@ import {
   optionalString,
   projectIdFlag,
   requestIdFlag,
+  slaveClusterIdFlag,
 } from '../capability-shared.js';
 
 export const useCacheFlag: Flag = {
@@ -39,6 +41,8 @@ export function adhocRunInput(ctx: RuntimeContext): Record<string, unknown> {
     use_cache: optionalBoolean(ctx, 'use-cache'),
     zone_offset: optionalNumber(ctx, 'zone-offset'),
     fields: optionalJsonArray(ctx, 'fields'),
+    cluster_query_scope: optionalString(ctx, 'cluster-query-scope'),
+    slave_cluster_id: optionalString(ctx, 'slave-cluster-id'),
     limit: optionalNumber(ctx, 'limit'),
     timeout_seconds: optionalNumber(ctx, 'timeout-seconds'),
   });
@@ -53,6 +57,8 @@ export function adhocExportInput(ctx: RuntimeContext): Record<string, unknown> {
     use_cache: optionalBoolean(ctx, 'use-cache'),
     zone_offset: optionalNumber(ctx, 'zone-offset'),
     fields: optionalJsonArray(ctx, 'fields'),
+    cluster_query_scope: optionalString(ctx, 'cluster-query-scope'),
+    slave_cluster_id: optionalString(ctx, 'slave-cluster-id'),
     format: optionalString(ctx, 'artifact-format'),
     timeout_seconds: optionalNumber(ctx, 'timeout-seconds'),
   });
@@ -66,6 +72,8 @@ export const adhocBaseFlags = [
   useCacheFlag,
   zoneOffsetFlag,
   fieldsFlag,
+  clusterQueryScopeFlag,
+  slaveClusterIdFlag,
 ] as const;
 
 export const adhocExportFlags = [

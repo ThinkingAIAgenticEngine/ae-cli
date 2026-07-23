@@ -1,5 +1,6 @@
 import {
   createAnalysisCapabilityCommand,
+  projectIdFlag,
   requestIdFlag,
   timeoutSecondsFlag,
 } from '../capability-shared.js';
@@ -15,6 +16,7 @@ export const queryCreateResultCluster = createAnalysisCapabilityCommand({
   capabilityId: 'analysis.query.create_result_cluster',
   description: 'Create a reusable user or custom-entity result cluster from one cell returned by a synchronous analysis preview. The selected metric must advertise create_result_cluster. Exports never create query contexts.',
   flags: [
+    projectIdFlag,
     { name: 'query-context-id', type: 'string', required: true, desc: 'query_context_id returned by a synchronous analysis preview. Never use an export response.' },
     sourceFlag,
     coordinateFlag,

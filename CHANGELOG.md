@@ -1,3 +1,25 @@
+### 6.0.35
+**Date:** 2026-07-23
+
+**Changes:**
+
+#### Analysis
+* Migrate analysis query helpers to capability gateway (`query-cluster list`, `filter-value list`, query cancel path) and retire superseded legacy analysis / meta / common entry points
+* Require `--project-id` on drilldown and create-result-cluster flows; document SQL `PartDate` timezone and AI QP compile-failure contracts
+* Clarify tag latest-version semantics for `filter-value list` (data-snapshot behavior)
+
+#### Agent
+* Add `agent +list-sandbox-tools` to list sandbox tool inventory; ignore oversized unmanaged sandbox tool files
+* Harden async command / program lifecycle contracts
+
+#### DataOps
+* Complete MySQL Source create contract and MySQL Sink config guidance
+* Ignore `syncName` on integration solution update and tighten update contracts
+
+#### Tracking & metadata
+* Fix tracking-plan autotrack vs client SDK mismatch for existing auto-collected events; fix public event-property i18n in tracking-related skills
+* Remove retired metadata event/property get legacy entry points (gateway-only)
+
 ### 6.0.34
 **Date:** 2026-07-22
 

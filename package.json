@@ -1,6 +1,6 @@
 {
   "name": "@thinkingai/ae-cli",
-  "version": "6.1.6",
+  "version": "6.1.7",
   "description": "CLI tool for ThinkingAI (AE) analytics platform",
   "type": "module",
   "bin": {
@@ -39,8 +39,9 @@
     "verify:analysis-common-tools": "node scripts/verify-te-common-tools.mjs",
     "verify:experiment-tools": "node scripts/verify-te-experiment-tools.mjs && node --import tsx test/experiment/experiment-capability-command.test.mjs",
     "verify:team-tools": "node scripts/verify-te-team-tools.mjs",
-    "verify:agent-tools": "node scripts/verify-agent-tools.mjs",
-    "verify:tracking-tools": "tsx test/tracking-client.test.mjs && node test/tracking-skill-flow.test.mjs && node test/tracking-commands.test.mjs",
+    "verify:agent-tools": "node scripts/verify-agent-tools.mjs && npm run verify:sandbox-tools",
+    "verify:sandbox-tools": "tsx test/sandbox-tools.test.ts",
+    "verify:tracking-tools": "node test/tracking-client.test.mjs && node test/tracking-skill-flow.test.mjs && node test/tracking-commands.test.mjs",
     "verify:self-check-overlay": "node test/self-check-overlay.test.mjs",
     "verify:update-check": "npx tsx test/update-check.test.mjs",
     "qa-changed": "node scripts/qa-changed.mjs",
@@ -50,7 +51,7 @@
     "check:agents-docs": "node scripts/check-agents-docs-sync.mjs",
     "prepublishOnly": "npm run check:release && npm run build",
     "start": "node dist/index.js",
-    "test": "npx tsx src/index.ts --help"
+    "test": "npx tsx src/index.ts --help && npm run verify:sandbox-tools"
   },
   "repository": {
     "type": "git",

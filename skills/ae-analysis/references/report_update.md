@@ -17,6 +17,10 @@ Input sends `project_id`, `report_id`, `version` from CLI `--report-version`, an
 
 Output is the gateway envelope. `data` contains update status, `report_id`, and the normalized AI QP definition when a definition was updated.
 
+When a definition is supplied, update and its `--validate` / `--dry-run` paths use the same compiler contract. `AI_QP_COMPILE_FAILED` preserves `meta.compile_status`, full `meta.errors[]` (including `code`, `candidates`, and `suggestions`), `meta.resolved`, and `meta.warnings`. The report is not changed on this failure; resolve the ambiguity before retrying.
+
 For the shortest safe update, read the current `version` exactly once with `analysis report get` immediately before the write; do not reuse a version from an older list or conversation turn. If a SQL dynamic parameter definition changed, query the saved default before applying an override so default persistence and override behavior are verified separately.
+
+For a SQL `part_date` parameter, `use_timezone` is a boolean saved definition field with default `false`. Change it only by submitting the complete updated `definition`; report-data `--sql-params` is value-only and must not contain `use_timezone`.
 
 After a successful update, call `analysis-meta asset url-get` with the updated `report_id` and output its `markdown_link`.

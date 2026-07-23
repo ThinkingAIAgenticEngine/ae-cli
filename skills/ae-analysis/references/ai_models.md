@@ -376,7 +376,7 @@ Time placeholder:
 {
   "sql": "select * from events where ${PartDate:ds}",
   "params": [
-    {"name": "ds", "type": "part_date", "recent_day": "1-7"}
+    {"name": "ds", "type": "part_date", "recent_day": "1-7", "use_timezone": true}
   ]
 }
 ```
@@ -386,11 +386,13 @@ Rules:
 - If SQL has no `${...}` placeholder, omit `params`.
 - If SQL has placeholders, every placeholder must have one matching item in `params`.
 - Raw variables use `${name}`, not `${Variable:name}`. A selector's `value` must equal one of its `options[].value` values. `${PartDate:name}` expands to a complete predicate, so place it directly after `WHERE`/`AND` rather than after a column name.
+- `use_timezone` is an optional boolean definition field that is only valid for `part_date`. It defaults to `false`. When `true`, that PartDate parameter uses the query's effective timezone selected by `zone_offset` or the current user/project default; when `false`, it follows the non-timezone-aware PartDate path. This is distinct from the command-level `zone_offset`.
 - Do not pass SQL-IDE internals such as `sqlVoParams`, `sqlViewParams`, `paramType`, `paramName`, `paramExpress`, `commonFilter`, or `requiredEvents`.
 - Delimit any Trino identifier containing `#`, `$`, `@`, spaces, or punctuation with double quotes, for example `"#user_id"` and `"$part_event"`. Single quotes create string literals, not identifiers. Escape a literal double quote inside an identifier by doubling it. The CLI preserves the submitted SQL and does not rewrite identifiers.
 - For an event table, include a date-partition predicate on the discovered `"$part_date"` column, for example `WHERE "$part_date" BETWEEN '2026-07-01' AND '2026-07-07'`. The backend rejects event-table SQL without this condition.
 - Do not invent table or column names. If the user already provides a concrete table reference, use `analysis-meta datatable columns-get --project-id <project_id> --table-ref <table_ref>` to inspect columns before writing SQL. If the table itself is unknown, call `analysis sql-table list --project-id <project_id>` when available and select an exact returned `table_ref`; otherwise stop and ask for the table/data source. Ask the user only when multiple authorized tables remain semantically plausible after discovery.
 - For a saved dynamic SQL report, put the default values in `analysis report create/update --definition`. Verify the default once with `analysis report-data run` without `--sql-params`, then verify a changed value with one value-only `--sql-params` override.
+- `use_timezone` belongs to the saved parameter definition. To change it, update the report `definition`; never pass it through report-data `--sql-params`, which changes values only.
 - SQL tags and SQL clusters do not use this general parameter contract. They accept only `${PartDate:name}` with `type=part_date`, and their tables must be discovered with `analysis sql-table list/columns --usage tag_cluster`; see `user_tag_models.md` and `user_cluster_models.md`.
 
 ### `heat_map`

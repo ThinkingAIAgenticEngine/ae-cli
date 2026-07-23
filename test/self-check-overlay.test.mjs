@@ -16,14 +16,14 @@ const output = JSON.parse(result.stdout);
 const overlayDocFindings = output.findings.filter((finding) =>
   ['P1', 'P2'].includes(finding.level) &&
   finding.msg.includes('ae-analysis') &&
-  finding.msg.includes('list_query_clusters')
+  finding.msg.includes('query-cluster')
 );
 
 if (overlayDocFindings.length > 0) {
   throw new Error(
-    `self-check should route +list_query_clusters to ae-analysis-global, not base ae-analysis:\n` +
+    `self-check should accept the query-cluster gateway reference shared by ae-analysis-global:\n` +
     overlayDocFindings.map((finding) => `- [${finding.level}] ${finding.dim}: ${finding.msg}`).join('\n')
   );
 }
 
-console.log('OK: self-check respects ae-analysis-global overlay command ownership.');
+console.log('OK: self-check accepts query-cluster gateway routing documentation.');

@@ -8,6 +8,7 @@ Read [`analysis_drilldown_contract.md`](analysis_drilldown_contract.md) first. C
 
 ```bash
 ae-cli analysis drilldown-entities run \
+  --project-id <project_id> \
   --query-context-id <sync_preview_query_context_id> \
   [--source '{"report_id":1001}'] \
   --coordinate '<merged returned row/column/metric coordinate>' \
@@ -16,7 +17,7 @@ ae-cli analysis drilldown-entities run \
   [--timeout-seconds 120]
 ```
 
-The context, source, and coordinate must all come from the same synchronous preview. Select a visible row from `row_options`, a drillable column from `column_options`, and the relevant metric option; shallow-merge their coordinate fragments. Never send `row_index`, `column_index`, `values`, `label`, `target_id`, raw QP, or a coordinate derived from an export file.
+`--project-id` must be the project used by the synchronous preview and must match the stored query context. The context, source, and coordinate must all come from that same preview. Select a visible row from `row_options`, a drillable column from `column_options`, and the relevant metric option; shallow-merge their coordinate fragments. Never send `row_index`, `column_index`, `values`, `label`, `target_id`, raw QP, or a coordinate derived from an export file.
 
 Property support depends on the returned subject:
 

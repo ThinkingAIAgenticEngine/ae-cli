@@ -36,6 +36,7 @@ export const useCacheFlag: Flag = {
 
 export function createResultClusterInput(ctx: RuntimeContext): Record<string, unknown> {
   return compactInput({
+    project_id: ctx.num('project-id'),
     query_context_id: ctx.str('query-context-id'),
     source: optionalJson(ctx, 'source'),
     coordinate: ctx.json('coordinate'),

@@ -16,13 +16,17 @@ Input sends `project_id`, `report_name`, `model_type`, `definition`, optional `r
 
 Output is the gateway envelope. `data` contains the created `report_id`, creation status, normalized `model_type`, AI QP `definition`, and optional resolution warnings.
 
+Report creation and its `--validate` / `--dry-run` paths use the same compiler contract. `AI_QP_COMPILE_FAILED` preserves `meta.compile_status`, full `meta.errors[]` (including `code`, `candidates`, and `suggestions`), `meta.resolved`, and `meta.warnings`. No report is created on this failure; select an exact returned candidate or ask the user before retrying.
+
 ## SQL dynamic parameter shortest path
 
 When a SQL report contains a `${...}` placeholder, define its saved default in the same AI-facing `definition`. Example:
 
 ```bash
-ae-cli analysis report create --project-id <project_id> --report-name "Recent SQL" --model-type sql --definition '{"sql":"select * from events where ${PartDate:ds} limit 100","params":[{"name":"ds","type":"part_date","recent_day":"1-7"}]}'
+ae-cli analysis report create --project-id <project_id> --report-name "Recent SQL" --model-type sql --definition '{"sql":"select * from events where ${PartDate:ds} limit 100","params":[{"name":"ds","type":"part_date","recent_day":"1-7","use_timezone":true}]}'
 ```
+
+`use_timezone` is an optional boolean definition field only for `part_date`; it defaults to `false`. `true` makes that parameter use the query's effective timezone. It is a saved definition field, so change it through report create/update `--definition`, never through report-data `--sql-params`.
 
 After creation, keep the `report_id` returned by this exact create response. To verify the report, query the saved default first with `analysis report-data run` and omit `--sql-params`; then make one second query with a value-only `--sql-params` override. Do not rebuild internal `sqlViewParams` or guess an ID.
 

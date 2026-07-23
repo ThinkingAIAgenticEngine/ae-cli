@@ -140,6 +140,12 @@ const AUTOTRACK_I18N: Record<string, AutotrackEventI18n> = {
   },
 };
 
+/** Complete set of all known auto-track event names across all SDKs.
+ *  Used by injectAutotrackEvents() cleanup logic to identify and remove
+ *  stale auto-track events inherited from templates/existing plans that
+ *  don't match the user's selected SDKs. */
+export const ALL_AUTOTRACK_EVENT_NAMES: Set<string> = new Set(Object.keys(AUTOTRACK_I18N));
+
 /** 根据事件名和语言构造单条自动采集事件 */
 function makeAutotrackEvent(eventName: string, locale: Locale): Event {
   const i18n = AUTOTRACK_I18N[eventName];

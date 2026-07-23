@@ -37,7 +37,7 @@ ae-tracking 的埋点方案能力已并入 **ae-cli**，命令前缀为 `ae-cli 
 ## 与 analysis_meta MCP 的关系
 
 - **xlsx 工作流**：`ae-cli tracking plan upload` → `excel-save`
-- **结构化 MCP 读写**：`ae-cli analysis_meta +get_track_program` / `+save_track_items`
+- **结构化能力读写**：`ae-cli tracking plan get` / `ae-cli tracking plan save-items`
 
 ## 初始化 Skills
 

@@ -2,6 +2,8 @@
 
 Execute bounded inline data from one or more saved reports.
 
+Typical closed loop: discover a saved report -> verify its definition -> resolve any unknown exact filter value with `analysis filter-value list` -> optionally resolve a physical route with `analysis query-cluster list` -> run -> inspect actual scope and warnings -> use the returned synchronous query context for drilldown.
+
 Routing: read [`analysis_data_retrieval.md`](analysis_data_retrieval.md) before choosing this `run` command instead of `report-data export`.
 
 Do not use this command for full, unknown-size, larger than 1000-row, or long-running report data; use `report-data export`.
@@ -27,9 +29,12 @@ ae-cli analysis report-data run --project-id <project_id> --report-ids '[2001]' 
 
 # Explicit local-time mode (not UTC+99)
 ae-cli analysis report-data run --project-id <project_id> --report-ids '[1001]' --zone-offset 99 --limit 20
+
+# One physical slave query cluster
+ae-cli analysis report-data run --project-id <project_id> --report-ids '[1001]' --cluster-query-scope SLAVE --slave-cluster-id jp --limit 20
 ```
 
-Input sends `project_id`, `report_ids`, optional `request_id`, `filters`, `group_by`, `sql_params`, `start_time`, `end_time`, `time_granularity`, `zone_offset`, `use_cache`, `limit`, and `timeout_seconds`. Control defaults: `--limit` default 100 / max 1000, `--timeout-seconds` default 120 / max 180. The routing rule lives in [`analysis_data_retrieval.md`](analysis_data_retrieval.md).
+Input also accepts optional `cluster_query_scope` and conditional `slave_cluster_id`. Omit both for current-self data. Use `GLOBAL` only for explicit cross-cluster aggregation; use `SLAVE` with exactly one ID returned by `analysis query-cluster list`. SQL reports reject `GLOBAL`. Control defaults: `--limit` default 100 / max 1000, `--timeout-seconds` default 120 / max 180.
 
 Timezone contract:
 
@@ -42,7 +47,7 @@ Override model:
 
 - `filters`: AI-facing intent object `{relation:"and|or", items:[{field:{name,type?}, operator, values?}]}`. `field.type` supports `event_property`, `user_property`, `cluster`, and `tag`; omit it only when the field name is unambiguous. Use field names from `analysis report get` definition output or metadata commands. Do not pass raw QP fields such as `taFilters`, `junctionKind`, `columnName`, `tableType`, or `selectType`.
 - `group-by`: AI-facing intent array `[{field:{name,type?}}]`. Use the same field model as report definitions. Do not pass raw `TaGroupByVo`. Time granularity is controlled by `--time-granularity`, not by `--group-by`.
-- `sql-params`: SQL report dynamic parameter value overrides. First read `analysis report get`; saved SQL params are exposed as AI-facing `definition.params`. Every name must exist in every target SQL report because one batch shares the override. Send only override values for existing parameter names: `[{"name":"platform","value":"ios"}]`, `[{"name":"server_id","operator":"contains","value":"s1"}]`, `[{"name":"level","operator":"eq","values":["42"]}]`, `[{"name":"amount","operator":"between","values":["10","20"]}]`, `[{"name":"part_date","start_time":"2026-07-01 00:00:00","end_time":"2026-07-09 23:59:59"}]`, or `[{"name":"part_date","recent_day":"1-7"}]`. Time fields require a saved `part_date` or time parameter. Operators `eq`/`in`, `neq`/`not_in`, and `between` use `values`; comparison/like/contains operators use single `value`. Do not send definition fields.
+- `sql-params`: SQL report dynamic parameter value overrides. First read `analysis report get`; saved SQL params are exposed as AI-facing `definition.params`. Every name must exist in every target SQL report because one batch shares the override. Send only override values for existing parameter names: `[{"name":"platform","value":"ios"}]`, `[{"name":"server_id","operator":"contains","value":"s1"}]`, `[{"name":"level","operator":"eq","values":["42"]}]`, `[{"name":"amount","operator":"between","values":["10","20"]}]`, `[{"name":"part_date","start_time":"2026-07-01 00:00:00","end_time":"2026-07-09 23:59:59"}]`, or `[{"name":"part_date","recent_day":"1-7"}]`. Time fields require a saved `part_date` or time parameter. Operators `eq`/`in`, `neq`/`not_in`, and `between` use `values`; comparison/like/contains operators use single `value`. Do not send definition fields such as `type`, `options`, or `use_timezone`; change them through report update.
 
 A homogeneous SQL request that includes `filters`, `group_by`, `start_time`, `end_time`, or `time_granularity` fails with `INVALID_OVERRIDE_FOR_MODEL`. A homogeneous non-SQL request with `sql_params` also fails. Mixed-model batches are best-effort: data still returns and `meta.warnings[]` uses `OVERRIDE_IGNORED_FOR_MODEL`, `model_type`, `report_ids`, and `ignored_fields` to identify fields that did not apply. Do not discard these warnings.
 
@@ -50,6 +55,6 @@ For a newly created or updated dynamic SQL report, omit `--sql-params` to execut
 
 Output is the gateway envelope. `data` contains bounded inline report result items plus `query_context_id` and `sources[]`. Each source includes `effective_zone_offset`, the timezone value actually used for that query. When `zone_offset` is omitted, this is the resolved current-user timezone when available, otherwise the project default; when `zone_offset` is explicit, this is its resolved effective value. `sources[].drilldown` is present when the returned preview exposes follow-up actions. Each source is evaluated independently; SQL and other unsupported models have no actions.
 
-An empty batch or report result with no rows is a successful query: it means the requested time range has no data. The command fails only when every returned report entry contains an explicit execution error. Mixed batches keep successful items and return `meta.partial`, counts, and per-report `meta.failures` for partial-result handling.
+`meta.actual_cluster_query_scope`, optional `meta.actual_slave_cluster_id`, and `meta.cluster_query_scope_source` describe the actual physical route. Verify them before comparing or drilling down. An empty batch or report result with no rows is a successful query: it means the requested time range has no data. The command fails only when every returned report entry contains an explicit execution error.
 
 Read [`analysis_drilldown_contract.md`](analysis_drilldown_contract.md). Select only returned row/column/metric options and call only the advertised event, entity, or result-cluster action. Do not pass raw QP.

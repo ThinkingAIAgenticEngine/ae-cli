@@ -189,6 +189,34 @@ export const asyncTimeoutSecondsFlag: Flag = {
   max: 21600,
 };
 
+export const clusterQueryScopeFlag: Flag = {
+  name: 'cluster-query-scope',
+  type: 'string',
+  required: false,
+  desc: 'Optional physical query routing: GLOBAL aggregates accessible query clusters; SLAVE targets one --slave-cluster-id. Omit for the surface default.',
+};
+
+export const slaveClusterIdFlag: Flag = {
+  name: 'slave-cluster-id',
+  type: 'string',
+  required: false,
+  desc: 'Physical slave query-cluster ID from analysis query-cluster list. Required only with --cluster-query-scope SLAVE.',
+};
+
+export function validateClusterQueryRouting(ctx: RuntimeContext): void {
+  const scope = optionalString(ctx, 'cluster-query-scope');
+  const slaveClusterId = optionalString(ctx, 'slave-cluster-id');
+  if (scope !== undefined && scope !== 'GLOBAL' && scope !== 'SLAVE') {
+    throw new Error('--cluster-query-scope must be GLOBAL or SLAVE.');
+  }
+  if (scope === 'SLAVE' && slaveClusterId === undefined) {
+    throw new Error('--slave-cluster-id is required with --cluster-query-scope SLAVE.');
+  }
+  if (scope !== 'SLAVE' && slaveClusterId !== undefined) {
+    throw new Error('--slave-cluster-id is allowed only with --cluster-query-scope SLAVE.');
+  }
+}
+
 export const artifactFormatFlag: Flag = {
   name: 'artifact-format',
   type: 'string',
@@ -225,6 +253,8 @@ export function dashboardReportDataInput(ctx: RuntimeContext): Record<string, un
     filters: optionalJson(ctx, 'filters'),
     start_time: optionalString(ctx, 'start-time'),
     end_time: optionalString(ctx, 'end-time'),
+    cluster_query_scope: optionalString(ctx, 'cluster-query-scope'),
+    slave_cluster_id: optionalString(ctx, 'slave-cluster-id'),
     zone_offset: optionalNumber(ctx, 'zone-offset'),
     use_cache: optionalBoolean(ctx, 'use-cache'),
     request_id: optionalString(ctx, 'request-id'),

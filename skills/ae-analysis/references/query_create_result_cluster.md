@@ -8,6 +8,7 @@ Read [`analysis_drilldown_contract.md`](analysis_drilldown_contract.md) first. T
 
 ```bash
 ae-cli analysis query create-result-cluster \
+  --project-id <project_id> \
   --query-context-id <sync_preview_query_context_id> \
   [--source '{"report_id":1001}'] \
   --coordinate '<merged returned row/column/metric coordinate>' \
@@ -19,6 +20,7 @@ ae-cli analysis query create-result-cluster \
 
 ## Input rules
 
+- `--project-id` must be the project used by the synchronous preview and must match the project stored by `query_context_id`.
 - `--query-context-id`, `--source`, and all coordinate fragments must come from the same synchronous `adhoc run`, `report-data run`, or `dashboard-report-data run` response.
 - Match the desired visible row and column in `source.drilldown.row_options`/`column_options`, select the correct metric option, and shallow-merge only their `coordinate` fragments.
 - Never pass `target_id`, raw QP, display-only dates, option presentation fields, or data from an export/download. Exports do not create query contexts.

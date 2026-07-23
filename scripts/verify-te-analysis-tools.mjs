@@ -1,21 +1,10 @@
 import fs from 'fs';
 import path from 'path';
 import { Command as CommanderCommand } from 'commander';
-import { getClusterInfoFilePath } from '../src/core/cluster-info.ts';
 import { registerCommands } from '../src/framework/register.ts';
 
 const ROOT = process.cwd();
 const commandsDir = path.join(ROOT, 'src/commands/te-analysis');
-const clusterInfoFile = getClusterInfoFilePath();
-
-function isGlobalQueryModeEnabled() {
-  try {
-    const raw = JSON.parse(fs.readFileSync(clusterInfoFile, 'utf-8'));
-    return raw?.sw_cfg_enable_global_query === true;
-  } catch {
-    return false;
-  }
-}
 
 function fail(message) {
   console.error(`ERROR: ${message}`);
@@ -33,7 +22,6 @@ function walk(dir) {
       continue;
     }
     if (!entry.name.endsWith('.ts')) continue;
-    if (!isGlobalQueryModeEnabled() && p.includes(`${path.sep}global${path.sep}`)) continue;
     commandFiles.push(p);
   }
 }
@@ -91,7 +79,7 @@ if (gatewayLifecycleSet.size !== gatewayLifecycleCommands.length) {
   fail('duplicate gateway lifecycle command names found in source files');
 }
 
-const EXPECTED_CORE_COUNT = isGlobalQueryModeEnabled() ? 9 : 8;
+const EXPECTED_CORE_COUNT = 0;
 if (coreCommands.length !== EXPECTED_CORE_COUNT) {
   fail(`analysis tool count mismatch: expected ${EXPECTED_CORE_COUNT}, got ${coreCommands.length}`);
 }
@@ -140,13 +128,13 @@ if (gatewayLifecycleCommands.length !== EXPECTED_GATEWAY_LIFECYCLE_COUNT) {
   fail(`analysis gateway lifecycle command count mismatch: expected ${EXPECTED_GATEWAY_LIFECYCLE_COUNT}, got ${gatewayLifecycleCommands.length}`);
 }
 
-const EXPECTED_CAPABILITY_COUNT = 241;
+const EXPECTED_CAPABILITY_COUNT = 243;
 if (capabilityCommands.length !== EXPECTED_CAPABILITY_COUNT) {
   fail(`analysis capability command count mismatch: expected ${EXPECTED_CAPABILITY_COUNT}, got ${capabilityCommands.length}`);
 }
 
 const EXPECTED_CAPABILITY_COUNTS_BY_SERVICE = {
-  analysis: 150,
+  analysis: 152,
   'analysis-meta': 48,
   'analysis-governance': 20,
   tracking: 23,
@@ -186,18 +174,14 @@ for (const item of [...capabilityCommands, ...gatewayLifecycleCommands]) {
 }
 
 const requiredTokensByFile = {
-  'src/commands/te-analysis/model/cancel-query.ts': [
-    'caller or agent timed out before the query returned',
-    'fetch failed',
-    'HTTP timeout',
-    'backend query may still be running',
-    '+cancel_query --request_id',
-    'proactive cancellation',
-    'metadata.requestId',
-    'supplied before starting',
-    'generate and pass requestId',
-    'mcp_<32 lowercase hex UUID>',
-    'mcp_0123456789abcdef0123456789abcdef',
+  'src/commands/te-analysis/filter-value/list.ts': [
+    'analysis.filter_value.list',
+    'property-name',
+    'table-type',
+  ],
+  'src/commands/te-analysis/query-cluster/list.ts': [
+    'analysis.query_cluster.list',
+    'physical query-routing clusters',
   ],
 };
 
@@ -215,18 +199,16 @@ for (const [relPath, tokens] of Object.entries(requiredTokensByFile)) {
 }
 
 const requiredReferenceTokensByFile = {
-  'skills/ae-analysis/references/cancel_query.md': [
-    'caller or agent timed out before the query returned',
-    'fetch failed',
-    'HTTP timeout',
-    'backend query may still be running',
-    '+cancel_query --request_id',
-    'proactive cancellation',
-    'metadata.requestId',
-    'supplied before starting',
-    'MCP query tools require caller-supplied',
-    'mcp_<32 lowercase hex UUID>',
-    'mcp_0123456789abcdef0123456789abcdef',
+  'skills/ae-analysis/references/filter_value_list.md': [
+    'Typical workflow',
+    'exact stored value',
+    'not proof of frequency or completeness',
+  ],
+  'skills/ae-analysis/references/query_cluster_list.md': [
+    'Typical workflow',
+    '查询集群',
+    '用户分群',
+    'actual_cluster_query_scope',
   ],
 };
 
@@ -276,15 +258,15 @@ const criticalReferenceTokens = {
   'skills/ae-analysis/references/user_cluster_member_export.md': ['has_more=false', 'final metadata line'],
   'skills/ae-analysis/references/user_tag_member_export.md': ['has_more=false', 'final metadata line'],
   'skills/ae-analysis/references/history_tag_batch_refresh.md': ['start_time', 'end_time', 'only_abnormal', 'use_user_table_type'],
-  'skills/ae-analysis/references/analysis_drilldown_contract.md': ['synchronous_preview_only', 'row_options[]', 'metric_options[]', 'ENTITY_LIST', '`attribution_event_id`'],
-  'skills/ae-analysis/references/drilldown_events_run.md': ['analysis_angle=EVENT_LIST', '`target_id`'],
-  'skills/ae-analysis/references/drilldown_events_export.md': ['does not accept `--limit`', 'one full-download query', '`csv.gz`'],
-  'skills/ae-analysis/references/drilldown_entities_run.md': ['subject.type=user', 'subject.type=entity', 'shallow-merge'],
-  'skills/ae-analysis/references/drilldown_entities_export.md': ['does not accept `--limit`', 'never creates a query context'],
-  'skills/ae-analysis/references/drilldown_user_events_export.md': ['does not accept `--limit`, `--offset`, `--page-num`, or `--page-size`', 'without the synchronous 1000-row preview cap', '`csv.gz`'],
-  'skills/ae-analysis/references/query_create_result_cluster.md': ['custom-entity', 'query_context_id', 'coordinate'],
+  'skills/ae-analysis/references/analysis_drilldown_contract.md': ['synchronous_preview_only', 'row_options[]', 'metric_options[]', 'ENTITY_LIST', '`attribution_event_id`', '`--project-id`'],
+  'skills/ae-analysis/references/drilldown_events_run.md': ['analysis_angle=EVENT_LIST', '`target_id`', '`--project-id`'],
+  'skills/ae-analysis/references/drilldown_events_export.md': ['does not accept `--limit`', 'one full-download query', '`csv.gz`', '`--project-id`'],
+  'skills/ae-analysis/references/drilldown_entities_run.md': ['subject.type=user', 'subject.type=entity', 'shallow-merge', '`--project-id`'],
+  'skills/ae-analysis/references/drilldown_entities_export.md': ['does not accept `--limit`', 'never creates a query context', '`--project-id`'],
+  'skills/ae-analysis/references/drilldown_user_events_export.md': ['does not accept `--limit`, `--offset`, `--page-num`, or `--page-size`', 'without the synchronous 1000-row preview cap', '`csv.gz`', '`--project-id`'],
+  'skills/ae-analysis/references/query_create_result_cluster.md': ['custom-entity', 'query_context_id', 'coordinate', '`--project-id`'],
   'skills/ae-analysis/references/analysis_data_retrieval.md': ['Default and maximum runtime is 21600 seconds (6 hours)', 'sources', 'synchronous'],
-  'skills/ae-analysis/references/report_create.md': ['SQL dynamic parameter', 'query the saved default first', '`report_id` returned by this exact create response'],
+  'skills/ae-analysis/references/report_create.md': ['SQL dynamic parameter', '"use_timezone":true', 'boolean definition field', 'query the saved default first', '`report_id` returned by this exact create response'],
   'skills/ae-analysis/references/report_update.md': ['read the current `version` exactly once', 'query the saved default before applying an override'],
   'skills/ae-analysis/references/report_list.md': ['narrow with `--query` or `--model-types` before paging', 'do not enumerate every report page'],
   'skills/ae-analysis/references/report_data_run.md': ['omit `--sql-params` to execute the saved default', 'then make one second call with `--sql-params`', '"recent_day":"1-7"', '`effective_zone_offset`'],
@@ -297,6 +279,8 @@ const criticalReferenceTokens = {
   'skills/ae-analysis/references/report_get.md': ['agent-facing `time_particle_size`', 'internal `T0` through `T9` codes must never leak', 'Do not infer a granularity'],
   'skills/ae-analysis/references/ai_models.md': [
     '`tag_name` is the only tag-report name field',
+    '`use_timezone` is an optional boolean definition field',
+    'only valid for `part_date`',
     '`second`: `1..999`',
     '`minute`: `1..999`',
     '`hour`: `1..24`',
@@ -385,15 +369,9 @@ const currentDocsTokens = [
   'drilldown_context_id',
   'Default limit is 100, max 1000',
   'Default and maximum runtime is 21600 seconds (6 hours)',
-  'mcp_<32 lowercase hex UUID>',
-  'mcp_0123456789abcdef0123456789abcdef',
-  'REQUEST_ID_REQUIRED',
-  'INVALID_REQUEST_ID',
-  '+cancel_query --request_id',
-  'metadata.requestId',
-  'fetch failed',
-  'HTTP timeout',
-  'backend query may still be running',
+  'analysis filter-value list',
+  'analysis query-cluster list',
+  'analysis query cancel --run-id',
 ];
 for (const token of currentDocsTokens) {
   if (!docsContent.includes(token)) {

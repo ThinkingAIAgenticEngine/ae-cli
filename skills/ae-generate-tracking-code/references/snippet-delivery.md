@@ -1,6 +1,6 @@
 # Snippet Output Mode
 
-> **Terminology**: 片段/代码片段 = snippet/code snippet | 产物 = deliverable/output | markdown 响应 = markdown response | 初始化 = initialization | 公共属性 = super property | 用户属性 = user property | 事件组 = event group | 触发时机 = trigger timing | 验证步骤 = verification steps | 设备绑定 = device binding | 自动采集事件 = auto-track event | 占位值 = placeholder value | 属性类型 = property type
+> **Terminology**: 片段/代码片段 = snippet/code snippet | 产物 = deliverable/output | markdown 响应 = markdown response | 初始化 = initialization | 公共属性 = super property (公共事件属性; never "超级属性") | 用户属性 = user property | 事件组 = event group | 触发时机 = trigger timing | 验证步骤 = verification steps | 设备绑定 = device binding | 自动采集事件 = auto-track event | 占位值 = placeholder value | 属性类型 = property type
 
 ## Deliverables
 

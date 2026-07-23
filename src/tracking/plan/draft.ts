@@ -1,7 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import type { Draft, Event, SDKType, SDKIntegrationMode, ServerLanguage, ClientLanguage, UserIdentity } from './types.js';
-import { getAutotrackEvents } from './autotrack.js';
+import { getAutotrackEvents, ALL_AUTOTRACK_EVENT_NAMES } from './autotrack.js';
 import type { Locale } from '../i18n/locale.js';
 
 export interface DraftMeta {
@@ -60,7 +60,7 @@ export function saveDraft(d: Draft, p: string): void {
 }
 
 /**
- * 向 draft 注入 SDK 自动采集事件
+ * 向 draft 注入 SDK 自动采集事件，同时清理模板/现有方案中不属于用户所选 SDK 的自动采集事件。
  * 自动采集事件放在 events 数组末尾，标记 source: "autotrack", platform: "client"
  */
 export function injectAutotrackEvents(draft: Draft, locale: Locale = 'zh'): Draft {
@@ -94,6 +94,17 @@ export function injectAutotrackEvents(draft: Draft, locale: Locale = 'zh'): Draf
   } else {
     autotrackEvents = getAutotrackEvents(sdkTypeOrPlatforms as SDKType, locale);
   }
+
+  // 清理不属于用户所选 SDK 的自动采集事件
+  // 模板或现有方案中可能包含其他 SDK 的自动采集事件（如 Android 模板含 ta_app_*
+  // 但用户选择了 JavaScript SDK），需要移除这些不匹配的事件
+  const validNames = new Set(autotrackEvents.map(e => e.event_name));
+  draft.events = draft.events.filter(e => {
+    if (ALL_AUTOTRACK_EVENT_NAMES.has(e.event_name)) {
+      return validNames.has(e.event_name);
+    }
+    return true; // 非自动采集事件原样保留
+  });
 
   // 过滤掉已存在于 draft 中的同名事件（不管 source，模板可能已包含自动采集事件）
   const existingNames = new Set(draft.events.map(e => e.event_name));

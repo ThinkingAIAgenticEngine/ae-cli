@@ -1,7 +1,5 @@
 import type { Command } from '../../framework/types.js';
 import { registerCapabilityGatewayRoute } from '../../core/capability-routing.js';
-import { eventGet } from './event/get.js';
-import { propertyGet } from './property/get.js';
 import { dataTableCsvDelete } from './data-table/csv-delete.js';
 import { dataTableCsvWrite } from './data-table/csv-write.js';
 import { dataTableDownload } from './data-table/download.js';
@@ -16,8 +14,6 @@ import { propertyDimensionTableCreateAndBindCsv } from './property/dimension-tab
 registerCapabilityGatewayRoute('metadata', { gatewayDomain: 'analysis' });
 
 const commands: Command[] = [
-  eventGet,
-  propertyGet,
   dataTableList,
   dataTableGet,
   dataTableCsvWrite,

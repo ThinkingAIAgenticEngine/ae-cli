@@ -42,7 +42,7 @@ Safety constraints:
 - Never invent command names, flags, JSON payloads, `project_id`, resource IDs, field names, event names, property names, metric definitions, or date formats. Read the matching command reference and discover real project metadata first.
 - **NEVER fabricate or guess resource names** (reports, dashboards, events, properties, metrics, clusters, tags, alerts). Always use list commands to discover real resources first. If a resource is not found after fuzzy search and full list fallback, explicitly tell the user "resource not found" and stop - do not proceed with fabricated names.
 
-**Community** commands use the domain `community` (this skill). Other AE domains include: `analysis` (analysis and audience), `analysis_meta` (metadata), `analysis_common` (common), `operation` (operations).
+**Community** commands use the domain `community` (this skill). Other AE domains include: `analysis` (analysis and audience), `analysis_meta` (metadata), and `operation` (operations).
 
 ---
 

@@ -63,7 +63,7 @@ Use `ae-agent` for all Agent platform resource work:
 
 If the user's intent is data analysis, audience management, metadata governance, TeamRuns, or knowledge bases, switch to `ae-analysis` / `ae-engage` / `ae-dataops` / `ae-team` / `ae-kb`.
 
-## Tool Groups (66 commands)
+## Tool Groups (67 commands)
 
 ### Agents (5)
 
@@ -166,6 +166,10 @@ If the user's intent is data analysis, audience management, metadata governance,
 - `+add-attachment` ([doc](references/add-attachment.md)) — upload sandbox file(s) to attachment library
 - `+del-attachment` ([doc](references/del-attachment.md)) — soft-delete an attachment
 - `+attachment-stats` ([doc](references/attachment-stats.md)) — attachment library stats (total count/size, image/document breakdown)
+
+### Sandbox tools (1)
+
+- `+list-sandbox-tools` ([doc](references/list-sandbox-tools.md)) — list tools activated in the current sandbox (scan /home/ta/.local/bin managed shims; report active/broken; local scan, no remote API)
 
 ## Cross-Command Notes
 

@@ -1,6 +1,6 @@
 # SDK Usage Notes
 
-> **Terminology**: 上报模式 = upload mode | 缓存上报 = batch/buffered upload | 批量上报策略 = batch upload strategy | 上报失败处理 = upload failure handling | 属性类型 = property type | 预置属性 = preset property (`#` prefix) | 自定义属性 = custom property | 时间校准 = time calibration | 自动采集事件 = auto-track event | 数据加密 = data encryption | LoggerConsumer = writes events to local log files (recommended for production) | BatchConsumer = uploads events in batches with retry | DebugConsumer = debug-only consumer (NOT for production) | 公共属性 = super property | 动态公共属性 = dynamic super property | 多端上报 = multi-platform tracking | 用户割裂 = user fragmentation | 时区偏移 = timezone offset (`#zone_offset`)
+> **Terminology**: 上报模式 = upload mode | 缓存上报 = batch/buffered upload | 批量上报策略 = batch upload strategy | 上报失败处理 = upload failure handling | 属性类型 = property type | 预置属性 = preset property (`#` prefix) | 自定义属性 = custom property | 时间校准 = time calibration | 自动采集事件 = auto-track event | 数据加密 = data encryption | LoggerConsumer = writes events to local log files (recommended for production) | BatchConsumer = uploads events in batches with retry | DebugConsumer = debug-only consumer (NOT for production) | 公共属性 = super property (公共事件属性; never "超级属性") | 动态公共属性 = dynamic super property | 多端上报 = multi-platform tracking | 用户割裂 = user fragmentation | 时区偏移 = timezone offset (`#zone_offset`)
 
 # 一、客户端 SDK
 

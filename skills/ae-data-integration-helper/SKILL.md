@@ -25,7 +25,7 @@ description: "Answers questions about ThinkingData SDK integration and usage, in
 | 事件格式 | Event Format | Event name + properties structure |
 | 属性类型 | Property Type | String / Number / Boolean / Date / Array |
 | 数据校验 | Data Validation | Verify event format & property types |
-| 公共服务端属性 | Super Property | Properties attached to all events |
+| 公共事件属性 | Super Property | Properties attached to all events. ⚠️ The correct Chinese AE term is "公共事件属性" or "公共属性". Never translate "Super Property" as "超级属性" — that is NOT a valid AE term. |
 | 可更新事件 | Updatable Event | Event whose properties can be updated after creation |
 | 首次事件校验 | First Event Check | Validate an event's first occurrence |
 | 自动采集 | Auto-track | Auto-collected events (app install, start, page view, etc.) |
@@ -151,8 +151,9 @@ After reading relevant documentation, output in the following format:
 (If no sourceUrl, provide local .md file path)
 ```
 
-**⚠️ Information Accuracy Rules**:
+**⚠️ Terminology Rules**:
 - **Only output what is in the documentation**. Do NOT speculate, imagine, or fill in defaults.
+- **Never translate "Super Property" as "超级属性"** — the correct AE Chinese term is "公共事件属性" or "公共属性". This applies to all user-facing output: headings, step descriptions, code comments, examples, etc.
 - For uncertain information (e.g., data delay times, specific limit values), **do NOT fabricate**.
 - If the document has no direct answer but allows inference: mark under "Source Document" as "Synthesized inference; recommend verification".
 - If the documentation truly does not cover the question, fall back to Step 4. Do NOT force an answer.

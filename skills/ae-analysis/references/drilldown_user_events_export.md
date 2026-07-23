@@ -6,6 +6,7 @@ Export the complete event sequence for one user from a drilldown context. Do not
 
 ```bash
 ae-cli analysis drilldown-user-events export \
+  --project-id <project_id> \
   --drilldown-context-id <drilldown_context_id> \
   --user-id <user_id> \
   [--properties '[{"columnName":"<event_property_name>","tableType":"event"}]'] \
@@ -13,6 +14,8 @@ ae-cli analysis drilldown-user-events export \
   [--artifact-format csv] \
   [--timeout-seconds 21600]
 ```
+
+`--project-id` must match the project stored by `drilldown_context_id`; a mismatch is rejected before export execution.
 
 The nested backend keys are exactly `columnName` and `tableType`, and the table type is the named value `event`. String-name arrays, numeric enum codes, and snake_case rewrites are invalid. With an explicit projection, the artifact retains `#user_id`, account ID, visitor ID, event name, and event time and appends exactly the requested event properties. `#user_id` is internal; Agents should normally present account ID and visitor ID to customers.
 

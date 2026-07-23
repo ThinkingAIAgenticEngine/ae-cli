@@ -6,7 +6,7 @@
  * Verify all commands under src/commands/te-agent/:
  * 1. Scan .ts files and extract command names via regex
  * 2. Duplicate check
- * 3. Count check (EXPECTED_COUNT = 66)
+ * 3. Count check (EXPECTED_COUNT = 67)
  * 4. Run ae-cli agent --help and verify all command names appear
  */
 
@@ -15,7 +15,7 @@ import { join, basename } from "node:path";
 import { execFileSync, execSync } from "node:child_process";
 
 const AGENT_DIR = "src/commands/te-agent";
-const EXPECTED_COUNT = 66;
+const EXPECTED_COUNT = 67;
 const SERVICE = "agent";
 
 let failed = false;

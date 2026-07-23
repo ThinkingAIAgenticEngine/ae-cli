@@ -7,6 +7,9 @@ import test from 'node:test';
 const ROOT = process.cwd();
 
 const retiredAnalysisCommands = [
+  '+cancel_query',
+  '+load_filters',
+  '+list_query_clusters',
   '+get_table_columns',
   '+build_entity_details_sql',
   '+build_event_details_sql',
@@ -53,6 +56,14 @@ const retiredTokens = [
   ...retiredAnalysisCommands,
   ...retiredAudienceCommands,
 ];
+
+const allowedServiceScopedOccurrences = new Map([
+  ['+cancel_query', [
+    'src/commands/te-engage/',
+    'skills/ae-engage/',
+    'docs/engage-',
+  ]],
+]);
 
 function runCli(...args) {
   return spawnSync('npx', ['tsx', 'src/index.ts', '--no-update-check', ...args], {
@@ -107,9 +118,14 @@ test('retired analysis commands are absent from source and agent-facing document
   const violations = [];
   for (const file of files) {
     const content = fs.readFileSync(file, 'utf8');
+    const relativeFile = path.relative(ROOT, file);
     for (const token of retiredTokens) {
+      const allowedPrefixes = allowedServiceScopedOccurrences.get(token) ?? [];
+      if (allowedPrefixes.some((prefix) => relativeFile.startsWith(prefix))) {
+        continue;
+      }
       if (content.includes(token)) {
-        violations.push(`${path.relative(ROOT, file)} contains ${token}`);
+        violations.push(`${relativeFile} contains ${token}`);
       }
     }
   }
@@ -117,9 +133,9 @@ test('retired analysis commands are absent from source and agent-facing document
   assert.deepEqual(violations, []);
 });
 
-test('the retired command inventory remains exactly 29 commands', () => {
+test('the retired command inventory remains exactly 32 commands', () => {
   assert.equal(retiredAnalysisCommands.length + retiredAudienceCommands.length
-    + retiredSemanticBuildGroups.length, 29);
+    + retiredSemanticBuildGroups.length, 32);
 });
 
 test('gateway lifecycle commands are not labeled as legacy MCP commands', () => {
