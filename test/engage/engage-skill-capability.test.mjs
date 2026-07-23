@@ -48,34 +48,6 @@ const addChannelRef = readFileSync(
   path.join(ROOT, 'skills/ae-engage/references/add-channel.md'),
   'utf8',
 );
-const saveFlowRef = readFileSync(
-  path.join(ROOT, 'skills/ae-engage/references/save-flow.md'),
-  'utf8',
-);
-const flowDetailRef = readFileSync(
-  path.join(ROOT, 'skills/ae-engage/references/flow-detail.md'),
-  'utf8',
-);
-const flowListRef = readFileSync(
-  path.join(ROOT, 'skills/ae-engage/references/flow-list.md'),
-  'utf8',
-);
-const channelListRef = readFileSync(
-  path.join(ROOT, 'skills/ae-engage/references/channel-list.md'),
-  'utf8',
-);
-const channelDetailRef = readFileSync(
-  path.join(ROOT, 'skills/ae-engage/references/channel-detail.md'),
-  'utf8',
-);
-const saveTaskRef = readFileSync(
-  path.join(ROOT, 'skills/ae-engage/references/save-task.md'),
-  'utf8',
-);
-const addChannelRef = readFileSync(
-  path.join(ROOT, 'skills/ae-engage/references/add-channel.md'),
-  'utf8',
-);
 
 const touchLimitsCommand =
   'ae-cli engage-setting channel-touch-limits list --project-id <project_id>';
@@ -133,29 +105,6 @@ assert.match(flowUpdateRemarkRef, /`--flow-uuid`/);
 assert.match(flowUpdateRemarkRef, /`--flow-version-desc`/);
 
 assert.match(operationLogRef, /engage-flow operation-log query/);
-
-// Migrated Capability boundaries keep outer input/output snake_case and nested DTO input camelCase.
-assert.match(skill, /outer Capability input and all Capability response keys use snake_case/);
-assert.match(skill, /Nested business DTOs passed through `--req` or `--payload` keep their documented native camelCase fields/);
-assert.match(skill, /data\.result\.result\.flow_uuid/);
-assert.match(saveFlowRef, /data\.result\.draft_version/);
-assert.match(saveFlowRef, /data\.flow\.node_list/);
-assert.match(saveFlowRef, /data\.item\.config\.params_list/);
-assert.match(saveFlowRef, /channel_status = 0/);
-assert.doesNotMatch(saveFlowRef, /data\.config\.paramsList|channelStatus\s*=\s*2/);
-assert.match(flowDetailRef, /data\.flow\.node_list\[\]\.type/);
-assert.match(flowDetailRef, /data\.flow\.mapping_status/);
-assert.doesNotMatch(flowDetailRef, /### `(?:mappingStatus|nodeList|channelStatus)`/);
-assert.match(flowListRef, /data\.items\[\]\.flow_id/);
-assert.match(channelListRef, /data\.items\[\]\.channel_status/);
-assert.match(channelDetailRef, /data\.item\.channel_status/);
-assert.match(channelDetailRef, /data\.item\.config\.params_list/);
-assert.doesNotMatch(channelDetailRef, /### `channelStatus`/);
-assert.match(saveTaskRef, /data\.result\.operation_mode/);
-assert.match(saveTaskRef, /Hermes assigns the outer `--project-id` to `req\.projectId`/);
-assert.match(addChannelRef, /created channel is under `data\.item`/);
-assert.match(addChannelRef, /Hermes Capability handler/);
-assert.doesNotMatch(addChannelRef, /projectId is injected into `req` by the CLI/);
 
 // Migrated Capability boundaries keep outer input/output snake_case and nested DTO input camelCase.
 assert.match(skill, /outer Capability input and all Capability response keys use snake_case/);
