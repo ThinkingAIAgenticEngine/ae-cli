@@ -1,6 +1,6 @@
 # engage-scene config-param
 
-> Capability ids: `engage-scene.config-param.{list,batch-add,update,batch-delete}` · Domain: `engage`.
+> Trigger keywords: config center, scene config, config item · Capability ids: `engage-scene.config-param.{list,batch-add,update,batch-delete}` · Domain: `engage`.
 
 Scene management / config center — config item parameter management.
 

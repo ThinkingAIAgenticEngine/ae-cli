@@ -48,9 +48,13 @@ Topic-level audience uses `topicClusterKey` / `topicQp`; do **not** pass task-le
 
 | Value | Required | Notes |
 |---|---|---|
-| `1` (custom) | `topicQp` | Valid condition JSON object string (not `{}`). |
+| `1` (custom) | `topicQp` | Valid condition JSON object string (not `{}`). Use mix QP with `totalCFilter` (and optional `totalOutCFilter`). |
 | `2` (existed) | `topicClusterKey` | From an existing user cluster. |
 | `3` (all) | — | **Not supported for activity topics** → `TOPIC_TARGET_CLUSTER_TYPE_UNSUPPORTED`. Use standalone `engage-activity task create` for all-users. |
+
+**`triggerMixQpVersion`:** For custom audience (`targetClusterType=1`) with mix QP (`totalCFilter` / `totalInCFilter`), set `"4.4"`. UI theme edit parses conditions only when this is `4.4`; missing/blank values make target-user filters render empty. Capability create/update/copy default blank to `"4.4"` (same as UI and standalone task MCP).
+
+Task-level extra conditions go in `taskQp` as mix QP under **`totalCFilter` only** (user attrs and/or events). Do not put task-owned conditions in `totalInCFilter` — that key is reserved for topic→task merge (topic `totalCFilter` is copied into task cluster `totalInCFilter` on save).
 
 ### Trigger (`triggerType`)
 
@@ -59,6 +63,35 @@ Topic-level audience uses `topicClusterKey` / `topicQp`; do **not** pass task-le
 | `0` (schedule single) | `triggerTime` (`yyyy-MM-dd HH:mm`, future) | Preferred for CLI create. |
 | `1` (schedule repeat) | `startDate`, `endDate`, `triggerCrontab` | |
 | `2` (manual) | — | **Not supported for activity topics** (UI only offers 0/1). Using it without `endDate` causes `CAPABILITY_EXECUTION_FAILED`. |
+
+## Create Topic Orchestration
+
+Use this workflow when a topic has a shared audience plus one or more task-level audience splits, message variants, or completion goals.
+
+1. **Separate the intent before building the payload.** Record the parent activity, topic-level shared audience, task-level extra audience for each task, schedule, channel, message content, and completion goal/window as distinct fields. A completion goal is not an audience condition unless the user explicitly says so.
+2. **Resolve the parent activity.** Use `activity list|get` to verify the exact `activityId`, editable status, activity dates, and timezone. For a repeated topic, keep `startDate` and `endDate` inside the activity period and interpret the cron in the activity timezone.
+3. **Resolve a real channel.** Query `engage-setting channel list`, then inspect the selected channel before composing content. If several enabled channels match and the user has not specified a provider or an already-confirmed project default, ask which one to use instead of choosing an arbitrary ID.
+4. **Read the channel content contract.** Call `engage-task task build-save-guide` with the known trigger, audience, channel type, and `channelId`. Build every `groupContentList[].contentList[].content` item from `fieldRules.channelContentSchema`; do not infer App Push keys or parameter types from memory.
+5. **Prepare audience and completion inputs.** Resolve real event/property metadata and categorical values through the applicable Analysis workflow. Put the shared condition in `topicQp` or `topicClusterKey`, and only task-specific conditions in each `taskQp`. For a rolling condition such as "recent N days" that must be evaluated for future repeated sends, prefer a custom QP; use an existing cluster only after confirming that its refresh semantics match the send cadence. Build the completion goal separately in `completionIndicatorDef`.
+6. **Build one native `TopicAddDTO`.** Keep nested payload keys in camelCase. Ensure `tasks` is non-empty, `frequencyLimits` and QP fields are JSON strings where documented, each task has channel content, and Android/iOS or other variants map to the correct task audience and message.
+7. **Validate the complex payload.** Run `topic create ... --validate` while correcting the nested payload. Inspect `normalized_input` and confirm that the schedule, audience boundaries, message variants, and completion window retain the intended semantics. After `valid=true`, execute the same payload directly; do not add a redundant dry-run by default.
+8. **Create exactly once.** Run `topic create` with the validated payload. A successful response only reports `data.success`; it does not provide enough evidence to declare the whole orchestration complete.
+9. **Resolve IDs and verify the saved topic.** Call `activity info-list` for the parent activity, match the new topic and tasks by their names, then call `topic get` with the returned `topicId`. Verify the channel, dates, cron, topic audience, each task audience, content, completion goal, and draft status. For custom audiences, confirm that the saved task QP keeps task-owned conditions in `totalCFilter` and the shared topic condition appears only through the topic-to-task merge.
+10. **Verify generated audiences before reporting completion.** Read the generated topic/task cluster keys with the applicable cluster query and wait for terminal computation state. Require `refresh_status=success`, `progress=100`, `real_available=1`, and `cluster_valid=1`. A zero-user result may be valid, but reconcile it with the discovered categorical values and business expectation. If computation fails, correct only the verified cause and re-check; do not retry an unchanged request or report the topic as fully ready.
+
+Recommended command order:
+
+```text
+activity list/get
+-> channel list/get
+-> task build-save-guide
+-> prepare topic audience, task audiences, content, and completion goal
+-> topic create --validate
+-> topic create
+-> activity info-list
+-> topic get
+-> generated audience status checks
+```
 
 ## Output
 

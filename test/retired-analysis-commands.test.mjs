@@ -7,6 +7,11 @@ import test from 'node:test';
 const ROOT = process.cwd();
 
 const retiredAnalysisCommands = [
+  '+create_alert',
+  '+delete_alert',
+  '+get_alert',
+  '+list_alerts',
+  '+update_alert',
   '+cancel_query',
   '+load_filters',
   '+list_query_clusters',
@@ -18,6 +23,7 @@ const retiredAnalysisCommands = [
 ];
 
 const retiredSemanticBuildGroups = [
+  'alert-definition-schema',
   'user-cluster-definition',
   'user-tag-definition',
 ];
@@ -133,9 +139,9 @@ test('retired analysis commands are absent from source and agent-facing document
   assert.deepEqual(violations, []);
 });
 
-test('the retired command inventory remains exactly 32 commands', () => {
+test('the retired command inventory remains exactly 38 commands', () => {
   assert.equal(retiredAnalysisCommands.length + retiredAudienceCommands.length
-    + retiredSemanticBuildGroups.length, 32);
+    + retiredSemanticBuildGroups.length, 38);
 });
 
 test('gateway lifecycle commands are not labeled as legacy MCP commands', () => {

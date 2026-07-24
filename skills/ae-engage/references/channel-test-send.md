@@ -1,6 +1,6 @@
 # engage-setting channel test-send
 
-> Capability id: `engage-setting.channel.test-send` · Domain: `engage`.
+> Trigger keywords: push channel · Capability id: `engage-setting.channel.test-send` · Domain: `engage`.
 
 ## Command
 

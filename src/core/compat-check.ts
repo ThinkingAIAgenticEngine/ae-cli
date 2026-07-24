@@ -35,6 +35,15 @@ export interface CompatPackageInfo {
   version: string;
 }
 
+export interface UpdateNotice {
+  command: string;
+  current: string;
+  expected: string;
+  cluster: string;
+  reason: CompatVerdict['kind'];
+  message: string;
+}
+
 function cacheFilePath(): string {
   return path.join(getConfigDir(), 'compat-check.json');
 }
@@ -144,9 +153,14 @@ export function isNonInteractiveOutput(): boolean {
 
 /** Last computed host-compat notice for this process (JSON `_notice` / Agent stdout). */
 let pendingHostCompatNotice: string | undefined;
+let pendingUpdateNotice: UpdateNotice | undefined;
 
 export function getPendingHostCompatNotice(): string | undefined {
   return pendingHostCompatNotice;
+}
+
+export function getPendingUpdateNotice(): UpdateNotice | undefined {
+  return pendingUpdateNotice;
 }
 
 export function getCachedCompatForHost(host: string): CompatHostCache | undefined {
@@ -222,11 +236,9 @@ async function refreshAndMaybeNotify(host: string, pkg: CompatPackageInfo): Prom
   const notice = formatCompatNotice(verdict);
   if (!notice) {
     pendingHostCompatNotice = undefined;
+    pendingUpdateNotice = undefined;
     return;
   }
-
-  // Always expose to JSON/_notice so Agents reading stdout can see it.
-  pendingHostCompatNotice = notice;
 
   const entry = store.hosts[key] ?? {
     host: key,
@@ -236,17 +248,32 @@ async function refreshAndMaybeNotify(host: string, pkg: CompatPackageInfo): Prom
     lastFetchedAt: fetchedAt || new Date().toISOString(),
   };
 
-  // Interactive TTY: once per 24h. Non-interactive (Agent/pipe): print every run.
-  const dueForHumanTip = shouldNotify(entry);
-  if (!dueForHumanTip && !isNonInteractiveOutput()) return;
-
-  printNotice(notice);
-  if (dueForHumanTip) {
-    entry.lastNotifiedAt = new Date().toISOString();
-  }
   entry.localVersion = pkg.version;
   entry.expectedVersion = expected;
   entry.clusterVersion = cluster || entry.clusterVersion;
+
+  // Human and Agent-facing update hint: once per 24h for each host.
+  const dueForTip = shouldNotify(entry);
+  if (!dueForTip) {
+    pendingHostCompatNotice = undefined;
+    pendingUpdateNotice = undefined;
+    store.hosts[key] = entry;
+    writeStore(store);
+    return;
+  }
+
+  pendingHostCompatNotice = notice;
+  pendingUpdateNotice = {
+    command: 'ae-cli update',
+    current: pkg.version,
+    expected,
+    cluster: cluster || '',
+    reason: verdict.kind,
+    message: `Current ae-cli is ${pkg.version}; this host requires ${expected}. Run: ae-cli update`,
+  };
+
+  printNotice(notice);
+  entry.lastNotifiedAt = new Date().toISOString();
   store.hosts[key] = entry;
   writeStore(store);
 }

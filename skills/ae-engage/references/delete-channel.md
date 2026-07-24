@@ -1,9 +1,8 @@
 # ae-engage engage-setting channel delete
 
+> Trigger keywords: push channel · Mapped command: `ae-cli engage-setting channel delete`
 
-Delete an Engage channel.
-
-Mapped command: `ae-cli engage-setting channel delete`
+Delete an Engage push channel.
 
 ## Flags
 

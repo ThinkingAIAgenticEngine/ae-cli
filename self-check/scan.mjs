@@ -42,16 +42,18 @@ const DOMAIN_TO_SKILL = {
   'te-audience': 'ae-analysis',
   'te-common': 'ae-analysis',
   'te-engage': 'ae-engage',
+  'te-experiment': 'ae-experiment',
   'te-dataops': 'ae-dataops',
   'te-community': 'ae-community',
   'te-kb': 'ae-kb',
   'te-team': 'ae-team',
   'te-agent': 'ae-agent',
+  'te-system': 'ae-system',
 };
 // Tool command directories (should not have a skill; used for interactive/ops purposes).
 const TOOL_DIRS = new Set(['sync', 'model']);
 // Skills that use a "grouped/inline doc" strategy rather than per-command references: do not report per-command missing docs for these.
-const GROUPED_DOC_SKILLS = new Set(['ae-dataops', 'ae-kb']);
+const GROUPED_DOC_SKILLS = new Set(['ae-dataops', 'ae-kb', 'ae-system']);
 const COMMAND_SKILL_OVERRIDES = [
   { pathPrefix: 'src/commands/te-analysis/global/', skill: 'ae-analysis-global' },
 ];

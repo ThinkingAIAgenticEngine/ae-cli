@@ -2,7 +2,7 @@ import {
   alertIdFlag,
   alertIdInput,
   createAnalysisCapabilityCommand,
-  definitionFlag,
+  definitionRequestFlag,
   projectIdFlag,
 } from './shared.js';
 
@@ -11,7 +11,7 @@ export const analysisAlertUpdate = createAnalysisCapabilityCommand({
   command: 'update',
   capabilityId: 'analysis.alert.update',
   description: 'Update an alert.',
-  flags: [projectIdFlag, alertIdFlag, definitionFlag],
+  flags: [projectIdFlag, alertIdFlag, definitionRequestFlag],
   risk: 'write',
-  buildInput: (ctx) => ({ ...alertIdInput(ctx), definition: ctx.json('definition') }),
+  buildInput: (ctx) => ({ ...alertIdInput(ctx), definition_request: ctx.json('definition-request') }),
 });

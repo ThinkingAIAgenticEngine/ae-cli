@@ -1,9 +1,8 @@
 # ae-engage engage-setting channel create
 
+> Trigger keywords: push channel · Mapped command: `ae-cli engage-setting channel create`
 
-Create a new Engage channel.
-
-Mapped command: `ae-cli engage-setting channel create`
+Create a new Engage push channel.
 
 ## Flags
 

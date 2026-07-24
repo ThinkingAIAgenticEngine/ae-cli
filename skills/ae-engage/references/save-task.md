@@ -10,13 +10,9 @@ Recommended workflow:
 
 1. `ae-cli engage-setting channel list --project-id <projectId>`
 2. `ae-cli engage-task task build-save-guide --project-id <projectId> --req '{...}'`
-3. If the guide indicates an audience or QP-derived fields are needed, create the audience directly and read it back:
-
-```bash
-ae-cli analysis user-cluster create --project-id <projectId> --cluster-name <condition_cluster_name> --display-name <display_name> --definition-request '<semantic-definition-json>'
-ae-cli analysis user-cluster get --project-id <projectId> --cluster-names '["<condition_cluster_name>"]'
-```
-
+3. If the guide indicates QP-derived fields, call `ae-cli engage-setting query cluster-qp-skill --project-id <projectId>` and build
+   `targetConfig.qp`, `triggerConfig.triggerRule`, `clientConfig.clientQp`, or `completionIndicatorDef.event`
+   from the returned skill text. For existing-cluster audiences, use `analysis user-cluster get`.
 4. Build the final grouped `req`
 5. `ae-cli engage-task task save --project-id <projectId> --req '{...}'`
 
@@ -40,7 +36,7 @@ For the full guide contract, request format, return sections, and handoff usage,
 The command supports two modes:
 
 - create mode: omit `req.taskId`
-- update mode: include `req.taskId` for an existing draft task
+- update mode: include `req.taskId` for an existing draft or paused task
 
 Regardless of mode, this tool only saves a draft:
 
@@ -59,8 +55,8 @@ Notes:
 - the outer Capability input uses `project_id` and `req`; fields inside `req` keep the native camelCase DTO shape shown below
 - Hermes assigns the outer `--project-id` to `req.projectId`; if `req.projectId` is also present, the outer value wins
 - the whole `req` must be a JSON object, not a stringified JSON string
-- for update mode, Hermes only allows modifying draft tasks
-- in update mode, omitted fields are backfilled from the existing draft before validation, so partial draft updates are allowed
+- for update mode, Hermes allows modifying **draft** or **paused** tasks (`status` 0 or 2); running/ended tasks are rejected with `invalid_status`
+- in update mode, omitted fields are backfilled from the existing task before validation, so partial updates (e.g. rename only) are allowed
 
 ### Response shape
 
@@ -160,12 +156,13 @@ Top-level notes:
 
 ### 4.1 `taskId`
 
-Use `taskId` only when you are updating an existing draft task.
+Use `taskId` only when you are updating an existing draft or paused task.
 
 - create mode: omit `taskId`
 - update mode: include `taskId`
-- update mode can send only the fields that need changing
-- update mode still fails if the referenced task is not in draft status
+- update mode can send only the fields that need changing (e.g. `baseInfo.taskName` for rename)
+- update mode fails with `invalid_status` if the task is running or ended
+- for paused tasks that already started pushing, Hermes rejects changes to key attributes (channel, trigger time/type, audience cluster, timezone, completion indicators); renames and other non-key fields remain allowed
 
 ### 4.2 `channelConfig`
 
@@ -273,7 +270,7 @@ Before submission, verify:
 5. `targetClusterType` matches the presence or absence of `clusterKey` / `qp`.
 6. `triggerType` matches the provided scheduling or event fields.
 7. `completionIndicatorDef` is present and structurally valid for the current scenario.
-8. `taskId` is omitted for create mode and present only for updating a draft.
+8. `taskId` is omitted for create mode and present only for updating a draft or paused task.
 9. No unsupported `triggerType=6` is used.
 10. No placeholder IDs or fabricated resource names remain in the request.
 
@@ -309,6 +306,6 @@ This command is a write operation.
 - Do not pass the whole `req` as a JSON string
 - Do not use `triggerType=6`
 - Do not invent `channelId`, `clusterKey`, audience definitions, or content keys
-- Do not use `taskId` for a non-draft task
+- Do not use `taskId` for a running or ended task
 - Do not pass `occasionKeys`; Hermes derives them from content
 - Do not call the semantic cluster definition builder as a reflex; call it only when guide output says QP-derived fields are needed

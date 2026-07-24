@@ -1,18 +1,21 @@
 # analysis bi-panel update
 
-Use when the user wants to update BI panel content or metadata.
+Use only when the user wants to rename a BI dashboard.
 
-Do not use this command to verify draft content or publish a draft. `bi-panel get`
-reads only the released/queryable version. Use `bi-panel-version get` to inspect
-`release` or `draft`, and `bi-panel-version publish` to publish a matching draft
-`source_version`.
+This first-version capability does not modify pages, charts, worksheets, draft
+content, or released content. Do not use it as a content-update command.
+
+`bi-panel get` reads only the released/queryable version. If another product
+entry point has created a draft, use
+`bi-panel-version get --version-type draft` to inspect it and
+`bi-panel-version publish` to publish its matching `source_version`.
 
 Command:
 
 ```bash
-ae-cli analysis bi-panel update --project-id <project_id> [--panel-name <name>] [--panel-uuid <uuid>] [--payload '{...}']
+ae-cli analysis bi-panel update --project-id <project_id> --panel-uuid <uuid> --panel-name <new_name>
 ```
 
-Input sends `project_id`, optional `panel_name`, `panel_uuid`, and `payload`.
+Input sends required `project_id`, `panel_uuid`, and new `panel_name`.
 
-Output is the gateway envelope. `data` contains the update result.
+Output is the gateway envelope. `data.updated=true` confirms the rename.

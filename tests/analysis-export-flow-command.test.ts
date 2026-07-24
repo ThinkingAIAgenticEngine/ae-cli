@@ -7,7 +7,9 @@
 import assert from 'node:assert/strict';
 import { artifactDownload } from '../src/commands/te-analysis/artifact/download.ts';
 import { dashboardCopy } from '../src/commands/te-analysis/dashboard/copy.ts';
+import { dashboardDailyReportGet } from '../src/commands/te-analysis/dashboard-daily-report/get.ts';
 import { dashboardDailyReportSend } from '../src/commands/te-analysis/dashboard-daily-report/send.ts';
+import { dashboardDailyReportSendStatus } from '../src/commands/te-analysis/dashboard-daily-report/send-status.ts';
 import { dashboardDailyReportUpdate } from '../src/commands/te-analysis/dashboard-daily-report/update.ts';
 import { dashboardDefinitionExport } from '../src/commands/te-analysis/dashboard-definition/export.ts';
 import { runInspect } from '../src/commands/te-analysis/run/inspect.ts';
@@ -137,50 +139,36 @@ await test('dashboard copy defaults report copy and omits target location', asyn
   });
 });
 
-await test('dashboard daily report update sends safe defaults when payload is absent', async () => {
+await test('dashboard daily report update sends only explicitly provided patch fields', async () => {
   const body = await dryBody(dashboardDailyReportUpdate, {
     'project-id': 1,
     'dashboard-id': 1001,
+    'send-time': '09:00',
   });
 
   assert.deepEqual(body, {
     input: {
       project_id: 1,
       dashboard_id: 1001,
-      need_csv: false,
-      host_url: '',
-      enable_smtp: false,
-      enable_email: false,
-      enable_dd: false,
-      enable_wx: false,
-      enable_feishu: false,
-      enable_kim: false,
-      enable_slack: false,
-      send_date: '1,2,3,4,5,6,7',
       send_time: '09:00',
-      lang: 'zh-CN',
-      screen_type: 'normal',
-      zone_offset: 0,
-      enable_send: false,
     },
   });
 });
 
-await test('dashboard daily report send keeps payload authoritative', async () => {
+await test('dashboard daily report send infers channels from destination fields', async () => {
   const body = await dryBody(dashboardDailyReportSend, {
     'project-id': 1,
     'dashboard-id': 1001,
-    payload: '{"need_csv":true,"host_url":"https://ta.example.com"}',
+    'email-new': 'external@example.com',
+    'dd-url': '["https://dd.example/hook"]',
   });
 
   assert.deepEqual(body, {
     input: {
       project_id: 1,
       dashboard_id: 1001,
-      payload: {
-        need_csv: true,
-        host_url: 'https://ta.example.com',
-      },
+      email_new: 'external@example.com',
+      dd_url: ['https://dd.example/hook'],
     },
   });
 });
@@ -192,6 +180,41 @@ await test('dashboard daily report help documents complete Feishu image upload c
   assert.match(feishuInfo.desc, /app_id/);
   assert.match(feishuInfo.desc, /app_secret/);
   assert.match(feishuInfo.desc, /webhook/);
+  assert.equal(feishuInfo.sensitive, true);
+});
+
+await test('dashboard daily report send does not expose channel or SMTP switches', () => {
+  const names = new Set(dashboardDailyReportSend.flags.map((flag) => flag.name));
+
+  assert.equal(names.has('enable-smtp'), false);
+  assert.equal(names.has('enable-email'), false);
+  assert.equal(names.has('enable-dd'), false);
+  assert.equal(names.has('send-date'), false);
+  assert.equal(names.has('send-time'), false);
+});
+
+await test('dashboard daily report get and send-status map stable identifiers', async () => {
+  const getBody = await dryBody(dashboardDailyReportGet, {
+    'project-id': 1,
+    'dashboard-id': 1001,
+  });
+  const statusBody = await dryBody(dashboardDailyReportSendStatus, {
+    'project-id': 1,
+    'task-id': 44,
+  });
+
+  assert.deepEqual(getBody, {
+    input: {
+      project_id: 1,
+      dashboard_id: 1001,
+    },
+  });
+  assert.deepEqual(statusBody, {
+    input: {
+      project_id: 1,
+      task_id: 44,
+    },
+  });
 });
 
 process.stdout.write(`\n${pass} passed, ${fail} failed\n`);

@@ -35,7 +35,6 @@ import inputFile from './input-file/index.js';
 import project from './project/index.js';
 import tracking from './tracking/index.js';
 import alert from './alert/index.js';
-import alertDefinitionSchema from './alert-definition-schema/index.js';
 import alertDetail from './alert-detail/index.js';
 import alertJob from './alert-job/index.js';
 import alertNoticeConfig from './alert-notice-config/index.js';
@@ -81,7 +80,6 @@ export const baseCommands: Command[] = [
   ...project,
   ...tracking,
   ...alert,
-  ...alertDefinitionSchema,
   ...alertDetail,
   ...alertJob,
   ...alertNoticeConfig,

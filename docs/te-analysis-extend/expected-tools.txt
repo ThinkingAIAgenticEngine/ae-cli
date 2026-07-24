@@ -1,4 +1,3 @@
-get_alert_definition_schema
 list_alerts
 get_alert
 create_alert

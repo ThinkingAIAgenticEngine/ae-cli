@@ -1,6 +1,6 @@
 # engage-scene config-metric
 
-> Capability ids: `engage-scene.config-metric.{list,get,batch-add,update-rule,batch-delete}` · Domain: `engage`.
+> Trigger keywords: config center, config item · Capability ids: `engage-scene.config-metric.{list,get,batch-add,update-rule,batch-delete}` · Domain: `engage`.
 
 Scene management / config center — config item related-metric management.
 

@@ -33,8 +33,8 @@ You still organize user requirements into an intermediate intent first, then map
 ## 2. Workflow
 
 1. Identify the flow intent from the user input and produce a unified intent JSON.
-2. Build a semantic condition request from `ae-analysis/references/user_cluster_models.md`, create the audience directly with `analysis user-cluster create`, and prefer its `cluster_name`/`clusterKey`. Read the saved server-authored definition with `analysis user-cluster get` only when an Engage node schema explicitly requires QP-derived fields; never assemble raw QP.
-3. Run `ae-cli engage-setting channel list --project-id <projectId>` to get the available channels and match real `channel_id` values for touchpoint nodes. For `webhook_push`, also run `ae-cli engage-setting channel get` and use `data.item.config.params_list` to build request field `contentList`.
+2. Build a semantic condition request from `ae-analysis/references/user_cluster_models.md`, create the audience directly with `analysis user-cluster create`, and prefer its `cluster_name`/`clusterKey`. When node schema requires QP-derived fields (`targetClusterQp`, `triggerRule`, etc.), call `ae-cli engage-setting query cluster-qp-skill --project-id <projectId>` first; never assemble raw QP manually.
+3. Run `ae-cli engage-setting channel list --project-id <projectId>` to get the available channels and match real `channelId` values for touchpoint nodes. For `webhook_push`, also run `ae-cli engage-setting channel get` and use `data.item.config.params_list` to build request field `contentList` (camelCase; snake_case aliases are normalized during validate).
 4. Query `ae-cli engage-flow node-config schema --project-id <project_id> --node-type <type>` before constructing each non-trivial node config, then run `ae-cli engage-flow node-config validate --project-id <project_id> --node-type <type> --operation-mode save_flow --config '<config-json-string>'` before placing the config into `nodes` or `nodeConfigs`.
 5. Map the intent JSON to `nodes` and `edges` (compact form, see §7 / §8).
 6. `build` → resolve any `need_input` slot → `preview` → `commit`, then verify with `engage-flow flow get`.
@@ -460,7 +460,10 @@ The CLI injects `projectId` into both the top level and `req`; you do not write 
 
 `need_input` is a **soft prompt**, not a hard error:
 
-- **`data.result.errors` empty + `data.result.next_slot` present** → server needs one more node config (trigger / channel / targetCluster). Answer with request fields `operation=build` + `draftId` + `expectedVersion` + `slotAnswer`. If response `next_slot.target_node_id` is present, request `slotAnswer.nodeConfig` may contain only `config`; otherwise include `nodeId` or `id`.
+- **`data.result.errors` empty + `data.result.next_slot` present** → server needs one more node config (trigger / channel / targetCluster). Answer with request fields `operation=build` + `draftId` + `expectedVersion` + `slotAnswer`. If response `next_slot.target_node_id` is present, request `slotAnswer.nodeConfig` may contain only `config`; otherwise include `nodeId` or `id`. **`slotAnswer.nodeConfig.config` merges into the existing node config** — send only the fields you are adding or changing, not the full config.
+- For existing-cluster entry nodes (`targetUserType=2`), use `targetClusterName` or `clusterId` alias.
+- For custom audiences, call `ae-cli engage-setting query cluster-qp-skill --project-id <projectId>` before filling `targetClusterQp`.
+- For `event_trigger`, `endDate` must be **strictly earlier than** `flowEndDate`.
 - **`data.result.errors` non-empty** → hard validation failure. Fix `nodes`/`edges` and `build` again (a new `data.result.draft_id` is issued; the stale draft is cleaned by TTL).
 
 ### 11.3 Minimal Working Example

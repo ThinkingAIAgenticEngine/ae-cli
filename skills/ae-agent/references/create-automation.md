@@ -13,6 +13,7 @@ Domain: **Automations / write**
 - `--name` and `--message` are required.
 - A schedule is required: provide either `--cron` or a `--schedule-kind` (with its time/day fields). `--cron` and `--schedule-kind` are mutually exclusive.
 - `--agent-id` and `--agent-name` are mutually exclusive. Obtain a real Agent ID via `+list-agents` — do not guess.
+- In a chat runtime, omitted `--conversation-id`, `--agent-id`, and `--model` values fall back to `TE_AGENT_CONVERSATION_ID`, `TE_AGENT_CURRENT_AGENT_ID`, and `TE_AGENT_CURRENT_MODEL_ID`. Explicit flags always take precedence; `--agent-name` intentionally suppresses the current Agent ID fallback.
 - JSON flags must be valid JSON strings, usually wrapped in single quotes in shell.
 - This is an ordinary `write` operation and does not require CLI confirmation.
 - Do not surface raw automation IDs, raw JSON, or concrete detail paths in user-facing replies.

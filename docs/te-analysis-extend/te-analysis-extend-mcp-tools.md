@@ -10,10 +10,9 @@
 
 ## 工具分类统计
 
-总计 **39 个工具**，按功能域分类：
+总计 **38 个工具**，按功能域分类：
 
-### 1. 预警管理 (Alert Management) - 6 个工具
-- `get_alert_definition_schema` - 获取预警定义 schema
+### 1. 预警管理 (Alert Management) - 5 个工具
 - `list_alerts` - 列出预警任务
 - `get_alert` - 获取单个预警详情
 - `create_alert` - 创建预警
@@ -84,11 +83,6 @@ SQL 表及列发现已迁移到 capability gateway：先执行 `ae-cli analysis 
 
 ### 预警管理工具
 
-#### get_alert_definition_schema
-- **描述**: 获取预警定义结构文档（字段、枚举、示例），用于构造 `create_alert`/`update_alert` 的 definition
-- **参数**: 无
-- **风险**: read
-
 #### list_alerts
 - **描述**: 列出项目预警任务，支持按名称关键字过滤
 - **参数**:
@@ -104,10 +98,10 @@ SQL 表及列发现已迁移到 capability gateway：先执行 `ae-cli analysis 
 - **风险**: read
 
 #### create_alert
-- **描述**: 创建预警任务（definition 为 JSON）
+- **描述**: 创建预警任务（definition_request 为结构化 JSON）
 - **参数**:
   - `projectId` (Integer, required) - 项目 ID
-  - `definition` (String, required) - 预警定义 JSON（结构参考 `get_alert_definition_schema`）
+  - `definitionRequest` (AlertDefinitionRequest, required) - 结构化预警定义请求
 - **风险**: write
 
 #### update_alert
@@ -115,7 +109,7 @@ SQL 表及列发现已迁移到 capability gateway：先执行 `ae-cli analysis 
 - **参数**:
   - `projectId` (Integer, required) - 项目 ID
   - `alertId` (Integer, required) - 预警 ID
-  - `definition` (String, required) - 更新后的预警定义 JSON
+  - `definitionRequest` (AlertDefinitionRequest, required) - 更新后的结构化预警定义请求
 - **风险**: write
 
 ### 元数据批量管理工具

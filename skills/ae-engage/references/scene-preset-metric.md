@@ -1,6 +1,6 @@
 # engage-scene preset-metric
 
-> Capability ids: `engage-scene.preset-metric.{get,set}` · Domain: `engage`.
+> Trigger keywords: config center, config item · Capability ids: `engage-scene.preset-metric.{get,set}` · Domain: `engage`.
 
 Scene management / config center — config item preset metrics (impression / click / engagement) QP configuration.
 

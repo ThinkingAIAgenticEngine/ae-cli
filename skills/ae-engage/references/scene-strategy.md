@@ -1,6 +1,6 @@
 # engage-scene strategy
 
-> Capability ids: `engage-scene.strategy.{list,get,create,update,log,batch-copy,manage}` · Domain: `engage`.
+> Trigger keywords: config center, scene config, operation strategy · Capability ids: `engage-scene.strategy.{list,get,create,update,log,predict,batch-copy,manage}` · Domain: `engage`.
 
 Scene management / config center — config item strategy management. `create`/`update` pass backend DTOs via `--payload` (native camelCase structure); `project_id` is injected into the payload.
 
@@ -24,6 +24,12 @@ ae-cli engage-scene strategy update --project-id <project_id> \
 # Query a strategy's log
 ae-cli engage-scene strategy log --project-id <project_id> --strategy-uuid <uuid>
 
+# Predict custom-audience size (mix QP)
+ae-cli engage-scene strategy predict --project-id <project_id> \
+  --qp '<targetClusterQp JSON string>' \
+  --zone-offset 8 \
+  [--strategy-uuid <uuid>]
+
 # Batch-copy strategies
 ae-cli engage-scene strategy batch-copy --project-id <project_id> --config-id <config_id> \
   --strategy-ids '["s1","s2"]' [--op-mode batch]
@@ -42,6 +48,7 @@ ae-cli engage-scene strategy manage --project-id <project_id> --config-id <confi
 | create | `--project-id`, `--payload` | payload = `ConfigStrategyAddDTO`. |
 | update | `--project-id`, `--payload` | payload = `ConfigStrategyModifyDTO` (`strategyUuid` + fields). |
 | log | `--project-id`, `--strategy-uuid` | read. |
+| predict | `--project-id`, `--qp`, `--zone-offset` | Optional `--strategy-uuid`, `--request-id`. read. |
 | batch-copy | `--project-id`, `--config-id`, `--strategy-ids` | `--op-mode` optional (default `batch`). |
 | manage | `--project-id`, `--config-id`, `--action` | Lifecycle actions require `--strategy-uuid-list`; review actions require `--strategy-list`; write. |
 
@@ -51,13 +58,21 @@ ae-cli engage-scene strategy manage --project-id <project_id> --config-id <confi
 - `create`: `data.strategy_uuid`.
 - `update`: `data.success`.
 - `log`: `data.log`.
+- `predict`: `data.entity_num`, `data.real_available`, `data.predict_num_list`, `data.refresh_time`.
 - `batch-copy`: `data.result`.
 - `manage`: `data.item`.
 
 ## Decision Rules
 
 - Discover real strategy UUIDs / config IDs first; never invent IDs.
+- **Custom audience (`targetClusterType=1`)** — follow [`scene-strategy-audience.md`](scene-strategy-audience.md) end-to-end:
+  1. Preflight every **用户满足** user property and **用户行为** event via `analysis-meta property get` / `event get`; if missing, **stop** and list available properties — never invent or drop.
+  2. Assemble mix QP with **two-block layout**: `totalCFilter.filts[0]` = 用户满足, `totalCFilter.filts[1]` = 用户行为; `totalCFilter.relation` = 且/或 between them. **Never** nest `event` inside user-side `COMPOUND`.
+  3. `JSON.stringify` → `targetClusterQp`; then `strategy create|update`.
+  4. **Do not** call `analysis user-cluster create` unless the user explicitly asks for an existing/named cluster.
+  - Full QP spec + examples A/B/C: [`scene-strategy-audience.md`](scene-strategy-audience.md).
 - **`create` requires an enabled template** on the same config item. Enable workflow: `config-param batch-add` → `template create` → `template update` (non-empty `config[]` with real `paramId`) → `template update-status --status 1`. Otherwise `create` returns `TEMPLATE_ENABLE`.
 - `create` output field is `data.strategy_uuid` (not `strategy_id`).
 - `manage` supports `online`, `offline`, `suspend`, `delete`, `approve`, `deny`, and `cancel`; it is a write operation.
 - Save-and-submit and strategy test-send are separate high-impact operations and remain unexposed; use the product UI.
+- **Audience estimate (预估人数):** `ae-cli engage-scene strategy predict` — see [`scene-strategy-audience.md`](scene-strategy-audience.md) § Audience size estimate.

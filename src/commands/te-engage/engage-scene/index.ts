@@ -32,6 +32,7 @@ import { strategyList } from './strategy/list.js';
 import { strategyManage } from './strategy/manage.js';
 import { strategyUpdate } from './strategy/update.js';
 import { strategyLog } from './strategy/log.js';
+import { strategyPredict } from './strategy/predict.js';
 import { strategyBatchCopy } from './strategy/batch-copy.js';
 // Disabled pending separate admission of these high-impact commands.
 // import { strategySaveSubmit } from './strategy/save-submit.js';
@@ -79,6 +80,7 @@ const commands: Command[] = [
   strategyManage,
   strategyUpdate,
   strategyLog,
+  strategyPredict,
   strategyBatchCopy,
   // strategySaveSubmit,
   // strategyTestSend,
@@ -125,6 +127,7 @@ export { strategyList } from './strategy/list.js';
 export { strategyManage } from './strategy/manage.js';
 export { strategyUpdate } from './strategy/update.js';
 export { strategyLog } from './strategy/log.js';
+export { strategyPredict } from './strategy/predict.js';
 export { strategyBatchCopy } from './strategy/batch-copy.js';
 // export { strategySaveSubmit } from './strategy/save-submit.js';
 // export { strategyTestSend } from './strategy/test-send.js';

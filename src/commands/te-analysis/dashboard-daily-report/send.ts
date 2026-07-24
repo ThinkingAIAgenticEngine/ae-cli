@@ -3,19 +3,19 @@ import {
   payloadFlag,
   projectIdFlag,
 } from '../capability-shared.js';
-import { dailyReportFlags, dailyReportInput } from './shared.js';
+import { dailyReportSendFlags, dailyReportSendInput } from './shared.js';
 
 export const dashboardDailyReportSend = createAnalysisCapabilityCommand({
   resource: 'dashboard-daily-report',
   command: 'send',
   capabilityId: 'analysis.dashboard_daily_report.send',
-  description: 'Send dashboard daily report immediately. Omit config to use saved config; pass channel flags for an ad hoc send.',
+  description: 'Send dashboard daily report immediately. Destination fields infer channels; omit them to reuse saved destinations.',
   flags: [
     projectIdFlag,
     { name: 'dashboard-id', type: 'number', required: true, desc: 'Dashboard ID.' },
-    ...dailyReportFlags(false),
-    payloadFlag,
+    ...dailyReportSendFlags(),
+    { ...payloadFlag, sensitive: true },
   ],
   risk: 'write',
-  buildInput: (ctx) => dailyReportInput(ctx, false),
+  buildInput: dailyReportSendInput,
 });

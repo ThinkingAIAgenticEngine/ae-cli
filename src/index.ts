@@ -2,7 +2,6 @@ import { Command as CommanderCommand } from 'commander';
 import { createRequire } from 'module';
 import { registerCommands } from './framework/register.js';
 import type { Command } from './framework/types.js';
-import { notifyIfUpdateAvailable } from './core/update-check.js';
 import { runHostCompatCheck } from './core/compat-check.js';
 import { getLocalCliPackageInfo } from './core/package-info.js';
 import { registerTracking } from './commands/tracking/index.js';
@@ -33,7 +32,7 @@ program
     false,
   )
   .option('--yes', 'Skip confirmation for high-risk write operations', false)
-  .option('--no-update-check', 'Skip checking for newer ae-cli versions', false);
+  .option('--no-update-check', 'Skip host compatibility checks', false);
 
 // Import domain commands
 async function loadCommands(): Promise<Command[]> {
@@ -49,6 +48,10 @@ async function loadCommands(): Promise<Command[]> {
   try {
     const engage = await import('./commands/te-engage/index.js');
     commands.push(...engage.default);
+  } catch {}
+  try {
+    const experiment = await import('./commands/te-experiment/index.js');
+    commands.push(...experiment.default);
   } catch {}
   try {
     const community = await import('./commands/te-community/index.js');
@@ -69,6 +72,10 @@ async function loadCommands(): Promise<Command[]> {
   try {
     const teAgent = await import('./commands/te-agent/index.js');
     commands.push(...teAgent.default);
+  } catch {}
+  try {
+    const teSystem = await import('./commands/te-system/index.js');
+    commands.push(...teSystem.default);
   } catch {}
   try {
     const metadata = await import('./commands/metadata/index.js');
@@ -124,10 +131,18 @@ async function registerModelCommand(): Promise<void> {
   } catch {}
 }
 
+async function registerUpdateCommand(): Promise<void> {
+  try {
+    const { registerUpdate } = await import('./commands/update.js');
+    registerUpdate(program);
+  } catch {}
+}
+
 async function main() {
   const pkgInfo = getLocalCliPackageInfo();
-  notifyIfUpdateAvailable({ name: pkg.name, version: pkg.version });
-  await runHostCompatCheck(pkgInfo);
+  if (!isRootUpdateCommand(process.argv.slice(2))) {
+    await runHostCompatCheck(pkgInfo);
+  }
 
   const commands = await loadCommands();
   registerCommands(program, commands);
@@ -137,6 +152,7 @@ async function main() {
   await registerCapabilityCommands();
   await registerSyncCommand();
   await registerModelCommand();
+  await registerUpdateCommand();
   registerTracking(program);
   rejectUnknownHelpCommandPath(program, process.argv.slice(2));
   await parseProgram(program);
@@ -183,4 +199,19 @@ function optionConsumesValue(token: string): boolean {
     || token === '--mcp-url'
     || token === '--format'
     || token === '--jq';
+}
+
+function isRootUpdateCommand(args: string[]): boolean {
+  for (let i = 0; i < args.length; i += 1) {
+    const token = args[i];
+    if (token === '--') return false;
+    if (token.startsWith('-')) {
+      if (optionConsumesValue(token)) {
+        i += 1;
+      }
+      continue;
+    }
+    return token === 'update';
+  }
+  return false;
 }

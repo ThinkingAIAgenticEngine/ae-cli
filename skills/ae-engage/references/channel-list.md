@@ -1,11 +1,8 @@
 # ae-engage engage-setting channel list
 
+> Trigger keywords: push channel · Mapped command: `ae-cli engage-setting channel list`
 
-Query the list of Engage channels in a project.
-
-Mapped command: `ae-cli engage-setting channel list`
-
-## Response shape
+Query the list of Engage push channels in a project.
 
 The result is `{ data: { items, total } }`. Channel fields recursively use snake_case, for
 example `data.items[].channel_id`, `data.items[].channel_status`, and `data.items[].channel_type`.

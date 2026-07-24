@@ -613,7 +613,7 @@ assert.equal(
 );
 assert.deepEqual(pushLanguageGetDryRun.body, { input: { project_id: 1 } });
 
-// ---- 41 engage-scene (场景管理/配置中心) L2 capabilities: registration + help coverage ----
+// ---- 42 engage-scene (场景管理/配置中心) L2 capabilities: registration + help coverage ----
 const engageSceneCommands = (await import('../../src/commands/te-engage/engage-scene/index.ts')).default;
 const sceneCapabilityIds = engageSceneCommands
   .map((cmd) => cmd.capabilityId)
@@ -652,6 +652,7 @@ const expectedSceneCapabilityIds = [
   'engage-scene.strategy.manage',
   'engage-scene.strategy.update',
   'engage-scene.strategy.log',
+  'engage-scene.strategy.predict',
   'engage-scene.strategy.batch-copy',
   'engage-scene.template.list',
   'engage-scene.template.copy',
@@ -661,14 +662,14 @@ const expectedSceneCapabilityIds = [
   'engage-scene.template.update-status',
   'engage-scene.template.delete',
 ];
-assert.equal(expectedSceneCapabilityIds.length, 41, 'expected 41 engage-scene L2 capabilities');
+assert.equal(expectedSceneCapabilityIds.length, 42, 'expected 42 engage-scene L2 capabilities');
 const missingSceneCapabilityIds = expectedSceneCapabilityIds.filter(
   (id) => !sceneCapabilityIds.includes(id),
 );
 assert.equal(missingSceneCapabilityIds.length, 0,
   `missing engage-scene capabilities: ${missingSceneCapabilityIds.join(', ')}`);
-assert.equal(sceneCapabilityIds.length, 41,
-  `expected exactly 41 engage-scene L2 capabilities, got ${sceneCapabilityIds.length}`);
+assert.equal(sceneCapabilityIds.length, 42,
+  `expected exactly 42 engage-scene L2 capabilities, got ${sceneCapabilityIds.length}`);
 
 const sceneHelp = runCli(['engage-scene', '--help']);
 assert.equal(sceneHelp.status, 0, sceneHelp.stderr || sceneHelp.stdout);

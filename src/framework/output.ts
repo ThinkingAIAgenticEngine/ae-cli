@@ -2,7 +2,7 @@ import Table from 'cli-table3';
 import { JqError, json as jqJson } from 'jq-wasm';
 import type { OutputFormat, OutputEnvelope } from './types.js';
 import { logger } from '../core/logger.js';
-import { getPendingHostCompatNotice } from '../core/compat-check.js';
+import { getPendingHostCompatNotice, getPendingUpdateNotice } from '../core/compat-check.js';
 
 const KNOWN_ARRAY_FIELDS = [
   'items', 'events', 'reports', 'dashboards', 'tags', 'clusters',
@@ -106,12 +106,17 @@ export async function formatOutput(data: any, format: OutputFormat, jqExpr?: str
     return formatTable(processed);
   }
   const hostCompat = getPendingHostCompatNotice();
+  const updateNotice = getPendingUpdateNotice();
+  const notices = {
+    ...(updateNotice ? {} : hostCompat ? { host_compat: hostCompat } : {}),
+    ...(updateNotice ? { update: updateNotice } : {}),
+  };
   const envelope: OutputEnvelope = {
     ok: true,
     data: processed,
     ...(meta ? { meta } : {}),
     // Soft tip lives only under _notice (not mirrored into meta) to avoid duplicate fields.
-    ...(hostCompat ? { _notice: { host_compat: hostCompat } } : {}),
+    ...(Object.keys(notices).length > 0 ? { _notice: notices } : {}),
   };
   return JSON.stringify(envelope, null, 2);
 }
@@ -148,10 +153,4 @@ export function printError(
 
 export async function printOutput(data: any, format: OutputFormat, jqExpr?: string): Promise<void> {
   process.stdout.write(await formatOutput(data, format, jqExpr) + '\n');
-  // Non-interactive (Agent) shells often merge streams and skim the end of output;
-  // re-emit host compat after stdout so it is not lost above a large JSON payload.
-  const hostCompat = getPendingHostCompatNotice();
-  if (hostCompat && (!process.stdout.isTTY || !process.stderr.isTTY)) {
-    process.stderr.write(`${hostCompat}\n`);
-  }
 }

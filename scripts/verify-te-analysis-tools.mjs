@@ -123,19 +123,50 @@ for (const capabilityId of REQUIRED_FOUR_MODULE_CAPABILITIES) {
 if (capabilityIdSet.has('analysis.user_cluster.create_from_result')) {
   fail('duplicate result-cluster capability must not be reintroduced; use analysis.query.create_result_cluster');
 }
+
+const biPanelCreate = registeredCommands.find((item) => item.capabilityId === 'analysis.bi_panel.create');
+const biPanelUpdate = registeredCommands.find((item) => item.capabilityId === 'analysis.bi_panel.update');
+if (!biPanelCreate || !biPanelUpdate) {
+  fail('missing BI panel shell create/update commands');
+}
+const biPanelCreateFlags = biPanelCreate.flags.map((flag) => flag.name);
+const biPanelUpdateFlags = biPanelUpdate.flags.map((flag) => flag.name);
+if (JSON.stringify(biPanelCreateFlags) !== JSON.stringify(['project-id', 'panel-name', 'space-id', 'folder-id'])) {
+  fail(`BI panel create must expose shell fields only, got: ${biPanelCreateFlags.join(', ')}`);
+}
+if (JSON.stringify(biPanelUpdateFlags) !== JSON.stringify(['project-id', 'panel-name', 'panel-uuid'])) {
+  fail(`BI panel update must expose rename fields only, got: ${biPanelUpdateFlags.join(', ')}`);
+}
+for (const [command, requiredFlags] of [
+  [biPanelCreate, ['project-id', 'panel-name']],
+  [biPanelUpdate, ['project-id', 'panel-name', 'panel-uuid']],
+]) {
+  for (const flagName of requiredFlags) {
+    if (!command.flags.find((flag) => flag.name === flagName)?.required) {
+      fail(`${command.capabilityId} must require --${flagName}`);
+    }
+  }
+}
+if (!/empty BI dashboard shell/i.test(biPanelCreate.description)) {
+  fail('BI panel create description must disclose shell-only behavior');
+}
+if (!/rename a BI dashboard/i.test(biPanelUpdate.description)) {
+  fail('BI panel update description must disclose rename-only behavior');
+}
+
 const EXPECTED_GATEWAY_LIFECYCLE_COUNT = 4;
 if (gatewayLifecycleCommands.length !== EXPECTED_GATEWAY_LIFECYCLE_COUNT) {
   fail(`analysis gateway lifecycle command count mismatch: expected ${EXPECTED_GATEWAY_LIFECYCLE_COUNT}, got ${gatewayLifecycleCommands.length}`);
 }
 
-const EXPECTED_CAPABILITY_COUNT = 243;
+const EXPECTED_CAPABILITY_COUNT = 246;
 if (capabilityCommands.length !== EXPECTED_CAPABILITY_COUNT) {
   fail(`analysis capability command count mismatch: expected ${EXPECTED_CAPABILITY_COUNT}, got ${capabilityCommands.length}`);
 }
 
 const EXPECTED_CAPABILITY_COUNTS_BY_SERVICE = {
-  analysis: 152,
-  'analysis-meta': 48,
+  analysis: 153,
+  'analysis-meta': 50,
   'analysis-governance': 20,
   tracking: 23,
 };

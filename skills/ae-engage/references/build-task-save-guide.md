@@ -14,11 +14,25 @@ Use this sequence when creating or updating a task draft:
 
 1. Query channels with `ae-cli engage-setting channel list --project-id <projectId>`.
 2. Call `ae-cli engage-task task build-save-guide --project-id <projectId> --req '{...}'`.
-3. If the guide says an audience or QP-derived fields are required, create the audience directly and read it back:
+3. If the guide says QP-derived fields are required, fetch the skill definition first:
 
 ```bash
-ae-cli analysis user-cluster create --project-id <projectId> --cluster-name <condition_cluster_name> --display-name <display_name> --definition-request '<semantic-definition-json>'
-ae-cli analysis user-cluster get --project-id <projectId> --cluster-names '["<condition_cluster_name>"]'
+ae-cli engage-setting query cluster-qp-skill --project-id <projectId>
+# optional selectors:
+ae-cli engage-setting query cluster-qp-skill --project-id <projectId> --response-mode full --condition-subtype all
+```
+
+Use the returned `skill` text to build:
+
+- `targetConfig.qp`
+- `triggerConfig.triggerRule` (required for `triggerType=3/4/5`)
+- `clientConfig.clientQp`
+- `completionIndicatorDef.event`
+
+For existing-cluster audiences (`targetClusterType=2`), you may copy server-authored definitions via:
+
+```bash
+ae-cli analysis user-cluster get --project-id <projectId> --cluster-names '["<cluster_name>"]'
 ```
 
 4. Build the final grouped `save_task.req`.

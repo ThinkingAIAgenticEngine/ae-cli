@@ -18,11 +18,11 @@ export const alertIdFlag: Flag = {
   desc: 'Alert task ID.',
 };
 
-export const definitionFlag: Flag = {
-  name: 'definition',
+export const definitionRequestFlag: Flag = {
+  name: 'definition-request',
   type: 'json',
   required: true,
-  desc: 'Alert definition JSON object using snake_case field names. Read alert-definition-schema get first.',
+  desc: 'Structured alert definition request JSON object using snake_case field names.',
 };
 
 export const limitFlag: Flag = {

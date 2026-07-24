@@ -561,6 +561,44 @@ await test('analysis-meta event-property-bundle import pre-import sends input_fi
   });
 });
 
+await test('analysis-meta super-metadata batch-create sends grouped arrays', async () => {
+  const cmd = await importCmd(
+    'src/commands/te-analysis/meta/super-metadata/batch-create.ts',
+    'metadataSuperMetadataBatchCreate',
+  );
+  const { url, body } = await captureCapabilityDryRun(cmd, {
+    projectId: 1,
+    events: [{ event_name: 'purchase', event_desc: 'Purchase', super_event_prop_names: ['amount'] }],
+    eventProperties: [{ prop_name: 'amount', select_type: 'number', super_event_names: ['purchase'] }],
+    userProperties: [{ prop_name: 'vip_level', select_type: 'string' }],
+  });
+  assert.equal(url, `${HOST}/api/cli/analysis/v1/capabilities/metadata.super_metadata.batch_create/dry-run`);
+  assert.deepEqual(body.input, {
+    project_id: 1,
+    events: [{ event_name: 'purchase', event_desc: 'Purchase', super_event_prop_names: ['amount'] }],
+    event_properties: [{ prop_name: 'amount', select_type: 'number', super_event_names: ['purchase'] }],
+    user_properties: [{ prop_name: 'vip_level', select_type: 'string' }],
+  });
+});
+
+await test('analysis-meta super-metadata batch-edit sends type and items', async () => {
+  const cmd = await importCmd(
+    'src/commands/te-analysis/meta/super-metadata/batch-edit.ts',
+    'metadataSuperMetadataBatchEdit',
+  );
+  const { url, body } = await captureCapabilityDryRun(cmd, {
+    projectId: 1,
+    type: 'event_property',
+    items: [{ prop_name: 'amount', prop_desc: 'Amount', prop_remark: 'Revenue amount' }],
+  });
+  assert.equal(url, `${HOST}/api/cli/analysis/v1/capabilities/metadata.super_metadata.batch_edit/dry-run`);
+  assert.deepEqual(body.input, {
+    project_id: 1,
+    type: 'event_property',
+    items: [{ prop_name: 'amount', prop_desc: 'Amount', prop_remark: 'Revenue amount' }],
+  });
+});
+
 await test('analysis-governance asset list uses governance capability through analysis gateway', async () => {
   const cmd = await importCmd(
     'src/commands/te-analysis/meta/asset/usage-list.ts',

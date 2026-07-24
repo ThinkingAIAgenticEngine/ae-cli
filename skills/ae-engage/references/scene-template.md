@@ -1,6 +1,6 @@
 # engage-scene template
 
-> Capability ids: `engage-scene.template.{list,get,copy,create,update,update-status,delete}` · Domain: `engage`.
+> Trigger keywords: config center, scene config, template · Capability ids: `engage-scene.template.{list,get,copy,create,update,update-status,delete}` · Domain: `engage`.
 
 Scene management / config center — config item template management. `create`/`update` pass backend DTOs via `--payload` (native camelCase structure); `project_id` is injected into the payload.
 

@@ -64,10 +64,10 @@ async function fetchWithTimeout(
  * Priority: TE_CLAUDE_BASE_URL (full override) > activeHost + te-claude base path (default /agent).
  * Consistent with device-code login: bare activeHost points to the root analytics platform SPA; te-claude lives under the /agent basePath.
  */
-function teClaudeBaseFromActiveHost(): string | undefined {
-  const override = process.env.TE_CLAUDE_BASE_URL;
+function teClaudeBaseFromActiveHost(hostOverride?: string): string | undefined {
+  const override = hostOverride ? undefined : process.env.TE_CLAUDE_BASE_URL;
   if (override) return override.replace(/\/+$/, '');
-  const h = getActiveHost();
+  const h = hostOverride || getActiveHost();
   if (!h) return undefined;
   const base = h.replace(/\/+$/, '');
   const bp = process.env.TE_CLAUDE_BASE_PATH || '/agent';
@@ -83,11 +83,16 @@ function teClaudeBaseFromActiveHost(): string | undefined {
  *   - CLI token available -> cli-token header (te-claude resolves via /internal/cli/user-info)
  *   - Neither available -> throws TeAgentCredentialsError (with hint)
  */
-async function signRequest(method: 'GET' | 'POST' | 'DELETE' | 'PATCH' | 'PUT', path: string, rawBody: string): Promise<SignedRequest> {
+async function signRequest(
+  method: 'GET' | 'POST' | 'DELETE' | 'PATCH' | 'PUT',
+  path: string,
+  rawBody: string,
+  hostOverride?: string,
+): Promise<SignedRequest> {
   const sandboxCred = tryLoadTeAgentSandboxCredentials();
 
   // --- Sandbox path: credentials complete ---
-  if (sandboxCred && sandboxCred.sandboxId && sandboxCred.sandboxSecretKey) {
+  if (!hostOverride && sandboxCred && sandboxCred.sandboxId && sandboxCred.sandboxSecretKey) {
     const headers: Record<string, string> = {
       'X-Sandbox-Id': sandboxCred.sandboxId,
       'X-Sandbox-Secret-Key': sandboxCred.sandboxSecretKey,
@@ -108,8 +113,9 @@ async function signRequest(method: 'GET' | 'POST' | 'DELETE' | 'PATCH' | 'PUT', 
 
   // Determine base URL: prefer the sandbox url field (reuse even if sandbox Id/Key are missing but URL is present),
   // otherwise fall back to the ae-cli-configured activeHost (set by the user via `ae-cli config set-host`).
-  const baseUrl = sandboxCred?.url || teClaudeBaseFromActiveHost();
-  const hostForToken = getActiveHost() || baseUrl;
+  const baseUrl = hostOverride
+    ? teClaudeBaseFromActiveHost(hostOverride)
+    : sandboxCred?.url || teClaudeBaseFromActiveHost();
 
   if (!baseUrl) {
     throw new TeAgentCredentialsError(
@@ -117,8 +123,9 @@ async function signRequest(method: 'GET' | 'POST' | 'DELETE' | 'PATCH' | 'PUT', 
       'Run ae-cli config set-host <url> to configure the service URL, or execute inside a te-agent sandbox',
     );
   }
+  const hostForToken = hostOverride || getActiveHost() || baseUrl;
 
-  const contentTypeHeader =
+  const contentTypeHeader: Record<string, string> =
     method === 'POST' || method === 'PATCH' || method === 'PUT' ? { 'Content-Type': 'application/json' } : {};
 
   let accessToken: string | null = null;
@@ -208,9 +215,13 @@ async function parseResponse<T>(response: Response, defaultErrorPrefix: string):
  * @param path Main app endpoint path, e.g. /api/sandbox/sync/push
  * @param body Request body (any JSON-serializable object)
  */
-export async function postToMainApp<T = unknown>(path: string, body: unknown): Promise<T> {
+export async function postToMainApp<T = unknown>(
+  path: string,
+  body: unknown,
+  hostOverride?: string,
+): Promise<T> {
   const rawBody = JSON.stringify(body);
-  const signed = await signRequest('POST', path, rawBody);
+  const signed = await signRequest('POST', path, rawBody, hostOverride);
 
   const response = await fetchWithTimeout(signed.url, {
     method: 'POST',
@@ -226,8 +237,11 @@ export async function postToMainApp<T = unknown>(path: string, body: unknown): P
  *
  * @param path Main app endpoint path (including query string), e.g. /api/sandbox/models?current=cuid
  */
-export async function getFromMainApp<T = unknown>(path: string): Promise<T> {
-  const signed = await signRequest('GET', path, '');
+export async function getFromMainApp<T = unknown>(
+  path: string,
+  hostOverride?: string,
+): Promise<T> {
+  const signed = await signRequest('GET', path, '', hostOverride);
 
   const response = await fetchWithTimeout(signed.url, {
     method: 'GET',
@@ -350,8 +364,11 @@ export async function postSandboxSyncPull(args: {
 /**
  * DELETE a main app resource with automatic sandbox auth header injection.
  */
-export async function deleteFromMainApp<T = unknown>(path: string): Promise<T> {
-  const signed = await signRequest('DELETE', path, '');
+export async function deleteFromMainApp<T = unknown>(
+  path: string,
+  hostOverride?: string,
+): Promise<T> {
+  const signed = await signRequest('DELETE', path, '', hostOverride);
 
   const response = await fetchWithTimeout(signed.url, {
     method: 'DELETE',
@@ -364,9 +381,13 @@ export async function deleteFromMainApp<T = unknown>(path: string): Promise<T> {
 /**
  * PATCH a main app resource with automatic signing.
  */
-export async function patchToMainApp<T = unknown>(path: string, body: unknown): Promise<T> {
+export async function patchToMainApp<T = unknown>(
+  path: string,
+  body: unknown,
+  hostOverride?: string,
+): Promise<T> {
   const rawBody = JSON.stringify(body);
-  const signed = await signRequest('PATCH', path, rawBody);
+  const signed = await signRequest('PATCH', path, rawBody, hostOverride);
 
   const response = await fetchWithTimeout(signed.url, {
     method: 'PATCH',
@@ -380,9 +401,13 @@ export async function patchToMainApp<T = unknown>(path: string, body: unknown): 
 /**
  * PUT a main app resource with automatic signing (used by Skill content edit).
  */
-export async function putToMainApp<T = unknown>(path: string, body: unknown): Promise<T> {
+export async function putToMainApp<T = unknown>(
+  path: string,
+  body: unknown,
+  hostOverride?: string,
+): Promise<T> {
   const rawBody = JSON.stringify(body);
-  const signed = await signRequest('PUT', path, rawBody);
+  const signed = await signRequest('PUT', path, rawBody, hostOverride);
 
   const response = await fetchWithTimeout(signed.url, {
     method: 'PUT',
@@ -398,8 +423,11 @@ export async function putToMainApp<T = unknown>(path: string, body: unknown): Pr
  * Returns the response body as a Buffer plus the filename extracted from Content-Disposition.
  * Unlike getFromMainApp, this does NOT parse the response as JSON/text — binary content is preserved.
  */
-export async function getBufferFromMainApp(path: string): Promise<{ buffer: Buffer; fileName: string | null }> {
-  const signed = await signRequest('GET', path, '');
+export async function getBufferFromMainApp(
+  path: string,
+  hostOverride?: string,
+): Promise<{ buffer: Buffer; fileName: string | null }> {
+  const signed = await signRequest('GET', path, '', hostOverride);
 
   const response = await fetchWithTimeout(signed.url, {
     method: 'GET',
@@ -451,14 +479,18 @@ export async function getBufferFromMainApp(path: string): Promise<{ buffer: Buff
  * Upload multipart/form-data to the main app with automatic auth header injection (sandbox or user Bearer).
  * Does not manually set Content-Type; lets fetch automatically add the boundary.
  */
-export async function uploadToMainApp<T = unknown>(path: string, formData: FormData): Promise<T> {
+export async function uploadToMainApp<T = unknown>(
+  path: string,
+  formData: FormData,
+  hostOverride?: string,
+): Promise<T> {
   // Reuse signRequest decision logic, but do not set Content-Type for uploads (fetch adds boundary automatically)
   const sandboxCred = tryLoadTeAgentSandboxCredentials();
 
   let baseUrl: string;
   let authHeaders: Record<string, string>;
 
-  if (sandboxCred && sandboxCred.sandboxId && sandboxCred.sandboxSecretKey) {
+  if (!hostOverride && sandboxCred && sandboxCred.sandboxId && sandboxCred.sandboxSecretKey) {
     // Sandbox path
     baseUrl = sandboxCred.url.replace(/\/$/, '');
     authHeaders = {
@@ -466,18 +498,44 @@ export async function uploadToMainApp<T = unknown>(path: string, formData: FormD
       'X-Sandbox-Secret-Key': sandboxCred.sandboxSecretKey,
     };
   } else {
-    // User Bearer path
+    // User Bearer / CLI token path
     const { getToken } = await import('./auth.js');
-    baseUrl = (sandboxCred?.url || teClaudeBaseFromActiveHost() || '').replace(/\/$/, '');
+    const { getCliToken } = await import('./cli-token.js');
+    baseUrl = (
+      hostOverride
+        ? teClaudeBaseFromActiveHost(hostOverride)
+        : sandboxCred?.url || teClaudeBaseFromActiveHost()
+    )?.replace(/\/$/, '') || '';
     if (!baseUrl) {
       throw new TeAgentCredentialsError(
         'Cannot determine the te-claude service URL',
         'Run ae-cli config set-host <url> to configure the service URL, or execute inside a te-agent sandbox',
       );
     }
-    // Token is retrieved under the bare activeHost (see signRequest comment)
-    const accessToken = await getToken(getActiveHost() || baseUrl);
-    authHeaders = { 'Authorization': `bearer ${accessToken}` };
+    const hostForToken = hostOverride || getActiveHost() || baseUrl;
+    let accessToken: string | null = null;
+    try {
+      accessToken = await getToken(hostForToken);
+    } catch {
+      accessToken = null;
+    }
+    if (accessToken) {
+      authHeaders = { 'Authorization': `bearer ${accessToken}` };
+    } else {
+      let cliToken: string | null = null;
+      try {
+        cliToken = await getCliToken(hostForToken);
+      } catch {
+        cliToken = null;
+      }
+      if (!cliToken) {
+        throw new TeAgentCredentialsError(
+          'No te-claude credentials available',
+          'Run ae-cli auth login, or execute inside a te-agent sandbox',
+        );
+      }
+      authHeaders = { 'cli-token': cliToken };
+    }
   }
 
   const response = await fetchWithTimeout(

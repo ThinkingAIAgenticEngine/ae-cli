@@ -20,6 +20,8 @@ import { reportDataExport } from '../src/commands/te-analysis/report-data/export
 import { dashboardReportDataRun } from '../src/commands/te-analysis/dashboard-report-data/run.ts';
 import { reportChangeLogGet } from '../src/commands/te-analysis/report-change-log/get.ts';
 import { dashboardReportAdd } from '../src/commands/te-analysis/dashboard-report/add.ts';
+import { biPanelCreate } from '../src/commands/te-analysis/bi-panel/create.ts';
+import { biPanelUpdate } from '../src/commands/te-analysis/bi-panel/update.ts';
 import { adhocRun } from '../src/commands/te-analysis/adhoc/run.ts';
 import { adhocExport } from '../src/commands/te-analysis/adhoc/export.ts';
 import { eventDetailRun } from '../src/commands/te-analysis/event-detail/run.ts';
@@ -113,6 +115,53 @@ async function dryBody(
 }
 
 process.stdout.write('\nanalysis report capability command tests\n');
+
+await test('BI panel v1 create and update expose only the supported shell contract', async () => {
+  assert.equal(biPanelCreate.description, 'Create an empty BI dashboard shell without draft or release content.');
+  assert.deepEqual(
+    biPanelCreate.flags.map((flag) => [flag.name, flag.required]),
+    [
+      ['project-id', true],
+      ['panel-name', true],
+      ['space-id', false],
+      ['folder-id', false],
+    ],
+  );
+
+  const createDryRun = await dryBody(biPanelCreate, {
+    'project-id': 1,
+    'panel-name': 'Revenue',
+    'space-id': 2,
+    'folder-id': 3,
+  });
+  assert.deepEqual(createDryRun.body.input, {
+    project_id: 1,
+    panel_name: 'Revenue',
+    space_id: 2,
+    folder_id: 3,
+  });
+
+  assert.equal(biPanelUpdate.description, 'Rename a BI dashboard without changing draft or release content.');
+  assert.deepEqual(
+    biPanelUpdate.flags.map((flag) => [flag.name, flag.required]),
+    [
+      ['project-id', true],
+      ['panel-name', true],
+      ['panel-uuid', true],
+    ],
+  );
+
+  const updateDryRun = await dryBody(biPanelUpdate, {
+    'project-id': 1,
+    'panel-uuid': 'panel-uuid',
+    'panel-name': 'Renamed revenue',
+  });
+  assert.deepEqual(updateDryRun.body.input, {
+    project_id: 1,
+    panel_uuid: 'panel-uuid',
+    panel_name: 'Renamed revenue',
+  });
+});
 
 await test('report create maps AI QP definition to snake_case gateway input', async () => {
   const dryRun = await dryBody(reportCreate, {

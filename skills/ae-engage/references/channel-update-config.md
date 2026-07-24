@@ -1,6 +1,6 @@
 # engage-setting channel update-config
 
-> Capability id: `engage-setting.channel.update-config` · Domain: `engage`.
+> Trigger keywords: push channel · Capability id: `engage-setting.channel.update-config` · Domain: `engage`.
 
 ## Command
 

@@ -12,7 +12,7 @@ ae-cli analysis alert create [options]
 
 Capability id: `analysis.alert.create`
 
-Input sends `project_id` and `definition`. Do not send camelCase aliases.
+Input sends `project_id` and `definition_request`. Do not send camelCase aliases.
 
 Output is the capability gateway envelope: success is `ok=true,data,meta`; failure is `ok=false,error`. Export commands return lifecycle data such as `run_id` and `artifact_id` for inspect/download.
 
@@ -21,5 +21,4 @@ Parameters:
 | Parameter | Description | Required |
 | --- | --- | --- |
 | `--project-id` | See command help | Yes |
-| `--definition` | See command help | Yes |
-
+| `--definition-request` | See command help | Yes |

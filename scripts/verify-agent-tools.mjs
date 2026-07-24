@@ -115,7 +115,7 @@ try {
 // ─── Step 5: Automation dry-run defaults ─────────────────────
 
 try {
-  const runDryRun = (extraArgs = []) => {
+  const runDryRun = (extraArgs = [], env = process.env) => {
     const output = execFileSync(
       "npx",
       [
@@ -134,7 +134,7 @@ try {
         "Summarize yesterday's AI news",
         ...extraArgs,
       ],
-      { encoding: "utf8", timeout: 30000 },
+      { encoding: "utf8", timeout: 30000, env },
     );
     return JSON.parse(output).data;
   };
@@ -144,6 +144,47 @@ try {
     fail(`+create-automation default status should be active, got ${defaultDryRun?.body?.status}`);
   } else {
     ok("+create-automation dry-run defaults to active status");
+  }
+  const chatContextEnv = {
+    ...process.env,
+    TE_AGENT_CONVERSATION_ID: "conversation-from-chat",
+    TE_AGENT_CURRENT_AGENT_ID: "agent-from-chat",
+    TE_AGENT_CURRENT_MODEL_ID: "model-from-chat",
+  };
+  const chatContextDryRun = runDryRun([], chatContextEnv);
+  if (
+    chatContextDryRun?.body?.conversationId !== "conversation-from-chat" ||
+    chatContextDryRun?.body?.agentId !== "agent-from-chat" ||
+    chatContextDryRun?.body?.model !== "model-from-chat"
+  ) {
+    fail(
+      `+create-automation did not use chat context environment defaults: ${JSON.stringify(chatContextDryRun?.body)}`,
+    );
+  } else {
+    ok("+create-automation uses chat context environment defaults");
+  }
+
+  const explicitContextDryRun = runDryRun(
+    [
+      "--conversation-id",
+      "conversation-explicit",
+      "--agent-id",
+      "agent-explicit",
+      "--model",
+      "model-explicit",
+    ],
+    chatContextEnv,
+  );
+  if (
+    explicitContextDryRun?.body?.conversationId !== "conversation-explicit" ||
+    explicitContextDryRun?.body?.agentId !== "agent-explicit" ||
+    explicitContextDryRun?.body?.model !== "model-explicit"
+  ) {
+    fail(
+      `+create-automation explicit context flags did not override environment defaults: ${JSON.stringify(explicitContextDryRun?.body)}`,
+    );
+  } else {
+    ok("+create-automation explicit context flags override environment defaults");
   }
 
   const pausedDryRun = runDryRun(["--enabled", "false"]);

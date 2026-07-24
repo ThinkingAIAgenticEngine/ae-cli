@@ -48,6 +48,34 @@ const addChannelRef = readFileSync(
   path.join(ROOT, 'skills/ae-engage/references/add-channel.md'),
   'utf8',
 );
+const saveFlowRef = readFileSync(
+  path.join(ROOT, 'skills/ae-engage/references/save-flow.md'),
+  'utf8',
+);
+const flowDetailRef = readFileSync(
+  path.join(ROOT, 'skills/ae-engage/references/flow-detail.md'),
+  'utf8',
+);
+const flowListRef = readFileSync(
+  path.join(ROOT, 'skills/ae-engage/references/flow-list.md'),
+  'utf8',
+);
+const channelListRef = readFileSync(
+  path.join(ROOT, 'skills/ae-engage/references/channel-list.md'),
+  'utf8',
+);
+const channelDetailRef = readFileSync(
+  path.join(ROOT, 'skills/ae-engage/references/channel-detail.md'),
+  'utf8',
+);
+const saveTaskRef = readFileSync(
+  path.join(ROOT, 'skills/ae-engage/references/save-task.md'),
+  'utf8',
+);
+const addChannelRef = readFileSync(
+  path.join(ROOT, 'skills/ae-engage/references/add-channel.md'),
+  'utf8',
+);
 
 const touchLimitsCommand =
   'ae-cli engage-setting channel-touch-limits list --project-id <project_id>';
@@ -105,6 +133,29 @@ assert.match(flowUpdateRemarkRef, /`--flow-uuid`/);
 assert.match(flowUpdateRemarkRef, /`--flow-version-desc`/);
 
 assert.match(operationLogRef, /engage-flow operation-log query/);
+
+// Migrated Capability boundaries keep outer input/output snake_case and nested DTO input camelCase.
+assert.match(skill, /outer Capability input and all Capability response keys use snake_case/);
+assert.match(skill, /Nested business DTOs passed through `--req` or `--payload` keep their documented native camelCase fields/);
+assert.match(skill, /data\.result\.result\.flow_uuid/);
+assert.match(saveFlowRef, /data\.result\.draft_version/);
+assert.match(saveFlowRef, /data\.flow\.node_list/);
+assert.match(saveFlowRef, /data\.item\.config\.params_list/);
+assert.match(saveFlowRef, /channel_status = 0/);
+assert.doesNotMatch(saveFlowRef, /data\.config\.paramsList|channelStatus\s*=\s*2/);
+assert.match(flowDetailRef, /data\.flow\.node_list\[\]\.type/);
+assert.match(flowDetailRef, /data\.flow\.mapping_status/);
+assert.doesNotMatch(flowDetailRef, /### `(?:mappingStatus|nodeList|channelStatus)`/);
+assert.match(flowListRef, /data\.items\[\]\.flow_id/);
+assert.match(channelListRef, /data\.items\[\]\.channel_status/);
+assert.match(channelDetailRef, /data\.item\.channel_status/);
+assert.match(channelDetailRef, /data\.item\.config\.params_list/);
+assert.doesNotMatch(channelDetailRef, /### `channelStatus`/);
+assert.match(saveTaskRef, /data\.result\.operation_mode/);
+assert.match(saveTaskRef, /Hermes assigns the outer `--project-id` to `req\.projectId`/);
+assert.match(addChannelRef, /created channel is under `data\.item`/);
+assert.match(addChannelRef, /Hermes Capability handler/);
+assert.doesNotMatch(addChannelRef, /projectId is injected into `req` by the CLI/);
 
 // Migrated Capability boundaries keep outer input/output snake_case and nested DTO input camelCase.
 assert.match(skill, /outer Capability input and all Capability response keys use snake_case/);
@@ -215,7 +266,7 @@ assert.match(commonMetricRef, /analysis-meta event list/);
 assert.match(commonMetricRef, /`minute` \/ `hour` \/ `day`/);
 assert.match(commonMetricRef, /opsEditSetting/);
 
-// ---- 41 engage-scene L2 + 3 L3 report capabilities: skill reference docs linked in SKILL.md ----
+// ---- 42 engage-scene L2 + 3 L3 report capabilities: skill reference docs linked in SKILL.md ----
 const expectedSceneReferenceLinks = [
   'references/scene-config-item.md',
   'references/scene-config-param.md',
@@ -240,7 +291,7 @@ const expectedSceneCapabilityIds = [
   'engage-scene\\.preset-metric\\.\\{get,set\\}',
   'engage-scene\\.config-metric\\.\\{list,get,batch-add,update-rule,batch-delete\\}',
   'engage-scene\\.config-channel\\.\\{list,get,create,update,update-status,delete,query-log\\}',
-  'engage-scene\\.strategy\\.\\{list,get,create,update,log,batch-copy,manage\\}',
+  'engage-scene\\.strategy\\.\\{list,get,create,update,log,predict,batch-copy,manage\\}',
   'engage-scene\\.template\\.\\{list,get,copy,create,update,update-status,delete\\}',
   'engage-scene\\.report\\.\\{config-item-trigger,config-item-analysis,strategy-comparison\\}',
 ];
@@ -260,18 +311,18 @@ const expectedSceneCommandTokens = [
   'config-channel update', 'config-channel update-status', 'config-channel delete',
   'config-channel query-log',
   'strategy list', 'strategy get', 'strategy create', 'strategy update', 'strategy log',
-  'strategy batch-copy', 'strategy manage',
+  'strategy predict', 'strategy batch-copy', 'strategy manage',
   'template list', 'template get', 'template copy', 'template create', 'template update',
   'template update-status', 'template delete',
 ];
-assert.equal(expectedSceneCommandTokens.length, 41, 'expected 41 engage-scene command tokens');
+assert.equal(expectedSceneCommandTokens.length, 42, 'expected 42 engage-scene command tokens');
 for (const token of expectedSceneCommandTokens) {
   assert.ok(skill.includes(token),
     `SKILL.md missing command token: ${token}`);
 }
 // A sample of the new reference docs must exist and declare the capability id header.
 const sceneStrategyRef = readFileSync(path.join(ROOT, 'skills/ae-engage/references/scene-strategy.md'), 'utf8');
-assert.match(sceneStrategyRef, /engage-scene\.strategy\.\{list,get,create,update,log,batch-copy,manage\}/);
+assert.match(sceneStrategyRef, /engage-scene\.strategy\.\{list,get,create,update,log,predict,batch-copy,manage\}/);
 const sceneTemplateRef = readFileSync(path.join(ROOT, 'skills/ae-engage/references/scene-template.md'), 'utf8');
 assert.match(sceneTemplateRef, /engage-scene\.template\.\{list,get,copy,create,update,update-status,delete\}/);
 const sceneConfigParamRef = readFileSync(path.join(ROOT, 'skills/ae-engage/references/scene-config-param.md'), 'utf8');

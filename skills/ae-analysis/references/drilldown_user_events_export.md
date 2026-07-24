@@ -21,6 +21,11 @@ The nested backend keys are exactly `columnName` and `tableType`, and the table 
 
 Use the exact `drilldown_context_id` and canonical `user_id` returned by a user-subject `analysis drilldown-entities run`. Do not use a custom entity, an entity export artifact, or a guessed identity. Export does not accept `--limit`, `--offset`, `--page-num`, or `--page-size`; Common builds the same authorized event-sequence query without the synchronous 1000-row preview cap and streams one `csv.gz` artifact. The platform full-download ceiling (`model_full_download_limit`) still applies.
 
+For a `scope=total` source coordinate, there is no single selected date. Common
+preserves the machine date coordinates returned by the source query together
+with that query's time granularity, such as daily, weekly, or monthly. Do not
+construct dates outside that context or force a daily granularity.
+
 Inspect the returned `run_id` with `analysis run inspect`, then download the completed artifact with `analysis artifact download`.
 
 Output is an async run/artifact descriptor. The complete event rows exist only in the downloaded artifact; they cannot be used as new analysis coordinates.

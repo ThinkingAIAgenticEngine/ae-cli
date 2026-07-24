@@ -71,6 +71,7 @@
 | `+update_config_channel_status` | `engage-scene.config-channel.update-status` | L2 | done（基线已有） | existing CLI + Hermes capability |
 | `+delete_config_channel` | `engage-scene.config-channel.delete` | L2 | done（基线已有） | existing CLI + Hermes capability |
 | `+cancel_query_by_request_id` | `engage-setting.query.cancel` | L3 | done | Hermes + L3 Skill |
+| `query_cluster_qp_skill` | `engage-setting.query.cluster-qp-skill` | L2 | done | Hermes + CLI + Skill（补迁，供 build-save-guide 使用） |
 
 ## config 批次
 
@@ -98,6 +99,7 @@
 | 2026-07-22 | config | Hermes reactor compile/checkstyle；17 个 Scene Config Capability 测试；te-cli build、41 个 scene L2 注册/help 合同、3 个 L3 Skill 合同、release gate；L2 dry-run 路由；旧命令拒绝；smoke 脚本语法检查 | 通过 |
 | 2026-07-22 | 最终收口 | Hermes 四批次合并 124 个测试；te-cli build、npm test、Capability/Skill contract、release gate；四个 smoke 脚本语法；旧目录/旧命令注册消失；Hermes MCP 源码保留；三仓 `git diff --check` | 通过 |
 | 2026-07-22 | Review 修复 | 高频 Skill 响应 envelope/snake_case 契约；嵌套 DTO camelCase 边界；channel status 0/1；旧 MCP 空目录删除；新增 Skill 回归合同 | 通过 |
+| 2026-07-24 | setting 补迁 | `query_cluster_qp_skill` → `engage-setting.query.cluster-qp-skill`；te-cli build；Skill 工作流更新 | te-cli build 通过；Hermes 单测待 reactor compile 通过后补跑 |
 
 ## 续跑规则
 

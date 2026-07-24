@@ -29,6 +29,12 @@ ae-cli analysis drilldown-user-events run \
 
 Do not use raw QP, `query_context_id`, or guessed user IDs for this command.
 
+For a `scope=total` source coordinate, there is no single selected date. Common
+preserves the machine date coordinates returned by the source query together
+with that query's time granularity, such as daily, weekly, or monthly. Do not
+invent `target_dates`, force a daily granularity, or replace the returned
+`drilldown_context_id`.
+
 Do not call this command merely because an entity row looks like a user. The explicit subject and follow-up context are the authority.
 
 ## Output

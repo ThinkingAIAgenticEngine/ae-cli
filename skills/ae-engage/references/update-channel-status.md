@@ -1,9 +1,8 @@
 # ae-engage engage-setting channel update-status
 
+> Trigger keywords: push channel · Mapped command: `ae-cli engage-setting channel update-status`
 
-Update the status of an Engage channel.
-
-Mapped command: `ae-cli engage-setting channel update-status`
+Enable or disable an Engage push channel.
 
 ## Flags
 

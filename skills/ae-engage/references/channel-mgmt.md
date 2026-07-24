@@ -1,6 +1,6 @@
 # Config channel management workflows
 
-> Commands: `ae-cli engage-scene config-channel …` · See [`scene-config-channel.md`](scene-config-channel.md) for flags, `config` JSON shape, and capability ids.
+> Trigger keywords: config center, config channel · Commands: `ae-cli engage-scene config-channel …` · See [`scene-config-channel.md`](scene-config-channel.md) for flags, `config` JSON shape, and capability ids.
 
 Use for AE Engage **config center channel management**: Webhook (`channel_type=0`) and client (`channel_type=1`) config channels — list, get, create, update, copy, enable/disable, operation log, and delete.
 
@@ -12,6 +12,8 @@ Use for AE Engage **config center channel management**: Webhook (`channel_type=0
 4. `channel_status`: **1 = enabled**, **2 = disabled**.
 5. Writes require explicit user intent; `delete` is high-risk — confirm, then `--yes`.
 6. Before changing Webhook URL, auth, or parameter definitions on an enabled channel, disable it first.
+7. In `config.customsParamList` (**user params**), every `columnName` must be prefixed with `user:` and point to a real user property, e.g. `user:#account_id`. `envParamList` entries do not use this prefix.
+8. Before create/update, use the **ae-analysis** skill to verify each intended user property exists (`analysis-meta property list --scope user`, then `property get` for exact match). Never invent `columnName` values.
 
 ## Permissions
 
@@ -44,17 +46,30 @@ Parse `data.channel.config` for URL, auth, user params, and env params.
 
 Webhook requires `channel_name` and `config.url`. Optional: `testUrl`, auth, user params, env params.
 
+**Preflight (user params):** for each intended `customsParamList[].columnName`, discover and verify the user property via ae-analysis first:
+
+```bash
+ae-cli analysis-meta property list --project-id <pid> --scope user --query <keyword> \
+  --fields '["prop_name","prop_desc","select_type"]' --limit 50
+ae-cli analysis-meta property get --project-id <pid> --table-type user --prop-name <prop_name>
+# → use columnName "user:" + prop_name, e.g. user:#account_id
+```
+
+Then create the channel:
+
 ```bash
 ae-cli engage-scene config-channel create \
   --project-id <pid> \
   --channel-name '<name>' \
   --channel-type 0 \
-  --config '{"url":"https://...","testUrl":"","authConfig":{"enable":false},"customsParamList":[{"key":"uid","columnName":"#account_id","defaultValue":"","systemIdParam":false}],"envParamList":[]}'
+  --config '{"url":"https://...","testUrl":"","authConfig":{"enable":false},"customsParamList":[{"key":"uid","columnName":"user:#account_id","defaultValue":"","systemIdParam":false}],"envParamList":[]}'
 ```
 
 Returns `data.channel_id`. Created channels start **enabled**.
 
 ### 4. Update
+
+Re-verify any new or changed `customsParamList[].columnName` with `analysis-meta property list/get` (ae-analysis skill) before building `--config`.
 
 ```bash
 ae-cli engage-scene config-channel get --project-id <pid> --channel-id <id>

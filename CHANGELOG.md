@@ -1,3 +1,25 @@
+### 6.0.36
+**Date:** 2026-07-24
+
+**Changes:**
+
+#### CLI / Agent
+* Add host-bound `ae-cli update` to install the CLI and Skills version required by the current AE host
+* Add `system` domain for Agent system administration (members, sandboxes, models, usage, cost controls, quotas, IM channels)
+* Support npm sandbox tool install/upload under the system domain
+
+#### Analysis
+* Migrate `batch_create_metadata` / `batch_edit_metadata` to the new CLI capability entry points
+* Simplify dashboard daily-report get/send/update/send-status commands
+* Align dashboard empty-shell create/rename and BI panel create/update contracts; clarify BI empty-shell and summary drilldown docs
+* Remove `alert-definition-schema get`; adapt alert create/update params for definition builder
+
+#### Engage
+* Add `engage-scene strategy predict` for audience size estimation and expand strategy audience docs
+* Add `engage-setting query cluster-qp-skill` (require `--project-id`); update save-flow / task-save workflows
+* Allow `engage-task task save` to update paused tasks
+* Expand activity-topic audience and task orchestration guidelines
+
 ### 6.0.35
 **Date:** 2026-07-23
 

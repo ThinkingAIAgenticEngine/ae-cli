@@ -12,6 +12,10 @@ const biPanelCreate = readFileSync(
   new URL('../skills/ae-analysis/references/bi_panel_create.md', import.meta.url),
   'utf8',
 );
+const biPanelUpdate = readFileSync(
+  new URL('../skills/ae-analysis/references/bi_panel_update.md', import.meta.url),
+  'utf8',
+);
 const dashboardRun = readFileSync(
   new URL('../skills/ae-analysis/references/dashboard_report_data_run.md', import.meta.url),
   'utf8',
@@ -24,6 +28,14 @@ const reportDataRun = readFileSync(new URL('../skills/ae-analysis/references/rep
 const reportDataExport = readFileSync(new URL('../skills/ae-analysis/references/report_data_export.md', import.meta.url), 'utf8');
 const adhocRun = readFileSync(new URL('../skills/ae-analysis/references/adhoc_run.md', import.meta.url), 'utf8');
 const adhocExport = readFileSync(new URL('../skills/ae-analysis/references/adhoc_export.md', import.meta.url), 'utf8');
+const drilldownUserEventsRun = readFileSync(
+  new URL('../skills/ae-analysis/references/drilldown_user_events_run.md', import.meta.url),
+  'utf8',
+);
+const drilldownUserEventsExport = readFileSync(
+  new URL('../skills/ae-analysis/references/drilldown_user_events_export.md', import.meta.url),
+  'utf8',
+);
 const filterValueList = readFileSync(
   new URL('../skills/ae-analysis/references/filter_value_list.md', import.meta.url),
   'utf8',
@@ -75,6 +87,18 @@ assert.match(dashboardCreate, /analysis board \(`看板`\)/);
 assert.match(dashboardCreate, /Do not use for a BI dashboard \(`仪表盘`\)/);
 assert.match(biPanelCreate, /BI dashboard \(`仪表盘`\)/);
 assert.match(biPanelCreate, /Do not use for an analysis board \(`看板`\)/);
+assert.match(biPanelCreate, /empty BI-dashboard shell only/i);
+assert.match(
+  biPanelCreate.replace(/\s+/g, ' '),
+  /does not create pages, charts, worksheets, draft content, or released content/i,
+);
+assert.doesNotMatch(biPanelCreate, /--panel-uuid|--payload/);
+assert.match(biPanelUpdate, /rename a BI dashboard/i);
+assert.match(
+  biPanelUpdate.replace(/\s+/g, ' '),
+  /does not modify pages, charts, worksheets, draft content, or released content/i,
+);
+assert.doesNotMatch(biPanelUpdate, /--payload/);
 
 assert.match(dashboardRun, /empty dashboard batch or report result with no rows is a successful query/i);
 assert.doesNotMatch(dashboardRun, /selected report IDs return no entries.*fails/i);
@@ -104,6 +128,11 @@ assert.match(adhocRun, /SQL text requests `LIMIT 2000`/);
 assert.match(adhocRun, /go directly to `analysis adhoc export`/);
 assert.match(adhocRun, /Do not lower the SQL limit to 1000/);
 assert.match(adhocExport, /Preserve the `run_id` and `artifact_id` from this exact submit response/);
+assert.match(drilldownUserEventsRun, /scope=total[\s\S]*machine date coordinates[\s\S]*time granularity/i);
+assert.match(drilldownUserEventsRun, /Do not\s+invent `target_dates`/);
+assert.match(drilldownUserEventsRun, /force a daily granularity/i);
+assert.match(drilldownUserEventsExport, /scope=total[\s\S]*machine date coordinates[\s\S]*time granularity/i);
+assert.match(drilldownUserEventsExport, /force a daily granularity/i);
 assert.match(filterValueList, /LATEST.*latest available computed result snapshot/i);
 assert.match(filterValueList, /not a tag definition or configuration release/i);
 assert.match(filterValueList, /查询标签 X 最新版本\/最新结果有哪些值/);

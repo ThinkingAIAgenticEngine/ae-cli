@@ -1,9 +1,8 @@
 # ae-engage engage-setting channel get
 
+> Trigger keywords: push channel · Mapped command: `ae-cli engage-setting channel get`
 
-Query the details of a single Engage channel.
-
-Mapped command: `ae-cli engage-setting channel get`
+Query the details of a single Engage push channel.
 
 ## Response shape
 

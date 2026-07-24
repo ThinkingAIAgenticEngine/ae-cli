@@ -114,12 +114,14 @@ Prefer the run/artifact commands over hand-written HTTP, Python, or curl. Analys
 | `query cancel` | `analysis.query.cancel` | Cancel gateway run/export | `--run-id`, optional `--reason` | Cancellation result |
 | `dashboard-definition export` | `analysis.dashboard_definition.export` | Export dashboard definition JSON | `--dashboard-id`, `--dashboard-ids`, `--dashboard-folder-ids`, `--shared-spaces`, or `--payload` | Definition JSON |
 | `dashboard-definition import` | `analysis.dashboard_definition.import` | Validate/import dashboard definition | `--definition`, optional `--validate-only true` | Validation or import result |
-| `dashboard-daily-report update` | `analysis.dashboard_daily_report.update` | Update daily report config; defaults are sent when `--payload` is absent | `--dashboard-id`, optional config flags or `--payload` | Config result |
-| `dashboard-daily-report send` | `analysis.dashboard_daily_report.send` | Send daily report immediately; no config flags means use saved config, missing saved config fails | `--dashboard-id`, optional config flags or `--payload` | Async send result |
+| `dashboard-daily-report get` | `analysis.dashboard_daily_report.get` | Get one saved daily report config with secrets and webhook URLs redacted | `--dashboard-id` | Config state |
+| `dashboard-daily-report update` | `analysis.dashboard_daily_report.update` | Patch-style create or update; omitted fields remain unchanged | `--dashboard-id`, optional config flags or `--payload` | Config result |
+| `dashboard-daily-report send` | `analysis.dashboard_daily_report.send` | Send immediately; destination fields infer channels, omission reuses saved destinations | `--dashboard-id`, optional destination/content flags or `--payload` | Async task ID |
+| `dashboard-daily-report send-status` | `analysis.dashboard_daily_report.send_status` | Inspect one immediate-send task and per-channel outcome | `--task-id` | Send task status |
 | `bi-panel list` | `analysis.bi_panel.list` | Find accessible BI panels | `--project-id`, optional list filters | Paginated BI panel summaries |
 | `bi-panel get` | `analysis.bi_panel.get` | Inspect released BI panel page structure only | `--panel-id`, optional `--fields` | Panel structure |
-| `bi-panel create` | `analysis.bi_panel.create` | Create a BI panel | optional `--panel-name`, `--payload` | Created panel |
-| `bi-panel update` | `analysis.bi_panel.update` | Update BI panel content/metadata | optional `--payload` | Update result |
+| `bi-panel create` | `analysis.bi_panel.create` | Create an empty BI panel shell | required `--panel-name`; optional destination IDs | Created shell identifiers |
+| `bi-panel update` | `analysis.bi_panel.update` | Rename a BI panel without changing content | required `--panel-uuid`, `--panel-name` | Rename result |
 | `bi-panel delete` | `analysis.bi_panel.delete` | Delete BI panels | `--panel-ids '[...]'` | Delete result |
 | `bi-panel share` | `analysis.bi_panel.share` | Modify BI panel sharing | `--panel-id`, `--payload` | Share update result |
 | `bi-panel copy` | `analysis.bi_panel.copy` | Copy a BI panel | optional source/target flags and `--payload` | Copied panel |

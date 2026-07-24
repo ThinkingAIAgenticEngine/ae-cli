@@ -37,6 +37,7 @@ import { commonMetricGet } from './common-metric/get.js';
 import { commonMetricCreate } from './common-metric/create.js';
 import { commonMetricUpdate } from './common-metric/update.js';
 import { commonMetricDelete } from './common-metric/delete.js';
+import { queryClusterQpSkill } from './query/cluster-qp-skill.js';
 
 const commands: Command[] = [
   channelTouchLimitsList,
@@ -77,6 +78,7 @@ const commands: Command[] = [
   commonMetricCreate,
   commonMetricUpdate,
   commonMetricDelete,
+  queryClusterQpSkill,
 ];
 
 export { channelTouchLimitsList } from './channel-touch-limits/list.js';
@@ -117,5 +119,6 @@ export { commonMetricGet } from './common-metric/get.js';
 export { commonMetricCreate } from './common-metric/create.js';
 export { commonMetricUpdate } from './common-metric/update.js';
 export { commonMetricDelete } from './common-metric/delete.js';
+export { queryClusterQpSkill } from './query/cluster-qp-skill.js';
 
 export default commands;

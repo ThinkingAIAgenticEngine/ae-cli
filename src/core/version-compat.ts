@@ -154,24 +154,20 @@ export function formatUpgradeCommands(expectedVersion: string): string[] {
   ];
 }
 
+export function formatUnifiedUpdateCommand(): string {
+  return 'ae-cli update';
+}
+
 export function formatCompatNotice(verdict: CompatVerdict): string | undefined {
   if (verdict.kind === 'ok') return undefined;
 
-  const pinTarget = resolvePinTarget(verdict.expected);
-  const pins = formatPinCommands(verdict.expected);
-  const pinBlock = pins.map((c) => `           ${c}`).join('\n');
-  const pinNote =
-    pinTarget && pinTarget !== verdict.expected
-      ? `         (historical match: public ${pinTarget} for cluster ${verdict.expected}; GitHub usually published later)`
-      : undefined;
+  const canUpdateToHost = formatUpgradeCommands(verdict.expected).length > 0;
 
   if (verdict.kind === 'local_newer') {
-    if (pins.length > 0) {
+    if (canUpdateToHost) {
       return [
         `[ae-cli] Host compat: local ${verdict.local} > environment ${verdict.expected} (cluster ${verdict.line}).`,
-        `         Pin CLI + skills to the matched public release:`,
-        pinBlock,
-        ...(pinNote ? [pinNote] : []),
+        `         Run: ${formatUnifiedUpdateCommand()} to sync CLI + skills to this host.`,
         `         Or update cluster components to the latest version.`,
       ].join('\n');
     }
@@ -182,12 +178,10 @@ export function formatCompatNotice(verdict: CompatVerdict): string | undefined {
     ].join('\n');
   }
   if (verdict.kind === 'local_older') {
-    const upgrades = formatUpgradeCommands(verdict.expected);
-    if (upgrades.length > 0) {
+    if (canUpdateToHost) {
       return [
         `[ae-cli] Host compat: local ${verdict.local} < environment ${verdict.expected} (cluster ${verdict.line}).`,
-        `         Upgrade CLI + skills to the environment version:`,
-        ...upgrades.map((c) => `           ${c}`),
+        `         Run: ${formatUnifiedUpdateCommand()} to sync CLI + skills to this host.`,
       ].join('\n');
     }
     return [
@@ -196,12 +190,10 @@ export function formatCompatNotice(verdict: CompatVerdict): string | undefined {
       `         Ask the platform owner for the install package, or wait for a published build.`,
     ].join('\n');
   }
-  if (pins.length > 0) {
+  if (canUpdateToHost) {
     return [
       `[ae-cli] Host compat: local ${verdict.local} line mismatches environment ${verdict.expected} (cluster ${verdict.line}).`,
-      `         Switch to the matched public release (CLI + skills):`,
-      pinBlock,
-      ...(pinNote ? [pinNote] : []),
+      `         Run: ${formatUnifiedUpdateCommand()} to sync CLI + skills to this host.`,
       `         Or update cluster components to the latest version to match your CLI line.`,
     ].join('\n');
   }

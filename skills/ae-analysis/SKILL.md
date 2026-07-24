@@ -29,7 +29,7 @@ Use this skill for these CLI services:
 - `analysis-meta`: gateway metadata assets, events, properties, virtual metadata, metrics, data tables, exchange rules, and super metadata.
 - `analysis-governance`: gateway asset governance operations, including governed asset lists/exports, lineage, dependency, impact, query history, rule schema/list/create/update/delete, batch asset actions, and operation records. Use this service for asset governance workflows, not for metadata event/property/metric CRUD.
 - `tracking`: gateway tracking plan, checking, ingest, live-data, and event blacklist operations.
-- `analysis_meta`: legacy metadata batch operations not yet covered by gateway commands.
+- `analysis_meta`: legacy MCP metadata commands. Prefer `analysis-meta` gateway commands whenever the generated index contains the needed operation.
 
 For metadata gateway detail outside the commands in the generated index, use the metadata skill. For Engage, DataOps, or Community work, use the corresponding skill.
 

@@ -1,19 +1,26 @@
 # analysis dashboard-daily-report update
 
-Use when the user wants to update a dashboard daily report configuration.
+Use when the user wants to create or update a dashboard daily report configuration.
 
 Do not use to send immediately. Use `dashboard-daily-report send`.
 
 Command:
 
 ```bash
-ae-cli analysis dashboard-daily-report update --project-id <project_id> --dashboard-id <dashboard_id> [--enable-send true] [--send-time <time>] [--send-title <title>] [--send-content <content>] [--payload '{...}']
+ae-cli analysis dashboard-daily-report update --project-id <project_id> --dashboard-id <dashboard_id> [--enable-send true] [--send-time <time>] [--enable-email true] [--email-new <emails>] [--payload '{...}']
 ```
 
-Input sends `project_id`, `dashboard_id`, and optional daily report fields or `payload`.
+The command is a patch-style upsert:
 
-When `--payload` is absent, the command sends safe defaults expected by the gateway: `need_csv=false`, empty `host_url`, all channel switches false, `send_date=1,2,3,4,5,6,7`, `send_time=09:00`, `lang=zh-CN`, `screen_type=normal`, `zone_offset=0`, and `enable_send=false`. When `--payload` is present, payload values remain authoritative; pass top-level flags only for fields you intentionally want to override.
+- If the dashboard has no saved configuration, the backend creates one and applies defaults for omitted fields.
+- If a configuration exists, omitted fields remain unchanged.
+- Pass an explicit boolean to enable or disable a saved channel.
+- Pass an empty string or array to clear a saved destination.
 
-When enabling Feishu, pass `--enable-feishu true --feishu-info '{"app_id":"cli_xxx","app_secret":"secret_xxx","webhook":["https://open.feishu.cn/open-apis/bot/v2/hook/..."]}'`. All three fields are required because the backend uploads the dashboard image before calling the group-bot webhook. Treat `app_secret` as sensitive input.
+SMTP transport is not caller-selectable. For direct email addresses, the backend uses company SMTP when configured and otherwise uses the default mail service.
 
-Output is the gateway envelope. `data` contains the daily report configuration update result.
+When enabling Feishu, pass `--enable-feishu true --feishu-info '{"app_id":"cli_xxx","app_secret":"secret_xxx","webhook":["https://open.feishu.cn/open-apis/bot/v2/hook/..."]}'`. Treat `app_secret` and webhook URLs as sensitive.
+
+Use `dashboard-daily-report get` before a selective update when the current state matters. The get response redacts secrets and webhook URLs, so do not copy the full response back as an update payload.
+
+Output is the gateway envelope. `data` contains the saved daily report configuration result.

@@ -387,6 +387,58 @@ try {
     assert.equal(calls[0].url, 'http://te-claude.local/api/sandbox/agent/models');
   });
 
+  await test('explicit host uses its user token for admin requests and preserves a 403 permission denial', async () => {
+    const calls: Array<{ url: string; init: RequestInit }> = [];
+    const prevFetch = globalThis.fetch;
+    globalThis.fetch = (async (url: string | URL | Request, init?: RequestInit) => {
+      calls.push({ url: String(url), init: init ?? {} });
+      return new Response(JSON.stringify({ error: 'Agent administrator role is required' }), {
+        status: 403,
+      });
+    }) as typeof fetch;
+
+    let caught: unknown;
+    try {
+      await withEnv(
+        {
+          HOME: join(tmpRoot, 'admin-host-override-home'),
+          TE_CLAUDE_BASE_URL: 'http://sandbox-main-app.local',
+          SANDBOX_ID: 'sb-should-not-be-used',
+          SECRET_KEY: 'secret-should-not-be-used',
+          SANDBOX_SECRET_KEY: undefined,
+          SANDBOX_RUNTIME_ROOT: join(tmpRoot, 'admin-host-override-runtime-empty'),
+        },
+        async () => {
+          const adminHost = 'http://admin-host.local';
+          const { save } = await import('../src/core/secure-store.ts');
+          save(adminHost, {
+            accessToken: 'admin-host-access-token',
+            refreshToken: '',
+            accessExpiresAt: new Date(Date.now() + 3600_000).toISOString(),
+          });
+          const { getFromMainApp } = await loadClientModule();
+          try {
+            await getFromMainApp('/api/admin/members', adminHost);
+          } catch (error) {
+            caught = error;
+          }
+        },
+      );
+    } finally {
+      globalThis.fetch = prevFetch;
+    }
+
+    assert.equal(calls.length, 1);
+    assert.equal(calls[0].url, 'http://admin-host.local/agent/api/admin/members');
+    const headers = calls[0].init.headers as Record<string, string>;
+    assert.equal(headers['Authorization'], 'bearer admin-host-access-token');
+    assert.equal(headers['X-Sandbox-Id'], undefined);
+    assert.equal(headers['X-Sandbox-Secret-Key'], undefined);
+    assert.ok(caught instanceof Error);
+    assert.equal((caught as { status?: number }).status, 403);
+    assert.match((caught as Error).message, /Agent administrator role is required/);
+  });
+
   await test('cli-token present, no access token → request sends cli-token header (no Bearer)', async () => {
     const runtimeRoot = join(tmpRoot, 'cli-token-test-runtime');
     const aeConfigDir = join(runtimeRoot, '.ae-config');

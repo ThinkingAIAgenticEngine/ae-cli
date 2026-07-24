@@ -1,6 +1,6 @@
 # engage-scene config-item
 
-> Capability ids: `engage-scene.config-item.{list,get,create,update,delete}` · Domain: `engage`.
+> Trigger keywords: config center, scene config, config item · Capability ids: `engage-scene.config-item.{list,get,create,update,delete}` · Domain: `engage`.
 
 Scene management / config center — config item management.
 

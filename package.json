@@ -1,6 +1,6 @@
 {
   "name": "@thinkingai/ae-cli",
-  "version": "6.0.35",
+  "version": "6.1.8",
   "description": "CLI tool for ThinkingAI (AE) analytics platform",
   "type": "module",
   "bin": {
@@ -37,8 +37,10 @@
     "verify:retired-analysis-commands": "node --test test/retired-analysis-commands.test.mjs",
     "verify:analysis-meta-tools": "node scripts/verify-te-meta-tools.mjs",
     "verify:analysis-common-tools": "node scripts/verify-te-common-tools.mjs",
+    "verify:experiment-tools": "node scripts/verify-te-experiment-tools.mjs && node --import tsx test/experiment/experiment-capability-command.test.mjs",
     "verify:team-tools": "node scripts/verify-te-team-tools.mjs",
     "verify:agent-tools": "node scripts/verify-agent-tools.mjs && npm run verify:sandbox-tools",
+    "verify:system-tools": "node scripts/verify-system-tools.mjs && npx tsx tests/system-domain.test.ts && npx tsx tests/sandbox-tool-package.test.ts",
     "verify:sandbox-tools": "tsx test/sandbox-tools.test.ts",
     "verify:tracking-tools": "node test/tracking-client.test.mjs && node test/tracking-skill-flow.test.mjs && node test/tracking-commands.test.mjs",
     "verify:self-check-overlay": "node test/self-check-overlay.test.mjs",
@@ -68,6 +70,7 @@
   },
   "dependencies": {
     "@types/json-bigint": "^1.0.4",
+    "archiver": "^5.3.2",
     "cli-table3": "^0.6.5",
     "commander": "^12.1.0",
     "exceljs": "^4.4.0",
@@ -79,9 +82,11 @@
     "xlsx": "^0.18.5"
   },
   "devDependencies": {
+    "@types/archiver": "^5.3.4",
     "@types/node": "^22.0.0",
     "@types/turndown": "^5.0.6",
     "@types/ws": "^8.5.0",
+    "jszip": "^3.10.1",
     "mysql2": "^3.22.6",
     "tsup": "^8.0.0",
     "tsx": "^4.0.0",

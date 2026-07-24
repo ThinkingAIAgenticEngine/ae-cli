@@ -1,7 +1,7 @@
 ---
 name: ae-engage
 version: 1.0.0
-description: "AE Engage MCP: config items, flows, channel settings, task data query, and management"
+description: "AE Engage capability gateway: config center, flows, push/config channels, strategies, templates, and task management. Trigger words: config center, scene config, push channel, config channel, operation strategy, operation task, template, config item, Engage, Hermes, engage-scene, engage-setting, engage-flow, engage-task."
 ---
 
 # ae-engage
@@ -42,6 +42,27 @@ Typical use cases include:
 - Querying task lists, task details, experiment reports, and metric reports
 - Querying config items and strategies, copying templates, and managing strategy status
 - Querying flow lists, node schemas, and flow reports, and saving or managing flows
+
+## Keyword Routing
+
+When the user mentions a product term below (including common Chinese UI labels), open the listed reference(s) first — do not guess commands or IDs.
+
+| Keyword | Product meaning | CLI domain | Primary reference | Related references |
+|---|---|---|---|---|
+| **Config center** | Engage scene management / config center overview | `engage-scene` | `references/scene-config-item.md` | `scene-config-param.md`, `scene-config-group.md`, `scene-preset-metric.md`, `scene-config-metric.md`, `scene-config-channel.md`, `channel-mgmt.md`, `scene-strategy.md`, `scene-template.md`; L3 reports: `config-item-trigger-report.md`, `config-item-analysis-report.md`, `config-item-strategy-comparison.md` |
+| **Scene config** | Same as config center; params, groups, metrics, channels, strategies, and templates under a config item | `engage-scene` | `references/scene-config-item.md` | Same as above; params/groups/metrics: `scene-config-param.md`, `scene-config-group.md`, `scene-preset-metric.md`, `scene-config-metric.md` |
+| **Config item** | A single config item in the config center | `engage-scene` | `references/scene-config-item.md` | `scene-config-param.md`, `scene-preset-metric.md`, `scene-config-metric.md`, `scene-strategy.md`, `scene-template.md` |
+| **Push channel** | Project-level message push channels (Webhook, FCM, APNS, etc.) | `engage-setting` | `references/channel-list.md` | `channel-detail.md`, `add-channel.md`, `update-channel-status.md`, `delete-channel.md`, `channel-update-config.md`, `channel-test-send.md`, `channel_touch_limits_list.md` |
+| **Config channel** | Config-center Webhook/client config channels (not the same as push channels) | `engage-scene` | `references/scene-config-channel.md` | `channel-mgmt.md` (create/enable-disable/copy/delete workflows). User params in `config.customsParamList` require `columnName` with `user:` prefix (e.g. `user:#account_id`); preflight names with ae-analysis `analysis-meta property list/get`. |
+| **Operation strategy** | Ops/delivery strategies under a config item | `engage-scene` | `references/scene-strategy.md` | Custom audience QP: [`scene-strategy-audience.md`](references/scene-strategy-audience.md) — **用户满足** `filts[0]` + **用户行为** `filts[1]` two-block mix QP; preflight props (stop + list if missing); examples A/B/C; template: `scene-template.md` |
+| **Operation task** | Hermes push/engagement tasks (list, save, lifecycle, reports) | `engage-task` | `references/task-list.md` | `task-detail.md` (get), `save-task.md`, `build-task-save-guide.md`, `task-stats.md`, `task-delete.md`, `push-record-query.md`, `task-data-overview.md`, `task-data-detail.md`, `task-metric-detail.md`, `task-experiment-report.md` |
+| **Template** | Strategy templates under a config item | `engage-scene` | `references/scene-template.md` | `scene-config-param.md` (template fields reference `paramId`); enable via `template update` then `template update-status` before strategy create |
+
+**Easy to confuse:**
+
+- **Push channel** → `ae-cli engage-setting channel …` (Hermes push channel settings)
+- **Config channel** → `ae-cli engage-scene config-channel …` (config-center channels; see `channel-mgmt.md`)
+- Flow / Task canvas nodes use `channelId` from **push channels**; config items bind `channel_id` from **config channels**
 
 ## Parameter Conventions
 
@@ -230,6 +251,8 @@ ae-cli engage-scene config-metric update-rule --project-id <project_id> --metric
 ae-cli engage-scene config-metric batch-delete --project-id <project_id> --config-id <config_id> --metric-ids '[1,2]' --yes
 
 # Config channel list / get / create / update / update-status / delete / query-log
+# User params: verify each customsParamList columnName via ae-analysis property list/get first; then use user:<prop_name>
+# Strategy custom audience: scene-strategy-audience.md — mix QP filts[0]=用户满足, filts[1]=用户行为; strategy predict for 预估人数
 # Workflows: references/channel-mgmt.md · schema: references/scene-config-channel.md
 ae-cli engage-scene config-channel list --project-id <project_id> [--channel-type 0|1]
 ae-cli engage-scene config-channel get --project-id <project_id> --channel-id <channel_id>
@@ -243,6 +266,7 @@ ae-cli engage-scene config-channel query-log --project-id <project_id> --channel
 ae-cli engage-scene strategy create --project-id <project_id> --payload '{"configId":"cfg-1","templateId":"tpl-1","strategyName":"s1"}'
 ae-cli engage-scene strategy update --project-id <project_id> --payload '{"strategyUuid":"uuid-1"}'
 ae-cli engage-scene strategy log --project-id <project_id> --strategy-uuid <uuid>
+ae-cli engage-scene strategy predict --project-id <project_id> --qp '<mix QP string>' --zone-offset 8 [--strategy-uuid <uuid>]
 ae-cli engage-scene strategy batch-copy --project-id <project_id> --config-id <config_id> --strategy-ids '["s1"]'
 
 # Template list / get / create / update / update-status / delete
@@ -412,7 +436,8 @@ More detailed single-command guidance is available in the business-oriented `ref
 - `references/scene-config-metric.md` (`engage-scene.config-metric.{list,get,batch-add,update-rule,batch-delete}`)
 - `references/scene-config-channel.md` (`engage-scene.config-channel.{list,get,create,update,update-status,delete,query-log}`)
 - `references/channel-mgmt.md` (config channel management workflows)
-- `references/scene-strategy.md` (`engage-scene.strategy.{list,get,create,update,log,batch-copy,manage}`)
+- `references/scene-strategy.md` (`engage-scene.strategy.{list,get,create,update,log,predict,batch-copy,manage}`)
+- `references/scene-strategy-audience.md` (custom audience mix QP: 用户满足/用户行为 two-block layout, preflight, worked examples A/B/C)
 - `references/scene-template.md` (`engage-scene.template.{list,get,copy,create,update,update-status,delete}`)
 - `references/config-item-trigger-report.md` (`engage-scene.report.config-item-trigger`, L3)
 - `references/config-item-analysis-report.md` (`engage-scene.report.config-item-analysis`, L3)
@@ -486,11 +511,13 @@ For task draft creation or update, use this workflow:
 
 1. `ae-cli engage-setting channel list --project-id <projectId>`
 2. `ae-cli engage-task task build-save-guide --project-id <projectId> --req '{...}'`
-3. If the guide says QP-derived fields are needed, create the audience with `analysis user-cluster create`, then read its server-authored definition with `analysis user-cluster get`
+3. If the guide says QP-derived fields are needed (`targetConfig.qp`, `triggerConfig.triggerRule`, `clientConfig.clientQp`, or `completionIndicatorDef.event`), call:
+   `ae-cli engage-setting query cluster-qp-skill --project-id <projectId>`
+   Use the returned skill text to build those fields. For existing-cluster audiences (`targetClusterType=2`), use `analysis user-cluster get` instead of hand-writing QP.
 4. `ae-cli engage-task task save --project-id <projectId> --req '{...}'`
 
 `engage-task task build-save-guide` is a read-only helper. It returns scenario-specific required fields, channel content schema, unsupported combinations, examples, and a handoff template for `save_task`.
 
-`engage-task task save` only saves a draft. It does not submit approval, does not start sending, and does not trigger task execution. If `req.taskId` is omitted it creates a new draft; if `req.taskId` is present it updates an existing draft. Update mode only supports draft tasks, and omitted fields can inherit from the existing draft before validation.
+`engage-task task save` creates or updates a task configuration. It does not submit approval, does not start sending, and does not trigger task execution. If `req.taskId` is omitted it creates a new draft; if `req.taskId` is present it updates an existing **draft or paused** task. Update mode rejects running/ended tasks with `invalid_status`. Omitted fields inherit from the existing task before validation (partial rename/update is supported).
 
-Audience creation is not a fixed preflight step. Use direct `analysis user-cluster create` only when the guide requires a condition audience, and prefer the returned `cluster_name`/`clusterKey`. If the Engage schema explicitly requires QP-derived fields such as `targetConfig.qp`, `triggerConfig.triggerRule`, `clientConfig.clientQp`, or `completionIndicatorDef.event`, read the saved server-authored definition with `analysis user-cluster get`; never assemble raw QP manually.
+Audience creation is not a fixed preflight step. When the guide requires QP-derived fields (`targetConfig.qp`, `triggerConfig.triggerRule`, `clientConfig.clientQp`, `completionIndicatorDef.event`), call `ae-cli engage-setting query cluster-qp-skill --project-id <projectId>` first and follow the returned skill definition; do not assemble raw QP manually. For existing-cluster audiences, use `analysis user-cluster get` to copy server-authored definitions when appropriate.
