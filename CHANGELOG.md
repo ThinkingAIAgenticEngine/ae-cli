@@ -1,4 +1,4 @@
-### 6.0.37
+### 6.1.9
 **Date:** 2026-07-28
 
 **Changes:**
@@ -11,6 +11,10 @@
 #### Tracking & documentation
 * Fix tracking-code generation Wiki references to use `~/.ae-cli/wiki/raw` and `~/.ae-cli/wiki/synthesis`
 * Refresh bilingual internal/public README documentation and add a Chinese changelog
+
+#### 6.1-only: Atlas Experiment
+* Add the `experiment` capability domain for experiment lifecycle, reports, sample-size and metric trends, traffic-layer conflict checks, Features, metrics, buckets, operation logs, and batch deletion
+* Add the `ae-experiment` Skill and verification coverage, including readiness checks and high-risk write guidance
 
 ### 6.0.36
 **Date:** 2026-07-24
