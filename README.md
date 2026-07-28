@@ -1,222 +1,288 @@
-
 [中文版](./README.zh.md) | [English](./README.md)
 
 # ae-cli
 
-CLI tool for ThinkingAI AgenticEngine (AE) platform. Designed for both AI Agent and human use.
+`ae-cli` is the command-line client for the ThinkingAI AgenticEngine (AE) platform. It provides stable, structured interfaces for both AI Agents and human operators across analytics, metadata, tracking, Engage, DataOps, knowledge bases, Agent resources, and system administration.
+
+The CLI is designed around:
+
+- JSON-first output that Agents can inspect and act on.
+- Host-scoped authentication and environment configuration.
+- Curated commands for common workflows plus Capability Gateway access for long-tail operations.
+- Explicit validation, dry-run, and confirmation contracts for safer writes.
+- Exact CLI and Skills version synchronization with the connected AE environment.
+
+## Requirements
+
+- Node.js 20 or later.
+- Access to the npm registry for CLI installation.
+- Access to GitHub when installing Skills initially or when the local Skills fallback cannot be used.
 
 ## Installation
 
-**Step 1: Install ae-cli**
+Install the public CLI and Agent Skills:
 
 ```bash
 npm install -g @thinkingai/ae-cli
+npx -y skills add ThinkingAIAgenticEngine/ae-cli -g -y
 ```
 
-**Step 2: Install AI Agent Skills**
+The Skills teach supported coding Agents, including Claude Code, Codex, Cursor, and similar tools, how to discover and call `ae-cli`.
+
+Log in to an AE environment:
 
 ```bash
-npx skills add ThinkingAIAgenticEngine/ae-cli -g -y
+ae-cli auth login --host https://your-ae-host.example.com
+ae-cli auth status
 ```
 
-This installs 4 skill packages into your AI coding agent (Claude Code, Trae, Cursor, etc.), enabling the agent to understand and call ae-cli commands.
+## Environment-Bound Updates
 
-To update:
+Each AE environment returns the exact `aeCliVersion` it expects. Use the unified update command to install that CLI version and its matching Skills:
 
 ```bash
-npm cache clean --force && npm install -g @thinkingai/ae-cli
-npx skills add ThinkingAIAgenticEngine/ae-cli -g -y
+ae-cli update
+ae-cli update --dry-run
+```
+
+`ae-cli update` installs the exact version required by the active host rather than npm `latest`. It synchronizes Skills from the installed npm package first and uses the matching GitHub tag only as a fallback.
+
+Starting with the `6.0.37` and `6.1.9` release lines, ordinary business commands can automatically upgrade or downgrade the CLI to the host-required version. After a successful synchronization, the old process exits with `AE_CLI_VERSION_SYNCED`; re-run the original command so it executes with the new CLI and Skills. Installation failures are reported without replacing the business command's JSON output.
+
+Useful controls:
+
+```bash
+# Use another configured host
+ae-cli update --host https://another-host.example.com
+
+# Install an explicit version
+ae-cli update --target 6.1.9
+
+# Skip compatibility checks for one command
+ae-cli --no-update-check capability list --domain analysis
 ```
 
 ## Quick Start
 
 ```bash
-ae-cli auth login --host xxxxx
+# List and switch configured environments
+ae-cli config list
+ae-cli config current
+ae-cli config use https://your-ae-host.example.com
+
+# Discover capabilities exposed by the host
+ae-cli capability list --domain analysis
+ae-cli capability search "dashboard list" --domain analysis
+ae-cli capability inspect analysis.dashboard.list
+
+# Validate, preview, and execute
+ae-cli capability validate analysis.dashboard.list --input '{"project_id":1}'
+ae-cli capability dry-run analysis.dashboard.list --input '{"project_id":1}'
+ae-cli capability run analysis.dashboard.list --input '{"project_id":1}'
+
+# Filter structured output
+ae-cli capability list --domain analysis --jq '.data.capabilities[] | .id'
 ```
 
-## Usage
+## Command Surface
+
+Run `ae-cli --help` or `ae-cli <command> --help` for the authoritative command list.
+
+| Command or domain | Purpose |
+|---|---|
+| `analysis` | Reports, dashboards, ad-hoc analysis, drilldowns, details, alerts, and analysis schemas |
+| `analysis-meta` | Event/property metadata, metrics, virtual metadata, tracking governance, and project configuration |
+| `analysis-governance` | Asset search, lineage, impact analysis, and governance operations |
+| `metadata` | Capability-backed data-table and property operations |
+| `tracking` | Tracking-plan lifecycle, SDK samples, checks, ingestion diagnostics, code generation, and bundled wiki |
+| `engage-flow`, `engage-task`, `engage-setting`, `engage-scene`, `engage-activity`, `engage-workbench` | Engage flows, tasks, settings, strategies, activities, and workbench operations |
+| `community` | Community posts, comments, topics, sentiment, livestream, and report workflows |
+| `dataops_repo`, `dataops_datatable`, `dataops_flow`, `dataops_ide`, `dataops_integration`, `dataops_operations` | Data warehouse, data-table, flow, IDE, integration, and operations workflows |
+| `kb` | Knowledge-base lifecycle, LLM query, and deterministic index/grep/read retrieval |
+| `agent` | Agents, automations, models, MCP servers, Skills, attachments, credentials, and sandbox tools |
+| `system` | Root/admin operations for members, sandboxes, shared tools, models, usage, quotas, and IM channels |
+| `team` | Agent Team lifecycle and TeamRun execution, chat, result, and artifact workflows |
+| `capability` | Capability discovery, schema inspection, validation, dry-run, and generic execution |
+| `auth`, `config` | Host-scoped authentication and multi-environment configuration |
+| `api` | Raw authenticated HTTP requests for diagnostic or transitional use |
+| `sync` | Push or pull local Skills and MCPs to/from the Agent application |
+| `model` | Switch the current workspace model inside an Agent sandbox |
+| `update` | Synchronize CLI and Skills to the version required by the current host |
+
+`analysis_meta` remains available for legacy curated metadata commands. Prefer the hyphenated Capability Gateway domains for new integrations.
+
+## Capability Gateway
+
+Capability Gateway is the preferred entry point for operations that do not need a dedicated curated command:
 
 ```bash
-# AE meta domain (metadata and governance)
-ae-cli analysis_meta +list_events --project_id 1
+ae-cli capability list --domain analysis --project-id 1
+ae-cli capability search "report list" --domain analysis
+ae-cli capability inspect analysis.report.list
+ae-cli capability validate analysis.report.list --input input.json
+ae-cli capability dry-run analysis.report.list --input input.json
+ae-cli capability run analysis.report.list --input input.json
+```
 
-# Table output
-ae-cli analysis_meta +list_events --project_id 1 --format table
+`--input` accepts inline JSON, a JSON file path, `@<path>`, or `-` for stdin.
 
-# Raw API call
-ae-cli api GET /v1/ta/event/catalog/listEvent --params '{"projectId": 1}'
+Use `validate` while fixing complex nested input. Use `dry-run` when you need the final risk, output mode, cancellation support, or delete confirmation preview. Do not stack `validate` and `dry-run` for the same final payload by default; `dry-run` already validates it.
 
-# Knowledge base (create → upload → compile → query)
+Gateway-backed features follow the [Capability command admission rules](docs/capability-command-admission.md). Common workflows may have curated commands; long-tail capabilities remain dynamically discoverable.
+
+## Authentication and Environments
+
+Credentials are stored per host. Switching environments does not reuse a token from another host.
+
+```bash
+ae-cli auth login --host https://host-a.example.com
+ae-cli auth status --host https://host-a.example.com
+ae-cli auth logout --host https://host-a.example.com
+
+ae-cli config list
+ae-cli config current
+ae-cli config set-host https://host-b.example.com --label staging
+ae-cli config use staging
+```
+
+Login uses a cross-platform device-code flow. Use `--no-browser` when the environment cannot open a browser.
+
+## Output and Safety
+
+Commands return a stable envelope:
+
+```json
+{
+  "ok": true,
+  "data": {},
+  "_notice": {}
+}
+```
+
+- `--format json` is the default and is recommended for Agents.
+- `--format table` is available for supported human-facing list commands.
+- `--jq <expr>` applies jq 1.8 filtering to the business payload before the output envelope is printed.
+- `--validate` normalizes Capability Gateway input without business execution.
+- `--dry-run` previews an operation without executing its business logic.
+- `--yes` skips interactive confirmation for explicitly marked high-risk writes.
+- `_notice` may include host compatibility or update guidance without changing successful business data.
+
+JSON flags generally accept inline JSON, `@file`, a file path, or `-` for stdin. Check command help for the exact accepted forms.
+
+## Knowledge Bases
+
+Manage the server-side knowledge-base lifecycle:
+
+```bash
 ae-cli kb +new --scope company --name engineering-handbook --description "Team docs"
 ae-cli kb +add --name engineering-handbook --files '["./docs/guide.md","https://example.com/page"]'
 ae-cli kb +schema --name engineering-handbook
 ae-cli kb +compile --name engineering-handbook
-ae-cli kb +query -q "How to configure sandbox?" \
-  --sources '[{"scope":"company","name":"engineering-handbook"}]' \
-  --top-k 10
+ae-cli kb +status --name engineering-handbook
+ae-cli kb +query -q "How is the sandbox configured?" --top-k 10
+```
 
-# Retrieval primitives for external agents (read index → grep → read page)
+External Agents can use deterministic retrieval without a server-side LLM:
+
+```bash
+ae-cli kb +list
 ae-cli kb +index --sources '[{"scope":"company","name":"engineering-handbook"}]'
-ae-cli kb +grep -q "sandbox config" \
-  --sources '[{"scope":"company","name":"engineering-handbook"}]'
-ae-cli kb +read --source '{"scope":"company","name":"engineering-handbook"}' \
-  --path "wiki/sandbox.md"
+ae-cli kb +grep -q "sandbox config" --sources '[{"scope":"company","name":"engineering-handbook"}]'
+ae-cli kb +read --source '{"scope":"company","name":"engineering-handbook"}' --path "wiki/sandbox.md"
 ```
 
-## Authentication
+## Agent and System Administration
 
-Authentication is handled per-host. Each AE host URL maintains its own token.
+The `agent` domain manages user-visible Agent resources:
 
 ```bash
-# Device code login (cross-platform)
-ae-cli auth login
-
-# Check status
-ae-cli auth status
-
-# Logout
-ae-cli auth logout
+ae-cli agent +list-agents
+ae-cli agent +list-models
+ae-cli agent +list-mcps
+ae-cli agent +list-skills
+ae-cli agent +list-automations
+ae-cli agent +list-attachments
 ```
 
-## Commands
-
-### Domains
-
-| Domain | Commands | Description |
-|--------|----------|-------------|
-| `analysis` | 30+ | Analysis workflows: alerts, reports, dashboards, ad-hoc/drilldown, entity/event details, analysis schema |
-| `analysis_meta` | 20+ | Metadata governance: events/properties, metrics, virtual metadata, project config, tracking plan, mark times, entity catalog |
-| `engage` | 40+ | Hermes Engage MCP: channels, tasks, configs, flows, strategies |
-| `dataops_repo` | 1 | DataOps repo utilities: space discovery |
-| `dataops_datatable` | 5 | Data tables: table/view creation, publishing, details, data dictionary |
-| `dataops_flow` | 15 | Task flows: flow creation, task nodes, scheduling, execution, release preview |
-| `dataops_operations` | 4 | Operations: workflow instance search, instance detail, task logs, stop |
-| `dataops_ide` | 9 | IDE queries: metadata browsing, SQL execution, query management |
-| `dataops_integration` | 19 | Data integration: datasource management, sync solutions, data synchronization |
-| `community` | 10+ | Community analysis: posts search, sentiment analysis, topic trends, livestream data |
-| `analysis_common` | 2 | Cross-module common constraints: resource link completion, project ID gate |
-| `team` | 14 | AI Agent Team: manage teams (list/create/update/delete/ai-generate/templates/projects) and execute TeamRuns (start/watch/chat/reply/cancel/result/artifacts) |
-| `kb` | 11 | Knowledge base lifecycle: query / new / add (md/dir/url) / schema / compile / rm-source / remove; retrieval primitives: list / index / grep / read |
-| `auth` / `config` | 2 | Authentication and host configuration |
-
-### kb
-
-Knowledge base lifecycle (`+new` → `+add` → `+schema` → `+compile` → `+status` → `+query`):
-
-- **Create** (`+new`): `--scope personal|company`, `--name`, optional `--description`, `--tags`, `--project-id`, `--project-name`
-- **Upload** (`+add`): `--name`, `--files` JSON array (`.md` file, directory non-recursive scan, or http(s) URL with HTML-to-Markdown conversion)
-- **Schema** (`+schema`): `--name`, optional `--force`, `--model`
-- **Compile** (`+compile`): `--name`, `--mode incremental|full` (default: incremental)
-- **Status** (`+status`): `--name`
-- **Query** (`+query`): `--query` / `-q`, optional `--sources` JSON refs (omit to search all accessible KBs), `--top-k` (1-50, default 10), `--locale`
-- **Remove source** (`+rm-source`): `--name`, `--display-name`
-- **Remove KB** (`+remove`): `--name`
-
-Retrieval primitives for external agents (`+list` → `+index` → `+grep` → `+read`); these are deterministic file-search endpoints with no server-side LLM, designed for agents (Claude Code / Codex / Cursor) to explore a KB the way they explore a codebase:
-
-- **List** (`+list`): optional `--build-status` (default `compiled`), optional `--locale`. Returns accessible knowledge base metadata including `buildStatus`, without `index.md` navigation maps.
-- **Index** (`+index`): optional `--sources` JSON refs (omit to list all accessible KBs), optional `--locale`. Returns each KB's metadata plus its `index.md` navigation map.
-- **Grep** (`+grep`): `--query` / `-q`, optional `--sources`, `--top-k` (1-50, default 10), `--locale`. Returns matched lines with path, line number, breadcrumb and context snippet.
-- **Read** (`+read`): `--source` JSON ref (exactly one KB), `--path` (page path relative to the KB root), optional `--offset` / `--limit` (line window), `--locale`. Returns the full page or a line window.
-
-### Global Options
-
-| Option | Description | Default |
-|--------|-------------|---------|
-| `--host <url>` | Override active AE host URL | from config |
-| `--format <json\|table>` | Output format | json |
-| `--jq <expr>` | jq 1.8 expression (jq-wasm) over command payload before output envelope | - |
-| `--validate` | Fix params: capability gateway `/validate` only (curated gateway commands). Do not combine with `--dry-run` | false |
-| `--dry-run` | Confirm ready to run: capability gateway `/dry-run` (or local transport preview). Do not combine with `--validate` | false |
-| `--yes` | Skip high-risk write confirmation | false |
-| `--no-update-check` | Skip checking for newer ae-cli versions | false |
-
-## Skills
-
-5 AI Agent skill packages are included in the `skills/` directory:
-
-| Skill | Description |
-|-------|-------------|
-| `ae-analysis` | Unified analysis skill: analysis + audience + metadata + common constraints (project gate/resource links) |
-| `ae-engage` | Hermes Engage MCP: channels, tasks, configs, flows, strategies |
-| `ae-dataops` | Data warehouse management, task flows, IDE queries, integration, operations |
-| `ae-community` | Community analysis: posts, comments, topics, livestreams |
-
-Install them with:
+The `system` domain calls administrative `/api/admin/**` endpoints and requires a `root` or `agent_admin` role:
 
 ```bash
-npx skills add ThinkingAIAgenticEngine/ae-cli -g -y
+ae-cli system +list-members --status enabled
+ae-cli system +list-sandboxes
+ae-cli system +get-usage-summary --days 30
+ae-cli system +list-quota-rules
+ae-cli system +list-channels
 ```
 
-## Skill Details
+Authorization is always enforced by the server. Do not retry or bypass a permission error.
 
-### ae-analysis
+## Agent Skills
 
-Unified AE analysis capabilities:
-- **Analysis**: alerts, reports, dashboards, ad-hoc/drilldown, entity/event details, analysis schema
-- **Audience**: cluster and tag lifecycle management, plus definition schema tools
-- **Metadata**: events/properties, metrics, virtual metadata, project config, tracking plans, mark times
-- **Common**: mandatory project ID gate and post-write resource-link completion
+The npm package includes the same `skills/` directory used by the public repository:
 
-### engage
+| Skill | Scope |
+|---|---|
+| `ae-capability` | Capability discovery and generic invocation |
+| `ae-analysis`, `ae-analysis-global` | Analysis, audience, metadata, governance, and multi-cluster workflows |
+| `ae-metadata` | Capability-backed metadata data-table operations |
+| `ae-engage` | Engage operations and workflow guidance |
+| `ae-dataops` | Data warehouse, flow, IDE, integration, and operations |
+| `ae-community` | Community analysis and reporting |
+| `ae-kb` | Knowledge-base lifecycle and retrieval |
+| `ae-agent`, `ae-system`, `ae-team` | Agent resources, administration, and TeamRun workflows |
+| `ae-generate-tracking-plan`, `ae-generate-tracking-code` | Tracking-plan and tracking-code generation |
+| `ae-data-integration-helper` | SDK and LogBus2 integration guidance |
 
-Hermes Engage MCP capabilities:
-- **Channels**: channel management, config channels, approval, whitelist
-- **Tasks**: task list, details, data/metrics overview, experiment reports
-- **Configs**: config items, strategies, comparison, trigger/analysis reports
-- **Flows**: flow creation, node config, reports, validation
+Reinstall all public Skills with:
 
-### ae-dataops
-
-Data warehouse management:
-- **Repo Utilities**: space discovery
-- **Data Tables**: table creation, views, batch operations, data dictionary
-- **Task Flows**: flow creation, task nodes, scheduling, execution, monitoring
-- **IDE Queries**: metadata browsing, SQL execution, query management
-- **Data Integration**: datasource management, sync solutions, data synchronization
-
-### ae-community
-
-Community social media analysis:
-- **Posts**: search, detail, corpus tags
-- **Comments**: sentiment analysis, tag analysis, summary
-- **Topics**: hot topics, trends, daily summaries
-- **Livestreams**: rooms, sessions, analysis, metrics
-- **Channel Info**: channel overview metrics
-
-## Architecture
-
-ae-cli is built with:
-- **TypeScript** (~8000 lines of code)
-- **Commander.js** for CLI framework
-- **WebSocket** for MCP server integration
-- **Node.js** runtime (v20+)
-
-The project structure:
+```bash
+npx -y skills add ThinkingAIAgenticEngine/ae-cli -g -y
 ```
+
+## Development
+
+```bash
+git clone https://github.com/ThinkingAIAgenticEngine/ae-cli.git
+cd ae-cli
+npm install
+npm run build
+node dist/index.js --help
+```
+
+Run from source during development:
+
+```bash
+npm run dev -- --help
+```
+
+Core structure:
+
+```text
 src/
-├── core/          # Core modules: auth, config, client, mcp
-├── framework/     # Framework: types, register, runner, output
-├── api/           # Raw API access
-└── commands/      # Domain-specific commands
-    ├── auth.ts
-    ├── config.ts
-    ├── te-analysis/
-    ├── te-meta/
-    ├── te-engage/
-    ├── te-dataops/
-    ├── te-community/
-    ├── te-common/
-    └── te-kb/
+├── core/          # auth, config, clients, compatibility, version sync
+├── framework/     # command registration, lifecycle, output, errors
+├── api/           # raw authenticated API access
+└── commands/      # business domains and CLI utilities
+skills/            # Agent Skills shipped with the npm package
+self-check/        # release and documentation consistency checks
+test/, tests/      # command, contract, and regression tests
 ```
 
-## Verification Scripts
+Useful verification commands:
 
 ```bash
-npm run verify:analysis-tools
-npm run verify:analysis-meta-tools
-npm run verify:analysis-common-tools
+npm run build
+npm run qa-changed
+npm run self-check
+npm run check:release
+npm run verify:update-check
+npm run verify:version-sync
 ```
+
+## Changelog
+
+- [English changelog](./CHANGELOG.md)
+- [中文更新日志](./CHANGELOG.zh-CN.md)
 
 ## License
 

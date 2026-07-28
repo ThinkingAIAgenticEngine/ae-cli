@@ -5,13 +5,13 @@
 Domain: **Automations / write**
 
 ## Use Cases
-- Update an existing Agent automation task's name, instruction, schedule, or enabled state.
+- Update an existing Agent automation task's name, instruction, schedule, enabled state, or conversation mode.
 - Used to pause (`--enabled false`) or resume (`--enabled true`) an automation, or to change its schedule/message.
 - Obtain the automation `id` via `+list-automations` — never guess.
 
 ## Mandatory Rules (MUST)
 - `--id` is required. Obtain the real ID via `+list-automations` — do not guess.
-- At least one update field must be provided (`--name`, `--message`, `--enabled`, `--cron`, or a `--schedule-kind` with its time/day fields).
+- At least one update field must be provided (`--name`, `--message`, `--enabled`, `--reuse-conversation`, `--cron`, or a `--schedule-kind` with its time/day fields).
 - `--cron` and `--schedule-kind` are mutually exclusive.
 - This is an ordinary `write` operation and does not require CLI confirmation.
 - Do not surface raw automation IDs, raw JSON, or concrete detail paths in user-facing replies.
@@ -31,6 +31,12 @@ ae-cli agent +update-automation --id <automation-id> --enabled false
 
 # Resume an automation
 ae-cli agent +update-automation --id <automation-id> --enabled true
+
+# Reuse the most recent valid conversation on future runs
+ae-cli agent +update-automation --id <automation-id> --reuse-conversation true
+
+# Return to creating a new conversation for every run
+ae-cli agent +update-automation --id <automation-id> --reuse-conversation false
 
 # Rename and change the instruction
 ae-cli agent +update-automation \
@@ -59,6 +65,7 @@ ae-cli agent +update-automation --dry-run --id <automation-id> --enabled false
 | `--name` | No | New automation task name |
 | `--message` | No | New instruction sent to the Agent |
 | `--enabled` | No | `true` to enable, `false` to pause |
+| `--reuse-conversation` | No | `true` to reuse one conversation, `false` to create one per run; omit to keep unchanged |
 | `--cron` | No | Cron expression (mutually exclusive with `--schedule-kind`) |
 | `--schedule-kind` | No | `hourly` \| `daily` \| `weekly` \| `monthly` |
 | `--time` | No | Time in `HH:mm` for daily/weekly/monthly |
@@ -68,12 +75,13 @@ ae-cli agent +update-automation --dry-run --id <automation-id> --enabled false
 
 ## Decision Rules
 - If the user wants to pause/resume, use `--enabled false` / `--enabled true` (no other fields needed).
+- If the user wants future runs to share one conversation, use `--reuse-conversation true`; use `false` to restore one conversation per run.
 - If the user wants to change the schedule, provide `--schedule-kind` with its required time/day fields, or `--cron`.
 - At least one update field is required; a bare `--id` is rejected.
 - Use `--dry-run` first to verify the request shape before executing.
 
 ## Next Steps on Failure
-- `至少提供一个更新字段`: add at least one of `--name` / `--message` / `--enabled` / `--cron` / `--schedule-kind`.
+- `至少提供一个更新字段`: add at least one of `--name` / `--message` / `--enabled` / `--reuse-conversation` / `--cron` / `--schedule-kind`.
 - `必须提供 --cron 或 --schedule-kind`: if schedule detail flags (`--time` / `--minute` / `--weekday` / `--day-of-month`) are present, a `--schedule-kind` (or `--cron`) must accompany them.
 - `--time 格式必须是 HH:mm`: use 24-hour `HH:mm` (e.g. `09:00`).
 

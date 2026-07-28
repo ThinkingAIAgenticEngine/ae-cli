@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { shouldSkipCompatCheck } from '../src/core/compat-check.ts';
+import { shouldSkipAutoSync, shouldSkipCompatCheck } from '../src/core/compat-check.ts';
 import { isAeSandboxRuntime } from '../src/core/sandbox-runtime.ts';
 
 const prevSandbox = process.env.SANDBOX_RUNTIME_ROOT;
@@ -25,6 +25,10 @@ assert.equal(shouldSkipCompatCheck(['node', 'ae-cli', 'auth', 'status']), true);
 
 delete process.env.AE_CLI_NO_COMPAT_CHECK;
 assert.equal(shouldSkipCompatCheck(['node', 'ae-cli', '--version']), true);
+assert.equal(shouldSkipAutoSync(['node', 'ae-cli', 'auth', 'logout']), true);
+assert.equal(shouldSkipAutoSync(['node', 'ae-cli', '--host', 'https://example.com', 'config']), true);
+assert.equal(shouldSkipAutoSync(['node', 'ae-cli', 'update']), true);
+assert.equal(shouldSkipAutoSync(['node', 'ae-cli', 'analysis', 'report', 'list']), false);
 
 if (prevSandbox === undefined) delete process.env.SANDBOX_RUNTIME_ROOT;
 else process.env.SANDBOX_RUNTIME_ROOT = prevSandbox;

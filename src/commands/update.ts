@@ -1,10 +1,14 @@
-import { spawnSync } from 'node:child_process';
 import { Command } from 'commander';
 import { peekCliToken } from '../core/cli-token.js';
 import { getActiveHost } from '../core/config.js';
 import { fetchCliConfig, getCachedCompatForHost } from '../core/compat-check.js';
-import { AE_CLI_SKILLS_REPO, OPEN_SOURCE_AE_CLI_PACKAGE } from '../core/version-compat.js';
 import { normalizeUrl } from '../core/url-utils.js';
+import {
+  buildVersionInstallPlan,
+  friendlyVersionSyncFailure,
+  installVersion,
+  recordVersionSyncResult,
+} from '../core/version-sync.js';
 import { printError, printOutput } from '../framework/output.js';
 
 const HOST_OPTION_DESC = 'Override active AE host URL (e.g., https://ta.thinkingdata.cn)';
@@ -19,6 +23,7 @@ type UpdatePlan = {
   target: string;
   host?: string;
   commands: string[];
+  skillsSources: Array<'installed-package' | 'github-fallback'>;
 };
 
 export function registerUpdate(program: Command): void {
@@ -38,9 +43,42 @@ export function registerUpdate(program: Command): void {
         return;
       }
 
-      runCommand('npm', ['i', '-g', `${OPEN_SOURCE_AE_CLI_PACKAGE}@${target}`]);
-      runCommand('npx', ['skills', 'add', `${AE_CLI_SKILLS_REPO}#v${target}`, '-g', '-y']);
-      await printOutput({ action: 'update', dryRun: false, ...plan }, program.opts().format || 'json', program.opts().jq);
+      const result = installVersion(target, {
+        progress: (message) => process.stderr.write(`${message}\n`),
+      });
+      if (host) {
+        recordVersionSyncResult(host, target, result);
+      }
+      if (!result.ok) {
+        const message =
+          result.skillsPending
+            ? `ae-cli ${target} was installed, but Skills synchronization failed.`
+            : `Could not install ae-cli ${target}.`;
+        printError(
+          'config',
+          message,
+          `${friendlyVersionSyncFailure(result)} Check access and run: ae-cli update`,
+          'AE_CLI_UPDATE_FAILED',
+          {
+            target,
+            stage: result.stage,
+            cause: result.cause,
+            skillsPending: result.skillsPending,
+          },
+        );
+        process.exitCode = 1;
+        return;
+      }
+      await printOutput(
+        {
+          action: 'update',
+          dryRun: false,
+          ...plan,
+          skillsSource: result.skillsSource,
+        },
+        program.opts().format || 'json',
+        program.opts().jq,
+      );
     });
 }
 
@@ -90,24 +128,13 @@ function resolveUpdateHost(program: Command, opts: UpdateOptions): string | unde
 }
 
 function buildUpdatePlan(target: string, host?: string): UpdatePlan {
+  const installPlan = buildVersionInstallPlan(target);
   return {
-    target,
+    target: installPlan.target,
     ...(host ? { host } : {}),
-    commands: [
-      `npm i -g ${OPEN_SOURCE_AE_CLI_PACKAGE}@${target}`,
-      `npx skills add ${AE_CLI_SKILLS_REPO}#v${target} -g -y`,
-    ],
+    commands: installPlan.commands,
+    skillsSources: installPlan.skillsSources,
   };
-}
-
-function runCommand(command: string, args: string[]): void {
-  const result = spawnSync(command, args, { stdio: 'inherit' });
-  if (result.error) {
-    throw result.error;
-  }
-  if (result.status !== 0) {
-    process.exit(result.status ?? 1);
-  }
 }
 
 function failUpdate(message: string, hint: string): void {

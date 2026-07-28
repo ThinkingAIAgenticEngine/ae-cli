@@ -16,7 +16,7 @@
 3. Choose integration method based on project characteristics:
    - Has `package.json` + build tool → npm integration
    - Plain HTML / no build tool → CDN method
-4. Read `~/.ae-cli/wiki/te-docs/synthesis/sdk-selection.md` to confirm appType's npm package name and init signature
+4. Read `~/.ae-cli/wiki/synthesis/sdk-selection.md` to confirm appType's npm package name and init signature
 5. Read the corresponding cheatsheet (e.g. `js-sdk-cheatsheet.md`) for additional details
 
 **⚠️ Prohibited**: Skipping Stage 0 and writing code directly, guessing integration methods, using unverified CDN URLs

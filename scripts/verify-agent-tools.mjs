@@ -187,6 +187,72 @@ try {
     ok("+create-automation explicit context flags override environment defaults");
   }
 
+  const chatContextEnv = {
+    ...process.env,
+    TE_AGENT_CONVERSATION_ID: "conversation-from-chat",
+    TE_AGENT_CURRENT_AGENT_ID: "agent-from-chat",
+    TE_AGENT_CURRENT_MODEL_ID: "model-from-chat",
+  };
+  const chatContextDryRun = runDryRun([], chatContextEnv);
+  if (
+    chatContextDryRun?.body?.conversationId !== "conversation-from-chat" ||
+    chatContextDryRun?.body?.agentId !== "agent-from-chat" ||
+    chatContextDryRun?.body?.model !== "model-from-chat"
+  ) {
+    fail(
+      `+create-automation did not use chat context environment defaults: ${JSON.stringify(chatContextDryRun?.body)}`,
+    );
+  } else {
+    ok("+create-automation uses chat context environment defaults");
+  }
+
+  const explicitContextDryRun = runDryRun(
+    [
+      "--conversation-id",
+      "conversation-explicit",
+      "--agent-id",
+      "agent-explicit",
+      "--model",
+      "model-explicit",
+    ],
+    chatContextEnv,
+  );
+  if (
+    explicitContextDryRun?.body?.conversationId !== "conversation-explicit" ||
+    explicitContextDryRun?.body?.agentId !== "agent-explicit" ||
+    explicitContextDryRun?.body?.model !== "model-explicit"
+  ) {
+    fail(
+      `+create-automation explicit context flags did not override environment defaults: ${JSON.stringify(explicitContextDryRun?.body)}`,
+    );
+  } else {
+    ok("+create-automation explicit context flags override environment defaults");
+  }
+
+  if (defaultDryRun?.body?.reuseConversation !== false) {
+    fail(
+      `+create-automation should default reuseConversation to false, got ${defaultDryRun?.body?.reuseConversation}`,
+    );
+  } else {
+    ok("+create-automation dry-run defaults to a new conversation per run");
+  }
+
+  const continuousDryRun = runDryRun(["--reuse-conversation", "true"]);
+  if (continuousDryRun?.body?.reuseConversation !== true) {
+    fail(
+      `+create-automation --reuse-conversation true was not mapped: ${continuousDryRun?.body?.reuseConversation}`,
+    );
+  } else {
+    ok("+create-automation dry-run maps continuous conversation mode");
+  }
+
+  try {
+    runDryRun(["--reuse-conversation", "invalid"]);
+    fail("+create-automation should reject an invalid --reuse-conversation value");
+  } catch {
+    ok("+create-automation rejects an invalid continuous conversation value");
+  }
+
   const pausedDryRun = runDryRun(["--enabled", "false"]);
   if (pausedDryRun?.body?.status !== "paused") {
     fail(`+create-automation --enabled false status should be paused, got ${pausedDryRun?.body?.status}`);
@@ -238,12 +304,21 @@ try {
       "Daily AI Brief",
       "--message",
       "Summarize AI product and model updates",
+      "--reuse-conversation",
+      "true",
     ],
     { encoding: "utf8", timeout: 30000 },
   );
   const updateDryRun = JSON.parse(updateOutput).data;
-  if (updateDryRun?.method !== "PATCH" || updateDryRun?.body?.status !== "paused" || updateDryRun?.body?.schedule?.time !== "08:30") {
-    fail(`+update-automation dry-run body is incorrect: ${JSON.stringify(updateDryRun?.body)}`);
+  if (
+    updateDryRun?.method !== "PATCH" ||
+    updateDryRun?.body?.status !== "paused" ||
+    updateDryRun?.body?.schedule?.time !== "08:30" ||
+    updateDryRun?.body?.reuseConversation !== true
+  ) {
+    fail(
+      `+update-automation dry-run body is incorrect: ${JSON.stringify(updateDryRun?.body)}`,
+    );
   } else {
     ok("+update-automation dry-run maps update fields");
   }

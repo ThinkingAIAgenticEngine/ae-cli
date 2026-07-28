@@ -8,6 +8,7 @@ Domain: **Automations / write**
 - Create an Agent automation task that runs on a schedule (hourly / daily / weekly / monthly or cron).
 - Returns the newly created automation object including its `id` and initial `status`.
 - Automations are **enabled by default**; pass `--enabled false` only when the user explicitly asks to create the task without enabling it.
+- Automations create a new conversation for every run by default. Pass `--reuse-conversation true` only when the user explicitly wants future runs to continue in one conversation.
 
 ## Mandatory Rules (MUST)
 - `--name` and `--message` are required.
@@ -43,6 +44,14 @@ ae-cli agent +create-automation \
   --message "Summarize yesterday's AI news" \
   --enabled false
 
+# Keep future runs in one visible conversation
+ae-cli agent +create-automation \
+  --name "Daily AI Brief" \
+  --schedule-kind daily \
+  --time 09:00 \
+  --message "Summarize yesterday's AI news" \
+  --reuse-conversation true
+
 # Weekly schedule on Sunday
 ae-cli agent +create-automation \
   --name "Weekly Report" \
@@ -76,6 +85,7 @@ ae-cli agent +create-automation --dry-run --name "Test" --message "x" --schedule
 | `--agent-name` | No | Agent name; use only after `+list-agents` discovery |
 | `--model` | No | Model record ID; defaults to current selected model |
 | `--enabled` | No | `true` (default) \| `false` |
+| `--reuse-conversation` | No | `true` to continue in one conversation; `false` (default) to create one per run |
 | `--conversation-id` | No | Conversation ID fallback for resolving current Agent |
 
 \* One of `--cron` or `--schedule-kind` is required.
@@ -84,6 +94,7 @@ ae-cli agent +create-automation --dry-run --name "Test" --message "x" --schedule
 - If the user provides a natural-language schedule ("every day at 9am"), translate it to `--schedule-kind daily --time 09:00`.
 - If the user wants a cron-only schedule not covered by the kinds, use `--cron`.
 - If no Agent is specified, the automation targets the current conversation's Agent; verify with `+list-agents` when in doubt.
+- Set `--reuse-conversation true` only when the user explicitly requests continuity across runs. The platform may rotate the underlying provider session while retaining the visible conversation history.
 - Use `--dry-run` first to verify the request shape before executing.
 
 ## Next Steps on Failure

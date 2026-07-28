@@ -55,7 +55,7 @@ test('shouldSkipUpdateCheck allows normal commands', () => {
   assert.equal(shouldSkipUpdateCheck(['node', 'ae-cli', 'kb', '+query']), false);
 });
 
-test('update dry-run prints unified CLI and Skills commands', () => {
+test('update dry-run prints local-first CLI and Skills plan', () => {
   const result = spawnSync(
     'npx',
     ['tsx', 'src/index.ts', '--no-update-check', '--dry-run', 'update', '--target', '6.0.34'],
@@ -66,10 +66,13 @@ test('update dry-run prints unified CLI and Skills commands', () => {
   assert.equal(body.ok, true);
   assert.equal(body.data.action, 'update');
   assert.equal(body.data.target, '6.0.34');
-  assert.deepEqual(body.data.commands, [
-    'npm i -g @thinkingai/ae-cli@6.0.34',
-    'npx skills add ThinkingAIAgenticEngine/ae-cli#v6.0.34 -g -y',
-  ]);
+  assert.equal(body.data.commands[0], 'npm install -g @thinkingai/ae-cli@6.0.34');
+  assert.match(body.data.commands[1], /npx -y skills add .*@thinkingai.*ae-cli.*skills -g -y/);
+  assert.equal(
+    body.data.commands[2],
+    'npx -y skills add ThinkingAIAgenticEngine/ae-cli#v6.0.34 -g -y',
+  );
+  assert.deepEqual(body.data.skillsSources, ['installed-package', 'github-fallback']);
 });
 
 test('host compat notice only recommends the unified update command', () => {

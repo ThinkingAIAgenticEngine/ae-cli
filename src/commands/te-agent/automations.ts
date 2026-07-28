@@ -46,6 +46,21 @@ function readEnabledOptional(ctx: RuntimeContext): boolean | undefined {
   return enabled;
 }
 
+function readReuseConversation(ctx: RuntimeContext): boolean {
+  return readReuseConversationOptional(ctx) ?? false;
+}
+
+function readReuseConversationOptional(
+  ctx: RuntimeContext,
+): boolean | undefined {
+  const reuseConversation = ctx.json("reuseConversation");
+  if (reuseConversation === undefined) return undefined;
+  if (typeof reuseConversation !== "boolean") {
+    throw new Error("--reuse-conversation must be true or false");
+  }
+  return reuseConversation;
+}
+
 function buildSchedule(ctx: RuntimeContext): ScheduleBody | undefined {
   const kind = optional(ctx.str("scheduleKind"));
   if (!kind) return undefined;
@@ -68,9 +83,9 @@ function buildSchedule(ctx: RuntimeContext): ScheduleBody | undefined {
 function hasScheduleDetail(ctx: RuntimeContext): boolean {
   return Boolean(
     optional(ctx.str("time")) ||
-      optional(ctx.str("minute")) ||
-      optional(ctx.str("weekday")) ||
-      optional(ctx.str("dayOfMonth")),
+    optional(ctx.str("minute")) ||
+    optional(ctx.str("weekday")) ||
+    optional(ctx.str("dayOfMonth")),
   );
 }
 
@@ -140,6 +155,7 @@ function buildCreateBody(ctx: RuntimeContext) {
     schedule: buildSchedule(ctx),
     triggerType: "scheduled",
     model,
+    reuseConversation: readReuseConversation(ctx),
     status: enabled ? "active" : "paused",
   };
 }
@@ -171,6 +187,7 @@ function validateList(ctx: RuntimeContext): void {
 
 function buildUpdateBody(ctx: RuntimeContext) {
   const enabled = readEnabledOptional(ctx);
+  const reuseConversation = readReuseConversationOptional(ctx);
   const body: Record<string, unknown> = {};
   const name = optional(ctx.str("name"));
   const message = optional(ctx.str("message"));
@@ -180,6 +197,8 @@ function buildUpdateBody(ctx: RuntimeContext) {
   if (name) body.name = name;
   if (message !== undefined) body.message = message;
   if (enabled !== undefined) body.status = enabled ? "active" : "paused";
+  if (reuseConversation !== undefined)
+    body.reuseConversation = reuseConversation;
   if (cron) body.cronExpression = cron;
   if (schedule) body.schedule = schedule;
 
@@ -307,6 +326,12 @@ export const createAutomation: Command = {
       desc: "Whether to enable the automation immediately; defaults to true",
     },
     {
+      name: "reuse-conversation",
+      type: "boolean",
+      required: false,
+      desc: "Continue future runs in the same conversation; defaults to false",
+    },
+    {
       name: "conversation-id",
       type: "string",
       required: false,
@@ -357,6 +382,12 @@ export const updateAutomation: Command = {
       type: "boolean",
       required: false,
       desc: "true to enable, false to pause",
+    },
+    {
+      name: "reuse-conversation",
+      type: "boolean",
+      required: false,
+      desc: "true to reuse one conversation, false to create one per run",
     },
     ...scheduleFlags,
   ],

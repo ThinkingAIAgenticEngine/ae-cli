@@ -11,6 +11,17 @@ import {
   formatPinCommands,
   type CompatVerdict,
 } from './version-compat.js';
+import {
+  autoSyncDirection,
+  friendlyVersionSyncFailure,
+  getPendingSkillsTarget,
+  installVersion,
+  isAutoSyncTargetEligible,
+  isPublicAeCliPackage,
+  recordVersionSyncResult,
+  reserveAutoAttempt,
+  type VersionSyncStage,
+} from './version-sync.js';
 import { normalizeUrl } from './url-utils.js';
 
 const CHECK_INTERVAL_MS = 24 * 60 * 60 * 1000;
@@ -40,9 +51,21 @@ export interface UpdateNotice {
   current: string;
   expected: string;
   cluster: string;
-  reason: CompatVerdict['kind'];
+  reason: CompatVerdict['kind'] | 'skills_pending';
+  state?: 'prompt_only' | 'auto_sync_failed' | 'skills_pending';
+  stage?: VersionSyncStage;
   message: string;
 }
+
+export type HostCompatCheckResult =
+  | { status: 'continue' }
+  | {
+      status: 'synced';
+      current: string;
+      expected: string;
+      cluster: string;
+      direction: 'upgrade' | 'downgrade' | 'switch' | 'skills';
+    };
 
 function cacheFilePath(): string {
   return path.join(getConfigDir(), 'compat-check.json');
@@ -90,6 +113,30 @@ export function shouldSkipCompatCheck(argv: string[] = process.argv): boolean {
   if (process.env.AE_CLI_NO_COMPAT_CHECK === '1') return true;
   if (isAeSandboxRuntime()) return true;
   return shouldSkipUpdateCheck(argv);
+}
+
+function rootCommand(argv: string[]): string | undefined {
+  const args = argv.slice(2);
+  for (let i = 0; i < args.length; i += 1) {
+    const token = args[i];
+    if (token === '--') return undefined;
+    if (token.startsWith('-')) {
+      if (
+        !token.includes('=')
+        && ['--host', '--mcp-url', '--format', '--jq'].includes(token)
+      ) {
+        i += 1;
+      }
+      continue;
+    }
+    return token;
+  }
+  return undefined;
+}
+
+export function shouldSkipAutoSync(argv: string[] = process.argv): boolean {
+  const command = rootCommand(argv);
+  return command === 'update' || command === 'auth' || command === 'config';
 }
 
 type CliConfigPayload = {
@@ -199,9 +246,40 @@ export function formatCapabilityMissCompatHint(host?: string): string | undefine
   );
 }
 
-async function refreshAndMaybeNotify(host: string, pkg: CompatPackageInfo): Promise<void> {
+function setUpdateNotice(
+  pkg: CompatPackageInfo,
+  expected: string,
+  cluster: string,
+  verdict: CompatVerdict,
+  state: UpdateNotice['state'],
+  stage?: VersionSyncStage,
+  message?: string,
+): void {
+  pendingHostCompatNotice = undefined;
+  pendingUpdateNotice = {
+    command: 'ae-cli update',
+    current: pkg.version,
+    expected,
+    cluster,
+    reason:
+      verdict.kind === 'ok' && state === 'skills_pending'
+        ? 'skills_pending'
+        : verdict.kind,
+    state,
+    ...(stage ? { stage } : {}),
+    message:
+      message
+      ?? `Current ae-cli is ${pkg.version}; this host requires ${expected}. Run: ae-cli update`,
+  };
+}
+
+async function refreshAndMaybeNotify(
+  host: string,
+  pkg: CompatPackageInfo,
+  allowAutoSync: boolean,
+): Promise<HostCompatCheckResult> {
   const token = peekCliToken(host);
-  if (!token) return;
+  if (!token) return { status: 'continue' };
 
   const store = readStore();
   const key = hostKey(host);
@@ -214,7 +292,7 @@ async function refreshAndMaybeNotify(host: string, pkg: CompatPackageInfo): Prom
   if (isStale(existing)) {
     const remote = await fetchCliConfig(host, token);
     if (!remote?.aeCliVersion) {
-      return;
+      return { status: 'continue' };
     }
     expected = remote.aeCliVersion;
     cluster = remote.clusterVersion ?? '';
@@ -230,17 +308,17 @@ async function refreshAndMaybeNotify(host: string, pkg: CompatPackageInfo): Prom
     writeStore(store);
   }
 
-  if (!expected) return;
+  if (!expected) return { status: 'continue' };
 
-  const verdict: CompatVerdict = evaluateCompat(pkg.version, expected, cluster);
-  const notice = formatCompatNotice(verdict);
-  if (!notice) {
+  let verdict: CompatVerdict = evaluateCompat(pkg.version, expected, cluster);
+  let pendingSkills = getPendingSkillsTarget(host) === expected;
+  if (verdict.kind === 'ok' && !pendingSkills) {
     pendingHostCompatNotice = undefined;
     pendingUpdateNotice = undefined;
-    return;
+    return { status: 'continue' };
   }
 
-  const entry = store.hosts[key] ?? {
+  let entry = store.hosts[key] ?? {
     host: key,
     localVersion: pkg.version,
     expectedVersion: expected,
@@ -252,6 +330,100 @@ async function refreshAndMaybeNotify(host: string, pkg: CompatPackageInfo): Prom
   entry.expectedVersion = expected;
   entry.clusterVersion = cluster || entry.clusterVersion;
 
+  const canAutoSync =
+    allowAutoSync
+    && isPublicAeCliPackage(pkg.name)
+    && isAutoSyncTargetEligible(expected);
+
+  if (canAutoSync) {
+    // Never mutate a global installation from a cached target alone.
+    const confirmed = await fetchCliConfig(host, token);
+    if (confirmed?.aeCliVersion) {
+      expected = confirmed.aeCliVersion;
+      cluster = confirmed.clusterVersion ?? cluster ?? '';
+      verdict = evaluateCompat(pkg.version, expected, cluster);
+      pendingSkills = getPendingSkillsTarget(host) === expected;
+      entry = {
+        ...entry,
+        localVersion: pkg.version,
+        expectedVersion: expected,
+        clusterVersion: cluster || '',
+        lastFetchedAt: new Date().toISOString(),
+      };
+      store.hosts[key] = entry;
+      writeStore(store);
+
+      if (verdict.kind === 'ok' && !pendingSkills) {
+        pendingHostCompatNotice = undefined;
+        pendingUpdateNotice = undefined;
+        return { status: 'continue' };
+      }
+
+      if (isAutoSyncTargetEligible(expected)) {
+        const attempt = reserveAutoAttempt(host, expected);
+        if (attempt.allowed) {
+          const direction =
+            verdict.kind === 'ok' && pendingSkills
+              ? 'skills'
+              : autoSyncDirection(pkg.version, expected);
+          const verb =
+            direction === 'upgrade'
+              ? 'upgrading'
+              : direction === 'downgrade'
+                ? 'downgrading'
+                : direction === 'skills'
+                  ? 'repairing'
+                  : 'switching';
+          printNotice(
+            `[ae-cli] Current version ${pkg.version}; this host requires ${expected}. `
+            + `Automatically ${verb} CLI and Skills, please wait...`,
+          );
+          const result = installVersion(expected, {
+            skipCliInstall: verdict.kind === 'ok' && pendingSkills,
+            progress: printNotice,
+          });
+          recordVersionSyncResult(host, expected, result);
+
+          if (result.ok) {
+            printNotice(
+              `[ae-cli] Synchronized to ${expected}. Re-run the previous command to use the new version.`,
+            );
+            pendingHostCompatNotice = undefined;
+            pendingUpdateNotice = undefined;
+            return {
+              status: 'synced',
+              current: pkg.version,
+              expected,
+              cluster: cluster || '',
+              direction,
+            };
+          }
+
+          const state = result.skillsPending ? 'skills_pending' : 'auto_sync_failed';
+          const friendlyCause = friendlyVersionSyncFailure(result);
+          const failure =
+            result.skillsPending
+              ? `CLI switched to ${expected}, but Skills synchronization failed. `
+                + `${friendlyCause} This command will continue; run ae-cli update after access is restored.`
+              : `${friendlyCause} This command will continue; run ae-cli update after fixing access.`;
+          printNotice(`[ae-cli] ${failure}`);
+          setUpdateNotice(pkg, expected, cluster || '', verdict, state, result.stage, failure);
+          entry.lastNotifiedAt = new Date().toISOString();
+          store.hosts[key] = entry;
+          writeStore(store);
+          return { status: 'continue' };
+        }
+      }
+    }
+  }
+
+  const notice =
+    verdict.kind === 'ok' && pendingSkills
+      ? `[ae-cli] CLI ${expected} is installed, but its Skills are not synchronized.\n`
+        + '         Run: ae-cli update'
+      : formatCompatNotice(verdict);
+  if (!notice) return { status: 'continue' };
+
   // Human and Agent-facing update hint: once per 24h for each host.
   const dueForTip = shouldNotify(entry);
   if (!dueForTip) {
@@ -259,23 +431,25 @@ async function refreshAndMaybeNotify(host: string, pkg: CompatPackageInfo): Prom
     pendingUpdateNotice = undefined;
     store.hosts[key] = entry;
     writeStore(store);
-    return;
+    return { status: 'continue' };
   }
 
-  pendingHostCompatNotice = notice;
-  pendingUpdateNotice = {
-    command: 'ae-cli update',
-    current: pkg.version,
+  setUpdateNotice(
+    pkg,
     expected,
-    cluster: cluster || '',
-    reason: verdict.kind,
-    message: `Current ae-cli is ${pkg.version}; this host requires ${expected}. Run: ae-cli update`,
-  };
-
+    cluster || '',
+    verdict,
+    pendingSkills ? 'skills_pending' : 'prompt_only',
+    undefined,
+    pendingSkills
+      ? `Skills for ae-cli ${expected} are not synchronized. Run: ae-cli update`
+      : undefined,
+  );
   printNotice(notice);
   entry.lastNotifiedAt = new Date().toISOString();
   store.hosts[key] = entry;
   writeStore(store);
+  return { status: 'continue' };
 }
 
 /**
@@ -285,14 +459,18 @@ async function refreshAndMaybeNotify(host: string, pkg: CompatPackageInfo): Prom
 export async function runHostCompatCheck(
   pkg: CompatPackageInfo,
   hostOverride?: string,
-): Promise<void> {
-  if (shouldSkipCompatCheck()) return;
+  argv: string[] = process.argv,
+): Promise<HostCompatCheckResult> {
+  pendingHostCompatNotice = undefined;
+  pendingUpdateNotice = undefined;
+  if (shouldSkipCompatCheck(argv)) return { status: 'continue' };
   const host = hostOverride || getActiveHost();
-  if (!host) return;
+  if (!host) return { status: 'continue' };
   try {
-    await refreshAndMaybeNotify(host, pkg);
+    return await refreshAndMaybeNotify(host, pkg, !shouldSkipAutoSync(argv));
   } catch {
     // never block CLI
+    return { status: 'continue' };
   }
 }
 

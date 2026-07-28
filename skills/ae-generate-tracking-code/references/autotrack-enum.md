@@ -177,7 +177,7 @@ TDAnalytics.enableAutoTrack(context,
 ## Cocos2d-x / CocosCreator / LayaAir / Unreal
 
 游戏引擎 SDK 的自动采集枚举值请直接读取对应 wiki 文档：
-- `~/.ae-cli/wiki/te-docs/raw/data-ingestion-guide/client-sdk/game-engine/cocos2d-x/cocos2d-x-advanced/automatic-event-tracking.md`
-- `~/.ae-cli/wiki/te-docs/raw/data-ingestion-guide/client-sdk/game-engine/cocoscreator/cocoscreator-advance/automatic-event-tracking.md`
-- `~/.ae-cli/wiki/te-docs/raw/客户端-sdk/游戏引擎/layaair/进阶指南/自动采集.md`
-- `~/.ae-cli/wiki/te-docs/raw/data-ingestion-guide/client-sdk/game-engine/unreal/unreal-advanced/automatic-event-tracking.md`
+- `~/.ae-cli/wiki/raw/data-ingestion-guide/client-sdk/game-engine/cocos2d-x/cocos2d-x-advanced/automatic-event-tracking.md`
+- `~/.ae-cli/wiki/raw/data-ingestion-guide/client-sdk/game-engine/cocoscreator/cocoscreator-advance/automatic-event-tracking.md`
+- `~/.ae-cli/wiki/raw/客户端-sdk/游戏引擎/layaair/进阶指南/自动采集.md`
+- `~/.ae-cli/wiki/raw/data-ingestion-guide/client-sdk/game-engine/unreal/unreal-advanced/automatic-event-tracking.md`

@@ -1,6 +1,6 @@
 {
   "name": "@thinkingai/ae-cli",
-  "version": "6.0.36",
+  "version": "6.0.37",
   "description": "CLI tool for ThinkingAI (AE) analytics platform",
   "type": "module",
   "bin": {
@@ -44,10 +44,12 @@
     "verify:tracking-tools": "node test/tracking-client.test.mjs && node test/tracking-skill-flow.test.mjs && node test/tracking-commands.test.mjs",
     "verify:self-check-overlay": "node test/self-check-overlay.test.mjs",
     "verify:update-check": "npx tsx test/update-check.test.mjs",
+    "verify:version-sync": "npx tsx tests/version-sync.test.ts",
     "qa-changed": "node scripts/qa-changed.mjs",
     "self-check": "node self-check/scan.mjs",
     "check:release": "node self-check/release-gate.mjs",
-    "sync:skills-to-db": "node scripts/sync-skills-to-db.mjs",
+    "sync:skills-to-system": "node scripts/sync-skills-to-system.mjs",
+    "verify:system-skills-sync": "node --test test/sync-system-skills.test.mjs",
     "check:agents-docs": "node scripts/check-agents-docs-sync.mjs",
     "prepublishOnly": "npm run check:release && npm run build",
     "start": "node dist/index.js",
@@ -86,7 +88,6 @@
     "@types/turndown": "^5.0.6",
     "@types/ws": "^8.5.0",
     "jszip": "^3.10.1",
-    "mysql2": "^3.22.6",
     "tsup": "^8.0.0",
     "tsx": "^4.0.0",
     "typescript": "^5.5.0"

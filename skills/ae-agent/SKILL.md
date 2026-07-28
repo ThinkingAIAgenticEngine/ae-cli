@@ -76,8 +76,8 @@ If the user's intent is data analysis, audience management, metadata governance,
 ### Automations (3)
 
 - `+list-automations` ([doc](references/list-automations.md)) — list current user's Agent automation tasks
-- `+create-automation` ([doc](references/create-automation.md)) — create an Agent automation task (hourly/daily/weekly/monthly or cron)
-- `+update-automation` ([doc](references/update-automation.md)) — update an automation's name, instruction, schedule, or enabled state
+- `+create-automation` ([doc](references/create-automation.md)) — create an Agent automation task (hourly/daily/weekly/monthly or cron; optional continuous conversation)
+- `+update-automation` ([doc](references/update-automation.md)) — update an automation's name, instruction, schedule, enabled state, or conversation mode
 
 ### Models (6)
 

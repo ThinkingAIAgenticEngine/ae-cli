@@ -6,6 +6,7 @@ import { runHostCompatCheck } from './core/compat-check.js';
 import { getLocalCliPackageInfo } from './core/package-info.js';
 import { registerTracking } from './commands/tracking/index.js';
 import { parseProgram } from './framework/program-lifecycle.js';
+import { printError } from './framework/output.js';
 
 const require = createRequire(import.meta.url);
 const pkg = require('../package.json');
@@ -137,7 +138,32 @@ async function registerUpdateCommand(): Promise<void> {
 async function main() {
   const pkgInfo = getLocalCliPackageInfo();
   if (!isRootUpdateCommand(process.argv.slice(2))) {
-    await runHostCompatCheck(pkgInfo);
+    const compat = await runHostCompatCheck(
+      pkgInfo,
+      globalOptionValue(process.argv.slice(2), '--host'),
+    );
+    if (compat.status === 'synced') {
+      const message =
+        compat.direction === 'skills'
+          ? `Skills were synchronized for ae-cli ${compat.expected}.`
+          : `ae-cli changed from ${compat.current} to ${compat.expected} for this host.`;
+      printError(
+        'config',
+        message,
+        'Re-run the previous command to use the synchronized CLI and Skills.',
+        'AE_CLI_VERSION_SYNCED',
+        {
+          current: compat.current,
+          expected: compat.expected,
+          cluster: compat.cluster,
+          direction: compat.direction,
+          retryOriginalCommand: true,
+        },
+        { log: false },
+      );
+      process.exitCode = 1;
+      return;
+    }
   }
 
   const commands = await loadCommands();
@@ -195,6 +221,15 @@ function optionConsumesValue(token: string): boolean {
     || token === '--mcp-url'
     || token === '--format'
     || token === '--jq';
+}
+
+function globalOptionValue(args: string[], option: string): string | undefined {
+  for (let i = 0; i < args.length; i += 1) {
+    const token = args[i];
+    if (token === option) return args[i + 1];
+    if (token.startsWith(`${option}=`)) return token.slice(option.length + 1);
+  }
+  return undefined;
 }
 
 function isRootUpdateCommand(args: string[]): boolean {

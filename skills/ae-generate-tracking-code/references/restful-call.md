@@ -28,7 +28,7 @@ export async function track(event: string, props: Record<string, unknown>, disti
 }
 ```
 
-Other languages: provide isomorphic versions. Reference `~/.ae-cli/wiki/te-docs/synthesis/restful-api-reference.md`.
+Other languages: provide isomorphic versions. Reference `~/.ae-cli/wiki/synthesis/restful-api-reference.md`.
 
 ## Generation Steps
 1. Select template by appType; confirm endpoint/auth rules from wiki

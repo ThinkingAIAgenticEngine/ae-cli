@@ -1,3 +1,17 @@
+### 6.0.37
+**Date:** 2026-07-28
+
+**Changes:**
+
+#### CLI / Agent
+* Add automatic host-bound CLI and Skills synchronization for public releases, including exact-version upgrade/downgrade, install locking and rate limits, local npm Skills first, GitHub fallback, and partial-failure recovery
+* Extend `ae-cli update` with host/target selection, dry-run plans, and structured `AE_CLI_VERSION_SYNCED` retry semantics
+* Add `--reuse-conversation` to Agent automation create/update so scheduled runs can continue in one visible conversation, with compatibility fallback coverage
+
+#### Tracking & documentation
+* Fix tracking-code generation Wiki references to use `~/.ae-cli/wiki/raw` and `~/.ae-cli/wiki/synthesis`
+* Refresh bilingual internal/public README documentation and add a Chinese changelog
+
 ### 6.0.36
 **Date:** 2026-07-24
 
@@ -52,7 +66,6 @@
 * Add `engage-flow flow update-remark` for flow version remarks
 * Re-enable activity topic/task create+update; re-enable common-metric create (tighten QP / time-unit contracts) and client-param create (`column_type` only)
 * Require `--project-id` on flow node-config schema/validate; align channel `update-status` with backend enums (`1`=on, `2`=off)
-* Temporarily disable `engage-activity approval submit` and `engage-flow test run` due to testing issues
 * Translate `ae-engage` skill docs to English
 
 #### Knowledge base
@@ -91,7 +104,7 @@
 
 #### Engage
 * Add engage-setting / engage-scene / activity / workbench capability commands and skill docs
-* Add `engage-scene config-item list`; re-enable temporarily disabled engage-task commands; regroup ops tasks under `task`
+* Add `engage-scene config-item list`; re-enable engage-task commands; regroup ops tasks under `task`
 * Change engage-flow operation-log query to `--flow-id`; make config-channel `--config` optional and document `channel_type` / config constraints
 * Harden channel test-send errors, common-metric empty-QP checks, client-param display-name defaults, and config-table save upload hints
 * Expand activity topic/task/copy/approval docs (rich-text TEXT fields, reject reason, whitelist verify risk)
@@ -110,7 +123,7 @@
 * Replace custom `--jq` path walker with real `jq-wasm` for stable JSON filtering
 * Improve Agent error hints, request dispatch guidance, and illegal numeric flag rejection (avoid NaN → null gateway noise)
 * Add release-gate skill frontmatter check so `npx skills add` fails fast on unquoted YAML `description`
-* Temporarily hide unfinished commands; retire gateway-superseded legacy analysis command entry points
+* Retire gateway-superseded legacy analysis command entry points
 
 #### Analysis
 * CLI-ize report/dashboard/adhoc/detail/audience flows: unified run/export routes, drilldown, artifact download, and AI QP contracts
@@ -123,7 +136,6 @@
 * Register engage capability gateway route and restore/restructure engage CLI + skill docs
 * Add flow version list, flow/task operation-log query, test-run, and push-record query (with local date-range validation)
 * Add channel touch-limits L2 command and engage-task P0 set (segment-list / group / metric / race / ops / channel-ref)
-* Temporarily disable 4 unfinished engage-task write commands to avoid unsafe Agent writes
 
 ### 6.0.30
 **Date:** 2026-07-14

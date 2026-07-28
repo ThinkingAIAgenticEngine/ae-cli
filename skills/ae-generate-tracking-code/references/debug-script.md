@@ -96,7 +96,7 @@ Verification steps:
 ### Reference Doc Paths
 
 All SDK debug/logging docs are located at:
-- `~/.ae-cli/wiki/te-docs/raw/data-ingestion-guide/client-sdk/<sdk>/<sdk>-advanced/debugging-and-logging.md`
-- `~/.ae-cli/wiki/te-docs/raw/data-ingestion-guide/server-sdk/<language>/<language>-advanced/debugging-and-logging.md`
+- `~/.ae-cli/wiki/raw/data-ingestion-guide/client-sdk/<sdk>/<sdk>-advanced/debugging-and-logging.md`
+- `~/.ae-cli/wiki/raw/data-ingestion-guide/server-sdk/<language>/<language>-advanced/debugging-and-logging.md`
 
 For zh-CN only SDKs (Mini Program, LayaAir, etc.), refer to sdk-index.md for exact paths.

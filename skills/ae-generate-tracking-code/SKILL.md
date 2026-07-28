@@ -256,7 +256,7 @@ Without `.ae-cli/draft.json` or `.ae-cli/remote-plan.json`:
 **SDK document paths**:
 - Do not use hard-coded wiki paths from this section.
 - Always read `references/sdk-index.md` first and use the path listed there for the selected SDK.
-- If the path from `references/sdk-index.md` does not exist in the local wiki mirror, search under `~/.ae-cli/wiki/te-docs/raw/` with SDK-specific keywords and use the best matching latest main document.
+- If the path from `references/sdk-index.md` does not exist in the local wiki mirror, search under `~/.ae-cli/wiki/raw/` with SDK-specific keywords and use the best matching latest main document.
 
 ---
 
@@ -669,14 +669,14 @@ All output mode rules are in `references/*.md`. This SKILL.md only handles phase
 - User guide: https://docs-v2.thinkingdata.cn/?version=latest&code=logbus2_installation&lan=en-US
 - Download link is in the official doc's "二、Download LogBus2" section
 
-**Wiki directory structure** (see `~/.ae-cli/wiki/te-docs/schema.md`):
-- `~/.ae-cli/wiki/te-docs/raw/` — AE official documentation mirror (read-only, maintained by crawler)
-- `~/.ae-cli/wiki/te-docs/synthesis/` — LLM-synthesized overview documents
+**Wiki directory structure** (see `~/.ae-cli/wiki/schema.md`):
+- `~/.ae-cli/wiki/raw/` — AE official documentation mirror (read-only, maintained by crawler)
+- `~/.ae-cli/wiki/synthesis/` — LLM-synthesized overview documents
 
 **Document reading order during code generation**:
 1. Read `references/sdk-index.md` to find the selected SDK's main document and advanced guide paths.
 2. Verify the main document path exists in the local wiki mirror before reading it.
-3. If the indexed path is missing, search under `~/.ae-cli/wiki/te-docs/raw/` with SDK-specific keywords such as SDK name, platform name, language name, and `main doc`; choose the latest main document, not historical/versioned documents.
+3. If the indexed path is missing, search under `~/.ae-cli/wiki/raw/` with SDK-specific keywords such as SDK name, platform name, language name, and `main doc`; choose the latest main document, not historical/versioned documents.
 4. Read the wiki main doc first (initialization, imports, package names, basic API).
 5. Read the advanced guide only after the main doc (LoggerConsumer, user properties, auto-track, preset properties, etc.).
 6. Check advanced guide sub-documents if needed.

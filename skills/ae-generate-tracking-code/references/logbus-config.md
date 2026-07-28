@@ -197,4 +197,4 @@ Note: LogBus v1 is deprecated. Please use LogBus2.
 ## Reference Docs
 
 - Official docs: https://docs-v2.thinkingdata.cn/?version=latest&code=logbus2_installation&lan=en-US
-- Wiki: `~/.ae-cli/wiki/te-docs/raw/data-ingestion-guide/data-import-tools/logbus2-user-guide.md` — LogBus2 official doc mirror
+- Wiki: `~/.ae-cli/wiki/raw/data-ingestion-guide/data-import-tools/logbus2-user-guide.md` — LogBus2 official doc mirror
