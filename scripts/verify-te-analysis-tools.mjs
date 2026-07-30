@@ -154,12 +154,12 @@ if (!/rename a BI dashboard/i.test(biPanelUpdate.description)) {
   fail('BI panel update description must disclose rename-only behavior');
 }
 
-const EXPECTED_GATEWAY_LIFECYCLE_COUNT = 4;
+const EXPECTED_GATEWAY_LIFECYCLE_COUNT = 5;
 if (gatewayLifecycleCommands.length !== EXPECTED_GATEWAY_LIFECYCLE_COUNT) {
   fail(`analysis gateway lifecycle command count mismatch: expected ${EXPECTED_GATEWAY_LIFECYCLE_COUNT}, got ${gatewayLifecycleCommands.length}`);
 }
 
-const EXPECTED_CAPABILITY_COUNT = 246;
+const EXPECTED_CAPABILITY_COUNT = 250;
 if (capabilityCommands.length !== EXPECTED_CAPABILITY_COUNT) {
   fail(`analysis capability command count mismatch: expected ${EXPECTED_CAPABILITY_COUNT}, got ${capabilityCommands.length}`);
 }
@@ -168,7 +168,7 @@ const EXPECTED_CAPABILITY_COUNTS_BY_SERVICE = {
   analysis: 153,
   'analysis-meta': 50,
   'analysis-governance': 20,
-  tracking: 23,
+  tracking: 27,
 };
 for (const [service, expectedCount] of Object.entries(EXPECTED_CAPABILITY_COUNTS_BY_SERVICE)) {
   const actualCount = capabilityCommands.filter((item) => item.service === service).length;

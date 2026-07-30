@@ -72,6 +72,8 @@ Phase 0 → 1 → 2 → 3 → 4, do not skip steps.
 > 
 > **Language rules**: For newly generated content, user-facing fields in draft.json (`display_name`, `event_desc`, `event_tag`,
 > property `display_name`, property `desc`, etc.) should be generated in the **user's input language**.
+> Every event, event property, common event property, and user property must have a non-empty `display_name`.
+> A canonical snake_case identifier is not a substitute for a user-facing display name.
 > For imported templates, do NOT translate those fields manually. Template sheet names, headers, property type display values,
 > CLI messages, and auto-track/i18n-owned labels must come from `src/tracking/i18n` via `AE_LANG=<user_lang>` and `draft.meta.lang`.
 > When a localized label is needed, inspect `src/tracking/i18n` and use the existing resource key/value; do not invent translations from the model.
@@ -969,6 +971,7 @@ User ok → **immediately execute archive command**, then proceed to Phase 3.
 - [ ] Do event/property names contain only letters, digits, and underscores (no Chinese, no spaces)?
 - [ ] Are there duplicate event names or synonymous events coexisting (e.g. `order_create` and `create_order`)?
 - [ ] Does the same property name map to multiple display names or types?
+- [ ] Does every event, event property, common event property, and user property have a non-empty `display_name` in the user's language?
 
 ### Revenue Model Required Events Check
 
@@ -1251,6 +1254,26 @@ AE_LANG=<user_lang> ae-cli tracking plan upload --project <projectId> --xlsx .ae
 
 On successful upload, prompt user to verify in AE Admin. **Provide the full URL** (tracking plan page URL format: `https://<host>/#/data/plan`).
 
+Then read the uploaded plan back through ae-cli and synchronize its display names to any event/property metadata
+that already exists in the project:
+
+```bash
+AE_LANG=<user_lang> ae-cli tracking plan get --project-id <projectId> --host <host>
+AE_LANG=<user_lang> ae-cli tracking plan sync-display-names \
+  --project-id <projectId> \
+  --draft .ae-cli/draft.json \
+  --host <host>
+```
+
+`sync-display-names` is intentionally safe to rerun:
+
+- It fills only blank event/property metadata display names.
+- It never overwrites a non-empty display name already maintained in AE.
+- `missing_in_metadata` means that the event/property has not appeared in project metadata yet; it is not an upload failure.
+  Report those names and rerun the same command after the first Debug or production data reaches AE.
+- `missing_display_name_in_draft` means the generated plan is incomplete. Add the missing localized `display_name`,
+  regenerate/validate the xlsx, and rerun the upload/synchronization flow.
+
 ---
 
 ### 4.4 Upload Failure Handling and Auto-fix
@@ -1289,7 +1312,9 @@ Fixed: Fixed object array sub-property inconsistency, Fixed display name duplica
 
 ### 4.5 Post-success Actions
 
-After successful upload, prompt user to verify in AE Admin. **Provide the full URL** (tracking plan page URL format: `https://<host>/#/data/plan`)
+After successful upload and display-name synchronization, prompt user to verify in AE Admin. **Provide the full URL**
+(tracking plan page URL format: `https://<host>/#/data/plan`). Include a short synchronization summary:
+updated counts, preserved existing counts, and any names still missing from project metadata.
 
 **Ask about generating tracking code**:
 

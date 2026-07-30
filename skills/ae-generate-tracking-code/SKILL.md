@@ -105,7 +105,9 @@ First, check if `.ae-cli/draft.json` exists and read existing configuration:
 
 **host handling** (optional):
 - If you need to fetch plan from AE (no local draft.json) → ask for host
-- If local draft.json exists → host is not required; only hint user to open AE Debug page during validation phase
+- If local draft.json exists → host is not required for code generation
+- Before Debug validation, run `ae-cli config current` and confirm the active host matches the target AE environment; if it does not, run `ae-cli config set-host <AE_HOST>`
+- Complete Debug validation with `ae-cli tracking debug-device` and `ae-cli tracking debug-data` by default; only hint the user to open the AE Debug page when those CLI capabilities are unavailable
 
 ### If only xlsx file exists (no draft.json)
 
@@ -605,16 +607,30 @@ Provide validation guidance based on selected platforms:
 
 ```
 Validation steps:
-1. Run validation script:
+1. Confirm the active AE environment:
+   ae-cli config current
+
+2. List existing Debug devices:
+   ae-cli tracking debug-device list --project-id <project_id>
+
+3. Create the script's stable device ID if it is missing, then select it:
+   ae-cli tracking debug-device add --project-id <project_id> --device-id <device_id> --device-name <name>
+   ae-cli tracking debug-device select --project-id <project_id> --device-id <device_id>
+
+4. Run validation script:
    - Client: run .ae-cli/output/te-debug-client.<ext>
    - Server: run .ae-cli/output/te-debug-server.<ext>
 
-2. Open AE Debug page:
+5. Query the most recent hour of Debug data:
+   ae-cli tracking debug-data list --project-id <project_id> --device-id <device_id>
+
+6. Confirm has_data=true, then inspect event names, property structures, and error fields.
+   If needed, add --event-name <event_name> or --start-time "YYYY-MM-DD HH:mm:ss".
+
+7. Only if the CLI capability is unavailable, open the AE Debug page:
    https://<host>/#/data/debug
 
-3. Filter by distinct_id=claude-test to view uploaded data
-
-4. For LogBus2:
+8. For LogBus2:
    - Copy daemon.json to LogBus2 conf/ directory
    - Start: ./logbus start
    - Official docs: https://docs-v2.thinkingdata.cn/?version=latest&code=logbus2_installation&lan=en-US

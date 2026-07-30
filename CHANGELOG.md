@@ -1,3 +1,15 @@
+### 6.1.10
+**Date:** 2026-07-30
+
+**Changes:**
+
+#### Tracking
+* Add local Debug device management and received-data inspection commands, and update tracking-code guidance with an end-to-end CLI verification workflow
+* Add tracking-plan display-name synchronization so event and property names can be updated from the generated tracking plan
+
+#### CLI / Agent
+* Switch Skills release synchronization to the centralized system service, with updated packaging scripts and regression coverage
+
 ### 6.1.9
 **Date:** 2026-07-28
 

@@ -7,6 +7,8 @@ import ingest from './ingest/index.js';
 import ingestError from './ingest-error/index.js';
 import liveData from './live-data/index.js';
 import eventBlacklist from './event-blacklist/index.js';
+import debugDevice from './debug-device/index.js';
+import debugData from './debug-data/index.js';
 
 const commands: Command[] = [
   ...plan,
@@ -17,6 +19,8 @@ const commands: Command[] = [
   ...ingestError,
   ...liveData,
   ...eventBlacklist,
+  ...debugDevice,
+  ...debugData,
 ];
 
 export default commands;

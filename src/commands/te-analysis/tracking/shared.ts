@@ -180,6 +180,27 @@ export const dataTypeFlag: Flag = {
   desc: 'Live data type: normal (default) or error.',
 };
 
+export const debugDeviceIdFlag: Flag = {
+  name: 'device-id',
+  type: 'string',
+  required: true,
+  desc: 'Debug device ID reported by the SDK as #device_id.',
+};
+
+export const debugDeviceNameFlag: Flag = {
+  name: 'device-name',
+  type: 'string',
+  required: true,
+  desc: 'Human-readable name for the Debug device.',
+};
+
+export const eventNameFlag: Flag = {
+  name: 'event-name',
+  type: 'string',
+  required: false,
+  desc: 'Optional event name filter.',
+};
+
 export const eventNamesFlag: Flag = {
   name: 'event-names',
   type: 'json',

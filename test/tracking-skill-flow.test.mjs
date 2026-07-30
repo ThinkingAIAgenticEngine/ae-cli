@@ -51,7 +51,7 @@ test('Template localization is delegated to src/tracking i18n, not model transla
     '### 1.3 Inject Business Dimension Events',
   );
   assert.match(merge, /Do not manually translate template content after import/);
-  assert.match(merge, /Use `src\/tracking` i18n/);
+  assert.match(merge, /Use `src\/tracking\/i18n` for localization/);
   assert.match(merge, /AE_LANG=<user_lang>/);
   assert.doesNotMatch(merge, /must translate after import/i);
   assert.doesNotMatch(merge, /event_tag also needs translation/i);

@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { TrackingClient } from '../src/core/tracking-client.ts';
+import { clearCliToken, setCliTokenManual } from '../src/core/cli-token.ts';
 
 const ROOT = path.join(path.dirname(new URL(import.meta.url).pathname), '..');
 
@@ -57,11 +58,13 @@ await testAsync('deleteProgram routes public hosts through the analysis capabili
       headers: { 'content-type': 'application/json' },
     });
   };
+  setCliTokenManual('test-cli-token', host);
 
   try {
     await new TrackingClient(host, 'test-cli-token').deleteProgram(1);
   } finally {
     globalThis.fetch = previousFetch;
+    clearCliToken(host);
   }
 
   assert.equal(

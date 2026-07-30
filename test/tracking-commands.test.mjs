@@ -21,13 +21,30 @@ function runCli(args) {
 
 console.log('tracking command tests');
 
-test('tracking help lists registered plan/code/wiki/lang commands', () => {
+test('tracking help lists registered plan/code/wiki/lang/debug commands', () => {
   const r = runCli(['tracking', '--help']);
   assert.equal(r.status, 0, r.stderr);
   assert.match(r.stdout, /plan/);
   assert.match(r.stdout, /code/);
   assert.match(r.stdout, /wiki/);
   assert.match(r.stdout, /lang/);
+  assert.match(r.stdout, /debug-device/);
+  assert.match(r.stdout, /debug-data/);
+});
+
+test('tracking Debug commands expose typed Agent-facing flags', () => {
+  const add = runCli(['tracking', 'debug-device', 'add', '--help']);
+  assert.equal(add.status, 0, add.stderr);
+  assert.match(add.stdout, /--project-id/);
+  assert.match(add.stdout, /--device-id/);
+  assert.match(add.stdout, /--device-name/);
+
+  const data = runCli(['tracking', 'debug-data', 'list', '--help']);
+  assert.equal(data.status, 0, data.stderr);
+  assert.match(data.stdout, /--project-id/);
+  assert.match(data.stdout, /--device-id/);
+  assert.match(data.stdout, /--start-time/);
+  assert.match(data.stdout, /--event-name/);
 });
 
 test('tracking plan list-templates runs without auth', () => {
@@ -42,6 +59,14 @@ test('tracking plan list-templates supports json output', () => {
   const templates = JSON.parse(r.stdout);
   assert.ok(Array.isArray(templates));
   assert.ok(templates.some((item) => item.name === 'TE官方模板_dataTrackSample'));
+});
+
+test('tracking plan sync-display-names exposes project and draft inputs', () => {
+  const r = runCli(['tracking', 'plan', 'sync-display-names', '--help']);
+  assert.equal(r.status, 0, r.stderr);
+  assert.match(r.stdout, /--project-id/);
+  assert.match(r.stdout, /--draft/);
+  assert.match(r.stdout, /never overwritten/i);
 });
 
 test('tracking code import-template resolves template by name', () => {

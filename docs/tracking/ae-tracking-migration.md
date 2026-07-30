@@ -11,7 +11,7 @@ ae-tracking 的埋点方案能力已并入 **ae-cli**，命令前缀为 `ae-cli 
 | `ae-tracking plan upload` | `ae-cli tracking plan upload` |
 | `ae-tracking plan fetch` | `ae-cli tracking plan fetch` |
 | `ae-tracking plan delete` | `ae-cli tracking plan delete` |
-| `ae-tracking debug device list` | `ae-cli tracking debug device list` |
+| `ae-tracking debug device list` | `ae-cli tracking debug-device list` |
 | `ae-tracking wiki query` | `ae-cli tracking wiki query` |
 | `ae-tracking init` | `ae-cli tracking init` |
 | `ae-tracking lang set` | `ae-cli tracking lang set` |
