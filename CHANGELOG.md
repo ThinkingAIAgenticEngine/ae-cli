@@ -1,4 +1,4 @@
-### 6.0.39
+### 6.1.11
 **Date:** 2026-07-30
 
 **Changes:**
@@ -21,7 +21,11 @@
 * Remove obsolete `engage-setting query cluster-qp-skill`; build semantic audience, trigger, and completion definitions from Analysis models for Hermes compilation, including `targetDefinitionRequest` compilation before legacy Flow validation
 * Clarify Webhook versus client channel parameters and document optional `relationProps` on task save
 
-### 6.0.38
+#### 6.1-only: Atlas Experiment
+* Add `ae-experiment-design` and `ae-experiment-insight` Skills for experiment planning, SDK/exposure readiness, result analysis, and diagnostic playbooks
+* Add experiment-save build-guide and validation commands, and tighten metric-property and integer allocation contracts, including a required allocation total of 100
+
+### 6.1.10
 **Date:** 2026-07-30
 
 **Changes:**
@@ -33,7 +37,7 @@
 #### CLI / Agent
 * Switch Skills release synchronization to the centralized system service, with updated packaging scripts and regression coverage
 
-### 6.0.37
+### 6.1.9
 **Date:** 2026-07-28
 
 **Changes:**
@@ -46,6 +50,10 @@
 #### Tracking & documentation
 * Fix tracking-code generation Wiki references to use `~/.ae-cli/wiki/raw` and `~/.ae-cli/wiki/synthesis`
 * Refresh bilingual internal/public README documentation and add a Chinese changelog
+
+#### 6.1-only: Atlas Experiment
+* Add the `experiment` capability domain for experiment lifecycle, reports, sample-size and metric trends, traffic-layer conflict checks, Features, metrics, buckets, operation logs, and batch deletion
+* Add the `ae-experiment` Skill and verification coverage, including readiness checks and high-risk write guidance
 
 ### 6.0.36
 **Date:** 2026-07-24

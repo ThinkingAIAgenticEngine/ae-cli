@@ -1,4 +1,4 @@
-### 6.0.39
+### 6.1.11
 **日期：** 2026-07-30
 
 **更新内容：**
@@ -21,7 +21,11 @@
 * 删除过期的 `engage-setting query cluster-qp-skill`；受众、触发和完成条件改由 Analysis 模型生成语义定义并交给 Hermes 编译，包括在旧版 Flow 校验前编译 `targetDefinitionRequest`
 * 明确 Webhook 与客户端创建通道的传参差异，并补充任务保存时可选的 `relationProps`
 
-### 6.0.38
+#### 6.1 独有：Atlas 实验
+* 新增 `ae-experiment-design` 和 `ae-experiment-insight` Skills，覆盖实验规划、SDK/曝光就绪检查、结果分析和诊断手册
+* 新增实验保存 build-guide 与 validate 命令，并收紧指标属性和整数分流比例契约，包括分流比例总和必须为 100
+
+### 6.1.10
 **日期：** 2026-07-30
 
 **更新内容：**
@@ -33,7 +37,7 @@
 #### CLI / Agent
 * 将 Skills 发版同步切换为中心化系统服务，并更新打包脚本和回归测试
 
-### 6.0.37
+### 6.1.9
 **日期：** 2026-07-28
 
 **更新内容：**
@@ -46,6 +50,10 @@
 #### 埋点与文档
 * 修复埋点代码生成的 Wiki 引用路径，统一使用 `~/.ae-cli/wiki/raw` 和 `~/.ae-cli/wiki/synthesis`
 * 更新内网/公网中英文 README，并新增中文 changelog
+
+#### 6.1 独有：Atlas 实验
+* 新增 `experiment` capability 域，覆盖实验生命周期、报表、样本量与指标趋势、流量层冲突检查、Feature、指标、分桶、操作日志和批量删除
+* 新增 `ae-experiment` Skill 和验证覆盖，包括实验就绪检查及高风险写入指南
 
 ### 6.0.36
 **日期：** 2026-07-24
