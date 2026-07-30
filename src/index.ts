@@ -71,6 +71,10 @@ async function loadCommands(): Promise<Command[]> {
     commands.push(...teAgent.default);
   } catch {}
   try {
+    const memory = await import('./commands/memory/index.js');
+    commands.push(...memory.default);
+  } catch {}
+  try {
     const teSystem = await import('./commands/te-system/index.js');
     commands.push(...teSystem.default);
   } catch {}

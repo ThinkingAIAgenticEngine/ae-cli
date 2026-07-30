@@ -14,6 +14,8 @@ import { createSqlTask } from './create-sql-task.js';
 import { updateSqlTask } from './update-sql-task.js';
 import { createIntegrationTask } from './create-integration-task.js';
 import { updateIntegrationTask } from './update-integration-task.js';
+import { createWorkflowInstanceCheckTask } from './create-workflow-instance-check-task.js';
+import { updateWorkflowInstanceCheckTask } from './update-workflow-instance-check-task.js';
 import { listHighFrequencyReleaseFlows } from './list-high-frequency-release-flows.js';
 
 const commands: Command[] = [
@@ -29,9 +31,16 @@ const commands: Command[] = [
   getTaskParams,
   updateSqlTask,
   updateIntegrationTask,
+  updateWorkflowInstanceCheckTask,
   addTaskRelation,
   createSqlTask,
   createIntegrationTask,
+  createWorkflowInstanceCheckTask,
 ];
 
 export default commands;
+
+export {
+  createWorkflowInstanceCheckTask,
+  updateWorkflowInstanceCheckTask,
+};

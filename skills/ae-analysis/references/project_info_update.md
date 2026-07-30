@@ -1,4 +1,4 @@
-# analysis project info update
+# project info update
 
 Use when the user needs to update project name and remark.
 
@@ -7,8 +7,8 @@ Do not use it for unrelated project-management actions or for fields not present
 Command:
 
 ```bash
-ae-cli analysis project info update --project-id <project_id> --project-name <project_name> --project-remark <project_remark>
-ae-cli analysis project info update --dry-run --project-id <project_id> --project-name <project_name>
+ae-cli project info update --project-id <project_id> --project-name <project_name> --project-remark <project_remark>
+ae-cli project info update --dry-run --project-id <project_id> --project-name <project_name>
 ```
 
 Capability id: `project.info.update`.

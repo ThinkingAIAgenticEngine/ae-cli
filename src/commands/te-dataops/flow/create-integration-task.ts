@@ -1,11 +1,15 @@
 import type { Command, RuntimeContext } from '../../../framework/types.js';
 import { buildDataopsApiDryRun, callDataopsApi } from '../shared.js';
+import {
+  buildTaskWriteArgs,
+  createTaskWriteFlags,
+  validateTaskWriteArgs,
+} from './task-write-options.js';
 
 const toolName = 'flow_create_integration_task';
 
-function validateInteger(ctx: RuntimeContext, name: string, required = true): void {
+function validateInteger(ctx: RuntimeContext, name: string): void {
   const value = ctx.str(name).trim();
-  if (!value && !required) return;
   if (!/^\d+$/.test(value)) {
     throw new Error(`Invalid --${name}: expected an integer, got "${value}"`);
   }
@@ -17,8 +21,8 @@ function buildArgs(ctx: RuntimeContext): Record<string, unknown> {
     flowCode: ctx.num('flowCode'),
     taskName: ctx.str('taskName'),
     syncId: ctx.str('syncId'),
-    preTaskCode: ctx.optionalNum('preTaskCode'),
     remark: ctx.str('remark'),
+    ...buildTaskWriteArgs(ctx),
   };
 }
 
@@ -31,13 +35,13 @@ export const createIntegrationTask: Command = {
     { name: 'flowCode', type: 'number', required: true, desc: 'Task flow code' },
     { name: 'taskName', type: 'string', required: true, desc: 'Task name' },
     { name: 'syncId', type: 'string', required: true, desc: 'DataOps sync solution ID to bind' },
-    { name: 'preTaskCode', type: 'number', required: false, desc: 'Pre-task code (upstream dependency)' },
     { name: 'remark', type: 'string', required: false, desc: 'Description' },
+    ...createTaskWriteFlags,
   ],
   risk: 'write',
   validate: (ctx) => {
     validateInteger(ctx, 'flowCode');
-    validateInteger(ctx, 'preTaskCode', false);
+    validateTaskWriteArgs(ctx);
   },
   dryRun: (ctx) => buildDataopsApiDryRun(ctx, toolName, buildArgs(ctx)),
   execute: async (ctx) => callDataopsApi(ctx, toolName, buildArgs(ctx)),

@@ -26,7 +26,12 @@ export const flowSave = createEngageFlowCapabilityCommand({
   description: 'Build, preview, or commit an operation-based flow draft.',
   flags: [
     { name: 'project-id', type: 'number', required: true, alias: 'p', desc: 'Numeric project ID.' },
-    { name: 'req', type: 'json', required: true, desc: 'Operation-based flow save request JSON object.' },
+    {
+      name: 'req',
+      type: 'json',
+      required: true,
+      desc: 'Operation-based flow save request. Custom audience node configs and branches use targetDefinitionRequest.',
+    },
   ],
   risk: 'write',
   validate: (ctx) => { readRequest(ctx); },

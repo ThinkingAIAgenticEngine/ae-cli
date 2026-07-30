@@ -89,7 +89,7 @@ You must understand the following key concepts before use, otherwise errors are 
 ### Flow Lifecycle
 
 ```
-Create DEV Flow → Create/Update DEV SQL Tasks → Configure Dependencies/Schedule → Preview Release → Release to PROD → PROD Manual Execution / Operations Troubleshooting
+Create DEV Flow → Create/Update DEV SQL, Integration, or Workflow Instance Check Tasks → Configure Dependencies/Schedule → Preview Release → Release to PROD → PROD Manual Execution / Operations Troubleshooting
 ```
 
 ### CRON Format (6 fields)

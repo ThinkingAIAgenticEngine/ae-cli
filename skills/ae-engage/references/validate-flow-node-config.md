@@ -30,7 +30,7 @@ Use `--operation-mode save_flow` for the current exposed MCP protocol. Use `save
 Important current rules:
 
 - `event_trigger` / `event_judge` A segment: use `periodStart`, `periodEnd`, `periodTimeSymbol`; do not use branch-style `delayTime`.
-- `event_split_flow` branch segment: use `delayTime`, `delayTimeSymbol`, `targetClusterType`; omit `triggerRule` on default branches.
+- `event_split_flow` branch segment: use `delayTime`, `delayTimeSymbol`, `targetClusterType`; omit `triggerDefinition` on default branches.
 - `event_trigger targetUserType=2` is invalid.
 - Push `OBJ_ARRAY.value` must be a JSON array, not a stringified array.
 - Push `contentList[].content` should be a JSON array, but a JSON-stringified array is accepted for compatibility.

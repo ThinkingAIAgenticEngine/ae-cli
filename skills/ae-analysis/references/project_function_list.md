@@ -1,4 +1,4 @@
-# analysis project function list
+# project function list
 
 Use when the user needs to list all project-level functions.
 
@@ -7,8 +7,8 @@ Do not use it for unrelated project-management actions or for fields not present
 Command:
 
 ```bash
-ae-cli analysis project function list --company-id <company_id> --project-id <project_id>
-ae-cli analysis project function list --dry-run 
+ae-cli project function list --company-id <company_id> --project-id <project_id>
+ae-cli project function list --dry-run
 ```
 
 Capability id: `project.function.list`.

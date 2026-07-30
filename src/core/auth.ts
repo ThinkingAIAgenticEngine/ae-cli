@@ -3,6 +3,7 @@ import { normalizeUrl } from './url-utils.js';
 import { logger } from './logger.js';
 import { getValidAccessToken, SecureStoreAuthError, load as secureStoreLoad, save as secureStoreSave } from './secure-store.js';
 import { safeJsonParse } from './json-utils.js';
+import { missingAeHostHint } from './host-guidance.js';
 
 /**
  * Resolve the host URL to use. Simply reads activeHost from config.
@@ -53,7 +54,7 @@ export async function getToken(hostUrl: string): Promise<string> {
   if (!hostUrl) {
     throw new Error(
       `No AE host configured.\n` +
-      `Run: ae-cli config set-host <url>`
+      missingAeHostHint()
     );
   }
 

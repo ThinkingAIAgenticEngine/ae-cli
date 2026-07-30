@@ -1,4 +1,4 @@
-# analysis project entity delete
+# project entity delete
 
 Use when the user needs to delete an analysis entity.
 
@@ -7,8 +7,8 @@ Do not use it for unrelated project-management actions or for fields not present
 Command:
 
 ```bash
-ae-cli analysis project entity delete --project-id <project_id> --entity-id <entity_id>
-ae-cli analysis project entity delete --dry-run --project-id <project_id> --entity-id <entity_id>
+ae-cli project entity delete --project-id <project_id> --entity-id <entity_id>
+ae-cli project entity delete --dry-run --project-id <project_id> --entity-id <entity_id>
 ```
 
 Capability id: `project.entity.delete`.

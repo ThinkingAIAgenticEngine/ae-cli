@@ -5,7 +5,7 @@
  *   1. Read /home/ta/te_agent_ta/.env (or process.env) to validate the sandbox environment;
  *   2. Single-select sync direction (workspace -> main app / main app -> workspace);
  *   3. Single-select resource type (skills / mcp / both);
- *   4. push direction: scan local -> multi-select -> call /api/sandbox/sync/push to update DB;
+ *   4. push direction: scan local -> multi-select -> upload Skills individually; push MCPs in a JSON batch;
  *   5. pull direction: fetch main-app candidates -> multi-select -> call /api/sandbox/sync/pull to materialize into workspace;
  *   6. Render a table with the result of each item (synced / failed).
  *
@@ -15,9 +15,13 @@
 
 import { Command } from 'commander';
 import Table from 'cli-table3';
+import JSZip from 'jszip';
+import { lstatSync, readFileSync, readdirSync } from 'node:fs';
+import { join, relative } from 'node:path';
 import { printError } from '../../framework/output.js';
 import {
   postToMainApp,
+  uploadToMainApp,
   getSandboxSyncPullCandidates,
   postSandboxSyncPull,
   TeAgentApiError,
@@ -42,17 +46,14 @@ import {
   type SkillCandidate,
   type McpCandidate,
 } from './scanners.js';
-import {
-  copySkillPackageToTarget,
-  updateMcpManifestForProjectSource,
-  updateSkillManifestForSource,
-} from './local-copy.js';
+import { updateMcpManifestForProjectSource, updateSkillManifestForSource } from './local-copy.js';
+import { assertSkillDocumentSize } from '../te-agent/skill-version.js';
 
 type Kind = 'skill' | 'mcp';
 type ResourceKind = Kind | 'both';
 type Direction = 'push' | 'pull';
 
-interface PushSkillItem {
+export interface PushSkillItem {
   kind: 'skill';
   slug: string;
   scope: 'personal';
@@ -82,8 +83,17 @@ interface PushMcpItem {
 }
 
 interface PushResult {
-  skillTargetRoot?: string;
   results: SyncResultRow[];
+}
+
+interface SkillPushResponse {
+  item: { id: string };
+  workspaceEnabled: boolean;
+}
+
+export interface PushSkillDependencies {
+  upload(path: string, formData: FormData): Promise<SkillPushResponse>;
+  updateManifest(sourceDir: string, slug: string): unknown;
 }
 
 interface SyncResultRow {
@@ -164,20 +174,28 @@ async function selectSkills(): Promise<PushSkillItem[]> {
     group: describeSource(s),
     hint: s.isSymlink ? '(symlink)' : undefined,
   }));
-  const picked = await promptMultiselect({ title: 'Select Skills to push to the main app', items });
+  const picked = await promptMultiselect({
+    title: 'Select Skills to push to the main app',
+    items,
+  });
   return picked.map(skillToItem);
 }
 
 async function selectMcps(includeSecrets: boolean): Promise<PushMcpItem[]> {
   const all = scanMcps();
   if (all.length === 0) {
-    process.stderr.write('No MCPs found (scanned current workspace .mcp.json / .claude/.claude.json and global ~/.claude.json)\n');
+    process.stderr.write(
+      'No MCPs found (scanned current workspace .mcp.json / .claude/.claude.json and global ~/.claude.json)\n',
+    );
     return [];
   }
   const { supported, unsupportedStdio } = splitPushableMcps(all);
 
   if (unsupportedStdio.length > 0) {
-    const names = unsupportedStdio.map((m) => m.slug).sort().join(', ');
+    const names = unsupportedStdio
+      .map((m) => m.slug)
+      .sort()
+      .join(', ');
     process.stderr.write(`ae-cli sync push only supports http/sse MCPs; skipped stdio MCPs: ${names}\n`);
   }
   if (supported.length === 0) {
@@ -195,12 +213,18 @@ async function selectMcps(includeSecrets: boolean): Promise<PushMcpItem[]> {
     group: describeSource(m),
     hint: m.hasSecrets && !includeSecrets ? '(env redacted)' : undefined,
   }));
-  const picked = await promptMultiselect({ title: 'Select MCPs to push to the main app', items });
+  const picked = await promptMultiselect({
+    title: 'Select MCPs to push to the main app',
+    items,
+  });
   return picked.map((m) => mcpToItem(m, includeSecrets));
 }
 
 function renderResults(results: SyncResultRow[]) {
-  const table = new Table({ head: ['kind', 'slug', 'status', 'message'], wordWrap: true });
+  const table = new Table({
+    head: ['kind', 'slug', 'status', 'message'],
+    wordWrap: true,
+  });
   for (const r of results) {
     table.push([r.kind, r.slug, r.status, r.message ?? '']);
   }
@@ -216,15 +240,17 @@ async function selectPullResources(args: {
   title: string;
   candidates: SandboxSyncPullCandidate[];
 }): Promise<SandboxSyncPullCandidate[]> {
-  const all = args.candidates.filter((candidate) => candidate.selected).sort((a, b) => {
-    const scopeOrder: Record<SandboxSyncPullCandidate['scope'], number> = {
-      system: 0,
-      company: 1,
-      personal: 2,
-    };
-    const scopeDiff = scopeOrder[a.scope] - scopeOrder[b.scope];
-    return scopeDiff !== 0 ? scopeDiff : a.name.localeCompare(b.name);
-  });
+  const all = args.candidates
+    .filter((candidate) => candidate.selected)
+    .sort((a, b) => {
+      const scopeOrder: Record<SandboxSyncPullCandidate['scope'], number> = {
+        system: 0,
+        company: 1,
+        personal: 2,
+      };
+      const scopeDiff = scopeOrder[a.scope] - scopeOrder[b.scope];
+      return scopeDiff !== 0 ? scopeDiff : a.name.localeCompare(b.name);
+    });
   if (all.length === 0) {
     process.stderr.write(`${args.title}: no candidates available to sync\n`);
     return [];
@@ -256,7 +282,7 @@ async function pushItems(kind: Kind, items: Array<PushSkillItem | PushMcpItem>):
       kind,
       items: toHttpItems(items),
     });
-    return { skillTargetRoot: resp.skillTargetRoot, results: resp.results ?? [] };
+    return { results: resp.results ?? [] };
   } catch (err: unknown) {
     if (err instanceof TeAgentApiError) {
       // Entire batch failed: mark every item as failed
@@ -273,33 +299,85 @@ async function pushItems(kind: Kind, items: Array<PushSkillItem | PushMcpItem>):
   }
 }
 
-function copySyncedSkillPackages(skillItems: PushSkillItem[], resp: PushResult): void {
-  if (skillItems.length === 0) return;
-  const bySlug = new Map(skillItems.map((item) => [item.slug, item]));
-  for (const result of resp.results) {
-    if (result.kind !== 'skill' || result.status !== 'synced') continue;
-    const item = bySlug.get(result.slug);
-    if (!item) continue;
-    if (!resp.skillTargetRoot) {
-      result.status = 'failed';
-      result.message = 'Main app response is missing skillTargetRoot; cannot copy Skill package';
-      continue;
-    }
-    try {
-      const copied = copySkillPackageToTarget({
-        sourceDir: item.dirPath,
-        targetRoot: resp.skillTargetRoot,
-        slug: item.slug,
-      });
-      updateSkillManifestForSource(item.dirPath, item.slug);
-      if (copied.skipped) {
-        result.message = 'Source directory is already the target directory; local copy skipped';
+export function readSkillVersion(content: string): string | undefined {
+  const frontmatter = /^---\r?\n([\s\S]*?)\r?\n---/.exec(content)?.[1];
+  if (!frontmatter) return undefined;
+  const matches = [...frontmatter.matchAll(/^version\s*:\s*(.+?)\s*(?:#.*)?$/gm)];
+  if (matches.length !== 1) return undefined;
+  const value = matches[0][1].trim().replace(/^(['"])(.*)\1$/, '$2');
+  return /^(0|[1-9]\d*)\.(0|[1-9]\d*)$/.test(value) ? value : undefined;
+}
+
+export async function buildSkillZip(dirPath: string): Promise<Buffer> {
+  const zip = new JSZip();
+  const visit = (dir: string) => {
+    for (const name of readdirSync(dir)) {
+      if (name === '.DS_Store') continue;
+      const absolute = join(dir, name);
+      const stat = lstatSync(absolute);
+      if (stat.isSymbolicLink()) {
+        throw new Error(`Skill package contains a symlink: ${relative(dirPath, absolute)}`);
       }
+      if (stat.isDirectory()) visit(absolute);
+      else if (stat.isFile()) {
+        const content = readFileSync(absolute);
+        if (relative(dirPath, absolute).replaceAll('\\', '/') === 'SKILL.md') {
+          assertSkillDocumentSize(content);
+        }
+        zip.file(relative(dirPath, absolute).replaceAll('\\', '/'), content);
+      }
+    }
+  };
+  visit(dirPath);
+  return zip.generateAsync({ type: 'nodebuffer', compression: 'DEFLATE' });
+}
+
+const defaultPushSkillDependencies: PushSkillDependencies = {
+  upload: (path, formData) => uploadToMainApp<SkillPushResponse>(path, formData),
+  updateManifest: updateSkillManifestForSource,
+};
+
+export async function pushSkillItems(
+  items: PushSkillItem[],
+  dependencies: PushSkillDependencies = defaultPushSkillDependencies,
+): Promise<PushResult> {
+  const results: SyncResultRow[] = [];
+  for (const item of items) {
+    try {
+      const buffer = await buildSkillZip(item.dirPath);
+      const formData = new FormData();
+      formData.append('file', new Blob([new Uint8Array(buffer)], { type: 'application/zip' }), `${item.slug}.zip`);
+      formData.append('slug', item.slug);
+      formData.append('source', item.source);
+      if (item.workspacePath) formData.append('workspacePath', item.workspacePath);
+      const version = readSkillVersion(item.content);
+      if (version) formData.append('version', version);
+      const response = await dependencies.upload('/api/sandbox/sync/push/skill', formData);
+      dependencies.updateManifest(item.dirPath, item.slug);
+      results.push({
+        kind: 'skill',
+        slug: item.slug,
+        status: 'synced',
+        ...(!response.workspaceEnabled && item.source === 'workspace'
+          ? {
+              message: 'Skill synced, but it was not enabled in the current workspace',
+            }
+          : {}),
+      });
     } catch (err: unknown) {
-      result.status = 'failed';
-      result.message = `Local copy failed: ${(err as Error)?.message ?? String(err)}`;
+      const message =
+        err instanceof TeAgentApiError
+          ? `${err.code ?? err.status} ${err.message}`
+          : ((err as Error)?.message ?? String(err));
+      results.push({
+        kind: 'skill',
+        slug: item.slug,
+        status: 'failed',
+        message,
+      });
     }
   }
+  return { results };
 }
 
 function updateSyncedProjectMcpManifest(mcpItems: PushMcpItem[], resp: PushResult): void {
@@ -365,8 +443,7 @@ async function runPush(kind: ResourceKind, includeSecrets: boolean): Promise<voi
 
   const allResults: SyncResultRow[] = [];
   if (skillItems.length > 0) {
-    const skillResp = await pushItems('skill', skillItems);
-    copySyncedSkillPackages(skillItems, skillResp);
+    const skillResp = await pushSkillItems(skillItems);
     allResults.push(...skillResp.results);
   }
   if (mcpItems.length > 0) {

@@ -31,10 +31,8 @@ import {
   uploadToMainApp,
   getBufferFromMainApp,
 } from '../../core/te-agent-client.js';
-import {
-  MARKET_CATEGORIES,
-  isValidMarketCategory,
-} from './market-constants.js';
+import { MARKET_CATEGORIES, isValidMarketCategory } from './market-constants.js';
+import { assertValidSkillVersion } from './skill-version.js';
 
 const BASE_PATH = '/api/sandbox/agent/skills';
 
@@ -59,7 +57,11 @@ async function resolveInstructions(raw: string): Promise<string> {
 /**
  * 从 --file 读取文件 Buffer 并推断 MIME 类型
  */
-function readFileForUpload(filePath: string): { buffer: Buffer; fileName: string; mimeType: string } {
+function readFileForUpload(filePath: string): {
+  buffer: Buffer;
+  fileName: string;
+  mimeType: string;
+} {
   const resolved = resolve(filePath);
   if (!existsSync(resolved)) {
     throw new Error(`File not found: ${resolved}`);
@@ -100,10 +102,7 @@ function guessMimeType(filePath: string): string {
 /**
  * 构建 asset/reference/script 目录下的上传 FormData
  */
-function buildAssetFormData(
-  filePath: string,
-  subPath?: string,
-): FormData {
+function buildAssetFormData(filePath: string, subPath?: string): FormData {
   const { buffer, fileName, mimeType } = readFileForUpload(filePath);
   const fd = new FormData();
   const blob = new Blob([new Uint8Array(buffer)], { type: mimeType });
@@ -125,7 +124,12 @@ function makeAssetListCommand(
     command: commandName,
     description,
     flags: [
-      { name: 'id', type: 'string', required: true, desc: 'Skill record ID (CUID)' },
+      {
+        name: 'id',
+        type: 'string',
+        required: true,
+        desc: 'Skill record ID (CUID)',
+      },
     ],
     risk: 'read',
     dryRun: (ctx) => ({
@@ -133,9 +137,7 @@ function makeAssetListCommand(
       url: `${BASE_PATH}/${encodeURIComponent(ctx.str('id'))}/${dirName}`,
     }),
     execute: async (ctx) => {
-      return getFromMainApp(
-        `${BASE_PATH}/${encodeURIComponent(ctx.str('id'))}/${dirName}`,
-      );
+      return getFromMainApp(`${BASE_PATH}/${encodeURIComponent(ctx.str('id'))}/${dirName}`);
     },
   };
 }
@@ -161,9 +163,24 @@ function makeAssetUploadCommand(
     command: commandName,
     description,
     flags: [
-      { name: 'id', type: 'string', required: true, desc: 'Skill record ID (CUID)' },
-      { name: 'file', type: 'string', required: true, desc: mdOnly ? 'Local .md file path to upload' : 'Local file path to upload (max 1MB)' },
-      { name: 'sub-path', type: 'string', required: false, desc: 'Sub-directory under the target dir (e.g. "sub/")' },
+      {
+        name: 'id',
+        type: 'string',
+        required: true,
+        desc: 'Skill record ID (CUID)',
+      },
+      {
+        name: 'file',
+        type: 'string',
+        required: true,
+        desc: mdOnly ? 'Local .md file path to upload' : 'Local file path to upload (max 1MB)',
+      },
+      {
+        name: 'sub-path',
+        type: 'string',
+        required: false,
+        desc: 'Sub-directory under the target dir (e.g. "sub/")',
+      },
     ],
     risk: 'write',
     validate,
@@ -174,10 +191,7 @@ function makeAssetUploadCommand(
     }),
     execute: async (ctx) => {
       const fd = buildAssetFormData(ctx.str('file'), ctx.str('subPath') || undefined);
-      return uploadToMainApp(
-        `${BASE_PATH}/${encodeURIComponent(ctx.str('id'))}/${dirName}`,
-        fd,
-      );
+      return uploadToMainApp(`${BASE_PATH}/${encodeURIComponent(ctx.str('id'))}/${dirName}`, fd);
     },
   };
 }
@@ -192,9 +206,24 @@ function makeAssetReadCommand(
     command: commandName,
     description,
     flags: [
-      { name: 'id', type: 'string', required: true, desc: 'Skill record ID (CUID)' },
-      { name: 'path', type: 'string', required: true, desc: 'Relative file path within the directory (e.g. "guide.md" or "sub/icon.png")' },
-      { name: 'output', type: 'string', required: false, desc: 'Write binary content to a local file (preserves binary data)' },
+      {
+        name: 'id',
+        type: 'string',
+        required: true,
+        desc: 'Skill record ID (CUID)',
+      },
+      {
+        name: 'path',
+        type: 'string',
+        required: true,
+        desc: 'Relative file path within the directory (e.g. "guide.md" or "sub/icon.png")',
+      },
+      {
+        name: 'output',
+        type: 'string',
+        required: false,
+        desc: 'Write binary content to a local file (preserves binary data)',
+      },
     ],
     risk: 'read',
     dryRun: (ctx) => ({
@@ -235,8 +264,18 @@ function makeAssetDelCommand(
     command: commandName,
     description,
     flags: [
-      { name: 'id', type: 'string', required: true, desc: 'Skill record ID (CUID)' },
-      { name: 'path', type: 'string', required: true, desc: 'Relative file path within the directory to delete' },
+      {
+        name: 'id',
+        type: 'string',
+        required: true,
+        desc: 'Skill record ID (CUID)',
+      },
+      {
+        name: 'path',
+        type: 'string',
+        required: true,
+        desc: 'Relative file path within the directory to delete',
+      },
     ],
     risk: 'high-risk-write',
     dryRun: (ctx) => ({
@@ -249,9 +288,7 @@ function makeAssetDelCommand(
         .split('/')
         .map((seg) => encodeURIComponent(seg))
         .join('/');
-      return deleteFromMainApp(
-        `${BASE_PATH}/${encodeURIComponent(ctx.str('id'))}/${dirName}/${encodedPath}`,
-      );
+      return deleteFromMainApp(`${BASE_PATH}/${encodeURIComponent(ctx.str('id'))}/${dirName}/${encodedPath}`);
     },
   };
 }
@@ -263,14 +300,60 @@ export const editSkill: Command = {
   command: '+edit-skill',
   description: 'Edit a personal Skill content (name / description / instructions / icon)',
   flags: [
-    { name: 'id', type: 'string', required: true, desc: 'Skill record ID (CUID)' },
-    { name: 'name', type: 'string', required: false, desc: 'New Skill name (1-80 chars)' },
-    { name: 'description', type: 'string', required: false, desc: 'New Skill description' },
-    { name: 'instructions', type: 'string', required: false, desc: 'New instructions (use @- to read from stdin)' },
-    { name: 'display-name', type: 'string', required: false, desc: 'New display name (max 100)' },
-    { name: 'category', type: 'string', required: false, desc: `Market category key: ${MARKET_CATEGORIES.join(' | ')}` },
-    { name: 'icon-emoji', type: 'string', required: false, desc: 'Market icon emoji (e.g. robot)' },
-    { name: 'icon-color', type: 'string', required: false, desc: 'Market icon color (e.g. #1E76F0)' },
+    {
+      name: 'id',
+      type: 'string',
+      required: true,
+      desc: 'Skill record ID (CUID)',
+    },
+    {
+      name: 'name',
+      type: 'string',
+      required: false,
+      desc: 'New Skill name (1-80 chars)',
+    },
+    {
+      name: 'description',
+      type: 'string',
+      required: false,
+      desc: 'New Skill description',
+    },
+    {
+      name: 'instructions',
+      type: 'string',
+      required: false,
+      desc: 'New instructions (use @- to read from stdin)',
+    },
+    {
+      name: 'display-name',
+      type: 'string',
+      required: false,
+      desc: 'New display name (max 100)',
+    },
+    {
+      name: 'category',
+      type: 'string',
+      required: false,
+      desc: `Market category key: ${MARKET_CATEGORIES.join(' | ')}`,
+    },
+    {
+      name: 'icon-emoji',
+      type: 'string',
+      required: false,
+      desc: 'Market icon emoji (e.g. robot)',
+    },
+    {
+      name: 'icon-color',
+      type: 'string',
+      required: false,
+      desc: 'Market icon color (e.g. #1E76F0)',
+    },
+    {
+      name: 'version',
+      type: 'string',
+      required: false,
+      desc: 'New content version (major.minor; required for content changes)',
+    },
   ],
   risk: 'write',
   validate: (ctx) => {
@@ -292,7 +375,16 @@ export const editSkill: Command = {
       ctx.str('iconEmoji') ||
       ctx.str('iconColor');
     if (!hasAny) {
-      throw new Error('Provide at least one of --name / --description / --instructions / --display-name / --category / --icon-emoji / --icon-color');
+      throw new Error(
+        'Provide at least one of --name / --description / --instructions / --display-name / --category / --icon-emoji / --icon-color',
+      );
+    }
+    const version = ctx.str('version');
+    if (version) assertValidSkillVersion(version);
+    const changesContent =
+      Boolean(ctx.str('name')) || Boolean(ctx.str('description')) || Boolean(ctx.str('instructions'));
+    if (changesContent && !version) {
+      throw new Error('--version is required when editing Skill content');
     }
   },
   dryRun: (ctx) => {
@@ -304,6 +396,7 @@ export const editSkill: Command = {
     if (ctx.str('category')) body.category = ctx.str('category');
     if (ctx.str('iconEmoji')) body.iconEmoji = ctx.str('iconEmoji');
     if (ctx.str('iconColor')) body.iconColor = ctx.str('iconColor');
+    if (ctx.str('version')) body.version = ctx.str('version');
     return {
       method: 'PUT',
       url: `${BASE_PATH}/${encodeURIComponent(ctx.str('id'))}`,
@@ -321,6 +414,7 @@ export const editSkill: Command = {
     if (ctx.str('category')) body.category = ctx.str('category');
     if (ctx.str('iconEmoji')) body.iconEmoji = ctx.str('iconEmoji');
     if (ctx.str('iconColor')) body.iconColor = ctx.str('iconColor');
+    if (ctx.str('version')) body.version = ctx.str('version');
     return putToMainApp(`${BASE_PATH}/${encodeURIComponent(ctx.str('id'))}`, body);
   },
 };
@@ -332,7 +426,12 @@ export const getSkillContent: Command = {
   command: '+get-skill-content',
   description: 'Read a Skill SKILL.md text content',
   flags: [
-    { name: 'id', type: 'string', required: true, desc: 'Skill record ID (CUID)' },
+    {
+      name: 'id',
+      type: 'string',
+      required: true,
+      desc: 'Skill record ID (CUID)',
+    },
   ],
   risk: 'read',
   dryRun: (ctx) => ({
@@ -340,9 +439,7 @@ export const getSkillContent: Command = {
     url: `${BASE_PATH}/${encodeURIComponent(ctx.str('id'))}/content`,
   }),
   execute: async (ctx) => {
-    return getFromMainApp(
-      `${BASE_PATH}/${encodeURIComponent(ctx.str('id'))}/content`,
-    );
+    return getFromMainApp(`${BASE_PATH}/${encodeURIComponent(ctx.str('id'))}/content`);
   },
 };
 
@@ -434,17 +531,79 @@ export const uploadSkill: Command = {
   command: '+upload-skill',
   description: 'Upload a ZIP-format Skill (parses SKILL.md + extracts to target dir)',
   flags: [
-    { name: 'file', type: 'string', required: true, desc: 'Local .zip file path' },
-    { name: 'scope', type: 'string', required: false, default: 'personal', desc: 'Target scope: personal | company' },
-    { name: 'auto-rename', type: 'boolean', required: false, desc: 'Auto-rename on name conflict' },
-    { name: 'replace-skill-id', type: 'string', required: false, desc: 'Replace an existing Skill (CUID) instead of creating a new one' },
-    { name: 'category', type: 'string', required: false, desc: `Market category key: ${MARKET_CATEGORIES.join(' | ')}` },
-    { name: 'name', type: 'string', required: false, desc: 'Override Skill name (from ZIP SKILL.md if omitted)' },
-    { name: 'display-name', type: 'string', required: false, desc: 'Override display name' },
-    { name: 'description', type: 'string', required: false, desc: 'Override description' },
-    { name: 'instructions', type: 'string', required: false, desc: 'Override instructions (use @- to read from stdin)' },
-    { name: 'icon-emoji', type: 'string', required: false, desc: 'Market icon emoji (e.g. robot)' },
-    { name: 'icon-color', type: 'string', required: false, desc: 'Market icon color (e.g. #1E76F0)' },
+    {
+      name: 'file',
+      type: 'string',
+      required: true,
+      desc: 'Local .zip file path',
+    },
+    {
+      name: 'scope',
+      type: 'string',
+      required: false,
+      default: 'personal',
+      desc: 'Target scope: personal | company',
+    },
+    {
+      name: 'auto-rename',
+      type: 'boolean',
+      required: false,
+      desc: 'Auto-rename on name conflict',
+    },
+    {
+      name: 'replace-skill-id',
+      type: 'string',
+      required: false,
+      desc: 'Replace an existing Skill (CUID) instead of creating a new one',
+    },
+    {
+      name: 'category',
+      type: 'string',
+      required: false,
+      desc: `Market category key: ${MARKET_CATEGORIES.join(' | ')}`,
+    },
+    {
+      name: 'name',
+      type: 'string',
+      required: false,
+      desc: 'Override Skill name (from ZIP SKILL.md if omitted)',
+    },
+    {
+      name: 'display-name',
+      type: 'string',
+      required: false,
+      desc: 'Override display name',
+    },
+    {
+      name: 'description',
+      type: 'string',
+      required: false,
+      desc: 'Override description',
+    },
+    {
+      name: 'instructions',
+      type: 'string',
+      required: false,
+      desc: 'Override instructions (use @- to read from stdin)',
+    },
+    {
+      name: 'icon-emoji',
+      type: 'string',
+      required: false,
+      desc: 'Market icon emoji (e.g. robot)',
+    },
+    {
+      name: 'icon-color',
+      type: 'string',
+      required: false,
+      desc: 'Market icon color (e.g. #1E76F0)',
+    },
+    {
+      name: 'version',
+      type: 'string',
+      required: false,
+      desc: 'Content version (major.minor; required with --replace-skill-id)',
+    },
   ],
   risk: 'write',
   validate: (ctx) => {
@@ -462,6 +621,11 @@ export const uploadSkill: Command = {
     if (category && !isValidMarketCategory(category)) {
       throw new Error(`--category must be one of: ${MARKET_CATEGORIES.join(', ')}`);
     }
+    const version = ctx.str('version');
+    if (version) assertValidSkillVersion(version);
+    if (ctx.str('replaceSkillId') && !version) {
+      throw new Error('--version is required with --replace-skill-id');
+    }
   },
   dryRun: (ctx) => {
     const body: Record<string, unknown> = {
@@ -474,9 +638,11 @@ export const uploadSkill: Command = {
     if (ctx.str('name')) body.name = ctx.str('name');
     if (ctx.str('displayName')) body.displayName = ctx.str('displayName');
     if (ctx.str('description')) body.description = ctx.str('description');
-    if (ctx.str('instructions')) body.instructions = ctx.str('instructions') === '@-' ? '(from stdin)' : ctx.str('instructions');
+    if (ctx.str('instructions'))
+      body.instructions = ctx.str('instructions') === '@-' ? '(from stdin)' : ctx.str('instructions');
     if (ctx.str('iconEmoji')) body.iconEmoji = ctx.str('iconEmoji');
     if (ctx.str('iconColor')) body.iconColor = ctx.str('iconColor');
+    if (ctx.str('version')) body.version = ctx.str('version');
     return {
       method: 'POST',
       url: `${BASE_PATH}/upload`,
@@ -490,7 +656,9 @@ export const uploadSkill: Command = {
     const fileName = basename(resolved);
 
     const fd = new FormData();
-    const blob = new Blob([new Uint8Array(buffer)], { type: 'application/zip' });
+    const blob = new Blob([new Uint8Array(buffer)], {
+      type: 'application/zip',
+    });
     fd.append('file', blob, fileName);
 
     const scope = ctx.str('scope') || 'personal';
@@ -508,6 +676,7 @@ export const uploadSkill: Command = {
     }
     if (ctx.str('iconEmoji')) fd.append('iconEmoji', ctx.str('iconEmoji'));
     if (ctx.str('iconColor')) fd.append('iconColor', ctx.str('iconColor'));
+    if (ctx.str('version')) fd.append('version', ctx.str('version'));
 
     return uploadToMainApp(`${BASE_PATH}/upload`, fd);
   },

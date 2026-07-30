@@ -1,4 +1,4 @@
-# analysis project access-detail get
+# project access-detail get
 
 Use when the user needs to get company project access details.
 
@@ -7,8 +7,8 @@ Do not use it for unrelated project-management actions or for fields not present
 Command:
 
 ```bash
-ae-cli analysis project access-detail get --company-id <company_id>
-ae-cli analysis project access-detail get --dry-run --company-id <company_id>
+ae-cli project access-detail get --company-id <company_id>
+ae-cli project access-detail get --dry-run --company-id <company_id>
 ```
 
 Capability id: `project.access_detail.get`.

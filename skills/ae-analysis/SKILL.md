@@ -94,7 +94,7 @@ For every gateway command that exposes `--request-id`, ae-cli generates a `reque
 Before a project-scoped command:
 
 1. Reuse a project only when its ID and host/environment were already verified in the same continuous conversation.
-2. Otherwise call `analysis project info list` and resolve the supplied ID/name.
+2. Otherwise call `project info list` and resolve the supplied ID/name.
 3. If there are multiple plausible projects, the host is unclear, or no project matches, show the candidates and ask; never guess.
 4. Re-verify after the user changes project, host, or environment.
 

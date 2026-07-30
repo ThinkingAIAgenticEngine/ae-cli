@@ -9,7 +9,6 @@ import {
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import {
-  copySkillPackageToTarget,
   updateMcpManifestForProjectSource,
   updateSkillManifestForSource,
 } from '../src/commands/sync/local-copy.js';
@@ -93,15 +92,6 @@ try {
     for (const invalidSlug of ['-bad', 'bad-', 'bad--slug', 'a'.repeat(49)]) {
       assert.throws(
         () => updateSkillManifestForSource(skillDir, invalidSlug),
-        /非法 Skill slug/,
-      );
-      assert.throws(
-        () =>
-          copySkillPackageToTarget({
-            sourceDir: skillDir,
-            targetRoot: path.join(tmpRoot, 'target'),
-            slug: invalidSlug,
-          }),
         /非法 Skill slug/,
       );
     }

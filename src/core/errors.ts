@@ -11,7 +11,7 @@
  * re-login will not help. The runner surfaces this as `type: 'permission'` and does NOT suggest re-login.
  */
 export class PermissionError extends Error {
-  constructor(message: string) {
+  constructor(message: string, public readonly code?: string) {
     super(message);
     this.name = 'PermissionError';
   }

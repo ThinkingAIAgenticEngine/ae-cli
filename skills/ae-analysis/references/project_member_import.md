@@ -1,4 +1,4 @@
-# analysis project member import
+# project member import
 
 Use when the user needs to import members and roles from another project.
 
@@ -7,8 +7,8 @@ Do not use it for unrelated project-management actions or for fields not present
 Command:
 
 ```bash
-ae-cli analysis project member import --project-id <project_id> --source-project-id <source_project_id>
-ae-cli analysis project member import --dry-run --project-id <project_id> --source-project-id <source_project_id>
+ae-cli project member import --project-id <project_id> --source-project-id <source_project_id>
+ae-cli project member import --dry-run --project-id <project_id> --source-project-id <source_project_id>
 ```
 
 Capability id: `project.member.import`.

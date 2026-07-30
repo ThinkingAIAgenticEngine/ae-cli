@@ -38,9 +38,12 @@ import alert from './alert/index.js';
 import alertDetail from './alert-detail/index.js';
 import alertJob from './alert-job/index.js';
 import alertNoticeConfig from './alert-notice-config/index.js';
+import system from './system/index.js';
 import { registerCapabilityGatewayRoute } from '../../core/capability-routing.js';
 
 registerCapabilityGatewayRoute('analysis', { gatewayDomain: 'analysis' });
+registerCapabilityGatewayRoute('project', { gatewayDomain: 'analysis' });
+registerCapabilityGatewayRoute('system', { gatewayDomain: 'analysis' });
 registerCapabilityGatewayRoute('tracking', { gatewayDomain: 'analysis' });
 
 export const baseCommands: Command[] = [
@@ -83,6 +86,7 @@ export const baseCommands: Command[] = [
   ...alertDetail,
   ...alertJob,
   ...alertNoticeConfig,
+  ...system,
 ];
 
 const commands: Command[] = [...baseCommands];

@@ -1,4 +1,4 @@
-# analysis project mark-time delete
+# project mark-time delete
 
 Use when the user needs to delete project date markers.
 
@@ -7,8 +7,8 @@ Do not use it for unrelated project-management actions or for fields not present
 Command:
 
 ```bash
-ae-cli analysis project mark-time delete --project-id <project_id> --mark-time-ids <mark_time_ids>
-ae-cli analysis project mark-time delete --dry-run --project-id <project_id> --mark-time-ids <mark_time_ids>
+ae-cli project mark-time delete --project-id <project_id> --mark-time-ids <mark_time_ids>
+ae-cli project mark-time delete --dry-run --project-id <project_id> --mark-time-ids <mark_time_ids>
 ```
 
 Capability id: `project.mark_time.delete`.

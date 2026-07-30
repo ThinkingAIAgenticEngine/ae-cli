@@ -6,6 +6,8 @@ import {
 
 type AnalysisCapabilityCommandConfig = Omit<CoreCapabilityCommandConfig, 'cliService' | 'gatewayDomain'>;
 
+const ANALYSIS_GATEWAY_CLI_SERVICES = new Set(['project', 'system']);
+
 export const analysisDataRunRoutingHelp =
   'Routing: use run only for analysis data that fits <=1000 inline rows and <=180s; use export for full, unknown-size, >1000-row, or long-running data.';
 
@@ -13,10 +15,41 @@ export const analysisDataExportRoutingHelp =
   'Routing: use export for full, unknown-size, >1000-row, or long-running analysis data; inspect/download by run_id/artifact_id; use run only for <=1000-row inline previews.';
 
 export function createAnalysisCapabilityCommand(config: AnalysisCapabilityCommandConfig) {
+  const cliPath = resolveAnalysisGatewayCliPath(config);
   return createCapabilityCommandCore({
     ...config,
-    cliService: 'analysis',
+    ...cliPath,
+    gatewayDomain: 'analysis',
   });
+}
+
+function resolveAnalysisGatewayCliPath(
+  config: AnalysisCapabilityCommandConfig,
+): Pick<CoreCapabilityCommandConfig, 'cliService' | 'resource' | 'command'> {
+  const [capabilityService, capabilityResource, capabilityAction, ...extraSegments] =
+    config.capabilityId.split('.');
+  if (!ANALYSIS_GATEWAY_CLI_SERVICES.has(capabilityService)) {
+    return {
+      cliService: 'analysis',
+      resource: config.resource,
+      command: config.command,
+    };
+  }
+  if (!capabilityResource || !capabilityAction || extraSegments.length > 0) {
+    throw new Error(
+      `Capability '${config.capabilityId}' must have exactly three segments for direct CLI registration.`,
+    );
+  }
+
+  const resource = capabilityResource.replaceAll('_', '-');
+  const command = capabilityAction.replaceAll('_', '-');
+  const expectedLegacyResource = `${capabilityService} ${resource}`;
+  if (config.resource !== expectedLegacyResource || config.command !== command) {
+    throw new Error(
+      `Capability '${config.capabilityId}' must map to ae-cli ${capabilityService} ${resource} ${command}.`,
+    );
+  }
+  return { cliService: capabilityService, resource, command };
 }
 
 export function createAnalysisMetaCapabilityCommand(config: AnalysisCapabilityCommandConfig) {

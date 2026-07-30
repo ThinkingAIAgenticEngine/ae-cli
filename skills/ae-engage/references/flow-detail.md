@@ -10,6 +10,19 @@ Mapped command: `ae-cli engage-flow flow get`
 The flow detail is under `data.flow`. Every response key is snake_case, for example
 `data.flow.mapping_status`, `data.flow.version_type`, and `data.flow.node_list[].type`.
 
+For custom-audience nodes, `node_list[].config` remains a JSON string. Parse it and read
+`targetDefinitionRequest`, `definitionStatus`, and optional
+`definitionUnavailableReason`. Branch audiences use the same fields inside
+`branchList[]`. Stored execution QP is hidden. Reuse `targetDefinitionRequest` when
+building the next flow save request.
+
+Top-level `completion_indicators` and `current_flow_completion_indicators` are exposed
+as arrays. Each indicator uses semantic `event_definition`; stored `event` execution
+QP is removed. Check `completion_indicators_definition_status` and
+`current_flow_completion_indicators_definition_status` before reusing them. A
+non-`AVAILABLE` status may also include the corresponding
+`*_definition_unavailable_reason`.
+
 ## Flags
 
 | Flag | Type | Required | Description |

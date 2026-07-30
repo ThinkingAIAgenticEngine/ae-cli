@@ -8,12 +8,7 @@
  */
 
 import type { Command, RuntimeContext } from '../../framework/types.js';
-import {
-  getFromMainApp,
-  postToMainApp,
-  deleteFromMainApp,
-  patchToMainApp,
-} from '../../core/te-agent-client.js';
+import { getFromMainApp, postToMainApp, deleteFromMainApp, patchToMainApp } from '../../core/te-agent-client.js';
 import {
   MARKET_CATEGORIES,
   MARKET_SCOPES,
@@ -21,6 +16,7 @@ import {
   isValidMarketCategory,
   buildMarketQuery,
 } from './market-constants.js';
+import { assertValidSkillVersion } from './skill-version.js';
 
 const BASE_PATH = '/api/sandbox/agent/skills';
 const MARKET_BASE_PATH = '/api/sandbox/agent/skills';
@@ -59,7 +55,12 @@ export const listSkills: Command = {
   command: '+list-skills',
   description: 'List Skills visible to current user',
   flags: [
-    { name: 'scope', type: 'string', required: false, desc: 'Filter by scope: personal | company | system' },
+    {
+      name: 'scope',
+      type: 'string',
+      required: false,
+      desc: 'Filter by scope: personal | company | system',
+    },
   ],
   risk: 'read',
   validate: (ctx) => {
@@ -85,14 +86,61 @@ export const addSkill: Command = {
   command: '+add-skill',
   description: 'Create a custom Skill (personal or company scope)',
   flags: [
-    { name: 'name', type: 'string', required: true, desc: 'Skill name (1-80 chars)' },
-    { name: 'description', type: 'string', required: true, desc: 'Skill description' },
-    { name: 'instructions', type: 'string', required: true, desc: 'Skill instructions (use @- to read from stdin)' },
-    { name: 'display-name', type: 'string', required: false, desc: 'Display name (max 100)' },
-    { name: 'category', type: 'string', required: false, desc: `Market category key: ${MARKET_CATEGORIES.join(' | ')}` },
-    { name: 'icon-emoji', type: 'string', required: false, desc: 'Market icon emoji (e.g. robot)' },
-    { name: 'icon-color', type: 'string', required: false, desc: 'Market icon color (e.g. #1E76F0)' },
-    { name: 'scope', type: 'string', required: false, default: 'personal', desc: 'Target scope: personal | company' },
+    {
+      name: 'name',
+      type: 'string',
+      required: true,
+      desc: 'Skill name (1-80 chars)',
+    },
+    {
+      name: 'description',
+      type: 'string',
+      required: true,
+      desc: 'Skill description',
+    },
+    {
+      name: 'instructions',
+      type: 'string',
+      required: true,
+      desc: 'Skill instructions (use @- to read from stdin)',
+    },
+    {
+      name: 'display-name',
+      type: 'string',
+      required: false,
+      desc: 'Display name (max 100)',
+    },
+    {
+      name: 'category',
+      type: 'string',
+      required: false,
+      desc: `Market category key: ${MARKET_CATEGORIES.join(' | ')}`,
+    },
+    {
+      name: 'icon-emoji',
+      type: 'string',
+      required: false,
+      desc: 'Market icon emoji (e.g. robot)',
+    },
+    {
+      name: 'icon-color',
+      type: 'string',
+      required: false,
+      desc: 'Market icon color (e.g. #1E76F0)',
+    },
+    {
+      name: 'scope',
+      type: 'string',
+      required: false,
+      default: 'personal',
+      desc: 'Target scope: personal | company',
+    },
+    {
+      name: 'version',
+      type: 'string',
+      required: false,
+      desc: 'Initial content version (major.minor; default 1.0)',
+    },
   ],
   risk: 'write',
   validate: (ctx) => {
@@ -108,6 +156,8 @@ export const addSkill: Command = {
     if (scope && !['personal', 'company'].includes(scope)) {
       throw new Error('--scope must be personal or company');
     }
+    const version = ctx.str('version');
+    if (version) assertValidSkillVersion(version);
   },
   dryRun: (ctx) => {
     const body: Record<string, unknown> = {
@@ -116,6 +166,7 @@ export const addSkill: Command = {
       instructions: ctx.str('instructions') === '@-' ? '(from stdin)' : ctx.str('instructions'),
       displayName: ctx.str('displayName') || undefined,
       scope: ctx.str('scope') || 'personal',
+      version: ctx.str('version') || undefined,
     };
     const meta = buildMetaBody(ctx);
     if (meta) body._meta = meta; // applied via a follow-up PATCH /api/sandbox/agent/skills/[id]/meta
@@ -123,12 +174,15 @@ export const addSkill: Command = {
   },
   execute: async (ctx) => {
     const instructions = await resolveInstructions(ctx.str('instructions'));
-    const created = await postToMainApp<{ item: { id: string; name: string; displayName: string | null } }>(BASE_PATH, {
+    const created = await postToMainApp<{
+      item: { id: string; name: string; displayName: string | null };
+    }>(BASE_PATH, {
       name: ctx.str('name'),
       description: ctx.str('description'),
       instructions,
       displayName: ctx.str('displayName') || undefined,
       scope: ctx.str('scope') || 'personal',
+      version: ctx.str('version') || undefined,
     });
     const id = created?.item?.id;
     const meta = buildMetaBody(ctx);
@@ -148,7 +202,12 @@ export const delSkill: Command = {
   command: '+del-skill',
   description: 'Delete a personal Skill (physical delete)',
   flags: [
-    { name: 'id', type: 'string', required: true, desc: 'Skill record ID (CUID)' },
+    {
+      name: 'id',
+      type: 'string',
+      required: true,
+      desc: 'Skill record ID (CUID)',
+    },
   ],
   risk: 'high-risk-write',
   dryRun: (ctx) => ({
@@ -165,8 +224,18 @@ export const toggleSkill: Command = {
   command: '+toggle-skill',
   description: 'Enable or disable a Skill',
   flags: [
-    { name: 'id', type: 'string', required: true, desc: 'Skill record ID (CUID)' },
-    { name: 'enabled', type: 'boolean', required: true, desc: 'true to enable, false to disable' },
+    {
+      name: 'id',
+      type: 'string',
+      required: true,
+      desc: 'Skill record ID (CUID)',
+    },
+    {
+      name: 'enabled',
+      type: 'boolean',
+      required: true,
+      desc: 'true to enable, false to disable',
+    },
   ],
   risk: 'write',
   dryRun: (ctx) => ({
@@ -187,12 +256,46 @@ export const listSkillMarket: Command = {
   command: '+list-skill-market',
   description: 'List Skills from the market (only approved items; system/company/personal)',
   flags: [
-    { name: 'scope', type: 'string', required: false, default: 'all', desc: `Market scope: ${MARKET_SCOPES.join(' | ')} (custom = personal)` },
-    { name: 'category', type: 'string', required: false, desc: `Category key: ${MARKET_CATEGORIES.join(' | ')}` },
-    { name: 'search', type: 'string', required: false, desc: 'Fuzzy search on name/displayName/description' },
-    { name: 'sort', type: 'string', required: false, default: 'newest', desc: `Sort: ${MARKET_SORTS.join(' | ')} (calls = downloads)` },
-    { name: 'limit', type: 'number', required: false, default: 50, desc: 'Page size (1-100, default 50)' },
-    { name: 'offset', type: 'number', required: false, default: 0, desc: 'Page offset (>=0, default 0)' },
+    {
+      name: 'scope',
+      type: 'string',
+      required: false,
+      default: 'all',
+      desc: `Market scope: ${MARKET_SCOPES.join(' | ')} (custom = personal)`,
+    },
+    {
+      name: 'category',
+      type: 'string',
+      required: false,
+      desc: `Category key: ${MARKET_CATEGORIES.join(' | ')}`,
+    },
+    {
+      name: 'search',
+      type: 'string',
+      required: false,
+      desc: 'Fuzzy search on name/displayName/description',
+    },
+    {
+      name: 'sort',
+      type: 'string',
+      required: false,
+      default: 'newest',
+      desc: `Sort: ${MARKET_SORTS.join(' | ')} (calls = downloads)`,
+    },
+    {
+      name: 'limit',
+      type: 'number',
+      required: false,
+      default: 50,
+      desc: 'Page size (1-100, default 50)',
+    },
+    {
+      name: 'offset',
+      type: 'number',
+      required: false,
+      default: 0,
+      desc: 'Page offset (>=0, default 0)',
+    },
   ],
   risk: 'read',
   validate: (ctx) => {
@@ -223,10 +326,30 @@ export const setSkillMeta: Command = {
   command: '+set-skill-meta',
   description: 'Update a Skill market meta (category / icon). Company scope requires root; system is read-only.',
   flags: [
-    { name: 'id', type: 'string', required: true, desc: 'Skill record ID (CUID)' },
-    { name: 'category', type: 'string', required: false, desc: `Category key: ${MARKET_CATEGORIES.join(' | ')}` },
-    { name: 'icon-emoji', type: 'string', required: false, desc: 'Market icon emoji (e.g. robot)' },
-    { name: 'icon-color', type: 'string', required: false, desc: 'Market icon color (e.g. #1E76F0)' },
+    {
+      name: 'id',
+      type: 'string',
+      required: true,
+      desc: 'Skill record ID (CUID)',
+    },
+    {
+      name: 'category',
+      type: 'string',
+      required: false,
+      desc: `Category key: ${MARKET_CATEGORIES.join(' | ')}`,
+    },
+    {
+      name: 'icon-emoji',
+      type: 'string',
+      required: false,
+      desc: 'Market icon emoji (e.g. robot)',
+    },
+    {
+      name: 'icon-color',
+      type: 'string',
+      required: false,
+      desc: 'Market icon color (e.g. #1E76F0)',
+    },
   ],
   risk: 'write',
   validate: (ctx) => {
@@ -244,10 +367,7 @@ export const setSkillMeta: Command = {
     body: buildMetaBody(ctx),
   }),
   execute: async (ctx) => {
-    return patchToMainApp(
-      `${MARKET_BASE_PATH}/${encodeURIComponent(ctx.str('id'))}/meta`,
-      buildMetaBody(ctx),
-    );
+    return patchToMainApp(`${MARKET_BASE_PATH}/${encodeURIComponent(ctx.str('id'))}/meta`, buildMetaBody(ctx));
   },
 };
 
@@ -256,10 +376,30 @@ export const copySkill: Command = {
   command: '+copy-skill',
   description: 'Copy a system/company Skill to a personal copy (independent duplicate)',
   flags: [
-    { name: 'id', type: 'string', required: true, desc: 'Source Skill record ID (CUID, system or company scope)' },
-    { name: 'category', type: 'string', required: false, desc: `Market category key for the copy: ${MARKET_CATEGORIES.join(' | ')}` },
-    { name: 'icon-emoji', type: 'string', required: false, desc: 'Override market icon emoji (e.g. robot)' },
-    { name: 'icon-color', type: 'string', required: false, desc: 'Override market icon color (e.g. #1E76F0)' },
+    {
+      name: 'id',
+      type: 'string',
+      required: true,
+      desc: 'Source Skill record ID (CUID, system or company scope)',
+    },
+    {
+      name: 'category',
+      type: 'string',
+      required: false,
+      desc: `Market category key for the copy: ${MARKET_CATEGORIES.join(' | ')}`,
+    },
+    {
+      name: 'icon-emoji',
+      type: 'string',
+      required: false,
+      desc: 'Override market icon emoji (e.g. robot)',
+    },
+    {
+      name: 'icon-color',
+      type: 'string',
+      required: false,
+      desc: 'Override market icon color (e.g. #1E76F0)',
+    },
   ],
   risk: 'write',
   validate: (ctx) => {
@@ -274,9 +414,6 @@ export const copySkill: Command = {
     body: buildMetaBody(ctx) ?? {},
   }),
   execute: async (ctx) => {
-    return postToMainApp(
-      `${MARKET_BASE_PATH}/${encodeURIComponent(ctx.str('id'))}/copy`,
-      buildMetaBody(ctx) ?? {},
-    );
+    return postToMainApp(`${MARKET_BASE_PATH}/${encodeURIComponent(ctx.str('id'))}/copy`, buildMetaBody(ctx) ?? {});
   },
 };

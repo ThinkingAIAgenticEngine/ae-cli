@@ -1,6 +1,9 @@
 import { readFileSync } from 'node:fs';
 import { safeJsonParse } from '../../core/json-utils.js';
-import { findGatewayDomain } from '../../core/capability-routing.js';
+import {
+  findGatewayDomain,
+  resolveGatewayDomain,
+} from '../../core/capability-routing.js';
 
 export interface CapabilitySummary {
   id: string;
@@ -23,13 +26,17 @@ export function capabilityNamespace(capabilityId: string): string {
 
 export function resolveCapabilityGatewayDomain(capabilityId: string, domainOverride?: string): string {
   const cliDomain = domainOverride?.trim() || capabilityNamespace(capabilityId);
+  return resolveCapabilityListDomain(cliDomain);
+}
+
+export function resolveCapabilityListDomain(cliDomain: string): string {
   if (!cliDomain) {
     throw new CapabilityCommandValidationError(
       'Cannot determine the capability domain.',
       'Pass --domain <domain>.',
     );
   }
-  return findGatewayDomain(cliDomain) ?? cliDomain;
+  return resolveGatewayDomain(cliDomain, findGatewayDomain(cliDomain) ?? cliDomain);
 }
 
 export function parseOptionalProjectId(raw?: string): number | undefined {

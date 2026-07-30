@@ -7,6 +7,7 @@ import { clearCliToken, mintCliToken } from '../core/cli-token.js';
 import { runHostCompatCheck } from '../core/compat-check.js';
 import { getLocalCliPackageInfo } from '../core/package-info.js';
 import { logger } from '../core/logger.js';
+import { missingAeHostGuidance, missingAeHostHint } from '../core/host-guidance.js';
 import {
   runDeviceFlow,
   authorizeDevice,
@@ -99,7 +100,7 @@ export function registerAuth(program: Command): void {
       const explicitHost = getExplicitAuthHostOverride(program, opts);
       const host = resolveAuthHost(program, opts);
       if (!host) {
-        printError('config', 'No AE host configured.', 'Run: ae-cli config set-host <url>');
+        printError('config', 'No AE host configured.', missingAeHostHint());
         process.exit(1);
       }
 
@@ -179,7 +180,15 @@ export function registerAuth(program: Command): void {
     .action(async (opts: AuthHostOpts) => {
       const host = resolveAuthHost(program, opts);
       if (!host) {
-        await printOutput({ authenticated: false, host: '(none)', hint: 'Run: ae-cli config set-host <url>' }, program.opts().format || 'json');
+        await printOutput(
+          {
+            authenticated: false,
+            host: '(none)',
+            hint: missingAeHostHint(),
+            next_steps: missingAeHostGuidance(),
+          },
+          program.opts().format || 'json',
+        );
         return;
       }
 
@@ -232,7 +241,7 @@ export function registerAuth(program: Command): void {
     .action(async (opts: AuthHostOpts) => {
       const host = resolveAuthHost(program, opts);
       if (!host) {
-        printError('config', 'No AE host configured.', 'Run: ae-cli config set-host <url>');
+        printError('config', 'No AE host configured.', missingAeHostHint());
         process.exit(1);
       }
       clearCliToken(host);

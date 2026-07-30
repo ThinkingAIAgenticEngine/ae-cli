@@ -15,6 +15,7 @@ import { projectPermissionBindingList } from '../src/commands/te-analysis/projec
 import { projectRoleDelete } from '../src/commands/te-analysis/project/role/delete.ts';
 import { projectRoleGet } from '../src/commands/te-analysis/project/role/get.ts';
 import { projectRoleUserList } from '../src/commands/te-analysis/project/role-user/list.ts';
+import projectCommands from '../src/commands/te-analysis/project/index.ts';
 
 let pass = 0;
 let fail = 0;
@@ -82,6 +83,15 @@ async function dryInput(
 }
 
 process.stdout.write('\nanalysis project capability command tests\n');
+
+await test('all project commands map their three-part capability ID directly to the CLI path', () => {
+  for (const command of projectCommands) {
+    const [, resource, action] = command.capabilityId!.split('.');
+    assert.equal(command.service, 'project');
+    assert.equal(command.resource, resource.replaceAll('_', '-'));
+    assert.equal(command.command, action.replaceAll('_', '-'));
+  }
+});
 
 await test('project role get forwards project_id', async () => {
   assert.deepEqual(await dryInput(projectRoleGet, {

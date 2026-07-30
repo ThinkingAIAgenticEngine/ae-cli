@@ -1,4 +1,4 @@
-# analysis project member update
+# project member update
 
 Use when the user needs to update one project member.
 
@@ -7,8 +7,8 @@ Do not use it for unrelated project-management actions or for fields not present
 Command:
 
 ```bash
-ae-cli analysis project member update --project-id <project_id> --payload <payload> --target-user-id <target_user_id>
-ae-cli analysis project member update --dry-run --project-id <project_id> --payload <payload> --target-user-id <target_user_id>
+ae-cli project member update --project-id <project_id> --payload <payload> --target-user-id <target_user_id>
+ae-cli project member update --dry-run --project-id <project_id> --payload <payload> --target-user-id <target_user_id>
 ```
 
 Capability id: `project.member.update`.

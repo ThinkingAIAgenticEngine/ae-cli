@@ -1,4 +1,4 @@
-# analysis project member-handover export
+# project member-handover export
 
 Use when the user needs to run batch project member asset handover and export the generated detail file as a CLI artifact.
 
@@ -7,8 +7,8 @@ Do not use it for unrelated project-management actions or for fields not present
 Command:
 
 ```bash
-ae-cli analysis project member-handover export --project-id <project_id> --payload <payload> --request-id <request_id>
-ae-cli analysis project member-handover export --dry-run --project-id <project_id> --payload <payload>
+ae-cli project member-handover export --project-id <project_id> --payload <payload> --request-id <request_id>
+ae-cli project member-handover export --dry-run --project-id <project_id> --payload <payload>
 ```
 
 Capability id: `project.member_handover.export`.

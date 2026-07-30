@@ -1,4 +1,4 @@
-# analysis project timezone get
+# project timezone get
 
 Use when the user needs to get project time zone configuration.
 
@@ -7,8 +7,8 @@ Do not use it for unrelated project-management actions or for fields not present
 Command:
 
 ```bash
-ae-cli analysis project timezone get --project-id <project_id>
-ae-cli analysis project timezone get --dry-run --project-id <project_id>
+ae-cli project timezone get --project-id <project_id>
+ae-cli project timezone get --dry-run --project-id <project_id>
 ```
 
 Capability id: `project.timezone.get`.

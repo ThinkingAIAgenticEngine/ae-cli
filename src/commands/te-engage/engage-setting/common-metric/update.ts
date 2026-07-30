@@ -1,16 +1,19 @@
 import { createEngageSettingCapabilityCommand } from '../../shared.js';
 import type { Flag } from '../../../../framework/types.js';
-import { validateMetricQpFlag, validateMetricWindowTimeUnitFlag } from './metric-qp-validation.js';
+import {
+  validateMetricDefinitionFlag,
+  validateMetricWindowTimeUnitFlag,
+} from './metric-qp-validation.js';
 
 const writeFlags: Flag[] = [
   { name: 'project-id', type: 'number', required: true, alias: 'p', desc: 'Numeric project ID.' },
   { name: 'metric-type', type: 'number', required: true, desc: 'Metric type; use 1 (PRESET) for common metrics.' },
   { name: 'metric-name', type: 'string', required: true, desc: 'Metric name (existing PRESET metric).' },
   {
-    name: 'metric-qp',
-    type: 'string',
+    name: 'metric-definition',
+    type: 'json',
     required: true,
-    desc: 'Complete metric QP JSON object string (type=0 event or type=1 formula).',
+    desc: 'Semantic event or formula metric definition.',
   },
   { name: 'metric-window-num', type: 'number', required: true, desc: 'Metric window number.' },
   {
@@ -30,7 +33,7 @@ const buildWriteInput = (ctx: any) => ({
   project_id: ctx.num('project-id'),
   metric_type: ctx.num('metric-type'),
   metric_name: ctx.str('metric-name'),
-  metric_qp: ctx.str('metric-qp'),
+  metric_definition: ctx.json('metric-definition'),
   metric_window_num: ctx.num('metric-window-num'),
   metric_window_time_unit: ctx.str('metric-window-time-unit'),
   display_name: ctx.str('display-name'),
@@ -49,7 +52,7 @@ export const commonMetricUpdate = createEngageSettingCapabilityCommand({
   flags: writeFlags,
   risk: 'write',
   validate: (ctx) => {
-    validateMetricQpFlag(ctx.str('metric-qp'));
+    validateMetricDefinitionFlag(ctx.json('metric-definition'));
     validateMetricWindowTimeUnitFlag(ctx.str('metric-window-time-unit'));
   },
   buildInput: buildWriteInput,

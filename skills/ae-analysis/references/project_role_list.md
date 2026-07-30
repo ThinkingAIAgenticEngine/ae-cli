@@ -1,4 +1,4 @@
-# analysis project role list
+# project role list
 
 Use when the user needs to list project-visible roles.
 
@@ -7,8 +7,8 @@ Do not use it for unrelated project-management actions or for fields not present
 Command:
 
 ```bash
-ae-cli analysis project role list --company-id <company_id> --project-id <project_id> --visible-only <visible_only>
-ae-cli analysis project role list --dry-run 
+ae-cli project role list --company-id <company_id> --project-id <project_id> --visible-only <visible_only>
+ae-cli project role list --dry-run
 ```
 
 Capability id: `project.role.list`.

@@ -15,8 +15,7 @@ import { segmentListRename } from './segment-list/rename.js';
 import { segmentListSetVisibility } from './segment-list/set-visibility.js';
 import { taskDelete } from './task/delete.js';
 import { taskModifyGroup } from './task/modify-group.js';
-// Temporarily disabled: testing issues — re-enable with skill docs when fixed.
-// import { taskSubmitApproval } from './task/submit-approval.js';
+import { taskSubmitApproval } from './task/submit-approval.js';
 import { taskBuildSaveGuide } from './task/build-save-guide.js';
 import { taskGet } from './task/get.js';
 import { taskList } from './task/list.js';
@@ -47,7 +46,7 @@ const commands: Command[] = [
   segmentListSetVisibility,
   taskDelete,
   taskModifyGroup,
-  // taskSubmitApproval,
+  taskSubmitApproval,
 ];
 
 export { channelRefStats } from './channel-ref/stats.js';
@@ -66,7 +65,7 @@ export { segmentListRename } from './segment-list/rename.js';
 export { segmentListSetVisibility } from './segment-list/set-visibility.js';
 export { taskDelete } from './task/delete.js';
 export { taskModifyGroup } from './task/modify-group.js';
-// export { taskSubmitApproval } from './task/submit-approval.js';
+export { taskSubmitApproval } from './task/submit-approval.js';
 export { taskBuildSaveGuide } from './task/build-save-guide.js';
 export { taskGet } from './task/get.js';
 export { taskList } from './task/list.js';

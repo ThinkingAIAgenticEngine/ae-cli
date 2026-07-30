@@ -34,6 +34,8 @@ const TOOL_API_MAP: Record<string, DataopsApiSpec> = {
   flow_update_sql_task: { method: 'POST', path: '/api/cli/dataops/v1/gaia/workflow/sql-task-definition' },
   flow_create_integration_task: { method: 'POST', path: '/api/cli/dataops/v1/gaia/workflow/integration-tasks' },
   flow_update_integration_task: { method: 'POST', path: '/api/cli/dataops/v1/gaia/workflow/integration-task-definition' },
+  flow_create_workflow_instance_check_task: { method: 'POST', path: '/api/cli/dataops/v1/gaia/workflow/workflow-instance-check-tasks' },
+  flow_update_workflow_instance_check_task: { method: 'POST', path: '/api/cli/dataops/v1/gaia/workflow/workflow-instance-check-task-definition' },
   flow_add_task_relation: { method: 'POST', path: '/api/cli/dataops/v1/gaia/workflow/task-relation' },
   flow_get_task_params: { method: 'GET', path: '/api/cli/dataops/v1/gaia/workflow/task-params' },
 

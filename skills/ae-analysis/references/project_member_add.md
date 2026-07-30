@@ -1,4 +1,4 @@
-# analysis project member add
+# project member add
 
 Use when the user needs to add project members.
 
@@ -7,8 +7,8 @@ Do not use it for unrelated project-management actions or for fields not present
 Command:
 
 ```bash
-ae-cli analysis project member add --project-id <project_id> --payload <payload> --type <type>
-ae-cli analysis project member add --dry-run --project-id <project_id> --payload <payload> --type <type>
+ae-cli project member add --project-id <project_id> --payload <payload> --type <type>
+ae-cli project member add --dry-run --project-id <project_id> --payload <payload> --type <type>
 ```
 
 Capability id: `project.member.add`.

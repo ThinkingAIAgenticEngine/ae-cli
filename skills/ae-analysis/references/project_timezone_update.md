@@ -1,4 +1,4 @@
-# analysis project timezone update
+# project timezone update
 
 Use when the user needs to update one project time zone configuration item.
 
@@ -7,8 +7,8 @@ Do not use it for unrelated project-management actions or for fields not present
 Command:
 
 ```bash
-ae-cli analysis project timezone update --project-id <project_id> --payload <payload> --item <item>
-ae-cli analysis project timezone update --dry-run --project-id <project_id> --payload <payload> --item <item>
+ae-cli project timezone update --project-id <project_id> --payload <payload> --item <item>
+ae-cli project timezone update --dry-run --project-id <project_id> --payload <payload> --item <item>
 ```
 
 Capability id: `project.timezone.update`.

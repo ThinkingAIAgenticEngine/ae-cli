@@ -5,6 +5,16 @@ Query the details of a single task.
 
 Mapped command: `ae-cli engage-task task get`
 
+For a custom target audience, the response hides persisted `qp` and returns:
+
+- `definition_status`: `AVAILABLE`, `UNAVAILABLE`, or `NOT_APPLICABLE`
+- `definition_request`: the Analysis-compatible semantic audience definition when available
+- `definition_unavailable_reason`: present only when a historical QP cannot be reversed
+
+Reuse `definition_request` as `req.targetConfig.definitionRequest` when updating a task.
+Soft-deleted tasks are treated as unavailable and return `TASK_NOT_FOUND`, matching task-list
+visibility.
+
 ## Flags
 
 | Flag | Type | Required | Description |

@@ -1,4 +1,4 @@
-# analysis project mark-time create
+# project mark-time create
 
 Use when the user needs to create a project date marker.
 
@@ -7,8 +7,8 @@ Do not use it for unrelated project-management actions or for fields not present
 Command:
 
 ```bash
-ae-cli analysis project mark-time create --project-id <project_id> --marked-at <marked_at> --zone-offset <zone_offset> --content <content> --is-visible <is_visible>
-ae-cli analysis project mark-time create --dry-run --project-id <project_id> --marked-at <marked_at> --content <content>
+ae-cli project mark-time create --project-id <project_id> --marked-at <marked_at> --zone-offset <zone_offset> --content <content> --is-visible <is_visible>
+ae-cli project mark-time create --dry-run --project-id <project_id> --marked-at <marked_at> --content <content>
 ```
 
 Capability id: `project.mark_time.create`.

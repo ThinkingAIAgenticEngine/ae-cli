@@ -1,4 +1,4 @@
-# analysis project member batch-update
+# project member batch-update
 
 Use when the user needs to batch update project members.
 
@@ -7,8 +7,8 @@ Do not use it for unrelated project-management actions or for fields not present
 Command:
 
 ```bash
-ae-cli analysis project member batch-update --project-id <project_id> --payload <payload>
-ae-cli analysis project member batch-update --dry-run --project-id <project_id> --payload <payload>
+ae-cli project member batch-update --project-id <project_id> --payload <payload>
+ae-cli project member batch-update --dry-run --project-id <project_id> --payload <payload>
 ```
 
 Capability id: `project.member.batch_update`.

@@ -9,7 +9,7 @@ ae-cli analysis entity id-import-options --project-id <project_id> --entity-id <
 If the entity ID is not already known, discover it first instead of guessing:
 
 ```bash
-ae-cli analysis project entity list --project-id <project_id> --fields '["entityId","entityName","columnName","entityType"]'
+ae-cli project entity list --project-id <project_id> --fields '["entityId","entityName","columnName","entityType"]'
 ```
 
 - `match_mode=user_property`: `--association-property` is required and must be copied from `association_properties`; `#user_id` is forbidden.

@@ -53,7 +53,7 @@ ae-cli metadata property <dimension-table-action> [options]
 
 ## PROJECT_ID_GATE
 
-Same rules as `ae-analysis`: reuse verified project context in one conversation; otherwise `ae-cli analysis project info list` (or `ae-analysis` skill) to resolve `project_id`.
+Same rules as `ae-analysis`: reuse verified project context in one conversation; otherwise `ae-cli project info list` (or `ae-analysis` skill) to resolve `project_id`.
 
 ## Commands (10)
 

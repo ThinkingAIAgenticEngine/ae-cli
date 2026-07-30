@@ -12,7 +12,14 @@ import { PermissionError } from './errors.js';
 import { readFile } from 'node:fs/promises';
 import { basename } from 'node:path';
 
-export type CapabilityApiMethod = 'GET' | 'POST' | 'PUT' | 'DELETE';
+export type CapabilityApiMethod = 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE';
+
+export type CapabilityApiRequestOptions = {
+  /** Actual service base URL when it differs from the host used to obtain the CLI token. */
+  apiBaseUrl?: string;
+  /** Retry once with a refreshed CLI token after HTTP 401. Defaults to true. */
+  retryOnUnauthorized?: boolean;
+};
 
 export interface CapabilityGatewaySuccess<T = any> {
   ok: true;
@@ -74,6 +81,15 @@ async function permissionMessage(resp: Response): Promise<string> {
     if (msg && typeof msg === 'string') return msg;
   } catch { /* non-JSON body */ }
   return 'Permission denied for this resource (HTTP 403)';
+}
+
+async function permissionError(resp: Response): Promise<PermissionError> {
+  const codeResponse = resp.clone();
+  const message = await permissionMessage(resp);
+  const body = safeJsonParse(await codeResponse.text());
+  const error = isRecord(body?.error) ? body.error : undefined;
+  const code = nonEmptyString(error?.code) ?? nonEmptyString(body?.code);
+  return new PermissionError(message, code);
 }
 
 function isInvalidCliTokenMessage(message: string): boolean {
@@ -213,8 +229,9 @@ async function callGateway(
   method: CapabilityApiMethod,
   body?: any,
   queryParams: Record<string, any> = {},
+  options: CapabilityApiRequestOptions = {},
 ): Promise<any> {
-  return (await callGatewayWithEnvelope(host, domain, pathAfterV1, method, body, queryParams)).data;
+  return (await callGatewayWithEnvelope(host, domain, pathAfterV1, method, body, queryParams, options)).data;
 }
 
 async function callGatewayWithEnvelope(
@@ -224,22 +241,27 @@ async function callGatewayWithEnvelope(
   method: CapabilityApiMethod,
   body?: any,
   queryParams: Record<string, any> = {},
+  options: CapabilityApiRequestOptions = {},
 ): Promise<CapabilityGatewaySuccess> {
-  const url = buildCapabilityGatewayUrl(host, domain, pathAfterV1, queryParams);
+  const url = buildCapabilityGatewayUrl(options.apiBaseUrl ?? host, domain, pathAfterV1, queryParams);
   const token = await getCliToken(host);
 
   let resp = await requestOnce(url, method, token, body);
 
   let permissionMsg: string | undefined;
   if (resp.status === 403) {
-    permissionMsg = await permissionMessage(resp);
+    const error = await permissionError(resp);
+    permissionMsg = error.message;
     if (!isInvalidCliTokenMessage(permissionMsg)) {
-      throw new PermissionError(permissionMsg);
+      throw error;
     }
   }
 
-  if (resp.status === 401 || (resp.status === 403 && permissionMsg)) {
-    logger.warn(`Capability gateway request failed (${resp.status === 403 ? permissionMsg : 'HTTP 401'}) for ${host}, refreshing CLI token`);
+  if (resp.status === 401) {
+    if (options.retryOnUnauthorized === false) {
+      await throwCapabilityHttpError(resp);
+    }
+    logger.warn(`Capability gateway request failed (HTTP 401) for ${host}, refreshing CLI token`);
     clearCliToken(host);
     const newToken = await getCliToken(host);
     process.stderr.write(`[ae-cli] CLI token refreshed for ${host}\n`);
@@ -247,6 +269,19 @@ async function callGatewayWithEnvelope(
     resp = await requestOnce(url, method, newToken, body);
     if (resp.status === 403) {
       throw new PermissionError(await permissionMessage(resp));
+    }
+    if (!resp.ok) {
+      await throwCapabilityHttpError(resp);
+    }
+  } else if (resp.status === 403 && permissionMsg) {
+    logger.warn(`Capability gateway request failed (${permissionMsg}) for ${host}, refreshing CLI token`);
+    clearCliToken(host);
+    const newToken = await getCliToken(host);
+    process.stderr.write(`[ae-cli] CLI token refreshed for ${host}\n`);
+
+    resp = await requestOnce(url, method, newToken, body);
+    if (resp.status === 403) {
+      throw await permissionError(resp);
     }
     if (!resp.ok) {
       await throwCapabilityHttpError(resp);
@@ -272,7 +307,7 @@ export async function fetchCapabilityGateway(
   let resp = await requestOnce(url, method, token, body, accept);
 
   if (resp.status === 403) {
-    throw new PermissionError(await permissionMessage(resp));
+    throw await permissionError(resp);
   }
 
   if (resp.status === 401) {
@@ -283,7 +318,7 @@ export async function fetchCapabilityGateway(
 
     resp = await requestOnce(url, method, newToken, body, accept);
     if (resp.status === 403) {
-      throw new PermissionError(await permissionMessage(resp));
+      throw await permissionError(resp);
     }
     if (!resp.ok) {
       await throwCapabilityHttpError(resp);
@@ -426,7 +461,7 @@ export async function uploadInputFileBytes(
   let resp = await requestMultipartOnce(url, token, form);
 
   if (resp.status === 403) {
-    throw new PermissionError(await permissionMessage(resp));
+    throw await permissionError(resp);
   }
 
   if (resp.status === 401) {
@@ -436,7 +471,7 @@ export async function uploadInputFileBytes(
     process.stderr.write(`[ae-cli] CLI token refreshed for ${host}\n`);
     resp = await requestMultipartOnce(url, newToken, form);
     if (resp.status === 403) {
-      throw new PermissionError(await permissionMessage(resp));
+      throw await permissionError(resp);
     }
     if (!resp.ok) {
       await throwCapabilityHttpError(resp);
@@ -469,7 +504,7 @@ export async function downloadCapabilityArtifact(
   let resp = await requestDownloadOnce(url, token);
 
   if (resp.status === 403) {
-    throw new PermissionError(await permissionMessage(resp));
+    throw await permissionError(resp);
   }
 
   if (resp.status === 401) {
@@ -479,7 +514,7 @@ export async function downloadCapabilityArtifact(
     process.stderr.write(`[ae-cli] CLI token refreshed for ${host}\n`);
     resp = await requestDownloadOnce(url, newToken);
     if (resp.status === 403) {
-      throw new PermissionError(await permissionMessage(resp));
+      throw await permissionError(resp);
     }
     if (!resp.ok) {
       await throwCapabilityHttpError(resp);
@@ -505,10 +540,11 @@ export async function callCapabilityApi(
   action: string,
   method: CapabilityApiMethod = 'POST',
   params: Record<string, any> = {},
+  options: CapabilityApiRequestOptions = {},
 ): Promise<any> {
   const isGet = method === 'GET';
   if (isGet) {
-    return callGateway(host, domain, action.replace(/^\/+|\/+$/g, ''), 'GET');
+    return callGateway(host, domain, action.replace(/^\/+|\/+$/g, ''), 'GET', undefined, {}, options);
   }
-  return callGateway(host, domain, action.replace(/^\/+|\/+$/g, ''), method, params);
+  return callGateway(host, domain, action.replace(/^\/+|\/+$/g, ''), method, params, {}, options);
 }

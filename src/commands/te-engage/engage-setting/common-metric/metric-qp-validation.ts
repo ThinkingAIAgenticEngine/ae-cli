@@ -3,34 +3,24 @@ import { printError } from '../../../../framework/output.js';
 const VALID_WINDOW_TIME_UNITS = new Set(['minute', 'hour', 'day']);
 
 /**
- * Validate --metric-qp is a non-empty JSON object string.
- * 校验 --metric-qp 必须是非空 JSON 对象字符串。
+ * Validate --metric-definition is a non-empty semantic metric object.
+ * 校验 --metric-definition 必须是非空语义化指标对象。
  */
-export function validateMetricQpFlag(metricQp: string): void {
-  let parsed: unknown;
-  try {
-    parsed = JSON.parse(metricQp);
-  } catch {
+export function validateMetricDefinitionFlag(definition: unknown): void {
+  if (definition === null || typeof definition !== 'object' || Array.isArray(definition)) {
     printError(
       'validation',
-      '--metric-qp must be a valid JSON object string.',
-      'Discover events via analysis-meta event list, then assemble a type=0/1 metric QP object.',
+      '--metric-definition must be a JSON object.',
+      'Pass a semantic event or formula metric definition.',
     );
     process.exit(1);
   }
-  if (parsed === null || typeof parsed !== 'object' || Array.isArray(parsed)) {
+  const type = (definition as Record<string, unknown>).type;
+  if (type !== 'event' && type !== 'formula') {
     printError(
       'validation',
-      '--metric-qp must be a JSON object string.',
-      'Do not pass placeholders like "event"; pass a complete metric QP object.',
-    );
-    process.exit(1);
-  }
-  if (Object.keys(parsed as Record<string, unknown>).length === 0) {
-    printError(
-      'validation',
-      '--metric-qp cannot be an empty JSON object.',
-      'Pass a complete metric QP expression instead of {}.',
+      '--metric-definition.type must be event or formula.',
+      'Do not pass legacy type=0/1 metric_qp.',
     );
     process.exit(1);
   }

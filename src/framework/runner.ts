@@ -196,7 +196,7 @@ export async function runCommand(cmd: Command, opts: Record<string, any>, global
       printError('config', message, err.hint);
     } else if (err instanceof PermissionError) {
       // authenticated-but-forbidden — surface the server's reason; re-login won't help
-      printError('permission', message);
+      printError('permission', message, undefined, err.code);
     } else if (err instanceof CapabilityGatewayError) {
       printError('api', message, err.hint ?? capabilityGatewayHint(err), err.code, err.meta);
     } else if (err instanceof CommunityReportError) {

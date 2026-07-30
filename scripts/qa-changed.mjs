@@ -46,6 +46,9 @@ function tasksFor(files) {
   if (needs(files, [/^src\/commands\/te-analysis\//, /^skills\/ae-analysis\//, /^docs\/te-analysis\//, /^scripts\/verify-te-analysis/, /^test\/multi-cluster-mode\.test\.mjs$/])) {
     tasks.push(
       ['npm', ['run', 'verify:analysis-tools']],
+      ['npm', ['run', 'verify:analysis-skill']],
+      ['npm', ['run', 'verify:analysis-agent-contract']],
+      ['npm', ['run', 'verify:analysis-system']],
       ['npm', ['run', 'verify:analysis-four-modules']],
       ['npm', ['run', 'verify:analysis-cluster-routing']],
       ['npm', ['run', 'verify:multi-cluster-mode']],

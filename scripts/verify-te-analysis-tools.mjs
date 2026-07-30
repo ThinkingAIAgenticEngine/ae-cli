@@ -159,15 +159,17 @@ if (gatewayLifecycleCommands.length !== EXPECTED_GATEWAY_LIFECYCLE_COUNT) {
   fail(`analysis gateway lifecycle command count mismatch: expected ${EXPECTED_GATEWAY_LIFECYCLE_COUNT}, got ${gatewayLifecycleCommands.length}`);
 }
 
-const EXPECTED_CAPABILITY_COUNT = 250;
+const EXPECTED_CAPABILITY_COUNT = 312;
 if (capabilityCommands.length !== EXPECTED_CAPABILITY_COUNT) {
   fail(`analysis capability command count mismatch: expected ${EXPECTED_CAPABILITY_COUNT}, got ${capabilityCommands.length}`);
 }
 
 const EXPECTED_CAPABILITY_COUNTS_BY_SERVICE = {
-  analysis: 153,
+  analysis: 111,
   'analysis-meta': 50,
   'analysis-governance': 20,
+  project: 44,
+  system: 60,
   tracking: 27,
 };
 for (const [service, expectedCount] of Object.entries(EXPECTED_CAPABILITY_COUNTS_BY_SERVICE)) {
@@ -256,12 +258,15 @@ for (const [relPath, tokens] of Object.entries(requiredReferenceTokensByFile)) {
   }
 }
 
-function capabilityReferenceName(resource, command) {
-  return `${resource.replaceAll('-', '_').replaceAll(/\s+/g, '_')}_${command.replaceAll('-', '_')}.md`;
+function capabilityReferenceName(item) {
+  const resource = ['project', 'system'].includes(item.service)
+    ? `${item.service} ${item.resource}`
+    : item.resource;
+  return `${resource.replaceAll('-', '_').replaceAll(/\s+/g, '_')}_${item.command.replaceAll('-', '_')}.md`;
 }
 
 for (const item of [...capabilityCommands, ...gatewayLifecycleCommands]) {
-  const relPath = `skills/ae-analysis/references/${capabilityReferenceName(item.resource, item.command)}`;
+  const relPath = `skills/ae-analysis/references/${capabilityReferenceName(item)}`;
   const absPath = path.join(ROOT, relPath);
   if (!fs.existsSync(absPath)) {
     fail(`missing capability reference file: ${relPath}`);

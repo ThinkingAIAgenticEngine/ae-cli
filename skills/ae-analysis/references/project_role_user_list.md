@@ -1,4 +1,4 @@
-# analysis project role-user list
+# project role-user list
 
 Use when the user needs to list users bound to a role.
 
@@ -7,8 +7,8 @@ Do not use it for unrelated project-management actions or for fields not present
 Command:
 
 ```bash
-ae-cli analysis project role-user list --project-id <project_id> --role-name <role_name>
-ae-cli analysis project role-user list --dry-run --project-id <project_id> --role-name <role_name>
+ae-cli project role-user list --project-id <project_id> --role-name <role_name>
+ae-cli project role-user list --dry-run --project-id <project_id> --role-name <role_name>
 ```
 
 Capability id: `project.role_user.list`.

@@ -29,12 +29,22 @@ npx -y skills add ThinkingAIAgenticEngine/ae-cli -g -y
 
 The Skills teach supported coding Agents, including Claude Code, Codex, Cursor, and similar tools, how to discover and call `ae-cli`.
 
+Install optional, approved scenario Skills with an interactive category picker:
+
+```bash
+npx skills@latest add ThinkingAIAgenticEngine/scenario-skills
+```
+
+See the [scenario-skills repository](https://github.com/ThinkingAIAgenticEngine/scenario-skills) for version-specific and non-interactive installation.
+
 Log in to an AE environment:
 
 ```bash
 ae-cli auth login --host https://your-ae-host.example.com
 ae-cli auth status
 ```
+
+Use the AE URL supplied by your AgenticEngine administrator. If no Host is configured, `ae-cli` guides existing customers to obtain that URL first. Only users without an AgenticEngine environment are directed to [request a trial](https://thinkingai.cn/request-demo).
 
 ## Environment-Bound Updates
 
@@ -65,10 +75,15 @@ ae-cli --no-update-check capability list --domain analysis
 ## Quick Start
 
 ```bash
-# List and switch configured environments
+# Open the interactive environment manager
+ae-cli config
+
+# Or manage environments non-interactively
 ae-cli config list
+ae-cli --format table config list
 ae-cli config current
-ae-cli config use https://your-ae-host.example.com
+ae-cli config add https://your-ae-host.example.com --label production --use
+ae-cli config use production
 
 # Discover capabilities exposed by the host
 ae-cli capability list --domain analysis
@@ -133,6 +148,8 @@ Gateway-backed features follow the [Capability command admission rules](docs/cap
 ## Authentication and Environments
 
 Credentials are stored per host. Switching environments does not reuse a token from another host.
+Run `ae-cli config` in a terminal to add, activate, rename, or remove environments interactively.
+For scripts and agents, use the non-interactive subcommands:
 
 ```bash
 ae-cli auth login --host https://host-a.example.com
@@ -141,11 +158,16 @@ ae-cli auth logout --host https://host-a.example.com
 
 ae-cli config list
 ae-cli config current
-ae-cli config set-host https://host-b.example.com --label staging
+ae-cli config add https://host-b.example.com --label staging
 ae-cli config use staging
+ae-cli config rename staging pre-production
+ae-cli config remove pre-production --yes
 ```
 
+`<env>` accepts either an exact URL or a unique label. The active environment is clearly marked in the interactive manager and in `config list`. Removing an active environment is rejected while other environments remain; switch first so replacement is explicit. `config set-host` remains available as a compatibility command that adds or updates a host and activates it.
+
 Login uses a cross-platform device-code flow. Use `--no-browser` when the environment cannot open a browser.
+Trial guidance is emitted only when no Host is configured; normal commands and authentication flows for configured environments do not display it.
 
 ## Output and Safety
 

@@ -1,4 +1,4 @@
-# analysis project data-power get
+# project data-power get
 
 Use when the user needs to get one data power detail.
 
@@ -7,8 +7,8 @@ Do not use it for unrelated project-management actions or for fields not present
 Command:
 
 ```bash
-ae-cli analysis project data-power get --project-id <project_id> --data-power-id <data_power_id>
-ae-cli analysis project data-power get --dry-run --project-id <project_id> --data-power-id <data_power_id>
+ae-cli project data-power get --project-id <project_id> --data-power-id <data_power_id>
+ae-cli project data-power get --dry-run --project-id <project_id> --data-power-id <data_power_id>
 ```
 
 Capability id: `project.data_power.get`.

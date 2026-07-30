@@ -29,12 +29,22 @@ npx -y skills add ThinkingAIAgenticEngine/ae-cli -g -y
 
 Skills 会帮助 Claude Code、Codex、Cursor 等编码 Agent 理解、发现并调用 `ae-cli`。
 
+按业务分类交互安装可选的已准出场景 Skill：
+
+```bash
+npx skills@latest add ThinkingAIAgenticEngine/scenario-skills
+```
+
+指定版本或非交互安装方式请查看 [scenario-skills 仓库](https://github.com/ThinkingAIAgenticEngine/scenario-skills)。
+
 登录 AE 环境：
 
 ```bash
 ae-cli auth login --host https://your-ae-host.example.com
 ae-cli auth status
 ```
+
+请使用 AgenticEngine 管理员提供的 AE 地址。未配置 Host 时，`ae-cli` 会先引导已有客户向管理员获取地址；只有确认尚无 AgenticEngine 环境的用户，才会看到[申请试用](https://thinkingai.cn/request-demo)入口。
 
 ## 环境版本同步
 
@@ -65,10 +75,15 @@ ae-cli --no-update-check capability list --domain analysis
 ## 快速开始
 
 ```bash
-# 查看和切换环境
+# 打开交互式环境管理器
+ae-cli config
+
+# 或使用非交互命令管理环境
 ae-cli config list
+ae-cli --format table config list
 ae-cli config current
-ae-cli config use https://your-ae-host.example.com
+ae-cli config add https://your-ae-host.example.com --label production --use
+ae-cli config use production
 
 # 发现当前 Host 暴露的能力
 ae-cli capability list --domain analysis
@@ -133,6 +148,8 @@ Gateway 命令遵循 [Capability 命令收录规则](docs/capability-command-adm
 ## 认证与多环境
 
 凭证按 Host 独立存储，切换环境不会复用其他 Host 的 token。
+在终端运行 `ae-cli config`，可以交互式添加、激活、重命名或删除环境。
+脚本和 Agent 应使用非交互子命令：
 
 ```bash
 ae-cli auth login --host https://host-a.example.com
@@ -141,11 +158,16 @@ ae-cli auth logout --host https://host-a.example.com
 
 ae-cli config list
 ae-cli config current
-ae-cli config set-host https://host-b.example.com --label staging
+ae-cli config add https://host-b.example.com --label staging
 ae-cli config use staging
+ae-cli config rename staging pre-production
+ae-cli config remove pre-production --yes
 ```
 
+`<env>` 可以是完整 URL 或唯一 label。交互管理器和 `config list` 都会明确标识 active 环境。当还存在其他环境时，不允许直接删除 active 环境；应先显式切换。`config set-host` 作为兼容命令继续保留，其语义是添加或更新 Host 并立即激活。
+
 登录使用跨平台设备码流程。当前环境无法打开浏览器时，可使用 `--no-browser`。
+试用引导仅在尚未配置 Host 时出现；已配置环境的正常命令和认证流程不会展示该提示。
 
 ## 输出与安全
 

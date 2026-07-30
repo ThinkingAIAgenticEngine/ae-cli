@@ -1,4 +1,4 @@
-# analysis project role upsert
+# project role upsert
 
 Use when the user needs to create or update a project role.
 
@@ -7,8 +7,8 @@ Do not use it for unrelated project-management actions or for fields not present
 Command:
 
 ```bash
-ae-cli analysis project role upsert --project-id <project_id> --payload <payload>
-ae-cli analysis project role upsert --dry-run --project-id <project_id> --payload <payload>
+ae-cli project role upsert --project-id <project_id> --payload <payload>
+ae-cli project role upsert --dry-run --project-id <project_id> --payload <payload>
 ```
 
 Capability id: `project.role.upsert`.

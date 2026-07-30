@@ -1,24 +1,24 @@
 import { createEngageSceneCapabilityCommand } from '../../shared.js';
 
-/** Sets preset metric QP config (impression/click/attend) of a config item. */
+/** Sets semantic preset metric events of a config item. */
 export const presetMetricSet = createEngageSceneCapabilityCommand({
   resource: 'preset-metric',
   command: 'set',
   capabilityId: 'engage-scene.preset-metric.set',
-  description: 'Set preset metric QP config (impression/click/attend) of a config item.',
+  description: 'Set semantic impression/click/attend event definitions of a config item.',
   flags: [
     { name: 'project-id', type: 'number', required: true, alias: 'p', desc: 'Numeric project ID.' },
     { name: 'config-id', type: 'string', required: true, desc: 'Config item ID.' },
-    { name: 'impression-event-qp', type: 'string', required: false, desc: 'Impression event QP JSON.' },
-    { name: 'click-event-qp', type: 'string', required: false, desc: 'Click event QP JSON.' },
-    { name: 'attend-event-qp', type: 'string', required: false, desc: 'Attend event QP JSON.' },
+    { name: 'impression-event-definition', type: 'json', required: false, desc: 'Semantic impression event definition.' },
+    { name: 'click-event-definition', type: 'json', required: false, desc: 'Semantic click event definition.' },
+    { name: 'attend-event-definition', type: 'json', required: false, desc: 'Semantic attend event definition.' },
   ],
   risk: 'write',
   buildInput: (ctx) => ({
     project_id: ctx.num('project-id'),
     config_id: ctx.str('config-id'),
-    impression_event_qp: ctx.str('impression-event-qp') || undefined,
-    click_event_qp: ctx.str('click-event-qp') || undefined,
-    attend_event_qp: ctx.str('attend-event-qp') || undefined,
+    impression_event_definition: ctx.json('impression-event-definition') || undefined,
+    click_event_definition: ctx.json('click-event-definition') || undefined,
+    attend_event_definition: ctx.json('attend-event-definition') || undefined,
   }),
 });

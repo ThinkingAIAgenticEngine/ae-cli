@@ -41,7 +41,7 @@ ae-cli dataops_flow +create_sql_task --spaceCode "${spaceCode}" \
 # Create task with upstream dependency
 ae-cli dataops_flow +create_sql_task --spaceCode "${spaceCode}" \
   --flowCode ${flowCode} --taskName "Export Results" \
-  --preTaskCode ${upstreamTaskCode} \
+  --preTasks "[${upstreamTaskCode},${anotherUpstreamTaskCode}]" \
   --sql "INSERT INTO ads_user SELECT * FROM dwd_user"
 ```
 
@@ -63,23 +63,40 @@ ae-cli dataops_flow +update_integration_task --spaceCode "${spaceCode}" \
 
 Use `dataops_integration +list_sync_solutions` or `+get_sync_detail` to find the `syncId` first. These commands expose workflow `OFFLINE_SYNC` tasks only; app sync tasks are not part of this flow.
 
-### Step 4: Modify SQL Task Content
+### Step 4: Create or Modify Workflow Instance Check Task
+
+`checkItems` is a flat JSON array. Every item contains only `flowCode`, `left`, `right`, and `checkTimeUnit` (`DAY`, `HOUR`, or `MINUTE`). One `AND` or `OR` relation applies to the entire array; nested groups are not supported. For the current workflow, `left` and `right` are at least `1`; for another workflow they may be `0`; `right` must not exceed `left`.
 
 ```bash
-# Update SQL task content without changing owner, remark, dependencies, retry, or timeout
+ae-cli dataops_flow +create_workflow_instance_check_task --spaceCode "${spaceCode}" \
+  --flowCode ${flowCode} --taskName "Wait for upstream workflows" \
+  --checkItems '[{"flowCode":10037355068544,"left":1,"right":1,"checkTimeUnit":"DAY"},{"flowCode":10037355068545,"left":2,"right":0,"checkTimeUnit":"HOUR"}]' \
+  --relation OR
+
+ae-cli dataops_flow +update_workflow_instance_check_task --spaceCode "${spaceCode}" \
+  --flowCode ${flowCode} --taskCode ${taskCode} \
+  --checkItems '[{"flowCode":10037355068544,"left":1,"right":1,"checkTimeUnit":"DAY"}]'
+```
+
+Create defaults are `relation=AND`, `checkInterval=5`, `checkTime=3`, `failRetryTimes=3`, `failRetryInterval=5`, and `failRetryUnit=MINUTE`. On update, omitted check scalars, dependencies, and retry fields keep their current values.
+
+### Step 5: Modify SQL Task Content
+
+```bash
+# Update SQL task content and keep dependencies and retry policy
 ae-cli dataops_flow +update_sql_task --spaceCode "${spaceCode}" \
   --flowCode ${flowCode} --taskCode ${taskCode} \
   --sql "SELECT * FROM dwd_user"
 ```
 
-### Step 5: Add Task Dependencies (DAG connections)
+### Step 6: Add Task Dependencies (DAG connections)
 
 ```bash
 ae-cli dataops_flow +add_task_relation --spaceCode "${spaceCode}" \
   --flowCode ${flowCode} --preTaskCode ${upstreamTaskCode} --taskCode ${downstreamTaskCode}
 ```
 
-### Step 6: Configure Schedule
+### Step 7: Configure Schedule
 
 ```bash
 # CRON expression for scheduled execution
@@ -93,7 +110,7 @@ ae-cli dataops_flow +save_schedule_config --spaceCode "${spaceCode}" \
 - `0 0 */4 * * ?` — Every 4 hours
 - `0 30 8 * * 1-5` — Weekdays at 8:30
 
-### Step 7: Preview Release
+### Step 8: Preview Release
 
 ```bash
 # Preview pending DEV-to-PROD release changes before publishing
@@ -101,7 +118,7 @@ ae-cli dataops_flow +preview_release_flow --spaceCode "${spaceCode}" \
   --flowCode ${flowCode}
 ```
 
-### Step 8: Release to Production and Verify
+### Step 9: Release to Production and Verify
 
 ```bash
 ae-cli dataops_flow +release_flow --spaceCode "${spaceCode}" \
@@ -130,10 +147,12 @@ ae-cli dataops_operations +get_task_instance_detail --spaceCode "${spaceCode}" \
 | Command | Purpose | Key Flags |
 |---------|---------|-----------|
 | `+create_flow` | Create DEV flow | `--spaceCode` `--flowName` `[--remark]` |
-| `+create_sql_task` | Create DEV Trino SQL task and save SQL | `--spaceCode` `--flowCode` `--taskName` `--sql` `[--preSql]` `[--postSql]` `[--preTaskCode]` `[--remark]` |
-| `+update_sql_task` | Update DEV Trino SQL task content | `--spaceCode` `--flowCode` `--taskCode` `--sql` `[--preSql]` `[--postSql]` |
-| `+create_integration_task` | Create DEV integration sync task from an existing sync solution | `--spaceCode` `--flowCode` `--taskName` `--syncId` `[--preTaskCode]` `[--remark]` |
-| `+update_integration_task` | Rebind DEV integration sync task to a sync solution | `--spaceCode` `--flowCode` `--taskCode` `--syncId` |
+| `+create_sql_task` | Create DEV Trino SQL task and save SQL | `--spaceCode` `--flowCode` `--taskName` `--sql` `[--preSql]` `[--postSql]` `[--preTasks]` `[--failRetryTimes]` `[--failRetryInterval]` `[--failRetryUnit]` `[--remark]` |
+| `+update_sql_task` | Update DEV Trino SQL task content | `--spaceCode` `--flowCode` `--taskCode` `--sql` `[--preSql]` `[--postSql]` `[--preTasks]` `[--failRetryTimes]` `[--failRetryInterval]` `[--failRetryUnit]` |
+| `+create_integration_task` | Create DEV integration sync task from an existing sync solution | `--spaceCode` `--flowCode` `--taskName` `--syncId` `[--preTasks]` `[--failRetryTimes]` `[--failRetryInterval]` `[--failRetryUnit]` `[--remark]` |
+| `+update_integration_task` | Rebind DEV integration sync task to a sync solution | `--spaceCode` `--flowCode` `--taskCode` `--syncId` `[--preTasks]` `[--failRetryTimes]` `[--failRetryInterval]` `[--failRetryUnit]` |
+| `+create_workflow_instance_check_task` | Create DEV workflow instance check task | `--spaceCode` `--flowCode` `--taskName` `--checkItems` `[--relation]` `[--checkInterval]` `[--checkTime]` `[--preTasks]` `[retry flags]` `[--remark]` |
+| `+update_workflow_instance_check_task` | Update DEV workflow instance check task | `--spaceCode` `--flowCode` `--taskCode` `--checkItems` `[--relation]` `[--checkInterval]` `[--checkTime]` `[--preTasks]` `[retry flags]` |
 | `+add_task_relation` | Add DEV dependency | `--spaceCode` `--flowCode` `--preTaskCode` `--taskCode` |
 | `+save_schedule_config` | Save DEV schedule config | `--spaceCode` `--flowCode` `--enabled` `[--cron]` |
 | `+get_task_params` | View DEV task parameter list | `--spaceCode` `--flowCode` `--taskCode` |
@@ -150,17 +169,33 @@ ae-cli dataops_operations +get_task_instance_detail --spaceCode "${spaceCode}" \
 - **Schedule config**: `+save_schedule_config` requires `--spaceCode`, `--flowCode`, and `--enabled`. `--cron` is required only when `--enabled true`; omit it when disabling scheduling. It returns `action/result/status`; `result` includes `enabled`, `flow`, `message`, and `cron` only when enabled.
 - **Release preview**: `+preview_release_flow` requires `--spaceCode` and `--flowCode`; it has no optional flags. It returns `flowCode`, `releaseStatus`, `message`, and `changes`. Each change may include `scheduleConfigChange` and `tasks`; task entries may include `changed`, `contentCompare`, and `targetTable`.
 - **Release**: `+release_flow` requires `--spaceCode` and `--flowCode`; it has no optional flags. It returns `action/result/status`; `result` includes `flowCode`, `releaseStatus`, `message`, optional `packageCode`, and optional `changes`. Each change may include `scheduleConfigChange` and `tasks`; task entries include `changed`.
-- **SQL task creation**: `+create_sql_task` requires `--spaceCode`, `--flowCode`, `--taskName`, and `--sql`; `--preSql`, `--postSql`, `--preTaskCode`, and `--remark` are optional. It returns `action/result/status`; `result` includes `flowCode`, `taskCode`, `taskName`, `taskType=TRINO_SQL`, and `sqlSaved=true`.
-- **SQL task update**: `+update_sql_task` requires `--spaceCode`, `--flowCode`, `--taskCode`, and `--sql`; `--preSql` and `--postSql` are optional and keep existing values when omitted. It returns `action/result/status`; `result` includes `sqlSaved`, `flowCode`, `taskCode`, `taskType=TRINO_SQL`, and `task`.
+- **Task dependencies**: `--preTasks` is a JSON array of upstream task codes on SQL, integration, and workflow instance check create/update commands. Omit `--preTasks` on update to preserve existing dependencies; pass `--preTasks '[]'` to clear them; pass a non-empty array to replace them.
+- **Retry policy**: The three task types accept `--failRetryTimes`, `--failRetryInterval`, and `--failRetryUnit`. Create defaults to `3`, `5`, and `MINUTE`. Update preserves every omitted retry field. `MINUTE` is the only supported unit.
+- **SQL task creation**: `+create_sql_task` requires `--spaceCode`, `--flowCode`, `--taskName`, and `--sql`; SQL hooks, dependencies, retry policy, and remark are optional. It returns `action/result/status`; `result` includes `flowCode`, `taskCode`, `taskName`, `taskType=TRINO_SQL`, and `sqlSaved=true`.
+- **SQL task update**: `+update_sql_task` requires `--spaceCode`, `--flowCode`, `--taskCode`, and `--sql`; omitted SQL hooks, dependencies, and retry fields keep existing values. It returns `action/result/status`; `result` includes `sqlSaved`, `flowCode`, `taskCode`, `taskType=TRINO_SQL`, and `task`.
 - **Task dependency**: `+add_task_relation` requires `--spaceCode`, `--flowCode`, `--preTaskCode`, and `--taskCode`. `preTaskCode` is upstream and `taskCode` is downstream. It returns `action/result/status`; `result` includes `status`, `flowCode`, `preTaskCode`, `taskCode`, and `message`.
 - **Task parameters**: `+get_task_params` requires `--spaceCode`, `--flowCode`, and `--taskCode`; it has no optional flags. It queries DEV and returns `data` as an array. Items include fields such as `paramKey`, `paramType`, `paramDataType`, `paramFrom`, and built-in flags like `isBd`.
-- **Integration task creation**: `+create_integration_task` requires `--spaceCode`, `--flowCode`, `--taskName`, and `--syncId`; `--preTaskCode` and `--remark` are optional. It returns `action/result/status`; `result` includes `syncTaskSaved`, `flowCode`, `taskCode`, `taskName`, `taskType=OFFLINE_SYNC`, `syncId`, and `nextAction`.
-- **SQL task dependencies**: Use optional `--preTaskCode` to create one upstream dependency with the task. Use `+add_task_relation` for additional DAG dependencies.
+- **Integration task creation**: `+create_integration_task` requires `--spaceCode`, `--flowCode`, `--taskName`, and `--syncId`; dependencies, retry policy, and remark are optional. It returns `action/result/status`; `result` includes `syncTaskSaved`, `flowCode`, `taskCode`, `taskName`, `taskType=OFFLINE_SYNC`, `syncId`, and `nextAction`.
+- **Workflow instance check tasks**: `checkItems` is required and replaces the complete check item list. Create defaults `relation/checkInterval/checkTime` to `AND/5/3`; update preserves omitted scalar values. This command creates `FLOW_CHECK`, not task-instance `TASK_CHECK`.
+
+## Transport Status
+
+Transition status: transitional
+
+Owning module: gaia-mcp workflow
+
+Current transport: DataOps CLI REST
+
+Gateway target: TBD after DataOps workflow Gateway schema review
+
+Review after: 2026-10-27
+
+Exit condition: Migrate or remove these one-to-one commands after equivalent Capability Gateway actions are available.
 
 ## Important Notes
 
 1. **Getting flowCode**: Use `+list_flows` (see `dataops-flow-monitor` Skill)
-2. **Getting taskCode**: Returned by `+create_sql_task` / `+create_integration_task` or query via `+get_flow_overview`
+2. **Getting taskCode**: Returned by a task create command or query via `+get_flow_overview`
 3. **Release Impact**: Submits current DEV changes to PROD; released schedule/config applies to future PROD runs
 4. **SQL Validation**: Recommended to validate before saving TRINO_SQL tasks
 5. **Cannot create circular dependencies**

@@ -8,8 +8,7 @@ import { activityPause } from './activity/pause.js';
 import { activityEnd } from './activity/end.js';
 import { activityStats } from './activity/stats.js';
 import { activityInfoList } from './activity/info-list.js';
-// Temporarily disabled: testing issues — re-enable with skill docs when fixed.
-// import { approvalSubmit } from './approval/submit.js';
+import { approvalSubmit } from './approval/submit.js';
 import { approvalApprove } from './approval/approve.js';
 import { approvalReject } from './approval/reject.js';
 import { approvalCancel } from './approval/cancel.js';
@@ -38,7 +37,7 @@ const commands: Command[] = [
   activityEnd,
   activityStats,
   activityInfoList,
-  // approvalSubmit,
+  approvalSubmit,
   approvalApprove,
   approvalReject,
   approvalCancel,
@@ -67,7 +66,7 @@ export { activityPause } from './activity/pause.js';
 export { activityEnd } from './activity/end.js';
 export { activityStats } from './activity/stats.js';
 export { activityInfoList } from './activity/info-list.js';
-// export { approvalSubmit } from './approval/submit.js';
+export { approvalSubmit } from './approval/submit.js';
 export { approvalApprove } from './approval/approve.js';
 export { approvalReject } from './approval/reject.js';
 export { approvalCancel } from './approval/cancel.js';

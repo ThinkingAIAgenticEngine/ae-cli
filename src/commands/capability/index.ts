@@ -11,7 +11,6 @@ import {
 } from '../../core/capability-api.js';
 import { PermissionError } from '../../core/errors.js';
 import { SecureStoreAuthError } from '../../core/secure-store.js';
-import { findGatewayDomain } from '../../core/capability-routing.js';
 import { printError, printOutput } from '../../framework/output.js';
 import type { OutputFormat } from '../../framework/types.js';
 import {
@@ -21,6 +20,7 @@ import {
   parseCapabilityInput,
   parseOptionalProjectId,
   resolveCapabilityGatewayDomain,
+  resolveCapabilityListDomain,
 } from './helpers.js';
 import { normalizeRiskLevel, requiresConfirmation } from '../../core/capability-risk.js';
 
@@ -49,7 +49,7 @@ export function registerCapability(program: Command): void {
     .option('--project-id <project-id>', 'Filter by project membership, permissions, and enabled features')
     .action(async (opts: { domain: string; projectId?: string }) => {
       await executeAndPrint(program, async (host) => {
-        const gatewayDomain = findGatewayDomain(opts.domain) ?? opts.domain;
+        const gatewayDomain = resolveCapabilityListDomain(opts.domain);
         const projectId = parseOptionalProjectId(opts.projectId);
         const catalog = normalizeCapabilityList(await listCapabilities(host, gatewayDomain, projectId));
         const capabilities = filterCapabilities(catalog, opts.domain);
@@ -71,7 +71,7 @@ export function registerCapability(program: Command): void {
     .option('--project-id <project-id>', 'Filter by project membership, permissions, and enabled features')
     .action(async (query: string, opts: { domain: string; projectId?: string }) => {
       await executeAndPrint(program, async (host) => {
-        const gatewayDomain = findGatewayDomain(opts.domain) ?? opts.domain;
+        const gatewayDomain = resolveCapabilityListDomain(opts.domain);
         const projectId = parseOptionalProjectId(opts.projectId);
         const catalog = normalizeCapabilityList(await listCapabilities(host, gatewayDomain, projectId));
         const capabilities = filterCapabilities(catalog, opts.domain, query);
@@ -246,7 +246,7 @@ function printCapabilityError(error: unknown): void {
     return;
   }
   if (error instanceof PermissionError) {
-    printError('permission', error.message);
+    printError('permission', error.message, undefined, error.code);
     return;
   }
   if (error instanceof CapabilityGatewayError) {

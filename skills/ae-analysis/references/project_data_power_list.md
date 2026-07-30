@@ -1,4 +1,4 @@
-# analysis project data-power list
+# project data-power list
 
 Use when the user needs to list project data powers.
 
@@ -7,8 +7,8 @@ Do not use it for unrelated project-management actions or for fields not present
 Command:
 
 ```bash
-ae-cli analysis project data-power list --project-id <project_id>
-ae-cli analysis project data-power list --dry-run --project-id <project_id>
+ae-cli project data-power list --project-id <project_id>
+ae-cli project data-power list --dry-run --project-id <project_id>
 ```
 
 Capability id: `project.data_power.list`.

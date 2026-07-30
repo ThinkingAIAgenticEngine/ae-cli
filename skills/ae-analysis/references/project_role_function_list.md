@@ -1,4 +1,4 @@
-# analysis project role-function list
+# project role-function list
 
 Use when the user needs to list functions granted to one or more roles.
 
@@ -7,8 +7,8 @@ Do not use it for unrelated project-management actions or for fields not present
 Command:
 
 ```bash
-ae-cli analysis project role-function list --company-id <company_id> --project-id <project_id> --role-name <role_name> --role-names <role_names> --show-system-func <show_system_func>
-ae-cli analysis project role-function list --dry-run 
+ae-cli project role-function list --company-id <company_id> --project-id <project_id> --role-name <role_name> --role-names <role_names> --show-system-func <show_system_func>
+ae-cli project role-function list --dry-run
 ```
 
 Capability id: `project.role_function.list`.

@@ -34,7 +34,7 @@ export function readSandboxCliTokenEntry(): SandboxCliTokenEntry | null {
       const data = safeReadJsonFile(file);
       if (data && typeof data === 'object' && !Array.isArray(data)) {
         const url = data.url as string;
-        const token = data.token as string;
+        const token = (data.token ?? data['cli-token']) as string;
         if (url && token) {
           return { url, token };
         }
@@ -68,6 +68,12 @@ export function getFallbackCliToken(hostUrl: string): string | null {
 
 export interface HostEntry {
   label: string;
+}
+
+export interface ConfiguredHost {
+  url: string;
+  label: string;
+  active: boolean;
 }
 
 export interface TeConfig {
@@ -166,6 +172,7 @@ export function setActiveHost(url: string): void {
 
 export function addHost(url: string, label: string): void {
   url = normalizeUrl(url);
+  label = normalizeLabel(label);
   const config = loadConfig();
   assertUniqueHostLabel(config, label, url);
   config.hosts[url] = { label };
@@ -176,12 +183,23 @@ export function addHost(url: string, label: string): void {
 }
 
 export function updateHostLabel(url: string, label: string): void {
+  url = normalizeUrl(url);
+  label = normalizeLabel(label);
   const config = loadConfig();
-  if (config.hosts[url]) {
-    assertUniqueHostLabel(config, label, url);
-    config.hosts[url].label = label;
-    saveConfig(config);
+  if (!config.hosts[url]) {
+    throw new Error(`Host is not configured: ${url}`);
   }
+  assertUniqueHostLabel(config, label, url);
+  config.hosts[url].label = label;
+  saveConfig(config);
+}
+
+function normalizeLabel(label: string): string {
+  const normalized = label.trim();
+  if (!normalized) {
+    throw new Error('Label cannot be empty.');
+  }
+  return normalized;
 }
 
 function assertUniqueHostLabel(config: TeConfig, label: string, excludeUrl: string): void {
@@ -202,13 +220,33 @@ export function removeHost(url: string): void {
   saveConfig(config);
 }
 
-export function listHosts(): Array<{ url: string; label: string; active: boolean }> {
+export function listHosts(): ConfiguredHost[] {
   const config = loadConfig();
   return Object.entries(config.hosts).map(([url, entry]) => ({
     url,
     label: entry.label,
     active: url === config.activeHost,
   }));
+}
+
+export type HostSelectorResult =
+  | { status: 'found'; host: ConfiguredHost }
+  | { status: 'duplicate-label'; matches: ConfiguredHost[] }
+  | { status: 'not-found'; hosts: ConfiguredHost[] };
+
+export function resolveHostSelector(env: string): HostSelectorResult {
+  const raw = env.trim();
+  const selector = raw.startsWith('http://') || raw.startsWith('https://')
+    ? normalizeUrl(raw)
+    : raw;
+  const hosts = listHosts();
+  const byUrl = hosts.find(host => host.url === selector);
+  if (byUrl) return { status: 'found', host: byUrl };
+
+  const byLabel = hosts.filter(host => host.label === raw);
+  if (byLabel.length === 1) return { status: 'found', host: byLabel[0] };
+  if (byLabel.length > 1) return { status: 'duplicate-label', matches: byLabel };
+  return { status: 'not-found', hosts };
 }
 
 export function getConfigDir(): string {

@@ -51,6 +51,13 @@ test('shouldSkipUpdateCheck respects --version', () => {
   assert.equal(shouldSkipUpdateCheck(['node', 'ae-cli', '--version']), true);
 });
 
+test('shouldSkipUpdateCheck allows a subcommand --version value', () => {
+  assert.equal(
+    shouldSkipUpdateCheck(['node', 'ae-cli', 'agent', '+edit-skill', '--version', '2.2']),
+    false,
+  );
+});
+
 test('shouldSkipUpdateCheck allows normal commands', () => {
   assert.equal(shouldSkipUpdateCheck(['node', 'ae-cli', 'kb', '+query']), false);
 });

@@ -12,7 +12,7 @@ export const strategyCreate = createEngageSceneCapabilityCommand({
       name: 'payload',
       type: 'json',
       required: true,
-      desc: 'ConfigStrategyAddDTO JSON body (configId, templateId, strategyName, templateParamConfig, ...).',
+      desc: 'ConfigStrategyAddDTO JSON body. Custom audiences use definitionRequest.',
     },
   ],
   risk: 'write',

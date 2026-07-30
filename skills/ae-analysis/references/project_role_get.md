@@ -1,4 +1,4 @@
-# analysis project role get
+# project role get
 
 Use when the user needs to get one role by role name.
 
@@ -7,8 +7,8 @@ Do not use it for unrelated project-management actions or for fields not present
 Command:
 
 ```bash
-ae-cli analysis project role get --project-id <project_id> --role-name <role_name>
-ae-cli analysis project role get --dry-run --project-id <project_id> --role-name <role_name>
+ae-cli project role get --project-id <project_id> --role-name <role_name>
+ae-cli project role get --dry-run --project-id <project_id> --role-name <role_name>
 ```
 
 Capability id: `project.role.get`.

@@ -1,4 +1,4 @@
-# analysis project mark-time list
+# project mark-time list
 
 Use when the user needs to list project date markers.
 
@@ -7,8 +7,8 @@ Do not use it for unrelated project-management actions or for fields not present
 Command:
 
 ```bash
-ae-cli analysis project mark-time list --project-id <project_id> --query <query> --fields <fields> --limit <limit> --offset <offset> --zone-offset <zone_offset>
-ae-cli analysis project mark-time list --dry-run --project-id <project_id>
+ae-cli project mark-time list --project-id <project_id> --query <query> --fields <fields> --limit <limit> --offset <offset> --zone-offset <zone_offset>
+ae-cli project mark-time list --dry-run --project-id <project_id>
 ```
 
 Capability id: `project.mark_time.list`.

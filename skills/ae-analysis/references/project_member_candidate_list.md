@@ -1,4 +1,4 @@
-# analysis project member-candidate list
+# project member-candidate list
 
 Use when the user needs to list candidate users and role/data-power options for adding project members.
 
@@ -7,8 +7,8 @@ Do not use it for unrelated project-management actions or for fields not present
 Command:
 
 ```bash
-ae-cli analysis project member-candidate list --project-id <project_id> --type <type> --login-names <login_names>
-ae-cli analysis project member-candidate list --dry-run --project-id <project_id> --type <type>
+ae-cli project member-candidate list --project-id <project_id> --type <type> --login-names <login_names>
+ae-cli project member-candidate list --dry-run --project-id <project_id> --type <type>
 ```
 
 Capability id: `project.member_candidate.list`.

@@ -24,9 +24,9 @@ ae-cli engage-scene strategy update --project-id <project_id> \
 # Query a strategy's log
 ae-cli engage-scene strategy log --project-id <project_id> --strategy-uuid <uuid>
 
-# Predict custom-audience size (mix QP)
+# Predict custom-audience size
 ae-cli engage-scene strategy predict --project-id <project_id> \
-  --qp '<targetClusterQp JSON string>' \
+  --definition-request '{"type":"condition","conditions":{...}}' \
   --zone-offset 8 \
   [--strategy-uuid <uuid>]
 
@@ -48,7 +48,7 @@ ae-cli engage-scene strategy manage --project-id <project_id> --config-id <confi
 | create | `--project-id`, `--payload` | payload = `ConfigStrategyAddDTO`. |
 | update | `--project-id`, `--payload` | payload = `ConfigStrategyModifyDTO` (`strategyUuid` + fields). |
 | log | `--project-id`, `--strategy-uuid` | read. |
-| predict | `--project-id`, `--qp`, `--zone-offset` | Optional `--strategy-uuid`, `--request-id`. read. |
+| predict | `--project-id`, `--definition-request`, `--zone-offset` | Optional `--strategy-uuid`, `--request-id`. read. |
 | batch-copy | `--project-id`, `--config-id`, `--strategy-ids` | `--op-mode` optional (default `batch`). |
 | manage | `--project-id`, `--config-id`, `--action` | Lifecycle actions require `--strategy-uuid-list`; review actions require `--strategy-list`; write. |
 
@@ -67,10 +67,10 @@ ae-cli engage-scene strategy manage --project-id <project_id> --config-id <confi
 - Discover real strategy UUIDs / config IDs first; never invent IDs.
 - **Custom audience (`targetClusterType=1`)** — follow [`scene-strategy-audience.md`](scene-strategy-audience.md) end-to-end:
   1. Preflight every **用户满足** user property and **用户行为** event via `analysis-meta property get` / `event get`; if missing, **stop** and list available properties — never invent or drop.
-  2. Assemble mix QP with **two-block layout**: `totalCFilter.filts[0]` = 用户满足, `totalCFilter.filts[1]` = 用户行为; `totalCFilter.relation` = 且/或 between them. **Never** nest `event` inside user-side `COMPOUND`.
-  3. `JSON.stringify` → `targetClusterQp`; then `strategy create|update`.
+  2. Build an Analysis-compatible semantic condition in `payload.definitionRequest`.
+  3. Reuse the same definition with `strategy predict --definition-request`.
   4. **Do not** call `analysis user-cluster create` unless the user explicitly asks for an existing/named cluster.
-  - Full QP spec + examples A/B/C: [`scene-strategy-audience.md`](scene-strategy-audience.md).
+  - Semantic contract and examples: [`scene-strategy-audience.md`](scene-strategy-audience.md).
 - **`create` requires an enabled template** on the same config item. Enable workflow: `config-param batch-add` → `template create` → `template update` (non-empty `config[]` with real `paramId`) → `template update-status --status 1`. Otherwise `create` returns `TEMPLATE_ENABLE`.
 - `create` output field is `data.strategy_uuid` (not `strategy_id`).
 - `manage` supports `online`, `offline`, `suspend`, `delete`, `approve`, `deny`, and `cancel`; it is a write operation.

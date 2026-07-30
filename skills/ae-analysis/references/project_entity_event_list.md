@@ -1,4 +1,4 @@
-# analysis project entity-event list
+# project entity-event list
 
 Use when the user needs to list entity mappings for events.
 
@@ -7,8 +7,8 @@ Do not use it for unrelated project-management actions or for fields not present
 Command:
 
 ```bash
-ae-cli analysis project entity-event list --project-id <project_id> --event-names <event_names>
-ae-cli analysis project entity-event list --dry-run --project-id <project_id>
+ae-cli project entity-event list --project-id <project_id> --event-names <event_names>
+ae-cli project entity-event list --dry-run --project-id <project_id>
 ```
 
 Capability id: `project.entity_event.list`.

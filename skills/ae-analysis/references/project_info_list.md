@@ -1,4 +1,4 @@
-# analysis project info list
+# project info list
 
 Use when the user needs to list projects accessible to the current user.
 
@@ -7,8 +7,8 @@ Do not use it for unrelated project-management actions or for fields not present
 Command:
 
 ```bash
-ae-cli analysis project info list --query <query> --fields <fields> --limit <limit> --offset <offset>
-ae-cli analysis project info list --dry-run 
+ae-cli project info list --query <query> --fields <fields> --limit <limit> --offset <offset>
+ae-cli project info list --dry-run
 ```
 
 Capability id: `project.info.list`.

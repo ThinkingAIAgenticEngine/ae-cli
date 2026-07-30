@@ -2,9 +2,13 @@ export function shouldSkipUpdateCheck(argv: string[] = process.argv): boolean {
   if (process.env.AE_CLI_NO_UPDATE_CHECK === '1') return true;
   if (process.env.CI === 'true' || process.env.CI === '1') return true;
 
-  return argv.slice(2).some((arg) => {
+  return argv.slice(2).some((arg, index, args) => {
     if (arg === '--no-update-check') return true;
-    if (arg === '--version' || arg === '-V' || arg === '--help' || arg === '-h') return true;
+    if (arg === '--version') {
+      const value = args[index + 1];
+      return !value || value.startsWith('-');
+    }
+    if (arg === '-V' || arg === '--help' || arg === '-h') return true;
     return false;
   });
 }

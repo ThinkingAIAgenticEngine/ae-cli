@@ -48,6 +48,18 @@ const addChannelRef = readFileSync(
   path.join(ROOT, 'skills/ae-engage/references/add-channel.md'),
   'utf8',
 );
+const activityTaskRef = readFileSync(
+  path.join(ROOT, 'skills/ae-engage/references/activity-task.md'),
+  'utf8',
+);
+const activityTopicRef = readFileSync(
+  path.join(ROOT, 'skills/ae-engage/references/activity-topic.md'),
+  'utf8',
+);
+const activityApprovalRef = readFileSync(
+  path.join(ROOT, 'skills/ae-engage/references/activity-approval.md'),
+  'utf8',
+);
 
 const touchLimitsCommand =
   'ae-cli engage-setting channel-touch-limits list --project-id <project_id>';
@@ -71,10 +83,10 @@ assert.ok(skill.includes('ae-cli engage-flow operation-log query'));
 assert.ok(skill.includes('ae-cli engage-task segment-list query'));
 assert.ok(skill.includes('ae-cli engage-task group list'));
 assert.doesNotMatch(skill, /ae-cli engage-flow test run/);
-assert.doesNotMatch(skill, /ae-cli engage-task task submit-approval/);
-assert.doesNotMatch(skill, /ae-cli engage-activity approval submit/);
+assert.ok(skill.includes('ae-cli engage-task task submit-approval'));
+assert.ok(skill.includes('ae-cli engage-activity approval submit'));
 assert.doesNotMatch(skill, /references\/test-run\.md/);
-assert.doesNotMatch(skill, /references\/task-submit-approval\.md/);
+assert.match(skill, /references\/task-submit-approval\.md/);
 assert.doesNotMatch(skill, /ae-cli capability/);
 assert.doesNotMatch(skill, /Temporarily disabled engage-task commands/);
 
@@ -125,6 +137,14 @@ assert.match(channelDetailRef, /data\.item\.config\.params_list/);
 assert.doesNotMatch(channelDetailRef, /### `channelStatus`/);
 assert.match(saveTaskRef, /data\.result\.operation_mode/);
 assert.match(saveTaskRef, /Hermes assigns the outer `--project-id` to `req\.projectId`/);
+assert.match(saveTaskRef, /`aggregation`: `count`, `sum`, or `distinct_count`/);
+assert.match(saveTaskRef, /`operator`: `gt`, `gte`, or `eq`/);
+assert.match(saveTaskRef, /Trigger envelope matrix/);
+assert.match(saveTaskRef, /`eventTriggerType=2`[\s\S]*`eventDefinition`/);
+assert.match(saveTaskRef, /Always omit it from Capability requests/);
+assert.match(skill, /pass[\s\S]*`eventTriggerType` to `build-save-guide`/);
+assert.match(skill, /ordered events use sequence-step envelopes/);
+assert.match(skill, /`clientConfig\.clientQp` is server-authored and must be omitted/);
 assert.match(addChannelRef, /created channel is under `data\.item`/);
 assert.match(addChannelRef, /Hermes Capability handler/);
 assert.doesNotMatch(addChannelRef, /projectId is injected into `req` by the CLI/);
@@ -291,7 +311,7 @@ for (const link of expectedActivityReferenceLinks) {
 }
 const expectedActivityCapabilityIds = [
   'engage-activity\\.activity\\.\\{create,update,delete,list,get,pause,end,stats,info-list\\}',
-  'engage-activity\\.approval\\.\\{approve,reject,cancel\\}',
+  'engage-activity\\.approval\\.\\{submit,approve,reject,cancel\\}',
   'engage-activity\\.topic\\.\\{create,update,remove-task,delete,get,copy\\}',
   'engage-activity\\.activity-type\\.\\{list,batch-add,update,batch-delete\\}',
   'engage-activity\\.task\\.\\{get,create,update,copy\\}',
@@ -303,22 +323,36 @@ for (const idPattern of expectedActivityCapabilityIds) {
 const expectedActivityCommandTokens = [
   'activity create', 'activity update', 'activity delete', 'activity list', 'activity get',
   'activity pause', 'activity end', 'activity stats', 'activity info-list',
-  'approval approve', 'approval reject', 'approval cancel',
+  'approval submit', 'approval approve', 'approval reject', 'approval cancel',
   'topic create', 'topic update', 'topic remove-task', 'topic delete', 'topic get', 'topic copy',
   'activity-type list', 'activity-type batch-add', 'activity-type update', 'activity-type batch-delete',
   'task get', 'task create', 'task update', 'task copy',
 ];
-assert.equal(expectedActivityCommandTokens.length, 26, 'expected 26 engage-activity command tokens');
+assert.equal(expectedActivityCommandTokens.length, 27, 'expected 27 engage-activity command tokens');
 for (const token of expectedActivityCommandTokens) {
   assert.ok(skill.includes(token),
     `SKILL.md missing command token: ${token}`);
 }
-assert.doesNotMatch(skill, /approval submit/);
+assert.match(skill, /`triggerType` must be `0` \(schedule single\) or `1` \(schedule repeat\)/);
+assert.match(skill, /Do not configure A\/B or horse-race experiments/);
+assert.match(skill, /Topic tasks inherit schedule, timezone, channel, frequency limits/);
+assert.match(activityTaskRef, /ACTIVITY_TRIGGER_TYPE_UNSUPPORTED/);
+assert.match(activityTaskRef, /triggerTimeStrategy` to `fixed_time_zone/);
+assert.match(activityTopicRef, /Manual \(`2`\) and every triggered type \(`3`-`6`\) are rejected/);
+assert.match(activityTopicRef, /canonical task marker `targetClusterType=1`/);
+assert.match(activityTopicRef, /TOPIC_TASK_OVERRIDE_UNSUPPORTED/);
+assert.match(activityTopicRef, /ACTIVITY_SCHEDULE_OUT_OF_RANGE/);
+assert.match(activityApprovalRef, /ACTIVITY_TASK_COMPATIBILITY_VIOLATION/);
+assert.match(activityApprovalRef, /load complete task details/);
 const activityActivityRef = readFileSync(path.join(ROOT, 'skills/ae-engage/references/activity-activity.md'), 'utf8');
 assert.match(activityActivityRef, /engage-activity\.activity\.\{create,update,delete,list,get,pause,end,stats,info-list\}/);
-const activityTopicRef = readFileSync(path.join(ROOT, 'skills/ae-engage/references/activity-topic.md'), 'utf8');
+assert.match(activityActivityRef, /intentionally omits stored QP-bearing detail fields/);
+assert.match(activityActivityRef, /task\s+or topic detail command/);
+
+assert.match(flowDetailRef, /completion_indicators/);
+assert.match(flowDetailRef, /current_flow_completion_indicators/);
+assert.match(flowDetailRef, /semantic `event_definition`/);
 assert.match(activityTopicRef, /engage-activity\.topic\.\{create,update,remove-task,delete,get,copy\}/);
-const activityTaskRef = readFileSync(path.join(ROOT, 'skills/ae-engage/references/activity-task.md'), 'utf8');
 assert.match(activityTaskRef, /engage-activity\.task\.\{get,create,update,copy\}/);
 
 // ---- 4 engage-workbench (工作台) capabilities: skill reference docs linked in SKILL.md ----

@@ -3,16 +3,43 @@ import path from 'node:path';
 
 const destructiveCommand = /(?:delete|del-|remove|clear)/i;
 
-function inspectCommand(command, relative, lineNumber, findings) {
-  if (!command.includes('--yes')) return;
+function commandPrefix(command) {
   const commandStart = command.includes('ae-cli ')
     ? command.slice(command.indexOf('ae-cli '))
     : command.slice(command.indexOf('+'));
-  const commandPrefix = commandStart.split(/\s--/u, 1)[0];
-  if (destructiveCommand.test(commandPrefix)) return;
+  return commandStart.split(/\s--/u, 1)[0].trim().replace(/\s+/gu, ' ');
+}
+
+function commandRisks(markdownFiles) {
+  const risks = new Map();
+  for (const file of markdownFiles.filter((candidate) => path.basename(candidate) === 'command_index.md')) {
+    const lines = fs.readFileSync(file, 'utf8').split('\n');
+    for (const line of lines) {
+      const match = line.match(
+        /^\|\s*`([^`]+)`\s*\|\s*[^|]*\|\s*(read|write|high-risk-write)\s*\|/u,
+      );
+      if (match) risks.set(commandPrefix(match[1]), match[2]);
+    }
+  }
+  return risks;
+}
+
+function inspectCommand(command, relative, lineNumber, risks, findings) {
+  if (!command.includes('--yes')) return;
+  const prefix = commandPrefix(command);
+  const risk = risks.get(prefix);
+  if (risk === 'high-risk-write') return;
+  if (risk) {
+    findings.push({
+      level: 'P1',
+      msg: `${relative}:${lineNumber} uses --yes for a ${risk} command example`,
+    });
+    return;
+  }
+  if (destructiveCommand.test(prefix)) return;
   findings.push({
     level: 'P1',
-    msg: `${relative}:${lineNumber} uses --yes for a non-destructive command example`,
+    msg: `${relative}:${lineNumber} uses --yes without high-risk-write metadata`,
   });
 }
 
@@ -27,8 +54,10 @@ function markdownFiles(dir) {
 export async function run({ root }) {
   const skillsRoot = path.join(root, 'skills');
   const findings = [];
+  const files = markdownFiles(skillsRoot);
+  const risks = commandRisks(files);
 
-  for (const file of markdownFiles(skillsRoot)) {
+  for (const file of files) {
     const relative = path.relative(root, file);
     const lines = fs.readFileSync(file, 'utf8').split('\n');
     let inBash = false;
@@ -38,7 +67,7 @@ export async function run({ root }) {
     lines.forEach((line, index) => {
       const trimmed = line.trim();
       if (trimmed.startsWith('```')) {
-        if (inBash && command) inspectCommand(command, relative, commandLine, findings);
+        if (inBash && command) inspectCommand(command, relative, commandLine, risks, findings);
         inBash = trimmed === '```bash' || trimmed === '```sh' || trimmed === '```shell';
         command = '';
         return;
@@ -52,14 +81,14 @@ export async function run({ root }) {
           command += ` ${line}`;
         }
         if (command && !trimmed.endsWith('\\')) {
-          inspectCommand(command, relative, commandLine, findings);
+          inspectCommand(command, relative, commandLine, risks, findings);
           command = '';
         }
         return;
       }
 
       for (const match of line.matchAll(/`([^`]*(?:ae-cli |\+[a-z])[^`]*)`/giu)) {
-        inspectCommand(match[1], relative, index + 1, findings);
+        inspectCommand(match[1], relative, index + 1, risks, findings);
       }
     });
   }

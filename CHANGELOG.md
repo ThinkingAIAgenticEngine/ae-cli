@@ -1,3 +1,26 @@
+### 6.0.39
+**Date:** 2026-07-30
+
+**Changes:**
+
+#### Agent & CLI
+* Add the `memory` domain for user-memory lifecycle management, extraction and review, organization, default/context injection, and actual-use accounting
+* Add Agent archived-conversation search and restore commands, and fix archived-time timezone display
+* Add version-aware Skill add/edit/upload/synchronization workflows with stronger release validation
+* Redesign Host/environment configuration with an interactive flow and trial guidance when no Host is configured
+
+#### Analysis
+* Expand project and system administration capabilities for project lifecycle, members and roles, MFA/authentication, mail and receiver configuration, monitoring and query tasks, and usage reporting
+
+#### DataOps
+* Add `+create_workflow_instance_check_task` and `+update_workflow_instance_check_task`, supporting multi-workflow checks combined by one-level AND/OR and DAY/HOUR/MINUTE check units; creation defaults to three checks at five-minute intervals
+* Standardize dependencies and failure retries across SQL, integration, and workflow-instance-check tasks: use the `preTasks` array for multiple upstream tasks, preserve omitted update fields, clear dependencies with an empty array, and default creation retries to three attempts at five-minute intervals (`MINUTE`)
+
+#### Engage
+* Add activity topic/task payload validation and restore approval-submission workflows
+* Remove obsolete `engage-setting query cluster-qp-skill`; build semantic audience, trigger, and completion definitions from Analysis models for Hermes compilation, including `targetDefinitionRequest` compilation before legacy Flow validation
+* Clarify Webhook versus client channel parameters and document optional `relationProps` on task save
+
 ### 6.0.38
 **Date:** 2026-07-30
 

@@ -1,6 +1,7 @@
 import { createEngageSceneCapabilityCommand } from '../../shared.js';
+import { readRequiredJsonObject } from '../../utils.js';
 
-/** Predicts custom-audience size for a config strategy mix QP. */
+/** Predicts custom-audience size from a semantic audience definition. */
 export const strategyPredict = createEngageSceneCapabilityCommand({
   resource: 'strategy',
   command: 'predict',
@@ -10,10 +11,10 @@ export const strategyPredict = createEngageSceneCapabilityCommand({
   flags: [
     { name: 'project-id', type: 'number', required: true, alias: 'p', desc: 'Numeric project ID.' },
     {
-      name: 'qp',
-      type: 'string',
+      name: 'definition-request',
+      type: 'json',
       required: true,
-      desc: 'Mix QP JSON string (same as targetClusterQp on the strategy).',
+      desc: 'Semantic audience definition request.',
     },
     {
       name: 'zone-offset',
@@ -35,9 +36,10 @@ export const strategyPredict = createEngageSceneCapabilityCommand({
     },
   ],
   risk: 'read',
+  validate: (ctx) => { readRequiredJsonObject(ctx, 'definition-request'); },
   buildInput: (ctx) => ({
     project_id: ctx.num('project-id'),
-    qp: ctx.str('qp'),
+    definition_request: readRequiredJsonObject(ctx, 'definition-request'),
     zone_offset: ctx.num('zone-offset'),
     ...(ctx.str('strategy-uuid') ? { strategy_uuid: ctx.str('strategy-uuid') } : {}),
     ...(ctx.str('request-id') ? { request_id: ctx.str('request-id') } : {}),

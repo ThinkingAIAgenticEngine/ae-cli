@@ -8,15 +8,15 @@ export const presetEventUpdate = createEngageSettingCapabilityCommand({
   description: "Update the project's preset metric event config (add/active/recharge event definitions).",
   flags: [
     { name: 'project-id', type: 'number', required: true, alias: 'p', desc: 'Numeric project ID.' },
-    { name: 'add-event-desc', type: 'string', required: false, desc: 'Add-event qp definition.' },
-    { name: 'active-event-desc', type: 'string', required: false, desc: 'Active-event qp definition.' },
-    { name: 'recharge-event-desc', type: 'string', required: false, desc: 'Recharge-success-event qp definition.' },
+    { name: 'add-event-definition', type: 'json', required: false, desc: 'Semantic add-event definition.' },
+    { name: 'active-event-definition', type: 'json', required: false, desc: 'Semantic active-event definition.' },
+    { name: 'recharge-event-definition', type: 'json', required: false, desc: 'Semantic recharge event definition.' },
   ],
   risk: 'write',
   buildInput: (ctx) => ({
     project_id: ctx.num('project-id'),
-    add_event_desc: ctx.str('add-event-desc') || undefined,
-    active_event_desc: ctx.str('active-event-desc') || undefined,
-    recharge_event_desc: ctx.str('recharge-event-desc') || undefined,
+    add_event_definition: ctx.json('add-event-definition') || undefined,
+    active_event_definition: ctx.json('active-event-definition') || undefined,
+    recharge_event_definition: ctx.json('recharge-event-definition') || undefined,
   }),
 });

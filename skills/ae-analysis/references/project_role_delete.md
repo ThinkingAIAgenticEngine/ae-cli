@@ -1,4 +1,4 @@
-# analysis project role delete
+# project role delete
 
 Use when the user needs to delete a role and optionally migrate users to another role.
 
@@ -7,8 +7,8 @@ Do not use it for unrelated project-management actions or for fields not present
 Command:
 
 ```bash
-ae-cli analysis project role delete --project-id <project_id> --role-name <role_name> --new-role-name <new_role_name>
-ae-cli analysis project role delete --dry-run --project-id <project_id> --role-name <role_name>
+ae-cli project role delete --project-id <project_id> --role-name <role_name> --new-role-name <new_role_name>
+ae-cli project role delete --dry-run --project-id <project_id> --role-name <role_name>
 ```
 
 Capability id: `project.role.delete`.

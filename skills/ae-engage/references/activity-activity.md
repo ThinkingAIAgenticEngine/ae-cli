@@ -56,6 +56,9 @@ ae-cli engage-activity activity info-list --project-id <project_id> --activity-i
 - `get`: `data.activity`.
 - `stats`: `data.status_count`.
 - `info-list`: `data.info` with `taskList` (standalone tasks) and `topicList` (topics under the activity).
+  This summary intentionally omits stored QP-bearing detail fields such as `qp`,
+  `triggerRule`, `completionIndicatorDef`, and `clientQp`. Use the corresponding task
+  or topic detail command to obtain the semantic definitions before editing.
 - `delete` / `pause` / `end`: `data.success`.
 
 ## Timezone (`tzOffset`)

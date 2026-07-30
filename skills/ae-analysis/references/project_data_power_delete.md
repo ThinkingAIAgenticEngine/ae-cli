@@ -1,4 +1,4 @@
-# analysis project data-power delete
+# project data-power delete
 
 Use when the user needs to delete a data power and optionally migrate users to another data power.
 
@@ -7,8 +7,8 @@ Do not use it for unrelated project-management actions or for fields not present
 Command:
 
 ```bash
-ae-cli analysis project data-power delete --project-id <project_id> --data-power-id <data_power_id> --new-data-power-id <new_data_power_id>
-ae-cli analysis project data-power delete --dry-run --project-id <project_id> --data-power-id <data_power_id>
+ae-cli project data-power delete --project-id <project_id> --data-power-id <data_power_id> --new-data-power-id <new_data_power_id>
+ae-cli project data-power delete --dry-run --project-id <project_id> --data-power-id <data_power_id>
 ```
 
 Capability id: `project.data_power.delete`.

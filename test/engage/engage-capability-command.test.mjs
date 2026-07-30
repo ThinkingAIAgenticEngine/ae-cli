@@ -13,8 +13,11 @@ import { segmentListQuery } from '../../src/commands/te-engage/engage-task/segme
 import { taskDelete } from '../../src/commands/te-engage/engage-task/task/delete.ts';
 import { taskList } from '../../src/commands/te-engage/engage-task/task/list.ts';
 import { taskManage } from '../../src/commands/te-engage/engage-task/task/manage.ts';
+import { taskSubmitApproval } from '../../src/commands/te-engage/engage-task/task/submit-approval.ts';
 import { groupList } from '../../src/commands/te-engage/engage-task/group/list.ts';
 import { clientParamUpdate } from '../../src/commands/te-engage/engage-setting/client-param/update.ts';
+import { taskCreate as activityTaskCreate } from '../../src/commands/te-engage/engage-activity/task/create.ts';
+import { topicCreate as activityTopicCreate } from '../../src/commands/te-engage/engage-activity/topic/create.ts';
 import { capabilityGatewayHint } from '../../src/framework/runner.ts';
 import { CapabilityGatewayError } from '../../src/core/capability-api.ts';
 import {
@@ -263,7 +266,7 @@ assert.equal(badChannelTestSendContentError.error.type, 'validation');
 assert.match(badChannelTestSendContentError.error.message, /expects direct key\/value entries/);
 assert.match(badChannelTestSendContentError.error.hint, /\{"key":"obj","value":"\[\]"\}/);
 
-const emptyCommonMetricQp = runCli([
+const emptyCommonMetricDefinition = runCli([
   '--dry-run',
   'engage-setting',
   'common-metric',
@@ -274,7 +277,7 @@ const emptyCommonMetricQp = runCli([
   '1',
   '--metric-name',
   'm1',
-  '--metric-qp',
+  '--metric-definition',
   '{}',
   '--metric-window-num',
   '1',
@@ -283,12 +286,12 @@ const emptyCommonMetricQp = runCli([
   '--display-name',
   'M1',
 ]);
-assert.notEqual(emptyCommonMetricQp.status, 0);
-const emptyCommonMetricQpError = JSON.parse(emptyCommonMetricQp.stderr);
-assert.equal(emptyCommonMetricQpError.error.type, 'validation');
-assert.match(emptyCommonMetricQpError.error.message, /--metric-qp cannot be an empty JSON object/);
+assert.notEqual(emptyCommonMetricDefinition.status, 0);
+const emptyCommonMetricDefinitionError = JSON.parse(emptyCommonMetricDefinition.stderr);
+assert.equal(emptyCommonMetricDefinitionError.error.type, 'validation');
+assert.match(emptyCommonMetricDefinitionError.error.message, /--metric-definition.type must be event or formula/);
 
-const invalidCommonMetricQp = runCli([
+const invalidCommonMetricDefinition = runCli([
   '--dry-run',
   'engage-setting',
   'common-metric',
@@ -299,7 +302,7 @@ const invalidCommonMetricQp = runCli([
   '1',
   '--metric-name',
   'm1',
-  '--metric-qp',
+  '--metric-definition',
   'event',
   '--metric-window-num',
   '1',
@@ -308,10 +311,10 @@ const invalidCommonMetricQp = runCli([
   '--display-name',
   'M1',
 ]);
-assert.notEqual(invalidCommonMetricQp.status, 0);
-const invalidCommonMetricQpError = JSON.parse(invalidCommonMetricQp.stderr);
-assert.equal(invalidCommonMetricQpError.error.type, 'validation');
-assert.match(invalidCommonMetricQpError.error.message, /--metric-qp must be a valid JSON object string/);
+assert.notEqual(invalidCommonMetricDefinition.status, 0);
+const invalidCommonMetricDefinitionError = JSON.parse(invalidCommonMetricDefinition.stderr);
+assert.equal(invalidCommonMetricDefinitionError.error.type, 'validation');
+assert.match(invalidCommonMetricDefinitionError.error.message, /Invalid JSON for --metric-definition/);
 
 const invalidCommonMetricWindowUnit = runCli([
   '--dry-run',
@@ -324,8 +327,8 @@ const invalidCommonMetricWindowUnit = runCli([
   '1',
   '--metric-name',
   'm1',
-  '--metric-qp',
-  '{"type":0,"eventName":"purchase","analysis":"A100"}',
+  '--metric-definition',
+  '{"type":"event","event":"purchase","aggregation":"total_count"}',
   '--metric-window-num',
   '1',
   '--metric-window-time-unit',
@@ -349,8 +352,8 @@ const invalidCommonMetricType = runCli([
   '2',
   '--metric-name',
   'm1',
-  '--metric-qp',
-  '{"type":0,"eventName":"purchase","analysis":"A100"}',
+  '--metric-definition',
+  '{"type":"event","event":"purchase","aggregation":"total_count"}',
   '--metric-window-num',
   '1',
   '--metric-window-time-unit',
@@ -451,6 +454,30 @@ assert.equal(
   `${HOST}/api/cli/engage/v1/capabilities/engage-task.task.delete/dry-run`,
 );
 
+const taskSubmitApprovalDryRun = await captureCapabilityDryRun(taskSubmitApproval, {
+  projectId: 1,
+  taskId: 'task-1',
+});
+assert.equal(
+  taskSubmitApprovalDryRun.url,
+  `${HOST}/api/cli/engage/v1/capabilities/engage-task.task.submit-approval/dry-run`,
+);
+assert.deepEqual(taskSubmitApprovalDryRun.body, {
+  input: { project_id: 1, task_id: 'task-1' },
+});
+assert.throws(
+  () => taskSubmitApproval.validate(makeCtx({ projectId: 1 })),
+  /Exactly one of --task-id or --request is required/,
+);
+assert.throws(
+  () => taskSubmitApproval.validate(makeCtx({
+    projectId: 1,
+    taskId: 'task-1',
+    request: { taskName: 'legacy' },
+  })),
+  /Exactly one of --task-id or --request is required/,
+);
+
 const groupListDryRun = await captureCapabilityDryRun(groupList, {
   projectId: 1,
 });
@@ -472,19 +499,69 @@ const enabledHelps = [
   ['engage-task', 'group', 'delete', '--help'],
   ['engage-task', 'segment-list', 'set-visibility', '--help'],
   ['engage-task', 'race', 'release', '--help'],
+  ['engage-task', 'task', 'submit-approval', '--help'],
 ];
 for (const args of enabledHelps) {
   const enabled = runCli(args);
   assert.equal(enabled.status, 0, `expected enabled: ${args.join(' ')} -> ${enabled.stderr || enabled.stdout}`);
 }
-const disabledHelps = [
-  ['engage-task', 'task', 'submit-approval', '--help'],
-  ['engage-activity', 'approval', 'submit', '--help'],
-];
-for (const args of disabledHelps) {
-  const disabled = runCli(args);
-  assert.notEqual(disabled.status, 0, `expected disabled: ${args.join(' ')}`);
-}
+const approvalSubmitHelp = runCli(['engage-activity', 'approval', 'submit', '--help']);
+assert.equal(approvalSubmitHelp.status, 0,
+  `expected enabled: engage-activity approval submit --help -> ${approvalSubmitHelp.stderr || approvalSubmitHelp.stdout}`);
+
+const validActivityContent = [{
+  contentList: [{ pushLanguageCode: 'default', content: '[]' }],
+}];
+assert.doesNotThrow(() => activityTaskCreate.validate(makeCtx({
+  payload: {
+    triggerType: 0,
+    triggerTime: '2026-07-30 10:00',
+    triggerTimeStrategy: 'fixed_time_zone',
+    tzOffset: 8,
+    expConfig: { enableExp: false },
+    groupContentList: validActivityContent,
+  },
+})));
+assert.throws(
+  () => activityTaskCreate.validate(makeCtx({
+    payload: {
+      triggerType: 3,
+      triggerTimeStrategy: 'fixed_time_zone',
+      tzOffset: 8,
+      expConfig: { enableExp: true, expType: 2 },
+      groupContentList: [validActivityContent[0], validActivityContent[0]],
+    },
+  })),
+  (error) => error.code === 'ACTIVITY_TRIGGER_TYPE_UNSUPPORTED',
+);
+assert.throws(
+  () => activityTaskCreate.validate(makeCtx({
+    payload: {
+      triggerType: 0,
+      triggerTime: '2026-07-30 10:00',
+      triggerTimeStrategy: 'fixed_time_zone',
+      tzOffset: 8,
+      expConfig: { enableExp: true, expType: 2 },
+      groupContentList: validActivityContent,
+    },
+  })),
+  (error) => error.code === 'ACTIVITY_EXPERIMENT_UNSUPPORTED',
+);
+assert.throws(
+  () => activityTopicCreate.validate(makeCtx({
+    payload: {
+      triggerType: 0,
+      triggerTime: '2026-07-30 10:00',
+      tasks: [{
+        taskName: 'task-1',
+        clusterKey: 'cluster-1',
+        groupContentList: validActivityContent,
+      }],
+    },
+  })),
+  (error) => error.code === 'TOPIC_TASK_OVERRIDE_UNSUPPORTED',
+);
+
 const settingHelp = runCli(['engage-setting', '--help']);
 assert.equal(settingHelp.status, 0, settingHelp.stderr || settingHelp.stdout);
 assert.match(settingHelp.stdout, /channel-touch-limits/);
@@ -776,6 +853,7 @@ const expectedActivityCapabilityIds = [
   'engage-activity.activity.end',
   'engage-activity.activity.stats',
   'engage-activity.activity.info-list',
+  'engage-activity.approval.submit',
   'engage-activity.approval.approve',
   'engage-activity.approval.reject',
   'engage-activity.approval.cancel',
@@ -794,15 +872,14 @@ const expectedActivityCapabilityIds = [
   'engage-activity.task.update',
   'engage-activity.task.copy',
 ];
-assert.equal(expectedActivityCapabilityIds.length, 26, 'expected 26 engage-activity capabilities');
+assert.equal(expectedActivityCapabilityIds.length, 27, 'expected 27 engage-activity capabilities');
 const missingActivityCapabilityIds = expectedActivityCapabilityIds.filter(
   (id) => !activityCapabilityIds.includes(id),
 );
 assert.equal(missingActivityCapabilityIds.length, 0,
   `missing engage-activity capabilities: ${missingActivityCapabilityIds.join(', ')}`);
-assert.equal(activityCapabilityIds.length, 26,
-  `expected exactly 26 engage-activity capabilities, got ${activityCapabilityIds.length}`);
-assert.ok(!activityCapabilityIds.includes('engage-activity.approval.submit'));
+assert.equal(activityCapabilityIds.length, 27,
+  `expected exactly 27 engage-activity capabilities, got ${activityCapabilityIds.length}`);
 
 const activityHelp = runCli(['engage-activity', '--help']);
 assert.equal(activityHelp.status, 0, activityHelp.stderr || activityHelp.stdout);

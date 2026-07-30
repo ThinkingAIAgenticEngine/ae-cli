@@ -1,4 +1,4 @@
-# analysis project user-id-items update
+# project user-id-items update
 
 Use when the user needs to update project virtual user ID item configuration.
 
@@ -7,8 +7,8 @@ Do not use it for unrelated project-management actions or for fields not present
 Command:
 
 ```bash
-ae-cli analysis project user-id-items update --project-id <project_id> --payload <payload>
-ae-cli analysis project user-id-items update --dry-run --project-id <project_id> --payload <payload>
+ae-cli project user-id-items update --project-id <project_id> --payload <payload>
+ae-cli project user-id-items update --dry-run --project-id <project_id> --payload <payload>
 ```
 
 Capability id: `project.user_id_items.update`.

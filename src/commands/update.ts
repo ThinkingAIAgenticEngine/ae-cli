@@ -3,6 +3,7 @@ import { peekCliToken } from '../core/cli-token.js';
 import { getActiveHost } from '../core/config.js';
 import { fetchCliConfig, getCachedCompatForHost } from '../core/compat-check.js';
 import { normalizeUrl } from '../core/url-utils.js';
+import { missingAeHostHint } from '../core/host-guidance.js';
 import {
   buildVersionInstallPlan,
   friendlyVersionSyncFailure,
@@ -89,7 +90,7 @@ async function resolveTargetVersion(program: Command, opts: UpdateOptions): Prom
 
   const host = resolveUpdateHost(program, opts);
   if (!host) {
-    failUpdate('No AE host configured.', 'Run: ae-cli config set-host <url>, or pass --target <version>.');
+    failUpdate('No AE host configured.', missingAeHostHint('Alternatively, pass --target <version>.'));
     return null;
   }
 

@@ -5,6 +5,7 @@ import { printOutput, printError } from '../framework/output.js';
 import type { OutputFormat } from '../framework/types.js';
 import { safeJsonParse } from '../core/json-utils.js';
 import { SecureStoreAuthError } from '../core/secure-store.js';
+import { missingAeHostHint } from '../core/host-guidance.js';
 
 export function registerApi(program: CommanderCommand): void {
   program
@@ -21,7 +22,7 @@ export function registerApi(program: CommanderCommand): void {
       const jq: string | undefined = globalOpts.jq;
 
       if (!host) {
-        printError('config', 'No AE host configured.', 'Run: ae-cli config set-host <url>');
+        printError('config', 'No AE host configured.', missingAeHostHint());
         process.exit(1);
       }
 

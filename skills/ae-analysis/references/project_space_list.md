@@ -2,7 +2,7 @@
 
 Use when the user needs project spaces they can access.
 
-Do not use for project lookup or project ID verification. Use `analysis project info list`.
+Do not use for project lookup or project ID verification. Use `project info list`.
 
 Command:
 

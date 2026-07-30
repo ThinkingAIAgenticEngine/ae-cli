@@ -112,7 +112,10 @@ function commandPath(command: Command): string {
 
 function referenceName(command: Command): string {
   if (command.resource) {
-    return `${command.resource}_${command.command}`.replaceAll('-', '_').replaceAll(/\s+/g, '_') + '.md';
+    const resource = ['project', 'system'].includes(command.service)
+      ? `${command.service} ${command.resource}`
+      : command.resource;
+    return `${resource}_${command.command}`.replaceAll('-', '_').replaceAll(/\s+/g, '_') + '.md';
   }
   return `${command.command.replace(/^\+/, '').replaceAll('-', '_')}.md`;
 }

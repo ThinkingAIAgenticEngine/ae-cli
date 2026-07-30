@@ -1,4 +1,4 @@
-# analysis project entity create
+# project entity create
 
 Use when the user needs to create an analysis entity.
 
@@ -7,8 +7,8 @@ Do not use it for unrelated project-management actions or for fields not present
 Command:
 
 ```bash
-ae-cli analysis project entity create --project-id <project_id> --entity-name <entity_name> --column-name <column_name> --table-type <table_type> --order <order>
-ae-cli analysis project entity create --dry-run --project-id <project_id> --entity-name <entity_name> --column-name <column_name> --table-type <table_type>
+ae-cli project entity create --project-id <project_id> --entity-name <entity_name> --column-name <column_name> --table-type <table_type> --order <order>
+ae-cli project entity create --dry-run --project-id <project_id> --entity-name <entity_name> --column-name <column_name> --table-type <table_type>
 ```
 
 Capability id: `project.entity.create`.

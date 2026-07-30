@@ -52,9 +52,9 @@ When the user mentions a product term below (including common Chinese UI labels)
 | **Config center** | Engage scene management / config center overview | `engage-scene` | `references/scene-config-item.md` | `scene-config-param.md`, `scene-config-group.md`, `scene-preset-metric.md`, `scene-config-metric.md`, `scene-config-channel.md`, `channel-mgmt.md`, `scene-strategy.md`, `scene-template.md`; L3 reports: `config-item-trigger-report.md`, `config-item-analysis-report.md`, `config-item-strategy-comparison.md` |
 | **Scene config** | Same as config center; params, groups, metrics, channels, strategies, and templates under a config item | `engage-scene` | `references/scene-config-item.md` | Same as above; params/groups/metrics: `scene-config-param.md`, `scene-config-group.md`, `scene-preset-metric.md`, `scene-config-metric.md` |
 | **Config item** | A single config item in the config center | `engage-scene` | `references/scene-config-item.md` | `scene-config-param.md`, `scene-preset-metric.md`, `scene-config-metric.md`, `scene-strategy.md`, `scene-template.md` |
-| **Push channel** | Project-level message push channels (Webhook, FCM, APNS, etc.) | `engage-setting` | `references/channel-list.md` | `channel-detail.md`, `add-channel.md`, `update-channel-status.md`, `delete-channel.md`, `channel-update-config.md`, `channel-test-send.md`, `channel_touch_limits_list.md` |
+| **Push channel** | Project-level message push channels (Webhook, FCM, APNS, etc.) | `engage-setting` | `references/channel-list.md` | `channel-detail.md`, `add-channel.md` (**Webhook vs Client differ**: `url` = HTTP vs scene key; custom params `user:` vs `user:`/`client:`), `update-channel-status.md`, `delete-channel.md`, `channel-update-config.md`, `channel-test-send.md`, `channel_touch_limits_list.md` |
 | **Config channel** | Config-center Webhook/client config channels (not the same as push channels) | `engage-scene` | `references/scene-config-channel.md` | `channel-mgmt.md` (create/enable-disable/copy/delete workflows). User params in `config.customsParamList` require `columnName` with `user:` prefix (e.g. `user:#account_id`); preflight names with ae-analysis `analysis-meta property list/get`. |
-| **Operation strategy** | Ops/delivery strategies under a config item | `engage-scene` | `references/scene-strategy.md` | Custom audience QP: [`scene-strategy-audience.md`](references/scene-strategy-audience.md) — **用户满足** `filts[0]` + **用户行为** `filts[1]` two-block mix QP; preflight props (stop + list if missing); examples A/B/C; template: `scene-template.md` |
+| **Operation strategy** | Ops/delivery strategies under a config item | `engage-scene` | `references/scene-strategy.md` | Custom audience: [`scene-strategy-audience.md`](references/scene-strategy-audience.md) — semantic `definitionRequest` (Analysis condition shape); do not pass `targetClusterQp`/`qp`; preflight props (stop + list if missing); template: `scene-template.md` |
 | **Operation task** | Hermes push/engagement tasks (list, save, lifecycle, reports) | `engage-task` | `references/task-list.md` | `task-detail.md` (get), `save-task.md`, `build-task-save-guide.md`, `task-stats.md`, `task-delete.md`, `push-record-query.md`, `task-data-overview.md`, `task-data-detail.md`, `task-metric-detail.md`, `task-experiment-report.md` |
 | **Template** | Strategy templates under a config item | `engage-scene` | `references/scene-template.md` | `scene-config-param.md` (template fields reference `paramId`); enable via `template update` then `template update-status` before strategy create |
 
@@ -145,13 +145,13 @@ ae-cli engage-setting config-table delete --project-id <project_id> --info-id <i
 
 # Preset event list / update
 ae-cli engage-setting preset-event list --project-id <project_id>
-ae-cli engage-setting preset-event update --project-id <project_id> --add-event-desc <qp>
+ae-cli engage-setting preset-event update --project-id <project_id> --add-event-definition '<semantic_event_json>'
 
 # Common metric list / get / create / update / delete
 ae-cli engage-setting common-metric list --project-id <project_id>
 ae-cli engage-setting common-metric get --project-id <project_id> --metric-name <name>
-ae-cli engage-setting common-metric create --project-id <project_id> --metric-type 1 --metric-name <name> --metric-qp '<qp_json>' --metric-window-num 1 --metric-window-time-unit day --display-name <display>
-ae-cli engage-setting common-metric update --project-id <project_id> --metric-type 1 --metric-name <name> --metric-qp '<qp_json>' --metric-window-num 1 --metric-window-time-unit day --display-name <display>
+ae-cli engage-setting common-metric create --project-id <project_id> --metric-type 1 --metric-name <name> --metric-definition '<semantic_metric_json>' --metric-window-num 1 --metric-window-time-unit day --display-name <display>
+ae-cli engage-setting common-metric update --project-id <project_id> --metric-type 1 --metric-name <name> --metric-definition '<semantic_metric_json>' --metric-window-num 1 --metric-window-time-unit day --display-name <display>
 ae-cli engage-setting common-metric delete --project-id <project_id> --metric-name <name> --yes
 ```
 
@@ -169,6 +169,9 @@ ae-cli engage-task task save --project-id 1 --req '{"baseInfo":{"taskName":"Demo
 
 # Query task details
 ae-cli engage-task task get --project-id 1 --task-id task_123
+
+# Submit a saved draft task for approval
+ae-cli engage-task task submit-approval --project-id 1 --task-id task_123
 
 ```
 
@@ -210,6 +213,7 @@ ae-cli engage-task group list --project-id 1
 ae-cli engage-task metric list --project-id 1 --task-id task_id_123
 ae-cli engage-task channel-ref stats --project-id 1 --channel-id channel_123
 ae-cli engage-task task delete --project-id 1 --task-id task_id_123 --yes
+ae-cli engage-task task submit-approval --project-id 1 --task-id task_id_123
 
 # Query the node schema
 ae-cli engage-flow node-config schema --project-id 1 --node-type message_push
@@ -241,7 +245,7 @@ ae-cli engage-scene config-group batch-delete --project-id <project_id> --group-
 
 # Preset metric get / set
 ae-cli engage-scene preset-metric get --project-id <project_id> --config-id <config_id>
-ae-cli engage-scene preset-metric set --project-id <project_id> --config-id <config_id> --impression-event-qp '<qp>'
+ae-cli engage-scene preset-metric set --project-id <project_id> --config-id <config_id> --impression-event-definition '<semantic_event_json>'
 
 # Config metric list / get / batch-add / update-rule / batch-delete
 ae-cli engage-scene config-metric list --project-id <project_id> --config-id <config_id>
@@ -252,7 +256,7 @@ ae-cli engage-scene config-metric batch-delete --project-id <project_id> --confi
 
 # Config channel list / get / create / update / update-status / delete / query-log
 # User params: verify each customsParamList columnName via ae-analysis property list/get first; then use user:<prop_name>
-# Strategy custom audience: scene-strategy-audience.md — mix QP filts[0]=用户满足, filts[1]=用户行为; strategy predict for 预估人数
+# Strategy custom audience: scene-strategy-audience.md — semantic definitionRequest; strategy predict for 预估人数
 # Workflows: references/channel-mgmt.md · schema: references/scene-config-channel.md
 ae-cli engage-scene config-channel list --project-id <project_id> [--channel-type 0|1]
 ae-cli engage-scene config-channel get --project-id <project_id> --channel-id <channel_id>
@@ -266,7 +270,7 @@ ae-cli engage-scene config-channel query-log --project-id <project_id> --channel
 ae-cli engage-scene strategy create --project-id <project_id> --payload '{"configId":"cfg-1","templateId":"tpl-1","strategyName":"s1"}'
 ae-cli engage-scene strategy update --project-id <project_id> --payload '{"strategyUuid":"uuid-1"}'
 ae-cli engage-scene strategy log --project-id <project_id> --strategy-uuid <uuid>
-ae-cli engage-scene strategy predict --project-id <project_id> --qp '<mix QP string>' --zone-offset 8 [--strategy-uuid <uuid>]
+ae-cli engage-scene strategy predict --project-id <project_id> --definition-request '{"type":"condition","conditions":{...}}' --zone-offset 8 [--strategy-uuid <uuid>]
 ae-cli engage-scene strategy batch-copy --project-id <project_id> --config-id <config_id> --strategy-ids '["s1"]'
 
 # Template list / get / create / update / update-status / delete
@@ -282,6 +286,18 @@ ae-cli engage-scene template delete --project-id <project_id> --config-id <confi
 
 New capability-gateway command group `engage-activity` covers campaign activities: activities, approval workflow, topics, activity types, and standalone tasks. Complex DTOs are passed with `--payload` (native camelCase JSON).
 
+### Activity payload guardrails
+
+Before generating any activity topic or standalone-task payload, enforce the same subset exposed by the Hermes activity UI:
+
+- `triggerType` must be `0` (schedule single) or `1` (schedule repeat). Activity tasks do not support manual (`2`) or triggered (`3`-`6`) task types.
+- Do not configure A/B or horse-race experiments. Omit `expConfig` or use only `{"enableExp":false}`, and provide exactly one non-experiment `groupContentList` group.
+- Standalone activity tasks must use `triggerTimeStrategy: "fixed_time_zone"` and the parent activity `tzOffset`. Schedule times must remain inside the activity period.
+- A topic root supports audience types `1` (custom) and `2` (existing cluster), not `3` (all users). A standalone activity task may use `1`, `2`, or `3`.
+- Topic tasks inherit schedule, timezone, channel, frequency limits, channel touch limits, whitelist, and experiment settings from the topic. They may only add an inclusion-only custom `definitionRequest`; never generate task-level `clusterKey`, trigger rules, or shared-setting overrides. `topic get` may return the canonical task marker `targetClusterType=1`; preserve it for update if present, but never use another task-level value.
+- Resolve the parent activity first and confirm it is editable (`mappingStatus` `0`, `2`, or `5`). Limits for topics, tasks, and languages are project configuration values; do not hardcode defaults.
+- `approval submit` and `approval approve` validate every persisted activity task. Approval does not normalize unsupported task data. On `ACTIVITY_TASK_COMPATIBILITY_VIOLATION`, cancel/withdraw approval as needed, correct or recreate each reported task, and submit again.
+
 ```bash
 # Activity create / update / delete / list / get / pause / end / stats / info-list
 ae-cli engage-activity activity create --project-id <project_id> --payload '{"activityName":"a1","activityType":"other_type","tzOffset":8,"periodType":0}'
@@ -294,8 +310,8 @@ ae-cli engage-activity activity end --project-id <project_id> --activity-id <act
 ae-cli engage-activity activity stats --project-id <project_id>
 ae-cli engage-activity activity info-list --project-id <project_id> --activity-id <activity_id>
 
-# Approval approve / reject / cancel
-# Note: engage-activity.approval.submit is temporarily disabled (testing issues); do not call it.
+# Approval submit / approve / reject / cancel
+ae-cli engage-activity approval submit --project-id <project_id> --activity-id <activity_id> [--reason <reason>]
 ae-cli engage-activity approval approve --project-id <project_id> --activity-id <activity_id>
 ae-cli engage-activity approval reject --project-id <project_id> --activity-id <activity_id> --reason <reason>
 ae-cli engage-activity approval cancel --project-id <project_id> --activity-id <activity_id>
@@ -346,12 +362,9 @@ When the user wants to "create a flow / generate a flow canvas / save a flow", d
    - The touchpoint or delivery method
    - Whether branching is needed, and the branching conditions
 2. Do not jump directly from natural language to `--req`. You must first organize a stable intermediate intent structure, then map it to the final `req`.
-3. Before building condition-related nodes, create the reusable audience directly from its semantic definition, then read back the server-authored definition only if the Engage schema explicitly needs QP-derived fields:
-
-```bash
-ae-cli analysis user-cluster create --project-id <projectId> --cluster-name <condition_cluster_name> --display-name <display_name> --definition-request '<semantic-definition-json>'
-ae-cli analysis user-cluster get --project-id <projectId> --cluster-names '["<condition_cluster_name>"]'
-```
+3. Build condition-related nodes with semantic `targetDefinitionRequest` and
+   `triggerDefinition` objects. Resolve real event and property names through Analysis metadata;
+   do not create an intermediate cluster merely to obtain persisted QP.
 
 4. Before building touchpoint nodes such as `message_push`, `wechat_push`, or `webhook_push`, you must call:
 
@@ -361,7 +374,7 @@ ae-cli engage-setting channel list --project-id <projectId>
 
 5. `engage-flow flow save` is **operation-based** (protocol v2). The `--req` object must carry an `operation` of `build`, `preview`, or `commit`. Do **not** use the old `nodeList` / `edgeList` field names — use `nodes` / `edges` with `operation=build`. A legacy `nodeList`/`edgeList` payload (or a missing `operation`) is rejected with `Unsupported save_flow operation: null`.
 6. Run the lifecycle: `build` (returns `data.result.status = ready_to_preview` or `need_input`) → resolve any `data.result.next_slot` → `preview` (re-issues response fields `data.result.draft_version` + `data.result.confirm_token`) → `commit` (maps those values to request fields `draftVersion` + `confirmToken`) → reads the final ID from `data.result.result.flow_uuid`.
-7. `nodes[].config` / `edges[].config` may be a JSON object or a JSON string. If `targetClusterQp` appears inside a node `config`, its value is usually a `JSON.stringify`'d string, not a raw object.
+7. `nodes[].config` / `edges[].config` may be a JSON object or a JSON string. Custom audience nodes and branches use semantic `targetDefinitionRequest`; Hermes compiles it to the node's stored execution format.
 8. You must self-check before previewing/committing:
    - There is exactly one entry node
    - There is at least one `exit_flow`
@@ -437,13 +450,13 @@ More detailed single-command guidance is available in the business-oriented `ref
 - `references/scene-config-channel.md` (`engage-scene.config-channel.{list,get,create,update,update-status,delete,query-log}`)
 - `references/channel-mgmt.md` (config channel management workflows)
 - `references/scene-strategy.md` (`engage-scene.strategy.{list,get,create,update,log,predict,batch-copy,manage}`)
-- `references/scene-strategy-audience.md` (custom audience mix QP: 用户满足/用户行为 two-block layout, preflight, worked examples A/B/C)
+- `references/scene-strategy-audience.md` (custom audience semantic `definitionRequest`, preflight, predict)
 - `references/scene-template.md` (`engage-scene.template.{list,get,copy,create,update,update-status,delete}`)
 - `references/config-item-trigger-report.md` (`engage-scene.report.config-item-trigger`, L3)
 - `references/config-item-analysis-report.md` (`engage-scene.report.config-item-analysis`, L3)
 - `references/config-item-strategy-comparison.md` (`engage-scene.report.strategy-comparison`, L3)
 - `references/activity-activity.md` (`engage-activity.activity.{create,update,delete,list,get,pause,end,stats,info-list}`)
-- `references/activity-approval.md` (`engage-activity.approval.{approve,reject,cancel}`; `submit` temporarily disabled)
+- `references/activity-approval.md` (`engage-activity.approval.{submit,approve,reject,cancel}`)
 - `references/activity-topic.md` (`engage-activity.topic.{create,update,remove-task,delete,get,copy}`)
 - `references/activity-activity-type.md` (`engage-activity.activity-type.{list,batch-add,update,batch-delete}`)
 - `references/activity-task.md` (`engage-activity.task.{get,create,update,copy}`)
@@ -460,6 +473,7 @@ More detailed single-command guidance is available in the business-oriented `ref
 - `references/segment-list-query.md` (`engage-task.segment-list.query`)
 - `references/group-list.md` (`engage-task.group.list`)
 - `references/task-delete.md` (`engage-task.task.delete`)
+- `references/task-submit-approval.md` (`engage-task.task.submit-approval`)
 
 This split documentation structure is easier to extend later, because commands with more complex object inputs can stay centralized in the `references/` root directory.
 
@@ -471,7 +485,7 @@ This split documentation structure is easier to extend later, because commands w
 
 ### task
 
-`operation-log query` / `push-record query` / `segment-list *` / `ops *` / `metric *` / `race release` / `channel-ref stats` / `group *` / `task delete` / `task modify-group` / `task get` / `task list` / `task stats` / `task build-save-guide` / `task save` / `task manage` (via `engage-task`), plus L3 capabilities `engage-task.task-data.{overview,detail,metric-detail,experiment-report}`
+`operation-log query` / `push-record query` / `segment-list *` / `ops *` / `metric *` / `race release` / `channel-ref stats` / `group *` / `task delete` / `task modify-group` / `task submit-approval` / `task get` / `task list` / `task stats` / `task build-save-guide` / `task save` / `task manage` (via `engage-task`), plus L3 capabilities `engage-task.task-data.{overview,detail,metric-detail,experiment-report}`
 
 ### config
 
@@ -483,7 +497,7 @@ Legacy config MCP commands are migrated into the `scene` L2 group and the three 
 
 ### activity
 
-`activity create` / `activity update` / `activity delete` / `activity list` / `activity get` / `activity pause` / `activity end` / `activity stats` / `activity info-list` / `approval approve` / `approval reject` / `approval cancel` / `topic create` / `topic update` / `topic remove-task` / `topic delete` / `topic get` / `topic copy` / `activity-type list` / `activity-type batch-add` / `activity-type update` / `activity-type batch-delete` / `task get` / `task create` / `task update` / `task copy` (via `engage-activity`), capability ids `engage-activity.activity.{create,update,delete,list,get,pause,end,stats,info-list}`, `engage-activity.approval.{approve,reject,cancel}`, `engage-activity.topic.{create,update,remove-task,delete,get,copy}`, `engage-activity.activity-type.{list,batch-add,update,batch-delete}`, `engage-activity.task.{get,create,update,copy}`
+`activity create` / `activity update` / `activity delete` / `activity list` / `activity get` / `activity pause` / `activity end` / `activity stats` / `activity info-list` / `approval submit` / `approval approve` / `approval reject` / `approval cancel` / `topic create` / `topic update` / `topic remove-task` / `topic delete` / `topic get` / `topic copy` / `activity-type list` / `activity-type batch-add` / `activity-type update` / `activity-type batch-delete` / `task get` / `task create` / `task update` / `task copy` (via `engage-activity`), capability ids `engage-activity.activity.{create,update,delete,list,get,pause,end,stats,info-list}`, `engage-activity.approval.{submit,approve,reject,cancel}`, `engage-activity.topic.{create,update,remove-task,delete,get,copy}`, `engage-activity.activity-type.{list,batch-add,update,batch-delete}`, `engage-activity.task.{get,create,update,copy}`
 
 ### workbench
 
@@ -505,19 +519,35 @@ High-risk delete commands (`risk: high-risk-write`) require explicit user author
 - Config channels (config center channel management): `engage-scene config-channel create|update|update-status` (write), `engage-scene config-channel delete` (high-risk-write)
 - Strategies and config items: `engage-scene config-item delete` (high-risk-write), `engage-scene template copy` and `engage-scene strategy manage` (write)
 - Flows: `engage-flow flow update-remark` (write), `engage-flow flow save` (write), `engage-flow flow modify-base-info` (write), `engage-flow flow manage` (write), `engage-flow flow delete` (high-risk-write)
-- Tasks: `engage-task task save` (write), `engage-task task manage` (write)
+- Tasks: `engage-task task save` (write), `engage-task task submit-approval` (write), `engage-task task manage` (write)
 
 For task draft creation or update, use this workflow:
 
 1. `ae-cli engage-setting channel list --project-id <projectId>`
 2. `ae-cli engage-task task build-save-guide --project-id <projectId> --req '{...}'`
-3. If the guide says QP-derived fields are needed (`targetConfig.qp`, `triggerConfig.triggerRule`, `clientConfig.clientQp`, or `completionIndicatorDef.event`), call:
-   `ae-cli engage-setting query cluster-qp-skill --project-id <projectId>`
-   Use the returned skill text to build those fields. For existing-cluster audiences (`targetClusterType=2`), use `analysis user-cluster get` instead of hand-writing QP.
+3. For a custom audience, pass the Analysis semantic contract as
+   `targetConfig.definitionRequest`. Use semantic `triggerConfig.triggerDefinition` and
+   `completionIndicatorDef.completionIndicators[].eventDefinition`. Build shapes from
+   `ae-analysis` user-cluster / audience models. For existing-cluster audiences
+   (`targetClusterType=2`), use `analysis user-cluster get`. For event-triggered tasks, pass
+   `channelType`, `triggerType`, and `eventTriggerType` to `build-save-guide`, then use its
+   type-specific semantic event shape. Accumulated events are aggregate conditions, continuous
+   events use count/eq with a value of at least 2, ordered events use sequence-step envelopes,
+   and every-completion events use count/eq/1. Never construct persisted QP fields.
 4. `ae-cli engage-task task save --project-id <projectId> --req '{...}'`
+5. `ae-cli engage-task task submit-approval --project-id <projectId> --task-id <taskId>`
 
 `engage-task task build-save-guide` is a read-only helper. It returns scenario-specific required fields, channel content schema, unsupported combinations, examples, and a handoff template for `save_task`.
 
 `engage-task task save` creates or updates a task configuration. It does not submit approval, does not start sending, and does not trigger task execution. If `req.taskId` is omitted it creates a new draft; if `req.taskId` is present it updates an existing **draft or paused** task. Update mode rejects running/ended tasks with `invalid_status`. Omitted fields inherit from the existing task before validation (partial rename/update is supported).
 
-Audience creation is not a fixed preflight step. When the guide requires QP-derived fields (`targetConfig.qp`, `triggerConfig.triggerRule`, `clientConfig.clientQp`, `completionIndicatorDef.event`), call `ae-cli engage-setting query cluster-qp-skill --project-id <projectId>` first and follow the returned skill definition; do not assemble raw QP manually. For existing-cluster audiences, use `analysis user-cluster get` to copy server-authored definitions when appropriate.
+`engage-task task submit-approval --task-id` is the recommended approval path after `task save`.
+It submits the persisted draft without requiring the Agent to reconstruct internal `trigger_rule`.
+The legacy `--request` mode remains available for compatibility; provide exactly one of
+`--task-id` or `--request`.
+
+Audience creation is not a fixed preflight step. For custom task audiences, use semantic
+`targetConfig.definitionRequest`; `task get` returns the same contract as
+`definition_request`. `clientConfig.clientQp` is server-authored and must be omitted from
+Capability requests; partial updates preserve existing server state. Do not assemble raw QP
+manually.

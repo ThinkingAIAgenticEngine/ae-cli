@@ -1,13 +1,4 @@
-import {
-  cpSync,
-  existsSync,
-  mkdirSync,
-  readFileSync,
-  realpathSync,
-  rmSync,
-  statSync,
-  writeFileSync,
-} from 'node:fs';
+import { existsSync, readFileSync, statSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import {
   readSkillManifestEntries,
@@ -16,11 +7,6 @@ import {
   type SkillManifestEntry,
 } from './skill-manifest.js';
 import { assertValidMcpName, assertValidSkillSlug } from './validation.js';
-
-export interface CopySkillPackageResult {
-  targetDir: string;
-  skipped: boolean;
-}
 
 export interface UpdateSkillManifestResult {
   manifestPath: string;
@@ -140,41 +126,4 @@ export function updateMcpManifestForProjectSource(
   }
   writeMcpManifestEntries(manifestPath, nextManifest);
   return { manifestPath, changed: true };
-}
-
-export function copySkillPackageToTarget(args: {
-  sourceDir: string;
-  targetRoot: string;
-  slug: string;
-}): CopySkillPackageResult {
-  assertValidSkillSlug(args.slug);
-  if (!path.isAbsolute(args.targetRoot)) {
-    throw new Error(`skillTargetRoot must be an absolute path: ${args.targetRoot}`);
-  }
-
-  const sourceReal = realpathSync(args.sourceDir);
-  if (!statSync(sourceReal).isDirectory()) {
-    throw new Error(`Skill source path is not a directory: ${args.sourceDir}`);
-  }
-
-  const targetDir = path.join(args.targetRoot, args.slug);
-  const targetAbs = path.resolve(targetDir);
-  if (
-    targetAbs === sourceReal ||
-    targetAbs.startsWith(`${sourceReal}${path.sep}`)
-  ) {
-    return { targetDir, skipped: true };
-  }
-
-  if (existsSync(targetDir)) {
-    const targetReal = realpathSync(targetDir);
-    if (targetReal === sourceReal) {
-      return { targetDir, skipped: true };
-    }
-    rmSync(targetDir, { recursive: true, force: true });
-  }
-
-  mkdirSync(args.targetRoot, { recursive: true });
-  cpSync(sourceReal, targetDir, { recursive: true, dereference: true });
-  return { targetDir, skipped: false };
 }

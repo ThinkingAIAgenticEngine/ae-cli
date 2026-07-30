@@ -1,4 +1,4 @@
-# analysis project owner update
+# project owner update
 
 Use when the user needs to update project owner.
 
@@ -7,8 +7,8 @@ Do not use it for unrelated project-management actions or for fields not present
 Command:
 
 ```bash
-ae-cli analysis project owner update --project-id <project_id> --company-id <company_id> --owner-user-id <owner_user_id> --project-name <project_name> --project-remark <project_remark>
-ae-cli analysis project owner update --dry-run --project-id <project_id> --company-id <company_id>
+ae-cli project owner update --project-id <project_id> --company-id <company_id> --owner-user-id <owner_user_id> --project-name <project_name> --project-remark <project_remark>
+ae-cli project owner update --dry-run --project-id <project_id> --company-id <company_id>
 ```
 
 Capability id: `project.owner.update`.

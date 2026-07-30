@@ -1,4 +1,4 @@
-# analysis project member-receiver list
+# project member-receiver list
 
 Use when the user needs to list project member handover receivers.
 
@@ -7,8 +7,8 @@ Do not use it for unrelated project-management actions or for fields not present
 Command:
 
 ```bash
-ae-cli analysis project member-receiver list --project-id <project_id>
-ae-cli analysis project member-receiver list --dry-run --project-id <project_id>
+ae-cli project member-receiver list --project-id <project_id>
+ae-cli project member-receiver list --dry-run --project-id <project_id>
 ```
 
 Capability id: `project.member_receiver.list`.

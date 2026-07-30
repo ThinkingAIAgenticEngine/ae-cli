@@ -10,18 +10,20 @@ Recommended workflow:
 
 1. `ae-cli engage-setting channel list --project-id <projectId>`
 2. `ae-cli engage-task task build-save-guide --project-id <projectId> --req '{...}'`
-3. If the guide indicates QP-derived fields, call `ae-cli engage-setting query cluster-qp-skill --project-id <projectId>` and build
-   `targetConfig.qp`, `triggerConfig.triggerRule`, `clientConfig.clientQp`, or `completionIndicatorDef.event`
-   from the returned skill text. For existing-cluster audiences, use `analysis user-cluster get`.
+3. If the guide indicates a custom target audience, build the semantic
+   `targetConfig.definitionRequest` contract used by Analysis. Hermes compiles it to persisted QP.
+   Use `triggerConfig.triggerDefinition` and
+   `completionIndicatorDef.completionIndicators[].eventDefinition` for event conditions.
+   For existing-cluster audiences, use `analysis user-cluster get`.
+   Never construct persisted execution QP.
 4. Build the final grouped `req`
 5. `ae-cli engage-task task save --project-id <projectId> --req '{...}'`
 
 Audience creation is not a fixed preflight step. Use direct create/get only when the guide indicates that you must construct:
 
-- `targetConfig.qp`
-- `triggerConfig.triggerRule`
-- `clientConfig.clientQp`
-- `completionIndicatorDef.event`
+- `targetConfig.definitionRequest`
+- `triggerConfig.triggerDefinition`
+- `completionIndicatorDef.completionIndicators[].eventDefinition`
 
 For the full guide contract, request format, return sections, and handoff usage, read:
 
@@ -31,7 +33,9 @@ For the full guide contract, request format, return sections, and handoff usage,
 
 ## 1. General Principles
 
-`engage-task task save` accepts only the final grouped draft-save payload that Hermes can validate and persist.
+`engage-task task save` accepts the grouped draft-save payload. For a custom audience
+(`targetClusterType=1`), pass semantic `targetConfig.definitionRequest`; do not pass raw
+persisted audience fields.
 
 The command supports two modes:
 
@@ -101,21 +105,26 @@ Use the guide to determine:
 - current handoff template
 - whether the current payload is already close to submit-ready
 
-### 2.3 Create and Read the Audience Only When Needed
+### 2.3 Build Semantic Conditions
 
-If the guide indicates that an audience or QP-derived fields are needed, run:
+If the guide indicates that audience or event conditions are needed, build semantic definitions
+directly. Resolve real events and properties through Analysis metadata.
 
-```bash
-ae-cli analysis user-cluster create --project-id <projectId> --cluster-name <condition_cluster_name> --display-name <display_name> --definition-request '<semantic-definition-json>'
-ae-cli analysis user-cluster get --project-id <projectId> --cluster-names '["<condition_cluster_name>"]'
-```
+Use semantic event definitions for:
 
-Prefer the returned `cluster_name`/`clusterKey`. Only when required, use the server-authored definition to build:
+- `triggerConfig.triggerDefinition`
+- `completionIndicatorDef.completionIndicators[].eventDefinition`
 
-- `targetConfig.qp`
-- `triggerConfig.triggerRule`
-- `clientConfig.clientQp`
-- `completionIndicatorDef.event`
+Task aggregate and completion event definitions support:
+
+- `aggregation`: `count`, `sum`, or `distinct_count`
+- `operator`: `gt`, `gte`, or `eq`
+
+Trigger events have an additional envelope contract selected by `eventTriggerType`. Do not apply
+one aggregate event shape to every trigger type. Use the matrix and examples in section 4.4.
+
+`clientConfig.clientQp` is not an AI-authored field. Always omit it from Capability requests;
+partial task updates preserve existing server state.
 
 Do not create an audience by default for every task. It is conditional, not mandatory.
 
@@ -192,16 +201,12 @@ Content guidance:
 
 Use the guide to decide which audience shape applies:
 
-- `targetClusterType=1`: custom audience, requires `qp`
+- `targetClusterType=1`: custom audience, requires `definitionRequest`
 - `targetClusterType=2`: existing cluster, requires `clusterKey`
-- `targetClusterType=3`: all users, forbids both `qp` and `clusterKey`
+- `targetClusterType=3`: all users, forbids `definitionRequest` and `clusterKey`
 
-If `qp` is required, create/read a server-authored audience and copy the saved definition rather than building raw QP:
-
-```bash
-ae-cli analysis user-cluster create --project-id <projectId> --cluster-name <condition_cluster_name> --display-name <display_name> --definition-request '<semantic-definition-json>'
-ae-cli analysis user-cluster get --project-id <projectId> --cluster-names '["<condition_cluster_name>"]'
-```
+For a custom audience, pass the semantic definition directly. Do not create an intermediate
+cluster or copy persisted QP.
 
 ### 4.4 `triggerConfig`
 
@@ -209,17 +214,163 @@ Use the guide to determine the current trigger rule set:
 
 - `triggerType=0`: requires `triggerTime`
 - `triggerType=1`: requires `startDate`, `endDate`, `triggerCrontab`
-- `triggerType=2`: manual, no `triggerRule`
-- `triggerType=3/4/5`: requires `triggerRule`
+- `triggerType=2`: manual, no `triggerDefinition`
+- `triggerType=3/4/5`: requires `triggerDefinition`
 
 Rules:
 
 - `triggerType=6` is not supported
 - use the guide for cron format and wrong-example checks
-- if `triggerRule` is needed, copy it from the saved server-authored audience definition:
+- if `triggerDefinition` is needed, build it from semantic event definitions and resolve real
+  event/property names through Analysis metadata
+- always set the A rule's `eventTriggerType` explicitly
+- Hermes compiles the semantic event and then validates the final persisted trigger-rule envelope
+- for semantic event-trigger tasks, Hermes backfills missing task-level `startDate` / `endDate`
+  from the A rule's `periodStart` / `periodEnd`; explicit task-level dates remain authoritative
 
-```bash
-ae-cli analysis user-cluster get --project-id <projectId> --cluster-names '["<condition_cluster_name>"]'
+#### Trigger envelope matrix
+
+| Channel | `triggerType` | Allowed A-rule `eventTriggerType` |
+| --- | --- | --- |
+| Server channels | `3` | `0`, `1`, `2` |
+| Server channels | `4` | `0` only |
+| Server channels | `5` | `0`, `1`, `2` |
+| `client_push` (`channelType=3`) | `3` | `1`, `2`, `3` |
+| `client_push` (`channelType=3`) | `5` | `1`, `2`, `3` |
+
+For `triggerType=4/5`, the second B rule is always an aggregate rule. It also requires
+`delayTime`, `delayTimeSymbol`, and `eventCondition`; use `1` for `triggerType=4` and `0` for
+`triggerType=5`.
+
+#### `eventTriggerType=0`: accumulated completion
+
+Use aggregate semantic events:
+
+```json
+{
+  "eventTriggerType": 0,
+  "events": [
+    {
+      "type": "event",
+      "event": "purchase",
+      "aggregation": "sum",
+      "property": "amount",
+      "operator": "gt",
+      "value": 100
+    }
+  ]
+}
+```
+
+#### `eventTriggerType=1`: continuous completion
+
+Use exactly one count event with `operator=eq` and `value>=2`. `blackList` is optional and accepts
+semantic events that Hermes compiles as non-aggregate event selectors. The rule-level window is
+optional; provide `windowGap` and `windowGapTimeUnit` together.
+`relationProps` is optional and uses semantic event-property references. Hermes resolves their
+legacy metadata before persistence:
+
+```json
+{
+  "relationProps": [
+    {
+      "property": {
+        "type": "event_property",
+        "name": "#city"
+      }
+    }
+  ]
+}
+```
+
+```json
+{
+  "eventTriggerType": 1,
+  "windowGap": 7,
+  "windowGapTimeUnit": "day",
+  "events": [
+    {
+      "type": "event",
+      "event": "login",
+      "aggregation": "count",
+      "operator": "eq",
+      "value": 3
+    }
+  ],
+  "blackList": [
+    {
+      "type": "event",
+      "event": "logout",
+      "aggregation": "count",
+      "operator": "eq",
+      "value": 1
+    }
+  ]
+}
+```
+
+#### `eventTriggerType=2`: ordered completion
+
+Use at least two sequence steps. The first and last steps must have `hasDone=true`. Put the
+Analysis semantic event inside `eventDefinition`; do not add persisted aggregate fields such as
+`taPropQuota`, `uceCalcuSymbol`, or `num`.
+Optional `relationProps` use the same semantic event-property structure documented for
+`eventTriggerType=1`.
+
+```json
+{
+  "eventTriggerType": 2,
+  "events": [
+    {
+      "eventDefinition": {
+        "type": "event",
+        "event": "login",
+        "aggregation": "count",
+        "operator": "eq",
+        "value": 1
+      },
+      "hasDone": true,
+      "hasDistanceStart": false
+    },
+    {
+      "eventDefinition": {
+        "type": "event",
+        "event": "purchase",
+        "aggregation": "count",
+        "operator": "eq",
+        "value": 1
+      },
+      "hasDone": true,
+      "hasDistanceStart": false,
+      "windowGap": 2,
+      "windowGapTimeUnit": "day"
+    }
+  ]
+}
+```
+
+`hasDone=false` is allowed only for optional intermediate steps. Hermes removes aggregate fields
+from every persisted sequence step and rejects unsafe sequence envelopes before save.
+
+#### `eventTriggerType=3`: every completion
+
+This type is available only for `client_push`. Use count/eq/1 events and set
+`eventTriggerCaliberType` to `0` (combined trigger) or `1` (separate trigger).
+
+```json
+{
+  "eventTriggerType": 3,
+  "eventTriggerCaliberType": 0,
+  "events": [
+    {
+      "type": "event",
+      "event": "login",
+      "aggregation": "count",
+      "operator": "eq",
+      "value": 1
+    }
+  ]
+}
 ```
 
 ### 4.5 `controlConfig`
@@ -228,13 +379,8 @@ Minimum required field:
 
 - `completionIndicatorDef`
 
-When the guide points to event-based completion or experiment-driven main-goal rules, use the saved server-authored audience definition:
-
-```bash
-ae-cli analysis user-cluster get --project-id <projectId> --cluster-names '["<condition_cluster_name>"]'
-```
-
-to build `completionIndicatorDef.event`.
+When the guide points to event-based completion or experiment-driven main-goal rules, build
+`completionIndicatorDef.completionIndicators[].eventDefinition` from the semantic event contract.
 
 Important constraints that still apply:
 
@@ -249,13 +395,10 @@ Important constraints that still apply:
 
 Use this block only when client-side conditions are needed.
 
-If `clientConfig.clientQp` is required, copy it from the saved server-authored audience definition:
-
-```bash
-ae-cli analysis user-cluster get --project-id <projectId> --cluster-names '["<condition_cluster_name>"]'
-```
-
-Only call that schema query when the guide explicitly shows that the field is needed.
+Never include `clientConfig.clientQp` in a Capability request. It is a server-authored
+compatibility field, and partial task updates preserve the existing server value. If a requested
+client-side condition has no semantic field in the current contract, stop and report that it cannot
+be safely authored through this Capability.
 
 ---
 
@@ -266,13 +409,14 @@ Before submission, verify:
 1. `channelId` comes from a real channel query.
 2. `build_task_save_guide` has already been called for the current scenario or partial draft.
 3. `fieldRules.channelContentSchema` was used as the source of truth for content structure.
-4. Any required QP-derived fields came from `analysis user-cluster get`, never from hand-built raw QP.
-5. `targetClusterType` matches the presence or absence of `clusterKey` / `qp`.
-6. `triggerType` matches the provided scheduling or event fields.
+4. Audience, trigger, and completion conditions use semantic definitions only.
+5. `targetClusterType` matches the presence or absence of `clusterKey` / `definitionRequest`.
+6. `channelType`, `triggerType`, and `eventTriggerType` match the trigger envelope matrix.
 7. `completionIndicatorDef` is present and structurally valid for the current scenario.
 8. `taskId` is omitted for create mode and present only for updating a draft or paused task.
 9. No unsupported `triggerType=6` is used.
-10. No placeholder IDs or fabricated resource names remain in the request.
+10. Ordered steps contain `eventDefinition` and sequence metadata, not persisted aggregate fields.
+11. No placeholder IDs or fabricated resource names remain in the request.
 
 ---
 
@@ -286,14 +430,8 @@ ae-cli engage-task task build-save-guide --project-id 1 --req '{"context":{"trig
 ae-cli engage-task task save --project-id 1 --req '{...final grouped req...}'
 ```
 
-If the guide indicates an audience or QP-derived fields are needed, insert direct create/get:
-
-```bash
-ae-cli analysis user-cluster create --project-id <projectId> --cluster-name <condition_cluster_name> --display-name <display_name> --definition-request '<semantic-definition-json>'
-ae-cli analysis user-cluster get --project-id <projectId> --cluster-names '["<condition_cluster_name>"]'
-```
-
-before building the final `req`.
+If the guide indicates a custom audience or event condition, insert the semantic definition
+directly before building the final `req`.
 
 ---
 
@@ -308,4 +446,4 @@ This command is a write operation.
 - Do not invent `channelId`, `clusterKey`, audience definitions, or content keys
 - Do not use `taskId` for a running or ended task
 - Do not pass `occasionKeys`; Hermes derives them from content
-- Do not call the semantic cluster definition builder as a reflex; call it only when guide output says QP-derived fields are needed
+- Do not create an intermediate cluster merely to obtain an execution QP

@@ -1,4 +1,4 @@
-# analysis project member-handover run
+# project member-handover run
 
 Use when the user needs to run project member asset handover.
 
@@ -7,8 +7,8 @@ Do not use it for unrelated project-management actions or for fields not present
 Command:
 
 ```bash
-ae-cli analysis project member-handover run --project-id <project_id> --payload <payload>
-ae-cli analysis project member-handover run --dry-run --project-id <project_id> --payload <payload>
+ae-cli project member-handover run --project-id <project_id> --payload <payload>
+ae-cli project member-handover run --dry-run --project-id <project_id> --payload <payload>
 ```
 
 Capability id: `project.member_handover.run`.

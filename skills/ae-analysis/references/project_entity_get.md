@@ -1,4 +1,4 @@
-# analysis project entity get
+# project entity get
 
 Use when the user needs to get one analysis entity.
 
@@ -7,8 +7,8 @@ Do not use it for unrelated project-management actions or for fields not present
 Command:
 
 ```bash
-ae-cli analysis project entity get --project-id <project_id> --entity-id <entity_id>
-ae-cli analysis project entity get --dry-run --project-id <project_id> --entity-id <entity_id>
+ae-cli project entity get --project-id <project_id> --entity-id <entity_id>
+ae-cli project entity get --dry-run --project-id <project_id> --entity-id <entity_id>
 ```
 
 Capability id: `project.entity.get`.

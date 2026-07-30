@@ -1,4 +1,5 @@
 import { createEngageActivityCapabilityCommand } from '../../shared.js';
+import { validateActivityTopicPayload } from '../payload-validation.js';
 
 /** Updates a topic and its task relations from a TopicModifyReq payload. */
 export const topicUpdate = createEngageActivityCapabilityCommand({
@@ -13,10 +14,11 @@ export const topicUpdate = createEngageActivityCapabilityCommand({
       type: 'json',
       required: true,
       desc:
-        'TopicModifyReq JSON body (topicId + TopicAddDTO fields + modifyTaskList/addTaskList/delTaskIdList). Same audience rules: topicClusterKey for targetClusterType=2, topicQp for =1.',
+        'TopicModifyReq JSON body. Use triggerType 0/1 and no experiment. Topic tasks may retain targetClusterType=1 from get, add an inclusion-only definitionRequest, and otherwise inherit shared settings.',
     },
   ],
   risk: 'write',
+  validate: (ctx) => validateActivityTopicPayload(ctx.json('payload')),
   buildInput: (ctx) => ({
     project_id: ctx.num('project-id'),
     payload: ctx.json('payload'),

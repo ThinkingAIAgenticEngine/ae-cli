@@ -1,4 +1,4 @@
-# analysis project member remove
+# project member remove
 
 Use when the user needs to remove a project member and optionally hand over assets.
 
@@ -7,8 +7,8 @@ Do not use it for unrelated project-management actions or for fields not present
 Command:
 
 ```bash
-ae-cli analysis project member remove --project-id <project_id> --payload <payload> --from-open-id <from_open_id>
-ae-cli analysis project member remove --dry-run --project-id <project_id> --payload <payload> --from-open-id <from_open_id>
+ae-cli project member remove --project-id <project_id> --payload <payload> --from-open-id <from_open_id>
+ae-cli project member remove --dry-run --project-id <project_id> --payload <payload> --from-open-id <from_open_id>
 ```
 
 Capability id: `project.member.remove`.

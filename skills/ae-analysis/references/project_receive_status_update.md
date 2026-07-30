@@ -1,4 +1,4 @@
-# analysis project receive-status update
+# project receive-status update
 
 Use when the user needs to update project data receive status.
 
@@ -7,8 +7,8 @@ Do not use it for unrelated project-management actions or for fields not present
 Command:
 
 ```bash
-ae-cli analysis project receive-status update --project-id <project_id> --receive-status <receive_status>
-ae-cli analysis project receive-status update --dry-run --project-id <project_id> --receive-status <receive_status>
+ae-cli project receive-status update --project-id <project_id> --receive-status <receive_status>
+ae-cli project receive-status update --dry-run --project-id <project_id> --receive-status <receive_status>
 ```
 
 Capability id: `project.receive_status.update`.

@@ -106,7 +106,7 @@ CLI 同时面向团队成员与 AI agent，**源码内容与所有用户可见�
 ### flag / risk / dry-run 约定
 
 - 每个 flag **必须带 `desc`**（会被 agent 读），类型 ∈ `string | number | boolean | json`。
-- 风险等级标 `risk: 'read' | 'write' | 'high-risk-write'`（与 lark-cli 对齐）——**仅 `high-risk-write`（删除）触发二次确认**，除非用户带 `--yes`；`read`/`write` 不确认。
+- 风险等级标 `risk: 'read' | 'write' | 'high-risk-write'`（与 lark-cli 对齐）——**仅 `high-risk-write` 触发二次确认**，除非用户带 `--yes`；它用于删除/移除，以及取消运行任务、修改权限或认证策略等需要显式确认的高影响写操作。`read`/`write` 不确认。
 - 尽量实现 `dryRun(ctx)`，返回 `{ method, url, params, body }`，让 `--dry-run` 能在不真正请求的情况下预览。
 
 ### 输出与错误

@@ -1,4 +1,5 @@
 import { createEngageActivityCapabilityCommand } from '../../shared.js';
+import { validateStandaloneActivityPayload } from '../payload-validation.js';
 
 /** Creates a standalone task under an activity from an OperationTaskOpDTO payload. */
 export const taskCreate = createEngageActivityCapabilityCommand({
@@ -12,10 +13,11 @@ export const taskCreate = createEngageActivityCapabilityCommand({
       name: 'payload',
       type: 'json',
       required: true,
-      desc: 'OperationTaskOpDTO JSON body (taskName, channelType, channelId, groupContentList, targetClusterType, triggerType, completionIndicatorDef, frequencyLimits, groupId, activityId, triggerTimeStrategy, ...). Set activityId; leave topicId empty for a standalone task.',
+      desc: 'OperationTaskOpDTO JSON body. Use triggerType 0/1, fixed_time_zone, no experiment, and one content group. Custom audiences use definitionRequest. Set activityId and leave topicId empty.',
     },
   ],
   risk: 'write',
+  validate: (ctx) => validateStandaloneActivityPayload(ctx.json('payload')),
   buildInput: (ctx) => ({
     project_id: ctx.num('project-id'),
     payload: ctx.json('payload'),

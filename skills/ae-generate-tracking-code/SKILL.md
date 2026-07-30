@@ -91,12 +91,12 @@ First, check if `.ae-cli/draft.json` exists and read existing configuration:
 **⚠️ Key: SERVER_URL and APP_ID are independent config items. Even if draft.json has project_id and host, you MUST resolve and confirm them. `project_id` ≠ `APP_ID`, `host` ≠ `SERVER_URL`.**
 
 1. **APP_ID** — Prefer automatic lookup before asking:
-   - If `meta.project_id` is known, run `ae-cli analysis project info list` once for the current host.
+   - If `meta.project_id` is known, run `ae-cli project info list` once for the current host.
    - Find the project whose `projectId` matches `meta.project_id`.
    - If the matched project has `appId`, ask: **"I found APP_ID `<appId>` for project `<projectId>`. Use it? yes / enter new value"**
    - If the project is missing, ambiguous, or has no `appId`, ask the user to copy APP_ID from AE Admin → "Project Settings" → "Integration Config".
 2. **SERVER_URL** — Data ingestion endpoint (**different from web URL**; go to AE Admin → "Project Settings" → "Integration Config" → fill in "Public URL")
-   - If `meta.project_id` is known, you may try `ae-cli analysis project info get --project-id <project_id>` once.
+   - If `meta.project_id` is known, you may try `ae-cli project info get --project-id <project_id>` once.
    - Use the returned value only if the response explicitly contains a receiver URL field such as `serverUrl`, `pushUrl`, `push_url`, `receiverUrl`, `publicUrl`, `publicReceiverAddress`, `privateReceiverAddress`, or equivalent ingestion endpoint field.
    - If both `publicReceiverAddress` and `privateReceiverAddress` are present, prefer `publicReceiverAddress` as `SERVER_URL` for generated snippets unless the user explicitly needs an internal/private-network receiver.
    - If a value is found, ask: **"I found SERVER_URL `<url>` for project `<projectId>`. Use it? yes / enter new value"**

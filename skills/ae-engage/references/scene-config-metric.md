@@ -52,6 +52,9 @@ ae-cli engage-scene config-metric batch-delete --project-id <project_id> --confi
 
 ### update-rule
 
+`event_list` is a scene metric attribution-rule list, not a complete analysis QP. It intentionally
+keeps its existing `event_name`/`filter` contract and does not use TriggerEvent conversion.
+
 | Parameter | Required | Description |
 |---|---|---|
 | `--project-id` / `-p` | Yes | Numeric project ID. |

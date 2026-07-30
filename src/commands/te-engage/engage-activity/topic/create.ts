@@ -1,4 +1,5 @@
 import { createEngageActivityCapabilityCommand } from '../../shared.js';
+import { validateActivityTopicPayload } from '../payload-validation.js';
 
 /** Creates a topic and its tasks under an activity from a TopicAddDTO payload. */
 export const topicCreate = createEngageActivityCapabilityCommand({
@@ -13,10 +14,11 @@ export const topicCreate = createEngageActivityCapabilityCommand({
       type: 'json',
       required: true,
       desc:
-        'TopicAddDTO JSON body. Required: activityId, topicName, targetClusterType, channelType, channelId, triggerType, enableChannelTouchLimits, frequencyLimits, tasks. When targetClusterType=2 use topicClusterKey (not clusterKey); when =1 use topicQp. Task items use taskQp/clusterKey.',
+        'TopicAddDTO JSON body. Use triggerType 0/1 and no experiment. Topic tasks may only add an inclusion-only definitionRequest and inherit shared settings.',
     },
   ],
   risk: 'write',
+  validate: (ctx) => validateActivityTopicPayload(ctx.json('payload')),
   buildInput: (ctx) => ({
     project_id: ctx.num('project-id'),
     payload: ctx.json('payload'),

@@ -1,4 +1,4 @@
-# analysis project timezone overview
+# project timezone overview
 
 Use when the user needs to get project time zone overview.
 
@@ -7,8 +7,8 @@ Do not use it for unrelated project-management actions or for fields not present
 Command:
 
 ```bash
-ae-cli analysis project timezone overview --project-id <project_id>
-ae-cli analysis project timezone overview --dry-run --project-id <project_id>
+ae-cli project timezone overview --project-id <project_id>
+ae-cli project timezone overview --dry-run --project-id <project_id>
 ```
 
 Capability id: `project.timezone.overview`.

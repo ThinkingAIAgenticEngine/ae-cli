@@ -47,12 +47,15 @@ const DOMAIN_TO_SKILL = {
   'te-kb': 'ae-kb',
   'te-team': 'ae-team',
   'te-agent': 'ae-agent',
+  'memory': 'ae-agent',
   'te-system': 'ae-system',
 };
 // Tool command directories (should not have a skill; used for interactive/ops purposes).
 const TOOL_DIRS = new Set(['sync', 'model']);
 // Skills that use a "grouped/inline doc" strategy rather than per-command references: do not report per-command missing docs for these.
 const GROUPED_DOC_SKILLS = new Set(['ae-dataops', 'ae-kb', 'ae-system']);
+// These command domains reuse target skill inline sections and do not need per-command reference files.
+const INLINE_DOC_DOMAINS = new Set(['memory']);
 const COMMAND_SKILL_OVERRIDES = [
   { pathPrefix: 'src/commands/te-analysis/global/', skill: 'ae-analysis-global' },
 ];
@@ -219,6 +222,7 @@ function checkSkills(domains, focus) {
   // Reverse aggregate: skill -> all commands covered by that skill
   const skillCmds = {};
   for (const [dir, info] of Object.entries(domains)) {
+    if (INLINE_DOC_DOMAINS.has(dir)) continue;
     for (const command of info.commands) {
       const skill = commandSkill(dir, command);
       if (!skill) continue;

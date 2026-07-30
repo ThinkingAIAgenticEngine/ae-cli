@@ -1,4 +1,4 @@
-# analysis project data-power upsert
+# project data-power upsert
 
 Use when the user needs to create or update a data power.
 
@@ -7,8 +7,8 @@ Do not use it for unrelated project-management actions or for fields not present
 Command:
 
 ```bash
-ae-cli analysis project data-power upsert --project-id <project_id> --payload <payload>
-ae-cli analysis project data-power upsert --dry-run --project-id <project_id> --payload <payload>
+ae-cli project data-power upsert --project-id <project_id> --payload <payload>
+ae-cli project data-power upsert --dry-run --project-id <project_id> --payload <payload>
 ```
 
 Capability id: `project.data_power.upsert`.

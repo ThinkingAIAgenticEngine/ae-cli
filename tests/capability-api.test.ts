@@ -320,7 +320,14 @@ await test('callCapabilityApi: 403 → PermissionError, no retry', async () => {
   const prevFetch = globalThis.fetch;
   globalThis.fetch = (async () => {
     callCount++;
-    return new Response(JSON.stringify({ error: 'no permission for this project' }), { status: 403 });
+    return new Response(JSON.stringify({
+      ok: false,
+      error: {
+        type: 'permission',
+        code: 'CAPABILITY_PERMISSION_DENIED',
+        message: 'no permission for this project',
+      },
+    }), { status: 403 });
   }) as typeof fetch;
 
   try {
@@ -328,6 +335,7 @@ await test('callCapabilityApi: 403 → PermissionError, no retry', async () => {
       () => callCapabilityApi(host, 'metadata', 'capabilities/metadata.event.get/execute', 'POST', { input: {} }),
       (err: Error) => {
         assert.ok(err instanceof PermissionError);
+        assert.equal(err.code, 'CAPABILITY_PERMISSION_DENIED');
         return true;
       },
     );

@@ -1,4 +1,4 @@
-# analysis project permission-binding list
+# project permission-binding list
 
 Use when the user needs to list project role and data-power bindings for company-level permission management.
 
@@ -7,8 +7,8 @@ Do not use it for unrelated project-management actions or for fields not present
 Command:
 
 ```bash
-ae-cli analysis project permission-binding list --company-id <company_id> --project-ids <project_ids>
-ae-cli analysis project permission-binding list --dry-run --company-id <company_id> --project-ids <project_ids>
+ae-cli project permission-binding list --company-id <company_id> --project-ids <project_ids>
+ae-cli project permission-binding list --dry-run --company-id <company_id> --project-ids <project_ids>
 ```
 
 Capability id: `project.permission_binding.list`.

@@ -33,7 +33,7 @@ You still organize user requirements into an intermediate intent first, then map
 ## 2. Workflow
 
 1. Identify the flow intent from the user input and produce a unified intent JSON.
-2. Build a semantic condition request from `ae-analysis/references/user_cluster_models.md`, create the audience directly with `analysis user-cluster create`, and prefer its `cluster_name`/`clusterKey`. When node schema requires QP-derived fields (`targetClusterQp`, `triggerRule`, etc.), call `ae-cli engage-setting query cluster-qp-skill --project-id <projectId>` first; never assemble raw QP manually.
+2. Build a semantic condition request from `ae-analysis/references/user_cluster_models.md`. Use it directly as `targetDefinitionRequest` for custom-audience node configs and branches. Create a named Analysis cluster only when the flow intentionally references an existing reusable cluster.
 3. Run `ae-cli engage-setting channel list --project-id <projectId>` to get the available channels and match real `channelId` values for touchpoint nodes. For `webhook_push`, also run `ae-cli engage-setting channel get` and use `data.item.config.params_list` to build request field `contentList` (camelCase; snake_case aliases are normalized during validate).
 4. Query `ae-cli engage-flow node-config schema --project-id <project_id> --node-type <type>` before constructing each non-trivial node config, then run `ae-cli engage-flow node-config validate --project-id <project_id> --node-type <type> --operation-mode save_flow --config '<config-json-string>'` before placing the config into `nodes` or `nodeConfigs`.
 5. Map the intent JSON to `nodes` and `edges` (compact form, see §7 / §8).
@@ -176,7 +176,7 @@ ae-cli analysis user-cluster create --project-id <projectId> --cluster-name <con
 ae-cli analysis user-cluster get --project-id <projectId> --cluster-names '["<condition_cluster_name>"]'
 ```
 
-Prefer the created cluster reference. Only when the node schema requires `targetClusterQp` or `triggerRule.events`, copy the corresponding server-authored fields returned by `user-cluster get`.
+Prefer the created cluster reference for an existing-cluster audience. For a custom audience, pass the semantic definition as `targetDefinitionRequest`; do not copy or construct stored execution QP.
 
 ### 5.2 Project Channels
 
@@ -221,8 +221,8 @@ There must be exactly one entry node.
 
 | Semantic type | Target field |
 |---|---|
-| Audience segmentation / feature judgment / feature split branch | `targetClusterQp` |
-| Event trigger / behavioral judgment / behavioral split branch | `triggerRule[].events[]` |
+| Audience segmentation / feature judgment / feature split branch | `targetDefinitionRequest` |
+| Event trigger / behavioral judgment / behavioral split branch | `triggerDefinition.rules[].events[]` |
 
 ### 6.4 Touchpoint Node Mapping
 
@@ -237,8 +237,8 @@ Inside action nodes: `channel_name` → real `channelId`; `content` → `content
 1. `node.id` must be unique within the request.
 2. Any `branchId` later referenced by `edge.sourceBranchId` must be declared in that node's `config` first.
 3. Every path must eventually end at `exit_flow`.
-4. `config` may be a JSON object or a JSON string. (`targetClusterQp` inside it is usually a `JSON.stringify`'d string — see §9.)
-5. The backend normalizes some compatible input forms before validation: leading apostrophes on field names are stripped, property names are matched case-insensitively when unambiguous, `enableChannelTouchLimits` booleans become `1`/`0`, `targetClusterQp` relation strings `"0"`/`"1"` become numeric values inside the JSON string, and `clusterPredictCount: null` becomes `0`.
+4. `config` may be a JSON object or a JSON string. `targetDefinitionRequest` itself is a JSON object.
+5. Hermes compiles `targetDefinitionRequest` and Flow-specific `triggerDefinition` fields (including branch definitions) on `nodes[]`, `nodeConfigs[]`, and `slotAnswer.nodeConfig.config` before legacy node validation. `node-config validate` uses the same compile path. Other compatible input normalization remains unchanged.
 
 ### 7.2 Common Node Types
 
@@ -254,36 +254,36 @@ Before writing any config below, call `engage-flow node-config schema` for the e
 { "targetUserType": 2, "triggerTime": "<YYYY-MM-DD HH:mm>", "flowEndDate": "<YYYY-MM-DD HH:mm>", "targetClusterName": "<existing clusterName>" }
 ```
 
-For custom users, use `targetUserType=1` and fill `targetClusterQp` with the QP JSON string returned by the cluster QP workflow. For existing clusters (`targetUserType=2`), fill `targetClusterName` from a real current-project cluster list queried with the flow `tzOffset`; do not fill `targetClusterQp`. `clusterPredictCount` defaults to `0` and `clusterPredictTime` defaults to `""` when omitted.
+For custom users, use `targetUserType=1` and fill `targetDefinitionRequest` with the Analysis-compatible semantic definition. For existing clusters (`targetUserType=2`), fill `targetClusterName` from a real current-project cluster list queried with the flow `tzOffset`; do not fill `targetDefinitionRequest`. `clusterPredictCount` defaults to `0` and `clusterPredictTime` defaults to `""` when omitted.
 
 #### `repeat_trigger`
 
 ```json
-{ "targetUserType": 1, "startDate": "<YYYY-MM-DD>", "endDate": "<YYYY-MM-DD>", "flowEndDate": "<YYYY-MM-DD HH:mm>", "crontab": "0 00 09 * * ?", "entryControlLimits": { "enableMultEntry": false, "disableConcurrentEntry": false }, "targetClusterName": null, "targetClusterQp": "<JSON.stringify(qp)>" }
+{ "targetUserType": 1, "startDate": "<YYYY-MM-DD>", "endDate": "<YYYY-MM-DD>", "flowEndDate": "<YYYY-MM-DD HH:mm>", "crontab": "0 00 09 * * ?", "entryControlLimits": { "enableMultEntry": false, "disableConcurrentEntry": false }, "targetClusterName": null, "targetDefinitionRequest": { "type": "condition", "conditions": { ... } } }
 ```
 
-`entry.segment` → `targetClusterQp`; `entry.schedule` → `crontab` (common default `0 00 09 * * ?`). `clusterPredictCount` defaults to `0` and `clusterPredictTime` defaults to `""` when omitted. For existing clusters (`targetUserType=2`), fill `targetClusterName` from a real current-project cluster list queried with the flow `tzOffset`; do not fill `targetClusterQp`.
+`entry.segment` → `targetDefinitionRequest`; `entry.schedule` → `crontab` (common default `0 00 09 * * ?`). `clusterPredictCount` defaults to `0` and `clusterPredictTime` defaults to `""` when omitted. For existing clusters (`targetUserType=2`), fill `targetClusterName` from a real current-project cluster list queried with the flow `tzOffset`; do not fill `targetDefinitionRequest`.
 
 #### `event_trigger`
 
 ```json
-{ "triggerType": 3, "targetUserType": 1, "startDate": "<YYYY-MM-DD HH:mm>", "endDate": "<YYYY-MM-DD HH:mm>", "flowEndDate": "<YYYY-MM-DD HH:mm>", "triggerRule": [ { "periodStart": "<startDate>", "periodEnd": "<endDate>", "periodTimeSymbol": "TS02", "eventTriggerType": 0, "events": [] } ], "entryControlLimits": { "enableMultEntry": false, "disableConcurrentEntry": false }, "targetClusterQp": "<JSON.stringify(qp) or null>" }
+{ "triggerType": 3, "targetUserType": 1, "startDate": "<YYYY-MM-DD HH:mm>", "endDate": "<YYYY-MM-DD HH:mm>", "flowEndDate": "<YYYY-MM-DD HH:mm>", "triggerDefinition": { "rules": [ { "periodStart": "<startDate>", "periodEnd": "<endDate>", "periodTimeSymbol": "TS02", "eventTriggerType": 0, "events": [] } ] }, "entryControlLimits": { "enableMultEntry": false, "disableConcurrentEntry": false }, "targetDefinitionRequest": { "type": "condition", "conditions": { ... } } }
 ```
 
-`entry.trigger_event` → `triggerRule[0].events`; generate `targetClusterQp` only when `entry.segment` exists. `triggerType` supports `3`, `4`, and `5`; `targetUserType=2` existing cluster is not supported for `event_trigger`; use `1` custom or `3` all users. For non-branch trigger rules, use `periodStart` / `periodEnd` / `periodTimeSymbol`. `realtime`, `clusterRefresh`, `clusterRefreshTime`, `clusterPredictTime`, and `triggerRule[].zoneoffset` can be omitted and are defaulted by the backend.
+`entry.trigger_event` → `triggerDefinition.rules[0].events`; add `targetDefinitionRequest` only when `entry.segment` exists. `triggerType` supports `3`, `4`, and `5`; `targetUserType=2` existing cluster is not supported for `event_trigger`; use `1` custom or `3` all users. For non-branch trigger rules, use `periodStart` / `periodEnd` / `periodTimeSymbol`. `realtime`, `clusterRefresh`, `clusterRefreshTime`, `clusterPredictTime`, and rule `zoneoffset` can be omitted and are defaulted by the backend.
 
 #### `event_split_flow`
 
 ```json
-{ "splitFlowType": 1, "branchList": [ { "branchId": "<branchId>", "branchName": "<label>", "branchType": 1, "targetClusterType": 3, "triggerRule": [ { "delayTimeSymbol": "<minute|hour|day>", "delayTime": "<number>", "eventTriggerType": "<0|-1|1|2>", "events": [] } ] } ] }
+{ "splitFlowType": 1, "branchList": [ { "branchId": "<branchId>", "branchName": "<label>", "branchType": 1, "targetClusterType": 3, "triggerDefinition": { "rules": [ { "delayTimeSymbol": "<minute|hour|day>", "delayTime": "<number>", "eventTriggerType": "<0|-1|1|2>", "events": [] } ] } } ] }
 ```
 
-`time_limit` → `delayTimeSymbol` + `delayTime`; `0` = happened, `-1` = not happened. For `branchType=1`, fill `targetClusterType`; use `3` for all users. If `targetClusterType` is not `3`, fill `clusterKey`. `occasionKeys` is optional, but each item must contain at least four colon-separated parts. Fallback branch keeps only `{ "branchId": "<branchId>", "branchType": 2 }` and must omit `triggerRule`.
+`time_limit` → `delayTimeSymbol` + `delayTime`; `0` = happened, `-1` = not happened. For `branchType=1`, fill `targetClusterType`; use `3` for all users. If `targetClusterType` is not `3`, fill `clusterKey`. `occasionKeys` is optional, but each item must contain at least four colon-separated parts. Fallback branch keeps only `{ "branchId": "<branchId>", "branchType": 2 }` and must omit `triggerDefinition`.
 
 #### `feature_split_flow`
 
 ```json
-{ "splitFlowType": 1, "branchList": [ { "branchId": "<branchId>", "branchName": "<label>", "branchType": 1, "realtime": 0, "clusterRefresh": 12, "clusterPredictCount": null, "clusterPredictTime": "<YYYY-MM-DD HH:mm:ss>", "targetClusterQp": "<JSON.stringify(qp)>" } ] }
+{ "splitFlowType": 1, "branchList": [ { "branchId": "<branchId>", "branchName": "<label>", "branchType": 1, "realtime": 0, "clusterRefresh": 12, "clusterPredictCount": null, "clusterPredictTime": "<YYYY-MM-DD HH:mm:ss>", "targetDefinitionRequest": { "type": "condition", "conditions": { ... } } } ] }
 ```
 
 Fallback branch keeps only `branchId` + `branchType: 2`.
@@ -297,7 +297,7 @@ Fallback branch keeps only `branchId` + `branchType: 2`.
 #### `event_judge`
 
 ```json
-{ "transferType": 1, "meetBranchId": "<meetBranchId>", "notMeetBranchId": "<notMeetBranchId>", "triggerRule": [ { "periodStart": "<YYYY-MM-DD HH:mm>", "periodEnd": "<YYYY-MM-DD HH:mm>", "periodTimeSymbol": "TS02", "eventTriggerType": 0, "events": [] } ] }
+{ "transferType": 1, "meetBranchId": "<meetBranchId>", "notMeetBranchId": "<notMeetBranchId>", "triggerDefinition": { "rules": [ { "periodStart": "<YYYY-MM-DD HH:mm>", "periodEnd": "<YYYY-MM-DD HH:mm>", "periodTimeSymbol": "TS02", "eventTriggerType": 0, "events": [] } ] } }
 ```
 
 `event_judge` is a non-branch flow task. Use `periodStart`, `periodEnd`, and `periodTimeSymbol` in the A segment; use `delayTime` / `delayTimeSymbol` only for a B segment when the schema/example requires it. `eventTriggerType` supports `0`, `1`, and `2`.
@@ -305,7 +305,7 @@ Fallback branch keeps only `branchId` + `branchType: 2`.
 #### `feature_judge`
 
 ```json
-{ "transferType": 1, "meetBranchId": "<meetBranchId>", "notMeetBranchId": "<notMeetBranchId>", "clusterPredictCount": null, "clusterPredictTime": "", "targetClusterQp": "<JSON.stringify(qp)>" }
+{ "transferType": 1, "meetBranchId": "<meetBranchId>", "notMeetBranchId": "<notMeetBranchId>", "clusterPredictCount": null, "clusterPredictTime": "", "targetDefinitionRequest": { "type": "condition", "conditions": { ... } } }
 ```
 
 #### `message_push` / `webhook_push`
@@ -373,63 +373,128 @@ Minimum usable `config`: `{}`.
 
 ---
 
-## 9. QP Validation Rules (high-frequency pitfalls)
+## 9. Semantic trigger-event definitions
 
-When a node config carries a QP (`targetClusterQp`, `triggerRule[].events[]`, etc.), the v2 backend validates it strictly:
+Use `triggerDefinition` instead of `triggerRule`. Flow uses the same Analysis semantic event fields
+as Task, but it does **not** use the Task trigger envelope contract. Select the Flow envelope from
+the matrix below and let Hermes compile and validate the persisted `triggerRule`.
 
-1. **`relation` must be integer `0` or `1`** — not the string `"0"`/`"1"`. Applies to `totalCFilter.relation`, `eventCondition.relation`, `filts[].relation`. Error: `invalid_qp_relation: QP relation must be number 0 or 1`.
-2. **`userCondition` leaves must include `columnType` and `columnDesc`** — `columnName`/`selectType`/`tableType`/`calcuSymbol`/`ftv` alone is not enough. Error: `invalid_qp_leaf: QP property leaf must contain columnType/columnDesc`. (Even legacy stored QPs that omit these now fail.)
-3. **`taPropQuota` must include `quotaDesc`, `quota`, `analysisParams`** — giving only `analysis`/`analysisDesc` fails with `required_by_minimal_valid`. Minimal passing shape: `{ "analysis": ..., "analysisDesc": ..., "quota": "", "quotaDesc": "", "analysisParams": "" }`. Applies to both `triggerRule.events[].taPropQuota` and the entry node's `eventCondition.taPropQuota`.
+| Flow context | Allowed A-rule `eventTriggerType` |
+| --- | --- |
+| `event_trigger` | `0`, `1`, `2` |
+| `event_judge` | `0`, `1`, `2` |
+| non-fallback `event_split_flow` branch | `-1`, `0`, `1`, `2` |
 
-`targetClusterQp` is usually a `JSON.stringify`'d string, e.g. `{ "targetClusterQp": "{\"totalCFilter\":{\"relation\":1,\"filts\":[]}}" }`.
+`eventTriggerType=3` is the Task client-channel EVERY mode and is not valid for Flow. A second B
+rule, when present, is always an accumulated (`0`) aggregate rule. It must not contain
+`blackList`, `relationProps`, rule-level window fields, or sequence-step fields.
 
-### 9.1 Operator codes (`uceCalcuSymbol` / `calcuSymbol`)
+### 9.1 Accumulated or not-happened: `0` / `-1`
 
-Condition leaves use string operator codes, not literal operators:
-
-| Code | Meaning | Value type |
-|---|---|---|
-| `C00` | equals | all |
-| `C01` | not equals | all |
-| `C02` / `C020` | less than / less than or equal | number |
-| `C03` / `C030` | greater than / greater than or equal | number |
-| `C04` / `C05` | has value / no value | all |
-| `C06` / `C060` | range / date range | number / date |
-| `C07` / `C08` | contains / does not contain | string |
-| `C09` / `C10` | true / false | bool |
-| `C11` / `C12` | regex match / not match | string |
-
-### 9.2 Event-count condition (`A200`) — `invalid_preset_count_expression`
-
-For an event condition that counts occurrences with an **empty `taPropQuota`** (analysis `A200`, the default "count" case), the backend treats it as a *preset count* and is strict:
-
-- `uceCalcuSymbol` **must be `C030`** (greater-than-or-equal), and
-- `num` **must be `"1"`** (string).
-
-Any other operator/number with an empty quota fails with `invalid_preset_count_expression: A200 empty quota means preset count and must use C030 with num=1`.
-
-A working event-condition leaf (used inside `triggerRule[].events[]` for `event_judge` / `event_trigger` / `event_split_flow`):
+Use aggregate semantic events. Flow aggregate triggers support `count` and `sum`, with `eq`, `lt`,
+`lte`, `gt`, or `gte`; `sum` requires `property`. `-1` means “did not happen” and is valid only
+for a non-fallback `event_split_flow` branch; it cannot have a B rule.
 
 ```json
 {
-  "conditionType": "event",
-  "eventCondition": {
-    "eventName": "ta@active_user",
-    "eventDesc": "User active",
-    "eventType": "event",
-    "uceCalcuSymbol": "C030",
-    "num": "1",
-    "taPropQuota": { "analysis": "A200", "analysisDesc": "Count", "quota": "", "quotaDesc": "", "analysisParams": "" },
-    "recentDay": "0-30",
-    "startTime": "",
-    "endTime": "",
-    "filts": [],
-    "relation": 1
+  "triggerDefinition": {
+    "rules": [
+      {
+        "eventTriggerType": 0,
+        "events": [
+          {
+            "type": "event",
+            "event": "login",
+            "aggregation": "count",
+            "operator": "gte",
+            "value": 1
+          }
+        ]
+      }
+    ]
   }
 }
 ```
 
-Wrap the leaves with `{ "totalCFilter": { "filts": [ ... ], "relation": 1 } }`, then `JSON.stringify` for `targetClusterQp`.
+Do not include `blackList`, `relationProps`, `windowGap`, `windowGapTimeUnit`,
+`eventTriggerCaliberType`, `hasDone`, or `hasDistanceStart` in this envelope.
+
+### 9.2 Continuous completion: `1`
+
+Use exactly one count event with `operator=eq`. `blackList` accepts semantic events that Hermes
+compiles as non-aggregate selectors. `relationProps` and the rule-level window are optional; when
+using a window, provide both fields.
+
+```json
+{
+  "eventTriggerType": 1,
+  "windowGap": 7,
+  "windowGapTimeUnit": "day",
+  "relationProps": [],
+  "events": [
+    {
+      "type": "event",
+      "event": "login",
+      "aggregation": "count",
+      "operator": "eq",
+      "value": 3
+    }
+  ],
+  "blackList": [
+    {
+      "type": "event",
+      "event": "logout",
+      "aggregation": "count",
+      "operator": "eq",
+      "value": 1
+    }
+  ]
+}
+```
+
+### 9.3 Ordered completion: `2`
+
+Each sequence item wraps its semantic event in `eventDefinition`. The last step must have
+`hasDone=true`, and at least one step must be completed. Optional intermediate steps may use
+`hasDone=false`. Step windows require both `windowGap` and `windowGapTimeUnit`.
+
+```json
+{
+  "eventTriggerType": 2,
+  "relationProps": [],
+  "events": [
+    {
+      "eventDefinition": {
+        "type": "event",
+        "event": "login",
+        "aggregation": "count",
+        "operator": "eq",
+        "value": 1
+      },
+      "hasDone": false,
+      "hasDistanceStart": false
+    },
+    {
+      "eventDefinition": {
+        "type": "event",
+        "event": "purchase",
+        "aggregation": "count",
+        "operator": "eq",
+        "value": 1
+      },
+      "hasDone": true,
+      "hasDistanceStart": false,
+      "windowGap": 2,
+      "windowGapTimeUnit": "day"
+    }
+  ]
+}
+```
+
+Do not put persisted aggregate fields (`taPropQuota`, `uceCalcuSymbol`, `num`) directly on an
+ordered step, and do not copy Task ORDER/EVERY examples into Flow. Hermes supplies metadata and
+numeric Flow relations. Flow get returns `triggerDefinition` plus conversion status and hides
+`triggerRule`.
 
 ---
 
@@ -462,7 +527,7 @@ The CLI injects `projectId` into both the top level and `req`; you do not write 
 
 - **`data.result.errors` empty + `data.result.next_slot` present** → server needs one more node config (trigger / channel / targetCluster). Answer with request fields `operation=build` + `draftId` + `expectedVersion` + `slotAnswer`. If response `next_slot.target_node_id` is present, request `slotAnswer.nodeConfig` may contain only `config`; otherwise include `nodeId` or `id`. **`slotAnswer.nodeConfig.config` merges into the existing node config** — send only the fields you are adding or changing, not the full config.
 - For existing-cluster entry nodes (`targetUserType=2`), use `targetClusterName` or `clusterId` alias.
-- For custom audiences, call `ae-cli engage-setting query cluster-qp-skill --project-id <projectId>` before filling `targetClusterQp`.
+- For custom audiences, build an Analysis-compatible `targetDefinitionRequest`.
 - For `event_trigger`, `endDate` must be **strictly earlier than** `flowEndDate`.
 - **`data.result.errors` non-empty** → hard validation failure. Fix `nodes`/`edges` and `build` again (a new `data.result.draft_id` is issued; the stale draft is cleaned by TTL).
 
@@ -525,15 +590,13 @@ Output the complete `req` JSON for debugging plus a clear failure reason.
 | `Unsupported save_flow operation: null` | Legacy `nodeList`/`edgeList` payload, or `operation` missing | Put `operation` = `build`/`preview`/`commit` in `req`, use `nodes`/`edges` |
 | `Flag --req.sourceFlowUuid is no longer supported` | Removed clone mode from an older protocol | Call `engage-flow flow get`, convert `data.flow.node_list`/`data.flow.edge_list` into compact request `nodes`/`edges`, then create with `operation=build` |
 | operation rejected (`SAVE`/`DRAFT`/`SUBMIT`/`mode`/`action`…) | Wrong field or wrong enum | `operation` is at `req.operation`; enum is only `build`/`preview`/`commit` |
-| `invalid_qp_relation: QP relation must be number 0 or 1` | `relation` sent as string | Use integer `0`/`1` |
-| `invalid_qp_leaf: QP property leaf must contain columnType/columnDesc` | userCondition leaf missing fields | Add `columnType` + `columnDesc` |
-| `required_by_minimal_valid` | `taPropQuota` missing fields | Add `quotaDesc` + `quota` + `analysisParams` |
-| `invalid_preset_count_expression` | Event count condition (`A200`) with empty quota uses wrong operator/num | Use `uceCalcuSymbol = C030` + `num = "1"` (see §9.2) |
+| semantic definition rejected | Unsupported condition type, operator, aggregation, or time range | Rebuild the Analysis-compatible semantic definition; see `ae-analysis` user-cluster models |
+| `invalid_preset_count_expression` | Event count condition uses an unsupported semantic operator/value | Use `operator = "gte"` + `value = 1` (see §9.2) |
 | `... branch must use its own dedicated exit ...` | Multiple paths share one `exit_flow` | Give every terminal branch its own `exit_flow` node (see §10.4) |
 | `disabled_channel: channelId must reference an enabled channel` | Response `channel_status = 0` | `engage-setting channel update-status --status 1` first |
 | commit token/version mismatch | Used build's `confirm_token`/`draft_version` | Use the values returned by **preview** |
 | `flowDesc` rejected | Over 200 chars | Trim to ≤ 200 |
-| `config` rejected as object where string expected | Wrong shape for `targetClusterQp` / TEXT rich-text | `JSON.stringify` those inner values |
+| `config` rejected as object where string expected | Wrong shape for TEXT rich-text or another legacy string field | `JSON.stringify` only the documented inner string values |
 
 ---
 
@@ -544,7 +607,7 @@ Output the complete `req` JSON for debugging plus a clear failure reason.
 3. **Time units must be lowercase** — `day`, `hour`, `minute`, `week`, `month` (not `DAY`/`HOUR`).
 4. **Do not invent `channelId`** — get it from `ae-cli engage-setting channel list`.
 5. **Define branch IDs before referencing them** — `edge.sourceBranchId` must already exist in the upstream node `config`; for two-edge push action nodes, use `meetBranchId` and `notMeetBranchId`.
-6. **`targetClusterQp` is usually a string** — `JSON.stringify` the QP object.
+6. **Custom audiences are semantic objects** — use `targetDefinitionRequest`; do not stringify or construct execution QP.
 7. **TEXT rich-text `config` must also be a string** — not an object.
 8. **`commit` uses preview's token/version** — not build's.
 9. **Do not merge branches again when `splitFlowType = 2`**.
@@ -553,4 +616,4 @@ Output the complete `req` JSON for debugging plus a clear failure reason.
 
 ## 14. One-Sentence Summary
 
-Drive `engage-flow flow save` as a state machine — `build` (`nodes`/`edges`, not `nodeList`/`edgeList` or `sourceFlowUuid`) → resolve any `need_input` slots → `preview` (map response `draft_version` + `confirm_token` to request `draftVersion` + `confirmToken`) → `commit` → verify with `engage-flow flow get`; keep QP `relation` integer, fill `columnType`/`columnDesc` on userCondition leaves and `quotaDesc`/`quota`/`analysisParams` on `taPropQuota`, and ensure touchpoint channels are enabled before referencing them.
+Drive `engage-flow flow save` as a state machine — `build` (`nodes`/`edges`, not `nodeList`/`edgeList` or `sourceFlowUuid`) → resolve any `need_input` slots → `preview` (map response `draft_version` + `confirm_token` to request `draftVersion` + `confirmToken`) → `commit` → verify with `engage-flow flow get`; submit only semantic audience and trigger definitions, and ensure touchpoint channels are enabled before referencing them.

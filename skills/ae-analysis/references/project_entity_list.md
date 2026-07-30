@@ -1,4 +1,4 @@
-# analysis project entity list
+# project entity list
 
 Use when the user needs to list analysis entities in a project.
 
@@ -7,8 +7,8 @@ Do not use it for unrelated project-management actions or for fields not present
 Command:
 
 ```bash
-ae-cli analysis project entity list --project-id <project_id> --query <query> --fields <fields> --limit <limit> --offset <offset> --event-name <event_name>
-ae-cli analysis project entity list --dry-run --project-id <project_id>
+ae-cli project entity list --project-id <project_id> --query <query> --fields <fields> --limit <limit> --offset <offset> --event-name <event_name>
+ae-cli project entity list --dry-run --project-id <project_id>
 ```
 
 Capability id: `project.entity.list`.
