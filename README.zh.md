@@ -2,7 +2,7 @@
 
 # ae-cli
 
-`ae-cli` 是 ThinkingAI AgenticEngine（AE）平台的命令行客户端，为 AI Agent 和人工操作提供稳定、结构化的接口，覆盖分析、实验、元数据、埋点、运营、DataOps、知识库、Agent 资源及系统管理。
+`ae-cli` 是 ThinkingAI AgenticEngine（AE）平台的命令行客户端，为 AI Agent 和人工操作提供稳定、结构化的接口，覆盖分析、元数据、埋点、运营、DataOps、知识库、Agent 资源及系统管理。
 
 CLI 的核心设计包括：
 
@@ -91,7 +91,6 @@ ae-cli capability list --domain analysis --jq '.data.capabilities[] | .id'
 | 命令或业务域 | 用途 |
 |---|---|
 | `analysis` | 报告、看板、即席分析、下钻、详情、告警和分析模型 |
-| `experiment` | Atlas 实验、报表、流量层、分桶、Feature、指标和操作日志 |
 | `analysis-meta` | 事件/属性元数据、指标、虚拟元数据、埋点治理和项目配置 |
 | `analysis-governance` | 资产搜索、血缘、影响分析和治理操作 |
 | `metadata` | 基于 Capability Gateway 的数据表和属性操作 |
@@ -225,7 +224,6 @@ npm 包内包含与公开仓库一致的 `skills/` 目录：
 |---|---|
 | `ae-capability` | Capability 发现和通用调用 |
 | `ae-analysis`、`ae-analysis-global` | 分析、受众、元数据、治理及多集群工作流 |
-| `ae-experiment` | Atlas 实验、Feature、指标、流量层和报表工作流 |
 | `ae-metadata` | 基于 Capability Gateway 的元数据数据表操作 |
 | `ae-engage` | 运营操作和工作流指南 |
 | `ae-dataops` | 数仓、任务流、IDE、数据集成和运维 |
@@ -277,7 +275,6 @@ npm run build
 npm run qa-changed
 npm run self-check
 npm run check:release
-npm run verify:experiment-tools
 npm run verify:update-check
 npm run verify:version-sync
 ```
