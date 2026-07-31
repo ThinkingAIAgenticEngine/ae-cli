@@ -1,3 +1,17 @@
+### 6.1.12
+**Date:** 2026-07-31
+
+**Changes:**
+
+#### Engage
+* Add closed semantic-definition validation across flow, task, strategy, preset-event, activity, and common-metric writes, including strict field, operator, aggregation, and embedded DTO checks
+* Clarify per-event and behavior-sequence `time_range` requirements and filter-property contracts, including technical-name or structured field references, `array_row` object-group filters, and rejection of unsupported or unknown fields
+* Add `engage-activity.activity-data.detail` guidance for delivery-trend queries, covering activity/topic/task selection, time grains, cancellation request IDs, and indicator semantics
+
+#### 6.1-only: Atlas Experiment
+* Add curated `experiment report summary`, `experiment report sample-size`, and `experiment report metric-trend` commands, and enumerate the supported `capability search --domain` values
+* Harden experiment save and metric workflows with native camelCase DTO guidance, authoritative schema checks, verified metric IDs, `METRIC_NOT_FOUND` / `METRIC_IN_USE` handling, and clearer project-ID resolution
+
 ### 6.1.11
 **Date:** 2026-07-30
 

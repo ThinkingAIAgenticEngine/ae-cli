@@ -1,12 +1,13 @@
-# capability run experiment.report.sample-size
+# experiment report sample-size
 
 Query experiment sample-size report.
 
 ```bash
-ae-cli capability run experiment.report.sample-size --input '{"project_id":1,"exp_id":"exp_123","start_time":"2026-07-01","end_time":"2026-07-07","by_hour":false}'
+ae-cli experiment report sample-size --project-id 1 --exp-id exp_123 --start-time 2026-07-01 --end-time 2026-07-07
+ae-cli experiment report sample-size --project-id 1 --exp-id exp_123 --start-time 2026-07-01 --end-time 2026-07-07 --by-hour true
 ```
 
-Required input: `project_id`, `exp_id`, `start_time`, `end_time`.
-Optional input: `request_id`, `force_refresh`, `by_hour`.
+Required flags: `--project-id`, `--exp-id`, `--start-time`, `--end-time`.
+Optional: `--request-id`, `--force-refresh`, `--by-hour`.
 
-Response shape: `data.report`, with recursively snake_case keys. Preserve `request_id` for cancellation.
+Response shape: `data.report`, with recursively snake_case keys. Preserve `request_id` for cancellation via `capability run experiment.query.cancel`.

@@ -1,5 +1,6 @@
 import { createEngageSceneCapabilityCommand } from '../../shared.js';
 import { readRequiredJsonObject } from '../../utils.js';
+import { validateSemanticAudienceDefinition } from '../../semantic-qp-validation.js';
 
 /** Predicts custom-audience size from a semantic audience definition. */
 export const strategyPredict = createEngageSceneCapabilityCommand({
@@ -36,7 +37,12 @@ export const strategyPredict = createEngageSceneCapabilityCommand({
     },
   ],
   risk: 'read',
-  validate: (ctx) => { readRequiredJsonObject(ctx, 'definition-request'); },
+  validate: (ctx) => {
+    validateSemanticAudienceDefinition(
+      readRequiredJsonObject(ctx, 'definition-request'),
+      '--definition-request',
+    );
+  },
   buildInput: (ctx) => ({
     project_id: ctx.num('project-id'),
     definition_request: readRequiredJsonObject(ctx, 'definition-request'),

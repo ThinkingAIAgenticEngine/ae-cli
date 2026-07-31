@@ -23,7 +23,18 @@ Use this sequence when creating or updating a task draft:
 Build event primitives from `ae-analysis` user-cluster / audience models. Hermes wraps those
 primitives in the task-specific envelope selected by `channelType`, `triggerType`, and
 `eventTriggerType`, then validates the final persisted QP before save. Never construct persisted
-execution QP.
+execution QP. Follow the documented closed semantic shapes: unknown fields are rejected, and a
+property `field` may be a technical-name string or a `{name,type}` reference.
+Every custom-audience `event` and `behavior_sequence` requires its own `time_range`. For
+`recent` and `previous`, use a positive integer `value` and only `unit=day`; `custom` requires
+both `start_time` and `end_time`.
+
+Custom audiences support `behavior_sequence` nodes, including sequence/step windows, step
+filters, `completed`, and `relative_to_first`. A task `get` may return top-level `compound`
+nodes when the stored member-group, event-group, and outer relations differ. Preserve those
+compounds when reusing `definition_request`; flattening them changes audience semantics.
+For the second sequence step, omit `relative_to_first` or set it to `false`; use `true` only
+from the third step onward when its window must be measured from step 1.
 
 For existing-cluster audiences (`targetClusterType=2`), you may copy server-authored definitions via:
 
@@ -265,6 +276,19 @@ The guide treats the A rule as a discriminated envelope:
 
 Do not copy the accumulated example and only change `eventTriggerType`. Hermes rejects a final QP
 whose event structure does not match its envelope.
+
+#### `fieldRules.blocks.controlConfig.completionIndicatorDef.filterPropertySelectTypes`
+
+Treat this as the source of truth for completion target and experiment main-goal event-filter
+property types:
+
+- `allowed` lists the supported metadata `select_type` values.
+- `excluded` lists values that must not be used.
+- `datetime` is excluded because the task completion-indicator editor cannot display it.
+
+Apply this rule only to
+`completionIndicatorDef.completionIndicators[].eventDefinition.filters`. Trigger-event filters have
+their own scenario rules and are not subject to this completion-filter restriction.
 
 ### 4.9 `handoff`
 

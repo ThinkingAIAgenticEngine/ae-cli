@@ -9,7 +9,7 @@ All platform operations must use `ae-cli`. Do not call raw APIs, use browser aut
 Use curated commands when their contract is known. Use the Capability Gateway for experiment capabilities that do not yet have a curated command:
 
 ```bash
-ae-cli capability search "<terms>" [--project-id <id>]
+ae-cli capability search "<terms>" --domain <domain> [--project-id <id>]
 ae-cli capability inspect <capability-id> --project-id <id>
 ae-cli capability validate <capability-id> --input '<json-object>'
 ae-cli capability dry-run <capability-id> --input '<json-object>'
@@ -30,10 +30,16 @@ After every `ae-cli` invocation, inspect stderr and `_notice.host_compat`. If a 
 
 ## Project gate
 
-Resolve an unverified project through:
+When the user supplies a project ID, resolve it directly:
 
 ```bash
-ae-cli analysis project info list --query "<project name>" --fields '["project_id","project_name"]' --limit 20 --offset 0
+ae-cli project info get --project-id <id>
+```
+
+When the user supplies only a project name, search and disambiguate:
+
+```bash
+ae-cli project info list --query "<project name>" --fields '["project_id","project_name"]' --limit 20 --offset 0
 ```
 
 Reuse a project only when its ID and host were verified in the same continuous conversation. If multiple projects match, stop and ask the user to choose.

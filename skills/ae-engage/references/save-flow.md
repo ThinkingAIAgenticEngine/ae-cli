@@ -177,6 +177,14 @@ ae-cli analysis user-cluster get --project-id <projectId> --cluster-names '["<co
 ```
 
 Prefer the created cluster reference for an existing-cluster audience. For a custom audience, pass the semantic definition as `targetDefinitionRequest`; do not copy or construct stored execution QP.
+Use only the documented semantic fields. Unknown fields are rejected, and property `field` values
+may be technical-name strings or `{name,type}` references.
+
+Custom flow audiences support `behavior_sequence`. When `flow get` returns relation-preserving
+top-level `compound` nodes, retain them unchanged in subsequent saves; they preserve distinct
+member-group, event-group, and outer relations.
+For the second sequence step, omit `relative_to_first` or set it to `false`; use `true` only
+from the third step onward when its window must be measured from step 1.
 
 ### 5.2 Project Channels
 
@@ -239,6 +247,12 @@ Inside action nodes: `channel_name` → real `channelId`; `content` → `content
 3. Every path must eventually end at `exit_flow`.
 4. `config` may be a JSON object or a JSON string. `targetDefinitionRequest` itself is a JSON object.
 5. Hermes compiles `targetDefinitionRequest` and Flow-specific `triggerDefinition` fields (including branch definitions) on `nodes[]`, `nodeConfigs[]`, and `slotAnswer.nodeConfig.config` before legacy node validation. `node-config validate` uses the same compile path. Other compatible input normalization remains unchanged.
+6. Never send `targetClusterQp`; it is a server-authored execution field. Every `event` and
+   `behavior_sequence` inside `targetDefinitionRequest` must include its own `time_range`.
+   Entry-node `startDate` / `endDate` values do not provide an audience-event time range.
+7. Audience fields must resolve through the current Flow editor metadata scope. If Hermes
+   rejects a field, choose another property returned for the same project, timezone, and user
+   entity instead of constructing persisted metadata manually.
 
 ### 7.2 Common Node Types
 

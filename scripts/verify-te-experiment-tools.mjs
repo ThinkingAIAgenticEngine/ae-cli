@@ -23,6 +23,9 @@ const EXPECTED_L2 = [
   ['traffic-layer', 'get', 'experiment.traffic-layer.get'],
   ['traffic-layer', 'list', 'experiment.traffic-layer.list'],
   ['traffic-layer', 'batch-delete', 'experiment.traffic-layer.batch-delete'],
+  ['report', 'summary', 'experiment.report.summary'],
+  ['report', 'sample-size', 'experiment.report.sample-size'],
+  ['report', 'metric-trend', 'experiment.report.metric-trend'],
   ['metric', 'save', 'experiment.metric.save'],
   ['metric', 'get', 'experiment.metric.get'],
   ['metric', 'list', 'experiment.metric.list'],
@@ -38,9 +41,6 @@ const EXPECTED_L2 = [
 ];
 const EXPECTED_L3 = [
   'experiment.experiment.save-submit',
-  'experiment.report.summary',
-  'experiment.report.sample-size',
-  'experiment.report.metric-trend',
   'experiment.query.cancel',
 ];
 

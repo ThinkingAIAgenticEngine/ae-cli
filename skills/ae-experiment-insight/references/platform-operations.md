@@ -9,7 +9,7 @@ All platform discovery and reads must use `ae-cli`. Do not call raw APIs, use br
 Use the Capability Gateway when no curated experiment command exists:
 
 ```bash
-ae-cli capability search "<terms>" [--project-id <id>]
+ae-cli capability search "<terms>" --domain <domain> [--project-id <id>]
 ae-cli capability inspect <capability-id> --project-id <id>
 ae-cli capability run <capability-id> --input '<json-object>'
 ```
@@ -22,10 +22,16 @@ After every `ae-cli` invocation, inspect stderr and `_notice.host_compat`. If pr
 
 ## Resolution gates
 
-Resolve the project first:
+When the user supplies a project ID, resolve it directly:
 
 ```bash
-ae-cli analysis project info list --query "<project name>" --fields '["project_id","project_name"]' --limit 20 --offset 0
+ae-cli project info get --project-id <id>
+```
+
+When the user supplies only a project name, search and disambiguate:
+
+```bash
+ae-cli project info list --query "<project name>" --fields '["project_id","project_name"]' --limit 20 --offset 0
 ```
 
 Then discover experiment list/get capabilities and resolve the exact experiment by verified ID or exact-match name. If multiple candidates remain, ask the user.

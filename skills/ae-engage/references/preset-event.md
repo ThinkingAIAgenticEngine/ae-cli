@@ -12,6 +12,8 @@ ae-cli engage-setting preset-event update --project-id <project_id> \
 ```
 
 At least one definition is required for update. Event filters use semantic `field`, `operator`, `values`, and `and`/`or`; Hermes resolves project metadata and compiles the stored event object.
+`field` accepts a technical-name string or `{"name":"...","type":"event_property"}`. Unknown
+semantic fields, unsupported relations/operators, and invalid time ranges are rejected.
 
 List hides the stored event QP and returns each semantic field plus its conversion status:
 

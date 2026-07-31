@@ -1,6 +1,6 @@
 ---
 name: ae-experiment
-version: 1.0.0
+version: 1.0.1
 description: "Use when managing Atlas AB experiments, traffic layers, Features, metrics, buckets, and experiment reports through ae-cli"
 ---
 
@@ -14,6 +14,7 @@ AE CLI (`ae-cli`) exposes Atlas AB Experiment capabilities through the `experime
 - Use `--project-id` / `-p` for project-scoped commands.
 - Use `--req` JSON for complex save, status, and delete DTOs.
 - Do not invent experiment IDs, traffic layer IDs, bucket IDs, Feature keys, metric IDs, or payload field names.
+- Bind only metric IDs returned by `experiment metric list`; create and verify a missing metric before saving the experiment.
 - Read commands can run directly after IDs are verified.
 - Write commands require explicit user intent and normally keep the confirmation prompt. Use `--dry-run` before write calls when composing JSON.
 
@@ -22,6 +23,12 @@ Naming and response boundary:
 - CLI command segments and flags use kebab-case.
 - Outer Capability input and all response keys use snake_case.
 - Nested business DTOs passed through `--req` keep their native camelCase fields.
+- **CRITICAL:** `save build-guide` / `save validate` responses recursively snake_case
+  `example_args.req`. Never copy those keys into `--req`. Use camelCase
+  (`expName`, `metricId`, …). Authoritative names:
+  `ae-cli capability inspect experiment.experiment.save` (or the matching final save id)
+  → `input_schema.properties.req`. `save validate` `valid: true` is **not** a final-save
+  schema pass — snake_case `req` can still fail on `experiment … save`.
 - Audience QP is semantic at the CLI boundary: write `targeting.definitionRequest`; read
   `targeting.definition_request`. Never generate or submit `targetConfig`.
 - Metric QP is semantic at the CLI boundary: write `metricDefinition`; read
@@ -52,7 +59,9 @@ Naming and response boundary:
 4. Check readiness with `experiment experiment ready-check`.
 5. For a non-mutex traffic layer, run `experiment experiment conflict-check` before submit (needs `feature_key_list` from context or `experiment get`).
 6. Move status with `experiment experiment manage`.
-7. Query reports with summary, sample-size, and metric-trend commands.
+7. Query reports with `experiment report summary`, `experiment report sample-size`, and `experiment report metric-trend`.
+
+If an experiment save returns `error_code: METRIC_NOT_FOUND`, list metrics for the same project. Create and verify the metric before retrying; never retry with another invented ID. Metric deletion returns `error_code: METRIC_IN_USE` while an active experiment binding exists.
 
 ## Parameter Conventions
 
@@ -62,7 +71,7 @@ Naming and response boundary:
 ae-cli experiment experiment get --project-id 1 --exp-id exp_123
 ae-cli experiment experiment save --project-id 1 --req '{"expName":"Demo"}' --dry-run
 ae-cli experiment metric save --project-id 1 --req '{"metricId":"login_users","metricName":"Login users","createType":"event","goalDirection":"up","metricDesc":"Users who logged in","metricDefinition":{"type":"event","event":"login","aggregation":"user_count"}}' --dry-run
-ae-cli capability run experiment.report.metric-trend --input '{"project_id":1,"exp_id":"exp_123","metric_id":"metric_1","start_time":"2026-07-01","end_time":"2026-07-07"}'
+ae-cli experiment report metric-trend --project-id 1 --exp-id exp_123 --metric-id metric_1 --start-time 2026-07-01 --end-time 2026-07-07
 ```
 
 Optional global parameters work as in other domains: `--host`, `--mcp-url`, `--format`, `--jq`, `--dry-run`, and `--yes`.
@@ -77,6 +86,10 @@ Open the matching file in `references/` before using a command, especially for w
 
 When a save command returns `next_tool: experiment.save.build-guide`, call the guide first, then `experiment save validate`, then retry the final save capability.
 
+Read [`save_build_guide.md`](references/save_build_guide.md) and
+[`save_validate.md`](references/save_validate.md) before using these helpers. Rebuild
+`--req` in camelCase from `inspect` / skill references; do not paste `example_args.req`.
+
 ### Experiment
 
 `experiment experiment save`, `capability run experiment.experiment.save-submit`, `experiment experiment list`, `experiment experiment list-archived`, `experiment experiment get`, `experiment experiment ready-check`, `experiment experiment conflict-check`, `experiment experiment manage`, `experiment experiment update-group`, `experiment experiment batch-delete`, `experiment operation-log query`
@@ -87,7 +100,7 @@ When a save command returns `next_tool: experiment.save.build-guide`, call the g
 
 ### Reports
 
-`capability run experiment.report.summary`, `capability run experiment.report.sample-size`, `capability run experiment.report.metric-trend`, `capability run experiment.query.cancel`
+`experiment report summary`, `experiment report sample-size`, `experiment report metric-trend`, `capability run experiment.query.cancel`
 
 ### Metric and Feature
 

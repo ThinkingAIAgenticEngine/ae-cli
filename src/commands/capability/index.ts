@@ -67,7 +67,12 @@ export function registerCapability(program: Command): void {
     .command('search')
     .description('Search capability IDs and descriptions in a domain')
     .argument('<query>', 'Case-insensitive search terms')
-    .requiredOption('--domain <domain>', 'Capability namespace, such as analysis or metadata')
+    .requiredOption(
+      '--domain <domain>',
+      'Capability namespace. One of: analysis, project, system, tracking, metadata, '
+      + 'experiment, engage-flow, engage-task, engage-setting, engage-scene, '
+      + 'engage-activity, engage-workbench, community',
+    )
     .option('--project-id <project-id>', 'Filter by project membership, permissions, and enabled features')
     .action(async (query: string, opts: { domain: string; projectId?: string }) => {
       await executeAndPrint(program, async (host) => {
@@ -80,9 +85,25 @@ export function registerCapability(program: Command): void {
     })
     .addHelpText(
       'after',
+      '\nDomains (--domain):\n' +
+      '  analysis, project, system, tracking, metadata,\n' +
+      '  experiment, engage-flow, engage-task, engage-setting,\n' +
+      '  engage-scene, engage-activity, engage-workbench, community\n' +
       '\nExamples:\n' +
       '  ae-cli capability search "dashboard list" --domain analysis\n' +
-      '  ae-cli capability search "dashboard list" --domain analysis --project-id 1',
+      '  ae-cli capability search "dashboard list" --domain analysis --project-id 1\n' +
+      '  ae-cli capability search "info list" --domain project\n' +
+      '  ae-cli capability search "usage" --domain system\n' +
+      '  ae-cli capability search "plan" --domain tracking\n' +
+      '  ae-cli capability search "data_table" --domain metadata\n' +
+      '  ae-cli capability search "report" --domain experiment\n' +
+      '  ae-cli capability search "flow" --domain engage-flow\n' +
+      '  ae-cli capability search "task" --domain engage-task\n' +
+      '  ae-cli capability search "channel" --domain engage-setting\n' +
+      '  ae-cli capability search "strategy" --domain engage-scene\n' +
+      '  ae-cli capability search "topic" --domain engage-activity\n' +
+      '  ae-cli capability search "workbench" --domain engage-workbench\n' +
+      '  ae-cli capability search "post" --domain community',
     );
 
   capability

@@ -1,11 +1,12 @@
-# capability run experiment.report.summary
+# experiment report summary
 
 Query experiment report summary.
 
 ```bash
-ae-cli capability run experiment.report.summary --input '{"project_id":1,"exp_id":"exp_123","force_refresh":false}'
+ae-cli experiment report summary --project-id 1 --exp-id exp_123
+ae-cli experiment report summary --project-id 1 --exp-id exp_123 --force-refresh true
 ```
 
-Required input: `project_id`, `exp_id`. Optional input: `force_refresh`.
+Required flags: `--project-id`, `--exp-id`. Optional: `--force-refresh`.
 
 Response shape: `data.report`, with recursively snake_case keys.

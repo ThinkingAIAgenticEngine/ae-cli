@@ -8,9 +8,13 @@ ae-cli experiment metric save --project-id <id> --req '<json>'
 
 Flags:
 - `--project-id`, `-p`: Project ID.
-- `--req`: Metric save request JSON object.
+- `--req`: Metric save request JSON object (**camelCase** keys such as `metricId`, `metricDefinition`).
 
 Create mode requires metric identifiers and metric configuration. Modify mode uses `update=true`.
+
+Do not paste `save build-guide` / `save validate` `example_args.req` keys (`metric_id`, …) into
+`--req`. Those responses snake_case nested placeholders; final save requires camelCase.
+See [`save_build_guide.md`](save_build_guide.md) / [`save_validate.md`](save_validate.md).
 
 ## Semantic Metric Contract
 

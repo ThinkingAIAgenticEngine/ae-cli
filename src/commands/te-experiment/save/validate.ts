@@ -3,14 +3,23 @@ import { createExperimentCapabilityCommand, readRequiredObject } from '../capabi
 /** Dry-run validation for experiment save requests. */
 export const saveValidate = createExperimentCapabilityCommand({
   resource: 'save', command: 'validate', capabilityId: 'experiment.save.validate',
-  description: 'Dry-run validation for feature, traffic layer, experiment, or metric save requests.',
+  description:
+    'Dry-run validation for feature, traffic layer, experiment, or metric save requests. '
+    + 'WARNING: valid=true is not a final-save schema pass; snake_case req keys '
+    + '(e.g. exp_name) can still fail on experiment … save. Always pass camelCase --req. '
+    + 'Do not copy example_args.req key casing from this response.',
   flags: [
     { name: 'project-id', type: 'number', required: true, alias: 'p', desc: 'Numeric project ID.' },
     {
       name: 'operation-mode', type: 'string', required: true,
       desc: 'Save operation mode: save_feature, save_traffic_layer, save_experiment, or save_metric.',
     },
-    { name: 'req', type: 'json', required: true, desc: 'Candidate camelCase save request object.' },
+    {
+      name: 'req',
+      type: 'json',
+      required: true,
+      desc: 'Candidate camelCase save request object (expName/metricId/…). Never use snake_case DTO keys.',
+    },
   ],
   risk: 'read',
   validate: (ctx) => {

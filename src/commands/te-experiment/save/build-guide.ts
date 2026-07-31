@@ -3,7 +3,11 @@ import { createExperimentCapabilityCommand } from '../capability-shared.js';
 /** Builds a read-only experiment save guide. */
 export const saveBuildGuide = createExperimentCapabilityCommand({
   resource: 'save', command: 'build-guide', capabilityId: 'experiment.save.build-guide',
-  description: 'Build a read-only save guide for feature, traffic layer, experiment, or metric saves.',
+  description:
+    'Build a read-only save guide for feature, traffic layer, experiment, or metric saves. '
+    + 'WARNING: data.guide.example_args.req keys are recursively snake_cased for display; '
+    + 'do not copy them into --req. Final save DTOs require camelCase '
+    + '(e.g. expName). Prefer capability inspect <final-save-id> input_schema.properties.req.',
   flags: [
     { name: 'project-id', type: 'number', required: true, alias: 'p', desc: 'Numeric project ID.' },
     {

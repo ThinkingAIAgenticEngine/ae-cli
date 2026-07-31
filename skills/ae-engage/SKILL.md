@@ -1,7 +1,7 @@
 ---
 name: ae-engage
 version: 1.0.0
-description: "AE Engage capability gateway: config center, flows, push/config channels, strategies, templates, and task management. Trigger words: config center, scene config, push channel, config channel, operation strategy, operation task, template, config item, Engage, Hermes, engage-scene, engage-setting, engage-flow, engage-task."
+description: "AE Engage capability gateway: config center, flows, push/config channels, strategies, templates, task management, and operation activities. Trigger words: config center, scene config, push channel, config channel, operation strategy, operation task, operation activity, template, config item, Engage, Hermes, engage-scene, engage-setting, engage-flow, engage-task, engage-activity."
 ---
 
 # ae-engage
@@ -56,6 +56,7 @@ When the user mentions a product term below (including common Chinese UI labels)
 | **Config channel** | Config-center Webhook/client config channels (not the same as push channels) | `engage-scene` | `references/scene-config-channel.md` | `channel-mgmt.md` (create/enable-disable/copy/delete workflows). User params in `config.customsParamList` require `columnName` with `user:` prefix (e.g. `user:#account_id`); preflight names with ae-analysis `analysis-meta property list/get`. |
 | **Operation strategy** | Ops/delivery strategies under a config item | `engage-scene` | `references/scene-strategy.md` | Custom audience: [`scene-strategy-audience.md`](references/scene-strategy-audience.md) — semantic `definitionRequest` (Analysis condition shape); do not pass `targetClusterQp`/`qp`; preflight props (stop + list if missing); template: `scene-template.md` |
 | **Operation task** | Hermes push/engagement tasks (list, save, lifecycle, reports) | `engage-task` | `references/task-list.md` | `task-detail.md` (get), `save-task.md`, `build-task-save-guide.md`, `task-stats.md`, `task-delete.md`, `push-record-query.md`, `task-data-overview.md`, `task-data-detail.md`, `task-metric-detail.md`, `task-experiment-report.md` |
+| **Operation activity** | Campaign activity management and delivery trends by activity, topic, or standalone task | `engage-activity` | `references/activity-activity.md` | `activity-data-detail.md`, `activity-topic.md`, `activity-task.md`, `activity-approval.md` |
 | **Template** | Strategy templates under a config item | `engage-scene` | `references/scene-template.md` | `scene-config-param.md` (template fields reference `paramId`); enable via `template update` then `template update-status` before strategy create |
 
 **Easy to confuse:**
@@ -75,6 +76,7 @@ Naming boundary:
 
 - CLI flags use kebab-case; outer Capability input and all Capability response keys use snake_case.
 - Nested business DTOs passed through `--req` or `--payload` keep their documented native camelCase fields. Do not mechanically convert those nested DTO keys to snake_case.
+- Semantic audience, event, trigger, completion, and metric definitions are closed contracts. The CLI rejects malformed or unknown semantic fields locally; `--validate` applies the same precise Hermes capability schema without writing.
 - Successful migrated commands return their business payload under `data`; read the matching reference's Response shape before selecting fields.
 
 ## JSON Parameter Format
@@ -375,6 +377,9 @@ ae-cli engage-setting channel list --project-id <projectId>
 5. `engage-flow flow save` is **operation-based** (protocol v2). The `--req` object must carry an `operation` of `build`, `preview`, or `commit`. Do **not** use the old `nodeList` / `edgeList` field names — use `nodes` / `edges` with `operation=build`. A legacy `nodeList`/`edgeList` payload (or a missing `operation`) is rejected with `Unsupported save_flow operation: null`.
 6. Run the lifecycle: `build` (returns `data.result.status = ready_to_preview` or `need_input`) → resolve any `data.result.next_slot` → `preview` (re-issues response fields `data.result.draft_version` + `data.result.confirm_token`) → `commit` (maps those values to request fields `draftVersion` + `confirmToken`) → reads the final ID from `data.result.result.flow_uuid`.
 7. `nodes[].config` / `edges[].config` may be a JSON object or a JSON string. Custom audience nodes and branches use semantic `targetDefinitionRequest`; Hermes compiles it to the node's stored execution format.
+   Never send `targetClusterQp`. Each audience `event` and `behavior_sequence` must include
+   its own `time_range`; Flow entry dates do not replace that range. Use only properties that
+   resolve through the Flow editor's current project, timezone, and user-entity metadata scope.
 8. You must self-check before previewing/committing:
    - There is exactly one entry node
    - There is at least one `exit_flow`
@@ -456,6 +461,7 @@ More detailed single-command guidance is available in the business-oriented `ref
 - `references/config-item-analysis-report.md` (`engage-scene.report.config-item-analysis`, L3)
 - `references/config-item-strategy-comparison.md` (`engage-scene.report.strategy-comparison`, L3)
 - `references/activity-activity.md` (`engage-activity.activity.{create,update,delete,list,get,pause,end,stats,info-list}`)
+- `references/activity-data-detail.md` (`engage-activity.activity-data.detail`, L3)
 - `references/activity-approval.md` (`engage-activity.approval.{submit,approve,reject,cancel}`)
 - `references/activity-topic.md` (`engage-activity.topic.{create,update,remove-task,delete,get,copy}`)
 - `references/activity-activity-type.md` (`engage-activity.activity-type.{list,batch-add,update,batch-delete}`)
@@ -533,7 +539,9 @@ For task draft creation or update, use this workflow:
    `channelType`, `triggerType`, and `eventTriggerType` to `build-save-guide`, then use its
    type-specific semantic event shape. Accumulated events are aggregate conditions, continuous
    events use count/eq with a value of at least 2, ordered events use sequence-step envelopes,
-   and every-completion events use count/eq/1. Never construct persisted QP fields.
+   and every-completion events use count/eq/1. Completion target and experiment main-goal event
+   filters must not use properties whose metadata `select_type` is `datetime`. Never construct
+   persisted QP fields.
 4. `ae-cli engage-task task save --project-id <projectId> --req '{...}'`
 5. `ae-cli engage-task task submit-approval --project-id <projectId> --task-id <taskId>`
 
@@ -551,3 +559,5 @@ Audience creation is not a fixed preflight step. For custom task audiences, use 
 `definition_request`. `clientConfig.clientQp` is server-authored and must be omitted from
 Capability requests; partial updates preserve existing server state. Do not assemble raw QP
 manually.
+For a `behavior_sequence`, omit second-step `relative_to_first` or set it to `false`; reserve
+`true` for step 3 or later when the window is measured from step 1.

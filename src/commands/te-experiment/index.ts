@@ -24,6 +24,9 @@ import { metricSave } from './metric/save.js';
 import { operationLogQuery } from './operation-log/query.js';
 import { saveBuildGuide } from './save/build-guide.js';
 import { saveValidate } from './save/validate.js';
+import { reportMetricTrend } from './report/metric-trend.js';
+import { reportSampleSize } from './report/sample-size.js';
+import { reportSummary } from './report/summary.js';
 import { trafficLayerBatchDelete } from './traffic-layer/batch-delete.js';
 import { trafficLayerGet } from './traffic-layer/get.js';
 import { trafficLayerList } from './traffic-layer/list.js';
@@ -48,6 +51,9 @@ const commands: Command[] = [
   trafficLayerGet,
   trafficLayerList,
   trafficLayerBatchDelete,
+  reportSummary,
+  reportSampleSize,
+  reportMetricTrend,
   metricSave,
   metricGet,
   metricList,
@@ -85,6 +91,9 @@ export {
   metricList,
   metricSave,
   operationLogQuery,
+  reportMetricTrend,
+  reportSampleSize,
+  reportSummary,
   saveBuildGuide,
   saveValidate,
   trafficLayerBatchDelete,

@@ -16,6 +16,12 @@ Flags:
 - Capability input uses outer `project_id`; nested `req` fields remain native camelCase. Hermes overwrites `req.projectId` with the outer project ID.
 - Never call this with `req=null`, `req={}`, or a modify payload containing only `expId`; those are terminal validation failures.
 - On `valid=false`, do not retry the same payload. Fix the reported field(s) or ask the user for missing input.
+- **Do not** paste `save build-guide` / `save validate` `example_args.req` keys into `--req`.
+  Those responses snake_case nested placeholders (`exp_name`). Final save requires camelCase
+  (`expName`, `expSupposition`, `trafficLayerId`, `featureKeyList`, `metrics[].metricId`, …).
+  If unsure, run `ae-cli capability inspect experiment.experiment.save` and copy
+  `input_schema.properties.req` field names. `save validate` may return `valid: true` for
+  snake_case `req` and still fail here with `unknown field …`.
 
 Response shape is `data.result`. Object keys inside the result are recursively snake_case. A create commonly returns the new experiment ID as `data.result`; a patch commonly returns `true`.
 
@@ -36,6 +42,7 @@ Nested payload fields must match the server DTO types, not just the visible CLI 
 - `groups[].allocation` rule: each value must be an **integer**, and the **sum of all group allocations must equal `100` exactly** (for example `34 + 33 + 33 = 100`, not `33 + 33 + 33 = 99` and not decimal thirds).
 - `groups[].expGroupValue` is a JSON-encoded string of a string array. Pass a string whose content is a JSON array, not a native JSON array.
 - `metrics` is an array of metric binding objects. Each object contains `metricId` and `metricRole`.
+- Every `metricId` must come from `experiment metric list` for the same project. If save returns `error_code: METRIC_NOT_FOUND`, create the metric with `experiment metric save`, verify it, and then retry the experiment save.
 
 ## Modes
 

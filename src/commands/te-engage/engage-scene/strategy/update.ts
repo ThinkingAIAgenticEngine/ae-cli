@@ -1,4 +1,6 @@
 import { createEngageSceneCapabilityCommand } from '../../shared.js';
+import { readRequiredJsonObject } from '../../utils.js';
+import { validateEmbeddedSemanticDefinitions } from '../../semantic-qp-validation.js';
 
 /** Updates a config strategy. */
 export const strategyUpdate = createEngageSceneCapabilityCommand({
@@ -16,8 +18,12 @@ export const strategyUpdate = createEngageSceneCapabilityCommand({
     },
   ],
   risk: 'write',
+  validate: (ctx) => {
+    const payload = readRequiredJsonObject(ctx, 'payload');
+    validateEmbeddedSemanticDefinitions(payload, '--payload');
+  },
   buildInput: (ctx) => ({
     project_id: ctx.num('project-id'),
-    payload: ctx.json('payload'),
+    payload: readRequiredJsonObject(ctx, 'payload'),
   }),
 });

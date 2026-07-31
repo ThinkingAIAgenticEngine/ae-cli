@@ -1,6 +1,7 @@
 import type { RuntimeContext } from '../../../../framework/types.js';
 import { createEngageFlowCapabilityCommand } from '../../shared.js';
 import { readRequiredJsonObject } from '../../utils.js';
+import { validateEmbeddedSemanticDefinitions } from '../../semantic-qp-validation.js';
 
 const allowedOperations = ['build', 'preview', 'commit'];
 
@@ -17,6 +18,7 @@ function readRequest(ctx: RuntimeContext): Record<string, unknown> {
   if ('sourceFlowUuid' in req) {
     throw new Error('Flag --req.sourceFlowUuid is unsupported; get the source flow and build nodes/edges instead');
   }
+  validateEmbeddedSemanticDefinitions(req, '--req');
   return req;
 }
 

@@ -44,6 +44,10 @@ const saveTaskRef = readFileSync(
   path.join(ROOT, 'skills/ae-engage/references/save-task.md'),
   'utf8',
 );
+const buildTaskSaveGuideRef = readFileSync(
+  path.join(ROOT, 'skills/ae-engage/references/build-task-save-guide.md'),
+  'utf8',
+);
 const addChannelRef = readFileSync(
   path.join(ROOT, 'skills/ae-engage/references/add-channel.md'),
   'utf8',
@@ -139,12 +143,26 @@ assert.match(saveTaskRef, /data\.result\.operation_mode/);
 assert.match(saveTaskRef, /Hermes assigns the outer `--project-id` to `req\.projectId`/);
 assert.match(saveTaskRef, /`aggregation`: `count`, `sum`, or `distinct_count`/);
 assert.match(saveTaskRef, /`operator`: `gt`, `gte`, or `eq`/);
+assert.match(saveTaskRef, /"type": "object_group"/);
+assert.match(saveTaskRef, /`any_satisfy`, `none_satisfy`, and `all_satisfy`/);
+assert.match(saveTaskRef, /experiment main-goal event filters must not use[\s\S]*`datetime`/);
+assert.match(buildTaskSaveGuideRef, /filterPropertySelectTypes/);
+assert.match(buildTaskSaveGuideRef, /`datetime` is excluded/);
 assert.match(saveTaskRef, /Trigger envelope matrix/);
 assert.match(saveTaskRef, /`eventTriggerType=2`[\s\S]*`eventDefinition`/);
 assert.match(saveTaskRef, /Always omit it from Capability requests/);
 assert.match(skill, /pass[\s\S]*`eventTriggerType` to `build-save-guide`/);
 assert.match(skill, /ordered events use sequence-step envelopes/);
+assert.match(skill, /experiment main-goal event[\s\S]*`select_type` is `datetime`/);
 assert.match(skill, /`clientConfig\.clientQp` is server-authored and must be omitted/);
+assert.match(skill, /Never send `targetClusterQp`/);
+assert.match(skill, /Each audience `event` and `behavior_sequence` must include[\s\S]*`time_range`/);
+assert.match(saveFlowRef, /Never send `targetClusterQp`/);
+assert.match(saveFlowRef, /Every `event` and[\s\S]*`behavior_sequence`[\s\S]*`time_range`/);
+assert.match(
+  buildTaskSaveGuideRef,
+  /Every custom-audience `event` and `behavior_sequence` requires its own `time_range`/,
+);
 assert.match(addChannelRef, /created channel is under `data\.item`/);
 assert.match(addChannelRef, /Hermes Capability handler/);
 assert.doesNotMatch(addChannelRef, /projectId is injected into `req` by the CLI/);
@@ -234,6 +252,8 @@ assert.match(commonMetricRef, /engage-setting\.common-metric\.\{list,get,create,
 assert.match(commonMetricRef, /analysis-meta event list/);
 assert.match(commonMetricRef, /`minute` \/ `hour` \/ `day`/);
 assert.match(commonMetricRef, /opsEditSetting/);
+assert.match(commonMetricRef, /`array_row`/);
+assert.match(commonMetricRef, /`object_group`/);
 
 // ---- 42 engage-scene L2 + 3 L3 report capabilities: skill reference docs linked in SKILL.md ----
 const expectedSceneReferenceLinks = [
@@ -297,9 +317,10 @@ assert.match(sceneTemplateRef, /engage-scene\.template\.\{list,get,copy,create,u
 const sceneConfigParamRef = readFileSync(path.join(ROOT, 'skills/ae-engage/references/scene-config-param.md'), 'utf8');
 assert.match(sceneConfigParamRef, /engage-scene\.config-param\.\{list,batch-add,update,batch-delete\}/);
 
-// ---- 26 engage-activity (运营活动) capabilities: skill reference docs linked in SKILL.md ----
+// ---- 28 engage-activity (运营活动) capabilities: skill reference docs linked in SKILL.md ----
 const expectedActivityReferenceLinks = [
   'references/activity-activity.md',
+  'references/activity-data-detail.md',
   'references/activity-approval.md',
   'references/activity-topic.md',
   'references/activity-activity-type.md',
@@ -311,6 +332,7 @@ for (const link of expectedActivityReferenceLinks) {
 }
 const expectedActivityCapabilityIds = [
   'engage-activity\\.activity\\.\\{create,update,delete,list,get,pause,end,stats,info-list\\}',
+  'engage-activity\\.activity-data\\.detail',
   'engage-activity\\.approval\\.\\{submit,approve,reject,cancel\\}',
   'engage-activity\\.topic\\.\\{create,update,remove-task,delete,get,copy\\}',
   'engage-activity\\.activity-type\\.\\{list,batch-add,update,batch-delete\\}',
@@ -348,6 +370,10 @@ const activityActivityRef = readFileSync(path.join(ROOT, 'skills/ae-engage/refer
 assert.match(activityActivityRef, /engage-activity\.activity\.\{create,update,delete,list,get,pause,end,stats,info-list\}/);
 assert.match(activityActivityRef, /intentionally omits stored QP-bearing detail fields/);
 assert.match(activityActivityRef, /task\s+or topic detail command/);
+const activityDataDetailRef = readFileSync(path.join(ROOT, 'skills/ae-engage/references/activity-data-detail.md'), 'utf8');
+assert.match(activityDataDetailRef, /engage-activity\.activity-data\.detail/);
+assert.match(activityDataDetailRef, /source=topic_and_task/);
+assert.match(activityDataDetailRef, /does not expose `view`/);
 
 assert.match(flowDetailRef, /completion_indicators/);
 assert.match(flowDetailRef, /current_flow_completion_indicators/);

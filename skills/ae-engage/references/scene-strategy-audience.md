@@ -25,19 +25,19 @@ Use the same condition definition accepted by Analysis user-cluster commands:
     "relation": "and",
     "items": [
       {
-        "type": "user_property",
-        "property": "vip_level",
+        "type": "user",
+        "field": "vip_level",
         "operator": "eq",
-        "value": "gold"
+        "values": ["gold"]
       },
       {
-        "type": "event_behavior",
+        "type": "event",
         "event": "purchase",
         "aggregation": "count",
         "operator": "gte",
         "value": 2,
-        "time": {
-          "type": "relative",
+        "time_range": {
+          "mode": "recent",
           "unit": "day",
           "value": 7
         }
@@ -48,8 +48,13 @@ Use the same condition definition accepted by Analysis user-cluster commands:
 ```
 
 Before writing, resolve real event and property names through Analysis metadata commands. Never invent names or copy internal calculation codes from historical output.
+Use only the documented semantic fields. Unknown fields are rejected; property `field` accepts a
+technical-name string or a `{name,type}` reference.
 
-Nested `and`/`or`, user properties, event behavior, include/exclude existing clusters, relative time, and custom time use the Analysis semantic shape documented by `ae-analysis`.
+Nested `and`/`or`, user properties, event behavior, `behavior_sequence`, include/exclude existing
+clusters, relative time, and custom time use the Analysis semantic shape documented by
+`ae-analysis`. A `get` response may contain top-level `compound` nodes when stored member,
+event, and outer relations differ. Preserve those compounds when updating the strategy.
 
 ## Create or update
 

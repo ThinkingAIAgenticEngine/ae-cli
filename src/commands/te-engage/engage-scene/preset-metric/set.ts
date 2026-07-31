@@ -1,4 +1,5 @@
 import { createEngageSceneCapabilityCommand } from '../../shared.js';
+import { validateSemanticEventDefinition } from '../../semantic-qp-validation.js';
 
 /** Sets semantic preset metric events of a config item. */
 export const presetMetricSet = createEngageSceneCapabilityCommand({
@@ -14,6 +15,14 @@ export const presetMetricSet = createEngageSceneCapabilityCommand({
     { name: 'attend-event-definition', type: 'json', required: false, desc: 'Semantic attend event definition.' },
   ],
   risk: 'write',
+  validate: (ctx) => {
+    for (const name of [
+      'impression-event-definition', 'click-event-definition', 'attend-event-definition',
+    ]) {
+      const definition = ctx.json(name);
+      if (definition !== undefined) validateSemanticEventDefinition(definition, `--${name}`);
+    }
+  },
   buildInput: (ctx) => ({
     project_id: ctx.num('project-id'),
     config_id: ctx.str('config-id'),

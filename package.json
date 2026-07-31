@@ -1,6 +1,6 @@
 {
   "name": "@thinkingai/ae-cli",
-  "version": "6.1.11",
+  "version": "6.1.12",
   "description": "CLI tool for ThinkingAI (AE) analytics platform",
   "type": "module",
   "bin": {
@@ -34,7 +34,7 @@
     "verify:metadata-capability": "npx tsx test/metadata-capability-commands.test.mjs",
     "verify:community-capability": "node test/community-capability-routing.test.mjs",
     "verify:community-report": "npx tsx tests/community-report-standard-v5.test.ts && npx tsx tests/community-report-client.test.ts && npx tsx tests/community-report-framework.test.ts && npx tsx tests/community-data-report-command.test.ts && node test/community-data-report-skill.test.mjs",
-    "verify:engage-capability": "tsx test/engage/engage-capability-command.test.mjs && node test/engage/engage-skill-capability.test.mjs",
+    "verify:engage-capability": "tsx test/engage/engage-capability-command.test.mjs && tsx test/engage/semantic-qp-validation.test.mjs && node test/engage/engage-skill-capability.test.mjs",
     "verify:retired-analysis-commands": "node --test test/retired-analysis-commands.test.mjs",
     "verify:analysis-meta-tools": "node scripts/verify-te-meta-tools.mjs",
     "verify:analysis-common-tools": "node scripts/verify-te-common-tools.mjs",

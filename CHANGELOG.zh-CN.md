@@ -1,3 +1,17 @@
+### 6.1.12
+**日期：** 2026-07-31
+
+**更新内容：**
+
+#### 运营
+* 为流程、任务、策略、预置事件、活动和公共指标写入新增封闭式语义定义校验，包括严格校验字段、操作符、聚合方式及嵌套 DTO
+* 明确每个事件与行为序列的 `time_range` 要求和筛选属性契约，包括技术名或结构化字段引用、`array_row` 对象组筛选，以及拒绝不支持或未知字段
+* 新增 `engage-activity.activity-data.detail` 投放趋势查询指引，覆盖活动/主题/任务选择、时间粒度、取消请求 ID 和指标语义
+
+#### 6.1 独有：Atlas 实验
+* 新增 `experiment report summary`、`experiment report sample-size` 和 `experiment report metric-trend` 三条精选报表命令，并列明 `capability search --domain` 支持的域
+* 加固实验保存与指标工作流，明确嵌套 DTO 必须使用原生 camelCase、按权威 schema 校验、使用已验证的指标 ID、处理 `METRIC_NOT_FOUND` / `METRIC_IN_USE`，并完善项目 ID 解析指引
+
 ### 6.1.11
 **日期：** 2026-07-30
 

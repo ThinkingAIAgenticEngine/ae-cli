@@ -120,6 +120,39 @@ Task aggregate and completion event definitions support:
 - `aggregation`: `count`, `sum`, or `distinct_count`
 - `operator`: `gt`, `gte`, or `eq`
 
+Completion target and experiment main-goal event filters must not use properties whose metadata
+`select_type` is `datetime`. The supported filter-property select types are `string`, `number`,
+`bool`, `bool-s`, `date`, `array`, `array_string`, `row`, and `array_row`. This restriction applies
+to `completionIndicatorDef.completionIndicators[].eventDefinition.filters`; it does not apply to
+trigger-event filters.
+
+For an event property whose metadata `select_type` is `array_row`, never submit it as a flat
+property filter. Use an object-group filter and place only that parent's child properties inside
+`conditions`:
+
+```json
+{
+  "type": "object_group",
+  "field": "equipment_list",
+  "operator": "any_satisfy",
+  "conditions": {
+    "relation": "and",
+    "items": [
+      {
+        "field": "equipment_list.item_level",
+        "operator": "gte",
+        "values": [10]
+      }
+    ]
+  }
+}
+```
+
+Object-group operators are `any_satisfy`, `none_satisfy`, and `all_satisfy`. Resolve the parent
+and child fields from current metadata. Hermes validates the metadata type, child-parent
+relationship, and supported operators before saving, so do not flatten `array_row` or invent child
+field names.
+
 Trigger events have an additional envelope contract selected by `eventTriggerType`. Do not apply
 one aggregate event shape to every trigger type. Use the matrix and examples in section 4.4.
 
@@ -381,6 +414,8 @@ Minimum required field:
 
 When the guide points to event-based completion or experiment-driven main-goal rules, build
 `completionIndicatorDef.completionIndicators[].eventDefinition` from the semantic event contract.
+Read `fieldRules.blocks.controlConfig.completionIndicatorDef.filterPropertySelectTypes` and exclude
+every property type listed under `excluded` before constructing its `filters`.
 
 Important constraints that still apply:
 

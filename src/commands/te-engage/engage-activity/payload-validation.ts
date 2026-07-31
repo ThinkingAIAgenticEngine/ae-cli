@@ -1,4 +1,5 @@
 import { CliValidationError } from '../../../core/errors.js';
+import { validateEmbeddedSemanticDefinitions } from '../semantic-qp-validation.js';
 
 const TOPIC_TASK_OVERRIDE_FIELDS = [
   'clusterKey',
@@ -30,6 +31,7 @@ const TOPIC_TASK_EXCLUSION_FIELDS = new Set([
 /** Validates the static UI-compatibility subset for a standalone activity task. */
 export function validateStandaloneActivityPayload(value: unknown): void {
   const payload = requireObject(value);
+  validateEmbeddedSemanticDefinitions(payload, 'payload');
   validateTriggerType(payload.triggerType, 'triggerType');
   validateScheduleFields(payload);
   validateExperiment(payload.expConfig, 'expConfig');
@@ -55,6 +57,7 @@ export function validateStandaloneActivityPayload(value: unknown): void {
 /** Validates the static UI-compatibility subset for an activity topic. */
 export function validateActivityTopicPayload(value: unknown): void {
   const payload = requireObject(value);
+  validateEmbeddedSemanticDefinitions(payload, 'payload');
   validateTriggerType(payload.triggerType, 'triggerType');
   validateScheduleFields(payload);
   validateExperiment(payload.expConfig, 'expConfig');

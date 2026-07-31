@@ -1,34 +1,17 @@
 import { printError } from '../../../../framework/output.js';
+import { validateSemanticMetricDefinition } from '../../semantic-qp-validation.js';
 
 const VALID_WINDOW_TIME_UNITS = new Set(['minute', 'hour', 'day']);
 
 /**
- * Validate --metric-definition is a non-empty semantic metric object.
- * 校验 --metric-definition 必须是非空语义化指标对象。
+ * Validates --metric-definition as a closed semantic metric object.
  */
 export function validateMetricDefinitionFlag(definition: unknown): void {
-  if (definition === null || typeof definition !== 'object' || Array.isArray(definition)) {
-    printError(
-      'validation',
-      '--metric-definition must be a JSON object.',
-      'Pass a semantic event or formula metric definition.',
-    );
-    process.exit(1);
-  }
-  const type = (definition as Record<string, unknown>).type;
-  if (type !== 'event' && type !== 'formula') {
-    printError(
-      'validation',
-      '--metric-definition.type must be event or formula.',
-      'Do not pass legacy type=0/1 metric_qp.',
-    );
-    process.exit(1);
-  }
+  validateSemanticMetricDefinition(definition, '--metric-definition');
 }
 
 /**
- * Validate --metric-window-time-unit is minute/hour/day (lowercase).
- * 校验窗口时间单位必须是 minute/hour/day（小写）。
+ * Validates --metric-window-time-unit as minute/hour/day (lowercase).
  */
 export function validateMetricWindowTimeUnitFlag(unit: string): void {
   if (VALID_WINDOW_TIME_UNITS.has(unit)) {
@@ -43,8 +26,7 @@ export function validateMetricWindowTimeUnitFlag(unit: string): void {
 }
 
 /**
- * Validate create --metric-type is PRESET (1).
- * 校验 create 的 --metric-type 必须为 1（PRESET）。
+ * Validates create --metric-type as PRESET (1).
  */
 export function validatePresetMetricTypeFlag(metricType: number): void {
   if (metricType === 1) {
