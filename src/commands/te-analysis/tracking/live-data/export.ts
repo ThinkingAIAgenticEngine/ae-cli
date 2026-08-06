@@ -14,6 +14,7 @@ export const trackingLiveDataExport = createTrackingCapabilityCommand({
   resource: 'live-data',
   command: 'export',
   capabilityId: 'tracking.live_data.export',
+  asyncArtifact: true,
   description: 'Export recent tracking live data.',
   flags: [projectIdFlag, dataTypeFlag, requestIdFlag, asyncTimeoutSecondsFlag],
   risk: 'read',

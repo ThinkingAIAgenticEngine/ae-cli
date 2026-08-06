@@ -18,6 +18,7 @@ export const reportListExport = createAnalysisCapabilityCommand({
   resource: 'report',
   command: 'list-export',
   capabilityId: 'analysis.report.list_export',
+  asyncArtifact: true,
   description: 'Export the accessible report catalog as a gzip artifact.',
   flags: [
     projectIdFlag,

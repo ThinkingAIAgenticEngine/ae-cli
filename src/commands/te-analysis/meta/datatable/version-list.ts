@@ -1,5 +1,8 @@
 import {
   createAnalysisMetaCapabilityCommand,
+  directoryLimitFlag,
+  directoryOffsetFlag,
+  optionalNumber,
   projectIdFlag,
   projectInput,
 } from '../../capability-shared.js';
@@ -12,7 +15,14 @@ export const metadataDataTableVersionList = createAnalysisMetaCapabilityCommand(
   flags: [
     projectIdFlag,
     { name: 'datatable-id', type: 'number', required: true, desc: 'Data table ID.' },
+    directoryLimitFlag,
+    directoryOffsetFlag,
   ],
   risk: 'read',
-  buildInput: (ctx) => ({ ...projectInput(ctx), datatable_id: ctx.num('datatable-id') }),
+  buildInput: (ctx) => ({
+    ...projectInput(ctx),
+    datatable_id: ctx.num('datatable-id'),
+    limit: optionalNumber(ctx, 'limit'),
+    offset: optionalNumber(ctx, 'offset'),
+  }),
 });

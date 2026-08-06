@@ -5,10 +5,10 @@
 Domain: **Skills / read**
 
 ## Use Cases
-- List all `.md` files in a Skill's `references` directory.
+- List all files in a Skill's `references` directory.
 - Endpoint: `GET /api/sandbox/agent/skills/[id]/references`.
-- Returns `{ items: [...] }` with file metadata (name, size, etc.).
-- Only `.md` files are listed (references directory is markdown-only).
+- Returns `{ items: [{ name, path }] }`.
+- Text and non-text files are both listed.
 
 ## Mandatory Rules (MUST)
 - `--id` is required. Obtain the real Skill record ID (CUID) via `+list-skills` — do not guess.
@@ -27,7 +27,7 @@ ae-cli agent +list-skill-references --dry-run --id <skill-cuid>
 ## Decision Rules
 - Use `+list-skills` to confirm the Skill ID before listing references.
 - Read operation: no confirmation prompt needed.
-- References are `.md` files that provide additional context for the Skill.
+- References may be text files such as Markdown/CSV or non-text files such as spreadsheets and PDFs.
 
 ## Next Steps on Failure
 - `404` / not found: re-run `+list-skills` to verify the Skill ID and scope.

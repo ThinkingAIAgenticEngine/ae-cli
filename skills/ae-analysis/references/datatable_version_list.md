@@ -7,18 +7,20 @@ Do not use it for one version's full definition or table row history; use `datat
 Command:
 
 ```bash
-ae-cli analysis-meta datatable version-list --project-id <project_id> --datatable-id <datatable_id>
+ae-cli analysis-meta datatable version-list --project-id <project_id> --datatable-id <datatable_id> --limit 50 --offset 0
 ae-cli analysis-meta datatable version-list --dry-run
 ```
 
 Capability id: `metadata.data_table_version.list`.
 
-Input sends `project_id`, `datatable_id`.
+Input sends `project_id`, `datatable_id`, `limit`, and `offset`.
 
-Output `data.versions[]` contains historical metadata versions for the data table.
+Output always uses the directory envelope: `data.items[]`, `total`, `limit`, `offset`, `has_more`, and `next_offset`.
 
 ## Parameters
 | Parameter | Required | Description |
 |---|---|---|
 | `--project-id` | Yes | Numeric project ID. |
 | `--datatable-id` | Yes | Data table ID. |
+| `--limit` / `-l` | No | Page size. Default: 50, maximum: 200. |
+| `--offset` / `-o` | No | Zero-based page offset. Default: 0. |

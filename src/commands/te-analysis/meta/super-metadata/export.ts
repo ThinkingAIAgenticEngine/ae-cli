@@ -11,6 +11,7 @@ export const metadataSuperMetadataExport = createAnalysisMetaCapabilityCommand({
   resource: 'event-property-bundle',
   command: 'export',
   capabilityId: 'metadata.event_property_bundle.export',
+  asyncArtifact: true,
   description: 'Export super event and super property configuration as an asynchronous XLSX artifact.',
   flags: [
     projectIdFlag,

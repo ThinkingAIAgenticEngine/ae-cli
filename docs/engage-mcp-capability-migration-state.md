@@ -70,7 +70,7 @@
 | `+config_channel_detail` | `engage-scene.config-channel.get` | L2 | done（基线已有） | existing CLI + Hermes capability |
 | `+update_config_channel_status` | `engage-scene.config-channel.update-status` | L2 | done（基线已有） | existing CLI + Hermes capability |
 | `+delete_config_channel` | `engage-scene.config-channel.delete` | L2 | done（基线已有） | existing CLI + Hermes capability |
-| `+cancel_query_by_request_id` | `engage-setting.query.cancel` | L3 | done | Hermes + L3 Skill |
+| `+cancel_query_by_request_id` | `engage-query.query.cancel` | L2 | done | Hermes + CLI + Skill |
 | `query_cluster_qp_skill` | `engage-setting.query.cluster-qp-skill` | L2 | removed | 已删除过期 semantic-contract Capability/CLI；语义条件改走 Analysis 模型 + Hermes compile |
 
 ## config 批次

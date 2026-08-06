@@ -21,6 +21,7 @@ const LIST_CAPABILITIES = {
 } as const;
 const EDIT_CAPABILITY = 'metadata.super_metadata.batch_edit';
 const MAX_BATCH_SIZE = 200;
+const DIRECTORY_PAGE_SIZE = 200;
 
 export const trackingPlanSyncDisplayNames: Command = {
   service: 'tracking',
@@ -80,41 +81,41 @@ export const trackingPlanSyncDisplayNames: Command = {
     const draft = await readDraft(draftPath);
     const [eventResult, eventPropertyResult, userPropertyResult] =
       await Promise.all([
-        executeCapability(
+        fetchAllDirectoryItems(
           ctx.host(),
-          GATEWAY_DOMAIN,
           LIST_CAPABILITIES.events,
           {
             project_id: projectId,
             fields: ['event_name', 'event_desc'],
           },
+          'events',
         ),
-        executeCapability(
+        fetchAllDirectoryItems(
           ctx.host(),
-          GATEWAY_DOMAIN,
           LIST_CAPABILITIES.eventProperties,
           {
             project_id: projectId,
             table_type: 'event',
             fields: ['prop_name', 'prop_desc'],
           },
+          'properties',
         ),
-        executeCapability(
+        fetchAllDirectoryItems(
           ctx.host(),
-          GATEWAY_DOMAIN,
           LIST_CAPABILITIES.userProperties,
           {
             project_id: projectId,
             table_type: 'user',
             fields: ['prop_name', 'prop_desc'],
           },
+          'properties',
         ),
       ]);
 
     const plan = buildDisplayNameSyncPlan(draft, {
-      events: eventResult?.events,
-      eventProperties: eventPropertyResult?.properties,
-      userProperties: userPropertyResult?.properties,
+      events: eventResult,
+      eventProperties: eventPropertyResult,
+      userProperties: userPropertyResult,
     });
 
     const updateResults: Record<string, unknown[]> = {};
@@ -154,6 +155,41 @@ export const trackingPlanSyncDisplayNames: Command = {
     };
   },
 };
+
+async function fetchAllDirectoryItems(
+  host: string,
+  capabilityId: string,
+  input: Record<string, unknown>,
+  arrayField: string,
+): Promise<unknown[]> {
+  const items: unknown[] = [];
+  let offset = 0;
+  const visitedOffsets = new Set<number>();
+  while (true) {
+    if (visitedOffsets.has(offset)) {
+      throw new Error(`${capabilityId} returned a repeated next_offset: ${offset}`);
+    }
+    visitedOffsets.add(offset);
+    const result = await executeCapability(host, GATEWAY_DOMAIN, capabilityId, {
+      ...input,
+      limit: DIRECTORY_PAGE_SIZE,
+      offset,
+    });
+    const page = result?.[arrayField];
+    if (!Array.isArray(page)) {
+      throw new Error(`${capabilityId} response is missing ${arrayField}`);
+    }
+    items.push(...page);
+    if (result?.has_more !== true) {
+      return items;
+    }
+    const nextOffset = result?.next_offset;
+    if (!Number.isInteger(nextOffset) || nextOffset <= offset) {
+      throw new Error(`${capabilityId} returned an invalid next_offset: ${String(nextOffset)}`);
+    }
+    offset = nextOffset;
+  }
+}
 
 async function readDraft(filePath: string): Promise<Draft> {
   let value: unknown;

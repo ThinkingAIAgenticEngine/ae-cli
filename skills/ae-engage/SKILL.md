@@ -1,7 +1,7 @@
 ---
 name: ae-engage
 version: 1.0.0
-description: "AE Engage capability gateway: config center, flows, push/config channels, strategies, templates, task management, and operation activities. Trigger words: config center, scene config, push channel, config channel, operation strategy, operation task, operation activity, template, config item, Engage, Hermes, engage-scene, engage-setting, engage-flow, engage-task, engage-activity."
+description: "AE Engage capability gateway: config center, flows, push/config channels, strategies, templates, task management, operation activities, and query lifecycle. Trigger words: config center, scene config, push channel, config channel, operation strategy, operation task, operation activity, query lifecycle, template, config item, Engage, Hermes, engage-scene, engage-setting, engage-flow, engage-task, engage-activity, engage-query."
 ---
 
 # ae-engage
@@ -33,7 +33,7 @@ Safety constraints:
 
 ## Overview
 
-The `ae-engage` package provides Hermes Engage capabilities across config items, flows, channel settings, and task data. Use capability-gateway commands through `ae-cli engage-flow|engage-task|engage-setting|engage-scene <resource> <action>`; low-frequency reports use the L3 references below.
+The `ae-engage` package provides Hermes Engage capabilities across config items, flows, channel settings, task data, and query lifecycle. Use capability-gateway commands through `ae-cli engage-flow|engage-task|engage-setting|engage-scene|engage-query <resource> <action>`; low-frequency reports use the L3 references below.
 
 Typical use cases include:
 
@@ -175,6 +175,10 @@ ae-cli engage-task task get --project-id 1 --task-id task_123
 # Submit a saved draft task for approval
 ae-cli engage-task task submit-approval --project-id 1 --task-id task_123
 
+# Query task reports through the Hermes inline task-data capabilities
+ae-cli engage-task effect query --project-id 1 --task-id task_123 --start-time 2026-04-01 --end-time 2026-04-07 --metric-id-list '["metric_1"]'
+ae-cli engage-task data-detail query --project-id 1 --task-id task_123 --detail-type time --start-time 2026-04-01 --end-time 2026-04-07
+
 ```
 
 For L3 task reports, read `references/task-data-overview.md`, `references/task-data-detail.md`,
@@ -219,7 +223,28 @@ ae-cli engage-task task submit-approval --project-id 1 --task-id task_id_123
 
 # Query the node schema
 ae-cli engage-flow node-config schema --project-id 1 --node-type message_push
+ae-cli engage-flow metric update --project-id 1 --flow-id flow_id_123 --metric-map '<metric_map_json>'
+
+# Query or export newly exposed flow report surfaces
+ae-cli engage-flow report metric-detail run --project-id 1 --flow-id flow_id_123 --node-uuid node_uuid_123 --start-time 2026-04-01 --end-time 2026-04-07 --limit 100 --timeout-seconds 120
+ae-cli engage-flow report metric-detail export --project-id 1 --flow-id flow_id_123 --node-uuid node_uuid_123 --start-time 2026-04-01 --end-time 2026-04-07 --artifact-format csv --timeout-seconds 21600
+ae-cli engage-flow metric-user run --project-id 1 --flow-id flow_id_123 --indicator-name entry --start-time 2026-04-01 --end-time 2026-04-07 --limit 100 --timeout-seconds 120
+ae-cli engage-flow metric-user export --project-id 1 --flow-id flow_id_123 --indicator-name entry --start-time 2026-04-01 --end-time 2026-04-07 --artifact-format csv --timeout-seconds 21600
+ae-cli engage-flow node-user run --project-id 1 --flow-id flow_id_123 --node-uuid node_uuid_123 --indicator-name entry --start-time 2026-04-01 --end-time 2026-04-07 --limit 100 --timeout-seconds 120
+ae-cli engage-flow node-user export --project-id 1 --flow-id flow_id_123 --node-uuid node_uuid_123 --indicator-name entry --start-time 2026-04-01 --end-time 2026-04-07 --artifact-format csv --timeout-seconds 21600
+ae-cli engage-flow node-metric-user run --project-id 1 --flow-id flow_id_123 --node-uuid node_uuid_123 --indicator-name metric_setting_id_123 --start-time 2026-04-01 --end-time 2026-04-07 --limit 100 --timeout-seconds 120
+ae-cli engage-flow node-metric-user export --project-id 1 --flow-id flow_id_123 --node-uuid node_uuid_123 --indicator-name metric_setting_id_123 --start-time 2026-04-01 --end-time 2026-04-07 --artifact-format csv --timeout-seconds 21600
 ```
+
+User-detail `run` commands are for bounded inline rows and accept `--request-id`, `--limit`, and `--timeout-seconds`; metric-detail `run` returns the report object. Export commands accept `--request-id`, `--artifact-format csv|jsonl` (default `jsonl`), and `--timeout-seconds`, then return `run_id` and `artifact_id`; poll with `ae-cli engage-query run inspect --run-id RUN_ID`, then download with `ae-cli engage-query artifact download --run-id RUN_ID --artifact-id ARTIFACT_ID --output ./artifact.jsonl.gz`. Cancel running async work with `ae-cli engage-query query cancel --run-id RUN_ID`.
+
+For flow report/user-detail commands, read the matching reference before composing non-trivial input:
+
+- Flow canvas custom metric configuration: `references/flow-metric-update.md`
+- Metric-detail report object or flattened report export: `references/flow-metric-detail-report.md`
+- Users behind a process-level metric segment: `references/flow-metric-user.md`
+- Users behind a node-level data segment: `references/flow-node-user.md`
+- Users behind a node-level metric segment: `references/flow-node-metric-user.md`
 
 ### 5. scene (scene management / config center)
 
@@ -442,6 +467,7 @@ More detailed single-command guidance is available in the business-oriented `ref
 - `references/add-approver.md` / `references/approver-list.md` (`engage-setting.approval-approver.{add,list}`)
 - `references/whitelist-list.md` / `references/whitelist.md` (`engage-setting.whitelist.{list,add,update,delete,verify}`)
 - `references/cancel-query-by-request-id.md` (`engage-setting.query.cancel`, L3)
+- `references/cancel-query-run.md` (`engage-query.query.cancel`)
 - `references/push-language.md` (`engage-setting.push-language.{get,set}`)
 - `references/client-param.md` (`engage-setting.client-param.{create,update,delete,list}`)
 - `references/config-table.md` (`engage-setting.config-table.{upload,save,list,query-data,update-data,delete}`)
@@ -480,6 +506,9 @@ More detailed single-command guidance is available in the business-oriented `ref
 - `references/group-list.md` (`engage-task.group.list`)
 - `references/task-delete.md` (`engage-task.task.delete`)
 - `references/task-submit-approval.md` (`engage-task.task.submit-approval`)
+- `references/task-data-detail.md` (`engage-task data-detail query`; capability `engage-task.task-data.detail`)
+- `references/task-metric-detail.md` (`engage-task effect query`; capability `engage-task.task-data.metric-detail`)
+- `references/flow-metric-update.md` (`engage-flow metric update`; capability `engage-flow.metric.update`)
 
 This split documentation structure is easier to extend later, because commands with more complex object inputs can stay centralized in the `references/` root directory.
 
@@ -491,7 +520,11 @@ This split documentation structure is easier to extend later, because commands w
 
 ### task
 
-`operation-log query` / `push-record query` / `segment-list *` / `ops *` / `metric *` / `race release` / `channel-ref stats` / `group *` / `task delete` / `task modify-group` / `task submit-approval` / `task get` / `task list` / `task stats` / `task build-save-guide` / `task save` / `task manage` (via `engage-task`), plus L3 capabilities `engage-task.task-data.{overview,detail,metric-detail,experiment-report}`
+`operation-log query` / `push-record query` / `segment-list *` / `ops *` / `metric *` / `race release` / `channel-ref stats` / `group *` / `task delete` / `task modify-group` / `task submit-approval` / `task get` / `task list` / `task stats` / `task build-save-guide` / `task save` / `task manage` / `effect query` / `data-detail query` (via `engage-task`), plus L3 capabilities `engage-task.task-data.{overview,detail,metric-detail,experiment-report}`
+
+### query
+
+`run inspect` / `artifact download` / `query cancel` (via `engage-query`), capability ID `engage-query.query.cancel`
 
 ### config
 
@@ -511,7 +544,7 @@ Legacy config MCP commands are migrated into the `scene` L2 group and the three 
 
 ### flow
 
-`operation-log query` / `version list` / `flow update-remark` / `flow save` / `node-config schema` / `flow get` / `flow list` / `flow manage` / `node-config validate` / `flow delete` / `flow modify-base-info` (via `engage-flow`), plus L3 capabilities `engage-flow.report.{node-overview,process,node-detail,ab-split-node}`
+`operation-log query` / `version list` / `flow update-remark` / `flow save` / `node-config schema` / `flow get` / `flow list` / `flow manage` / `node-config validate` / `flow delete` / `flow modify-base-info` / `metric update` / `report metric-detail run` / `report metric-detail export` / `metric-user run` / `metric-user export` / `node-user run` / `node-user export` / `node-metric-user run` / `node-metric-user export` (via `engage-flow`), plus L3 capabilities `engage-flow.report.{node-overview,process,node-detail,ab-split-node}`
 
 ## Date Format
 
@@ -532,8 +565,10 @@ For task draft creation or update, use this workflow:
 1. `ae-cli engage-setting channel list --project-id <projectId>`
 2. `ae-cli engage-task task build-save-guide --project-id <projectId> --req '{...}'`
 3. For a custom audience, pass the Analysis semantic contract as
-   `targetConfig.definitionRequest`. Use semantic `triggerConfig.triggerDefinition` and
-   `completionIndicatorDef.completionIndicators[].eventDefinition`. Build shapes from
+   `targetConfig.definitionRequest`. For an event-triggered task, use semantic
+   `triggerConfig.triggerDefinition` and
+   always include `periodTimeSymbol` (`TS01`, `TS02`, `TS03`, or `TS04`) on its primary A rule.
+   Use semantic `completionIndicatorDef.completionIndicators[].eventDefinition`. Build shapes from
    `ae-analysis` user-cluster / audience models. For existing-cluster audiences
    (`targetClusterType=2`), use `analysis user-cluster get`. For event-triggered tasks, pass
    `channelType`, `triggerType`, and `eventTriggerType` to `build-save-guide`, then use its
@@ -546,6 +581,11 @@ For task draft creation or update, use this workflow:
 5. `ae-cli engage-task task submit-approval --project-id <projectId> --task-id <taskId>`
 
 `engage-task task build-save-guide` is a read-only helper. It returns scenario-specific required fields, channel content schema, unsupported combinations, examples, and a handoff template for `save_task`.
+When `enableExp=true`, capability `engage-task.task.build-save-guide` enriches the handoff so
+`groupContentList` association fields
+(`expGroupName`/`expGroupType`/`percentageInExperiment`/`order`) stay aligned with
+`expConfig.expGroupList`; only replace `contentList[].content`. Capability `engage-task.task.save`
+rejects misaligned experiment content with `TASK_EXPERIMENT_GROUP_CONTENT_INVALID`.
 
 `engage-task task save` creates or updates a task configuration. It does not submit approval, does not start sending, and does not trigger task execution. If `req.taskId` is omitted it creates a new draft; if `req.taskId` is present it updates an existing **draft or paused** task. Update mode rejects running/ended tasks with `invalid_status`. Omitted fields inherit from the existing task before validation (partial rename/update is supported).
 

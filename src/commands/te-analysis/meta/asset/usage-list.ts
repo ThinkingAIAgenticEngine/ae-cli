@@ -1,7 +1,7 @@
 import {
   createAnalysisGovernanceCapabilityCommand,
   directoryLimitFlag,
-  offsetFlag,
+  directoryOffsetFlag,
   payloadFlag,
   projectIdFlag,
   queryFlag,
@@ -18,7 +18,7 @@ export const analysisMetaAssetUsageList = createAnalysisGovernanceCapabilityComm
   command: 'list',
   capabilityId: 'governance.asset.list',
   description: 'List assets for usage governance.',
-  flags: [projectIdFlag, queryFlag, searchsFlag, ruleFlag, operationTypeFlag, directoryLimitFlag, offsetFlag, payloadFlag],
+  flags: [projectIdFlag, queryFlag, searchsFlag, ruleFlag, operationTypeFlag, directoryLimitFlag, directoryOffsetFlag, payloadFlag],
   risk: 'read',
   buildInput: (ctx) => assetGovernanceInput(ctx, ["query","searchs","rule","operation_type","limit","offset"]),
 });

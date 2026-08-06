@@ -1,8 +1,7 @@
 import {
   analysisDataRunRoutingHelp,
-  applyAnalysisInlineLimit,
   createAnalysisCapabilityCommand,
-  detailPreviewLimitFlag,
+  previewRowsFlag,
   syncTimeoutSecondsFlag,
 } from '../capability-shared.js';
 import {
@@ -17,10 +16,9 @@ export const eventDetailRun = createAnalysisCapabilityCommand({
   description: `Run a bounded event detail query from an AI-facing definition. ${analysisDataRunRoutingHelp}`,
   flags: [
     ...eventDetailBaseFlags,
-    detailPreviewLimitFlag,
+    previewRowsFlag,
     syncTimeoutSecondsFlag,
   ],
   risk: 'read',
   buildInput: eventDetailRunInput,
-  postProcess: applyAnalysisInlineLimit,
 });

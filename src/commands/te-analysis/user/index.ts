@@ -9,20 +9,27 @@ import {
   compactInput,
   createAnalysisCapabilityCommand,
   fieldsFlag,
-  limitFlag,
   directoryLimitFlag,
-  memberLimitFlag,
-  offsetFlag,
+  directoryOffsetFlag,
   optionalBoolean,
   optionalJson,
   optionalJsonArray,
   optionalNumber,
   optionalString,
+  previewRowsFlag,
   projectIdFlag,
   queryFlag,
   requestIdFlag,
   syncTimeoutSecondsFlag,
 } from '../capability-shared.js';
+import {
+  catalogExportOutputFlag,
+  catalogExportPostProcess,
+  optionalQueries,
+  queriesFlag,
+  validateCatalogExportFlags,
+  validateCatalogListFlags,
+} from '../catalog-list.js';
 
 const authenticatedOnlyFlag: Flag = {
   name: 'authenticated-only',
@@ -50,6 +57,15 @@ const clusterMemberFieldsFlag: Flag = {
   ...fieldsFlag,
   desc: 'Optional result fields. Defaults to #user_id, #account_id, and #distinct_id.',
 };
+
+const memberPreviewRowsFlag: Flag = {
+  ...previewRowsFlag,
+  max: 100000,
+  desc: 'Maximum business rows returned per result. Default: 1000, matching the UI member query. Maximum: 100000.',
+};
+
+const memberDataRunRoutingHelp =
+  'Routing: --preview-rows bounds returned business rows per result; omitting it defaults to 1000 rows, matching the UI member query. Use export for full, unknown-size, timed-out, or long-running data.';
 
 const clusterNameFlag: Flag = {
   name: 'cluster-name',
@@ -209,7 +225,14 @@ const jsonlArtifactFormatFlag: Flag = {
   name: 'artifact-format',
   type: 'string',
   required: false,
-  desc: 'Artifact format. Only jsonl is supported for user member/history-tag exports.',
+  desc: 'Artifact format. Only jsonl is supported for history-tag statistics exports.',
+};
+
+const memberArtifactFormatFlag: Flag = {
+  name: 'artifact-format',
+  type: 'string',
+  required: false,
+  desc: 'Artifact format: jsonl or csv. Default: jsonl. Both formats use native full-download streaming and gzip compression.',
 };
 
 const confirmedFlag: Flag = {
@@ -248,6 +271,15 @@ function capability(
   flags: Flag[],
   risk: RiskLevel,
   buildInput: (ctx: RuntimeContext) => Record<string, unknown>,
+  options: {
+    asyncArtifact?: boolean;
+    validate?: (ctx: RuntimeContext) => void;
+    postProcess?: (
+      result: unknown,
+      input: Record<string, unknown>,
+      ctx: RuntimeContext,
+    ) => unknown | Promise<unknown>;
+  } = {},
 ): Command {
   return createAnalysisCapabilityCommand({
     resource,
@@ -257,6 +289,7 @@ function capability(
     flags,
     risk,
     buildInput,
+    ...options,
   });
 }
 
@@ -352,10 +385,19 @@ function uploadedInputFileId(value: any): string {
 function assetListInput(ctx: RuntimeContext): Record<string, unknown> {
   return compactInput({
     project_id: ctx.num('project-id'),
-    query: optionalString(ctx, 'query'),
+    queries: optionalQueries(ctx),
     fields: optionalJsonArray(ctx, 'fields'),
     limit: optionalNumber(ctx, 'limit'),
     offset: optionalNumber(ctx, 'offset'),
+    authenticated_only: optionalBoolean(ctx, 'authenticated-only'),
+  });
+}
+
+function assetExportInput(ctx: RuntimeContext): Record<string, unknown> {
+  return compactInput({
+    project_id: ctx.num('project-id'),
+    queries: optionalQueries(ctx),
+    fields: optionalJsonArray(ctx, 'fields'),
     authenticated_only: optionalBoolean(ctx, 'authenticated-only'),
   });
 }
@@ -367,13 +409,13 @@ function memberInput(ctx: RuntimeContext, kind: 'cluster' | 'tag', inline: boole
     tag_name: kind === 'tag' ? ctx.str('tag-name') : undefined,
     snapshot_date: kind === 'tag' ? optionalString(ctx, 'snapshot-date') : undefined,
     property_names: optionalJsonArray(ctx, 'property-names'),
-    fields: optionalJsonArray(ctx, 'fields'),
-    query: optionalString(ctx, 'query'),
-    use_cache: optionalBoolean(ctx, 'use-cache'),
+    fields: inline ? optionalJsonArray(ctx, 'fields') : undefined,
+    query: inline ? optionalString(ctx, 'query') : undefined,
+    use_cache: inline ? optionalBoolean(ctx, 'use-cache') : undefined,
+    preview_rows: inline ? optionalNumber(ctx, 'preview-rows') : undefined,
     request_id: optionalString(ctx, 'request-id'),
     timeout_seconds: optionalNumber(ctx, 'timeout-seconds'),
-    limit: inline ? optionalNumber(ctx, 'limit') : undefined,
-    format: inline ? undefined : optionalJsonlFormat(ctx),
+    format: inline ? undefined : optionalMemberFormat(ctx),
   });
 }
 
@@ -444,9 +486,9 @@ function historyTagDataInput(ctx: RuntimeContext, inline: boolean): Record<strin
     project_id: ctx.num('project-id'),
     tag_name: ctx.str('tag-name'),
     view: ctx.json('view'),
+    preview_rows: inline ? optionalNumber(ctx, 'preview-rows') : undefined,
     request_id: optionalString(ctx, 'request-id'),
     timeout_seconds: optionalNumber(ctx, 'timeout-seconds'),
-    limit: inline ? optionalNumber(ctx, 'limit') : undefined,
     format: inline ? undefined : optionalJsonlFormat(ctx),
   });
 }
@@ -459,13 +501,13 @@ function historyTagDataDrilldownInput(ctx: RuntimeContext, inline: boolean): Rec
     group_col: ctx.str('group-col'),
     view: ctx.json('view'),
     property_names: optionalJsonArray(ctx, 'property-names'),
-    fields: optionalJsonArray(ctx, 'fields'),
-    query: optionalString(ctx, 'query'),
-    use_cache: optionalBoolean(ctx, 'use-cache'),
+    fields: inline ? optionalJsonArray(ctx, 'fields') : undefined,
+    query: inline ? optionalString(ctx, 'query') : undefined,
+    use_cache: inline ? optionalBoolean(ctx, 'use-cache') : undefined,
+    preview_rows: inline ? optionalNumber(ctx, 'preview-rows') : undefined,
     request_id: optionalString(ctx, 'request-id'),
     timeout_seconds: optionalNumber(ctx, 'timeout-seconds'),
-    limit: inline ? optionalNumber(ctx, 'limit') : undefined,
-    format: inline ? undefined : optionalJsonlFormat(ctx),
+    format: inline ? undefined : optionalMemberFormat(ctx),
   });
 }
 
@@ -477,31 +519,88 @@ function optionalJsonlFormat(ctx: RuntimeContext): string | undefined {
   return format;
 }
 
-const listFlags = [projectIdFlag, queryFlag, fieldsFlag, directoryLimitFlag, offsetFlag, authenticatedOnlyFlag];
-const tagListFlags = [projectIdFlag, queryFlag, tagListFieldsFlag, directoryLimitFlag, offsetFlag, authenticatedOnlyFlag];
+function optionalMemberFormat(ctx: RuntimeContext): string | undefined {
+  const format = optionalString(ctx, 'artifact-format');
+  if (format !== undefined && format !== 'jsonl' && format !== 'csv') {
+    throw new Error('--artifact-format only supports jsonl or csv for member full-download exports');
+  }
+  return format;
+}
+
+const listFlags = [
+  projectIdFlag,
+  queriesFlag,
+  fieldsFlag,
+  directoryLimitFlag,
+  directoryOffsetFlag,
+  authenticatedOnlyFlag,
+];
+const tagListFlags = [
+  projectIdFlag,
+  queriesFlag,
+  tagListFieldsFlag,
+  directoryLimitFlag,
+  directoryOffsetFlag,
+  authenticatedOnlyFlag,
+];
+const exportFlags = [
+  projectIdFlag,
+  queriesFlag,
+  fieldsFlag,
+  authenticatedOnlyFlag,
+  catalogExportOutputFlag,
+];
+const tagExportFlags = [
+  projectIdFlag,
+  queriesFlag,
+  tagListFieldsFlag,
+  authenticatedOnlyFlag,
+  catalogExportOutputFlag,
+];
 const memberRunFlags = (memberFieldsFlag: Flag) => [
   projectIdFlag,
   propertyNamesFlag,
   memberFieldsFlag,
   queryFlag,
   { name: 'use-cache', type: 'boolean', required: false, desc: 'Whether to use query cache. Default: true.' } satisfies Flag,
+  memberPreviewRowsFlag,
   requestIdFlag,
-  memberLimitFlag,
   syncTimeoutSecondsFlag,
 ];
-const memberExportFlags = (memberFieldsFlag: Flag) => [
+const memberExportFlags = [
   projectIdFlag,
   propertyNamesFlag,
-  memberFieldsFlag,
-  queryFlag,
-  { name: 'use-cache', type: 'boolean', required: false, desc: 'Whether to use query cache. Default: true.' } satisfies Flag,
   requestIdFlag,
-  jsonlArtifactFormatFlag,
+  memberArtifactFormatFlag,
   asyncTimeoutSecondsFlag,
 ];
 
 const commands: Command[] = [
-  capability('user-cluster', 'list', 'analysis.user_cluster.list', 'List user clusters for discovery. Use offset only for stable asset browsing.', listFlags, 'read', assetListInput),
+  capability(
+    'user-cluster',
+    'list',
+    'analysis.user_cluster.list',
+    'List user clusters with bounded discovery.',
+    listFlags,
+    'read',
+    assetListInput,
+    {
+      validate: validateCatalogListFlags,
+    },
+  ),
+  capability(
+    'user-cluster',
+    'export',
+    'analysis.user_cluster.export',
+    'Export the complete matching user-cluster catalog to JSONL with an integrity sidecar.',
+    exportFlags,
+    'read',
+    assetExportInput,
+    {
+      validate: validateCatalogExportFlags,
+      postProcess: catalogExportPostProcess('cluster', 'items'),
+    },
+  ),
   capability('user-cluster', 'get', 'analysis.user_cluster.get', 'Get user cluster details by exact cluster_name values.', [
     projectIdFlag,
     { name: 'cluster-names', type: 'json', required: true, desc: 'JSON array of exact cluster_name values.' },
@@ -509,14 +608,14 @@ const commands: Command[] = [
     project_id: ctx.num('project-id'),
     cluster_names: ctx.json('cluster-names'),
   })),
-  capability('user-cluster-member', 'list', 'analysis.user_cluster_member.list', `Run a bounded user cluster member query. ${analysisDataRunRoutingHelp}`, [
+  capability('user-cluster-member', 'list', 'analysis.user_cluster_member.list', `Run a bounded user cluster member query. ${memberDataRunRoutingHelp}`, [
     clusterNameFlag,
     ...memberRunFlags(clusterMemberFieldsFlag),
   ], 'read', (ctx) => memberInput(ctx, 'cluster', true)),
-  capability('user-cluster-member', 'export', 'analysis.user_cluster_member.export', `Export user cluster members as a jsonl artifact. ${analysisDataExportRoutingHelp}`, [
+  capability('user-cluster-member', 'export', 'analysis.user_cluster_member.export', `Stream the native full user-cluster download as a jsonl.gz or csv.gz artifact. ${analysisDataExportRoutingHelp}`, [
     clusterNameFlag,
-    ...memberExportFlags(clusterMemberFieldsFlag),
-  ], 'read', (ctx) => memberInput(ctx, 'cluster', false)),
+    ...memberExportFlags,
+  ], 'read', (ctx) => memberInput(ctx, 'cluster', false), { asyncArtifact: true }),
   capability('user-cluster', 'create', 'analysis.user_cluster.create', 'Create a condition or SQL user cluster directly from an AI-facing definition request.', [
     projectIdFlag,
     newClusterNameFlag,
@@ -568,7 +667,31 @@ const commands: Command[] = [
     confirmed: optionalBoolean(ctx, 'confirmed'),
   })),
 
-  capability('user-tag', 'list', 'analysis.user_tag.list', 'List user tags for discovery. Returned identifiers use canonical tag_name. Use offset only for stable asset browsing.', tagListFlags, 'read', assetListInput),
+  capability(
+    'user-tag',
+    'list',
+    'analysis.user_tag.list',
+    'List user tags with bounded discovery. Returned identifiers use canonical tag_name.',
+    tagListFlags,
+    'read',
+    assetListInput,
+    {
+      validate: validateCatalogListFlags,
+    },
+  ),
+  capability(
+    'user-tag',
+    'export',
+    'analysis.user_tag.export',
+    'Export the complete matching user-tag catalog to JSONL with an integrity sidecar.',
+    tagExportFlags,
+    'read',
+    assetExportInput,
+    {
+      validate: validateCatalogExportFlags,
+      postProcess: catalogExportPostProcess('tag', 'items'),
+    },
+  ),
   capability('user-tag', 'get', 'analysis.user_tag.get', 'Get user tag details by exact tag_name values.', [
     projectIdFlag,
     { name: 'tag-names', type: 'json', required: true, desc: 'JSON array of exact tag_name values.' },
@@ -576,16 +699,16 @@ const commands: Command[] = [
     project_id: ctx.num('project-id'),
     tag_names: ctx.json('tag-names'),
   })),
-  capability('user-tag-member', 'list', 'analysis.user_tag_member.list', `Run a bounded user tag member query. ${analysisDataRunRoutingHelp}`, [
+  capability('user-tag-member', 'list', 'analysis.user_tag_member.list', `Run a bounded user tag member query. ${memberDataRunRoutingHelp}`, [
     tagNameFlag,
     snapshotDateFlag,
     ...memberRunFlags(tagMemberFieldsFlag),
   ], 'read', (ctx) => memberInput(ctx, 'tag', true)),
-  capability('user-tag-member', 'export', 'analysis.user_tag_member.export', `Export user tag members as a jsonl artifact. ${analysisDataExportRoutingHelp}`, [
+  capability('user-tag-member', 'export', 'analysis.user_tag_member.export', `Stream the native full user-tag download as a jsonl.gz or csv.gz artifact. ${analysisDataExportRoutingHelp}`, [
     tagNameFlag,
     snapshotDateFlag,
-    ...memberExportFlags(tagMemberFieldsFlag),
-  ], 'read', (ctx) => memberInput(ctx, 'tag', false)),
+    ...memberExportFlags,
+  ], 'read', (ctx) => memberInput(ctx, 'tag', false), { asyncArtifact: true }),
   capability('user-tag', 'create', 'analysis.user_tag.create', 'Create a user tag directly from an AI-facing definition request.', [
     projectIdFlag,
     newTagNameFlag,
@@ -679,8 +802,8 @@ const commands: Command[] = [
     projectIdFlag,
     tagNameFlag,
     historyViewFlag,
+    previewRowsFlag,
     requestIdFlag,
-    limitFlag,
     syncTimeoutSecondsFlag,
   ], 'read', (ctx) => historyTagDataInput(ctx, true)),
   capability('history-tag-data', 'export', 'analysis.history_tag_data.export', `Export history tag statistics as a jsonl artifact. ${analysisDataExportRoutingHelp}`, [
@@ -690,7 +813,7 @@ const commands: Command[] = [
     requestIdFlag,
     jsonlArtifactFormatFlag,
     asyncTimeoutSecondsFlag,
-  ], 'read', (ctx) => historyTagDataInput(ctx, false)),
+  ], 'read', (ctx) => historyTagDataInput(ctx, false), { asyncArtifact: true }),
   capability('history-tag-data-drilldown', 'run', 'analysis.history_tag_data_drilldown.run', `Run a bounded drilldown user query for one history tag statistic value. ${analysisDataRunRoutingHelp}`, [
     tagNameFlag,
     { ...snapshotDateFlag, required: true, desc: 'History tag snapshot date, yyyy-MM-dd.' },
@@ -698,13 +821,13 @@ const commands: Command[] = [
     historyViewFlag,
     ...memberRunFlags(tagMemberFieldsFlag),
   ], 'read', (ctx) => historyTagDataDrilldownInput(ctx, true)),
-  capability('history-tag-data-drilldown', 'export', 'analysis.history_tag_data_drilldown.export', `Export drilldown users for one history tag statistic value as a jsonl artifact. ${analysisDataExportRoutingHelp}`, [
+  capability('history-tag-data-drilldown', 'export', 'analysis.history_tag_data_drilldown.export', `Stream the native full history-tag drilldown download as a jsonl.gz or csv.gz artifact. ${analysisDataExportRoutingHelp}`, [
     tagNameFlag,
     { ...snapshotDateFlag, required: true, desc: 'History tag snapshot date, yyyy-MM-dd.' },
     groupColFlag,
     historyViewFlag,
-    ...memberExportFlags(tagMemberFieldsFlag),
-  ], 'read', (ctx) => historyTagDataDrilldownInput(ctx, false)),
+    ...memberExportFlags,
+  ], 'read', (ctx) => historyTagDataDrilldownInput(ctx, false), { asyncArtifact: true }),
 ];
 
 export default commands;

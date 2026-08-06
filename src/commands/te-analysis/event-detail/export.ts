@@ -10,7 +10,8 @@ export const eventDetailExport = createAnalysisCapabilityCommand({
   resource: 'event-detail',
   command: 'export',
   capabilityId: 'analysis.event_detail.export',
-  description: 'Export complete event detail data as an asynchronous gzip artifact. The server reads backend pages internally; callers inspect and download one artifact without pagination.',
+  asyncArtifact: true,
+  description: 'Export complete event detail data through the native Trino JSONL or CSV stream as an asynchronous gzip artifact. Default: JSONL.',
   flags: [
     ...eventDetailExportFlags,
   ],

@@ -5,10 +5,10 @@
 Domain: **Skills / read**
 
 ## Use Cases
-- Read a Skill reference `.md` file's raw content (binary-safe).
+- Read or download a Skill reference file.
 - Endpoint: `GET /api/sandbox/agent/skills/[id]/references/[...path]`.
-- By default returns `{ content, fileName }` where content is UTF-8 text.
-- Use `--output <path>` to save the raw content to a local file.
+- Text responses return `{ content, fileName }` by default.
+- Non-text responses require `--output <path>` to preserve the original bytes.
 
 ## Mandatory Rules (MUST)
 - `--id` is required. Obtain the real Skill record ID (CUID) via `+list-skills` — do not guess.
@@ -22,6 +22,9 @@ ae-cli agent +read-skill-reference --id <skill-cuid> --path guide.md
 # Save reference to local file
 ae-cli agent +read-skill-reference --id <skill-cuid> --path guide.md --output ./guide.md
 
+# Download a non-text reference (required for spreadsheets, PDFs, and other binary files)
+ae-cli agent +read-skill-reference --id <skill-cuid> --path metrics.xlsx --output ./metrics.xlsx
+
 # Read from a sub-directory
 ae-cli agent +read-skill-reference --id <skill-cuid> --path "advanced/tips.md"
 
@@ -34,17 +37,17 @@ ae-cli agent +read-skill-reference --dry-run --id <skill-cuid> --path guide.md
 |---|---|---|
 | `--id` | Yes | Skill record ID (CUID) |
 | `--path` | Yes | Relative file path within references (e.g. `"guide.md"` or `"advanced/tips.md"`) |
-| `--output` | No | Write content to a local file |
+| `--output` | No | Write the original bytes to a local file; required for non-text files |
 
 ## Decision Rules
 - Use `+list-skill-references` to discover available file paths before reading.
-- References are `.md` files — the default JSON output `{ content }` is usually sufficient.
-- Use `--output` to save the content to a local file for editing or backup.
+- Use the default JSON output only for text references.
+- Always use `--output` for spreadsheets, PDFs, archives, images, and other non-text files.
 - Read operation: no confirmation prompt needed.
 
 ## Next Steps on Failure
 - `404` / not found: re-run `+list-skill-references` to verify the file path.
-- `文件不存在`: the file path does not exist in the references directory.
+- `output_required`: re-run with `--output <path>` to preserve binary content.
 
 ## Recommended Chaining
 - `+list-skill-references` → confirm `path` → `+read-skill-reference` → `+del-skill-reference` (if cleanup needed)

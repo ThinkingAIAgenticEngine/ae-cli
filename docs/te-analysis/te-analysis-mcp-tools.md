@@ -14,7 +14,7 @@ This document records the current `ae-cli analysis` surface exposed to agents. I
 
 ### Ad-hoc analysis
 
-- `analysis adhoc run`: bounded inline query. Default limit is 100, max 1000. Default timeout is 60 seconds, max 180 seconds.
+- `analysis adhoc run`: bounded inline query. Omit `--preview-rows` to use the current model and cluster synchronous row limit; explicit values are checked against that runtime maximum. Default timeout is 120 seconds, max 180 seconds.
 - `analysis adhoc export`: async artifact query. Default and maximum runtime is 21600 seconds (6 hours); pass a smaller `--timeout-seconds` only when requested. Cancel earlier with `analysis query cancel --run-id <run_id>`.
 
 Only the bounded `run` preview may return `query_context_id` and finite `sources[].drilldown` choices. Export never creates an interactive follow-up context.
@@ -24,16 +24,16 @@ Only the bounded `run` preview may return `query_context_id` and finite `sources
 - `analysis report create`: create a report from AI-facing `model_type + definition`. Supports the 12 analysis models plus `tag` for saved tag report data.
 - `analysis report update`: update metadata and/or AI-facing report definition. Supports the same model set as create.
 - `analysis report get`: returns AI-facing `model_type + definition`; raw QP is not returned.
-- `analysis report-data run`: bounded inline saved-report data. Default limit is 100, max 1000. Default timeout is 60 seconds, max 180 seconds.
+- `analysis report-data run`: bounded inline saved-report data. Omit `--preview-rows` to use each report model's current cluster synchronous limit; explicit values are checked at runtime. Default timeout is 120 seconds, max 180 seconds.
 - `analysis report-data export`: async saved-report artifact. Default and maximum runtime is 21600 seconds (6 hours); cancel earlier with `analysis query cancel --run-id <run_id>`.
 
 Report data supports AI-facing override inputs for filters, group-by, time range, time granularity, and SQL dynamic parameter values.
 
 ### Dashboard and BI page data
 
-- `analysis dashboard-report-data run`: bounded inline dashboard report data. Default limit is 100, max 1000. Default timeout is 60 seconds, max 180 seconds.
+- `analysis dashboard-report-data run`: bounded inline dashboard report data. Omit `--preview-rows` to use each report model's current cluster synchronous limit; explicit values are checked at runtime. Default timeout is 180 seconds, max 180 seconds.
 - `analysis dashboard-report-data export`: async dashboard report data artifact. Default and maximum runtime is 21600 seconds (6 hours); cancel earlier with `analysis query cancel --run-id <run_id>`.
-- `analysis bi-panel-page-data run`: bounded inline BI panel page data. Inline limit default is 100, max 1000; chart `row_limit` default is 100, max 1000; timeout default is 60 seconds, max 180 seconds.
+- `analysis bi-panel-page-data run`: bounded inline BI panel page data. Omit `--preview-rows` to use the current cluster synchronous limit; explicit values are checked at runtime. Timeout defaults to 120 seconds and has a maximum of 180 seconds.
 - `analysis bi-panel-page-data export`: async BI panel page data artifact. Default and maximum runtime is 21600 seconds (6 hours); cancel earlier with `analysis query cancel --run-id <run_id>`.
 
 BI panel page data is executed from BI SQL/page state, not from the saved-report AI QP model registry, and does not support analysis model drilldown/result-cluster creation.
@@ -49,7 +49,8 @@ BI panel page data is executed from BI SQL/page state, not from the saved-report
 - `analysis query create-result-cluster`: save an advertised user/custom-entity coordinate as that subject's reusable result cluster.
 - `analysis query cancel`: cancel an async run/export by `run_id`.
 - `analysis run inspect`: inspect an async run/export by `run_id`.
-- `analysis artifact download`: download an async artifact by the bound `run_id + artifact_id` pair.
+- `analysis run wait`: resume short-request polling by `run_id`; optional `--output` downloads after the successful terminal state.
+- `analysis artifact download`: stream a completed async artifact by the bound `run_id + artifact_id` pair. Existing output files require `--force`.
 
 The intended flow is:
 
@@ -58,7 +59,11 @@ The intended flow is:
 3. Call only the selected metric/source action with the original `--project-id`: `analysis drilldown-events run|export`, `analysis drilldown-entities run|export`, or `analysis query create-result-cluster`. Common rejects a project ID that does not match the stored context. Do not pass raw QP or `target_id`.
 4. Only a user-subject entity preview may return `drilldown_context_id`; pass it with the same `--project-id` and a canonical returned `user_id` to `analysis drilldown-user-events run|export`. Custom entities have no user event sequence.
 
-For async exports, inspect with `analysis run inspect --run-id <run_id>` and download with `analysis artifact download --run-id <run_id> --artifact-id <artifact_id> --output <file>`.
+For async exports, plain invocation submits only. Add `--wait` to wait, or
+`--output <file>` to wait and atomically stream the completed artifact. Resume
+with `analysis run wait --run-id <run_id> [--output <file>]`. Local interruption
+never cancels the remote run. `analysis run inspect` and `analysis artifact
+download` remain primitive lifecycle commands.
 
 ## CLI query cancellation
 

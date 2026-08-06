@@ -34,7 +34,7 @@ ae-tracking 的埋点方案能力已并入 **ae-cli**，命令前缀为 `ae-cli 
 
 所有 AE tracking REST 调用封装在 [`src/core/tracking-client.ts`](../src/core/tracking-client.ts)，基于 `ae-cli auth` 的 token 与 [`src/core/client.ts`](../src/core/client.ts) 的 HTTP 工具。
 
-## 与 analysis_meta MCP 的关系
+## 与 analysis-meta Gateway 的关系
 
 - **xlsx 工作流**：`ae-cli tracking plan upload` → `excel-save`
 - **结构化能力读写**：`ae-cli tracking plan get` / `ae-cli tracking plan save-items`

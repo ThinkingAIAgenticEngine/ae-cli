@@ -11,6 +11,7 @@ export const projectMemberHandoverExport = createAnalysisCapabilityCommand({
   resource: 'project member-handover',
   command: 'export',
   capabilityId: 'project.member_handover.export',
+  asyncArtifact: true,
   description: 'Run batch project member asset handover and export the generated detail file as a CLI artifact.',
   flags: [
     projectIdFlag,

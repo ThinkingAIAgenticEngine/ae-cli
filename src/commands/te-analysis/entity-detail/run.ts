@@ -1,8 +1,7 @@
 import {
   analysisDataRunRoutingHelp,
-  applyAnalysisInlineLimit,
   createAnalysisCapabilityCommand,
-  detailPreviewLimitFlag,
+  previewRowsFlag,
   syncTimeoutSecondsFlag,
 } from '../capability-shared.js';
 import {
@@ -17,10 +16,9 @@ export const entityDetailRun = createAnalysisCapabilityCommand({
   description: `Run a bounded entity detail query from a cluster cohort definition. ${analysisDataRunRoutingHelp}`,
   flags: [
     ...entityDetailBaseFlags,
-    detailPreviewLimitFlag,
+    previewRowsFlag,
     syncTimeoutSecondsFlag,
   ],
   risk: 'read',
   buildInput: entityDetailRunInput,
-  postProcess: applyAnalysisInlineLimit,
 });

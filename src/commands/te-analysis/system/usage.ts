@@ -62,6 +62,7 @@ export const systemUsageCommands: Command[] = [
     resource: 'usage-trend',
     command: 'export',
     capabilityId: 'system.usage_trend.export',
+    asyncArtifact: true,
     description: 'Export a bounded usage trend as a cancellable run-scoped gzip JSONL artifact.',
     risk: 'read',
     fields: [

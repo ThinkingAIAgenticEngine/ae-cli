@@ -14,6 +14,7 @@ import { Command } from 'commander';
 import { registerCapability } from '../src/commands/capability/index.ts';
 import '../src/commands/te-analysis/index.ts';
 import {
+  CapabilityCommandValidationError,
   filterCapabilities,
   normalizeCapabilityList,
   parseCapabilityInput,
@@ -173,6 +174,18 @@ await test('parseCapabilityInput rejects non-object JSON', () => {
     () => parseCapabilityInput('[1,2,3]'),
     /Capability input must be a JSON object/,
   );
+});
+
+await test('parseCapabilityInput rejects non-canonical projectId without mapping it', () => {
+  for (const input of ['{"projectId":1}', '{"projectId":1,"project_id":2}']) {
+    assert.throws(
+      () => parseCapabilityInput(input),
+      (error: unknown) => error instanceof CapabilityCommandValidationError
+        && error.code === 'UNSUPPORTED_INPUT_FIELDS'
+        && error.hint === 'Use the canonical snake_case field project_id.',
+    );
+  }
+  assert.equal(parseCapabilityInput('{"project_id":1}').project_id, 1);
 });
 
 process.stdout.write(`\n${pass} passed, ${fail} failed\n`);

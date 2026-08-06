@@ -12,7 +12,8 @@ function createEngageCapabilityCommand(
     | 'engage-setting'
     | 'engage-scene'
     | 'engage-activity'
-    | 'engage-workbench',
+    | 'engage-workbench'
+    | 'engage-query',
   config: EngageCapabilityCommandConfig,
 ) {
   return createCapabilityCommandCore({
@@ -50,4 +51,9 @@ export function createEngageActivityCapabilityCommand(config: EngageCapabilityCo
 /** Creates an engage-workbench (工作台) capability gateway command. */
 export function createEngageWorkbenchCapabilityCommand(config: EngageCapabilityCommandConfig) {
   return createEngageCapabilityCommand('engage-workbench', config);
+}
+
+/** Creates an engage-query lifecycle capability gateway command. */
+export function createEngageQueryCapabilityCommand(config: EngageCapabilityCommandConfig) {
+  return createEngageCapabilityCommand('engage-query', config);
 }

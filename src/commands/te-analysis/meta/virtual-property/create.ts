@@ -15,7 +15,7 @@ export const metadataVirtualPropertyCreate = createAnalysisMetaCapabilityCommand
   flags: [
     projectIdFlag,
     { name: 'sql-expression', type: 'string', required: true, desc: 'SQL expression used to calculate the virtual property.' },
-    { name: 'v-prop', type: 'json', required: false, desc: 'Virtual property JSON object with property.column_name/table_type/select_type fields.' },
+    { name: 'v-prop', type: 'json', required: false, desc: 'Virtual property JSON object with property.column_name/property.table_type/property.select_type fields.' },
     { name: 'property-name', type: 'string', required: false, desc: "Virtual property name. Must start with '#vp@'." },
     { name: 'property-desc', type: 'string', required: false, desc: 'Virtual property display name.' },
     { name: 'table-type', type: 'string', required: false, desc: 'Property table type: event or user.' },

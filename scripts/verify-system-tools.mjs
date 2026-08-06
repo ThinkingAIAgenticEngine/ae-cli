@@ -12,7 +12,9 @@ const EXPECTED_COMMANDS = [
   '+set-member-status',
   '+set-member-role',
   '+remove-member',
+  '+get-member-stats',
   '+list-sandboxes',
+  '+get-sandbox-config',
   '+batch-create-sandboxes',
   '+update-sandbox',
   '+set-sandbox-enabled',
@@ -24,6 +26,9 @@ const EXPECTED_COMMANDS = [
   '+remove-sandbox',
   '+list-system-models',
   '+set-system-model-enabled',
+  '+get-model-sync-settings',
+  '+set-model-sync-settings',
+  '+get-system-model-price-rules',
   '+list-company-models',
   '+set-company-model-enabled',
   '+get-default-models',
@@ -31,7 +36,13 @@ const EXPECTED_COMMANDS = [
   '+clear-default-model',
   '+get-usage-summary',
   '+get-usage-details',
+  '+get-agent-tool-calls',
+  '+get-usage-combinations',
+  '+export-usage',
+  '+export-usage-details',
   '+get-cost-summary',
+  '+get-balance',
+  '+list-over-limit-users',
   '+get-balance-alert',
   '+set-balance-alert',
   '+list-quota-rules',
@@ -45,6 +56,15 @@ const EXPECTED_COMMANDS = [
   '+remove-channel',
   '+upload-sandbox-tool',
   '+npm-install',
+  '+list-sandbox-tools',
+  '+sync-sandbox-tools',
+  '+get-sandbox-tool-distribution',
+  '+set-sandbox-tool-enabled',
+  '+remove-sandbox-tool',
+  '+activate-sandbox-tools',
+  '+deactivate-sandbox-tools',
+  '+refresh-sandbox-tool-status',
+  '+list-sandbox-tool-operations',
 ];
 
 let failed = false;
@@ -69,6 +89,9 @@ const discovered = [];
 for (const file of walk(SYSTEM_DIR).filter((entry) => entry.endsWith('.ts'))) {
   const source = readFileSync(file, 'utf8');
   for (const match of source.matchAll(/command:\s*['"](\+[a-z][a-z0-9-]*)['"]/g)) {
+    discovered.push({ name: match[1], file });
+  }
+  for (const match of source.matchAll(/createSandboxToolOperationCommand\(\s*['"](\+[a-z][a-z0-9-]*)['"]/g)) {
     discovered.push({ name: match[1], file });
   }
 }
@@ -115,6 +138,13 @@ if (
   ok('ae-system documents the root/agent_admin permission boundary');
 }
 
+const missingFromSkill = EXPECTED_COMMANDS.filter((name) => !skillSource.includes(`\`${name}\``));
+if (missingFromSkill.length) {
+  fail(`Commands missing from ae-system Skill: ${missingFromSkill.join(', ')}`);
+} else {
+  ok('ae-system Skill documents all expected commands');
+}
+
 function runCli(args) {
   return execFileSync(
     'npx',
@@ -139,6 +169,9 @@ const dryRuns = [
   ['system', '+list-members', '--status', 'enabled', '--page', '1'],
   ['system', '+batch-create-sandboxes', '--user-ids', '["user-1"]'],
   ['system', '+set-default-model', '--model-id', 'model-1'],
+  ['system', '+get-member-stats', '--user-id', 'user-1', '--days', '7'],
+  ['system', '+get-sandbox-config'],
+  ['system', '+set-model-sync-settings', '--new-system-models-enabled-by-default', 'true'],
   [
     'system',
     '+get-usage-details',
@@ -147,7 +180,32 @@ const dryRuns = [
     '--end-date',
     '2026-07-24',
   ],
+  [
+    'system',
+    '+get-usage-combinations',
+    '--start-date',
+    '2026-07-01',
+    '--end-date',
+    '2026-07-24',
+    '--parent-dimension',
+    'user',
+    '--open-id',
+    'ou_1',
+  ],
+  [
+    'system',
+    '+export-usage',
+    '--start-date',
+    '2026-07-01',
+    '--end-date',
+    '2026-07-24',
+    '--group-by',
+    'user',
+    '--output',
+    './system-usage.csv',
+  ],
   ['system', '+set-balance-alert', '--enabled', 'true', '--threshold', '100'],
+  ['system', '+get-balance'],
   [
     'system',
     '+create-channel',
@@ -156,6 +214,17 @@ const dryRuns = [
   ],
   ['system', '+upload-sandbox-tool', '--path', '/tmp/example-tool'],
   ['system', '+npm-install', '--package', 'eslint@9.32.0'],
+  ['system', '+list-sandbox-tools'],
+  [
+    'system',
+    '+activate-sandbox-tools',
+    '--target-mode',
+    'selected',
+    '--sandbox-ids',
+    '["sandbox-1"]',
+    '--tool-ids',
+    '["tool-1"]',
+  ],
 ];
 
 for (const args of dryRuns) {

@@ -14,6 +14,7 @@ export const dashboardReportDataExport = createAnalysisCapabilityCommand({
   resource: 'dashboard-report-data',
   command: 'export',
   capabilityId: 'analysis.dashboard_report_data.export',
+  asyncArtifact: true,
   description: `Submit dashboard report data as an asynchronous gzip JSONL artifact. Filters and time overrides do not apply to SQL reports; the artifact still contains data plus structured warnings. Exports do not create interactive drilldown contexts. ${analysisDataExportRoutingHelp}`,
   flags: [
     projectIdFlag,

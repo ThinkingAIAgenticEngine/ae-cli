@@ -27,6 +27,14 @@ export const listSandboxes = createAdminCommand({
   prepare: () => ({ method: 'GET', path: '/api/admin/sandboxes' }),
 });
 
+export const getSandboxConfig = createAdminCommand({
+  command: '+get-sandbox-config',
+  description: 'Get sandbox feature status and company create/active seat limits',
+  flags: [],
+  risk: 'read',
+  prepare: () => ({ method: 'GET', path: '/api/admin/sandbox/config' }),
+});
+
 export const batchCreateSandboxes = createAdminCommand({
   command: '+batch-create-sandboxes',
   description: 'Create personal sandboxes for up to 100 company members',
@@ -174,6 +182,7 @@ export const removeSandbox = createAdminCommand({
 
 export const sandboxCommands: Command[] = [
   listSandboxes,
+  getSandboxConfig,
   batchCreateSandboxes,
   updateSandbox,
   setSandboxEnabled,

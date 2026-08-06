@@ -2,6 +2,8 @@ import type { RuntimeContext } from '../../../framework/types.js';
 import {
   reportWriteDefinitionFlag,
   reportWriteModelTypeFlag,
+  reportMetadataResolutionsFlag,
+  validateReportMetadataResolutions,
 } from '../ai-models.js';
 import {
   compactInput,
@@ -15,6 +17,7 @@ import {
 
 function validateReportUpdate(ctx: RuntimeContext): void {
   const hasDefinition = ctx.str('definition') !== '';
+  const hasResolutions = ctx.json('resolutions') !== undefined;
   const hasMetadataUpdate = ctx.str('report-name') !== '' || ctx.str('report-desc') !== '';
   if (!hasDefinition && !hasMetadataUpdate) {
     throw new Error('At least one of --report-name, --report-desc, or --definition is required.');
@@ -22,6 +25,10 @@ function validateReportUpdate(ctx: RuntimeContext): void {
   if (hasDefinition && ctx.str('model-type') === '') {
     throw new Error('--model-type is required when --definition is provided.');
   }
+  if (hasResolutions && !hasDefinition) {
+    throw new Error('--resolutions requires --definition.');
+  }
+  validateReportMetadataResolutions(ctx);
 }
 
 export const reportUpdate = createAnalysisCapabilityCommand({
@@ -37,6 +44,7 @@ export const reportUpdate = createAnalysisCapabilityCommand({
     { name: 'report-desc', type: 'string', required: false, desc: 'New report description.' },
     reportWriteModelTypeFlag(false),
     reportWriteDefinitionFlag(false),
+    reportMetadataResolutionsFlag,
     { name: 'cache-seconds', type: 'number', required: false, desc: 'Optional cache duration in seconds.' },
     { name: 'query-duration-ms', type: 'number', required: false, desc: 'Optional last query duration in milliseconds.' },
   ],
@@ -50,6 +58,7 @@ export const reportUpdate = createAnalysisCapabilityCommand({
     report_desc: optionalString(ctx, 'report-desc'),
     model_type: optionalString(ctx, 'model-type'),
     definition: optionalJson(ctx, 'definition'),
+    resolutions: optionalJson(ctx, 'resolutions'),
     cache_seconds: optionalNumber(ctx, 'cache-seconds'),
     query_duration_ms: optionalNumber(ctx, 'query-duration-ms'),
   }),

@@ -20,6 +20,14 @@ const operationLogRef = readFileSync(
   path.join(ROOT, 'skills/ae-engage/references/operation-log-query.md'),
   'utf8',
 );
+const pushRecordQueryRef = readFileSync(
+  path.join(ROOT, 'skills/ae-engage/references/push-record-query.md'),
+  'utf8',
+);
+const taskSubmitApprovalRef = readFileSync(
+  path.join(ROOT, 'skills/ae-engage/references/task-submit-approval.md'),
+  'utf8',
+);
 const saveFlowRef = readFileSync(
   path.join(ROOT, 'skills/ae-engage/references/save-flow.md'),
   'utf8',
@@ -91,6 +99,8 @@ assert.ok(skill.includes('ae-cli engage-task task submit-approval'));
 assert.ok(skill.includes('ae-cli engage-activity approval submit'));
 assert.doesNotMatch(skill, /references\/test-run\.md/);
 assert.match(skill, /references\/task-submit-approval\.md/);
+assert.match(taskSubmitApprovalRef, /REQUEST_TASK_ID_NOT_ALLOWED/);
+assert.match(taskSubmitApprovalRef, /Never put `taskId` or `task_id` inside `--request`/);
 assert.doesNotMatch(skill, /ae-cli capability/);
 assert.doesNotMatch(skill, /Temporarily disabled engage-task commands/);
 
@@ -121,6 +131,12 @@ assert.match(flowUpdateRemarkRef, /`--flow-uuid`/);
 assert.match(flowUpdateRemarkRef, /`--flow-version-desc`/);
 
 assert.match(operationLogRef, /engage-flow operation-log query/);
+assert.match(pushRecordQueryRef, /`scheduled` \| `actual_trigger_num` \| `trigger_num`/);
+assert.match(pushRecordQueryRef, /`triggered` \| `actual_push_num` \| `push_success_num`/);
+assert.match(pushRecordQueryRef, /`3` \| `Sent`/);
+assert.match(pushRecordQueryRef, /Top-level user-time-zone task instances use a separate status enum/);
+assert.match(pushRecordQueryRef, /`0` \| `Sending`/);
+assert.match(pushRecordQueryRef, /never returns an internal[\s\S]*`hermes\.\*` localization key/);
 
 // Migrated Capability boundaries keep outer input/output snake_case and nested DTO input camelCase.
 assert.match(skill, /outer Capability input and all Capability response keys use snake_case/);
@@ -185,6 +201,7 @@ const expectedSettingReferenceLinks = [
   'references/approver-list.md',
   'references/whitelist-list.md',
   'references/cancel-query-by-request-id.md',
+  'references/cancel-query-run.md',
   'references/whitelist.md',
   'references/push-language.md',
   'references/client-param.md',
@@ -212,6 +229,7 @@ const expectedSettingCapabilityIds = [
   'engage-setting\\.approval-approver\\.\\{add,list\\}',
   'engage-setting\\.whitelist\\.\\{list,add,update,delete,verify\\}',
   'engage-setting\\.query\\.cancel',
+  'engage-query\\.query\\.cancel',
   'engage-setting\\.push-language\\.\\{get,set\\}',
   'engage-setting\\.client-param\\.\\{create,update,delete,list\\}',
   'engage-setting\\.config-table\\.\\{upload,save,list,query-data,update-data,delete\\}',
@@ -272,6 +290,21 @@ const expectedSceneReferenceLinks = [
 for (const link of expectedSceneReferenceLinks) {
   assert.match(skill, new RegExp(link.replace(/\./g, '\\.')),
     `SKILL.md missing reference link: ${link}`);
+}
+// L3 config-report references must preserve JSON types in generated examples.
+const configReportReferences = [
+  'config-item-trigger-report.md',
+  'config-item-analysis-report.md',
+  'config-item-strategy-comparison.md',
+];
+for (const reference of configReportReferences) {
+  const content = readFileSync(path.join(ROOT, 'skills/ae-engage/references', reference), 'utf8');
+  assert.match(content, /\| `show_time_zone` \| number \| No \|/,
+    `${reference} must document show_time_zone as a JSON number`);
+  assert.match(content, /"show_time_zone":8/,
+    `${reference} must include a numeric show_time_zone example`);
+  assert.doesNotMatch(content, /"show_time_zone":"8"/,
+    `${reference} must not quote show_time_zone in examples`);
 }
 const expectedSceneCapabilityIds = [
   'engage-scene\\.config-item\\.\\{list,get,create,update,delete\\}',

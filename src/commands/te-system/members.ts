@@ -170,6 +170,22 @@ export const removeMember = createAdminCommand({
   }),
 });
 
+export const getMemberStats = createAdminCommand({
+  command: '+get-member-stats',
+  description: 'Get token usage and recent conversation statistics for one company member',
+  flags: [
+    { name: 'user-id', type: 'string', required: true, desc: 'Agent database user ID from +list-members' },
+    { name: 'days', type: 'number', min: 1, max: 365, desc: 'Recent range in days (1-365, default: 30)' },
+  ],
+  risk: 'read',
+  prepare: (ctx) => ({
+    method: 'GET',
+    path: withQuery(`/api/admin/members/${encodeId(ctx.str('user-id'))}/stats`, {
+      days: ctx.optionalNum('days'),
+    }),
+  }),
+});
+
 export const memberCommands: Command[] = [
   listMemberCandidates,
   listMembers,
@@ -177,4 +193,5 @@ export const memberCommands: Command[] = [
   setMemberStatus,
   setMemberRole,
   removeMember,
+  getMemberStats,
 ];

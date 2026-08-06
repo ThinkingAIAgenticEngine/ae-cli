@@ -8,6 +8,7 @@ import asset from './asset/index.js';
 import exchange from './exchange/index.js';
 import superMetadata from './super-metadata/index.js';
 import datatable from './datatable/index.js';
+import catalog from './catalog/index.js';
 
 const commands: Command[] = [
   ...event,
@@ -19,6 +20,7 @@ const commands: Command[] = [
   ...exchange,
   ...superMetadata,
   ...datatable,
+  ...catalog,
 ];
 
 export default commands;

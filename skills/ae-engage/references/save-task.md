@@ -221,6 +221,13 @@ Rules:
 - do not guess template IDs
 - `groupContentList` maximum size is `5`
 - `occasionKeys` are parsed from content automatically and are not accepted as input
+- when `expConfig.enableExp=true`, each `groupContentList` item must include
+  `expGroupName`, `expGroupType`, `percentageInExperiment`, and `order`, and the list must
+  mirror `expConfig.expGroupList` one-to-one by `expGroupName`
+- capability `engage-task.task.save` rejects misaligned experiment `groupContentList`
+  (`TASK_EXPERIMENT_GROUP_CONTENT_INVALID`) before the inner save service runs
+- do not submit experiment content as content-only objects such as
+  `{"contentList":[...]}` without the group association fields
 
 Content guidance:
 
@@ -257,6 +264,8 @@ Rules:
 - if `triggerDefinition` is needed, build it from semantic event definitions and resolve real
   event/property names through Analysis metadata
 - always set the A rule's `eventTriggerType` explicitly
+- always set the A rule's `periodTimeSymbol` to `TS01`, `TS02`, `TS03`, or `TS04`; it is
+  required even when `periodStart` and `periodEnd` are present
 - Hermes compiles the semantic event and then validates the final persisted trigger-rule envelope
 - for semantic event-trigger tasks, Hermes backfills missing task-level `startDate` / `endDate`
   from the A rule's `periodStart` / `periodEnd`; explicit task-level dates remain authoritative

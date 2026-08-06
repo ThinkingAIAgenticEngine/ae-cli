@@ -31,6 +31,16 @@ function isOutputWithMetadata(value: any): value is OutputWithMetadata {
   return Boolean(value?.[OUTPUT_METADATA]);
 }
 
+/** Return the command payload without the framework-only output metadata wrapper. */
+export function unwrapOutputData(value: any): any {
+  return isOutputWithMetadata(value) ? value.data : value;
+}
+
+/** Return capability response metadata carried by the framework-only output wrapper. */
+export function readOutputMetadata(value: any): Record<string, unknown> | undefined {
+  return isOutputWithMetadata(value) ? value.meta : undefined;
+}
+
 function findArrayField(data: any): any[] | null {
   if (Array.isArray(data)) return data;
   if (typeof data !== 'object' || data === null) return null;
@@ -44,6 +54,20 @@ function findArrayField(data: any): any[] | null {
 }
 
 function formatTable(data: any): string {
+  if (Array.isArray(data?.title) && data.title.length > 0 && Array.isArray(data?.rows)) {
+    const headers = data.title.map((value: unknown) => String(value));
+    const table = new Table({ head: headers, wordWrap: true });
+    for (const row of data.rows) {
+      const values = Array.isArray(row) ? row : [row];
+      table.push(headers.map((_, index) => {
+        const value = values[index];
+        if (value === undefined || value === null) return '';
+        if (typeof value === 'object') return JSON.stringify(value);
+        return String(value);
+      }));
+    }
+    return table.toString();
+  }
   const rows = findArrayField(data);
   if (!rows || rows.length === 0) {
     return JSON.stringify(data, null, 2);

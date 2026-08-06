@@ -10,6 +10,7 @@ import dashboard from './dashboard/index.js';
 import dashboardReport from './dashboard-report/index.js';
 import dashboardReportData from './dashboard-report-data/index.js';
 import query from './query/index.js';
+import queryContext from './query-context/index.js';
 import run from './run/index.js';
 import artifact from './artifact/index.js';
 import adhoc from './adhoc/index.js';
@@ -58,6 +59,7 @@ export const baseCommands: Command[] = [
   ...dashboardReport,
   ...dashboardReportData,
   ...query,
+  ...queryContext,
   ...run,
   ...artifact,
   ...adhoc,

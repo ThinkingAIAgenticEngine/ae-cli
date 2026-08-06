@@ -5,6 +5,7 @@ const {
   validateSemanticAudienceDefinition,
   validateSemanticEventDefinition,
   validateSemanticMetricDefinition,
+  validateTaskTriggerPeriodDefinition,
 } = await import('../../src/commands/te-engage/semantic-qp-validation.ts');
 
 const behaviorSequenceAudience = {
@@ -149,5 +150,33 @@ assert.doesNotThrow(() => validateEmbeddedSemanticDefinitions({
     }),
   }],
 }, '--req'));
+
+assert.doesNotThrow(() => validateTaskTriggerPeriodDefinition({
+  triggerConfig: {
+    triggerDefinition: {
+      rules: [{ periodTimeSymbol: 'TS02', events: [] }],
+    },
+  },
+}, '--req'));
+assert.throws(
+  () => validateTaskTriggerPeriodDefinition({
+    triggerConfig: {
+      triggerDefinition: {
+        rules: [{ events: [] }],
+      },
+    },
+  }, '--req'),
+  /periodTimeSymbol is required/,
+);
+assert.throws(
+  () => validateTaskTriggerPeriodDefinition({
+    triggerConfig: {
+      triggerDefinition: {
+        rules: [{ periodTimeSymbol: 'TS99', events: [] }],
+      },
+    },
+  }, '--req'),
+  /periodTimeSymbol must be one of: TS01, TS02, TS03, TS04/,
+);
 
 console.log('Semantic QP validation tests passed.');

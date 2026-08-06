@@ -2,7 +2,7 @@ import {
   createAnalysisCapabilityCommand,
   directoryLimitFlag,
   compactInput,
-  offsetFlag,
+  directoryOffsetFlag,
   optionalNumber,
   optionalString,
   projectIdFlag,
@@ -15,7 +15,7 @@ export const sqlTableList = createAnalysisCapabilityCommand({
   command: 'list',
   capabilityId: 'analysis.sql_table.list',
   description: 'List server-authoritative SQL table references queryable by the current user in a project.',
-  flags: [projectIdFlag, queryFlag, directoryLimitFlag, offsetFlag, sqlTableUsageFlag],
+  flags: [projectIdFlag, queryFlag, directoryLimitFlag, directoryOffsetFlag, sqlTableUsageFlag],
   risk: 'read',
   buildInput: (ctx) => compactInput({
     project_id: ctx.num('project-id'),

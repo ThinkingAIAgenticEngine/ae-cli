@@ -27,7 +27,7 @@ export function reportDataInput(ctx: RuntimeContext): Record<string, unknown> {
     slave_cluster_id: optionalString(ctx, 'slave-cluster-id'),
     zone_offset: optionalNumber(ctx, 'zone-offset'),
     use_cache: optionalBoolean(ctx, 'use-cache'),
-    limit: optionalNumber(ctx, 'limit'),
+    preview_rows: optionalNumber(ctx, 'preview-rows'),
     timeout_seconds: optionalNumber(ctx, 'timeout-seconds'),
   });
 }
@@ -35,7 +35,6 @@ export function reportDataInput(ctx: RuntimeContext): Record<string, unknown> {
 export function reportDataExportInput(ctx: RuntimeContext): Record<string, unknown> {
   return compactInput({
     ...reportDataInput(ctx),
-    limit: undefined,
     ...exportLifecycleInput(ctx),
   });
 }

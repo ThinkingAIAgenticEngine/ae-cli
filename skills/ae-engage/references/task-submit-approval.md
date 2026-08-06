@@ -27,6 +27,8 @@ Provide exactly one of `--task-id` or `--request`.
 
 - Prefer `task save` followed by `submit-approval --task-id`. The server loads the persisted draft, validates its
   trigger rule, and reuses the existing save-and-submit approval workflow.
+- Never put `taskId` or `task_id` inside `--request`. Existing drafts must use `--task-id`; embedded task IDs fail
+  with `REQUEST_TASK_ID_NOT_ALLOWED` so request fields are never silently discarded.
 - Do not reconstruct or pass `trigger_rule`. It is an internal persisted field.
 - The legacy `--request` mode remains available for existing callers.
 - Required body fields (server validates): `task_name`, `channel_type`, `channel_id`, `group_content_list`, `target_cluster_type`, `trigger_type`, `completion_indicator_def`, `frequency_limits`, `enable_channel_touch_limits`, `group_id`, `trigger_time_strategy`.
@@ -41,5 +43,6 @@ Provide exactly one of `--task-id` or `--request`.
 |---|---|
 | `APPROVAL_INPUT_INVALID` | neither or both of `task_id` and `request` supplied |
 | `REQUEST_REQUIRED` | `--request` missing or not an object |
+| `REQUEST_TASK_ID_NOT_ALLOWED` | `request.taskId` or `request.task_id` supplied; use `--task-id` |
 | `REQUEST_FIELDS_REQUIRED` | required body fields absent/blank |
 | `CAPABILITY_EXECUTION_FAILED` | unmapped domain failure; check `invocation_id` / Hermes logs |

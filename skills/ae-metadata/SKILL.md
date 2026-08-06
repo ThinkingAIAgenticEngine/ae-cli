@@ -1,6 +1,6 @@
 ---
 name: ae-metadata
-version: 1.0.0
+version: 1.0.1
 description: "AE/TE metadata capability-gateway CLI: metadata data-table management and property dimension-table binding. Metadata CLI routes through the analysis gateway. Input-file upload and event/property detail belong to ae-analysis."
 ---
 
@@ -30,6 +30,7 @@ Safety:
 - Ordinary writes (`data-table *-write`, `property-bindings-update`, dimension-table bind/create) execute without `--yes`. Delete commands are `high-risk-write`: dry-run first, summarize impact, wait for explicit confirmation, then execute with `--yes`.
 - **Before any command**, read the matching `references/<name>.md` (filename = command with spaces → underscores, e.g. `metadata data-table list` → `metadata_data_table_list.md`).
 - Never invent `project_id`, event/property names, `input_file_id`, or `data_table_id`. Discover names via `ae-analysis` and data table IDs via `metadata data-table list`.
+- `metadata data-table download` is an async artifact command: plain invocation submits, `--wait` waits, and `--output <file>` waits then streams atomically. Resume with `analysis run wait`; local interruption never cancels the remote run.
 
 ## When to Use
 

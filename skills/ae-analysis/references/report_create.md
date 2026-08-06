@@ -9,14 +9,14 @@ Read [`ai_models.md`](ai_models.md) for the single AI-facing model registry. Rep
 Command:
 
 ```bash
-ae-cli analysis report create --project-id <project_id> --report-name "Demo" --model-type event --definition '{...}' [--report-desc "..."] [--dashboard-ids "[1001]"]
+ae-cli analysis report create --project-id <project_id> --report-name "Demo" --model-type event --definition '{...}' [--resolutions '<confirmed_resolution_json>'] [--report-desc "..."] [--dashboard-ids "[1001]"]
 ```
 
-Input sends `project_id`, `report_name`, `model_type`, `definition`, optional `report_desc`, `cache_seconds`, `query_duration_ms`, and `dashboard_ids`.
+Input sends `project_id`, `report_name`, `model_type`, `definition`, optional user-confirmed `resolutions`, `report_desc`, `cache_seconds`, `query_duration_ms`, and `dashboard_ids`. `--resolutions` is not supported with `--model-type tag`.
 
 Output is the gateway envelope. `data` contains the created `report_id`, creation status, normalized `model_type`, AI QP `definition`, and optional resolution warnings.
 
-Report creation and its `--validate` / `--dry-run` paths use the same compiler contract. `AI_QP_COMPILE_FAILED` preserves `meta.compile_status`, full `meta.errors[]` (including `code`, `candidates`, and `suggestions`), `meta.resolved`, and `meta.warnings`. No report is created on this failure; select an exact returned candidate or ask the user before retrying.
+Report creation and its `--validate` / `--dry-run` paths use the same compiler contract. `AI_QP_COMPILE_FAILED` preserves the full structured error array. No report is created on this failure; follow [`../metadata_resolution.md`](../metadata_resolution.md), keep the definition unchanged, and pass `--resolutions` only after user confirmation.
 
 ## SQL dynamic parameter shortest path
 

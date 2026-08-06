@@ -38,7 +38,7 @@ registerCapabilityGatewayRoute('engage-activity', { gatewayDomain: 'engage' });
 registerCapabilityGatewayRoute('engage-workbench', { gatewayDomain: 'engage' });
 
 function runCli(args) {
-  return spawnSync('npx', ['tsx', 'src/index.ts', '--host', HOST, '--no-update-check', ...args], {
+  return spawnSync(process.execPath, ['--import', 'tsx', 'src/index.ts', '--host', HOST, '--no-update-check', ...args], {
     cwd: ROOT,
     encoding: 'utf-8',
   });

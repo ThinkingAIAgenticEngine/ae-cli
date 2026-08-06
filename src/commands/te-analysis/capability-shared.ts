@@ -3,24 +3,35 @@ import {
   createCapabilityCommand as createCapabilityCommandCore,
   type CreateCapabilityCommandConfig as CoreCapabilityCommandConfig,
 } from '../../core/capability-command.js';
+import {
+  withAsyncArtifactLifecycle,
+  type AsyncArtifactLifecycleOptions,
+} from '../../core/analysis-async-artifact.js';
 
-type AnalysisCapabilityCommandConfig = Omit<CoreCapabilityCommandConfig, 'cliService' | 'gatewayDomain'>;
+type AnalysisCapabilityCommandConfig = Omit<CoreCapabilityCommandConfig, 'cliService' | 'gatewayDomain'> & {
+  /** Explicitly opt this command into the shared run/artifact wait and download lifecycle. */
+  asyncArtifact?: boolean | AsyncArtifactLifecycleOptions;
+};
 
 const ANALYSIS_GATEWAY_CLI_SERVICES = new Set(['project', 'system']);
 
 export const analysisDataRunRoutingHelp =
-  'Routing: use run only for analysis data that fits <=1000 inline rows and <=180s; use export for full, unknown-size, >1000-row, or long-running data.';
+  'Routing: --preview-rows bounds returned business rows per result; omit it to use the model current cluster-configured synchronous limit. Agents should normally pass --preview-rows 100. Use export for full, unknown-size, timed-out, or long-running data.';
 
 export const analysisDataExportRoutingHelp =
-  'Routing: use export for full, unknown-size, >1000-row, or long-running analysis data; inspect/download by run_id/artifact_id; use run only for <=1000-row inline previews.';
+  'Routing: use export for full, unknown-size, timed-out, or long-running analysis data. Plain export submits only; --wait waits, --output waits and atomically downloads, and analysis run wait resumes by run_id. Export commands do not accept --preview-rows.';
 
 export function createAnalysisCapabilityCommand(config: AnalysisCapabilityCommandConfig) {
   const cliPath = resolveAnalysisGatewayCliPath(config);
-  return createCapabilityCommandCore({
-    ...config,
+  const { asyncArtifact, ...coreConfig } = config;
+  const command = createCapabilityCommandCore({
+    ...coreConfig,
     ...cliPath,
     gatewayDomain: 'analysis',
   });
+  return asyncArtifact
+    ? withAsyncArtifactLifecycle(command, typeof asyncArtifact === 'object' ? asyncArtifact : undefined)
+    : command;
 }
 
 function resolveAnalysisGatewayCliPath(
@@ -53,19 +64,27 @@ function resolveAnalysisGatewayCliPath(
 }
 
 export function createAnalysisMetaCapabilityCommand(config: AnalysisCapabilityCommandConfig) {
-  return createCapabilityCommandCore({
-    ...config,
+  const { asyncArtifact, ...coreConfig } = config;
+  const command = createCapabilityCommandCore({
+    ...coreConfig,
     cliService: 'analysis-meta',
     gatewayDomain: 'analysis',
   });
+  return asyncArtifact
+    ? withAsyncArtifactLifecycle(command, typeof asyncArtifact === 'object' ? asyncArtifact : undefined)
+    : command;
 }
 
 export function createAnalysisGovernanceCapabilityCommand(config: AnalysisCapabilityCommandConfig) {
-  return createCapabilityCommandCore({
-    ...config,
+  const { asyncArtifact, ...coreConfig } = config;
+  const command = createCapabilityCommandCore({
+    ...coreConfig,
     cliService: 'analysis-governance',
     gatewayDomain: 'analysis',
   });
+  return asyncArtifact
+    ? withAsyncArtifactLifecycle(command, typeof asyncArtifact === 'object' ? asyncArtifact : undefined)
+    : command;
 }
 
 export const projectIdFlag: Flag = {
@@ -98,6 +117,19 @@ export const limitFlag: Flag = {
   required: false,
   desc: 'Optional inline result limit.',
   alias: 'l',
+};
+
+export const previewRowsFlag: Flag = {
+  name: 'preview-rows',
+  type: 'number',
+  required: false,
+  desc: 'Maximum business rows returned per result. Omit to use the current model/cluster synchronous limit. The runtime maximum varies by model; agents should normally pass 100.',
+  min: 1,
+};
+
+export const analysisModelPreviewRowsFlag: Flag = {
+  ...previewRowsFlag,
+  desc: 'Maximum synchronous preview units returned per result. Units are business rows for tabular results. For path results, this limits real nodes per path level before overflow nodes are combined into more. Omit to use the current model/cluster synchronous limit. The runtime maximum varies by model; agents should normally pass 100.',
 };
 
 export const directoryLimitFlag: Flag = {
@@ -144,32 +176,21 @@ export const reportModelTypesFlag: Flag = {
   desc: 'Optional semantic report model JSON array, for example ["event","sql","tag","revenue"].',
 };
 
-export const syncLimitFlag: Flag = {
-  name: 'limit',
-  type: 'number',
-  required: false,
-  desc: 'Maximum inline rows for sync query results. Default: 100, max: 1000. Use export for full data.',
-  alias: 'l',
-  min: 1,
-  max: 1000,
-};
-
-export const detailPreviewLimitFlag: Flag = {
-  name: 'limit',
-  type: 'number',
-  required: false,
-  desc: 'Maximum first preview rows. Default: 100, max: 1000. This is not a pagination window; use export for more rows.',
-  alias: 'l',
-  min: 1,
-  max: 1000,
-};
-
 export const offsetFlag: Flag = {
   name: 'offset',
   type: 'number',
   required: false,
   desc: 'Optional zero-based result offset.',
   alias: 'o',
+};
+
+export const directoryOffsetFlag: Flag = {
+  name: 'offset',
+  type: 'number',
+  required: false,
+  desc: 'Zero-based directory page offset. Default: 0. Negative values are rejected.',
+  alias: 'o',
+  min: 0,
 };
 
 export const payloadFlag: Flag = {
@@ -291,8 +312,8 @@ export function dashboardReportDataInput(ctx: RuntimeContext): Record<string, un
     zone_offset: optionalNumber(ctx, 'zone-offset'),
     use_cache: optionalBoolean(ctx, 'use-cache'),
     request_id: optionalString(ctx, 'request-id'),
+    preview_rows: optionalNumber(ctx, 'preview-rows'),
     timeout_seconds: optionalNumber(ctx, 'timeout-seconds'),
-    limit: optionalNumber(ctx, 'limit'),
     format: optionalString(ctx, 'artifact-format'),
   });
 }
@@ -316,14 +337,10 @@ export function biPanelPageDataInput(ctx: RuntimeContext): Record<string, unknow
     permission_controls: optionalJson(ctx, 'permission-controls'),
     chart_filter_controls: optionalJson(ctx, 'chart-filter-controls'),
     columns: optionalJson(ctx, 'columns'),
-    row_limit: optionalNumber(ctx, 'row-limit'),
-    row_offset: optionalNumber(ctx, 'row-offset'),
-    block_limit: optionalNumber(ctx, 'block-limit'),
-    block_offset: optionalNumber(ctx, 'block-offset'),
     use_cache: optionalBoolean(ctx, 'use-cache'),
     request_id: optionalString(ctx, 'request-id'),
+    preview_rows: optionalNumber(ctx, 'preview-rows'),
     timeout_seconds: optionalNumber(ctx, 'timeout-seconds'),
-    limit: optionalNumber(ctx, 'limit'),
     format: optionalString(ctx, 'artifact-format'),
   });
 }
@@ -390,72 +407,4 @@ export function compactInput(input: Record<string, unknown>): Record<string, unk
     }
   }
   return result;
-}
-
-export function applyAnalysisInlineLimit(result: unknown, input: Record<string, unknown>): unknown {
-  const limit = typeof input.limit === 'number' && Number.isInteger(input.limit) && input.limit > 0
-    ? input.limit
-    : undefined;
-  if (!limit) {
-    return result;
-  }
-
-  const cloned = cloneJsonLike(result);
-  const summary = {
-    truncated: false,
-    containers: 0,
-    originalRows: 0,
-    returnedRows: 0,
-  };
-  trimRows(cloned, limit, summary);
-
-  if (summary.truncated && cloned && typeof cloned === 'object' && !Array.isArray(cloned)) {
-    (cloned as Record<string, unknown>)._cli_inline_limit = {
-      requested_limit: limit,
-      containers_truncated: summary.containers,
-      original_rows: summary.originalRows,
-      returned_rows: summary.returnedRows,
-      note: 'Rows were truncated by ae-cli to keep sync run output within the inline limit. Use export for full data.',
-    };
-  }
-
-  return cloned;
-}
-
-function cloneJsonLike(value: unknown): unknown {
-  if (value === undefined || value === null) return value;
-  return JSON.parse(JSON.stringify(value));
-}
-
-function trimRows(
-  value: unknown,
-  limit: number,
-  summary: { truncated: boolean; containers: number; originalRows: number; returnedRows: number },
-): void {
-  if (!value || typeof value !== 'object') return;
-
-  if (Array.isArray(value)) {
-    for (const item of value) trimRows(item, limit, summary);
-    return;
-  }
-
-  const record = value as Record<string, unknown>;
-  const rows = record.rows;
-  if (Array.isArray(rows) && rows.length > limit) {
-    record.rows = rows.slice(0, limit);
-    record._cli_truncation = {
-      field: 'rows',
-      requested_limit: limit,
-      original_row_count: rows.length,
-      returned_row_count: limit,
-    };
-    summary.truncated = true;
-    summary.containers += 1;
-    summary.originalRows += rows.length;
-    summary.returnedRows += limit;
-  }
-
-  for (const child of Object.values(record)) {
-    trimRows(child, limit, summary);
-  }
 }

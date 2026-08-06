@@ -2,7 +2,7 @@
 
 Use when the user explicitly wants to rollback one report to a previous history version.
 
-Do not use without first identifying the target version from `report-change-log list` or an exact user-provided version.
+Do not use without first choosing an item with `can_rollback=true` from `report-change-log list` or receiving an exact user-provided version. Pass the selected item's `target_version`; do not infer it from `version` or `original_version`.
 
 Command:
 

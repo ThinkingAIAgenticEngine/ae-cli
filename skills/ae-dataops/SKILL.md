@@ -17,7 +17,7 @@ The AE Data Development and Operations domain provides capabilities for data war
 |------------|----------------|------------------------------|
 | `dataops_repo` | Space discovery | — |
 | `dataops_datatable` | Data table and view management | `dataops-table` |
-| `dataops_flow` | Flow creation and orchestration | `dataops-flow-create` |
+| `dataops_flow` | Flow creation, node deletion, and orchestration | `dataops-flow-create` |
 | `dataops_flow` | Flow execution and monitoring | `dataops-flow-monitor` |
 | `dataops_operations` | Operations instance search, details, and task logs | `dataops-flow-monitor` |
 | `dataops_ide` | Data exploration and SQL queries | `dataops-query` |
@@ -89,7 +89,7 @@ You must understand the following key concepts before use, otherwise errors are 
 ### Flow Lifecycle
 
 ```
-Create DEV Flow → Create/Update DEV SQL, Integration, or Workflow Instance Check Tasks → Configure Dependencies/Schedule → Preview Release → Release to PROD → PROD Manual Execution / Operations Troubleshooting
+Create DEV Flow → Create/Update DEV SQL, Integration, Workflow Instance Check, or Task Instance Check Tasks → Configure Dependencies/Schedule → Preview Release → Release to PROD → PROD Manual Execution / Operations Troubleshooting
 ```
 
 ### CRON Format (6 fields)
@@ -112,7 +112,7 @@ Choose the appropriate scenario skill based on user intent to get complete step-
 
 | User Intent | Trigger Skill | Keywords |
 |-------------|---------------|----------|
-| Create flow, add nodes, configure schedule, release | `dataops-flow-create` | create flow, new workflow, configure schedule, add task node, release, cron, scheduled execution |
+| Create flow, add or delete nodes, configure schedule, release | `dataops-flow-create` | create flow, new workflow, configure schedule, add task node, delete task node, release, cron, scheduled execution |
 | View execution status, troubleshoot failures, view logs | `dataops-flow-monitor` | execute flow, running instance, monitor, logs, stop, DAG, troubleshoot |
 | Search operation instances across a space | `dataops-flow-monitor` | operations instance, flow instance search, status statistics, owner statistics |
 | Create datasource, configure sync solution, execute sync | `dataops-integration` | datasource, sync, integration, field mapping, data ingestion, MySQL, ClickHouse, DatabricksJdbc |
@@ -159,6 +159,7 @@ Detailed creation/configuration commands live in [`references/dataops-flow-creat
 
 Key constraints:
 - Create and update tasks in DEV, preview/release before PROD execution.
+- Treat `+delete_task` as high-risk: verify the target with `+get_flow_overview`, preview with `--dry-run`, and use `--yes` only after explicit user confirmation. Deletion affects DEV; release the flow to apply it to PROD.
 - `+execute_flow` always runs PROD; it returns `executeId` for early stop.
 - Prefer `flowInstanceId` from operations search for stable inspection and troubleshooting.
 - Reference workspace parameters in task SQL as `${paramKey}`.

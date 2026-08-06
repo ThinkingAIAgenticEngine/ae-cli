@@ -25,6 +25,22 @@ export const getCostSummary = createAdminCommand({
   prepare: () => ({ method: 'GET', path: '/api/admin/cost-control/summary' }),
 });
 
+export const getBalance = createAdminCommand({
+  command: '+get-balance',
+  description: 'Get the current company model account balance and currency',
+  flags: [],
+  risk: 'read',
+  prepare: () => ({ method: 'GET', path: '/api/admin/cost-control/balance' }),
+});
+
+export const listOverLimitUsers = createAdminCommand({
+  command: '+list-over-limit-users',
+  description: 'List company members currently over cost or token quota limits',
+  flags: [],
+  risk: 'read',
+  prepare: () => ({ method: 'GET', path: '/api/admin/cost-control/over-limit-users' }),
+});
+
 export const getBalanceAlert = createAdminCommand({
   command: '+get-balance-alert',
   description: 'Get the company balance alert configuration and current status',
@@ -135,6 +151,8 @@ export const bindQuotaRuleUser = createAdminCommand({
 
 export const costControlCommands: Command[] = [
   getCostSummary,
+  getBalance,
+  listOverLimitUsers,
   getBalanceAlert,
   setBalanceAlert,
   listQuotaRules,

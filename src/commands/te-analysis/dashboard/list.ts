@@ -1,4 +1,4 @@
-import { createAnalysisCapabilityCommand, directoryLimitFlag, listInput, offsetFlag, projectIdFlag, queryFlag } from '../capability-shared.js';
+import { createAnalysisCapabilityCommand, directoryLimitFlag, directoryOffsetFlag, listInput, projectIdFlag, queryFlag } from '../capability-shared.js';
 
 export const dashboardList = createAnalysisCapabilityCommand({
   resource: 'dashboard',
@@ -16,7 +16,7 @@ export const dashboardList = createAnalysisCapabilityCommand({
       alias: 'f',
     },
     directoryLimitFlag,
-    offsetFlag,
+    directoryOffsetFlag,
   ],
   risk: 'read',
   buildInput: listInput,

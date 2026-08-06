@@ -15,8 +15,8 @@ if (!result.stdout.trim()) {
 const output = JSON.parse(result.stdout);
 const overlayDocFindings = output.findings.filter((finding) =>
   ['P1', 'P2'].includes(finding.level) &&
-  finding.msg.includes('ae-analysis') &&
-  finding.msg.includes('query-cluster')
+  finding.msg.includes('ae-analysis-global') &&
+  (finding.msg.includes('query-cluster') || finding.msg.includes('query_cluster_list'))
 );
 
 if (overlayDocFindings.length > 0) {

@@ -13,6 +13,7 @@ import { dashboardUpdate } from '../src/commands/te-analysis/dashboard/update.ts
 import { dashboardReportDataRun } from '../src/commands/te-analysis/dashboard-report-data/run.ts';
 import { dashboardReportDataExport } from '../src/commands/te-analysis/dashboard-report-data/export.ts';
 import { queryCreateResultCluster } from '../src/commands/te-analysis/query/create-result-cluster.ts';
+import { biPanelPageDataRun } from '../src/commands/te-analysis/bi-panel-page-data/run.ts';
 import userCommands from '../src/commands/te-analysis/user/index.ts';
 import { stringFlagValidationError } from '../src/framework/runner.ts';
 
@@ -205,11 +206,89 @@ await test('history tag batch refresh uses the public snake_case object', async 
   });
 });
 
-await test('all audience exports publish the six-hour maximum', () => {
-  for (const command of userCommands.filter((item) => item.command === 'export')) {
+await test('audience exports publish the lifecycle that matches their output contract', () => {
+  const synchronousCatalogExports = [
+    user('user-cluster', 'export'),
+    user('user-tag', 'export'),
+  ];
+  const asynchronousDataExports = [
+    user('user-cluster-member', 'export'),
+    user('user-tag-member', 'export'),
+    user('history-tag-data', 'export'),
+    user('history-tag-data-drilldown', 'export'),
+  ];
+  const allExports = userCommands.filter((item) => item.command === 'export');
+  assert.deepEqual(
+    new Set([...synchronousCatalogExports, ...asynchronousDataExports]),
+    new Set(allExports),
+    'Every audience export must be classified as a synchronous catalog or asynchronous data export',
+  );
+
+  for (const command of synchronousCatalogExports) {
+    const names = flagNames(command);
+    assert.equal(command.flags.find((flag) => flag.name === 'output')?.required, true);
+    assert.equal(names.includes('timeout-seconds'), false, `${command.resource} catalog export timeout`);
+    assert.equal(names.includes('wait'), false, `${command.resource} catalog export wait lifecycle`);
+    assert.equal(names.includes('force'), false, `${command.resource} catalog export force lifecycle`);
+  }
+
+  for (const command of asynchronousDataExports) {
     const timeout = command.flags.find((flag) => flag.name === 'timeout-seconds');
     assert.equal(timeout?.max, 21600, `${command.resource} export timeout max`);
+    const names = flagNames(command);
+    assert.equal(names.includes('wait'), true, `${command.resource} export wait lifecycle`);
+    assert.equal(names.includes('output'), true, `${command.resource} export output lifecycle`);
+    assert.equal(names.includes('force'), true, `${command.resource} export force lifecycle`);
   }
+});
+
+await test('native member exports expose the common jsonl and csv format contract', async () => {
+  for (const command of [
+    user('user-tag-member', 'export'),
+    user('user-cluster-member', 'export'),
+    user('history-tag-data-drilldown', 'export'),
+  ]) {
+    const names = flagNames(command);
+    assert.equal(names.includes('fields'), false);
+    assert.equal(names.includes('query'), false);
+    assert.equal(names.includes('use-cache'), false);
+    assert.match(command.flags.find((flag) => flag.name === 'artifact-format')!.desc, /jsonl or csv/);
+    assert.match(command.flags.find((flag) => flag.name === 'artifact-format')!.desc, /Default: jsonl/);
+  }
+
+  const { body } = await dryBody(user('user-cluster-member', 'export'), {
+    'project-id': 5,
+    'cluster-name': 'retained_users',
+    'artifact-format': 'csv',
+  });
+  assert.equal(body.input.format, 'csv');
+  assert.equal(body.input.fields, undefined);
+  assert.equal(body.input.query, undefined);
+  assert.equal(body.input.use_cache, undefined);
+
+  const defaultFormat = await dryBody(user('user-tag-member', 'export'), {
+    'project-id': 5,
+    'tag-name': 'vip',
+  });
+  assert.equal(defaultFormat.body.input.format, undefined);
+
+  const jsonlFormat = await dryBody(user('history-tag-data-drilldown', 'export'), {
+    'project-id': 5,
+    'tag-name': 'vip',
+    'snapshot-date': '2026-07-01',
+    'group-col': 'high',
+    view: '{}',
+    'artifact-format': 'jsonl',
+  });
+  assert.equal(jsonlFormat.body.input.format, 'jsonl');
+});
+
+await test('BI page data run has no invented row or block pagination flags', () => {
+  const names = flagNames(biPanelPageDataRun);
+  for (const name of ['row-limit', 'row-offset', 'block-limit', 'block-offset']) {
+    assert.equal(names.includes(name), false, `must not expose --${name}`);
+  }
+  assert.match(biPanelPageDataRun.description, /same chart result cap as the UI/);
 });
 
 await test('dashboard and other sync queries publish distinct timeout defaults', () => {
@@ -221,6 +300,36 @@ await test('dashboard and other sync queries publish distinct timeout defaults',
     const timeout = command.flags.find((flag) => flag.name === 'timeout-seconds')!;
     assert.equal(timeout.max, 180);
     assert.match(timeout.desc, /Default: 120/);
+  }
+});
+
+await test('all audience sync data queries expose and forward preview rows', async () => {
+  const cases = [
+    [user('user-cluster-member', 'list'), { 'project-id': 5, 'cluster-name': 'vip' }],
+    [user('user-tag-member', 'list'), { 'project-id': 5, 'tag-name': 'vip' }],
+    [user('history-tag-data', 'run'), { 'project-id': 5, 'tag-name': 'vip', view: '{}' }],
+    [user('history-tag-data-drilldown', 'run'), {
+      'project-id': 5,
+      'tag-name': 'vip',
+      'snapshot-date': '2026-07-01',
+      'group-col': 'high',
+      view: '{}',
+    }],
+  ] as const;
+
+  for (const [command, args] of cases) {
+    assert.equal(flagNames(command).includes('preview-rows'), true, `${command.resource} preview flag`);
+    const { body } = await dryBody(command, { ...args, 'preview-rows': 37 });
+    assert.equal(body.input.preview_rows, 37, `${command.resource} preview input`);
+  }
+});
+
+await test('member query help publishes the UI-compatible 1000 row default', () => {
+  for (const command of [user('user-tag-member', 'list'), user('user-cluster-member', 'list')]) {
+    const previewRows = command.flags.find((flag) => flag.name === 'preview-rows')!;
+    assert.match(previewRows.desc, /Default: 1000/);
+    assert.equal(previewRows.max, 100000);
+    assert.match(command.description, /defaults to 1000 rows/);
   }
 });
 

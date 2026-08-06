@@ -23,4 +23,35 @@ ae-cli engage-task push-record query \
 
 ## Output
 
-Returns `record_type`, `items`, `total`, and pagination metadata when the selected backend record type is paginated. Records include available trigger, planned-send, actual-send, success, channel-exception, status, and failure-reason fields.
+Returns `record_type`, `items`, `total`, and pagination metadata when the selected backend record type is paginated.
+
+The count fields depend on `record_type`:
+
+| `record_type` | Actual push field | Successful push field |
+| --- | --- | --- |
+| `scheduled` | `actual_trigger_num` | `trigger_num` |
+| `user_time_zone` | `actual_trigger_num` | `trigger_num` |
+| `triggered` | `actual_push_num` | `push_success_num` |
+
+Scheduled records and nested user-time-zone execution records use stable English `status_name`
+values:
+
+| `status` | `status_name` |
+| --- | --- |
+| `0` | `Waiting` |
+| `1` | `Ready` |
+| `2` | `Pushing` |
+| `3` | `Sent` |
+| `4` | `Retrying` |
+| `5` | `Failed` |
+
+Top-level user-time-zone task instances use a separate status enum:
+
+| `status` | `status_name` |
+| --- | --- |
+| `0` | `Sending` |
+| `1` | `Sent` |
+| `2` | `Finished` |
+
+Use `status` and the count fields for automated assertions. `status_name` never returns an internal
+`hermes.*` localization key.

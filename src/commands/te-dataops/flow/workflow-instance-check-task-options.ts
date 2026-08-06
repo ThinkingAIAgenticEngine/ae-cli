@@ -1,6 +1,7 @@
 import type { RuntimeContext } from '../../../framework/types.js';
 
 const ITEM_FIELDS = new Set(['flowCode', 'left', 'right', 'checkTimeUnit']);
+const TASK_ITEM_FIELDS = new Set([...ITEM_FIELDS, 'taskCode']);
 const TIME_UNITS = new Set(['DAY', 'HOUR', 'MINUTE']);
 
 export function buildCheckArgs(ctx: RuntimeContext): Record<string, unknown> {
@@ -12,9 +13,10 @@ export function buildCheckArgs(ctx: RuntimeContext): Record<string, unknown> {
   };
 }
 
-export function validateCheckArgs(ctx: RuntimeContext): void {
+export function validateCheckArgs(ctx: RuntimeContext, requireTaskCode = false): void {
   const items = ctx.json('checkItems');
   const currentFlowCode = ctx.num('flowCode');
+  const itemFields = requireTaskCode ? TASK_ITEM_FIELDS : ITEM_FIELDS;
   if (!Array.isArray(items) || items.length < 1 || items.length > 20) {
     throw new Error('checkItems must be a JSON array with between 1 and 20 items');
   }
@@ -24,12 +26,15 @@ export function validateCheckArgs(ctx: RuntimeContext): void {
       throw new Error(`checkItems[${index}] must be an object`);
     }
     for (const field of Object.keys(item)) {
-      if (!ITEM_FIELDS.has(field)) {
+      if (!itemFields.has(field)) {
         throw new Error(`checkItems[${index}] contains unsupported field "${field}"`);
       }
     }
     if (!Number.isSafeInteger(item.flowCode) || item.flowCode <= 0) {
       throw new Error(`checkItems[${index}].flowCode must be a positive integer`);
+    }
+    if (requireTaskCode && (!Number.isSafeInteger(item.taskCode) || item.taskCode <= 0)) {
+      throw new Error(`checkItems[${index}].taskCode must be a positive integer`);
     }
     const minimum = item.flowCode === currentFlowCode ? 1 : 0;
     if (!Number.isInteger(item.left) || item.left < minimum) {

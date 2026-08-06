@@ -4,7 +4,7 @@ Inspect an async analysis capability-gateway run returned by export commands.
 
 Use for `analysis adhoc export`, `analysis report-data export`, `analysis dashboard-report-data export`, `analysis bi-panel-page-data export`, and other analysis exports that return `run_id`.
 
-Do not use this for MCP `request_id` cancellation or status. MCP query lifecycle uses the specific MCP command contract.
+Legacy transport `request_id` values are outside this skill's execution path. This command accepts only the capability-gateway `run_id`; if the caller has only a legacy request ID, report that it cannot be inspected or canceled here.
 
 Input:
 
@@ -20,9 +20,12 @@ Input sends `run_id`.
 
 Output is the gateway run descriptor with run status, artifact status, and error fields when the run failed. Keep the `run_id` from the same export result; do not invent or reuse it across artifacts.
 
-Polling rule:
+State interpretation:
 
-- Continue polling while status is running or pending.
-- Treat `COMPLETED` or `SUCCEEDED` as success.
-- Treat `FAILED`, `CANCELED`, or `CANCELLED` as terminal failure.
+- Continue only while run or artifact status is `RUNNING`.
+- Treat only run `SUCCEEDED` plus artifact `COMPLETED` as downloadable success.
+- Treat run or artifact `FAILED`/`CANCELED` as terminal failure.
 - After success, download with `ae-cli analysis artifact download --run-id <run_id> --artifact-id <artifact_id> --output <file>`.
+
+For managed polling and resumability, use `ae-cli analysis run wait --run-id
+<run_id> [--output <file>]` instead of scripting an unbounded inspect loop.

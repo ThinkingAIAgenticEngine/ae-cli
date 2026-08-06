@@ -1,6 +1,6 @@
 ---
 name: ae-analysis
-version: 4.0.4
+version: 4.2.0
 description: "Use ae-cli for AE/TE analysis-side data questions, asset operations, and asset governance: reports, analysis boards, BI dashboards, ad-hoc models, drilldown, detail data, alerts, clusters, tags, metrics, metadata, project configuration, tracking plans, governance asset lists/rules/lineage/impact/dependency, batch asset operations, projects, and resource links. Use when the user asks to query data, explain a change, export evidence, or inspect/create/update/govern analysis assets."
 ---
 
@@ -18,6 +18,7 @@ This is the single entry skill for analysis intent and command execution.
 3. For an AI-facing ad-hoc definition, also read [`references/ai_models.md`](references/ai_models.md).
 4. For cluster/tag `--definition-request`, also read the matching [`references/user_cluster_models.md`](references/user_cluster_models.md) or [`references/user_tag_models.md`](references/user_tag_models.md). Shared primitives live in [`references/audience_models.md`](references/audience_models.md).
 5. For analysis data retrieval, choose `run` or `export` using [`references/analysis_data_retrieval.md`](references/analysis_data_retrieval.md).
+6. When an AI-QP compile failure contains `slot_kind`, `allowed_resource_types`, `search_targets`, and `next_action`, read and follow [`metadata_resolution.md`](metadata_resolution.md).
 
 The generated command index is exhaustive. This file contains routing and workflow rules only; do not duplicate a hand-maintained command inventory here.
 
@@ -29,11 +30,10 @@ Use this skill for these CLI services:
 - `analysis-meta`: gateway metadata assets, events, properties, virtual metadata, metrics, data tables, exchange rules, and super metadata.
 - `analysis-governance`: gateway asset governance operations, including governed asset lists/exports, lineage, dependency, impact, query history, rule schema/list/create/update/delete, batch asset actions, and operation records. Use this service for asset governance workflows, not for metadata event/property/metric CRUD.
 - `tracking`: gateway tracking plan, checking, ingest, live-data, and event blacklist operations.
-- `analysis_meta`: legacy MCP metadata commands. Prefer `analysis-meta` gateway commands whenever the generated index contains the needed operation.
 
 For metadata gateway detail outside the commands in the generated index, use the metadata skill. For Engage, DataOps, or Community work, use the corresponding skill.
 
-Use `ae-cli` first. Fall back to te-mcp only for command-not-found, not-supported/not-implemented, a confirmed capability gap, or repeated failures that are not caused by parameters, types, time formats, permissions, timeout choice, or payload construction. State the fallback reason. A validation error or `need_clarification` is a reason to correct the input, not to switch tools.
+Use `ae-cli` as the only execution path for this skill. If a command is missing, unsupported, not implemented, or a capability gap is confirmed, report the gap and stop or provide framework-level guidance; do not switch to direct MCP execution. Repeated failures are not evidence of a capability gap until parameters, types, time formats, permissions, timeout choice, and payload construction have been checked. A validation error or `need_clarification` is a reason to correct the input, not to switch tools.
 
 For tags and audience clusters, use the native `analysis user-tag ...` and `analysis user-cluster ...` gateway commands.
 
@@ -42,8 +42,6 @@ For tags and audience clusters, use the native `analysis user-tag ...` and `anal
 Command forms:
 
 ```bash
-ae-cli analysis +<command> [options]
-ae-cli analysis_meta +<command> [options]
 ae-cli analysis <resource> <action> [options]
 ae-cli analysis-meta <resource> <action> [options]
 ae-cli analysis-governance <resource> <action> [options]
@@ -51,7 +49,6 @@ ae-cli tracking <resource> <action> [options]
 ae-cli capability search|inspect|validate|dry-run|run [options]
 ```
 
-- Legacy `+` commands use underscore flags such as `--project_id`.
 - Gateway commands use kebab-case flags such as `--project-id`; the CLI sends snake_case JSON.
 - JSON values must be JSON string literals.
 - Global flags include `--host`, `--format json|table`, `--jq`, `--validate`, `--dry-run`, and `--yes`. Use `--validate` alone to normalize complex capability input; use `--dry-run` alone for execution or risk preview.
@@ -100,9 +97,13 @@ Before a project-scoped command:
 
 ### C. FUZZY_SEARCH_FALLBACK
 
-For saved-asset operations on reports, dashboards, metrics, clusters, tags, and alerts, use the relevant list/search command first unless an exact ID or canonical asset name was already verified. Search the user's phrase, broaden it up to two times, then list all candidates. If no resource exists, stop instead of fabricating one.
+For saved-asset operations on reports, dashboards, metrics, clusters, tags, and alerts, use the relevant list/search command first unless an exact ID or canonical asset name was already verified. For event, property, metric, cluster, and tag catalogs, put the user's phrase and its useful synonyms in one `--queries` JSON array; matching is OR across at most 20 keywords. For ordinary asset discovery, broaden the keyword batch up to two times, then list all candidates. If no resource exists, stop instead of fabricating one.
 
-Do not pre-list events or properties before constructing an AI-facing intent model. Pass the user's wording directly in `definition`; the backend resolves it and returns `resolved` evidence. Call event/property metadata commands only when the user explicitly asks to inspect metadata, the compiler returns `need_clarification` with candidates, or the compiler reports an explicit metadata-resolution capability gap.
+Only when explicitly complete event, property, metric, cluster, or tag metadata is needed, use that resource's `export --output <temporary_path>/<resource>` command. Event/property/metric exports use `.json`; cluster/tag exports use `.jsonl` and an integrity sidecar. Search the temporary file locally and keep the full rows out of model context. Do not page repeatedly to synthesize a complete catalog.
+
+Do not pre-list events or properties before constructing an AI-facing intent model. Pass the user's wording directly in `definition`; the backend resolves it and returns `resolved` evidence. Call event/property metadata commands only when the user explicitly asks to inspect metadata, a structured compiler error instructs `next_action=search_candidates`, or the compiler reports an explicit metadata-resolution capability gap. When compiler candidates already exist, ask the user to confirm without another metadata call. If the user explicitly rejects every candidate for that path, treat the rejected set as exhausted and continue through the one aggregate-search workflow in `metadata_resolution.md`; do not terminate the original task or repeat the rejected candidates.
+
+The generic saved-asset search rule above does not control structured AI-QP metadata failures. For those failures, `allowed_resource_types` is authoritative: collect the whole compiler error array and follow the one aggregate online search, optional full-catalog, conversation-reuse workflow in `metadata_resolution.md`. Never use a candidate from either path without user confirmation.
 
 ### Existing business asset before ad-hoc
 
@@ -121,18 +122,20 @@ Do not call removed QP builders or schema helpers for ad-hoc analysis. `--defini
 - Metric value, trend, comparison, or anomaly -> saved report/dashboard first, then ad-hoc data.
 - Metric definition search/create/update -> metadata commands.
 - Event/entity rows -> `event-detail run|export` or `entity-detail run|export`.
-- Events/entities from a query result -> pass the original `--project-id`, then follow the returned synchronous `query_context_id` and `sources[].drilldown`; never reconstruct raw QP or use export rows as coordinates.
+- Events/entities from a query result -> pass the original `--project-id`, follow the returned synchronous `query_context_id` and compact source action summary, then call `analysis query-context get` for full coordinate options; never reconstruct raw QP or use export rows as coordinates.
 - Cluster/tag definition -> matching gateway cluster/tag commands and matching model reference.
 - Tag/cluster candidate values, including requests phrased as "latest version" or "latest result" -> resolve the exact asset, then use `analysis filter-value list` with `cluster_date_policy=LATEST`. This means the latest computed data snapshot, never a definition or configuration release; do not invent version lists, version IDs, draft states, or publish states.
 - Alert/configuration/tracking-plan requests -> the dedicated gateway command reference from the index.
 
 ### Run, export, and follow-up
 
-- `run` is a bounded inline preview for known-small work that can complete within the synchronous limits.
+- `run` is a bounded inline preview for work that can complete within the synchronous limits. Agents should normally pass `--preview-rows 100`; omitting it deliberately uses the model's current cluster-configured synchronous limit. User tag/cluster member list commands are the exception: omission defaults to 1000 rows, matching the UI member query.
 - `export` is for complete, unknown-size, over-limit, or long-running results. It returns `run_id` and `artifact_id`.
 - Drilldown event/entity/user-event exports are `csv.gz` full-download streams bounded by `model_full_download_limit`; never pass or simulate `limit`, `offset`, `page_num`, or `page_size`.
-- Inspect with `analysis run inspect`, download with `analysis artifact download`, and cancel with `analysis query cancel`. Do not call raw lifecycle URLs.
-- Drilldown requires the original `--project-id`, a synchronous preview context, and the selected source's returned row/column/metric coordinate options. Common rejects a project ID that does not match the stored context. If the context/options are absent or the action is not advertised, report that drilldown/result-cluster creation is unavailable.
+- Plain `export` submits only. Add `--wait` to wait for terminal state, or `--output <file>` to wait and atomically stream the completed artifact; `--output` implies wait. Existing files require explicit `--force`.
+- Resume detached or interrupted work with `analysis run wait --run-id <run_id> [--output <file>]`. Local interruption never cancels the remote run; cancel only through the explicit `analysis query cancel` command.
+- `analysis run inspect` and `analysis artifact download` remain primitive lifecycle commands. Do not call raw lifecycle URLs. Use `--wait-timeout-seconds` only to bound local waiting; it never changes or cancels the remote runtime.
+- Drilldown requires the original `--project-id`, a synchronous preview context, and row/column/metric coordinate options fetched with `analysis query-context get`. Common rejects a project ID that does not match the stored context. If the context/options are absent or the action is not advertised, report that drilldown/result-cluster creation is unavailable.
 
 ### Writes and destructive operations
 

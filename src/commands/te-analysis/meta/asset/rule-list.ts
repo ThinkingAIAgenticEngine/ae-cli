@@ -1,5 +1,7 @@
 import {
   createAnalysisGovernanceCapabilityCommand,
+  directoryLimitFlag,
+  directoryOffsetFlag,
   payloadFlag,
   projectIdFlag,
 } from '../../capability-shared.js';
@@ -12,7 +14,7 @@ export const analysisMetaAssetRuleList = createAnalysisGovernanceCapabilityComma
   command: 'list',
   capabilityId: 'governance.rule.list',
   description: 'List asset governance rules.',
-  flags: [projectIdFlag, payloadFlag],
+  flags: [projectIdFlag, payloadFlag, directoryLimitFlag, directoryOffsetFlag],
   risk: 'read',
-  buildInput: (ctx) => assetGovernanceInput(ctx, []),
+  buildInput: (ctx) => assetGovernanceInput(ctx, ['limit', 'offset']),
 });

@@ -224,6 +224,12 @@ Use it to understand what must appear in:
 - `controlConfig`
 - `expConfig` when experiment mode is enabled
 
+When experiment mode is enabled (`context.enableExp=true` or draft `expConfig.enableExp=true`):
+
+- capability `engage-task.task.build-save-guide` enriches `handoff.reqTemplate.channelConfig.groupContentList`
+  so each entry carries `expGroupName`, `expGroupType`, `percentageInExperiment`, `order`, and `contentList`
+- do not drop those association fields when filling content; they must stay aligned with `expConfig.expGroupList`
+
 ### 4.8 `fieldRules`
 
 This is the most important construction section.
@@ -274,6 +280,10 @@ The guide treats the A rule as a discriminated envelope:
 - `eventTriggerType=2`: at least two ordered steps with `eventDefinition` and `hasDone`
 - `eventTriggerType=3`: client-side count/eq/1 events with `eventTriggerCaliberType`
 
+Every event-triggered task A rule must include `periodTimeSymbol`. Use `TS01` for daily,
+`TS02` for the complete configured period, `TS03` for weekly, or `TS04` for monthly.
+Do not omit this field even when `periodStart` and `periodEnd` are present.
+
 Do not copy the accumulated example and only change `eventTriggerType`. Hermes rejects a final QP
 whose event structure does not match its envelope.
 
@@ -299,6 +309,8 @@ Important fields:
 - `reqTemplate`
   - a scenario-aware grouped request template
   - use it as a starting point, not as unquestioned final truth
+  - for experiment tasks, keep `groupContentList` association fields from the template;
+    only replace `contentList[].content` with real channel content
 - `readyToSubmit`
   - `true` means the current scenario or draft has no blocking placeholders
 - `blockingPlaceholders`

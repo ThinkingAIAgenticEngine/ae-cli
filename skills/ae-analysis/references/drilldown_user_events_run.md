@@ -14,7 +14,7 @@ ae-cli analysis drilldown-user-events run \
   --drilldown-context-id <drilldown_context_id> \
   --user-id <user_id> \
   [--sort-order desc] \
-  [--limit 100] \
+  [--preview-rows 100] \
   [--timeout-seconds 120]
 ```
 
@@ -39,4 +39,4 @@ Do not call this command merely because an entity row looks like a user. The exp
 
 ## Output
 
-The response contains at most `limit` event rows. When `truncated=true`, use `analysis drilldown-user-events export`; do not attempt to fetch another page.
+The response contains at most `preview_rows` event rows. When `has_more=true`, use `analysis drilldown-user-events export`; do not attempt to fetch another page.

@@ -1,5 +1,6 @@
 import type { Command } from '../../../../framework/types.js';
 import { metadataEventList } from './list.js';
+import { metadataEventExport } from './export.js';
 import { metadataEventGet } from './get.js';
 import { metadataEventCreate } from './create.js';
 import { metadataEventUpdate } from './update.js';
@@ -11,6 +12,7 @@ import { metadataEventChangelogList } from './changelog-list.js';
 
 const commands: Command[] = [
   metadataEventList,
+  metadataEventExport,
   metadataEventGet,
   metadataEventCreate,
   metadataEventUpdate,
@@ -23,6 +25,7 @@ const commands: Command[] = [
 
 export default commands;
 export { metadataEventList };
+export { metadataEventExport };
 export { metadataEventGet };
 export { metadataEventCreate };
 export { metadataEventUpdate };

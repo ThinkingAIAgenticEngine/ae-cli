@@ -14,6 +14,7 @@ export const trackingCheckExport = createTrackingCapabilityCommand({
   resource: 'check',
   command: 'export',
   capabilityId: 'tracking.check.export',
+  asyncArtifact: true,
   description: 'Export one tracking validation result.',
   flags: [projectIdFlag, uuidFlag, requestIdFlag, asyncTimeoutSecondsFlag],
   risk: 'read',

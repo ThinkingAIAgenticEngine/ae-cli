@@ -71,9 +71,8 @@ assert.equal(updateReport.input.version, 0);
 const drilldown = await captureDryRun(drilldownUserEventsRun, {
   'drilldown-context-id': 'drill_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
   'user-id': 'u1',
-  limit: 20,
 });
-assert.equal(drilldown.input.limit, 20);
+assert.equal('limit' in drilldown.input, false);
 assert.equal('page_num' in drilldown.input, false);
 assert.equal('page_size' in drilldown.input, false);
 

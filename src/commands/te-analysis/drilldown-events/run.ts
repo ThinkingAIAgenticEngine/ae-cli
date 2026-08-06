@@ -1,6 +1,5 @@
 import {
   analysisDataRunRoutingHelp,
-  applyAnalysisInlineLimit,
   createAnalysisCapabilityCommand,
 } from '../capability-shared.js';
 import { drilldownEventsRunFlags, drilldownEventsRunInput } from './shared.js';
@@ -13,5 +12,4 @@ export const drilldownEventsRun = createAnalysisCapabilityCommand({
   flags: [...drilldownEventsRunFlags],
   risk: 'read',
   buildInput: drilldownEventsRunInput,
-  postProcess: applyAnalysisInlineLimit,
 });

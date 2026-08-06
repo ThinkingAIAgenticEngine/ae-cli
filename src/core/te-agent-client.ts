@@ -11,6 +11,11 @@
  * Independent of src/core/client.ts (AE platform client). Supports ae-cli sync / model / agent commands.
  */
 
+import { open, unlink } from 'node:fs/promises';
+import path from 'node:path';
+import { Readable } from 'node:stream';
+import { pipeline } from 'node:stream/promises';
+
 import { tryLoadTeAgentSandboxCredentials, loadTeAgentCredentials, TeAgentCredentialsError } from './te-agent-credentials.js';
 import { getActiveHost } from './config.js';
 
@@ -35,6 +40,7 @@ interface SignedRequest {
 // Default request timeouts: 30s for regular endpoints, relaxed to 120s for file uploads
 const DEFAULT_TIMEOUT_MS = 30_000;
 const UPLOAD_TIMEOUT_MS = 120_000;
+const DOWNLOAD_TIMEOUT_MS = 120_000;
 
 /**
  * Fetch wrapper with timeout: aborts and throws TeAgentApiError(code:TIMEOUT) on timeout,
@@ -420,13 +426,13 @@ export async function putToMainApp<T = unknown>(
 
 /**
  * GET raw binary content from the main app (used by Skill asset/reference/script read).
- * Returns the response body as a Buffer plus the filename extracted from Content-Disposition.
+ * Returns the response body as a Buffer plus response metadata needed by callers.
  * Unlike getFromMainApp, this does NOT parse the response as JSON/text — binary content is preserved.
  */
 export async function getBufferFromMainApp(
   path: string,
   hostOverride?: string,
-): Promise<{ buffer: Buffer; fileName: string | null }> {
+): Promise<{ buffer: Buffer; fileName: string | null; contentType: string | null }> {
   const signed = await signRequest('GET', path, '', hostOverride);
 
   const response = await fetchWithTimeout(signed.url, {
@@ -471,8 +477,140 @@ export async function getBufferFromMainApp(
   const cd = response.headers.get('Content-Disposition') || '';
   const match = cd.match(/filename\*=UTF-8''([^;]+)/);
   const fileName = match ? decodeURIComponent(match[1]) : null;
+  const contentType = response.headers.get('Content-Type');
 
-  return { buffer, fileName };
+  return { buffer, fileName, contentType };
+}
+
+function responseFileName(response: Response): string | null {
+  const disposition = response.headers.get('Content-Disposition') ?? '';
+  const encoded = disposition.match(/filename\*=UTF-8''([^;]+)/i)?.[1];
+  if (encoded) {
+    try {
+      return decodeURIComponent(encoded.trim());
+    } catch {
+      return encoded.trim();
+    }
+  }
+  return disposition.match(/filename="([^"]+)"/i)?.[1]
+    ?? disposition.match(/filename=([^;]+)/i)?.[1]?.trim()
+    ?? null;
+}
+
+async function* responseBodyChunks(
+  body: globalThis.ReadableStream<Uint8Array>,
+): AsyncGenerator<Uint8Array> {
+  const reader = body.getReader();
+  try {
+    while (true) {
+      const chunk = await reader.read();
+      if (chunk.done) return;
+      yield chunk.value;
+    }
+  } finally {
+    reader.releaseLock();
+  }
+}
+
+/**
+ * Stream a GET response directly to a caller-selected local file.
+ * The target is created exclusively, never overwritten, and removed if any request or stream step fails.
+ */
+export async function downloadFromMainApp(
+  requestPath: string,
+  outputPath: string,
+  hostOverride?: string,
+): Promise<{ path: string; bytes: number; fileName: string | null; contentType: string | null }> {
+  const absolutePath = path.resolve(outputPath);
+  let fileHandle;
+  let created = false;
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), DOWNLOAD_TIMEOUT_MS);
+
+  try {
+    try {
+      fileHandle = await open(absolutePath, 'wx');
+      created = true;
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code === 'EEXIST') {
+        throw new TeAgentApiError(
+          `Output file already exists: ${absolutePath}`,
+          0,
+          'OUTPUT_EXISTS',
+        );
+      }
+      throw new TeAgentApiError(
+        `Unable to create output file: ${absolutePath}`,
+        0,
+        'OUTPUT_ERROR',
+      );
+    }
+
+    const signed = await signRequest('GET', requestPath, '', hostOverride);
+    let response: Response;
+    try {
+      response = await fetch(signed.url, {
+        method: 'GET',
+        headers: signed.headers,
+        signal: controller.signal,
+      });
+    } catch (error) {
+      if ((error as { name?: string })?.name === 'AbortError') {
+        throw new TeAgentApiError(
+          `Request timed out (${DOWNLOAD_TIMEOUT_MS}ms): ${signed.url}`,
+          0,
+          'TIMEOUT',
+        );
+      }
+      throw new TeAgentApiError(
+        `Network request failed: ${error instanceof Error ? error.message : String(error)}`,
+        0,
+        'NETWORK_ERROR',
+      );
+    }
+
+    if (!response.ok) {
+      await parseResponse<never>(response, 'Main app returned');
+    }
+    if (!response.body) {
+      throw new TeAgentApiError('Main app returned an empty download stream', 0, 'EMPTY_BODY');
+    }
+
+    const output = fileHandle.createWriteStream();
+    try {
+      await pipeline(
+        Readable.from(responseBodyChunks(response.body)),
+        output,
+      );
+    } catch (error) {
+      if ((error as { name?: string })?.name === 'AbortError') {
+        throw new TeAgentApiError(
+          `Request timed out (${DOWNLOAD_TIMEOUT_MS}ms): ${signed.url}`,
+          0,
+          'TIMEOUT',
+        );
+      }
+      throw new TeAgentApiError(
+        `Download failed: ${error instanceof Error ? error.message : String(error)}`,
+        0,
+        'DOWNLOAD_ERROR',
+      );
+    }
+
+    return {
+      path: absolutePath,
+      bytes: output.bytesWritten,
+      fileName: responseFileName(response),
+      contentType: response.headers.get('Content-Type'),
+    };
+  } catch (error) {
+    if (fileHandle) await fileHandle.close().catch(() => undefined);
+    if (created) await unlink(absolutePath).catch(() => undefined);
+    throw error;
+  } finally {
+    clearTimeout(timer);
+    controller.abort();
+  }
 }
 
 /**

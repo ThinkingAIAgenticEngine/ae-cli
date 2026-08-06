@@ -29,10 +29,10 @@ echo "[dry-run] task detail"
 node dist/index.js --dry-run engage-task task get --project-id "$PROJECT_ID" --task-id "$TASK_ID"
 
 echo "[dry-run] task data detail"
-node dist/index.js capability dry-run engage-task.task-data.detail --input "{\"project_id\":$PROJECT_ID,\"task_id\":\"$TASK_ID\",\"detail_type\":\"time\",\"start_time\":\"2026-04-01\",\"end_time\":\"2026-04-07\"}"
+node dist/index.js --dry-run engage-task data-detail query --project-id "$PROJECT_ID" --task-id "$TASK_ID" --detail-type time --start-time 2026-04-01 --end-time 2026-04-07
 
 echo "[dry-run] task metric detail"
-node dist/index.js capability dry-run engage-task.task-data.metric-detail --input "{\"project_id\":$PROJECT_ID,\"task_id\":\"$TASK_ID\",\"start_time\":\"2026-04-01\",\"end_time\":\"2026-04-07\",\"metric_id_list\":[\"metric_1\"]}"
+node dist/index.js --dry-run engage-task effect query --project-id "$PROJECT_ID" --task-id "$TASK_ID" --start-time 2026-04-01 --end-time 2026-04-07 --metric-id-list '["metric_1"]'
 
 echo "[dry-run] manage task"
 node dist/index.js --dry-run engage-task task manage --project-id "$PROJECT_ID" --task-id "$TASK_ID" --action pause

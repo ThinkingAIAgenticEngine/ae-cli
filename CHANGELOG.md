@@ -1,14 +1,53 @@
-### 6.0.40
+### 6.1.13
+**Date:** 2026-08-06
+
+**Changes:**
+
+#### Analysis
+* Add unified metadata catalog list/resolution and split full-export commands for events, properties, metrics, tags, and clusters, with hardened cache/sync and async-export contracts
+* Remove the Analysis MCP compatibility domain and the unauthenticated bare `api` command
+* Align BI, member, event-detail, and entity-detail export contracts (jsonl/csv dual format, async full export); remove the generic sync-query `limit` parameter
+* Unify analysis query preview and async-wait contracts; document path layer truncation, 120s default timeouts, virtual-node counting, continue-query evidence, and dashboard payload truncation
+* Tighten AI analysis aggregation whitelist and Agent capability input / SQL guidance; align report resolutions, sub-property catalog, and Skill reference file coverage
+
+#### Engage
+* Add Engage query and export workflows for flow metrics/users/nodes, artifact download, and `request_id` query cancellation; align flow user-query contracts and camelCase field compatibility
+* Add flow metric update; retire the task dedup user-detail export CLI
+* Require `periodTimeSymbol` on event-triggered task A rules; clarify push-record query fields, task approval submit validation, config-item `show_time_zone`, and experiment-task `groupContentList` group binding
+
+#### DataOps
+* Add task-instance check nodes with CLI create and update support
+* Support dry-run preview and confirmation when deleting workflow task nodes
+* Task instance detail no longer returns disabled timeout configuration fields
+
+#### Agent & Skills
+* Remove preset MCP fallback from product Skills and add a release-gate check
+* Complete additional `ae-cli system` coverage for usage CSV stream export, sandbox-tool lifecycle, models, and member statistics that landed after 6.0.40
+
+#### 6.1-only: Atlas Experiment
+* Clarify that adjacent `compound` groups with the same `relation` are flattened on Atlas experiment save/submit so generated cluster QP stays within backend layer limits; different relations are preserved
+* Remove preset MCP / te-mcp fallback wording from experiment design and insight Skills
+
+### 6.1.12
 **Date:** 2026-07-31
 
 **Changes:**
+
+#### Agent & System Administration
+* Expand `ae-cli system` from 39 to 59 commands, covering member statistics, sandbox configuration, model sync policy and pricing, usage tool-call/drill-down/export workflows, account balance and over-limit users, and the full shared sandbox-tool lifecycle
+* Add cache refresh to the usage summary and stream CSV exports to exclusively created local files with structured metadata and partial-file cleanup
+* Document the server-side authorization and tenant boundary, excluded system-to-system endpoints, and the fact that Skill rules, dry-run, absent commands, and `--yes` are not security controls
 
 #### Engage
 * Add closed semantic-definition validation across flow, task, strategy, preset-event, activity, and common-metric writes, including strict field, operator, aggregation, and embedded DTO checks
 * Clarify per-event and behavior-sequence `time_range` requirements and filter-property contracts, including technical-name or structured field references, `array_row` object-group filters, and rejection of unsupported or unknown fields
 * Add `engage-activity.activity-data.detail` guidance for delivery-trend queries, covering activity/topic/task selection, time grains, cancellation request IDs, and indicator semantics
 
-### 6.0.39
+#### 6.1-only: Atlas Experiment
+* Add curated `experiment report summary`, `experiment report sample-size`, and `experiment report metric-trend` commands, and enumerate the supported `capability search --domain` values
+* Harden experiment save and metric workflows with native camelCase DTO guidance, authoritative schema checks, verified metric IDs, `METRIC_NOT_FOUND` / `METRIC_IN_USE` handling, and clearer project-ID resolution
+
+### 6.1.11
 **Date:** 2026-07-30
 
 **Changes:**
@@ -31,7 +70,11 @@
 * Remove obsolete `engage-setting query cluster-qp-skill`; build semantic audience, trigger, and completion definitions from Analysis models for Hermes compilation, including `targetDefinitionRequest` compilation before legacy Flow validation
 * Clarify Webhook versus client channel parameters and document optional `relationProps` on task save
 
-### 6.0.38
+#### 6.1-only: Atlas Experiment
+* Add `ae-experiment-design` and `ae-experiment-insight` Skills for experiment planning, SDK/exposure readiness, result analysis, and diagnostic playbooks
+* Add experiment-save build-guide and validation commands, and tighten metric-property and integer allocation contracts, including a required allocation total of 100
+
+### 6.1.10
 **Date:** 2026-07-30
 
 **Changes:**
@@ -43,7 +86,7 @@
 #### CLI / Agent
 * Switch Skills release synchronization to the centralized system service, with updated packaging scripts and regression coverage
 
-### 6.0.37
+### 6.1.9
 **Date:** 2026-07-28
 
 **Changes:**
@@ -56,6 +99,10 @@
 #### Tracking & documentation
 * Fix tracking-code generation Wiki references to use `~/.ae-cli/wiki/raw` and `~/.ae-cli/wiki/synthesis`
 * Refresh bilingual internal/public README documentation and add a Chinese changelog
+
+#### 6.1-only: Atlas Experiment
+* Add the `experiment` capability domain for experiment lifecycle, reports, sample-size and metric trends, traffic-layer conflict checks, Features, metrics, buckets, operation logs, and batch deletion
+* Add the `ae-experiment` Skill and verification coverage, including readiness checks and high-risk write guidance
 
 ### 6.0.36
 **Date:** 2026-07-24

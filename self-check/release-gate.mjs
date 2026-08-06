@@ -21,6 +21,7 @@ const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const RELEASE_CHECKS = [
   'skill-frontmatter',
   'skill-risk-examples',
+  'skill-preset-mcp',
   // 'command-format', // future
 ];
 

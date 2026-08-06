@@ -1,5 +1,6 @@
 import type { Command } from '../../../../framework/types.js';
 import { metadataPropertyList } from './list.js';
+import { metadataPropertyExport } from './export.js';
 import { metadataPropertyGet } from './get.js';
 import { metadataPropertyCreate } from './create.js';
 import { metadataPropertyUpdate } from './update.js';
@@ -12,6 +13,7 @@ import { metadataPropertyRelatedEvents } from './related-events.js';
 
 const commands: Command[] = [
   metadataPropertyList,
+  metadataPropertyExport,
   metadataPropertyGet,
   metadataPropertyCreate,
   metadataPropertyUpdate,
@@ -25,6 +27,7 @@ const commands: Command[] = [
 
 export default commands;
 export { metadataPropertyList };
+export { metadataPropertyExport };
 export { metadataPropertyGet };
 export { metadataPropertyCreate };
 export { metadataPropertyUpdate };

@@ -22,7 +22,7 @@ ae-cli analysis query create-result-cluster \
 
 - `--project-id` must be the project used by the synchronous preview and must match the project stored by `query_context_id`.
 - `--query-context-id`, `--source`, and all coordinate fragments must come from the same synchronous `adhoc run`, `report-data run`, or `dashboard-report-data run` response.
-- Match the desired visible row and column in `source.drilldown.row_options`/`column_options`, select the correct metric option, and shallow-merge only their `coordinate` fragments.
+- Call `analysis query-context get`, match the desired visible row and column in its `source.drilldown.row_options`/`column_options`, select the correct metric option, and shallow-merge only their `coordinate` fragments.
 - Never pass `target_id`, raw QP, display-only dates, option presentation fields, or data from an export/download. Exports do not create query contexts.
 - `--cluster-name` must be unique in the project, start with a lowercase letter, contain only lowercase letters, digits, and underscores, and be at most 24 characters. This legacy result-cluster path is stricter than ordinary cluster creation.
 - `--display-name`, when provided, must be at most 80 characters.

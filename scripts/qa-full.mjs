@@ -8,8 +8,6 @@ const tasks = [
   ['npm', ['run', 'verify:config']],
   ['npm', ['run', 'verify:analysis-tools']],
   ['npm', ['run', 'verify:analysis-cluster-routing']],
-  ['npm', ['run', 'verify:multi-cluster-mode']],
-  ['npm', ['run', 'verify:analysis-meta-tools']],
   ['npm', ['run', 'verify:analysis-common-tools']],
   ['npm', ['run', 'verify:team-tools']],
   ['npm', ['run', 'verify:agent-tools']],

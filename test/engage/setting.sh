@@ -7,6 +7,7 @@ cd "$ROOT"
 PROJECT_ID="${PROJECT_ID:-1}"
 CHANNEL_ID="${CHANNEL_ID:-channel_123}"
 REQUEST_ID="${REQUEST_ID:-00000000-0000-0000-0000-000000000000}"
+RUN_ID="${RUN_ID:-run_123}"
 
 echo "[dry-run] channel list"
 node dist/index.js --dry-run engage-setting channel list --project-id "$PROJECT_ID"
@@ -29,5 +30,8 @@ node dist/index.js --dry-run engage-setting approval-approver add --project-id "
 echo "[dry-run] add channel"
 node dist/index.js --dry-run engage-setting channel create --project-id "$PROJECT_ID" --req '{"channelType":1,"channelSubBizType":"webhook","channelName":"demo","pushIdType":"user_id","config":"{}","enableTouchEvent":0,"eventClickName":"","eventDeliveryName":"","touchEventSource":""}'
 
-echo "[dry-run] cancel report query"
+echo "[dry-run] cancel report query by request ID"
 node dist/index.js capability dry-run engage-setting.query.cancel --input "{\"request_id\":\"$REQUEST_ID\"}"
+
+echo "[dry-run] cancel asynchronous query run"
+node dist/index.js --dry-run engage-query query cancel --run-id "$RUN_ID"

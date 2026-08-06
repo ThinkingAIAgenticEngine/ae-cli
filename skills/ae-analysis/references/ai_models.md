@@ -45,6 +45,7 @@ Time range:
 - `mode`: `recent`, `previous`, `custom`, `start_to_today`, or `start_to_yesterday`.
 - `recent` includes today/current unit; `previous` excludes today/current unit.
 - For `custom`, pass `start_time` and `end_time`.
+- For `start_to_today` and `start_to_yesterday`, pass `start_time`; omit `end_time` because the mode determines it.
 
 Chinese natural-language time mapping (mandatory; do not infer a different mode):
 
@@ -83,10 +84,16 @@ Group:
 {"field":{"name":"country","type":"user_property"}}
 ```
 
-Metric aggregation values should use semantic spelling, not internal A-codes:
+Metric aggregation values must use semantic spelling, not internal A-codes. The whitelist is model- and property-type-specific because it mirrors the page controls:
 
-- Count-like: `total_count`, `user_count`, `per_user_count`, `count`, `active_days`, `active_hours`
-- Property-like: `sum`, `avg`, `avg_per_user`, `max`, `min`, `distinct_count`, `median`, `percentile`
+- `event`: without property use `total_count`, `user_count`, or `per_user_count`; numeric properties support `sum`, `avg`, `avg_per_user`, `max`, `min`, `distinct_count`, `median`, `percentile`, `variance`, and `stddev`; string/date/datetime properties support `distinct_count`; boolean properties support `true_count`, `false_count`, `not_empty_count`, `empty_count`, and `distinct_count`.
+- `retention` simultaneous metrics: without property use `total_count`, `user_count`, or `per_user_count`; numeric properties support only `sum` and `avg_per_user`; boolean properties support only `true_count`, `false_count`, `not_empty_count`, and `empty_count`.
+- `distribution`: without property use `count`, `active_days`, or `active_hours`; numeric properties support `sum`, `avg`, `max`, `min`, `distinct_count`, `median`, `percentile`, `variance`, and `stddev`; string/date/datetime properties support `distinct_count`; boolean properties support `true_count`, `false_count`, `not_empty_count`, `empty_count`, and `distinct_count`.
+- `attribution`: use `total_count` without `target_property`, or `sum` with a numeric `target_property`.
+- `prop_analysis`: use `user_count` without property; property aggregations follow the event property-type rules except that `percentile` is not supported.
+- `heat_map`, `rank_list`, and `revenue`: use the event whitelist except that `percentile` is not supported.
+
+For total event count use `total_count`; `count` belongs only to distribution. Internal `Axxx` codes are persisted page details and are not valid authored AI definitions.
 
 ## Model definitions
 
@@ -204,6 +211,13 @@ Use for user distribution buckets for an event or property metric.
       "event": "purchase",
       "aggregation": "sum",
       "property": "amount",
+      "filters": [
+        {
+          "field": {"name": "vip_users", "type": "cluster"},
+          "operator": "in_cluster"
+        }
+      ],
+      "relation": "and",
       "interval_type": "user_defined",
       "quota_interval_arr": [100, 1000, 10000]
     }
@@ -216,6 +230,10 @@ Use for user distribution buckets for an event or property metric.
 
 Use `interval_type=def` for automatic buckets, `user_defined` for explicit numeric boundaries, and `discrete` to group by raw values.
 
+Distribution filters must be attached to the corresponding `distribution_metrics[].filters`.
+Do not use top-level `filters` or `relation` in a distribution definition.
+When multiple metrics need the same filter, attach it to each metric explicitly. If the requested filter scope is ambiguous, clarify which metric it applies to before running the analysis.
+
 ### `attribution`
 
 Use to attribute target conversions to touchpoint/source events.
@@ -225,7 +243,7 @@ Use to attribute target conversions to touchpoint/source events.
   "time_range": {"mode": "previous", "unit": "day", "value": 14},
   "attribution": {
     "target_event": "purchase",
-    "target_aggregation": "user_count",
+    "target_aggregation": "total_count",
     "attribution_events": [
       {"event": "ad_click"},
       {"event": "campaign_view"}
@@ -238,6 +256,7 @@ Use to attribute target conversions to touchpoint/source events.
 ```
 
 `attribution_model` values: `first`, `last`, or `linear`.
+The target aggregation is intentionally narrow: use `total_count` without a property, or `sum` with a numeric `target_property`. Do not use `user_count`.
 
 ### `interval`
 
@@ -280,6 +299,8 @@ Use for behavior paths before or after a source event.
 ```
 
 `direction=forward` asks what users do after `source_event`; `direction=backward` asks what users did before it. Do not send original-QP fields such as `source_type` or `event_names`.
+
+For path analysis, `preview_rows` is a graph-display boundary aligned with the analysis UI: it keeps up to that many real nodes per path level, then combines overflow nodes into `more`. `result.nodes` retains the synthesized `more` node for graph structure and drilldown coordinates. The top-level `returned_rows` counts real business nodes actually returned across all levels; it excludes synthesized `more` nodes and the real nodes folded into them. The count may still exceed `preview_rows` because the boundary applies independently to each level. `has_more=true` means at least one level contains real nodes folded into `more`; a linear multi-level path can return more real nodes than `preview_rows` with `has_more=false`.
 
 Path `filters` are global member filters compiled to the original QP `user_filter`. They support `user_property`, `cluster`, and `tag`, but not `event_property`. Do not move a user filter into the source event's event-property filter.
 
@@ -346,6 +367,10 @@ Trino special identifiers must use double-quoted identifier delimiters:
 {"sql":"SELECT \"#user_id\", \"$part_event\" FROM hive.ta.v_event_1 WHERE \"$part_date\" BETWEEN '2026-07-01' AND '2026-07-07' LIMIT 20"}
 ```
 
+Reserved words used as identifiers must also be double quoted, for example `SELECT "end" FROM ...`.
+
+For multiline SQL JSON, ensure JSON decoding produces a real line break in the `sql` value. Do not submit a literal `\\n` sequence outside a quoted SQL string value; use a JSON escape that the caller decodes once before invoking the capability.
+
 Event-table queries must include a date-partition predicate on the quoted `"$part_date"` column. The backend rejects SQL against an event table when this predicate is absent. This requirement is specific to event tables; do not invent a `$part_date` condition for a table whose discovered columns do not include it.
 
 Typed condition-fragment placeholder:
@@ -386,9 +411,10 @@ Rules:
 - If SQL has no `${...}` placeholder, omit `params`.
 - If SQL has placeholders, every placeholder must have one matching item in `params`.
 - Raw variables use `${name}`, not `${Variable:name}`. A selector's `value` must equal one of its `options[].value` values. `${PartDate:name}` expands to a complete predicate, so place it directly after `WHERE`/`AND` rather than after a column name.
+- A `part_date` parameter must provide either `recent_day` or a complete custom range with both `start_time` and `end_time`; one-sided custom ranges are invalid.
 - `use_timezone` is an optional boolean definition field that is only valid for `part_date`. It defaults to `false`. When `true`, that PartDate parameter uses the query's effective timezone selected by `zone_offset` or the current user/project default; when `false`, it follows the non-timezone-aware PartDate path. This is distinct from the command-level `zone_offset`.
 - Do not pass SQL-IDE internals such as `sqlVoParams`, `sqlViewParams`, `paramType`, `paramName`, `paramExpress`, `commonFilter`, or `requiredEvents`.
-- Delimit any Trino identifier containing `#`, `$`, `@`, spaces, or punctuation with double quotes, for example `"#user_id"` and `"$part_event"`. Single quotes create string literals, not identifiers. Escape a literal double quote inside an identifier by doubling it. The CLI preserves the submitted SQL and does not rewrite identifiers.
+- Delimit any Trino identifier containing `#`, `$`, `@`, spaces, punctuation, or a reserved word with double quotes, for example `"#user_id"`, `"$part_event"`, and `"end"`. Single quotes create string literals, not identifiers. Escape a literal double quote inside an identifier by doubling it. The CLI preserves the submitted SQL and does not rewrite identifiers.
 - For an event table, include a date-partition predicate on the discovered `"$part_date"` column, for example `WHERE "$part_date" BETWEEN '2026-07-01' AND '2026-07-07'`. The backend rejects event-table SQL without this condition.
 - Do not invent table or column names. If the user already provides a concrete table reference, use `analysis-meta datatable columns-get --project-id <project_id> --table-ref <table_ref>` to inspect columns before writing SQL. If the table itself is unknown, call `analysis sql-table list --project-id <project_id>` when available and select an exact returned `table_ref`; otherwise stop and ask for the table/data source. Ask the user only when multiple authorized tables remain semantically plausible after discovery.
 - For a saved dynamic SQL report, put the default values in `analysis report create/update --definition`. Verify the default once with `analysis report-data run` without `--sql-params`, then verify a changed value with one value-only `--sql-params` override.

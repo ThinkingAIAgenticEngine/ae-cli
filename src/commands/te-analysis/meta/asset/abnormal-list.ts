@@ -1,5 +1,9 @@
 import {
   createAnalysisMetaCapabilityCommand,
+  compactInput,
+  directoryLimitFlag,
+  directoryOffsetFlag,
+  optionalNumber,
   projectIdFlag,
   projectInput,
 } from '../../capability-shared.js';
@@ -12,7 +16,14 @@ export const metadataAssetAbnormalList = createAnalysisMetaCapabilityCommand({
   flags: [
     projectIdFlag,
     { name: 'resource-types', type: 'string', required: true, desc: 'Resource types to query.' },
+    directoryLimitFlag,
+    directoryOffsetFlag,
   ],
   risk: 'read',
-  buildInput: (ctx) => ({ ...projectInput(ctx), resource_types: ctx.str('resource-types') }),
+  buildInput: (ctx) => compactInput({
+    ...projectInput(ctx),
+    resource_types: ctx.str('resource-types'),
+    limit: optionalNumber(ctx, 'limit'),
+    offset: optionalNumber(ctx, 'offset'),
+  }),
 });

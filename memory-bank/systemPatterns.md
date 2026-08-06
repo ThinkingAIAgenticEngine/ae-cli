@@ -11,7 +11,7 @@
 
 - **配置与鉴权**：`core/config.ts`、`core/auth.ts`；`commands/auth.ts`、`commands/config.ts` 单独注册到根 program。
 - **HTTP**：`core/client.ts` 等综合调用 AE API（具体以各命令实现为准）。
-- **原始 API**：`api/raw.ts` 提供贴近 REST 的 `ae-cli api` 能力。
+- **API 边界**：不提供原始 `ae-cli api` 透传入口；业务调用必须通过已注册命令或 Capability Gateway，以复用对应鉴权和权限校验。
 - **MCP**：`core/mcp.ts` 用于注册与 MCP 后端的映射；`community` 等在 `index` 中调用 `registerMcpMappings`（如 `community_content` / `community_analysis` / `community_hot`）。
 
 ## Skills 布局

@@ -32,6 +32,48 @@ export const setSystemModelEnabled = createAdminCommand({
   }),
 });
 
+export const getModelSyncSettings = createAdminCommand({
+  command: '+get-model-sync-settings',
+  description: 'Get the company policy for newly synchronized system models',
+  flags: [],
+  risk: 'read',
+  prepare: () => ({ method: 'GET', path: '/api/admin/models/sync-settings' }),
+});
+
+export const setModelSyncSettings = createAdminCommand({
+  command: '+set-model-sync-settings',
+  description: 'Set whether newly synchronized system models are enabled for the company',
+  flags: [
+    {
+      name: 'new-system-models-enabled-by-default',
+      type: 'boolean',
+      required: true,
+      desc: 'Whether future system models are enabled for this company by default',
+    },
+  ],
+  risk: 'write',
+  prepare: (ctx) => ({
+    method: 'PATCH',
+    path: '/api/admin/models/sync-settings',
+    body: {
+      newSystemModelsEnabledByDefault: ctx.bool('new-system-models-enabled-by-default'),
+    },
+  }),
+});
+
+export const getSystemModelPriceRules = createAdminCommand({
+  command: '+get-system-model-price-rules',
+  description: 'Get the stored pricing rule snapshot for one managed system model',
+  flags: [
+    { name: 'model-id', type: 'string', required: true, desc: 'System Model.id from +list-system-models' },
+  ],
+  risk: 'read',
+  prepare: (ctx) => ({
+    method: 'GET',
+    path: `/api/admin/system-models/${encodeId(ctx.str('model-id'))}/price-rules`,
+  }),
+});
+
 export const listCompanyModels = createAdminCommand({
   command: '+list-company-models',
   description: 'List all company models, including disabled models',
@@ -111,6 +153,9 @@ export const clearDefaultModel = createAdminCommand({
 export const modelCommands: Command[] = [
   listSystemModels,
   setSystemModelEnabled,
+  getModelSyncSettings,
+  setModelSyncSettings,
+  getSystemModelPriceRules,
   listCompanyModels,
   setCompanyModelEnabled,
   getDefaultModels,

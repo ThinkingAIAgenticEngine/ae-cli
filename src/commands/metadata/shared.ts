@@ -3,16 +3,20 @@ import {
   createCapabilityCommand as createCapabilityCommandCore,
   type CreateCapabilityCommandConfig as CoreCapabilityCommandConfig,
 } from '../../core/capability-command.js';
+import { withAsyncArtifactLifecycle } from '../../core/analysis-async-artifact.js';
 
 type MetadataCapabilityCommandConfig = Omit<CoreCapabilityCommandConfig, 'cliService'> & {
   cliService?: string;
+  asyncArtifact?: boolean;
 };
 
 export function createCapabilityCommand(config: MetadataCapabilityCommandConfig) {
-  return createCapabilityCommandCore({
-    ...config,
-    cliService: config.cliService ?? 'metadata',
+  const { asyncArtifact, ...coreConfig } = config;
+  const command = createCapabilityCommandCore({
+    ...coreConfig,
+    cliService: coreConfig.cliService ?? 'metadata',
   });
+  return asyncArtifact ? withAsyncArtifactLifecycle(command) : command;
 }
 
 export function optionalString(ctx: RuntimeContext, name: string): string | undefined {

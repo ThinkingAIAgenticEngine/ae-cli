@@ -12,4 +12,4 @@ ae-cli analysis report-change-log list --project-id <project_id> --report-id <re
 
 Input sends `project_id` and `report_id`.
 
-Output is the gateway envelope. `data` contains change log summaries and `total`. Raw report QP fields are not returned in the list.
+Output is the gateway envelope. `data` contains change log summaries and `total`. Only items with `can_rollback=true` are valid rollback sources; pass that item's `target_version` to `report-version rollback --target-version`. Create and unpack records are not rollbackable. Raw report QP fields are not returned in the list.

@@ -119,6 +119,7 @@ export const systemMonitoringCommands: Command[] = [
     resource: 'query-task',
     command: 'export',
     capabilityId: 'system.query_task.export',
+    asyncArtifact: true,
     description: 'Export query tasks; run query-task options first to discover filter codes.',
     risk: 'read',
     fields: [

@@ -36,6 +36,14 @@ const drilldownUserEventsExport = readFileSync(
   new URL('../skills/ae-analysis/references/drilldown_user_events_export.md', import.meta.url),
   'utf8',
 );
+const userTagMemberList = readFileSync(
+  new URL('../skills/ae-analysis/references/user_tag_member_list.md', import.meta.url),
+  'utf8',
+);
+const userClusterMemberList = readFileSync(
+  new URL('../skills/ae-analysis/references/user_cluster_member_list.md', import.meta.url),
+  'utf8',
+);
 const filterValueList = readFileSync(
   new URL('../skills/ae-analysis/references/filter_value_list.md', import.meta.url),
   'utf8',
@@ -44,6 +52,10 @@ const runInspect = readFileSync(new URL('../skills/ae-analysis/references/run_in
 const artifactDownload = readFileSync(new URL('../skills/ae-analysis/references/artifact_download.md', import.meta.url), 'utf8');
 const assetUrl = readFileSync(new URL('../skills/ae-analysis/references/asset_url_get.md', import.meta.url), 'utf8');
 const aiModels = readFileSync(new URL('../skills/ae-analysis/references/ai_models.md', import.meta.url), 'utf8');
+const metadataResolution = readFileSync(
+  new URL('../skills/ae-analysis/metadata_resolution.md', import.meta.url),
+  'utf8',
+);
 const commandIndex = readFileSync(
   new URL('../skills/ae-analysis/references/command_index.md', import.meta.url),
   'utf8',
@@ -56,11 +68,16 @@ const capabilityCommandSource = readFileSync(
   new URL('../src/commands/capability/index.ts', import.meta.url),
   'utf8',
 );
+const analysisToolsDoc = readFileSync(
+  new URL('../docs/te-analysis/te-analysis-mcp-tools.md', import.meta.url),
+  'utf8',
+);
 
 assert.match(skill, /search only the matching row/);
 assert.match(skill, /do not read the exhaustive index end to end/);
 assert.match(skill, /analysis boards, BI dashboards/);
 assert.match(skill, /native `analysis user-tag \.\.\.` and `analysis user-cluster \.\.\.`/);
+assert.match(skill, /member list commands are the exception: omission defaults to 1000 rows/);
 assert.doesNotMatch(skill, /analysis_audience/);
 
 assert.match(skill, /`ok: true` with empty data is success/);
@@ -83,6 +100,31 @@ assert.match(skill, /standalone English word `dashboard` is ambiguous/);
 assert.match(skill, /Do not fall back to creating an analysis board/);
 assert.match(skill, /Tag\/cluster candidate values.*`cluster_date_policy=LATEST`/i);
 assert.match(skill, /latest computed data snapshot.*never.*definition or configuration release/i);
+assert.match(skill, /structured AI-QP metadata failures/);
+assert.match(skill, /`allowed_resource_types` is authoritative/);
+assert.match(skill, /Never use a candidate.*without user confirmation/);
+assert.match(skill, /compiler candidates already exist.*confirm without another metadata call/i);
+assert.match(metadataResolution, /Treat that complete error array as one resolution plan/i);
+assert.match(metadataResolution, /one JSONL file/i);
+assert.match(metadataResolution, /ae-cli analysis-meta catalog list/);
+assert.match(metadataResolution, /exactly one aggregate online search/i);
+assert.match(metadataResolution, /union of those paths' `allowed_resource_types`/i);
+assert.match(metadataResolution, /--resource-types/);
+assert.match(metadataResolution, /If any searched path still has no candidate, download the complete catalog exactly once/i);
+assert.match(metadataResolution, /Do not call event, property, metric, cluster, or tag list commands/i);
+assert.match(metadataResolution, /Do not run `--queries` synonym rounds/i);
+assert.match(metadataResolution, /never call `analysis-meta catalog list` again/i);
+assert.match(metadataResolution, /current Agent conversation context as the catalog base/i);
+assert.match(metadataResolution, /<agent-conversation-root>\/ae-cli\/analysis-metadata/);
+assert.match(metadataResolution, /Do not assume a product-specific environment variable/i);
+assert.match(metadataResolution, /mktemp -d/);
+assert.match(metadataResolution, /first 16 lowercase hex characters.*SHA-256/i);
+assert.match(metadataResolution, /mode `0700`/);
+assert.match(metadataResolution, /Keep the original definition unchanged/i);
+assert.match(metadataResolution, /one `resolutions` object keyed by compiler path/i);
+assert.match(metadataResolution, /reject-all response is a state transition, not task cancellation/i);
+assert.match(metadataResolution, /Never repeat candidates the user already rejected/i);
+assert.match(metadataResolution, /RESOLUTION_STALE.*RESOLUTION_TYPE_NOT_ALLOWED.*RESOLUTION_PATH_INVALID/i);
 assert.match(dashboardCreate, /analysis board \(`看板`\)/);
 assert.match(dashboardCreate, /Do not use for a BI dashboard \(`仪表盘`\)/);
 assert.match(biPanelCreate, /BI dashboard \(`仪表盘`\)/);
@@ -102,19 +144,31 @@ assert.doesNotMatch(biPanelUpdate, /--payload/);
 
 assert.match(dashboardRun, /empty dashboard batch or report result with no rows is a successful query/i);
 assert.doesNotMatch(dashboardRun, /selected report IDs return no entries.*fails/i);
+assert.match(adhocRun, /--timeout-seconds` defaults to 120 and has a maximum of 180/);
+assert.match(adhocRun, /path.*per path level.*`more`/i);
+assert.match(adhocRun, /returned_rows.*real business nodes.*excludes synthesized.*more/is);
+assert.match(aiModels, /path.*per path level.*returned_rows.*real business nodes.*excludes synthesized.*more/is);
+assert.match(analysisToolsDoc, /analysis adhoc run[^\n]*Default timeout is 120 seconds/i);
+assert.match(analysisToolsDoc, /analysis bi-panel-page-data run[^\n]*defaults to 120 seconds/i);
 
 assert.match(reportCreate, /SQL dynamic parameter/);
 assert.match(reportCreate, /"use_timezone":true/);
 assert.match(reportCreate, /definition field.*`--sql-params`/i);
 assert.match(reportCreate, /query the saved default first/);
 assert.match(reportCreate, /`report_id` returned by this exact create response/);
+assert.match(reportCreate, /--resolutions.*not supported with `--model-type tag`/i);
 assert.match(reportUpdate, /read the current `version` exactly once/);
+assert.match(reportUpdate, /resolutions.*not supported with `model_type=tag`/i);
 assert.match(reportUpdate, /query the saved default before applying an override/);
 assert.match(reportList, /narrow with `--query` or `--model-types` before paging/);
 assert.match(reportList, /do not enumerate every report page/);
 assert.match(reportGet, /agent-facing `time_particle_size`/);
 assert.match(reportGet, /internal `T0` through `T9` codes must never leak/);
 assert.match(reportGet, /Do not infer a granularity/);
+assert.match(aiModels, /reserved word/i);
+assert.match(aiModels, /SELECT \"end\"/);
+assert.match(aiModels, /real line break/i);
+assert.match(aiModels, /literal `\\\\n`/);
 
 assert.match(reportDataRun, /omit `--sql-params` to execute the saved default/);
 assert.match(reportDataRun, /then make one second call with `--sql-params`/);
@@ -124,15 +178,17 @@ assert.match(reportDataRun, /resolved current-user timezone.*project default/);
 assert.doesNotMatch(reportDataRun, /"recent_day":"past7"/);
 assert.match(reportDataExport, /same export response/);
 
-assert.match(adhocRun, /SQL text requests `LIMIT 2000`/);
+assert.match(adhocRun, /current runtime synchronous maximum/);
 assert.match(adhocRun, /go directly to `analysis adhoc export`/);
-assert.match(adhocRun, /Do not lower the SQL limit to 1000/);
+assert.match(adhocRun, /Do not lower the requested row count/);
 assert.match(adhocExport, /Preserve the `run_id` and `artifact_id` from this exact submit response/);
 assert.match(drilldownUserEventsRun, /scope=total[\s\S]*machine date coordinates[\s\S]*time granularity/i);
 assert.match(drilldownUserEventsRun, /Do not\s+invent `target_dates`/);
 assert.match(drilldownUserEventsRun, /force a daily granularity/i);
 assert.match(drilldownUserEventsExport, /scope=total[\s\S]*machine date coordinates[\s\S]*time granularity/i);
 assert.match(drilldownUserEventsExport, /force a daily granularity/i);
+assert.match(userTagMemberList, /Omit `--preview-rows` to return at most 1000 rows/);
+assert.match(userClusterMemberList, /Omit `--preview-rows` to return at most 1000 rows/);
 assert.match(filterValueList, /LATEST.*latest available computed result snapshot/i);
 assert.match(filterValueList, /not a tag definition or configuration release/i);
 assert.match(filterValueList, /查询标签 X 最新版本\/最新结果有哪些值/);
@@ -151,6 +207,17 @@ assert.match(aiModels, /Do not use `day`.*`session_interval=24`.*`session_unit=h
 assert.match(aiModels, /never relabel it as `user_property`/);
 assert.match(aiModels, /`use_timezone`.*boolean.*default.*`false`/i);
 assert.match(aiModels, /only valid for `part_date`/i);
+assert.match(aiModels, /Distribution filters must be attached to the corresponding `distribution_metrics\[\]\.filters`/);
+assert.match(aiModels, /`event`: without property use `total_count`, `user_count`, or `per_user_count`/);
+assert.match(aiModels, /`retention` simultaneous metrics: without property use `total_count`, `user_count`, or `per_user_count`/);
+assert.match(aiModels, /`distribution`: without property use `count`, `active_days`, or `active_hours`/);
+assert.match(aiModels, /`attribution`: use `total_count` without `target_property`, or `sum` with a numeric `target_property`/);
+assert.match(aiModels, /`prop_analysis`: use `user_count` without property/);
+assert.match(aiModels, /`heat_map`, `rank_list`, and `revenue`/);
+assert.match(aiModels, /except that `percentile` is not supported/);
+assert.doesNotMatch(aiModels, /Distribution count-like metrics:.*`total_count`/);
+assert.doesNotMatch(aiModels, /"target_aggregation": "user_count"/);
+assert.match(aiModels, /Do not use top-level `filters` or `relation` in a distribution definition/);
 assert.match(commandIndex, /global filters support user_property, cluster, and tag only/);
 assert.match(commandIndex, /express one day as session_interval=24 and session_unit=hour/);
 assert.doesNotMatch(capabilitySkill, /sql-write .*--yes/);

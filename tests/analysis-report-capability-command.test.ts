@@ -35,6 +35,7 @@ import { drilldownEntitiesExport } from '../src/commands/te-analysis/drilldown-e
 import { drilldownUserEventsRun } from '../src/commands/te-analysis/drilldown-user-events/run.ts';
 import { drilldownUserEventsExport } from '../src/commands/te-analysis/drilldown-user-events/export.ts';
 import { queryCreateResultCluster } from '../src/commands/te-analysis/query/create-result-cluster.ts';
+import { queryContextGet } from '../src/commands/te-analysis/query-context/get.ts';
 import { filterValueList } from '../src/commands/te-analysis/filter-value/list.ts';
 import { queryClusterList } from '../src/commands/te-analysis/query-cluster/list.ts';
 import { runInspect } from '../src/commands/te-analysis/run/inspect.ts';
@@ -187,6 +188,41 @@ await test('report create maps AI QP definition to snake_case gateway input', as
   });
 });
 
+await test('report create forwards user-confirmed metadata resolutions without changing the definition', async () => {
+  const resolutions = {
+    'request.metrics[0].event': {
+      raw_value: '付费事件',
+      resource_type: 'event',
+      resource_key: 'payment',
+    },
+  };
+  const dryRun = await dryBody(reportCreate, {
+    'project-id': 1,
+    'report-name': 'Demo',
+    'model-type': 'event',
+    definition: '{"metrics":[{"event":"付费事件"}]}',
+    resolutions: JSON.stringify(resolutions),
+  });
+
+  assert.deepEqual(dryRun.body.input.definition, { metrics: [{ event: '付费事件' }] });
+  assert.deepEqual(dryRun.body.input.resolutions, resolutions);
+});
+
+await test('report create rejects metadata resolutions for tag reports before dispatch', () => {
+  const resolutionsFlag = reportCreate.flags.find((flag) => flag.name === 'resolutions');
+  assert.match(resolutionsFlag?.desc ?? '', /not supported with --model-type tag/);
+  assert.throws(
+    () => reportCreate.validate!(ctx({
+      'project-id': 1,
+      'report-name': 'Tag report',
+      'model-type': 'tag',
+      definition: '{"tag":{"tag_name":"vip_users"}}',
+      resolutions: '{"request.tag.tag_name":{"raw_value":"VIP","resource_type":"tag","resource_key":"1"}}',
+    })),
+    /--resolutions is not supported with --model-type tag/,
+  );
+});
+
 await test('report update validates definition requires model type', () => {
   assert.throws(
     () => reportUpdate.validate!(ctx({
@@ -196,6 +232,33 @@ await test('report update validates definition requires model type', () => {
       definition: '{}',
     })),
     /--model-type is required/,
+  );
+});
+
+await test('report update rejects resolutions without an unchanged definition', () => {
+  assert.throws(
+    () => reportUpdate.validate!(ctx({
+      'project-id': 1,
+      'report-id': 1001,
+      'report-version': 2,
+      'report-name': 'Demo',
+      resolutions: '{"request.metrics[0].event":{"raw_value":"付费事件","resource_type":"event","resource_key":"payment"}}',
+    })),
+    /--resolutions requires --definition/,
+  );
+});
+
+await test('report update rejects metadata resolutions for tag reports before dispatch', () => {
+  assert.throws(
+    () => reportUpdate.validate!(ctx({
+      'project-id': 1,
+      'report-id': 1001,
+      'report-version': 2,
+      'model-type': 'tag',
+      definition: '{"tag":{"tag_name":"vip_users"}}',
+      resolutions: '{"request.tag.tag_name":{"raw_value":"VIP","resource_type":"tag","resource_key":"1"}}',
+    })),
+    /--resolutions is not supported with --model-type tag/,
   );
 });
 
@@ -250,7 +313,6 @@ await test('report-data run sends non-SQL AI-facing overrides without SQL params
     filters: '{"relation":"and","items":[{"field":{"name":"country","type":"user_property"},"operator":"eq","values":["US"]}]}',
     'group-by': '[{"field":{"name":"country","type":"user_property"}}]',
     'request-id': 'cli_0123456789abcdef0123456789abcdef',
-    limit: 20,
     'timeout-seconds': 60,
   });
 
@@ -267,7 +329,6 @@ await test('report-data run sends non-SQL AI-facing overrides without SQL params
     group_by: [
       { field: { name: 'country', type: 'user_property' } },
     ],
-    limit: 20,
     timeout_seconds: 60,
   });
 });
@@ -385,6 +446,13 @@ await test('report-data command help describes AI-facing overrides and SQL value
   assert.match(reportDataRun.description, /Mixed-model batches continue/);
 });
 
+await test('preview rows help publishes the path per-level node exception', () => {
+  const previewRows = adhocRun.flags.find((flag) => flag.name === 'preview-rows')!;
+  assert.match(previewRows.desc, /path results/i);
+  assert.match(previewRows.desc, /per path level/i);
+  assert.match(previewRows.desc, /more/i);
+});
+
 await test('report-data export maps artifact-format to format and omits inline limit', async () => {
   const dryRun = await dryBody(reportDataExport, {
     'project-id': 1,
@@ -427,7 +495,6 @@ await test('adhoc run maps AI-facing SQL definition and model type to gateway in
     'model-type': 'sql',
     definition: JSON.stringify({ sql }),
     'request-id': 'cli_0123456789abcdef0123456789abcdef',
-    limit: 10,
     'timeout-seconds': 60,
   });
 
@@ -440,9 +507,26 @@ await test('adhoc run maps AI-facing SQL definition and model type to gateway in
     model_type: 'sql',
     definition: { sql },
     request_id: 'cli_0123456789abcdef0123456789abcdef',
-    limit: 10,
     timeout_seconds: 60,
   });
+});
+
+await test('adhoc run forwards deterministic metadata resolutions', async () => {
+  const resolutions = {
+    'request.metrics[0].event': {
+      raw_value: '付费事件',
+      resource_type: 'event',
+      resource_key: 'payment',
+    },
+  };
+  const dryRun = await dryBody(adhocRun, {
+    'project-id': 1,
+    'model-type': 'event',
+    definition: '{"metrics":[{"event":"付费事件"}]}',
+    resolutions: JSON.stringify(resolutions),
+  });
+
+  assert.deepEqual(dryRun.body.input.resolutions, resolutions);
 });
 
 await test('adhoc export maps artifact-format to format and omits inline limit', async () => {
@@ -490,7 +574,6 @@ await test('event-detail run sends AI-facing definition to gateway', async () =>
     'request-id': 'cli_0123456789abcdef0123456789abcdef',
     'use-cache': true,
     'zone-offset': 8,
-    limit: 20,
     'timeout-seconds': 60,
   });
 
@@ -504,12 +587,11 @@ await test('event-detail run sends AI-facing definition to gateway', async () =>
     request_id: 'cli_0123456789abcdef0123456789abcdef',
     use_cache: true,
     zone_offset: 8,
-    limit: 20,
     timeout_seconds: 60,
   });
 });
 
-await test('event-detail export maps artifact-format to format', async () => {
+await test('event-detail export accepts jsonl artifact format', async () => {
   const definition = {
     event: 'login',
     time_range: { mode: 'relative', relative_date_range: '0-7' },
@@ -517,7 +599,7 @@ await test('event-detail export maps artifact-format to format', async () => {
   const dryRun = await dryBody(eventDetailExport, {
     'project-id': 1,
     definition: JSON.stringify(definition),
-    'artifact-format': 'csv',
+    'artifact-format': 'jsonl',
     'timeout-seconds': 3600,
   });
 
@@ -528,7 +610,7 @@ await test('event-detail export maps artifact-format to format', async () => {
   assert.deepEqual(dryRun.body.input, {
     project_id: 1,
     definition,
-    format: 'csv',
+    format: 'jsonl',
     timeout_seconds: 3600,
   });
 });
@@ -552,7 +634,6 @@ await test('entity-detail run sends cohort definition to gateway', async () => {
   const dryRun = await dryBody(entityDetailRun, {
     'project-id': 1,
     definition: JSON.stringify(definition),
-    limit: 20,
   });
 
   assert.equal(
@@ -562,11 +643,10 @@ await test('entity-detail run sends cohort definition to gateway', async () => {
   assert.deepEqual(dryRun.body.input, {
     project_id: 1,
     definition,
-    limit: 20,
   });
 });
 
-await test('entity-detail export maps artifact-format to format', async () => {
+await test('entity-detail export accepts jsonl artifact format', async () => {
   const definition = {
     entity: { id: 123 },
     cohort: {
@@ -675,19 +755,29 @@ await test('adhoc exposes 12 AI models and report write exposes 12 plus tag', ()
 
 await test('query follow-up commands use context ids instead of raw QP', async () => {
   assert.deepEqual(
+    (await dryBody(queryContextGet, {
+      'project-id': 1,
+      'query-context-id': 'ctx_0123456789abcdef0123456789abcdef',
+      source: '{"report_id":10}',
+    })).body.input,
+    {
+      project_id: 1,
+      query_context_id: 'ctx_0123456789abcdef0123456789abcdef',
+      source: { report_id: 10 },
+    },
+  );
+  assert.deepEqual(
     (await dryBody(drilldownEventsRun, {
       'project-id': 1,
       'query-context-id': 'ctx_0123456789abcdef0123456789abcdef',
       source: '{"report_id":10}',
       coordinate: '{"date":"2026-07-01","group_values":["Beijing"],"metric_index":0}',
-      limit: 20,
     })).body.input,
     {
       project_id: 1,
       query_context_id: 'ctx_0123456789abcdef0123456789abcdef',
       source: { report_id: 10 },
       coordinate: { date: '2026-07-01', group_values: ['Beijing'], metric_index: 0 },
-      limit: 20,
     },
   );
   assert.deepEqual(
@@ -711,13 +801,11 @@ await test('query follow-up commands use context ids instead of raw QP', async (
       'project-id': 1,
       'query-context-id': 'ctx_0123456789abcdef0123456789abcdef',
       coordinate: '{"cohort_date":"2026-07-01","group_values":[],"period_index":1,"population":"retained"}',
-      limit: 20,
     })).body.input,
     {
       project_id: 1,
       query_context_id: 'ctx_0123456789abcdef0123456789abcdef',
       coordinate: { cohort_date: '2026-07-01', group_values: [], period_index: 1, population: 'retained' },
-      limit: 20,
     },
   );
   assert.deepEqual(
@@ -725,13 +813,11 @@ await test('query follow-up commands use context ids instead of raw QP', async (
       'project-id': 1,
       'drilldown-context-id': 'drill_0123456789abcdef0123456789abcdef',
       'user-id': 'u1',
-      limit: 50,
     })).body.input,
     {
       project_id: 1,
       drilldown_context_id: 'drill_0123456789abcdef0123456789abcdef',
       user_id: 'u1',
-      limit: 50,
     },
   );
   assert.deepEqual(

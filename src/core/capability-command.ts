@@ -26,7 +26,11 @@ export interface CreateCapabilityCommandConfig {
   requestHost?: string;
   validate?: (ctx: RuntimeContext) => void;
   buildInput: (ctx: RuntimeContext) => Record<string, unknown>;
-  postProcess?: (result: unknown, input: Record<string, unknown>, ctx: RuntimeContext) => unknown;
+  postProcess?: (
+    result: unknown,
+    input: Record<string, unknown>,
+    ctx: RuntimeContext,
+  ) => unknown | Promise<unknown>;
 }
 
 export function createCapabilityCommand(config: CreateCapabilityCommandConfig): Command {
@@ -62,7 +66,9 @@ export function createCapabilityCommand(config: CreateCapabilityCommandConfig): 
       const input = withLifecycleRequestId(config, config.buildInput(ctx));
       announceDispatch(config.capabilityId, input);
       const result = await executeCapabilityWithEnvelope(requestHost, gatewayDomain, config.capabilityId, input);
-      const data = config.postProcess ? config.postProcess(result.data, input, ctx) : result.data;
+      const data = config.postProcess
+        ? await config.postProcess(result.data, input, ctx)
+        : result.data;
       return withOutputMetadata(data, result.meta);
     },
   };

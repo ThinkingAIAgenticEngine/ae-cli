@@ -1,7 +1,7 @@
 import {
   createAnalysisGovernanceCapabilityCommand,
   directoryLimitFlag,
-  offsetFlag,
+  directoryOffsetFlag,
   payloadFlag,
   projectIdFlag,
   queryFlag,
@@ -18,7 +18,7 @@ export const analysisMetaAssetImpactList = createAnalysisGovernanceCapabilityCom
   command: 'list',
   capabilityId: 'governance.asset_impact.list',
   description: 'List downstream impacts for one asset.',
-  flags: [projectIdFlag, nodeIdFlag, queryFlag, searchsFlag, ruleFlag, directoryLimitFlag, offsetFlag, payloadFlag],
+  flags: [projectIdFlag, nodeIdFlag, queryFlag, searchsFlag, ruleFlag, directoryLimitFlag, directoryOffsetFlag, payloadFlag],
   risk: 'read',
   buildInput: (ctx) => assetGovernanceInput(ctx, ["node_id","query","searchs","rule","limit","offset"]),
 });

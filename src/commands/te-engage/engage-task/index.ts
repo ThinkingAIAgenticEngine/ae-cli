@@ -1,5 +1,7 @@
 import type { Command } from '../../../framework/types.js';
 import { channelRefStats } from './channel-ref/stats.js';
+import { dataDetailQuery } from './data-detail/query.js';
+import { taskEffectQuery } from './effect/query.js';
 import { groupCreate } from './group/create.js';
 import { groupDelete } from './group/delete.js';
 import { groupList } from './group/list.js';
@@ -30,6 +32,8 @@ const commands: Command[] = [
   taskBuildSaveGuide,
   taskSave,
   taskManage,
+  taskEffectQuery,
+  dataDetailQuery,
   channelRefStats,
   groupCreate,
   groupDelete,
@@ -50,6 +54,8 @@ const commands: Command[] = [
 ];
 
 export { channelRefStats } from './channel-ref/stats.js';
+export { dataDetailQuery } from './data-detail/query.js';
+export { taskEffectQuery } from './effect/query.js';
 export { groupCreate } from './group/create.js';
 export { groupDelete } from './group/delete.js';
 export { groupList } from './group/list.js';

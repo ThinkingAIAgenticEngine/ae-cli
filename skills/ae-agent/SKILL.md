@@ -133,9 +133,9 @@ If the user's intent is data analysis, audience management, metadata governance,
 - `+upload-skill-asset` ([doc](references/upload-skill-asset.md)) — upload an asset file (`isDangerousFile` checked; 1MB)
 - `+read-skill-asset` ([doc](references/read-skill-asset.md)) — read an asset file (binary-safe with `--output`)
 - `+del-skill-asset` ([doc](references/del-skill-asset.md)) — delete an asset file
-- `+list-skill-references` ([doc](references/list-skill-references.md)) — list reference files (`.md` only)
-- `+upload-skill-reference` ([doc](references/upload-skill-reference.md)) — upload a reference file (`.md` only; 1MB)
-- `+read-skill-reference` ([doc](references/read-skill-reference.md)) — read a reference file
+- `+list-skill-references` ([doc](references/list-skill-references.md)) — list all reference files
+- `+upload-skill-reference` ([doc](references/upload-skill-reference.md)) — upload a non-dangerous reference file (1MB)
+- `+read-skill-reference` ([doc](references/read-skill-reference.md)) — read text directly or save binary content with `--output`
 - `+del-skill-reference` ([doc](references/del-skill-reference.md)) — delete a reference file
 - `+list-skill-scripts` ([doc](references/list-skill-scripts.md)) — list script files of a Skill
 - `+upload-skill-script` ([doc](references/upload-skill-script.md)) — upload a script file (`isDangerousFile` checked; 1MB)

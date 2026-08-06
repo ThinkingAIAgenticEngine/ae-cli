@@ -1,7 +1,7 @@
 ---
 name: ae-system
-version: 1.0.0
-description: "AE Agent system administration CLI for root and agent administrators. Use when the user asks to manage Agent members, sandboxes, company model visibility/defaults, usage statistics, cost quotas, balance alerts, or IM channels. Must use ae-cli system commands, discover real IDs before writes, and never attempt to bypass a permission denial."
+version: 1.1.0
+description: "AE Agent system administration CLI for root and agent administrators. Use when the user asks to manage Agent members, sandboxes and shared tools, company model visibility/defaults/pricing, usage statistics and exports, cost quotas, balance alerts, or IM channels. Must use ae-cli system commands, discover real IDs before writes, and never attempt to bypass a permission denial."
 ---
 
 # ae-system
@@ -19,11 +19,13 @@ ae-cli system +<command> [options]
 - Run `ae-cli auth login --host <host>` before using this domain. System administration requires a user access-token session; sandbox identity headers are not an authorization substitute.
 - `+npm-install` is the exception that must also run inside a Linux te-agent sandbox because it packages the installed Linux files. It still requires the logged-in user to be `root` or `agent_admin`.
 - Discover real IDs with a list command before any update or delete. Never guess a user, sandbox, model, quota rule, or channel ID.
-- Read and ordinary write commands run without confirmation. Commands marked `high-risk-write` require confirmation unless the user explicitly authorizes `--yes`.
+- Before every write, run `--dry-run`, show the target and effect, and obtain explicit user confirmation. The CLI itself prompts only for `high-risk-write`; `--yes` can bypass that prompt and is not a security boundary.
 - Use `--dry-run` to inspect method, path, query, and redacted body without executing.
 - JSON inputs accept inline JSON, `@file`, or `-` for stdin. Prefer `@file` for channel credentials and other sensitive values.
 - Successful output is JSON by default. Use `--format table` only when a human-readable table is more useful.
 - After each command, check stderr and `_notice.host_compat`. If present, show the version warning and its update commands before the business result.
+- Do not treat an absent ae-cli command as proof that an HTTP endpoint is unreachable. An Agent with Bash/network access can construct requests directly; server authentication, role checks, company isolation, and resource ownership are the actual controls.
+- Do not call `DELETE /api/admin/members?openId=...` or `/api/internal/sandboxes/**` through ad-hoc HTTP. They are intentionally excluded from this Skill because other systems own those integration contracts.
 
 ## Command Groups
 
@@ -37,6 +39,7 @@ ae-cli system +<command> [options]
 | `+set-member-status` | write | Enable or disable a member. |
 | `+set-member-role` | write | Change a non-root member between `agent_admin` and `member`. |
 | `+remove-member` | high-risk-write | Remove a non-root member. |
+| `+get-member-stats` | read | Get one member's token usage and recent conversation count. |
 
 Examples:
 
@@ -77,6 +80,7 @@ Optional flags are `--rule-id` and `--create-sandbox true|false`.
 | Command | Risk | Purpose |
 | --- | --- | --- |
 | `+list-sandboxes` | read | List company sandboxes. |
+| `+get-sandbox-config` | read | Read feature status and create/active seat limits. |
 | `+batch-create-sandboxes` | write | Create personal sandboxes for 1-100 users. |
 | `+update-sandbox` | write | Update a sandbox description. |
 | `+set-sandbox-enabled` | write | Enable or disable a sandbox. |
@@ -106,8 +110,32 @@ Use Agent database user IDs from `+list-members`, not TE openIds, for sandbox co
 | --- | --- | --- |
 | `+upload-sandbox-tool` | write | Validate, ZIP, and upload an existing tool directory. |
 | `+npm-install` | write | Install one exact npm CLI version in a temporary sandbox directory, generate `tool.json`, and upload it. |
+| `+list-sandbox-tools` | read | List preset and custom tools for the current company. |
+| `+sync-sandbox-tools` | write | Synchronize preset tools from the server manifest. |
+| `+get-sandbox-tool-distribution` | read | Read the sandboxes currently receiving one tool. |
+| `+set-sandbox-tool-enabled` | write | Enable or disable one registered tool. |
+| `+remove-sandbox-tool` | high-risk-write | Delete a fully reclaimed tool registration. |
+| `+activate-sandbox-tools` | write | Activate selected commands on selected or all running sandboxes. |
+| `+deactivate-sandbox-tools` | write | Remove managed command shims from selected or all running sandboxes. |
+| `+refresh-sandbox-tool-status` | write | Refresh observed tool state on target sandboxes. |
+| `+list-sandbox-tool-operations` | read | List activation/deactivation history. |
 
 Uploaded tools are registered for the current company with `enabled=false`. Upload does not activate the tool in any running sandbox. Review and enable/activate it through sandbox tool management after upload.
+
+For activate/deactivate/status operations:
+
+```bash
+ae-cli system +activate-sandbox-tools \
+  --target-mode selected \
+  --sandbox-ids '["<sandbox-id>"]' \
+  --tool-ids '["<tool-id>"]'
+```
+
+- `--target-mode selected` requires 1-50 `--sandbox-ids`; `all-running` forbids them.
+- `--tool-ids` contains 1-20 real IDs from `+list-sandbox-tools`.
+- `--command-names-by-tool-id` optionally limits an operation to named commands.
+- `--expected-tool-snapshots-by-id` carries the version/package/command snapshot returned by the server for optimistic concurrency checks.
+- JSON maps accept inline JSON, `@file`, or stdin. Use dry-run and user confirmation before distribution changes.
 
 #### Preferred npm Flow
 
@@ -189,6 +217,9 @@ Upload contract:
 | --- | --- | --- |
 | `+list-system-models` | read | List system models and company visibility. |
 | `+set-system-model-enabled` | write | Toggle a system model for the current company. |
+| `+get-model-sync-settings` | read | Read the default visibility policy for newly synchronized system models. |
+| `+set-model-sync-settings` | write | Update the new-system-model visibility policy. |
+| `+get-system-model-price-rules` | read | Read one managed system model's stored pricing snapshot. |
 | `+list-company-models` | read | List company models, including disabled models. |
 | `+set-company-model-enabled` | write | Toggle a company model for all company users. |
 | `+get-default-models` | read | Read the `AE_AGENT` and `AI_QA` default slots. |
@@ -211,11 +242,16 @@ ae-cli system +set-default-model --model-id <model-id> --biz-type AE_AGENT
 | --- | --- | --- |
 | `+get-usage-summary` | read | Get token/cost summary for a relative or absolute range. |
 | `+get-usage-details` | read | Get paginated usage grouped by user, model, date, or application type. |
+| `+get-agent-tool-calls` | read | Get Agent tool-call count for a range, optionally refreshing the cache. |
+| `+get-usage-combinations` | read | Drill one parent group into the remaining dimensions. |
+| `+export-usage` | read | Stream filtered one-dimension usage groups to CSV. |
+| `+export-usage-details` | read | Stream full or drill-down multi-dimension details to CSV. |
 
 Examples:
 
 ```bash
 ae-cli system +get-usage-summary --days 30
+ae-cli system +get-usage-summary --days 30 --refresh true
 
 ae-cli system +get-usage-details \
   --start-date 2026-07-01 \
@@ -223,12 +259,26 @@ ae-cli system +get-usage-details \
   --group-by user \
   --page 1 \
   --page-size 20
+
+ae-cli system +get-usage-combinations \
+  --start-date 2026-07-01 \
+  --end-date 2026-07-24 \
+  --parent-dimension user \
+  --open-id <open-id>
+
+ae-cli system +export-usage \
+  --start-date 2026-07-01 \
+  --end-date 2026-07-24 \
+  --group-by user \
+  --output ./system-usage.csv
 ```
 
 Summary range:
 
 - Use `--days 1..365`, or provide both `--start-date` and `--end-date`.
 - Dates use `YYYY-MM-DD`.
+- Do not combine `--days` with an absolute date pair.
+- `--refresh true` is available on `+get-usage-summary` and `+get-agent-tool-calls` and bypasses the overview cache.
 
 Details flags:
 
@@ -239,11 +289,22 @@ Details flags:
 - `--sort-by`: `totalTokens | cost | share | requestCount`.
 - `--sort-dir`: `asc | desc`.
 
+Combination drill-down requires exactly one parent selector:
+
+- `user` → `--open-id` only.
+- `model` → `--model-id` and `--model-scope` only.
+- `app_type` → `--app-type` only.
+- `date` → `--date` only, inside the selected range.
+
+CSV exports require an explicit `--output`. The target is created exclusively: an existing file is never overwritten, and an HTTP or stream failure removes the incomplete file. The JSON result reports the absolute local path, bytes written, server filename, and content type.
+
 ### Cost Control
 
 | Command | Risk | Purpose |
 | --- | --- | --- |
 | `+get-cost-summary` | read | Get company cost, quota, and usage summary. |
+| `+get-balance` | read | Get the current model account balance and currency. |
+| `+list-over-limit-users` | read | List members over cost or token quota limits. |
 | `+get-balance-alert` | read | Get balance alert config and current status. |
 | `+set-balance-alert` | write | Enable, update, or disable the balance alert. |
 | `+list-quota-rules` | read | List cost/token quota rules. |
@@ -346,6 +407,8 @@ On this response:
 1. Do not retry with another admin path.
 2. Do not recommend re-login unless the server returned 401 instead.
 3. Tell the user that `root` or `agent_admin` is required.
+
+An authenticated `root` or `agent_admin` is still scoped to their own company. The current service checks the database role and company against the session, and audited member, channel, sandbox-tool, and sandbox-management routes apply company/resource ownership checks. Never use that statement as a claim that every unreviewed admin route is safe.
 
 ## Transport Status
 

@@ -13,6 +13,7 @@ const EXPECTED_HIGH_RISK = new Set([
   '+clear-default-model',
   '+remove-quota-rule',
   '+remove-channel',
+  '+remove-sandbox-tool',
 ]);
 const WRITE_METHODS = new Map<string, string>([
   ['+add-members', 'POST'],
@@ -28,6 +29,7 @@ const WRITE_METHODS = new Map<string, string>([
   ['+unbind-sandbox-user', 'DELETE'],
   ['+remove-sandbox', 'DELETE'],
   ['+set-system-model-enabled', 'PATCH'],
+  ['+set-model-sync-settings', 'PATCH'],
   ['+set-company-model-enabled', 'PATCH'],
   ['+set-default-model', 'POST'],
   ['+clear-default-model', 'DELETE'],
@@ -41,6 +43,12 @@ const WRITE_METHODS = new Map<string, string>([
   ['+remove-channel', 'DELETE'],
   ['+upload-sandbox-tool', 'POST'],
   ['+npm-install', 'POST'],
+  ['+sync-sandbox-tools', 'POST'],
+  ['+set-sandbox-tool-enabled', 'PATCH'],
+  ['+remove-sandbox-tool', 'DELETE'],
+  ['+activate-sandbox-tools', 'POST'],
+  ['+deactivate-sandbox-tools', 'POST'],
+  ['+refresh-sandbox-tool-status', 'POST'],
 ]);
 
 function createContext(values: Record<string, unknown>): RuntimeContext {
@@ -90,10 +98,24 @@ const defaultValues: Record<string, unknown> = {
   name: 'eslint',
   manifest: '',
   'allow-scripts': false,
+  'new-system-models-enabled-by-default': true,
+  refresh: false,
+  'parent-dimension': 'user',
+  scope: 'drill',
+  date: '',
+  output: '/tmp/ae-cli-system-usage.csv',
+  'target-mode': 'selected',
+  'sandbox-ids': '["sandbox-1"]',
+  'tool-ids': '["tool-1"]',
+  'command-names-by-tool-id': '',
+  'expected-tool-snapshots-by-id': '',
+  action: 'activate',
+  operator: '',
+  'sort-order': 'desc',
 };
 
-assert.equal(systemCommands.length, 39);
-assert.equal(new Set(systemCommands.map((command) => command.command)).size, 39);
+assert.equal(systemCommands.length, 59);
+assert.equal(new Set(systemCommands.map((command) => command.command)).size, 59);
 
 for (const command of systemCommands) {
   assert.equal(command.service, 'system', `${command.command} must use the system domain`);
@@ -113,11 +135,18 @@ for (const command of systemCommands) {
     ...(command.command === '+update-channel'
       ? { channel: '{"enabled":false,"config":{"botToken":"secret"}}' }
       : {}),
+    ...(['+get-usage-combinations', '+export-usage-details'].includes(command.command)
+      ? { 'model-id': '', 'model-scope': '', 'app-type': '', date: '' }
+      : {}),
   });
   command.validate?.(ctx);
   const preview = await command.dryRun?.(ctx);
   assert.ok(preview && 'url' in preview, `${command.command} must provide a dry-run preview`);
   assert.match(String(preview.url), /^\/api\/admin(?:\/|\?|$)/);
+  assert.doesNotMatch(String(preview.url), /^\/api\/internal\/sandboxes(?:\/|\?|$)/);
+  if (String(preview.url).startsWith('/api/admin/members?')) {
+    assert.doesNotMatch(String(preview.url), /(?:^|[?&])openId=/);
+  }
   assert.equal(
     preview.method,
     WRITE_METHODS.get(command.command) ?? 'GET',
@@ -145,6 +174,56 @@ const usagePreview = await usageDetails?.dryRun?.(createContext(defaultValues));
 assert.match(
   String(usagePreview && 'url' in usagePreview ? usagePreview.url : ''),
   /groupBy=user/,
+);
+
+const usageSummary = systemCommands.find((command) => command.command === '+get-usage-summary');
+const refreshedSummary = await usageSummary?.dryRun?.(
+  createContext({ 'start-date': '2026-07-01', 'end-date': '2026-07-24', refresh: true }),
+);
+assert.match(String(refreshedSummary && 'url' in refreshedSummary ? refreshedSummary.url : ''), /refresh=true/);
+
+const memberStats = systemCommands.find((command) => command.command === '+get-member-stats');
+const memberStatsPreview = await memberStats?.dryRun?.(
+  createContext({ 'user-id': 'user/1', days: 7 }),
+);
+assert.equal(
+  memberStatsPreview && 'url' in memberStatsPreview ? memberStatsPreview.url : undefined,
+  '/api/admin/members/user%2F1/stats?days=7',
+);
+
+const usageCombinations = systemCommands.find((command) => command.command === '+get-usage-combinations');
+assert.throws(
+  () => usageCombinations?.validate?.(createContext({
+    'start-date': '2026-07-01',
+    'end-date': '2026-07-24',
+    'parent-dimension': 'model',
+    'model-id': 'model-1',
+  })),
+  /requires only --model-id and --model-scope/,
+);
+
+const activateTools = systemCommands.find((command) => command.command === '+activate-sandbox-tools');
+const activatePreview = await activateTools?.dryRun?.(createContext({
+  'target-mode': 'selected',
+  'sandbox-ids': '["sandbox-1"]',
+  'tool-ids': '["tool-1"]',
+  'command-names-by-tool-id': '{"tool-1":["ae-cli"]}',
+}));
+assert.deepEqual(
+  activatePreview && 'body' in activatePreview ? activatePreview.body : undefined,
+  {
+    target: { mode: 'selected', sandboxIds: ['sandbox-1'] },
+    toolIds: ['tool-1'],
+    commandNamesByToolId: { 'tool-1': ['ae-cli'] },
+  },
+);
+assert.throws(
+  () => activateTools?.validate?.(createContext({
+    'target-mode': 'all-running',
+    'sandbox-ids': '["sandbox-1"]',
+    'tool-ids': '["tool-1"]',
+  })),
+  /all-running mode does not accept --sandbox-ids/,
 );
 
 const channelCreate = systemCommands.find((command) => command.command === '+create-channel');

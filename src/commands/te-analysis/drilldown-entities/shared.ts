@@ -2,12 +2,12 @@ import type { Flag, RuntimeContext } from '../../../framework/types.js';
 import {
   asyncTimeoutSecondsFlag,
   compactInput,
-  detailPreviewLimitFlag,
   optionalBoolean,
   optionalJson,
   optionalNumber,
   optionalString,
   projectIdFlag,
+  previewRowsFlag,
   requestIdFlag,
   syncTimeoutSecondsFlag,
 } from '../capability-shared.js';
@@ -39,7 +39,7 @@ export const drilldownEntitiesBaseFlags = [
 
 export const drilldownEntitiesRunFlags = [
   ...drilldownEntitiesBaseFlags,
-  detailPreviewLimitFlag,
+  previewRowsFlag,
   syncTimeoutSecondsFlag,
 ] as const;
 
@@ -52,7 +52,7 @@ export const drilldownEntitiesExportFlags = [
 export function drilldownEntitiesRunInput(ctx: RuntimeContext): Record<string, unknown> {
   return compactInput({
     ...baseInput(ctx),
-    limit: optionalNumber(ctx, 'limit'),
+    preview_rows: optionalNumber(ctx, 'preview-rows'),
     timeout_seconds: optionalNumber(ctx, 'timeout-seconds'),
   });
 }

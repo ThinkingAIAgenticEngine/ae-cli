@@ -1,5 +1,7 @@
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
+import { access, mkdtemp, readFile, readdir, rm, stat, writeFile } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
 import { pathToFileURL } from 'node:url';
 import path from 'node:path';
 
@@ -59,6 +61,10 @@ function makeCtx(opts) {
     host() {
       return HOST;
     },
+    async token() {
+      if (opts.failAccessToken) throw new Error('access token unavailable');
+      return String(opts.token ?? 'cli-test-token');
+    },
     mcpUrl() {
       return undefined;
     },
@@ -77,7 +83,7 @@ async function captureCapabilityDryRun(cmd, opts) {
   const { setCliTokenManual, clearCliToken } = await import(
     pathToFileURL(path.join(ROOT, 'src/core/cli-token.ts')).href
   );
-  setCliTokenManual('cli-test-token', HOST);
+  setCliTokenManual(String(opts.cliToken ?? 'cli-test-token'), HOST);
   let capturedUrl = '';
   let capturedBody;
   const prevFetch = globalThis.fetch;
@@ -103,7 +109,7 @@ async function captureCapabilityExecute(cmd, opts, responseData) {
   const { setCliTokenManual, clearCliToken } = await import(
     pathToFileURL(path.join(ROOT, 'src/core/cli-token.ts')).href
   );
-  setCliTokenManual('cli-test-token', HOST);
+  setCliTokenManual(String(opts.cliToken ?? 'cli-test-token'), HOST);
   let capturedUrl = '';
   let capturedBody;
   const prevFetch = globalThis.fetch;
@@ -171,9 +177,24 @@ process.stdout.write('\nmetadata capability command tests\n');
 
 await test('metadata data-table list maps to analysis gateway component', async () => {
   const cmd = await importCmd('src/commands/metadata/data-table/list.ts', 'dataTableList');
-  const { url, body } = await captureCapabilityDryRun(cmd, { projectId: 1 });
+  const { url, body } = await captureCapabilityDryRun(cmd, { projectId: 1, limit: 100, offset: 200 });
   assert.equal(url, `${HOST}/api/cli/analysis/v1/capabilities/metadata.data_table.list/dry-run`);
-  assert.deepEqual(body, { input: { project_id: 1 } });
+  assert.deepEqual(body, { input: { project_id: 1, limit: 100, offset: 200 } });
+});
+
+await test('analysis-meta datatable version-list sends shared pagination', async () => {
+  const cmd = await importCmd(
+    'src/commands/te-analysis/meta/datatable/version-list.ts',
+    'metadataDataTableVersionList',
+  );
+  const { url, body } = await captureCapabilityDryRun(cmd, {
+    projectId: 1,
+    datatableId: 9,
+    limit: 50,
+    offset: 50,
+  });
+  assert.equal(url, `${HOST}/api/cli/analysis/v1/capabilities/metadata.data_table_version.list/dry-run`);
+  assert.deepEqual(body.input, { project_id: 1, datatable_id: 9, limit: 50, offset: 50 });
 });
 
 await test('analysis-meta datatable columns-get sends table_ref to gateway', async () => {
@@ -185,9 +206,11 @@ await test('analysis-meta datatable columns-get sends table_ref to gateway', asy
 
 await test('analysis-meta event list sends search pagination projection and auth filter', async () => {
   const cmd = await importCmd('src/commands/te-analysis/meta/event/list.ts', 'metadataEventList');
+  assert.equal(cmd.flags.some((flag) => flag.name === 'all'), false);
+  assert.equal(cmd.flags.some((flag) => flag.name === 'output'), false);
   const { url, body } = await captureCapabilityDryRun(cmd, {
     projectId: 1,
-    query: 'login',
+    queries: ['login', 'sign in'],
     fields: ['event_name', 'authentication_status'],
     limit: 20,
     offset: 0,
@@ -196,7 +219,7 @@ await test('analysis-meta event list sends search pagination projection and auth
   assert.equal(url, `${HOST}/api/cli/analysis/v1/capabilities/metadata.event.list/dry-run`);
   assert.deepEqual(body.input, {
     project_id: 1,
-    query: 'login',
+    queries: ['login', 'sign in'],
     fields: ['event_name', 'authentication_status'],
     limit: 20,
     offset: 0,
@@ -204,13 +227,275 @@ await test('analysis-meta event list sends search pagination projection and auth
   });
 });
 
+await test('analysis-meta event export writes one complete private JSON file without leaking output path', async () => {
+  const cmd = await importCmd('src/commands/te-analysis/meta/event/export.ts', 'metadataEventExport');
+  assert.equal(cmd.flags.find((flag) => flag.name === 'output')?.required, true);
+  assert.equal(cmd.flags.some((flag) => flag.name === 'all'), false);
+  assert.equal(cmd.flags.some((flag) => flag.name === 'limit'), false);
+  assert.equal(cmd.flags.some((flag) => flag.name === 'offset'), false);
+  assert.throws(
+    () => cmd.validate(makeCtx({ projectId: 1, output: '/tmp/events.jsonl' })),
+    /--output must use the .json extension/,
+  );
+  const dir = await mkdtemp(path.join(tmpdir(), 'ae-cli-event-catalog-'));
+  const output = path.join(dir, 'events.json');
+  try {
+    const { body, result } = await captureCapabilityExecute(cmd, {
+      projectId: 1,
+      queries: ['pay', 'login'],
+      fields: ['event_name'],
+      output,
+    }, {
+      events: [
+        { event_name: 'pay' },
+        { event_name: 'login' },
+      ],
+      total: 2,
+      complete: true,
+    });
+    assert.deepEqual(body.input, {
+      project_id: 1,
+      queries: ['pay', 'login'],
+      fields: ['event_name'],
+    });
+    assert.equal(result.complete, true);
+    assert.equal(result.row_count, 2);
+    assert.equal(result.output_path, output);
+    assert.equal(result.format, 'json');
+    assert.match(result.content_sha256, /^[a-f0-9]{64}$/);
+    assert.deepEqual(JSON.parse(await readFile(output, 'utf8')), [
+      { event_name: 'pay' },
+      { event_name: 'login' },
+    ]);
+    assert.equal((await stat(output)).mode & 0o777, 0o600);
+    assert.deepEqual(await readdir(dir), ['events.json']);
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
+await test('analysis-meta event export works with cli-token only and never requests an access token', async () => {
+  const cmd = await importCmd('src/commands/te-analysis/meta/event/export.ts', 'metadataEventExport');
+  const dir = await mkdtemp(path.join(tmpdir(), 'ae-cli-event-catalog-cli-token-'));
+  const output = path.join(dir, 'events.json');
+  try {
+    const { result } = await captureCapabilityExecute(cmd, {
+      projectId: 1,
+      output,
+      failAccessToken: true,
+    }, {
+      events: [{ event_name: 'pay' }],
+      total: 1,
+      complete: true,
+    });
+
+    assert.equal(result.complete, true);
+    assert.deepEqual(JSON.parse(await readFile(output, 'utf8')), [{ event_name: 'pay' }]);
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
+await test('analysis-meta catalog full export fetches all analysis metadata in one capability call and one file', async () => {
+  const cmd = await importCmd('src/commands/te-analysis/meta/catalog/export.ts', 'metadataCatalogExport');
+  const { setCliTokenManual, clearCliToken } = await import(
+    pathToFileURL(path.join(ROOT, 'src/core/cli-token.ts')).href
+  );
+  const dir = await mkdtemp(path.join(tmpdir(), 'ae-cli-analysis-catalog-'));
+  const output = path.join(dir, 'catalog.jsonl');
+  const previousFetch = globalThis.fetch;
+  try {
+    const rows = [
+      { resource_type: 'event', resource_key: 'payment', display_name: '充值事件' },
+      { resource_type: 'metric', resource_key: 'payer_count', display_name: '付费人数' },
+      { resource_type: 'event_property', resource_key: 'amount', display_name: '充值金额' },
+      { resource_type: 'user_property', resource_key: 'country', display_name: '国家' },
+      { resource_type: 'cluster', resource_key: 'paid_users', display_name: '付费人群' },
+      { resource_type: 'tag', resource_key: 'high_value', display_name: '高价值用户' },
+    ];
+    const artifact = `${rows.map((row) => JSON.stringify(row)).join('\n')}\n`;
+    let executeUrl = '';
+    let executeBody;
+    setCliTokenManual('cli-test-token', HOST);
+    globalThis.fetch = (async (url, init) => {
+      const value = String(url);
+      if (value.endsWith('/capabilities/metadata.catalog.export/execute')) {
+        executeUrl = value;
+        executeBody = JSON.parse(String(init?.body));
+        return new Response(JSON.stringify({
+          ok: true,
+          data: {
+            run_id: 'run_catalog',
+            artifact_id: 'artifact_catalog',
+            status: 'SUCCEEDED',
+            artifact_status: 'COMPLETED',
+          },
+          meta: {},
+        }), { status: 200, headers: { 'Content-Type': 'application/json' } });
+      }
+      if (value.endsWith('/runs/run_catalog/artifacts/artifact_catalog/download')) {
+        return new Response(artifact, {
+          status: 200,
+          headers: { 'Content-Type': 'application/x-ndjson' },
+        });
+      }
+      throw new Error(`Unexpected async catalog request: ${value}`);
+    });
+    const result = await cmd.execute(makeCtx({ projectId: 1, output }));
+
+    assert.equal(executeUrl, `${HOST}/api/cli/analysis/v1/capabilities/metadata.catalog.export/execute`);
+    assert.equal(executeBody.input.project_id, 1);
+    assert.match(executeBody.input.request_id, /^cli_[a-f0-9]{32}$/);
+    assert.equal(result.complete, true);
+    assert.equal(result.row_count, 6);
+    assert.equal((await readFile(output, 'utf8')).trim().split('\n').length, 6);
+    assert.deepEqual(
+      (await readFile(output, 'utf8')).trim().split('\n').map((line) => JSON.parse(line).resource_type),
+      ['event', 'metric', 'event_property', 'user_property', 'cluster', 'tag'],
+    );
+    const sidecar = JSON.parse(await readFile(path.join(dir, 'catalog.meta.json'), 'utf8'));
+    assert.equal(sidecar.complete, true);
+    assert.equal(sidecar.row_count, 6);
+    assert.equal(sidecar.run_id, 'run_catalog');
+    assert.equal(sidecar.artifact_id, 'artifact_catalog');
+  } finally {
+    globalThis.fetch = previousFetch;
+    clearCliToken(HOST);
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
+await test('analysis-meta catalog export refuses an existing sidecar before remote submission', async () => {
+  const cmd = await importCmd('src/commands/te-analysis/meta/catalog/export.ts', 'metadataCatalogExport');
+  const dir = await mkdtemp(path.join(tmpdir(), 'ae-cli-analysis-catalog-preflight-'));
+  const output = path.join(dir, 'catalog.jsonl');
+  const sidecar = path.join(dir, 'catalog.meta.json');
+  const previousFetch = globalThis.fetch;
+  try {
+    await writeFile(sidecar, '{}\n');
+    let submitted = false;
+    globalThis.fetch = (async () => {
+      submitted = true;
+      throw new Error('remote submission must not occur');
+    });
+
+    await assert.rejects(
+      () => cmd.execute(makeCtx({ projectId: 1, output })),
+      /Catalog output path already exists/,
+    );
+    assert.equal(submitted, false);
+  } finally {
+    globalThis.fetch = previousFetch;
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
+await test('analysis-meta catalog online search sends one typed cross-resource request without writing a file', async () => {
+  const cmd = await importCmd('src/commands/te-analysis/meta/catalog/list.ts', 'metadataCatalogList');
+  const { url, body, result } = await captureCapabilityExecute(cmd, {
+    projectId: 1,
+    queries: ['付费事件', '支付事件', '充值事件'],
+    resourceTypes: ['event', 'metric'],
+    limitPerType: 20,
+  }, {
+    items: [{
+      resource_type: 'event',
+      resource_key: 'payment',
+      display_name: '充值事件',
+      matched_query: '充值事件',
+      matched_field: 'display_name',
+      match_type: 'exact',
+    }],
+    resource_counts: { event: 1, metric: 0 },
+    matched_counts: { event: 1, metric: 0 },
+    total: 1,
+    limit_per_type: 20,
+    has_more: false,
+    truncated_resource_types: [],
+  });
+
+  assert.equal(url, `${HOST}/api/cli/analysis/v1/capabilities/metadata.catalog.list/execute`);
+  assert.deepEqual(body.input, {
+    project_id: 1,
+    queries: ['付费事件', '支付事件', '充值事件'],
+    resource_types: ['event', 'metric'],
+    limit_per_type: 20,
+  });
+  assert.equal('all' in result, false);
+  assert.equal(result.items[0].resource_key, 'payment');
+});
+
+await test('analysis-meta event export rejects incomplete gateway data without publishing a file', async () => {
+  const cmd = await importCmd('src/commands/te-analysis/meta/event/export.ts', 'metadataEventExport');
+  const dir = await mkdtemp(path.join(tmpdir(), 'ae-cli-event-catalog-incomplete-'));
+  const output = path.join(dir, 'events.json');
+  try {
+    await assert.rejects(
+      captureCapabilityExecute(cmd, {
+        projectId: 1,
+        output,
+      }, {
+        events: [{ event_name: 'pay' }],
+        total: 2,
+        complete: true,
+      }),
+      /export is incomplete/,
+    );
+    await assert.rejects(access(output));
+    assert.deepEqual(await readdir(dir), []);
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
+await test('analysis-meta catalog list requires a complete online search selector', async () => {
+  const cmd = await importCmd('src/commands/te-analysis/meta/catalog/list.ts', 'metadataCatalogList');
+  assert.equal(cmd.flags.some((flag) => flag.name === 'all'), false);
+  assert.equal(cmd.flags.some((flag) => flag.name === 'output'), false);
+  assert.throws(
+    () => cmd.validate(makeCtx({ projectId: 1 })),
+    /requires --queries and --resource-types/,
+  );
+  assert.throws(
+    () => cmd.validate(makeCtx({
+      projectId: 1,
+      queries: ['pay'],
+    })),
+    /requires --queries and --resource-types/,
+  );
+  assert.throws(
+    () => cmd.validate(makeCtx({
+      projectId: 1,
+      queries: ['pay'],
+      resourceTypes: ['dashboard'],
+    })),
+    /--resource-types must be a JSON array/,
+  );
+});
+
+await test('analysis-meta catalog export requires a JSONL output path', async () => {
+  const cmd = await importCmd('src/commands/te-analysis/meta/catalog/export.ts', 'metadataCatalogExport');
+  assert.equal(cmd.flags.find((flag) => flag.name === 'output')?.required, false);
+  assert.equal(cmd.flags.some((flag) => flag.name === 'all'), false);
+  assert.throws(
+    () => cmd.validate(makeCtx({ projectId: 1 })),
+    /--output is required/,
+  );
+  assert.throws(
+    () => cmd.validate(makeCtx({ projectId: 1, output: '/tmp/catalog.json' })),
+    /--output must use the .jsonl extension/,
+  );
+});
+
 await test('analysis-meta property list sends search pagination projection and auth filter', async () => {
   const cmd = await importCmd('src/commands/te-analysis/meta/property/list.ts', 'metadataPropertyList');
+  assert.equal(cmd.flags.some((flag) => flag.name === 'all'), false);
+  assert.equal(cmd.flags.some((flag) => flag.name === 'output'), false);
   const { url, body } = await captureCapabilityDryRun(cmd, {
     projectId: 1,
     scope: 'event',
     eventName: 'purchase',
-    query: 'login',
+    queries: ['login', 'sign in'],
     fields: ['prop_name', 'authentication_status'],
     limit: 20,
     offset: 0,
@@ -221,10 +506,36 @@ await test('analysis-meta property list sends search pagination projection and a
     project_id: 1,
     scope: 'event',
     event_name: 'purchase',
-    query: 'login',
+    queries: ['login', 'sign in'],
     fields: ['prop_name', 'authentication_status'],
     limit: 20,
     offset: 0,
+    authenticated_only: true,
+  });
+});
+
+await test('analysis-meta property export sends filters without pagination or local output', async () => {
+  const cmd = await importCmd('src/commands/te-analysis/meta/property/export.ts', 'metadataPropertyExport');
+  assert.equal(cmd.flags.find((flag) => flag.name === 'output')?.required, true);
+  assert.equal(cmd.flags.some((flag) => flag.name === 'all'), false);
+  assert.equal(cmd.flags.some((flag) => flag.name === 'limit'), false);
+  assert.equal(cmd.flags.some((flag) => flag.name === 'offset'), false);
+  const { url, body } = await captureCapabilityDryRun(cmd, {
+    projectId: 1,
+    scope: 'event',
+    eventName: 'purchase',
+    queries: ['amount'],
+    fields: ['prop_name'],
+    authenticatedOnly: true,
+    output: '/tmp/properties.json',
+  });
+  assert.equal(url, `${HOST}/api/cli/analysis/v1/capabilities/metadata.property.export/dry-run`);
+  assert.deepEqual(body.input, {
+    project_id: 1,
+    scope: 'event',
+    event_name: 'purchase',
+    queries: ['amount'],
+    fields: ['prop_name'],
     authenticated_only: true,
   });
 });
@@ -399,9 +710,11 @@ await test('analysis-meta metric get sends metric_id to gateway', async () => {
 
 await test('analysis-meta metric list sends search pagination projection and auth filter', async () => {
   const cmd = await importCmd('src/commands/te-analysis/meta/metric/list.ts', 'metadataMetricList');
+  assert.equal(cmd.flags.some((flag) => flag.name === 'all'), false);
+  assert.equal(cmd.flags.some((flag) => flag.name === 'output'), false);
   const { url, body } = await captureCapabilityDryRun(cmd, {
     projectId: 1,
-    query: 'pay',
+    queries: ['pay', 'revenue'],
     fields: ['metric_name', 'authentication_status'],
     limit: 20,
     offset: 0,
@@ -410,12 +723,93 @@ await test('analysis-meta metric list sends search pagination projection and aut
   assert.equal(url, `${HOST}/api/cli/analysis/v1/capabilities/metadata.metric.list/dry-run`);
   assert.deepEqual(body.input, {
     project_id: 1,
-    query: 'pay',
+    queries: ['pay', 'revenue'],
     fields: ['metric_name', 'authentication_status'],
     limit: 20,
     offset: 0,
     authenticated_only: true,
   });
+});
+
+await test('analysis-meta metric export sends filters without pagination or local output', async () => {
+  const cmd = await importCmd('src/commands/te-analysis/meta/metric/export.ts', 'metadataMetricExport');
+  assert.equal(cmd.flags.find((flag) => flag.name === 'output')?.required, true);
+  assert.equal(cmd.flags.some((flag) => flag.name === 'all'), false);
+  assert.equal(cmd.flags.some((flag) => flag.name === 'limit'), false);
+  assert.equal(cmd.flags.some((flag) => flag.name === 'offset'), false);
+  const { url, body } = await captureCapabilityDryRun(cmd, {
+    projectId: 1,
+    ignoreAuthentication: false,
+    queries: ['pay'],
+    fields: ['metric_name'],
+    output: '/tmp/metrics.json',
+  });
+  assert.equal(url, `${HOST}/api/cli/analysis/v1/capabilities/metadata.metric.export/dry-run`);
+  assert.deepEqual(body.input, {
+    project_id: 1,
+    ignore_authentication: false,
+    queries: ['pay'],
+    fields: ['metric_name'],
+  });
+});
+
+await test('analysis user cluster and tag split bounded lists from complete exports', async () => {
+  const userCommands = (await import(
+    pathToFileURL(path.join(ROOT, 'src/commands/te-analysis/user/index.ts')).href
+  )).default;
+  const clusterList = userCommands.find(
+    (command) => command.resource === 'user-cluster' && command.command === 'list',
+  );
+  const tagList = userCommands.find(
+    (command) => command.resource === 'user-tag' && command.command === 'list',
+  );
+  const clusterExport = userCommands.find(
+    (command) => command.resource === 'user-cluster' && command.command === 'export',
+  );
+  const tagExport = userCommands.find(
+    (command) => command.resource === 'user-tag' && command.command === 'export',
+  );
+  assert.ok(clusterList);
+  assert.ok(tagList);
+  assert.ok(clusterExport);
+  assert.ok(tagExport);
+  for (const command of [clusterList, tagList]) {
+    assert.equal(command.flags.some((flag) => flag.name === 'query'), false);
+    assert.equal(command.flags.some((flag) => flag.name === 'queries'), true);
+    assert.equal(command.flags.some((flag) => flag.name === 'all'), false);
+    assert.equal(command.flags.some((flag) => flag.name === 'output'), false);
+    const { body } = await captureCapabilityDryRun(command, {
+      projectId: 1,
+      queries: ['payer', 'paid audience'],
+      limit: 50,
+      offset: 0,
+      authenticatedOnly: true,
+    });
+    assert.deepEqual(body.input, {
+      project_id: 1,
+      queries: ['payer', 'paid audience'],
+      limit: 50,
+      offset: 0,
+      authenticated_only: true,
+    });
+  }
+  for (const command of [clusterExport, tagExport]) {
+    assert.equal(command.flags.some((flag) => flag.name === 'all'), false);
+    assert.equal(command.flags.some((flag) => flag.name === 'limit'), false);
+    assert.equal(command.flags.some((flag) => flag.name === 'offset'), false);
+    assert.equal(command.flags.find((flag) => flag.name === 'output')?.required, true);
+    const { body } = await captureCapabilityDryRun(command, {
+      projectId: 1,
+      queries: ['payer'],
+      authenticatedOnly: true,
+      output: '/tmp/audience.jsonl',
+    });
+    assert.deepEqual(body.input, {
+      project_id: 1,
+      queries: ['payer'],
+      authenticated_only: true,
+    });
+  }
 });
 
 await test('analysis-meta metric update maps legacy model-type fields to gateway input', async () => {
@@ -624,9 +1018,19 @@ await test('analysis-meta asset-authentication list uses standalone metadata res
     'src/commands/te-analysis/meta/asset/authentication-list.ts',
     'metadataAssetAuthenticationList',
   );
-  const { url, body } = await captureCapabilityDryRun(cmd, { projectId: 1 });
+  const { url, body } = await captureCapabilityDryRun(cmd, { projectId: 1, limit: 100, offset: 100 });
   assert.equal(url, `${HOST}/api/cli/analysis/v1/capabilities/metadata.asset_authentication.list/dry-run`);
-  assert.deepEqual(body.input, { project_id: 1 });
+  assert.deepEqual(body.input, { project_id: 1, limit: 100, offset: 100 });
+});
+
+await test('analysis-governance rule list sends shared pagination', async () => {
+  const cmd = await importCmd(
+    'src/commands/te-analysis/meta/asset/rule-list.ts',
+    'analysisMetaAssetRuleList',
+  );
+  const { url, body } = await captureCapabilityDryRun(cmd, { projectId: 1, limit: 25, offset: 50 });
+  assert.equal(url, `${HOST}/api/cli/analysis/v1/capabilities/governance.rule.list/dry-run`);
+  assert.deepEqual(body.input, { project_id: 1, limit: 25, offset: 50 });
 });
 
 await test('analysis-meta asset-abnormal get uses standalone metadata resource', async () => {
@@ -795,168 +1199,17 @@ await test('legacy analysis_common get_resource_url command remains unavailable'
   assert.notEqual(result.status, 0);
   assert.match(result.stderr, /unknown command 'analysis_common'/);
 });
-await test('legacy analysis_meta list_events command remains unavailable', () => {
+await test('legacy analysis_meta compatibility domain remains unavailable', () => {
   const result = spawnSync('npx', ['tsx', 'src/index.ts', '--host', HOST, '--dry-run',
     'analysis_meta',
-    '+list_events',
-    '--project_id',
-    '1',
-    '--authenticated_only',
-    'true',
+    '+batch_create_metadata',
   ], {
     cwd: ROOT,
     encoding: 'utf-8',
   });
   assert.notEqual(result.status, 0);
-  assert.match(result.stderr, /unknown command '\+list_events'/);
-});
-await test('legacy analysis_meta list_properties command remains unavailable', () => {
-  const result = spawnSync('npx', ['tsx', 'src/index.ts', '--host', HOST, '--dry-run',
-    'analysis_meta',
-    '+list_properties',
-    '--project_id',
-    '1',
-    '--authenticated_only',
-    'true',
-  ], {
-    cwd: ROOT,
-    encoding: 'utf-8',
-  });
-  assert.notEqual(result.status, 0);
-  assert.match(result.stderr, /unknown command '\+list_properties'/);
-});
-await test('legacy analysis_meta create_metric command remains unavailable', () => {
-  const result = spawnSync('npx', ['tsx', 'src/index.ts', '--host', HOST, '--dry-run',
-    'analysis_meta',
-    '+create_metric',
-    '--project_id',
-    '1',
-    '--name',
-    'demo',
-    '--display_name',
-    'Demo',
-    '--model_type',
-    'event',
-    '--events',
-    '[]',
-    '--params',
-    '{}',
-  ], {
-    cwd: ROOT,
-    encoding: 'utf-8',
-  });
-  assert.notEqual(result.status, 0);
-  assert.match(result.stderr, /unknown command '\+create_metric'/);
-});
-await test('legacy analysis_meta get_metric command remains unavailable', () => {
-  const result = spawnSync('npx', ['tsx', 'src/index.ts', '--host', HOST, '--dry-run',
-    'analysis_meta',
-    '+get_metric',
-    '--project_id',
-    '1',
-    '--metric_id',
-    '1001',
-  ], {
-    cwd: ROOT,
-    encoding: 'utf-8',
-  });
-  assert.notEqual(result.status, 0);
-  assert.match(result.stderr, /unknown command '\+get_metric'/);
-});
-await test('legacy analysis_meta list_metrics command remains unavailable', () => {
-  const result = spawnSync('npx', ['tsx', 'src/index.ts', '--host', HOST, '--dry-run',
-    'analysis_meta',
-    '+list_metrics',
-    '--project_id',
-    '1',
-    '--authenticated_only',
-    'true',
-  ], {
-    cwd: ROOT,
-    encoding: 'utf-8',
-  });
-  assert.notEqual(result.status, 0);
-  assert.match(result.stderr, /unknown command '\+list_metrics'/);
-});
-await test('legacy analysis_meta update_metric command remains unavailable', () => {
-  const result = spawnSync('npx', ['tsx', 'src/index.ts', '--host', HOST, '--dry-run',
-    'analysis_meta',
-    '+update_metric',
-    '--project_id',
-    '1',
-    '--metric_id',
-    '1001',
-    '--name',
-    'pay_count',
-    '--display_name',
-    'Pay Count',
-    '--model_type',
-    'event',
-    '--events',
-    '[]',
-  ], {
-    cwd: ROOT,
-    encoding: 'utf-8',
-  });
-  assert.notEqual(result.status, 0);
-  assert.match(result.stderr, /unknown command '\+update_metric'/);
-});
-await test('legacy analysis_meta delete_metric command remains unavailable', () => {
-  const result = spawnSync('npx', ['tsx', 'src/index.ts', '--host', HOST, '--dry-run',
-    'analysis_meta',
-    '+delete_metric',
-    '--project_id',
-    '1',
-    '--metric_id',
-    '1001',
-  ], {
-    cwd: ROOT,
-    encoding: 'utf-8',
-  });
-  assert.notEqual(result.status, 0);
-  assert.match(result.stderr, /unknown command '\+delete_metric'/);
-});
-await test('legacy analysis_meta create_virtual_event command remains unavailable', () => {
-  const result = spawnSync('npx', ['tsx', 'src/index.ts', '--host', HOST, '--dry-run',
-    'analysis_meta',
-    '+create_virtual_event',
-    '--project_id',
-    '1',
-    '--event_name',
-    'ta@demo',
-    '--event_desc',
-    'Demo',
-    '--events',
-    '[]',
-  ], {
-    cwd: ROOT,
-    encoding: 'utf-8',
-  });
-  assert.notEqual(result.status, 0);
-  assert.match(result.stderr, /unknown command '\+create_virtual_event'/);
-});
-await test('legacy analysis_meta create_virtual_property command remains unavailable', () => {
-  const result = spawnSync('npx', ['tsx', 'src/index.ts', '--host', HOST, '--dry-run',
-    'analysis_meta',
-    '+create_virtual_property',
-    '--project_id',
-    '1',
-    '--property_name',
-    '#vp@demo',
-    '--table_type',
-    'event',
-    '--select_type',
-    'string',
-    '--sql_expression',
-    'event_name',
-    '--sql_event_relation_type',
-    'relation_default',
-  ], {
-    cwd: ROOT,
-    encoding: 'utf-8',
-  });
-  assert.notEqual(result.status, 0);
-  assert.match(result.stderr, /unknown command '\+create_virtual_property'/);
+  assert.match(result.stderr, /unknown command 'analysis_meta'/);
+  assert.match(result.stderr, /Did you mean analysis-meta/);
 });
 
 process.stdout.write(`\n${pass} passed, ${fail} failed\n`);

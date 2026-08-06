@@ -11,7 +11,7 @@ Command:
 ```bash
 ae-cli analysis-meta virtual-property create --project-id <project_id> --property-name '#vp@demo' --table-type event --select-type string --sql-expression 'event_name' --sql-event-relation-type relation_default
 ae-cli analysis-meta virtual-property create --project-id <project_id> --property-name '#vp@demo' --property-desc demo --table-type event --select-type string --sql-expression "CASE WHEN status = 1 THEN 'active' ELSE 'inactive' END" --sql-event-relation-type relation_by_setting --related-events '[{"eventName":"purchase"}]' --property-remark demo
-ae-cli analysis-meta virtual-property create --project-id <project_id> --sql-expression '<sql>' --v-prop '{...}' --properties '[...]'
+ae-cli analysis-meta virtual-property create --project-id <project_id> --sql-expression '<sql>' --v-prop '{"property":{"column_name":"#vp@demo","table_type":"event","select_type":"string"}}' --properties '[...]'
 ae-cli analysis-meta virtual-property create --project-id <project_id> --sql-expression '<sql>' --v-prop '{...}' --dry-run
 ```
 
@@ -26,7 +26,7 @@ Output is a successful gateway envelope with no business data.
 |---|---|---|
 | `--project-id` | Yes | Numeric project ID. |
 | `--sql-expression` | Yes | SQL expression used to calculate the virtual property. |
-| `--v-prop` | No | Full virtual property JSON object with `property.column_name`, `table_type`, and `select_type`. Use typed property flags unless an exact DTO is already available. |
+| `--v-prop` | No | Full virtual property JSON object with `property.column_name`, `property.table_type`, and `property.select_type`. All three fields belong inside `property`; use typed property flags unless an exact DTO is already available. |
 | `--property-name` | No | Virtual property name. Must start with `#vp@`. Required when `--v-prop` is omitted. |
 | `--property-desc` | No | Virtual property display name. |
 | `--table-type` | No | Property table type: `event` or `user`. Required when `--v-prop` is omitted. |

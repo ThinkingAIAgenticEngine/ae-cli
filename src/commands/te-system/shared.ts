@@ -3,6 +3,7 @@ import { readFileSync } from 'node:fs';
 import type { Command, Flag, RiskLevel, RuntimeContext } from '../../framework/types.js';
 import {
   deleteFromMainApp,
+  downloadFromMainApp,
   getFromMainApp,
   patchToMainApp,
   postToMainApp,
@@ -27,6 +28,15 @@ interface AdminCommandConfig {
   risk: RiskLevel;
   prepare(ctx: RuntimeContext): AdminRequest;
   redactDryRun?: boolean;
+  validate?: (ctx: RuntimeContext) => void;
+  helpText?: string;
+}
+
+interface AdminDownloadCommandConfig {
+  command: string;
+  description: string;
+  flags: Flag[];
+  prepare(ctx: RuntimeContext): { path: string; outputPath: string };
   validate?: (ctx: RuntimeContext) => void;
   helpText?: string;
 }
@@ -61,6 +71,15 @@ export async function uploadAdminForm<T = unknown>(
 ): Promise<T> {
   assertAdminPath(path);
   return uploadToMainApp<T>(path, formData, host);
+}
+
+export async function downloadAdmin(
+  path: string,
+  outputPath: string,
+  host: string,
+): Promise<{ path: string; bytes: number; fileName: string | null; contentType: string | null }> {
+  assertAdminPath(path);
+  return downloadFromMainApp(path, outputPath, host);
 }
 
 async function executeAdminRequest(ctx: RuntimeContext, request: AdminRequest): Promise<unknown> {
@@ -107,6 +126,31 @@ export function createAdminCommand(config: AdminCommandConfig): Command {
       };
     },
     execute: async (ctx) => executeAdminRequest(ctx, config.prepare(ctx)),
+  };
+}
+
+export function createAdminDownloadCommand(config: AdminDownloadCommandConfig): Command {
+  return {
+    service: 'system',
+    command: config.command,
+    description: config.description,
+    flags: config.flags,
+    risk: 'read',
+    helpText: config.helpText,
+    validate: config.validate,
+    dryRun: (ctx) => {
+      const request = config.prepare(ctx);
+      assertAdminPath(request.path);
+      return {
+        method: 'GET',
+        url: request.path,
+        body: { outputPath: request.outputPath },
+      };
+    },
+    execute: async (ctx) => {
+      const request = config.prepare(ctx);
+      return downloadAdmin(request.path, request.outputPath, ctx.host());
+    },
   };
 }
 
@@ -177,6 +221,14 @@ export function requireJsonObject(ctx: RuntimeContext, name: string): Record<str
   return value as Record<string, unknown>;
 }
 
+export function optionalJsonObject(
+  ctx: RuntimeContext,
+  name: string,
+): Record<string, unknown> | undefined {
+  if (!optionalString(ctx, name)) return undefined;
+  return requireJsonObject(ctx, name);
+}
+
 export function requireJsonArray(ctx: RuntimeContext, name: string): unknown[] {
   const value = readJsonFlag(ctx, name);
   if (!Array.isArray(value)) {
@@ -190,7 +242,22 @@ export function requireStringArray(ctx: RuntimeContext, name: string): string[] 
   if (value.length === 0 || value.some((item) => typeof item !== 'string' || !item.trim())) {
     throw new CliValidationError(`--${name} must be a non-empty JSON array of strings`);
   }
-  return value as string[];
+  return (value as string[]).map((item) => item.trim());
+}
+
+export function requireBoundedStringArray(
+  ctx: RuntimeContext,
+  name: string,
+  max: number,
+): string[] {
+  const values = requireStringArray(ctx, name);
+  if (values.length > max) {
+    throw new CliValidationError(`--${name} supports at most ${max} values`);
+  }
+  if (new Set(values).size !== values.length) {
+    throw new CliValidationError(`--${name} must not contain duplicate values`);
+  }
+  return values;
 }
 
 export function redactSecrets(value: unknown): unknown {

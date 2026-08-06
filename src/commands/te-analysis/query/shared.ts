@@ -10,14 +10,14 @@ export const sourceFlag: Flag = {
   name: 'source',
   type: 'json',
   required: false,
-  desc: 'Source selector copied from sources[] when the synchronous preview contains multiple reports or charts. Pass only returned selector fields such as report_id or chart_id.',
+  desc: 'Source selector copied from the compact sources[] summary when the synchronous preview contains multiple reports or charts. Pass exactly one returned field: report_id or chart_id.',
 };
 
 export const coordinateFlag: Flag = {
   name: 'coordinate',
   type: 'json',
   required: true,
-  desc: 'One semantic cell coordinate assembled only from the selected source.drilldown row_options, column_options, and metric_options. Never pass target_id, raw QP, or values absent from the synchronous preview.',
+  desc: 'One semantic cell coordinate assembled only from row_options, column_options, and metric_options returned by analysis query-context get. Never pass target_id, raw QP, or inferred values.',
 };
 
 export const propertiesFlag: Flag = {

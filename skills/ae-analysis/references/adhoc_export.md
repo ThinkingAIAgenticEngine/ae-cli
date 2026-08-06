@@ -13,6 +13,7 @@ ae-cli analysis adhoc export \
   --project-id <project_id> \
   --model-type <model_type> \
   --definition '<json>' \
+  [--resolutions '<confirmed_resolution_json>'] \
   [--request-id cli_<32 lowercase hex>] \
   [--use-cache true|false] \
   [--zone-offset <hours>] \
@@ -20,7 +21,11 @@ ae-cli analysis adhoc export \
   [--cluster-query-scope GLOBAL|SLAVE] \
   [--slave-cluster-id <id>] \
   [--artifact-format jsonl|csv] \
-  [--timeout-seconds <n>]
+  [--timeout-seconds <n>] \
+  [--wait] \
+  [--wait-timeout-seconds <n>] \
+  [--output <file>] \
+  [--force]
 ```
 
 ## AI models
@@ -40,6 +45,7 @@ Rules:
 - `--project-id`: target project ID.
 - `--model-type`: one of the 12 AI-facing model names from [`ai_models.md`](ai_models.md). Do not pass `scenario`, `history_tag`, or `cluster`; tags and cohorts/clusters are separate capabilities.
 - `--definition`: model-specific AI-facing definition JSON.
+- `--resolutions`: only after user confirmation, pass deterministic bindings keyed by compiler error path while keeping `--definition` unchanged. Follow [`../metadata_resolution.md`](../metadata_resolution.md).
 - `--artifact-format`: `jsonl` or `csv`.
 
 Async export has no inline row limit. Runtime defaults to and is capped at 21600 seconds (6 hours); cancel earlier with `analysis query cancel --run-id <run_id>`. The routing rule lives in [`analysis_data_retrieval.md`](analysis_data_retrieval.md).
@@ -63,15 +69,24 @@ The response is an async artifact descriptor:
 
 Preserve the `run_id` and `artifact_id` from this exact submit response as one pair. Do not infer either ID from a path or reuse an ID from another export.
 
-Export submission compiles the definition before creating an artifact or run. The execute, `--validate`, and `--dry-run` paths return `AI_QP_COMPILE_FAILED` immediately when clarification is required, with `meta.compile_status`, full `meta.errors[]` (including `candidates` and `suggestions`), `meta.resolved`, and `meta.warnings`. A compile failure has no `run_id` or `artifact_id`; resolve the ambiguity and submit a new request.
+Export submission compiles the definition before creating an artifact or run. The execute, `--validate`, and `--dry-run` paths return `AI_QP_COMPILE_FAILED` immediately when clarification is required, with `meta.compile_status`, full structured `meta.errors[]`, `meta.resolved`, and `meta.warnings`. Follow [`../metadata_resolution.md`](../metadata_resolution.md), confirm candidates, then retry with `--resolutions`. A compile failure has no `run_id` or `artifact_id`.
 
 Use:
 
 ```bash
+ae-cli analysis adhoc export ... --wait
+ae-cli analysis adhoc export ... --output <file>
+ae-cli analysis run wait --run-id <run_id> [--output <file>]
 ae-cli analysis run inspect --run-id <run_id>
 ae-cli analysis artifact download --run-id <run_id> --artifact-id <artifact_id> --output <file>
 ae-cli analysis query cancel --run-id <run_id>
 ```
+
+Plain export submits only. `--output` implies `--wait`;
+`--wait-timeout-seconds` defaults to 600 seconds and controls only the local
+CLI wait. `--force` is valid only
+with `--output` and permits atomic replacement of an existing file. Local wait
+interruption or deadline does not cancel the remote run.
 
 If query execution fails, `run inspect` reaches `FAILED`; it must not produce a completed empty artifact. Download only after the successful terminal states documented in `analysis_data_retrieval.md`.
 

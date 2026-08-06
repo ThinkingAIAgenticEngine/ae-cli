@@ -43,12 +43,12 @@ async function loadCommands(): Promise<Command[]> {
     commands.push(...teAnalysis.default);
   } catch {}
   try {
-    const teMeta = await import('./commands/te-meta/index.js');
-    commands.push(...teMeta.default);
-  } catch {}
-  try {
     const engage = await import('./commands/te-engage/index.js');
     commands.push(...engage.default);
+  } catch {}
+  try {
+    const experiment = await import('./commands/te-experiment/index.js');
+    commands.push(...experiment.default);
   } catch {}
   try {
     const community = await import('./commands/te-community/index.js');
@@ -98,14 +98,6 @@ async function registerConfigCommands(): Promise<void> {
   try {
     const { registerConfig } = await import('./commands/config.js');
     registerConfig(program);
-  } catch {}
-}
-
-// Register raw API command
-async function registerApiCommand(): Promise<void> {
-  try {
-    const { registerApi } = await import('./api/raw.js');
-    registerApi(program);
   } catch {}
 }
 
@@ -174,7 +166,6 @@ async function main() {
   registerCommands(program, commands);
   await registerAuthCommands();
   await registerConfigCommands();
-  await registerApiCommand();
   await registerCapabilityCommands();
   await registerSyncCommand();
   await registerModelCommand();

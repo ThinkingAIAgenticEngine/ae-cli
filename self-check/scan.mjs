@@ -38,10 +38,10 @@ const JSON_OUT = args.includes('--json');
 // Multiple te-* command directories can map to the same skill (as with the analysis series).
 const DOMAIN_TO_SKILL = {
   'te-analysis': 'ae-analysis',
-  'te-meta': 'ae-analysis',
   'te-audience': 'ae-analysis',
   'te-common': 'ae-analysis',
   'te-engage': 'ae-engage',
+  'te-experiment': 'ae-experiment',
   'te-dataops': 'ae-dataops',
   'te-community': 'ae-community',
   'te-kb': 'ae-kb',
@@ -272,12 +272,15 @@ function checkSkills(domains, focus) {
       }
     }
 
-    // D4b: Check whether all references/*.md links in SKILL.md point to real files
-    const linked = [...skillMd.matchAll(/references\/([a-z0-9_-]+)\.md/gi)].map((m) => m[1]);
-    const refOnDisk = new Set(refNames);
-    const deadLinks = [...new Set(linked)].filter((l) => !refOnDisk.has(l));
+    // D4b: Resolve Markdown reference links relative to the SKILL.md that declares them.
+    // This supports intentional cross-skill links such as ../ae-analysis/references/foo.md.
+    const linked = [...skillMd.matchAll(/\[[^\]]*\]\(([^)]+)\)/g)]
+      .map((match) => match[1].trim().replace(/^<|>$/g, ''))
+      .map((href) => href.split('#', 1)[0])
+      .filter((href) => href.includes('references/') && href.toLowerCase().endsWith('.md'));
+    const deadLinks = [...new Set(linked)].filter((href) => !exists(path.resolve(sdir, href)));
     if (deadLinks.length) {
-      add('P2', 'D4', `skill '${skill}' has broken doc links: ${deadLinks.map((l) => 'references/' + l + '.md').join(', ')}`);
+      add('P2', 'D4', `skill '${skill}' has broken doc links: ${deadLinks.join(', ')}`);
     }
   }
 

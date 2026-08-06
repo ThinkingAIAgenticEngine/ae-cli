@@ -5,7 +5,17 @@ import path from 'node:path';
 import type { Command, RuntimeContext } from '../../framework/types.js';
 import { CliValidationError } from '../../core/errors.js';
 import { tryLoadTeAgentSandboxCredentials } from '../../core/te-agent-credentials.js';
-import { getAdmin, uploadAdminForm } from './shared.js';
+import {
+  assertEnum,
+  createAdminCommand,
+  encodeId,
+  getAdmin,
+  optionalJsonObject,
+  optionalString,
+  requireBoundedStringArray,
+  uploadAdminForm,
+  withQuery,
+} from './shared.js';
 import {
   createNpmInstallRoot,
   createToolArchive,
@@ -19,6 +29,9 @@ import {
 const TOOL_UPLOAD_PATH = '/api/admin/sandbox-tools';
 const TOOL_UPLOAD_POLICY_PATH = '/api/admin/sandbox-tools/upload-policy';
 const NPM_INSTALL_TIMEOUT_MS = 10 * 60 * 1000;
+const TARGET_MODES = ['selected', 'all-running'] as const;
+const OPERATION_ACTIONS = ['activate', 'deactivate'] as const;
+const SORT_ORDERS = ['asc', 'desc'] as const;
 
 interface ToolUploadPolicy {
   enabled: boolean;
@@ -36,6 +49,113 @@ function optionalFlag(ctx: RuntimeContext, name: string): string | undefined {
   const value = ctx.str(name).trim();
   return value || undefined;
 }
+
+function optionalBoundedStringArray(
+  ctx: RuntimeContext,
+  name: string,
+  max: number,
+): string[] | undefined {
+  return optionalString(ctx, name) ? requireBoundedStringArray(ctx, name, max) : undefined;
+}
+
+function validateCommandNamesByToolId(
+  value: Record<string, unknown> | undefined,
+  toolIds: string[],
+): Record<string, string[]> | undefined {
+  if (!value) return undefined;
+  const normalized: Record<string, string[]> = {};
+  for (const [toolId, commandNames] of Object.entries(value)) {
+    if (!toolIds.includes(toolId)) {
+      throw new CliValidationError('--command-names-by-tool-id keys must exist in --tool-ids');
+    }
+    if (
+      !Array.isArray(commandNames)
+      || commandNames.length === 0
+      || commandNames.length > 64
+      || commandNames.some((name) => typeof name !== 'string' || !name.trim())
+    ) {
+      throw new CliValidationError(
+        '--command-names-by-tool-id values must be arrays of 1-64 non-empty command names',
+      );
+    }
+    normalized[toolId] = (commandNames as string[]).map((name) => name.trim());
+  }
+  return normalized;
+}
+
+function validateExpectedSnapshots(
+  value: Record<string, unknown> | undefined,
+  toolIds: string[],
+): Record<string, unknown> | undefined {
+  if (!value) return undefined;
+  const normalized: Record<string, unknown> = {};
+  for (const [toolId, snapshot] of Object.entries(value)) {
+    if (!toolIds.includes(toolId)) {
+      throw new CliValidationError('--expected-tool-snapshots-by-id keys must exist in --tool-ids');
+    }
+    if (!snapshot || typeof snapshot !== 'object' || Array.isArray(snapshot)) {
+      throw new CliValidationError('--expected-tool-snapshots-by-id values must be objects');
+    }
+    const item = snapshot as Record<string, unknown>;
+    if (
+      typeof item.name !== 'string'
+      || !item.name.trim()
+      || (item.version !== null && typeof item.version !== 'string')
+      || typeof item.packagePath !== 'string'
+      || !item.packagePath.trim()
+      || !Array.isArray(item.commands)
+      || item.commands.length === 0
+      || item.commands.length > 64
+      || item.commands.some((name) => typeof name !== 'string' || !name.trim())
+    ) {
+      throw new CliValidationError(
+        '--expected-tool-snapshots-by-id contains an invalid tool snapshot',
+      );
+    }
+    normalized[toolId] = {
+      name: (item.name as string).trim(),
+      version: item.version,
+      packagePath: (item.packagePath as string).trim(),
+      commands: (item.commands as string[]).map((name) => name.trim()),
+    };
+  }
+  return normalized;
+}
+
+function sandboxToolOperationBody(ctx: RuntimeContext): Record<string, unknown> {
+  const mode = optionalString(ctx, 'target-mode');
+  assertEnum('target-mode', mode, TARGET_MODES);
+  const sandboxIds = optionalBoundedStringArray(ctx, 'sandbox-ids', 50);
+  if (mode === 'selected' && !sandboxIds) {
+    throw new CliValidationError('selected mode requires --sandbox-ids with 1-50 sandbox IDs');
+  }
+  if (mode === 'all-running' && sandboxIds) {
+    throw new CliValidationError('all-running mode does not accept --sandbox-ids');
+  }
+  const toolIds = requireBoundedStringArray(ctx, 'tool-ids', 20);
+  const commandNamesByToolId = validateCommandNamesByToolId(
+    optionalJsonObject(ctx, 'command-names-by-tool-id'),
+    toolIds,
+  );
+  const expectedToolSnapshotsById = validateExpectedSnapshots(
+    optionalJsonObject(ctx, 'expected-tool-snapshots-by-id'),
+    toolIds,
+  );
+  return {
+    target: { mode, ...(sandboxIds ? { sandboxIds } : {}) },
+    toolIds,
+    ...(commandNamesByToolId ? { commandNamesByToolId } : {}),
+    ...(expectedToolSnapshotsById ? { expectedToolSnapshotsById } : {}),
+  };
+}
+
+const TOOL_OPERATION_FLAGS = [
+  { name: 'target-mode', type: 'string' as const, required: true, desc: `Target mode: ${TARGET_MODES.join(' | ')}` },
+  { name: 'sandbox-ids', type: 'string' as const, sensitive: true, desc: 'Selected mode only: JSON/@file array of 1-50 sandbox IDs' },
+  { name: 'tool-ids', type: 'string' as const, required: true, desc: 'JSON/@file array of 1-20 sandbox tool IDs' },
+  { name: 'command-names-by-tool-id', type: 'string' as const, desc: 'Optional JSON/@file map of tool ID to selected command names' },
+  { name: 'expected-tool-snapshots-by-id', type: 'string' as const, sensitive: true, desc: 'Optional JSON/@file optimistic-lock snapshots keyed by tool ID' },
+];
 
 async function requireUploadPolicy(
   ctx: RuntimeContext,
@@ -337,7 +457,139 @@ export const npmInstallSandboxTool: Command = {
   },
 };
 
+export const listSandboxTools = createAdminCommand({
+  command: '+list-sandbox-tools',
+  description: 'List preset and custom sandbox tools registered for the current company',
+  flags: [],
+  risk: 'read',
+  prepare: () => ({ method: 'GET', path: '/api/admin/sandbox-tools' }),
+});
+
+export const syncSandboxTools = createAdminCommand({
+  command: '+sync-sandbox-tools',
+  description: 'Synchronize the current company sandbox tool registry from the system manifest',
+  flags: [],
+  risk: 'write',
+  prepare: () => ({ method: 'POST', path: '/api/admin/sandbox-tools/sync', body: {} }),
+});
+
+export const getSandboxToolDistribution = createAdminCommand({
+  command: '+get-sandbox-tool-distribution',
+  description: 'Get the sandboxes to which one tool is currently distributed',
+  flags: [
+    { name: 'id', type: 'string', required: true, desc: 'Sandbox tool ID from +list-sandbox-tools' },
+  ],
+  risk: 'read',
+  prepare: (ctx) => ({
+    method: 'GET',
+    path: `/api/admin/sandbox-tools/${encodeId(ctx.str('id'))}/distribution`,
+  }),
+});
+
+export const setSandboxToolEnabled = createAdminCommand({
+  command: '+set-sandbox-tool-enabled',
+  description: 'Enable or disable a sandbox tool in the company registry',
+  flags: [
+    { name: 'id', type: 'string', required: true, desc: 'Sandbox tool ID from +list-sandbox-tools' },
+    { name: 'enabled', type: 'boolean', required: true, desc: 'Whether the sandbox tool is enabled' },
+  ],
+  risk: 'write',
+  prepare: (ctx) => ({
+    method: 'PATCH',
+    path: `/api/admin/sandbox-tools/${encodeId(ctx.str('id'))}`,
+    body: { enabled: ctx.bool('enabled') },
+  }),
+});
+
+export const removeSandboxTool = createAdminCommand({
+  command: '+remove-sandbox-tool',
+  description: 'Delete a sandbox tool after the server verifies it is fully reclaimed',
+  flags: [
+    { name: 'id', type: 'string', required: true, desc: 'Sandbox tool ID from +list-sandbox-tools' },
+  ],
+  risk: 'high-risk-write',
+  prepare: (ctx) => ({
+    method: 'DELETE',
+    path: `/api/admin/sandbox-tools/${encodeId(ctx.str('id'))}`,
+  }),
+});
+
+function createSandboxToolOperationCommand(
+  command: string,
+  description: string,
+  route: 'activate' | 'deactivate' | 'status',
+): Command {
+  return createAdminCommand({
+    command,
+    description,
+    flags: TOOL_OPERATION_FLAGS,
+    risk: 'write',
+    validate: (ctx) => {
+      sandboxToolOperationBody(ctx);
+    },
+    prepare: (ctx) => ({
+      method: 'POST',
+      path: `/api/admin/sandbox-tools/${route}`,
+      body: sandboxToolOperationBody(ctx),
+    }),
+  });
+}
+
+export const activateSandboxTools = createSandboxToolOperationCommand(
+  '+activate-sandbox-tools',
+  'Activate selected tool commands in selected or all running sandboxes',
+  'activate',
+);
+
+export const deactivateSandboxTools = createSandboxToolOperationCommand(
+  '+deactivate-sandbox-tools',
+  'Deactivate selected managed tool commands in selected or all running sandboxes',
+  'deactivate',
+);
+
+export const refreshSandboxToolStatus = createSandboxToolOperationCommand(
+  '+refresh-sandbox-tool-status',
+  'Refresh the observed tool state in selected or all running sandboxes',
+  'status',
+);
+
+export const listSandboxToolOperations = createAdminCommand({
+  command: '+list-sandbox-tool-operations',
+  description: 'List sandbox tool activation and deactivation operation history',
+  flags: [
+    { name: 'page', type: 'number', min: 1, desc: 'Page number (default: 1)' },
+    { name: 'page-size', type: 'number', min: 1, max: 100, desc: 'Page size (1-100, default: 20)' },
+    { name: 'action', type: 'string', desc: `Operation action: ${OPERATION_ACTIONS.join(' | ')}` },
+    { name: 'operator', type: 'string', maxLength: 100, desc: 'Operator name or ID filter' },
+    { name: 'sort-order', type: 'string', desc: `Sort order: ${SORT_ORDERS.join(' | ')}` },
+  ],
+  risk: 'read',
+  validate: (ctx) => {
+    assertEnum('action', optionalString(ctx, 'action'), OPERATION_ACTIONS);
+    assertEnum('sort-order', optionalString(ctx, 'sort-order'), SORT_ORDERS);
+  },
+  prepare: (ctx) => ({
+    method: 'GET',
+    path: withQuery('/api/admin/sandbox-tools/operations', {
+      page: ctx.optionalNum('page'),
+      pageSize: ctx.optionalNum('page-size'),
+      action: optionalString(ctx, 'action'),
+      operator: optionalString(ctx, 'operator'),
+      sortOrder: optionalString(ctx, 'sort-order'),
+    }),
+  }),
+});
+
 export const sandboxToolCommands: Command[] = [
   uploadSandboxTool,
   npmInstallSandboxTool,
+  listSandboxTools,
+  syncSandboxTools,
+  getSandboxToolDistribution,
+  setSandboxToolEnabled,
+  removeSandboxTool,
+  activateSandboxTools,
+  deactivateSandboxTools,
+  refreshSandboxToolStatus,
+  listSandboxToolOperations,
 ];

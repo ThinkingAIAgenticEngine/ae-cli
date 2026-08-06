@@ -13,7 +13,7 @@ ae-cli analysis drilldown-events run \
   [--source '{"report_id":1001}'] \
   --coordinate '{"group_values":["Beijing"],"date":"2026-07-16","metric_index":0}' \
   [--properties '[{...}]'] \
-  [--limit 100] \
+  [--preview-rows 100] \
   [--timeout-seconds 120]
 ```
 
@@ -21,4 +21,4 @@ ae-cli analysis drilldown-events run \
 
 `--properties` is an optional exact event-property projection. Omit it for default columns; string arrays such as `["#event_time"]` are invalid. Each item uses the backend field names `columnName` and `tableType`, for example `[{"columnName":"<event_property_name>","tableType":"event"}]`. `tableType` uses the documented name `event`, not a numeric enum code. Required system event columns remain present, but unrelated event properties must not be returned.
 
-The response contains at most `limit` event rows from that selected preview cell. `total` is the exact number of matching events, `returned_rows` is the number included in this response, and `truncated=true` means more matching events exist. This command has no paging offset. When complete event detail is required, call `analysis drilldown-events export` once with the same returned context/source/coordinate; that sibling capability uses the backend full-download stream and does not page or enlarge the synchronous selection boundary.
+The response contains at most `preview_rows` event rows from that selected preview cell. `total` is the exact number of matching events, `returned_rows` is the number included in this response, and `has_more=true` means more matching events exist. This command has no paging offset. When complete event detail is required, call `analysis drilldown-events export` once with the same returned context/source/coordinate; that sibling capability uses the backend full-download stream and does not page or enlarge the synchronous selection boundary.

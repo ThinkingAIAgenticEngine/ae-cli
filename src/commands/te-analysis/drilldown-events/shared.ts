@@ -2,12 +2,12 @@ import type { Flag, RuntimeContext } from '../../../framework/types.js';
 import {
   asyncTimeoutSecondsFlag,
   compactInput,
-  detailPreviewLimitFlag,
   optionalBoolean,
   optionalJson,
   optionalNumber,
   optionalString,
   projectIdFlag,
+  previewRowsFlag,
   requestIdFlag,
   syncTimeoutSecondsFlag,
 } from '../capability-shared.js';
@@ -28,7 +28,7 @@ export const drilldownEventsRunFlags = [
   propertiesFlag,
   requestIdFlag,
   useCacheFlag,
-  detailPreviewLimitFlag,
+  previewRowsFlag,
   syncTimeoutSecondsFlag,
 ] as const;
 
@@ -60,7 +60,7 @@ export function drilldownEventsRunInput(ctx: RuntimeContext): Record<string, unk
     properties: optionalJson(ctx, 'properties'),
     request_id: optionalString(ctx, 'request-id'),
     use_cache: optionalBoolean(ctx, 'use-cache'),
-    limit: optionalNumber(ctx, 'limit'),
+    preview_rows: optionalNumber(ctx, 'preview-rows'),
     timeout_seconds: optionalNumber(ctx, 'timeout-seconds'),
   });
 }

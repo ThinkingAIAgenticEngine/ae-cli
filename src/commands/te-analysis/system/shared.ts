@@ -38,6 +38,7 @@ export interface SystemCommandSpec {
   fields?: readonly SystemField[];
   secrets?: readonly SystemSecretField[];
   validate?: (ctx: RuntimeContext, input: Record<string, unknown>) => void;
+  asyncArtifact?: boolean;
 }
 
 const secretValues = new WeakMap<RuntimeContext, Map<string, string | undefined>>();
@@ -86,6 +87,7 @@ export function defineSystemCommand(spec: SystemCommandSpec): Command {
     resource: `system ${spec.resource}`,
     command: spec.command,
     capabilityId: spec.capabilityId,
+    asyncArtifact: spec.asyncArtifact,
     description: spec.description,
     flags: [
       ...fields.map(fieldFlag),

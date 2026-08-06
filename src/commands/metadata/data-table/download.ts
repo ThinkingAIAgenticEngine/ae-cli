@@ -4,6 +4,7 @@ export const dataTableDownload = createCapabilityCommand({
   resource: 'data-table',
   command: 'download',
   capabilityId: 'metadata.data_table.download',
+  asyncArtifact: true,
   description: 'Download a metadata data table export artifact.',
   flags: [
     { name: 'project-id', type: 'number', required: true, desc: 'Numeric project ID.', alias: 'p' },

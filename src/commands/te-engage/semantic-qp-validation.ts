@@ -13,6 +13,7 @@ const METRIC_AGGREGATIONS = new Set([
   'total_count', 'user_count', 'per_user_count', 'sum', 'avg', 'avg_per_user',
   'max', 'min', 'distinct_count', 'median', 'percentile', 'variance', 'stddev',
 ]);
+const TASK_TRIGGER_PERIOD_SYMBOLS = new Set(['TS01', 'TS02', 'TS03', 'TS04']);
 
 type JsonObject = Record<string, unknown>;
 
@@ -67,6 +68,20 @@ export function validateSemanticMetricDefinition(value: unknown, path: string): 
 /** Validates semantic QP fields embedded in a native Engage request body. */
 export function validateEmbeddedSemanticDefinitions(value: unknown, path: string): void {
   walk(value, path);
+}
+
+/** Validates the required period type on a task trigger definition's primary rule. */
+export function validateTaskTriggerPeriodDefinition(value: unknown, path: string): void {
+  const request = object(value, path);
+  if (!isObject(request.triggerConfig)) return;
+  const triggerConfig = request.triggerConfig;
+  if (triggerConfig.triggerDefinition === undefined || triggerConfig.triggerDefinition === null) return;
+  const definition = object(triggerConfig.triggerDefinition, `${path}.triggerConfig.triggerDefinition`);
+  const rules = array(definition.rules, `${path}.triggerConfig.triggerDefinition.rules`, 1);
+  const primaryRule = object(rules[0], `${path}.triggerConfig.triggerDefinition.rules[0]`);
+  const symbolPath = `${path}.triggerConfig.triggerDefinition.rules[0].periodTimeSymbol`;
+  required(primaryRule.periodTimeSymbol, symbolPath);
+  enumValue(primaryRule.periodTimeSymbol, TASK_TRIGGER_PERIOD_SYMBOLS, symbolPath);
 }
 
 /** Recursively validates semantic definitions embedded in native DTO fields. */

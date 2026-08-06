@@ -13,15 +13,20 @@ import {
   requestIdFlag,
   timeoutSecondsFlag,
 } from '../capability-shared.js';
+import { withAsyncArtifactLifecycle } from '../../../core/analysis-async-artifact.js';
 
-type TrackingCapabilityCommandConfig = Omit<CoreCapabilityCommandConfig, 'cliService' | 'gatewayDomain'>;
+type TrackingCapabilityCommandConfig = Omit<CoreCapabilityCommandConfig, 'cliService' | 'gatewayDomain'> & {
+  asyncArtifact?: boolean;
+};
 
 export function createTrackingCapabilityCommand(config: TrackingCapabilityCommandConfig) {
-  return createCapabilityCommandCore({
-    ...config,
+  const { asyncArtifact, ...coreConfig } = config;
+  const command = createCapabilityCommandCore({
+    ...coreConfig,
     cliService: 'tracking',
     gatewayDomain: 'analysis',
   });
+  return asyncArtifact ? withAsyncArtifactLifecycle(command) : command;
 }
 
 export { asyncTimeoutSecondsFlag, compactInput, optionalJson, optionalNumber, optionalString, projectIdFlag, requestIdFlag, timeoutSecondsFlag };

@@ -10,13 +10,6 @@ import {
   type ConfiguredHost,
   type HostSelectorResult,
 } from '../core/config.js';
-import {
-  GLOBAL_QUERY_CONFIG_KEY,
-  getAnalysisMappingPathForClusterMode,
-  getClusterInfoFilePath,
-  isGlobalQueryModeEnabled,
-  setGlobalQueryModeEnabled,
-} from '../core/cluster-info.js';
 import { normalizeUrl } from '../core/url-utils.js';
 import { missingAeHostHint } from '../core/host-guidance.js';
 import { printError, printOutput } from '../framework/output.js';
@@ -105,44 +98,6 @@ export function registerConfig(program: Command): void {
       }
     });
 
-  const clusterMode = configCmd
-    .command('cluster-mode')
-    .description('Manage local multi-cluster analysis MCP mode')
-    .action(async () => {
-      await printClusterModeStatus(program);
-    });
-
-  clusterMode
-    .command('status')
-    .description('Show local multi-cluster analysis MCP mode')
-    .action(async () => {
-      await printClusterModeStatus(program);
-    });
-
-  clusterMode
-    .command('enable')
-    .description('Enable local multi-cluster analysis MCP mode')
-    .action(async () => {
-      setGlobalQueryModeEnabled(true);
-      await printClusterModeStatus(program);
-    });
-
-  clusterMode
-    .command('disable')
-    .description('Disable local multi-cluster analysis MCP mode')
-    .action(async () => {
-      setGlobalQueryModeEnabled(false);
-      await printClusterModeStatus(program);
-    });
-}
-
-async function printClusterModeStatus(program: Command): Promise<void> {
-  const enabled = isGlobalQueryModeEnabled();
-  await printOutput({
-    [GLOBAL_QUERY_CONFIG_KEY]: enabled,
-    path: getClusterInfoFilePath(),
-    analysisMappingPath: getAnalysisMappingPathForClusterMode(enabled),
-  }, program.opts().format || 'json', program.opts().jq);
 }
 
 function readHostViews(): { activeHost: string; hosts: HostView[] } {

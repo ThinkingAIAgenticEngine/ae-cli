@@ -53,7 +53,7 @@ node self-check/scan.mjs --json
 
 ### D1 命令注册
 - **「域未在 src/index.ts 注册」**：在 `src/index.ts` 的 `loadCommands()`（业务域）或 `registerXxxCommand()`（工具命令）补上 `import('./commands/<dir>/index.js')`。
-- **「MCP service 未注册 mapping」**：在该域的 `index.ts` 顶部调 `registerMcpMappings({ '<service>': { componentName, mappingPath } })`（参考 `te-community/index.ts`、`te-engage/index.ts`）。`analysis` / `te_analysis_extend` 在 `core/mcp.ts` 内置，不必重复。
+- **「MCP service 未注册 mapping」**：在仍使用 MCP transport 的域 `index.ts` 顶部调 `registerMcpMappings({ '<service>': { componentName, mappingPath } })`（参考 `te-community/index.ts`）。Analysis 域只允许 Capability Gateway，不应注册 MCP mapping。
 - 注意区分两种 "service"：commander 分组名（如 `engage`）≠ MCP 路由 key（如 `engage_config`）。脚本只检查后者，且只提取**字面量**传参；变量传参不报（宁可漏报不误报）。
 
 ### D2 域↔skill 配对
@@ -75,7 +75,7 @@ node self-check/scan.mjs --json
 - 发版时版本号要在 CHANGELOG.md 有对应条目。
 
 ### D6 工程健壮性
-- 新域建议补一个 `scripts/verify-te-<domain>.mjs`（参考 `verify-te-meta-tools.mjs`：遍历命令源码、校验 flag/description 形状、对线上 catalog dry-run），并在 `package.json` 加 `verify:<domain>` 脚本。
+- 新域建议补一个 `scripts/verify-te-<domain>.mjs`（参考现有 `verify-te-analysis-tools.mjs`：遍历命令源码并校验注册、flag、description 和文档契约），并在 `package.json` 加 `verify:<domain>` 脚本。
 - 建议加 `"typecheck": "tsc --noEmit"`，把类型检查从 build 前移。
 
 ## 维护脚本

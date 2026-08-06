@@ -138,20 +138,22 @@ Prefer the run/artifact commands over hand-written HTTP, Python, or curl. Analys
 | `public-link update` | `analysis.public_link.update` | Edit public link | `--link-id`, `--effective-at`, `--expires-at` | Update result |
 | `public-link offline` | `analysis.public_link.offline` | Take links offline | `--link-id` or `--link-ids` | Offline result |
 | `public-link delete` | `analysis.public_link.delete` | Delete public links | `--link-id` or `--link-ids` | Delete result |
-| `user-cluster list` | `analysis.user_cluster.list` | Find accessible user clusters | `--project-id`, optional `--query`, `--fields`, `--limit`, `--offset` | Paginated cluster summaries |
+| `user-cluster list` | `analysis.user_cluster.list` | Find accessible user clusters | `--project-id`, optional `--queries`, `--fields`, `--limit`, `--offset` | Paginated cluster summaries |
+| `user-cluster export` | `analysis.user_cluster.export` | Export complete matching cluster catalog | `--project-id`, optional filters, required `--output` | Local JSONL catalog and integrity sidecar |
 | `user-cluster get` | `analysis.user_cluster.get` | Inspect exact clusters | `--cluster-names '[...]'` | Cluster details |
 | `user-cluster-member list` | `analysis.user_cluster_member.list` | Bounded inline cluster members | `--cluster-name`, optional properties/fields/query/limit/offset | Member rows |
-| `user-cluster-member export` | `analysis.user_cluster_member.export` | Export cluster members as jsonl | `--cluster-name`, optional properties/fields/query | Async artifact descriptor |
+| `user-cluster-member export` | `analysis.user_cluster_member.export` | Stream native full cluster members as csv.gz | `--cluster-name`, optional properties | Async artifact descriptor |
 | `user-cluster create` | `analysis.user_cluster.create` | Create condition/sql cluster directly from semantic intent | `--cluster-name`, `--display-name`, `--definition-request` | Create result and canonical request |
 | `user-cluster update` | `analysis.user_cluster.update` | Update condition/sql cluster | `--cluster-name`, fields to change, optional `--definition-request` | Update result |
 | `user-cluster create-id` | `analysis.user_cluster.create_id` | Map imported values to an entity and create a cluster | `--display-name`, `--entity-id`, exactly one input source, conditional `--association-property` | Processing state; poll get for final match summary |
 | `user-cluster update-id` | `analysis.user_cluster.update_id` | Remap imported values for an ID cluster | `--cluster-name`, exactly one input source, conditional `--association-property` | Processing state; poll get for final match summary |
 | `user-cluster refresh` | `analysis.user_cluster.refresh` | Trigger cluster recompute | `--cluster-name` | Refresh result |
 | `user-cluster delete` | `analysis.user_cluster.delete` | Delete cluster after dependency review | `--cluster-name`, `--confirmed`, `--yes` | Delete result |
-| `user-tag list` | `analysis.user_tag.list` | Find accessible user tags | `--project-id`, optional `--query`, `--fields`, `--limit`, `--offset` | Paginated tag summaries |
+| `user-tag list` | `analysis.user_tag.list` | Find accessible user tags | `--project-id`, optional `--queries`, `--fields`, `--limit`, `--offset` | Paginated tag summaries |
+| `user-tag export` | `analysis.user_tag.export` | Export complete matching tag catalog | `--project-id`, optional filters, required `--output` | Local JSONL catalog and integrity sidecar |
 | `user-tag get` | `analysis.user_tag.get` | Inspect exact tags | `--tag-names '[...]'` | Tag details |
 | `user-tag-member list` | `analysis.user_tag_member.list` | Bounded inline tag members | `--tag-name`, optional `--snapshot-date`, properties/fields/query/limit/offset | Member rows |
-| `user-tag-member export` | `analysis.user_tag_member.export` | Export tag members as jsonl | `--tag-name`, optional `--snapshot-date`, properties/fields/query | Async artifact descriptor |
+| `user-tag-member export` | `analysis.user_tag_member.export` | Stream native full tag members as csv.gz | `--tag-name`, optional `--snapshot-date`, properties | Async artifact descriptor |
 | `user-tag create` | `analysis.user_tag.create` | Create tag directly from semantic intent | `--tag-name`, `--display-name`, `--definition-request` | Create result and canonical request |
 | `user-tag update` | `analysis.user_tag.update` | Update tag | `--tag-name`, fields to change, optional `--definition-request` | Update result |
 | `user-tag refresh` | `analysis.user_tag.refresh` | Trigger tag recompute | `--tag-name` | Refresh result |
@@ -162,10 +164,10 @@ Prefer the run/artifact commands over hand-written HTTP, Python, or curl. Analys
 | `history-tag refresh` | `analysis.history_tag.refresh` | Refresh one history snapshot | `--tag-name`, `--refresh-date` | Refresh result |
 | `history-tag batch-refresh` | `analysis.history_tag.batch_refresh` | Batch refresh snapshots | `--tag-name`, `--refresh-request` | Async refresh result |
 | `history-tag clear` | `analysis.history_tag.clear` | Clear snapshots in date range | `--tag-name`, date range, `--confirmed`, `--yes` | Clear result |
-| `history-tag-data run` | `analysis.history_tag_data.run` | Bounded inline history tag statistics | `--tag-name`, `--view`, `--limit` | Statistic result |
+| `history-tag-data run` | `analysis.history_tag_data.run` | Bounded inline history tag statistics | `--tag-name`, `--view`, optional `--preview-rows` | Statistic result |
 | `history-tag-data export` | `analysis.history_tag_data.export` | Export history tag statistics as jsonl | `--tag-name`, `--view` | Async artifact descriptor |
 | `history-tag-data-drilldown run` | `analysis.history_tag_data_drilldown.run` | Bounded inline users for one statistic value/bucket | `--tag-name`, `--snapshot-date`, `--group-col`, `--view`, optional member fields | Drilldown member rows |
-| `history-tag-data-drilldown export` | `analysis.history_tag_data_drilldown.export` | Export all users for one statistic value/bucket as jsonl | `--tag-name`, `--snapshot-date`, `--group-col`, `--view`, optional member fields | Async artifact descriptor |
+| `history-tag-data-drilldown export` | `analysis.history_tag_data_drilldown.export` | Stream native full users for one statistic value/bucket as csv.gz | `--tag-name`, `--snapshot-date`, `--group-col`, `--view`, optional properties | Async artifact descriptor |
 
 ## L3 project-space and folder capabilities
 
@@ -215,15 +217,15 @@ ae-cli analysis dashboard list --project-id 1 --query retention --limit 50
 ae-cli analysis adhoc run --project-id 1 --model-type sql --definition '{"sql":"select * from events limit 20"}'
 ae-cli analysis adhoc export --project-id 1 --model-type sql --definition '{"sql":"select * from events where country ${Text:country}","params":[{"name":"country","type":"text","value":"US"}]}' --artifact-format jsonl
 ae-cli analysis report list --project-id 1 --query revenue --limit 50
-ae-cli analysis report-data run --project-id 1 --report-ids '[1001]' --limit 50
-ae-cli analysis report-data run --project-id 1 --report-ids '[1001]' --filters '{"relation":"and","items":[{"field":{"name":"country","type":"user_property"},"operator":"eq","values":["US"]}]}' --group-by '[{"field":{"name":"country","type":"user_property"}}]' --sql-params '[{"name":"platform","value":"ios"}]' --limit 50
+ae-cli analysis report-data run --project-id 1 --report-ids '[1001]' --preview-rows 50
+ae-cli analysis report-data run --project-id 1 --report-ids '[1001]' --filters '{"relation":"and","items":[{"field":{"name":"country","type":"user_property"},"operator":"eq","values":["US"]}]}' --group-by '[{"field":{"name":"country","type":"user_property"}}]' --sql-params '[{"name":"platform","value":"ios"}]' --preview-rows 50
 ae-cli analysis drilldown-entities run --query-context-id ctx_0123456789abcdef0123456789abcdef --source '{"report_id":1001}' --coordinate '{"cohort_date":"2026-07-01","group_values":[],"period_index":1,"population":"retained"}'
 ae-cli analysis query create-result-cluster --query-context-id ctx_0123456789abcdef0123456789abcdef --source '{"report_id":1001}' --coordinate '{"cohort_date":"2026-07-01","group_values":[],"period_index":1,"population":"retained"}' --cluster-name retained_users
 ae-cli analysis dashboard update --project-id 1 --operation note-upsert --dashboard-id 1001 --note-title "Summary" --description "Weekly note"
 ae-cli analysis dashboard-definition export --project-id 1 --dashboard-id 1001 --export-file-name retention_dashboard
 ae-cli analysis dashboard-definition import --project-id 1 --definition '{"dashboard_folders":[],"shared_spaces":[]}' --validate-only true
 ae-cli analysis public-link create --project-id 1 --resource-type dashboard --resource-id 1001 --effective-at "2026-07-08 00:00:00" --expires-at "2026-08-08 00:00:00"
-ae-cli analysis user-cluster list --project-id 1 --query retained --limit 50
-ae-cli analysis user-cluster-member export --project-id 1 --cluster-name retained_users --artifact-format jsonl
+ae-cli analysis user-cluster list --project-id 1 --queries '["retained","retention"]' --limit 50
+ae-cli analysis user-cluster-member export --project-id 1 --cluster-name retained_users --artifact-format csv
 ae-cli analysis user-tag create --project-id 1 --tag-name user_level --display-name "User Level" --definition-request '{"type":"condition","condition_values":[]}'
 ```

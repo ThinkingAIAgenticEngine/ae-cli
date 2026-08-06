@@ -15,6 +15,7 @@ export const reportDataExport = createAnalysisCapabilityCommand({
   resource: 'report-data',
   command: 'export',
   capabilityId: 'analysis.report_data.export',
+  asyncArtifact: true,
   description: `Submit report data as an asynchronous gzip artifact. Override contract: SQL uses only --sql-params; non-SQL analysis models use filters/group/time; tag uses its saved tag definition. Mixed-model batches are best-effort. Exports do not create interactive drilldown contexts. ${analysisDataExportRoutingHelp}`,
   flags: [
     projectIdFlag,

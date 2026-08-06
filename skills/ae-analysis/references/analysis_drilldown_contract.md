@@ -4,19 +4,19 @@ This contract controls every follow-up from an analysis result. Read it before c
 
 ## Hard boundary
 
-Only a synchronous `adhoc run`, `report-data run`, or `dashboard-report-data run` preview can create `query_context_id` and selectable drilldown coordinates. The selectable population is exactly the returned preview, after its `--limit` is applied. If `--limit 10` returns ten rows, only coordinates represented by those ten rows may be selected.
+Only a synchronous `adhoc run`, `report-data run`, or `dashboard-report-data run` preview can create `query_context_id` and selectable drilldown coordinates. The selectable population is exactly the returned preview, after its `--preview-rows` boundary is applied. If `--preview-rows 10` returns ten rows, only coordinates represented by those ten rows may be selected.
 
 Every query-context or drilldown-context follow-up must also pass the original `--project-id`. Gateway uses it for project authorization, then Common verifies that it matches the project stored by the context ID. Never substitute a different project ID.
 
 Exports never create a query context. A downloaded file, export submit response, or export artifact must never be used to invent or extend drilldown coordinates. To drill into a large result, first run a bounded synchronous preview containing the desired row; do not raise the limit merely to manufacture a complete target catalog.
 
-SQL, `heat_map`, `rank_list`, `revenue`, and scenario models do not support this analysis drilldown contract. Stop when `source.drilldown.actions` is empty or `unavailable_reason` is present.
+SQL, `heat_map`, `rank_list`, `revenue`, and scenario models do not support this analysis drilldown contract and therefore do not create a query context. Stop when the primary response has no `query_context_id` or advertised action.
 
 ## Select a cell without `target_id`
 
-The response contains `sources[]`. Select the source that owns the visible result. When more than one source exists, pass the source selector returned there, normally `{"report_id":...}` or `{"chart_id":...}`. Never put source IDs inside `coordinate`.
+The primary response contains compact `sources[]`. Select the source that owns the visible result. When more than one source exists, pass the source selector returned there, normally `{"report_id":...}` or `{"chart_id":...}`, to `analysis query-context get`. Never put source IDs inside `coordinate`.
 
-Each source has `drilldown`:
+The query-context response contains the selected full `source`. Its `drilldown` object is the only coordinate option catalog for follow-up commands:
 
 - `selection_boundary` must be `synchronous_preview_only`.
 - `row_options[]` contains only rows from this preview. Match the user's row by `values`, then copy that option's `coordinate` fragment.

@@ -10,6 +10,17 @@ assert.deepEqual(
   { ok: true, data: [{ id: 1 }] },
 );
 
+const sqlTable = await formatOutput({
+  title: ['n', 'label'],
+  rows: [[1, 'one'], [2, 'two']],
+  returned_rows: 2,
+}, 'table');
+assert.match(sqlTable, /n/);
+assert.match(sqlTable, /label/);
+assert.match(sqlTable, /one/);
+assert.match(sqlTable, /two/);
+assert.doesNotMatch(sqlTable, /^\[\s*"n"/);
+
 assert.deepEqual(
   await json({ data: { items: [{ id: 2 }] } }, '.data.items'),
   { ok: true, data: [{ id: 2 }] },

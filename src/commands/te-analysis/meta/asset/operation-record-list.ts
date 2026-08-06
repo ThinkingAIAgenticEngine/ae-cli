@@ -1,7 +1,7 @@
 import {
   createAnalysisGovernanceCapabilityCommand,
   directoryLimitFlag,
-  offsetFlag,
+  directoryOffsetFlag,
   payloadFlag,
   projectIdFlag,
   queryFlag,
@@ -19,7 +19,7 @@ export const analysisMetaAssetOperationRecordList = createAnalysisGovernanceCapa
   command: 'list',
   capabilityId: 'governance.operation_record.list',
   description: 'List asset batch operation records.',
-  flags: [projectIdFlag, typeFlag, statusFlag, queryFlag, sortFieldFlag, sortOrderFlag, directoryLimitFlag, offsetFlag, payloadFlag],
+  flags: [projectIdFlag, typeFlag, statusFlag, queryFlag, sortFieldFlag, sortOrderFlag, directoryLimitFlag, directoryOffsetFlag, payloadFlag],
   risk: 'read',
   buildInput: (ctx) => assetGovernanceInput(ctx, ["type","status","query","sort_field","sort_order","limit","offset"]),
 });

@@ -3,7 +3,7 @@ import {
   fieldsFlag,
   directoryLimitFlag,
   listInput,
-  offsetFlag,
+  directoryOffsetFlag,
   projectIdFlag,
   queryFlag,
 } from '../capability-shared.js';
@@ -13,7 +13,7 @@ export const biPanelList = createAnalysisCapabilityCommand({
   command: 'list',
   capabilityId: 'analysis.bi_panel.list',
   description: 'List BI panels visible to the current user through the capability gateway.',
-  flags: [projectIdFlag, queryFlag, fieldsFlag, directoryLimitFlag, offsetFlag],
+  flags: [projectIdFlag, queryFlag, fieldsFlag, directoryLimitFlag, directoryOffsetFlag],
   risk: 'read',
   buildInput: listInput,
 });

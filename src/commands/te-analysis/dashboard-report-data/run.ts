@@ -1,12 +1,11 @@
 import {
   analysisDataRunRoutingHelp,
-  applyAnalysisInlineLimit,
   clusterQueryScopeFlag,
   createAnalysisCapabilityCommand,
   dashboardReportDataInput,
   projectIdFlag,
+  analysisModelPreviewRowsFlag,
   slaveClusterIdFlag,
-  syncLimitFlag,
   dashboardSyncTimeoutSecondsFlag,
   validateClusterQueryRouting,
 } from '../capability-shared.js';
@@ -29,11 +28,10 @@ export const dashboardReportDataRun = createAnalysisCapabilityCommand({
     { name: 'zone-offset', type: 'number', required: false, desc: reportDataZoneOffsetDescription },
     { name: 'use-cache', type: 'boolean', required: false, desc: 'Whether to use cache. Default: true.' },
     { name: 'request-id', type: 'string', required: false, desc: 'Optional cli_<32 lowercase hex> request ID. Generated when omitted.' },
+    analysisModelPreviewRowsFlag,
     dashboardSyncTimeoutSecondsFlag,
-    syncLimitFlag,
   ],
   risk: 'read',
   validate: validateClusterQueryRouting,
   buildInput: dashboardReportDataInput,
-  postProcess: applyAnalysisInlineLimit,
 });

@@ -7,8 +7,8 @@
  * +upload-skill-asset      — 上传单个 asset 文件
  * +read-skill-asset        — 读取 asset 原始二进制内容
  * +del-skill-asset         — 删除 asset 文件
- * +list-skill-references   — 列出 references 目录 .md 文件
- * +upload-skill-reference  — 上传单个 .md reference 文件
+ * +list-skill-references   — list files in the references directory
+ * +upload-skill-reference  — upload one reference file
  * +read-skill-reference    — 读取 reference 原始内容
  * +del-skill-reference     — 删除 reference 文件
  * +list-skill-scripts      — 列出 scripts 目录文件
@@ -31,6 +31,7 @@ import {
   uploadToMainApp,
   getBufferFromMainApp,
 } from '../../core/te-agent-client.js';
+import { CliValidationError } from '../../core/errors.js';
 import { MARKET_CATEGORIES, isValidMarketCategory } from './market-constants.js';
 import { assertValidSkillVersion } from './skill-version.js';
 
@@ -146,16 +147,11 @@ function makeAssetUploadCommand(
   commandName: string,
   description: string,
   dirName: 'assets' | 'references' | 'scripts',
-  mdOnly: boolean,
 ): Command {
   const validate = (ctx: RuntimeContext) => {
     const filePath = ctx.str('file');
     if (!filePath) throw new Error('--file is required');
     if (!existsSync(resolve(filePath))) throw new Error(`File not found: ${resolve(filePath)}`);
-    if (mdOnly) {
-      const ext = extname(filePath).toLowerCase();
-      if (ext !== '.md') throw new Error('--file must be a .md file for references');
-    }
   };
 
   return {
@@ -173,7 +169,7 @@ function makeAssetUploadCommand(
         name: 'file',
         type: 'string',
         required: true,
-        desc: mdOnly ? 'Local .md file path to upload' : 'Local file path to upload (max 1MB)',
+        desc: 'Local file path to upload (max 1MB)',
       },
       {
         name: 'sub-path',
@@ -194,6 +190,18 @@ function makeAssetUploadCommand(
       return uploadToMainApp(`${BASE_PATH}/${encodeURIComponent(ctx.str('id'))}/${dirName}`, fd);
     },
   };
+}
+
+function isTextContentType(contentType: string | null): boolean {
+  const mediaType = contentType?.split(';', 1)[0]?.trim().toLowerCase();
+  if (!mediaType) return false;
+  return (
+    mediaType.startsWith('text/') ||
+    mediaType === 'application/json' ||
+    mediaType.endsWith('+json') ||
+    mediaType === 'application/xml' ||
+    mediaType.endsWith('+xml')
+  );
 }
 
 function makeAssetReadCommand(
@@ -237,7 +245,7 @@ function makeAssetReadCommand(
         .map((seg) => encodeURIComponent(seg))
         .join('/');
       const url = `${BASE_PATH}/${encodeURIComponent(ctx.str('id'))}/${dirName}/${encodedPath}`;
-      const { buffer, fileName } = await getBufferFromMainApp(url);
+      const { buffer, fileName, contentType } = await getBufferFromMainApp(url);
 
       // --output <path>: write binary to disk
       const outputPath = ctx.str('output');
@@ -247,7 +255,14 @@ function makeAssetReadCommand(
         return { saved: true, path: resolved, size: buffer.length, fileName };
       }
 
-      // Default: return { content } as text (best-effort for text files)
+      if (dirName === 'references' && !isTextContentType(contentType)) {
+        throw new CliValidationError('Binary content requires --output', {
+          code: 'output_required',
+          hint: 'Re-run with --output <path> to preserve the original bytes.',
+        });
+      }
+
+      // References use MIME to prevent binary corruption; assets/scripts keep their existing best-effort text behavior.
       const content = buffer.toString('utf8');
       return { content, fileName };
     },
@@ -455,7 +470,6 @@ export const uploadSkillAsset = makeAssetUploadCommand(
   '+upload-skill-asset',
   'Upload a single file to a Skill assets directory (max 1MB)',
   'assets',
-  false,
 );
 
 export const readSkillAsset = makeAssetReadCommand(
@@ -474,20 +488,19 @@ export const delSkillAsset = makeAssetDelCommand(
 
 export const listSkillReferences = makeAssetListCommand(
   '+list-skill-references',
-  'List all .md files in a Skill references directory',
+  'List all files in a Skill references directory',
   'references',
 );
 
 export const uploadSkillReference = makeAssetUploadCommand(
   '+upload-skill-reference',
-  'Upload a single .md file to a Skill references directory (max 1MB)',
+  'Upload a single file to a Skill references directory (max 1MB)',
   'references',
-  true,
 );
 
 export const readSkillReference = makeAssetReadCommand(
   '+read-skill-reference',
-  'Read a Skill reference .md file (binary-safe; use --output to save to disk)',
+  'Read a Skill reference file (binary-safe; use --output for non-text files)',
   'references',
 );
 
@@ -509,7 +522,6 @@ export const uploadSkillScript = makeAssetUploadCommand(
   '+upload-skill-script',
   'Upload a single file to a Skill scripts directory (max 1MB)',
   'scripts',
-  false,
 );
 
 export const readSkillScript = makeAssetReadCommand(

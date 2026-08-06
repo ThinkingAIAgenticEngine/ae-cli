@@ -20,6 +20,8 @@ const retiredAnalysisCommands = [
   '+build_event_details_sql',
   '+query_entity_details',
   '+query_event_details',
+  '+batch_create_metadata',
+  '+batch_edit_metadata',
 ];
 
 const retiredSemanticBuildGroups = [
@@ -105,6 +107,9 @@ test('retired analysis commands are absent from CLI help', () => {
 
   const audienceHelp = runCli('analysis_audience', '--help');
   assert.notEqual(audienceHelp.status, 0, 'analysis_audience must not remain as an empty compatibility service');
+
+  const metadataHelp = runCli('analysis_meta', '--help');
+  assert.notEqual(metadataHelp.status, 0, 'analysis_meta must not remain as an empty compatibility service');
 });
 
 test('retired analysis commands are absent from source and agent-facing documentation', () => {
@@ -139,9 +144,9 @@ test('retired analysis commands are absent from source and agent-facing document
   assert.deepEqual(violations, []);
 });
 
-test('the retired command inventory remains exactly 38 commands', () => {
+test('the retired command inventory remains exactly 40 commands', () => {
   assert.equal(retiredAnalysisCommands.length + retiredAudienceCommands.length
-    + retiredSemanticBuildGroups.length, 38);
+    + retiredSemanticBuildGroups.length, 40);
 });
 
 test('gateway lifecycle commands are not labeled as legacy MCP commands', () => {

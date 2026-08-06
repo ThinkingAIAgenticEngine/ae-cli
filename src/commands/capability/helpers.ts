@@ -14,7 +14,7 @@ export interface CapabilitySummary {
 }
 
 export class CapabilityCommandValidationError extends Error {
-  constructor(message: string, readonly hint?: string) {
+  constructor(message: string, readonly hint?: string, readonly code?: string) {
     super(message);
     this.name = 'CapabilityCommandValidationError';
   }
@@ -121,5 +121,13 @@ export function parseCapabilityInput(raw?: string): Record<string, unknown> {
       'Example: --input \'{"project_id":1}\'',
     );
   }
-  return parsed as Record<string, unknown>;
+  const input = parsed as Record<string, unknown>;
+  if (Object.prototype.hasOwnProperty.call(input, 'projectId')) {
+    throw new CapabilityCommandValidationError(
+      'Unsupported capability input field: projectId.',
+      'Use the canonical snake_case field project_id.',
+      'UNSUPPORTED_INPUT_FIELDS',
+    );
+  }
+  return input;
 }

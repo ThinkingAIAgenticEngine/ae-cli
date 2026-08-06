@@ -63,6 +63,12 @@ const draft: Draft = {
       type: 'string',
       source: 'codebase',
     },
+    {
+      name: 'account@country',
+      display_name: '账号国家',
+      type: 'string',
+      source: 'codebase',
+    },
   ],
 };
 
@@ -75,7 +81,10 @@ const plan = buildDisplayNameSyncPlan(draft, {
     { prop_name: 'channel', prop_desc: null },
     { prop_name: 'amount', prop_desc: '现有金额名称' },
   ],
-  userProperties: [{ prop_name: 'vip_level', prop_desc: '   ' }],
+  userProperties: [
+    { prop_name: 'vip_level', prop_desc: '   ' },
+    { prop_name: 'account@country', prop_desc: '' },
+  ],
 });
 
 assert.deepEqual(plan.event.items, [
@@ -90,6 +99,7 @@ assert.deepEqual(plan.event_property.skippedExisting, ['amount']);
 assert.deepEqual(plan.event_property.missingInDraft, []);
 assert.deepEqual(plan.user_property.items, [
   { prop_name: 'vip_level', prop_desc: '会员等级' },
+  { prop_name: 'account@country', prop_desc: '账号国家' },
 ]);
 
 assert.throws(
@@ -135,12 +145,23 @@ try {
 
     let data: unknown = {};
     if (url.includes('metadata.event.list')) {
-      data = {
-        events: [
-          { event_name: 'signup', event_desc: '' },
-          { event_name: 'purchase', event_desc: '现有支付名称' },
-        ],
-      };
+      data = body?.input?.offset === 0
+        ? {
+            events: [{ event_name: 'purchase', event_desc: '现有支付名称' }],
+            total: 2,
+            limit: 200,
+            offset: 0,
+            has_more: true,
+            next_offset: 200,
+          }
+        : {
+            events: [{ event_name: 'signup', event_desc: '' }],
+            total: 2,
+            limit: 200,
+            offset: 200,
+            has_more: false,
+            next_offset: null,
+          };
     } else if (url.includes('metadata.property.list')) {
       data =
         body?.input?.table_type === 'event'
@@ -149,8 +170,23 @@ try {
                 { prop_name: 'channel', prop_desc: '' },
                 { prop_name: 'amount', prop_desc: '现有金额名称' },
               ],
+              total: 2,
+              limit: 200,
+              offset: 0,
+              has_more: false,
+              next_offset: null,
             }
-          : { properties: [{ prop_name: 'vip_level', prop_desc: '' }] };
+          : {
+              properties: [
+                { prop_name: 'vip_level', prop_desc: '' },
+                { prop_name: 'account@country', prop_desc: '' },
+              ],
+              total: 2,
+              limit: 200,
+              offset: 0,
+              has_more: false,
+              next_offset: null,
+            };
     } else if (url.includes('metadata.super_metadata.batch_edit')) {
       data = { updated_count: body?.input?.items?.length ?? 0 };
     }
@@ -180,8 +216,21 @@ try {
   assert.deepEqual(result.updated, {
     event: 1,
     event_property: 1,
-    user_property: 1,
+    user_property: 2,
   });
+  const eventListRequests = requests.filter((request) =>
+    request.url.includes('metadata.event.list'),
+  );
+  assert.deepEqual(
+    eventListRequests.map((request) => ({
+      limit: request.body.input.limit,
+      offset: request.body.input.offset,
+    })),
+    [
+      { limit: 200, offset: 0 },
+      { limit: 200, offset: 200 },
+    ],
+  );
   const edits = requests.filter((request) =>
     request.url.includes('metadata.super_metadata.batch_edit'),
   );
@@ -201,7 +250,10 @@ try {
       {
         project_id: 63,
         type: 'user_property',
-        items: [{ prop_name: 'vip_level', prop_desc: '会员等级' }],
+        items: [
+          { prop_name: 'vip_level', prop_desc: '会员等级' },
+          { prop_name: 'account@country', prop_desc: '账号国家' },
+        ],
       },
     ],
   );

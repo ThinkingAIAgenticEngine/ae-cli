@@ -1,5 +1,9 @@
 import {
   createAnalysisMetaCapabilityCommand,
+  compactInput,
+  directoryLimitFlag,
+  directoryOffsetFlag,
+  optionalNumber,
   requiredPayloadFlag,
   projectIdFlag,
   projectInput,
@@ -13,7 +17,14 @@ export const metadataAssetSearch = createAnalysisMetaCapabilityCommand({
   flags: [
     projectIdFlag,
     requiredPayloadFlag,
+    directoryLimitFlag,
+    directoryOffsetFlag,
   ],
   risk: 'read',
-  buildInput: (ctx) => ({ ...projectInput(ctx), payload: ctx.json('payload') }),
+  buildInput: (ctx) => compactInput({
+    ...projectInput(ctx),
+    payload: ctx.json('payload'),
+    limit: optionalNumber(ctx, 'limit'),
+    offset: optionalNumber(ctx, 'offset'),
+  }),
 });

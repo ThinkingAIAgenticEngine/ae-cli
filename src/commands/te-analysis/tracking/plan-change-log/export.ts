@@ -14,6 +14,7 @@ export const trackingPlanChangeLogExport = createTrackingCapabilityCommand({
   resource: 'plan-change-log',
   command: 'export',
   capabilityId: 'tracking.plan_change_log.export',
+  asyncArtifact: true,
   description: 'Export one tracking plan change log.',
   flags: [projectIdFlag, logIdFlag, requestIdFlag, asyncTimeoutSecondsFlag],
   risk: 'read',

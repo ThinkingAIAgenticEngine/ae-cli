@@ -1,5 +1,4 @@
 import fs from 'fs';
-import { getAnalysisMappingPathForClusterMode } from './cluster-info.js';
 import { getActiveHost } from './config.js';
 import { getCliToken, clearCliToken } from './cli-token.js';
 import { safeJsonParse } from './json-utils.js';
@@ -44,18 +43,6 @@ export interface McpServiceMapping {
  */
 const serviceMappingMap = new Map<string, McpServiceMapping>();
 
-// Register analysis service mapping (mappingPath resolved dynamically in getMcpMapping)
-registerMcpMapping('analysis', {
-  componentName: 'analysis',
-  mappingPath: 'analysis',
-});
-
-// Register te_analysis_extend service mapping (used by extended tool routing under the analysis domain)
-registerMcpMapping('te_analysis_extend', {
-  componentName: 'analysis',
-  mappingPath: 'analysis-extend'
-});
-
 /**
  * Register a service name to MCP mapping configuration
  */
@@ -80,9 +67,6 @@ export function getMcpMapping(serviceName: string): McpServiceMapping {
   const mapping = serviceMappingMap.get(serviceName);
   if (!mapping) {
     throw new Error(`MCP mapping not found for service: '${serviceName}'. Please register it using registerMcpMapping() first.`);
-  }
-  if (serviceName === 'analysis') {
-    return { ...mapping, mappingPath: getAnalysisMappingPathForClusterMode() };
   }
   return mapping;
 }

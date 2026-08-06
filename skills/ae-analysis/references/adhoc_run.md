@@ -15,13 +15,14 @@ ae-cli analysis adhoc run \
   --project-id <project_id> \
   --model-type <model_type> \
   --definition '<json>' \
+  [--resolutions '<confirmed_resolution_json>'] \
   [--request-id cli_<32 lowercase hex>] \
   [--use-cache true|false] \
   [--zone-offset <hours>] \
   [--fields '["列名"]'] \
   [--cluster-query-scope GLOBAL|SLAVE] \
   [--slave-cluster-id <id>] \
-  [--limit <n>] \
+  [--preview-rows <n>] \
   [--timeout-seconds <n>]
 ```
 
@@ -36,10 +37,13 @@ For SQL model definitions, do not invent table or column names. If the table ref
 - `--project-id`: target project ID.
 - `--model-type`: one of the 12 AI-facing model names from [`ai_models.md`](ai_models.md). Do not pass `scenario`, `history_tag`, or `cluster`; tags and cohorts/clusters are separate capabilities.
 - `--definition`: model-specific AI-facing definition JSON.
+- `--resolutions`: only after user confirmation, pass deterministic bindings keyed by compiler error path. Keep `--definition` unchanged; follow [`../metadata_resolution.md`](../metadata_resolution.md).
 
-Control defaults: `--limit` default 100 / max 1000, `--timeout-seconds` default 60 / max 180. The routing rule lives in [`analysis_data_retrieval.md`](analysis_data_retrieval.md).
+Omit `--preview-rows` to use the current model and cluster synchronous row limit. An explicit value must be positive and cannot exceed that runtime limit; agents should normally pass 100 to bound context. `--timeout-seconds` defaults to 120 and has a maximum of 180. The routing rule lives in [`analysis_data_retrieval.md`](analysis_data_retrieval.md).
 
-If the user asks for more than 1000 rows, or the SQL text requests `LIMIT 2000` (or any limit above 1000), go directly to `analysis adhoc export`. Do not lower the SQL limit to 1000, run a truncated sync query first, or loop over repeated `run` calls.
+For `model_type=path`, `preview_rows` follows the analysis UI's graph contract: it limits real nodes per path level, not total nodes across the graph. Nodes beyond the per-level boundary are combined into a `more` node. `result.nodes` retains that synthesized node for graph structure and drilldown coordinates. `returned_rows` counts real business nodes actually returned across all levels; it excludes synthesized `more` nodes and the real nodes folded into them. The count may still exceed `preview_rows` because the boundary applies independently to each level. `has_more=true` means at least one level contains real nodes folded into `more`.
+
+If the requested result exceeds the current runtime synchronous maximum, go directly to `analysis adhoc export`. Do not lower the requested row count, run a partial sync query first, or loop over repeated `run` calls.
 
 Do not use raw QP, `events`, `event_view`, `visual_view`, removed ad-hoc QP builder outputs, or schema helper outputs as `--definition`.
 
@@ -52,14 +56,14 @@ Cluster routing: omit both routing flags for current-self data. Before `GLOBAL` 
 The response may include:
 
 - `query_context_id`: Redis-backed context for follow-ups from this bounded synchronous preview.
-- `sources[].drilldown`: finite row, column, and metric options plus allowed actions. The preview `limit` is the selection boundary.
-- `title` / `rows` / `total` / `returned_rows` / `truncated`: tabular preview fields. When truncated, use `adhoc export`; there is no next-page request.
-- `result`: direct result for non-tabular models.
+- `sources[].drilldown`: compact allowed-action summary. Detailed coordinate options are read lazily with `analysis query-context get`; `preview_rows` remains the selection boundary.
+- `title` / `rows` / `returned_rows` / `has_more`: tabular preview fields. `total` appears only when the backend supplies an exact total. When `has_more` is true, use `adhoc export`; there is no next-page request.
+- `result`: direct result for non-tabular models. Path results also return top-level `returned_rows` and `has_more` using the per-level node contract above.
 - `request_id`: lifecycle request id.
 - `actual_cluster_query_scope`, optional `actual_slave_cluster_id`, and `cluster_query_scope_source`: actual physical data route. Verify these before comparing results or following the query context.
 
 Execution failures are returned as command failures with `request_id`; only the explicit project-no-data condition is a successful empty result. Do not interpret an empty object as evidence that a failed query succeeded.
 
-The execute, `--validate`, and `--dry-run` paths all compile the AI-facing definition. If metadata resolution needs clarification, the command fails with `AI_QP_COMPILE_FAILED`; inspect `meta.compile_status`, `meta.errors[]`, `meta.resolved`, and `meta.warnings`. Each error retains `path`, `message`, `code`, `candidates`, and `suggestions`. Select an exact candidate from this response or ask the user; do not guess from display text.
+The execute, `--validate`, and `--dry-run` paths all compile the AI-facing definition. If metadata resolution needs clarification, the command fails with `AI_QP_COMPILE_FAILED`; inspect `meta.compile_status`, `meta.errors[]`, `meta.resolved`, and `meta.warnings`. Each metadata error retains `path`, `slot_kind`, `raw_value`, `allowed_resource_types`, `search_targets`, and `candidates`. Follow [`../metadata_resolution.md`](../metadata_resolution.md); do not guess from display text.
 
-Read [`analysis_drilldown_contract.md`](analysis_drilldown_contract.md). Use the context only with an action advertised by the selected source/metric, and assemble the coordinate only from returned option fragments. Do not pass raw QP or infer a coordinate from display text.
+Read [`analysis_drilldown_contract.md`](analysis_drilldown_contract.md). Use the context only with an action advertised by the selected source, call `analysis query-context get`, and assemble the coordinate only from its returned option fragments. Do not pass raw QP or infer a coordinate from display text.

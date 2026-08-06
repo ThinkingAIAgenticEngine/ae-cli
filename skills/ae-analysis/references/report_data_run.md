@@ -6,7 +6,7 @@ Typical closed loop: discover a saved report -> verify its definition -> resolve
 
 Routing: read [`analysis_data_retrieval.md`](analysis_data_retrieval.md) before choosing this `run` command instead of `report-data export`.
 
-Do not use this command for full, unknown-size, larger than 1000-row, or long-running report data; use `report-data export`.
+Do not use this command for full, unknown-size, larger than the current runtime synchronous maximum, or long-running report data; use `report-data export`.
 
 This gateway report-data capability executes saved reports with model-specific overrides. It covers the 12 analysis report models from `ai_models.md` plus tag report data; tags are report-data only and are not ad-hoc `model_type` values.
 
@@ -22,19 +22,19 @@ Command:
 
 ```bash
 # Non-SQL analysis report
-ae-cli analysis report-data run --project-id <project_id> --report-ids '[1001]' --filters '{"relation":"and","items":[{"field":{"name":"country","type":"user_property"},"operator":"eq","values":["US"]}]}' --start-time 2026-07-01 --end-time 2026-07-09 --limit 20
+ae-cli analysis report-data run --project-id <project_id> --report-ids '[1001]' --filters '{"relation":"and","items":[{"field":{"name":"country","type":"user_property"},"operator":"eq","values":["US"]}]}' --start-time 2026-07-01 --end-time 2026-07-09 --preview-rows 20
 
 # SQL report, after analysis report get confirms definition.params contains platform
-ae-cli analysis report-data run --project-id <project_id> --report-ids '[2001]' --sql-params '[{"name":"platform","value":"ios"}]' --limit 20
+ae-cli analysis report-data run --project-id <project_id> --report-ids '[2001]' --sql-params '[{"name":"platform","value":"ios"}]' --preview-rows 20
 
 # Explicit local-time mode (not UTC+99)
-ae-cli analysis report-data run --project-id <project_id> --report-ids '[1001]' --zone-offset 99 --limit 20
+ae-cli analysis report-data run --project-id <project_id> --report-ids '[1001]' --zone-offset 99 --preview-rows 20
 
 # One physical slave query cluster
-ae-cli analysis report-data run --project-id <project_id> --report-ids '[1001]' --cluster-query-scope SLAVE --slave-cluster-id jp --limit 20
+ae-cli analysis report-data run --project-id <project_id> --report-ids '[1001]' --cluster-query-scope SLAVE --slave-cluster-id jp --preview-rows 20
 ```
 
-Input also accepts optional `cluster_query_scope` and conditional `slave_cluster_id`. Omit both for current-self data. Use `GLOBAL` only for explicit cross-cluster aggregation; use `SLAVE` with exactly one ID returned by `analysis query-cluster list`. SQL reports reject `GLOBAL`. Control defaults: `--limit` default 100 / max 1000, `--timeout-seconds` default 120 / max 180.
+Input also accepts optional `cluster_query_scope` and conditional `slave_cluster_id`. Omit both for current-self data. Use `GLOBAL` only for explicit cross-cluster aggregation; use `SLAVE` with exactly one ID returned by `analysis query-cluster list`. SQL reports reject `GLOBAL`. Omit `--preview-rows` to use each report model's current cluster synchronous limit; explicit values must not exceed the runtime model limit. Agents should normally pass 100. `--timeout-seconds` defaults to 120 and has a maximum of 180.
 
 Timezone contract:
 
@@ -53,8 +53,8 @@ A homogeneous SQL request that includes `filters`, `group_by`, `start_time`, `en
 
 For a newly created or updated dynamic SQL report, omit `--sql-params` to execute the saved default first. After that succeeds, then make one second call with `--sql-params` to change only the requested value. This separates a broken saved default from a broken override and avoids repeating the same query.
 
-Output is the gateway envelope. `data` contains bounded inline report result items plus `query_context_id` and `sources[]`. Each source includes `effective_zone_offset`, the timezone value actually used for that query. When `zone_offset` is omitted, this is the resolved current-user timezone when available, otherwise the project default; when `zone_offset` is explicit, this is its resolved effective value. `sources[].drilldown` is present when the returned preview exposes follow-up actions. Each source is evaluated independently; SQL and other unsupported models have no actions.
+Output is the gateway envelope. When at least one report exposes a follow-up action, `data` contains bounded inline report result items plus `query_context_id` and compact `sources[]` summaries. Each source includes `effective_zone_offset`, the timezone value actually used for that query. When `zone_offset` is omitted, this is the resolved current-user timezone when available, otherwise the project default; when `zone_offset` is explicit, this is its resolved effective value. SQL-only and otherwise non-drillable results omit query context entirely. Use `analysis query-context get` to read the selected source's full coordinate options.
 
 `meta.actual_cluster_query_scope`, optional `meta.actual_slave_cluster_id`, and `meta.cluster_query_scope_source` describe the actual physical route. Verify them before comparing or drilling down. An empty batch or report result with no rows is a successful query: it means the requested time range has no data. The command fails only when every returned report entry contains an explicit execution error.
 
-Read [`analysis_drilldown_contract.md`](analysis_drilldown_contract.md). Select only returned row/column/metric options and call only the advertised event, entity, or result-cluster action. Do not pass raw QP.
+Read [`analysis_drilldown_contract.md`](analysis_drilldown_contract.md). Call `analysis query-context get`, select only its returned row/column/metric options, and call only the advertised event, entity, or result-cluster action. Do not pass raw QP.

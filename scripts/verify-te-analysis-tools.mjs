@@ -104,11 +104,13 @@ const REQUIRED_FOUR_MODULE_CAPABILITIES = [
   'analysis.query.drilldown_user_events_export',
   'analysis.query.create_result_cluster',
   'analysis.user_cluster.list',
+  'analysis.user_cluster.export',
   'analysis.user_cluster.create',
   'analysis.user_cluster.update',
   'analysis.user_cluster_member.list',
   'analysis.user_cluster_member.export',
   'analysis.user_tag.list',
+  'analysis.user_tag.export',
   'analysis.user_tag.create',
   'analysis.user_tag.update',
   'analysis.user_tag_member.list',
@@ -154,19 +156,19 @@ if (!/rename a BI dashboard/i.test(biPanelUpdate.description)) {
   fail('BI panel update description must disclose rename-only behavior');
 }
 
-const EXPECTED_GATEWAY_LIFECYCLE_COUNT = 5;
+const EXPECTED_GATEWAY_LIFECYCLE_COUNT = 6;
 if (gatewayLifecycleCommands.length !== EXPECTED_GATEWAY_LIFECYCLE_COUNT) {
   fail(`analysis gateway lifecycle command count mismatch: expected ${EXPECTED_GATEWAY_LIFECYCLE_COUNT}, got ${gatewayLifecycleCommands.length}`);
 }
 
-const EXPECTED_CAPABILITY_COUNT = 312;
+const EXPECTED_CAPABILITY_COUNT = 320;
 if (capabilityCommands.length !== EXPECTED_CAPABILITY_COUNT) {
   fail(`analysis capability command count mismatch: expected ${EXPECTED_CAPABILITY_COUNT}, got ${capabilityCommands.length}`);
 }
 
 const EXPECTED_CAPABILITY_COUNTS_BY_SERVICE = {
-  analysis: 111,
-  'analysis-meta': 50,
+  analysis: 114,
+  'analysis-meta': 55,
   'analysis-governance': 20,
   project: 44,
   system: 60,
@@ -291,15 +293,16 @@ const criticalReferenceTokens = {
   'skills/ae-analysis/references/audience_models.md': ['Operators', 'Property reference', 'Time range', 'Filter group'],
   'skills/ae-analysis/references/user_cluster_models.md': ['event', 'user', 'tag', 'cluster', 'compound', 'behavior_sequence', 'condition', 'SQL'],
   'skills/ae-analysis/references/user_tag_models.md': ['condition', 'metric', 'first_last', 'SQL'],
-  'skills/ae-analysis/references/user_cluster_member_export.md': ['has_more=false', 'final metadata line'],
-  'skills/ae-analysis/references/user_tag_member_export.md': ['has_more=false', 'final metadata line'],
+  'skills/ae-analysis/references/user_cluster_member_export.md': ['native full-download SQL', 'does not concatenate preview pages', 'jsonl|csv', 'members.jsonl.gz'],
+  'skills/ae-analysis/references/user_tag_member_export.md': ['native current-tag or history-tag full-download SQL', 'does not concatenate preview pages', 'jsonl|csv', 'tag-members.jsonl.gz'],
+  'skills/ae-analysis/references/history_tag_data_drilldown_export.md': ['native full user download', 'jsonl|csv', 'history-tag-drilldown.jsonl.gz'],
   'skills/ae-analysis/references/history_tag_batch_refresh.md': ['start_time', 'end_time', 'only_abnormal', 'use_user_table_type'],
   'skills/ae-analysis/references/analysis_drilldown_contract.md': ['synchronous_preview_only', 'row_options[]', 'metric_options[]', 'ENTITY_LIST', '`attribution_event_id`', '`--project-id`'],
   'skills/ae-analysis/references/drilldown_events_run.md': ['analysis_angle=EVENT_LIST', '`target_id`', '`--project-id`'],
   'skills/ae-analysis/references/drilldown_events_export.md': ['does not accept `--limit`', 'one full-download query', '`csv.gz`', '`--project-id`'],
   'skills/ae-analysis/references/drilldown_entities_run.md': ['subject.type=user', 'subject.type=entity', 'shallow-merge', '`--project-id`'],
   'skills/ae-analysis/references/drilldown_entities_export.md': ['does not accept `--limit`', 'never creates a query context', '`--project-id`'],
-  'skills/ae-analysis/references/drilldown_user_events_export.md': ['does not accept `--limit`, `--offset`, `--page-num`, or `--page-size`', 'without the synchronous 1000-row preview cap', '`csv.gz`', '`--project-id`'],
+  'skills/ae-analysis/references/drilldown_user_events_export.md': ['does not accept `--limit`, `--offset`, `--page-num`, or `--page-size`', 'without the synchronous preview boundary', '`csv.gz`', '`--project-id`'],
   'skills/ae-analysis/references/query_create_result_cluster.md': ['custom-entity', 'query_context_id', 'coordinate', '`--project-id`'],
   'skills/ae-analysis/references/analysis_data_retrieval.md': ['Default and maximum runtime is 21600 seconds (6 hours)', 'sources', 'synchronous'],
   'skills/ae-analysis/references/report_create.md': ['SQL dynamic parameter', '"use_timezone":true', 'boolean definition field', 'query the saved default first', '`report_id` returned by this exact create response'],
@@ -307,7 +310,7 @@ const criticalReferenceTokens = {
   'skills/ae-analysis/references/report_list.md': ['narrow with `--query` or `--model-types` before paging', 'do not enumerate every report page'],
   'skills/ae-analysis/references/report_data_run.md': ['omit `--sql-params` to execute the saved default', 'then make one second call with `--sql-params`', '"recent_day":"1-7"', '`effective_zone_offset`'],
   'skills/ae-analysis/references/report_data_export.md': ['same export response'],
-  'skills/ae-analysis/references/adhoc_run.md': ['SQL text requests `LIMIT 2000`', 'go directly to `analysis adhoc export`', 'Do not lower the SQL limit to 1000'],
+  'skills/ae-analysis/references/adhoc_run.md': ['current runtime synchronous maximum', 'go directly to `analysis adhoc export`', 'Do not lower the requested row count'],
   'skills/ae-analysis/references/adhoc_export.md': ['Preserve the `run_id` and `artifact_id` from this exact submit response'],
   'skills/ae-analysis/references/run_inspect.md': ['same export response'],
   'skills/ae-analysis/references/artifact_download.md': ['same export response'],
@@ -399,11 +402,12 @@ const currentDocsTokens = [
   'analysis query create-result-cluster',
   'analysis query cancel',
   'analysis run inspect',
+  'analysis run wait',
   'analysis artifact download',
   'model_type + definition',
   'query_context_id',
   'drilldown_context_id',
-  'Default limit is 100, max 1000',
+  'Omit `--preview-rows` to use the current model and cluster synchronous row limit',
   'Default and maximum runtime is 21600 seconds (6 hours)',
   'analysis filter-value list',
   'analysis query-cluster list',
