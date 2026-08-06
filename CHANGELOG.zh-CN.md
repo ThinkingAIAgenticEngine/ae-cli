@@ -1,4 +1,4 @@
-### 6.1.13
+### 6.0.41
 **日期：** 2026-08-06
 
 **更新内容：**
@@ -24,11 +24,7 @@
 * 产品 Skill 去除预置 MCP 回退，并增加发版门禁检查
 * 补齐 6.0.40 之后落地的 `ae-cli system` 用量 CSV 流式导出、沙箱工具生命周期、模型与成员统计等能力
 
-#### 6.1 独有：Atlas 实验
-* 明确 Atlas 实验保存/提交时，相邻且 `relation` 相同的 `compound` 分组会被拍平，以保证生成的分群 QP 不超过后端层数限制；不同 `relation` 仍会保留
-* 清理实验设计/洞察 Skill 中的预置 MCP / te-mcp 回退表述
-
-### 6.1.12
+### 6.0.40
 **日期：** 2026-07-31
 
 **更新内容：**
@@ -43,11 +39,7 @@
 * 明确每个事件与行为序列的 `time_range` 要求和筛选属性契约，包括技术名或结构化字段引用、`array_row` 对象组筛选，以及拒绝不支持或未知字段
 * 新增 `engage-activity.activity-data.detail` 投放趋势查询指引，覆盖活动/主题/任务选择、时间粒度、取消请求 ID 和指标语义
 
-#### 6.1 独有：Atlas 实验
-* 新增 `experiment report summary`、`experiment report sample-size` 和 `experiment report metric-trend` 三条精选报表命令，并列明 `capability search --domain` 支持的域
-* 加固实验保存与指标工作流，明确嵌套 DTO 必须使用原生 camelCase、按权威 schema 校验、使用已验证的指标 ID、处理 `METRIC_NOT_FOUND` / `METRIC_IN_USE`，并完善项目 ID 解析指引
-
-### 6.1.11
+### 6.0.39
 **日期：** 2026-07-30
 
 **更新内容：**
@@ -70,11 +62,7 @@
 * 删除过期的 `engage-setting query cluster-qp-skill`；受众、触发和完成条件改由 Analysis 模型生成语义定义并交给 Hermes 编译，包括在旧版 Flow 校验前编译 `targetDefinitionRequest`
 * 明确 Webhook 与客户端创建通道的传参差异，并补充任务保存时可选的 `relationProps`
 
-#### 6.1 独有：Atlas 实验
-* 新增 `ae-experiment-design` 和 `ae-experiment-insight` Skills，覆盖实验规划、SDK/曝光就绪检查、结果分析和诊断手册
-* 新增实验保存 build-guide 与 validate 命令，并收紧指标属性和整数分流比例契约，包括分流比例总和必须为 100
-
-### 6.1.10
+### 6.0.38
 **日期：** 2026-07-30
 
 **更新内容：**
@@ -86,7 +74,7 @@
 #### CLI / Agent
 * 将 Skills 发版同步切换为中心化系统服务，并更新打包脚本和回归测试
 
-### 6.1.9
+### 6.0.37
 **日期：** 2026-07-28
 
 **更新内容：**
@@ -99,10 +87,6 @@
 #### 埋点与文档
 * 修复埋点代码生成的 Wiki 引用路径，统一使用 `~/.ae-cli/wiki/raw` 和 `~/.ae-cli/wiki/synthesis`
 * 更新内网/公网中英文 README，并新增中文 changelog
-
-#### 6.1 独有：Atlas 实验
-* 新增 `experiment` capability 域，覆盖实验生命周期、报表、样本量与指标趋势、流量层冲突检查、Feature、指标、分桶、操作日志和批量删除
-* 新增 `ae-experiment` Skill 和验证覆盖，包括实验就绪检查及高风险写入指南
 
 ### 6.0.36
 **日期：** 2026-07-24
