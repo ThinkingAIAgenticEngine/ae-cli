@@ -285,7 +285,7 @@ export function projectInput(ctx: RuntimeContext): Record<string, unknown> {
 export function listInput(ctx: RuntimeContext): Record<string, unknown> {
   return compactInput({
     ...projectInput(ctx),
-    query: optionalString(ctx, 'query'),
+    queries: optionalJson(ctx, 'queries'),
     fields: optionalJson(ctx, 'fields'),
     limit: optionalNumber(ctx, 'limit'),
     offset: optionalNumber(ctx, 'offset'),

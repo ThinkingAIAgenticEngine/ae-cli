@@ -278,15 +278,19 @@ await test('report list exposes strict page bounds and semantic model filters', 
   assert.equal(limit?.min, 1);
   assert.equal(limit?.max, 200);
   assert.match(limit?.desc ?? '', /Default: 50, max: 200/);
+  assert.ok(reportList.flags.some((flag) => flag.name === 'queries'));
+  assert.equal(reportList.flags.some((flag) => flag.name === 'query'), false);
 
   const dryRun = await dryBody(reportList, {
     'project-id': 1,
+    queries: '["增长","留存"]',
     'model-types': '["event","sql"]',
     limit: 50,
     offset: 100,
   });
   assert.deepEqual(dryRun.body.input, {
     project_id: 1,
+    queries: ['增长', '留存'],
     model_types: ['event', 'sql'],
     limit: 50,
     offset: 100,
@@ -296,11 +300,13 @@ await test('report list exposes strict page bounds and semantic model filters', 
 await test('report list export forwards semantic model filters', async () => {
   const dryRun = await dryBody(reportListExport, {
     'project-id': 1,
+    queries: '["增长","留存"]',
     'model-types': '["tag","revenue"]',
     'artifact-format': 'jsonl',
   });
   assert.deepEqual(dryRun.body.input, {
     project_id: 1,
+    queries: ['增长', '留存'],
     model_types: ['tag', 'revenue'],
     format: 'jsonl',
   });

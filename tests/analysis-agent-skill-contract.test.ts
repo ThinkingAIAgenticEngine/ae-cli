@@ -160,8 +160,8 @@ assert.match(reportCreate, /--resolutions.*not supported with `--model-type tag`
 assert.match(reportUpdate, /read the current `version` exactly once/);
 assert.match(reportUpdate, /resolutions.*not supported with `model_type=tag`/i);
 assert.match(reportUpdate, /query the saved default before applying an override/);
-assert.match(reportList, /narrow with `--query` or `--model-types` before paging/);
-assert.match(reportList, /do not enumerate every report page/);
+assert.match(reportList, /group known names into one `--queries` call or narrow with `--model-types`/);
+assert.match(reportList, /do not issue one list call per name/);
 assert.match(reportGet, /agent-facing `time_particle_size`/);
 assert.match(reportGet, /internal `T0` through `T9` codes must never leak/);
 assert.match(reportGet, /Do not infer a granularity/);

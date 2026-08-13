@@ -14,6 +14,11 @@ import { dashboardReportDataRun } from '../src/commands/te-analysis/dashboard-re
 import { dashboardReportDataExport } from '../src/commands/te-analysis/dashboard-report-data/export.ts';
 import { queryCreateResultCluster } from '../src/commands/te-analysis/query/create-result-cluster.ts';
 import { biPanelPageDataRun } from '../src/commands/te-analysis/bi-panel-page-data/run.ts';
+import { biPanelList } from '../src/commands/te-analysis/bi-panel/list.ts';
+import { projectSpaceList } from '../src/commands/te-analysis/project-space/list.ts';
+import { publicLinkList } from '../src/commands/te-analysis/public-link/list.ts';
+import { analysisAlertList } from '../src/commands/te-analysis/alert/list.ts';
+import { sqlTableList } from '../src/commands/te-analysis/sql-table/list.ts';
 import userCommands from '../src/commands/te-analysis/user/index.ts';
 import { stringFlagValidationError } from '../src/framework/runner.ts';
 
@@ -102,6 +107,29 @@ await test('dashboard list forwards snake_case projection fields', async () => {
   assert.doesNotMatch(dashboardList.flags.find((flag) => flag.name === 'fields')!.desc, /dashboardId/);
 });
 
+await test('asset list commands forward bounded multi-query filters without legacy query', async () => {
+  const commands = [dashboardList, biPanelList, projectSpaceList, publicLinkList, analysisAlertList, sqlTableList];
+  for (const command of commands) {
+    assert.ok(command.flags.some((flag) => flag.name === 'queries'), `${command.capabilityId} missing --queries`);
+    assert.equal(command.flags.some((flag) => flag.name === 'query'), false, `${command.capabilityId} still exposes --query`);
+    const result = await dryBody(command, {
+      'project-id': 1,
+      queries: '["增长","留存"]',
+    });
+    assert.deepEqual(result.body.input.queries, ['增长', '留存'], command.capabilityId);
+  }
+});
+
+await test('asset list commands reject invalid multi-query filters before dispatch', () => {
+  for (const command of [dashboardList, biPanelList, projectSpaceList, publicLinkList, analysisAlertList, sqlTableList]) {
+    assert.throws(
+      () => command.validate!(context({ 'project-id': 1, queries: '[]' })),
+      /1 to 20 non-empty strings/,
+      command.capabilityId,
+    );
+  }
+});
+
 await test('dashboard share sends user authority map unchanged', async () => {
   const result = await dryBody(dashboardShare, {
     'project-id': 1,
@@ -177,6 +205,24 @@ await test('audience string limits fail locally before dispatch', () => {
   assert.equal(stringFlagValidationError(resultClusterName, `a${'b'.repeat(23)}`), undefined);
   assert.equal(stringFlagValidationError(displayName, '显'.repeat(80)), undefined);
   assert.equal(stringFlagValidationError(remark, 'r'.repeat(400)), undefined);
+});
+
+await test('audience updates expose and forward auto refresh cron', async () => {
+  for (const resource of ['user-cluster', 'user-tag']) {
+    const command = user(resource, 'update');
+    const flag = command.flags.find((item) => item.name === 'auto-refresh-cron');
+    assert.ok(flag, `${resource} update must expose --auto-refresh-cron`);
+    assert.match(flag.desc, /does not enable auto refresh/i);
+
+    const args: Record<string, unknown> = {
+      'project-id': 1,
+      'auto-refresh-cron': '0 30 2 * * ? *',
+    };
+    args[resource === 'user-cluster' ? 'cluster-name' : 'tag-name'] =
+      resource === 'user-cluster' ? 'retained_users' : 'user_level';
+    const { body } = await dryBody(command, args);
+    assert.equal(body.input.auto_refresh_cron, '0 30 2 * * ? *');
+  }
 });
 
 await test('inline ID CSV help exposes the exact no-header column contract', () => {

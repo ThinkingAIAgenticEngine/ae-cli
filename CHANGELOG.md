@@ -1,3 +1,17 @@
+### 6.0.42
+**Date:** 2026-08-13
+
+**Changes:**
+
+#### Engage
+* Add inline query and asynchronous export commands for users behind task indicators, with identity-field validation, SQL compilation, artifact lifecycle support, and safeguards for deduplicated metrics
+* Add asynchronous user-detail export for non-triggered tasks, including CSV/JSONL artifacts and the shared inspect, wait, download, and cancellation workflow
+
+#### Analysis
+* Add multi-keyword search to report, dashboard, BI panel, alert, SQL table, public-link, and project-space lists and report catalog exports
+* Allow existing user tags and clusters to update their enabled auto-refresh Quartz cron without enabling auto refresh or triggering recomputation
+* Tighten favorite, metric creation, virtual-property SQL update, and dimension-table binding contracts; clarify metric display names in analysis model guidance
+
 ### 6.0.41
 **Date:** 2026-08-06
 

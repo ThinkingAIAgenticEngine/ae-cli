@@ -15,7 +15,7 @@ export const metadataVirtualPropertySqlRuleUpdate = createAnalysisMetaCapability
   flags: [
     projectIdFlag,
     { name: 'sql-expression', type: 'string', required: true, desc: 'SQL expression used to calculate the virtual property.' },
-    { name: 'v-prop', type: 'json', required: true, desc: 'Virtual property JSON object with prop_id/property fields.' },
+    { name: 'v-prop', type: 'json', required: true, desc: 'Virtual property JSON object with prop_id beside property.' },
     { name: 'properties', type: 'json', required: false, desc: 'Dependent property JSON array.' },
     { name: 'sql-event-relation-type', type: 'string', required: false, desc: 'relation_default, relation_always, or relation_by_setting.' },
     { name: 'related-events', type: 'json', required: false, desc: 'Related events JSON array when using relation_by_setting.' },

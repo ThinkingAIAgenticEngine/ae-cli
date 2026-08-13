@@ -7,11 +7,11 @@ Do not use for report data execution or report definition writes. Use `report-da
 Command:
 
 ```bash
-ae-cli analysis report list --project-id <project_id> [--query <keyword>] [--model-types '["event","sql","tag","revenue"]'] [--fields '["report_id","report_name","report_desc","report_model","version"]'] [--limit 50] [--offset 0]
+ae-cli analysis report list --project-id <project_id> [--queries '["growth","retention"]'] [--model-types '["event","sql","tag","revenue"]'] [--fields '["report_id","report_name","report_desc","report_model","version"]'] [--limit 50] [--offset 0]
 ```
 
-Input sends `project_id`, optional `query`, `model_types`, `fields`, `limit`, and `offset` as snake_case gateway input. `limit` defaults to 50 and must be 1..200; out-of-range values are rejected rather than silently clamped.
+Input sends `project_id`, optional `queries`, `model_types`, `fields`, `limit`, and `offset` as snake_case gateway input. `queries` is a JSON array of 1 to 20 non-empty strings with OR semantics; matching rows include `matched_queries` and `matched_fields`. The legacy singular `query` is not accepted. `limit` defaults to 50 and must be 1..200; out-of-range values are rejected rather than silently clamped.
 
 Output is the gateway envelope. `data` contains report summaries, `total`, effective `limit`, `offset`, `has_more`, and nullable `next_offset`. When `has_more` is true, use exactly `next_offset` for the next call; stop when it is false. Include `version` in `--fields` when the next step is `analysis report update`.
 
-When locating one report, narrow with `--query` or `--model-types` before paging and stop when the required report is found; do not enumerate every report page when the server-side filters can identify the target.
+When locating reports, group known names into one `--queries` call or narrow with `--model-types` before paging. Stop when the required reports are found; do not issue one list call per name.

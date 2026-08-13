@@ -55,7 +55,7 @@ When the user mentions a product term below (including common Chinese UI labels)
 | **Push channel** | Project-level message push channels (Webhook, FCM, APNS, etc.) | `engage-setting` | `references/channel-list.md` | `channel-detail.md`, `add-channel.md` (**Webhook vs Client differ**: `url` = HTTP vs scene key; custom params `user:` vs `user:`/`client:`), `update-channel-status.md`, `delete-channel.md`, `channel-update-config.md`, `channel-test-send.md`, `channel_touch_limits_list.md` |
 | **Config channel** | Config-center Webhook/client config channels (not the same as push channels) | `engage-scene` | `references/scene-config-channel.md` | `channel-mgmt.md` (create/enable-disable/copy/delete workflows). User params in `config.customsParamList` require `columnName` with `user:` prefix (e.g. `user:#account_id`); preflight names with ae-analysis `analysis-meta property list/get`. |
 | **Operation strategy** | Ops/delivery strategies under a config item | `engage-scene` | `references/scene-strategy.md` | Custom audience: [`scene-strategy-audience.md`](references/scene-strategy-audience.md) — semantic `definitionRequest` (Analysis condition shape); do not pass `targetClusterQp`/`qp`; preflight props (stop + list if missing); template: `scene-template.md` |
-| **Operation task** | Hermes push/engagement tasks (list, save, lifecycle, reports) | `engage-task` | `references/task-list.md` | `task-detail.md` (get), `save-task.md`, `build-task-save-guide.md`, `task-stats.md`, `task-delete.md`, `push-record-query.md`, `task-data-overview.md`, `task-data-detail.md`, `task-metric-detail.md`, `task-experiment-report.md` |
+| **Operation task** | Hermes push/engagement tasks (list, save, lifecycle, reports) | `engage-task` | `references/task-list.md` | `task-detail.md` (get), `save-task.md`, `build-task-save-guide.md`, `task-stats.md`, `task-delete.md`, `push-record-query.md`, `task-user-detail-export.md`, `task-indicator-user.md`, `task-data-overview.md`, `task-data-detail.md`, `task-metric-detail.md`, `task-experiment-report.md` |
 | **Operation activity** | Campaign activity management and delivery trends by activity, topic, or standalone task | `engage-activity` | `references/activity-activity.md` | `activity-data-detail.md`, `activity-topic.md`, `activity-task.md`, `activity-approval.md` |
 | **Template** | Strategy templates under a config item | `engage-scene` | `references/scene-template.md` | `scene-config-param.md` (template fields reference `paramId`); enable via `template update` then `template update-status` before strategy create |
 
@@ -178,11 +178,16 @@ ae-cli engage-task task submit-approval --project-id 1 --task-id task_123
 # Query task reports through the Hermes inline task-data capabilities
 ae-cli engage-task effect query --project-id 1 --task-id task_123 --start-time 2026-04-01 --end-time 2026-04-07 --metric-id-list '["metric_1"]'
 ae-cli engage-task data-detail query --project-id 1 --task-id task_123 --detail-type time --start-time 2026-04-01 --end-time 2026-04-07
+ae-cli engage-task indicator-user sql --project-id 1 --task-id task_123 --indicator main --start-time 2026-04-01 --end-time 2026-04-07
+ae-cli engage-task indicator-user run --project-id 1 --task-id task_123 --indicator secondary --secondary-index 1 --start-time 2026-04-01 --end-time 2026-04-07 --limit 100
+ae-cli engage-task indicator-user export --project-id 1 --task-id task_123 --indicator metric --metric-id metric_1 --source metric --start-time 2026-04-01 --end-time 2026-04-07 --artifact-format csv
 
 ```
 
 For L3 task reports, read `references/task-data-overview.md`, `references/task-data-detail.md`,
 `references/task-metric-detail.md`, or `references/task-experiment-report.md` before invocation.
+Before using `engage-task indicator-user`, read `references/task-indicator-user.md`; its grouping,
+indicator, summary/detail, metric, experiment, and timezone flags have conditional compatibility rules.
 
 ### 3. config
 
@@ -214,6 +219,7 @@ ae-cli engage-flow version list --project-id 1 --flow-id flow_id_123
 ae-cli engage-flow flow update-remark --project-id 1 --flow-uuid flow_uuid_123 --flow-version-desc "Second version"
 ae-cli engage-task operation-log query --project-id 1 --task-id task_id_123
 ae-cli engage-task push-record query --project-id 1 --task-id task_id_123 --page-num 1 --page-size 20
+ae-cli engage-task user-detail export --project-id 1 --task-id task_id_123 --task-instance-id instance_123 --user-status fail --artifact-format csv
 ae-cli engage-task segment-list query --project-id 1 --task-id task_id_123
 ae-cli engage-task group list --project-id 1
 ae-cli engage-task metric list --project-id 1 --task-id task_id_123
@@ -502,6 +508,8 @@ More detailed single-command guidance is available in the business-oriented `ref
 - `references/version-list.md` (`engage-flow.version.list`)
 - `references/flow-update-remark.md` (`ae-cli engage-flow flow update-remark`; capability `engage-flow.version.update-remark`)
 - `references/push-record-query.md` (`engage-task.push-record.query`)
+- `references/task-user-detail-export.md` (`engage-task user-detail export`; capability `engage-task.user-detail.export`)
+- `references/task-indicator-user.md` (`engage-task indicator-user {sql,run,export}`; capabilities `engage-task.indicator-user.{sql,run,export}`)
 - `references/segment-list-query.md` (`engage-task.segment-list.query`)
 - `references/group-list.md` (`engage-task.group.list`)
 - `references/task-delete.md` (`engage-task.task.delete`)
@@ -520,7 +528,7 @@ This split documentation structure is easier to extend later, because commands w
 
 ### task
 
-`operation-log query` / `push-record query` / `segment-list *` / `ops *` / `metric *` / `race release` / `channel-ref stats` / `group *` / `task delete` / `task modify-group` / `task submit-approval` / `task get` / `task list` / `task stats` / `task build-save-guide` / `task save` / `task manage` / `effect query` / `data-detail query` (via `engage-task`), plus L3 capabilities `engage-task.task-data.{overview,detail,metric-detail,experiment-report}`
+`operation-log query` / `push-record query` / `user-detail export` / `indicator-user sql` / `indicator-user run` / `indicator-user export` / `segment-list *` / `ops *` / `metric *` / `race release` / `channel-ref stats` / `group *` / `task delete` / `task modify-group` / `task submit-approval` / `task get` / `task list` / `task stats` / `task build-save-guide` / `task save` / `task manage` / `effect query` / `data-detail query` (via `engage-task`), plus L3 capabilities `engage-task.task-data.{overview,detail,metric-detail,experiment-report}`
 
 ### query
 

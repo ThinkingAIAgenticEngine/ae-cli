@@ -2,16 +2,7 @@ import type { RuntimeContext } from '../../../../framework/types.js';
 import { optionalNumber, optionalString } from '../../capability-shared.js';
 
 export function metricMode(ctx: RuntimeContext): number {
-  const mode = optionalNumber(ctx, 'metric-mode');
-  const modelType = optionalString(ctx, 'model-type');
-  const mapped = modelType === undefined ? undefined : modelTypeToMetricMode(modelType);
-  if (mode === undefined && mapped === undefined) {
-    throw new Error('Pass one of --model-type or --metric-mode');
-  }
-  if (mode !== undefined && mapped !== undefined && mode !== mapped) {
-    throw new Error('--metric-mode must match --model-type when both are provided');
-  }
-  return mode ?? mapped!;
+  return modelTypeToMetricMode(ctx.str('model-type'));
 }
 
 export function optionalMetricMode(ctx: RuntimeContext): number | undefined {

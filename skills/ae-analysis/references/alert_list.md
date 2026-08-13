@@ -12,7 +12,7 @@ ae-cli analysis alert list [options]
 
 Capability id: `analysis.alert.list`
 
-Input sends `project_id`, optional `query`, `limit`, and `offset`. Do not send camelCase aliases.
+Input sends `project_id`, optional `queries`, `limit`, and `offset`. `queries` accepts 1 to 20 non-empty strings with OR semantics; matching rows include `matched_queries` and `matched_fields`. Do not send singular `query` or camelCase aliases.
 
 Output is the capability gateway envelope: success is `ok=true,data,meta`; failure is `ok=false,error`. Export commands return lifecycle data such as `run_id` and `artifact_id` for inspect/download.
 
@@ -21,7 +21,6 @@ Parameters:
 | Parameter | Description | Required |
 | --- | --- | --- |
 | `--project-id` | See command help | Yes |
-| `--query` | See command help | No |
+| `--queries` | JSON array of 1 to 20 keyword filters | No |
 | `--limit` | See command help | No |
 | `--offset` | See command help | No |
-

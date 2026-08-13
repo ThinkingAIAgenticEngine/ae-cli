@@ -18,7 +18,7 @@ ae-cli metadata property bind-existing-dimension-table --project-id <project_id>
 | `--property-scope` | Yes | Property owner table, for example `event` or `user`. |
 | `--data-table-id` | Yes | Existing dimension data table ID. |
 | `--timestamp-join-format` | No | Timestamp join format. |
-| `--dict-columns` | No | Dictionary column names JSON array. |
+| `--dict-columns` | No | Dictionary column names JSON array. The CLI converts each string to the canonical `{"column_name":"..."}` object required by the capability. |
 
 ## Decision Rules
 

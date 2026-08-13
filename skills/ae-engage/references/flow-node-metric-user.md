@@ -113,7 +113,8 @@ ae-cli engage-query query cancel --run-id <run_id>
 ## Output shape
 
 - `run` returns `rows`, `total`, and `column_meta`.
-- `export` writes one row per matched user. The primary column is usually `#user_id`.
+- `export` writes one row per matched user with `#user_id`, `#account_id`, and `#distinct_id`.
+- For cross-user data sources, `#account_id` and `#distinct_id` are empty strings.
 
 ## Common mistakes
 

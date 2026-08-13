@@ -81,7 +81,7 @@ Prefer the run/artifact commands over hand-written HTTP, Python, or curl. Analys
 | `drilldown-entities run/export` | `analysis.query.drilldown_entities` / `analysis.query.drilldown_entities_export` | Preview/export users or custom entities for an advertised entity cell | `--project-id`, `--query-context-id`, optional `--source`, `--coordinate` | Subject plus entity rows/artifact |
 | `query drilldown-user-events` | `analysis.query.drilldown_user_events` | Query one drilldown user's event sequence | `--project-id`, `--drilldown-context-id`, `--user-id` | Event sequence rows |
 | `query create-result-cluster` | `analysis.query.create_result_cluster` | Save the advertised user/custom-entity cell population as its result cluster | `--project-id`, `--query-context-id`, optional `--source`, `--coordinate`, `--cluster-name` | Result cluster creation result |
-| `report list` | `analysis.report.list` | Find accessible reports | `--project-id`, optional `--query`, `--fields`, `--limit`, `--offset` | Paginated report summaries |
+| `report list` | `analysis.report.list` | Find accessible reports | `--project-id`, optional `--queries`, `--fields`, `--limit`, `--offset` | Paginated report summaries |
 | `report list-export` | `analysis.report.list_export` | Export report catalog | same as list, plus optional `--artifact-format`, `--request-id` | Async artifact descriptor |
 | `report get` | `analysis.report.get` | Inspect current report definition as AI QP | `--project-id`, `--report-id` | Report metadata plus `model_type` and `definition` |
 | `report create` | `analysis.report.create` | Create a report from AI QP definition | `--report-name`, `--model-type`, `--definition` | Created report ID and normalized definition |
@@ -95,7 +95,7 @@ Prefer the run/artifact commands over hand-written HTTP, Python, or curl. Analys
 | `report-version rollback` | `analysis.report_version.rollback` | Rollback a report version | `--report-id`, `--target-version` | Rollback result |
 | `report-abnormal get` | `analysis.report_abnormal.get` | Inspect report abnormal dependencies | `--report-id` | Abnormal info |
 | `dashboard-report add` | `analysis.dashboard_report.add` | Add reports to a dashboard | `--dashboard-id`, `--report-ids` | Add result |
-| `dashboard list` | `analysis.dashboard.list` | Find accessible dashboards | `--project-id`, optional `--query`, `--fields`, `--limit`, `--offset` | Paginated dashboard summaries |
+| `dashboard list` | `analysis.dashboard.list` | Find accessible dashboards | `--project-id`, optional `--queries`, `--fields`, `--limit`, `--offset` | Paginated dashboard summaries |
 | `dashboard create` | `analysis.dashboard.create` | Create a dashboard | `--project-id`, `--dashboard-name`, optional `--space-id`, `--folder-id` | Created dashboard |
 | `dashboard get` | `analysis.dashboard.get` | Inspect one dashboard definition/share/report structure, including creator and creation/update time | `--project-id`, `--dashboard-id` | Dashboard detail |
 | `dashboard update` | `analysis.dashboard.update` | Update settings or upsert a note | `--operation settings|note-upsert`, IDs, optional `--payload` | Update result |
@@ -131,7 +131,7 @@ Prefer the run/artifact commands over hand-written HTTP, Python, or curl. Analys
 | `bi-panel-page-data export` | `analysis.bi_panel_page_data.export` | Large/long BI page data | same as run, optional `--artifact-format jsonl` | Async artifact descriptor |
 | `project-space list` | `analysis.project_space.list` | Find accessible project spaces | `--project-id`, optional list filters | Paginated project spaces |
 | `project-space get` | `analysis.project_space.get` | Inspect one project space | `--project-id`, `--space-id` | Project space detail |
-| `favorite add` | `analysis.favorite.add` | Favorite dashboard/BI/folder | `--asset-id`, `--asset-type`, optional `--payload` | Favorite result |
+| `favorite add` | `analysis.favorite.add` | Favorite dashboard/BI/folder | required `--asset-id`, `--asset-type`; optional `--space-id` | Favorite result |
 | `favorite remove` | `analysis.favorite.remove` | Remove favorite | same as add | Remove result |
 | `public-link create` | `analysis.public_link.create` | Generate public link | `--resource-type`, `--resource-id`, `--effective-at`, `--expires-at` | Link result |
 | `public-link list` | `analysis.public_link.list` | List public links | `--project-id`, optional list filters | Paginated links |
@@ -213,10 +213,10 @@ Output is the gateway envelope; `data` contains members.
 ## Examples
 
 ```bash
-ae-cli analysis dashboard list --project-id 1 --query retention --limit 50
+ae-cli analysis dashboard list --project-id 1 --queries '["retention","留存"]' --limit 50
 ae-cli analysis adhoc run --project-id 1 --model-type sql --definition '{"sql":"select * from events limit 20"}'
 ae-cli analysis adhoc export --project-id 1 --model-type sql --definition '{"sql":"select * from events where country ${Text:country}","params":[{"name":"country","type":"text","value":"US"}]}' --artifact-format jsonl
-ae-cli analysis report list --project-id 1 --query revenue --limit 50
+ae-cli analysis report list --project-id 1 --queries '["revenue","收入"]' --limit 50
 ae-cli analysis report-data run --project-id 1 --report-ids '[1001]' --preview-rows 50
 ae-cli analysis report-data run --project-id 1 --report-ids '[1001]' --filters '{"relation":"and","items":[{"field":{"name":"country","type":"user_property"},"operator":"eq","values":["US"]}]}' --group-by '[{"field":{"name":"country","type":"user_property"}}]' --sql-params '[{"name":"platform","value":"ios"}]' --preview-rows 50
 ae-cli analysis drilldown-entities run --query-context-id ctx_0123456789abcdef0123456789abcdef --source '{"report_id":1001}' --coordinate '{"cohort_date":"2026-07-01","group_values":[],"period_index":1,"population":"retained"}'

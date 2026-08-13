@@ -5,15 +5,16 @@ import {
   listInput,
   directoryOffsetFlag,
   projectIdFlag,
-  queryFlag,
 } from '../capability-shared.js';
+import { queriesFlag, validateQueriesFlag } from '../catalog-list.js';
 
 export const biPanelList = createAnalysisCapabilityCommand({
   resource: 'bi-panel',
   command: 'list',
   capabilityId: 'analysis.bi_panel.list',
   description: 'List BI panels visible to the current user through the capability gateway.',
-  flags: [projectIdFlag, queryFlag, fieldsFlag, directoryLimitFlag, directoryOffsetFlag],
+  flags: [projectIdFlag, queriesFlag, fieldsFlag, directoryLimitFlag, directoryOffsetFlag],
   risk: 'read',
+  validate: validateQueriesFlag,
   buildInput: listInput,
 });

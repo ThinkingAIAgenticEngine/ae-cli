@@ -18,6 +18,13 @@ import { metricUserRun } from '../src/commands/te-engage/engage-flow/metric-user
 import { nodeUserExport } from '../src/commands/te-engage/engage-flow/node-user/export.ts';
 import { taskEffectQuery } from '../src/commands/te-engage/engage-task/effect/query.ts';
 import { dataDetailQuery } from '../src/commands/te-engage/engage-task/data-detail/query.ts';
+import { taskIndicatorUserExport } from '../src/commands/te-engage/engage-task/indicator-user/export.ts';
+import { taskIndicatorUserRun } from '../src/commands/te-engage/engage-task/indicator-user/run.ts';
+import { taskIndicatorUserSql } from '../src/commands/te-engage/engage-task/indicator-user/sql.ts';
+import {
+  taskUserDetailExport,
+  taskUserDetailStatuses,
+} from '../src/commands/te-engage/engage-task/user-detail/export.ts';
 import { artifactDownload } from '../src/commands/te-engage/engage-query/artifact/download.ts';
 import { queryCancel } from '../src/commands/te-engage/engage-query/query/cancel.ts';
 import { runInspect } from '../src/commands/te-engage/engage-query/run/inspect.ts';
@@ -96,6 +103,30 @@ async function dryBody(
   }
 }
 
+function expectValidationFailure(
+  command: Command,
+  input: Record<string, unknown>,
+  expectedMessage: RegExp,
+): void {
+  const originalExit = process.exit;
+  const originalStderrWrite = process.stderr.write;
+  let stderr = '';
+  (process as any).exit = (code?: number) => {
+    throw new Error(`process.exit:${code}`);
+  };
+  (process.stderr as any).write = (chunk: unknown) => {
+    stderr += String(chunk);
+    return true;
+  };
+  try {
+    assert.throws(() => command.validate!(ctx(input, 'engage-task')), /process\.exit:1/);
+    assert.match(stderr, expectedMessage);
+  } finally {
+    process.exit = originalExit;
+    process.stderr.write = originalStderrWrite;
+  }
+}
+
 process.stdout.write('\nengage query/export command tests\n');
 
 await test('all query, export, and lifecycle capability commands are registered', () => {
@@ -116,6 +147,10 @@ await test('all query, export, and lifecycle capability commands are registered'
     'engage-flow.metric.update',
     'engage-task.task-data.metric-detail',
     'engage-task.task-data.detail',
+    'engage-task.user-detail.export',
+    'engage-task.indicator-user.sql',
+    'engage-task.indicator-user.run',
+    'engage-task.indicator-user.export',
     'engage-query.query.cancel',
   ]) {
     assert.equal(registered.has(capabilityId), true, `${capabilityId} is not registered`);
@@ -124,6 +159,156 @@ await test('all query, export, and lifecycle capability commands are registered'
     && command.resource === 'run' && command.command === 'inspect'), true);
   assert.equal(engageQueryCommands.some(command => command.service === 'engage-query'
     && command.resource === 'artifact' && command.command === 'download'), true);
+});
+
+await test('task indicator-user sql maps semantic indicator fields', async () => {
+  const dryRun = await dryBody(taskIndicatorUserSql, {
+    'project-id': 1,
+    'task-id': 'task_1',
+    indicator: 'main',
+    'start-time': '2026-04-01',
+    'end-time': '2026-04-07',
+    'group-by': 'date',
+    'is-summary': true,
+    'retention-type': 'retention',
+    source: 'task',
+  }, 'engage-task');
+
+  assert.match(dryRun.url, /engage-task\.indicator-user\.sql\/dry-run$/);
+  assert.equal(dryRun.body.input.indicator, 'main');
+  assert.equal(dryRun.body.input.group_by, 'date');
+  assert.equal(dryRun.body.input.is_summary, true);
+  assert.equal(dryRun.body.input.retention_type, 'retention');
+  assert.equal(dryRun.body.input.source, 'task');
+  assert.equal('request_id' in dryRun.body.input, false);
+  assert.equal('limit' in dryRun.body.input, false);
+  assert.equal('format' in dryRun.body.input, false);
+});
+
+await test('task indicator-user sql accepts experiment grouping with inferred source', async () => {
+  const dryRun = await dryBody(taskIndicatorUserSql, {
+    'project-id': 1,
+    'task-id': 'task_1',
+    indicator: 'main',
+    'start-time': '2026-04-01',
+    'end-time': '2026-04-07',
+    'group-by': 'experiment',
+  }, 'engage-task');
+
+  assert.equal(dryRun.body.input.group_by, 'experiment');
+  assert.equal('source' in dryRun.body.input, false);
+});
+
+await test('task indicator-user rejects non-decimal timezone inputs locally', () => {
+  const base = {
+    'project-id': 1,
+    'task-id': 'task_1',
+    indicator: 'main',
+    'start-time': '2026-04-01',
+    'end-time': '2026-04-07',
+  };
+  expectValidationFailure(taskIndicatorUserSql, {
+    ...base,
+    'show-time-zone': '1d',
+  }, /show-time-zone must use decimal hour-offset format/);
+  expectValidationFailure(taskIndicatorUserSql, {
+    ...base,
+    'user-time-zone': '0x1.0p3',
+  }, /user-time-zone must be all or a decimal hour offset/);
+});
+
+await test('task indicator-user rejects unsupported plan experiment drill-down locally', () => {
+  const base = {
+    'project-id': 1,
+    'task-id': 'task_1',
+    indicator: 'plan',
+    'start-time': '2026-04-01',
+    'end-time': '2026-04-07',
+    'group-by': 'experiment',
+  };
+  expectValidationFailure(taskIndicatorUserSql, {
+    ...base,
+    'exp-group-id': 'group_1',
+  }, /exp-group-id is not supported when --indicator=plan/);
+  expectValidationFailure(taskIndicatorUserSql, {
+    ...base,
+    'is-summary': false,
+  }, /is-summary=false is not supported for plan indicators grouped by experiment/);
+});
+
+await test('task indicator-user run maps secondary segment and execution options', async () => {
+  const dryRun = await dryBody(taskIndicatorUserRun, {
+    'project-id': 1,
+    'task-id': 'task_1',
+    indicator: 'secondary_activate',
+    'secondary-index': 2,
+    'start-time': '2026-04-01',
+    'end-time': '2026-04-07',
+    'group-by': 'experiment',
+    'is-summary': false,
+    'exp-group-id': 'group_1',
+    'request-id': 'request_1',
+    limit: 100,
+    'timeout-seconds': 120,
+  }, 'engage-task');
+
+  assert.match(dryRun.url, /engage-task\.indicator-user\.run\/dry-run$/);
+  assert.equal(dryRun.body.input.secondary_index, 2);
+  assert.equal(dryRun.body.input.group_by, 'experiment');
+  assert.equal(dryRun.body.input.is_summary, false);
+  assert.equal(dryRun.body.input.exp_group_id, 'group_1');
+  assert.equal(dryRun.body.input.request_id, 'request_1');
+  assert.equal(dryRun.body.input.limit, 100);
+  assert.equal(dryRun.body.input.timeout_seconds, 120);
+});
+
+await test('task indicator-user export maps metric segment and artifact format', async () => {
+  const dryRun = await dryBody(taskIndicatorUserExport, {
+    'project-id': 1,
+    'task-id': 'task_1',
+    indicator: 'metric',
+    'metric-id': 'metric_1',
+    'start-time': '2026-04-01',
+    'end-time': '2026-04-07',
+    'artifact-format': 'csv',
+    'timeout-seconds': 21600,
+  }, 'engage-task');
+
+  assert.match(dryRun.url, /engage-task\.indicator-user\.export\/dry-run$/);
+  assert.equal(dryRun.body.input.metric_id, 'metric_1');
+  assert.equal('source' in dryRun.body.input, false);
+  assert.equal(dryRun.body.input.format, 'csv');
+  assert.equal(dryRun.body.input.timeout_seconds, 21600);
+});
+
+await test('task user-detail export maps an English status and artifact options', async () => {
+  assert.deepEqual(taskUserDetailStatuses, [
+    'frequency_control',
+    'fatigue_control',
+    'fail',
+    'success',
+    'sample',
+    'exp_skip_push',
+    'deduplicate',
+    'push_plan',
+    'push_actual',
+  ]);
+  const dryRun = await dryBody(taskUserDetailExport, {
+    'project-id': 1,
+    'task-id': 'task_1',
+    'task-instance-id': 'instance_1',
+    'task-exec-detail-id': 'detail_1',
+    'user-status': 'deduplicate',
+    'artifact-format': 'csv',
+    'timeout-seconds': 21600,
+  }, 'engage-task');
+
+  assert.match(dryRun.url, /engage-task\.user-detail\.export\/dry-run$/);
+  assert.equal(dryRun.body.input.user_status, 'deduplicate');
+  assert.equal(dryRun.body.input.task_instance_id, 'instance_1');
+  assert.equal(dryRun.body.input.task_exec_detail_id, 'detail_1');
+  assert.equal(dryRun.body.input.format, 'csv');
+  assert.equal(dryRun.body.input.timeout_seconds, 21600);
 });
 
 await test('flow metric-detail export maps artifact-format and timeout', async () => {

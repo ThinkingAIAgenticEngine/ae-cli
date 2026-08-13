@@ -1,4 +1,5 @@
-import { createAnalysisCapabilityCommand, directoryLimitFlag, directoryOffsetFlag, listInput, projectIdFlag, queryFlag } from '../capability-shared.js';
+import { createAnalysisCapabilityCommand, directoryLimitFlag, directoryOffsetFlag, listInput, projectIdFlag } from '../capability-shared.js';
+import { queriesFlag, validateQueriesFlag } from '../catalog-list.js';
 
 export const dashboardList = createAnalysisCapabilityCommand({
   resource: 'dashboard',
@@ -7,7 +8,7 @@ export const dashboardList = createAnalysisCapabilityCommand({
   description: 'List dashboards visible to the current user through the capability gateway.',
   flags: [
     projectIdFlag,
-    queryFlag,
+    queriesFlag,
     {
       name: 'fields',
       type: 'json',
@@ -19,5 +20,6 @@ export const dashboardList = createAnalysisCapabilityCommand({
     directoryOffsetFlag,
   ],
   risk: 'read',
+  validate: validateQueriesFlag,
   buildInput: listInput,
 });

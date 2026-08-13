@@ -124,10 +124,12 @@ Property aggregation example:
 {
   "time_range": {"mode": "previous", "unit": "day", "value": 7},
   "metrics": [
-    {"event": "purchase", "aggregation": "sum", "property": "amount"}
+    {"event": "purchase", "display_name": "Purchase revenue", "aggregation": "sum", "property": "amount"}
   ]
 }
 ```
+
+Set optional `display_name` on an event metric when the report should show a business-facing metric name. It applies to regular event metrics, saved metrics, and formula metrics. Omit it to use the event name or the default formula-metric label.
 
 Formula metric example:
 
@@ -136,6 +138,7 @@ Formula metric example:
   "time_range": {"mode": "previous", "unit": "day", "value": 7},
   "metrics": [
     {
+      "display_name": "Revenue per user",
       "formula": "revenue / users",
       "dependencies": [
         {"alias": "revenue", "event": "purchase", "aggregation": "sum", "property": "amount"},

@@ -6,6 +6,9 @@ import { groupCreate } from './group/create.js';
 import { groupDelete } from './group/delete.js';
 import { groupList } from './group/list.js';
 import { groupUpdate } from './group/update.js';
+import { taskIndicatorUserExport } from './indicator-user/export.js';
+import { taskIndicatorUserRun } from './indicator-user/run.js';
+import { taskIndicatorUserSql } from './indicator-user/sql.js';
 import { metricList } from './metric/list.js';
 import { metricUpdate } from './metric/update.js';
 import { operationLogQuery } from './operation-log/query.js';
@@ -24,6 +27,7 @@ import { taskList } from './task/list.js';
 import { taskManage } from './task/manage.js';
 import { taskSave } from './task/save.js';
 import { taskStats } from './task/stats.js';
+import { taskUserDetailExport } from './user-detail/export.js';
 
 const commands: Command[] = [
   taskList,
@@ -39,6 +43,9 @@ const commands: Command[] = [
   groupDelete,
   groupList,
   groupUpdate,
+  taskIndicatorUserSql,
+  taskIndicatorUserRun,
+  taskIndicatorUserExport,
   metricList,
   metricUpdate,
   operationLogQuery,
@@ -51,6 +58,7 @@ const commands: Command[] = [
   taskDelete,
   taskModifyGroup,
   taskSubmitApproval,
+  taskUserDetailExport,
 ];
 
 export { channelRefStats } from './channel-ref/stats.js';
@@ -60,6 +68,9 @@ export { groupCreate } from './group/create.js';
 export { groupDelete } from './group/delete.js';
 export { groupList } from './group/list.js';
 export { groupUpdate } from './group/update.js';
+export { taskIndicatorUserExport } from './indicator-user/export.js';
+export { taskIndicatorUserRun } from './indicator-user/run.js';
+export { taskIndicatorUserSql } from './indicator-user/sql.js';
 export { metricList } from './metric/list.js';
 export { metricUpdate } from './metric/update.js';
 export { operationLogQuery } from './operation-log/query.js';
@@ -78,5 +89,6 @@ export { taskList } from './task/list.js';
 export { taskManage } from './task/manage.js';
 export { taskSave } from './task/save.js';
 export { taskStats } from './task/stats.js';
+export { taskUserDetailExport } from './user-detail/export.js';
 
 export default commands;

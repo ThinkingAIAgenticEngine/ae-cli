@@ -143,6 +143,13 @@ const zoneOffsetFlag: Flag = {
   desc: 'Optional timezone offset. UTC+8 is 8; UTC-5 is -5.',
 };
 
+const autoRefreshCronFlag: Flag = {
+  name: 'auto-refresh-cron',
+  type: 'string',
+  required: false,
+  desc: 'Optional Quartz cron expression for an existing enabled auto-refresh schedule. This does not enable auto refresh.',
+};
+
 const entityIdFlag: Flag = {
   name: 'entity-id',
   type: 'number',
@@ -430,6 +437,7 @@ function clusterWriteInput(ctx: RuntimeContext, create: boolean): Record<string,
     authenticated_only: optionalBoolean(ctx, 'authenticated-only'),
     remark: create ? undefined : optionalString(ctx, 'remark'),
     zone_offset: optionalNumber(ctx, 'zone-offset'),
+    auto_refresh_cron: create ? undefined : optionalString(ctx, 'auto-refresh-cron'),
     entity_id: create ? optionalNumber(ctx, 'entity-id') : undefined,
   });
 }
@@ -445,6 +453,7 @@ function tagWriteInput(ctx: RuntimeContext, create: boolean): Record<string, unk
     authenticated_only: optionalBoolean(ctx, 'authenticated-only'),
     remark: create ? undefined : optionalString(ctx, 'remark'),
     zone_offset: optionalNumber(ctx, 'zone-offset'),
+    auto_refresh_cron: create ? undefined : optionalString(ctx, 'auto-refresh-cron'),
     entity_id: create ? optionalNumber(ctx, 'entity-id') : undefined,
   });
 }
@@ -633,6 +642,7 @@ const commands: Command[] = [
     authenticatedOnlyFlag,
     remarkFlag,
     zoneOffsetFlag,
+    autoRefreshCronFlag,
   ], 'write', (ctx) => clusterWriteInput(ctx, false)),
   idImportCapability(capability('user-cluster', 'create-id', 'analysis.user_cluster.create_id', 'Create a cluster by mapping imported values to an analysis entity.', [
     projectIdFlag,
@@ -726,6 +736,7 @@ const commands: Command[] = [
     authenticatedOnlyFlag,
     remarkFlag,
     zoneOffsetFlag,
+    autoRefreshCronFlag,
   ], 'write', (ctx) => tagWriteInput(ctx, false)),
   capability('user-tag', 'refresh', 'analysis.user_tag.refresh', 'Refresh a user tag by exact tag_name.', [
     projectIdFlag,

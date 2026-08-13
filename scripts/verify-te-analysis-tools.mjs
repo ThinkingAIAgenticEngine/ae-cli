@@ -307,7 +307,7 @@ const criticalReferenceTokens = {
   'skills/ae-analysis/references/analysis_data_retrieval.md': ['Default and maximum runtime is 21600 seconds (6 hours)', 'sources', 'synchronous'],
   'skills/ae-analysis/references/report_create.md': ['SQL dynamic parameter', '"use_timezone":true', 'boolean definition field', 'query the saved default first', '`report_id` returned by this exact create response'],
   'skills/ae-analysis/references/report_update.md': ['read the current `version` exactly once', 'query the saved default before applying an override'],
-  'skills/ae-analysis/references/report_list.md': ['narrow with `--query` or `--model-types` before paging', 'do not enumerate every report page'],
+  'skills/ae-analysis/references/report_list.md': ['group known names into one `--queries` call or narrow with `--model-types`', 'do not issue one list call per name'],
   'skills/ae-analysis/references/report_data_run.md': ['omit `--sql-params` to execute the saved default', 'then make one second call with `--sql-params`', '"recent_day":"1-7"', '`effective_zone_offset`'],
   'skills/ae-analysis/references/report_data_export.md': ['same export response'],
   'skills/ae-analysis/references/adhoc_run.md': ['current runtime synchronous maximum', 'go directly to `analysis adhoc export`', 'Do not lower the requested row count'],

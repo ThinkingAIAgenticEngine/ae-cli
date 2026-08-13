@@ -653,15 +653,53 @@ await test('metadata data-table sql-write normalizes columns to gateway schema',
   ]);
 });
 
+await test('analysis favorite commands expose one canonical asset identity', async () => {
+  const commands = [
+    ['src/commands/te-analysis/favorite/add.ts', 'favoriteAdd', 'analysis.favorite.add'],
+    ['src/commands/te-analysis/favorite/remove.ts', 'favoriteRemove', 'analysis.favorite.remove'],
+  ];
+  for (const [path, exportName, capabilityId] of commands) {
+    const cmd = await importCmd(path, exportName);
+    assert.equal(cmd.flags.find((flag) => flag.name === 'asset-id')?.required, true);
+    assert.equal(cmd.flags.find((flag) => flag.name === 'asset-type')?.required, true);
+    assert.equal(cmd.flags.some((flag) => flag.name === 'id'), false);
+    assert.equal(cmd.flags.some((flag) => flag.name === 'payload'), false);
+    const { url, body } = await captureCapabilityDryRun(cmd, {
+      projectId: 1,
+      assetId: 9,
+      assetType: 'dashboard',
+      spaceId: 3,
+    });
+    assert.equal(url, `${HOST}/api/cli/analysis/v1/capabilities/${capabilityId}/dry-run`);
+    assert.deepEqual(body.input, {
+      project_id: 1,
+      asset_id: 9,
+      asset_type: 'dashboard',
+      space_id: 3,
+    });
+  }
+});
+
 await test('analysis-meta metric create sends typed snake_case fields', async () => {
   const cmd = await importCmd('src/commands/te-analysis/meta/metric/create.ts', 'metadataMetricCreate');
+  assert.equal(cmd.flags.find((flag) => flag.name === 'model-type')?.required, true);
+  assert.equal(cmd.flags.some((flag) => flag.name === 'metric-mode'), false);
   const { url, body } = await captureCapabilityDryRun(cmd, {
     projectId: 1,
     metricName: 'pay_count',
     metricDesc: 'Pay Count',
-    metricMode: 0,
-    metricEvents: [{ eventName: 'pay', analysis: 'A101' }],
-    metricParams: {},
+    modelType: 'event',
+    metricEvents: [{
+      time_range: { mode: 'previous', unit: 'day', value: 7 },
+      metrics: [{
+        formula: 'finish / order',
+        dependencies: [
+          { alias: 'finish', event: 'purchase_finish', aggregation: 'total_count' },
+          { alias: 'order', event: 'order_create', aggregation: 'total_count' },
+        ],
+      }],
+    }],
+    metricParams: { format: 'percent' },
   });
   assert.equal(url, `${HOST}/api/cli/analysis/v1/capabilities/metadata.metric.create/dry-run`);
   assert.deepEqual(body.input, {
@@ -669,8 +707,17 @@ await test('analysis-meta metric create sends typed snake_case fields', async ()
     metric_name: 'pay_count',
     metric_desc: 'Pay Count',
     metric_mode: 0,
-    metric_events: [{ eventName: 'pay', analysis: 'A101' }],
-    metric_params: {},
+    metric_events: [{
+      time_range: { mode: 'previous', unit: 'day', value: 7 },
+      metrics: [{
+        formula: 'finish / order',
+        dependencies: [
+          { alias: 'finish', event: 'purchase_finish', aggregation: 'total_count' },
+          { alias: 'order', event: 'order_create', aggregation: 'total_count' },
+        ],
+      }],
+    }],
+    metric_params: { format: 'percent' },
   });
 });
 
@@ -681,8 +728,8 @@ await test('analysis-meta metric create maps model-type to metric_mode', async (
     metricName: 'retention_count',
     metricDesc: 'Retention Count',
     modelType: 'retention',
-    metricEvents: [{ eventName: 'login', type: 'first' }],
-    metricParams: { retentionType: 'retention' },
+    metricEvents: [{ event_name: 'login', type: 'first' }],
+    metricParams: { retention_type: 'retention' },
   });
   assert.equal(url, `${HOST}/api/cli/analysis/v1/capabilities/metadata.metric.create/dry-run`);
   assert.deepEqual(body.input, {
@@ -690,8 +737,8 @@ await test('analysis-meta metric create maps model-type to metric_mode', async (
     metric_name: 'retention_count',
     metric_desc: 'Retention Count',
     metric_mode: 1,
-    metric_events: [{ eventName: 'login', type: 'first' }],
-    metric_params: { retentionType: 'retention' },
+    metric_events: [{ event_name: 'login', type: 'first' }],
+    metric_params: { retention_type: 'retention' },
   });
 });
 
@@ -937,6 +984,34 @@ await test('analysis-meta virtual-property create builds v_prop from legacy type
   });
 });
 
+await test('analysis-meta virtual-property sql-rule-update keeps prop_id beside property', async () => {
+  const cmd = await importCmd(
+    'src/commands/te-analysis/meta/virtual-property/sql-rule-update.ts',
+    'metadataVirtualPropertySqlRuleUpdate',
+  );
+  const vProp = {
+    prop_id: 22990,
+    property: {
+      column_name: '#vp@finance_diamond_usd_monthly',
+      table_type: 'event',
+      select_type: 'number',
+    },
+  };
+  const { url, body } = await captureCapabilityDryRun(cmd, {
+    projectId: 3,
+    sqlExpression: '1',
+    vProp,
+    sqlEventRelationType: 'relation_default',
+  });
+  assert.equal(url, `${HOST}/api/cli/analysis/v1/capabilities/metadata.virtual_property.sql_rule_update/dry-run`);
+  assert.deepEqual(body.input, {
+    project_id: 3,
+    sql_expression: '1',
+    v_prop: vProp,
+    sql_event_relation_type: 'relation_default',
+  });
+});
+
 await test('analysis-meta event-property-bundle import pre-import sends input_file_id', async () => {
   const cmd = await importCmd(
     'src/commands/te-analysis/meta/super-metadata/import.ts',
@@ -1117,7 +1192,7 @@ await test('analysis input-file upload uses analysis gateway input-files endpoin
   });
 });
 
-await test('metadata property bind-existing-dimension-table maps to dimension-table binding capability', async () => {
+await test('metadata property bind-existing-dimension-table normalizes dictionary column names', async () => {
   const cmd = await importCmd(
     'src/commands/metadata/property/dimension-table/bind-existing.ts',
     'propertyDimensionTableBindExisting',
@@ -1140,7 +1215,7 @@ await test('metadata property bind-existing-dimension-table maps to dimension-ta
     property_scope: 'user',
     data_table_id: 42,
     timestamp_join_format: 'yyyy-MM-dd',
-    dict_columns: ['display_name'],
+    dict_columns: [{ column_name: 'display_name' }],
   });
 });
 

@@ -6,13 +6,12 @@ import {
   exportLifecycleInput,
   fieldsFlag,
   optionalJson,
-  optionalString,
   projectIdFlag,
   projectInput,
-  queryFlag,
   reportModelTypesFlag,
   requestIdFlag,
 } from '../capability-shared.js';
+import { optionalQueries, queriesFlag, validateQueriesFlag } from '../catalog-list.js';
 
 export const reportListExport = createAnalysisCapabilityCommand({
   resource: 'report',
@@ -22,7 +21,7 @@ export const reportListExport = createAnalysisCapabilityCommand({
   description: 'Export the accessible report catalog as a gzip artifact.',
   flags: [
     projectIdFlag,
-    queryFlag,
+    queriesFlag,
     fieldsFlag,
     reportModelTypesFlag,
     requestIdFlag,
@@ -30,9 +29,10 @@ export const reportListExport = createAnalysisCapabilityCommand({
     asyncTimeoutSecondsFlag,
   ],
   risk: 'read',
+  validate: validateQueriesFlag,
   buildInput: (ctx) => compactInput({
     ...projectInput(ctx),
-    query: optionalString(ctx, 'query'),
+    queries: optionalQueries(ctx),
     fields: optionalJson(ctx, 'fields'),
     model_types: optionalJson(ctx, 'model-types'),
     ...exportLifecycleInput(ctx),
