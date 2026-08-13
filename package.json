@@ -1,6 +1,6 @@
 {
   "name": "@thinkingai/ae-cli",
-  "version": "6.0.42",
+  "version": "6.1.14",
   "description": "CLI tool for ThinkingAI (AE) analytics platform",
   "type": "module",
   "bin": {
@@ -37,6 +37,7 @@
     "verify:retired-analysis-commands": "node --test test/retired-analysis-commands.test.mjs",
     "verify:retired-api-command": "node --test test/retired-api-command.test.mjs",
     "verify:analysis-common-tools": "node scripts/verify-te-common-tools.mjs",
+    "verify:experiment-tools": "node scripts/verify-te-experiment-tools.mjs && node --import tsx test/experiment/experiment-capability-command.test.mjs",
     "verify:team-tools": "node scripts/verify-te-team-tools.mjs",
     "verify:agent-tools": "node scripts/verify-agent-tools.mjs && npm run verify:sandbox-tools",
     "verify:memory": "tsx tests/memory-command.test.ts && tsx tests/memory-cli-client.test.ts && tsx tests/memory-skill.test.ts",
