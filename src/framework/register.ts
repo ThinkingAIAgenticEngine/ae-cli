@@ -37,7 +37,9 @@ export function registerCommands(program: CommanderCommand, commands: Command[])
       // Register flags
       for (const flag of cmd.flags) {
         const flagStr = buildFlagString(flag);
-        if (flag.type === 'boolean') {
+        if (flag.variadic) {
+          sub.option(flagStr, flag.desc, collectVariadic, []);
+        } else if (flag.type === 'boolean') {
           sub.option(flagStr, flag.desc, (value: string | undefined) => parseBooleanValue(value, flag.name));
         } else if (flag.default !== undefined) {
           sub.option(flagStr, flag.desc, String(flag.default));
@@ -75,7 +77,14 @@ function buildFlagString(flag: Flag): string {
   if (flag.type === 'boolean') {
     return `${short}${long} [value]`;
   }
+  // Variadic flags stay a single <value> placeholder: commander's custom collector (below)
+  // accumulates repeated occurrences. The native <value...> syntax self-accumulates and must not
+  // be combined with a collector.
   return `${short}${long} <value>`;
+}
+
+function collectVariadic(value: string, previous: string[] | undefined): string[] {
+  return (previous ?? []).concat([value]);
 }
 
 function parseBooleanValue(value: string | undefined, flagName: string): boolean | string {

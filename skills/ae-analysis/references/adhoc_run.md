@@ -66,4 +66,6 @@ Execution failures are returned as command failures with `request_id`; only the 
 
 The execute, `--validate`, and `--dry-run` paths all compile the AI-facing definition. If metadata resolution needs clarification, the command fails with `AI_QP_COMPILE_FAILED`; inspect `meta.compile_status`, `meta.errors[]`, `meta.resolved`, and `meta.warnings`. Each metadata error retains `path`, `slot_kind`, `raw_value`, `allowed_resource_types`, `search_targets`, and `candidates`. Follow [`../metadata_resolution.md`](../metadata_resolution.md); do not guess from display text.
 
+For a complex definition, finish the complete user-requested definition first, validate that exact definition once, and then run the same definition once. Never execute a simplified variant that omits requested filters or groups just to obtain a result. If validation rejects fields, inspect this command's model contract or capability schema once, correct all reported fields together, and revalidate the complete definition.
+
 Read [`analysis_drilldown_contract.md`](analysis_drilldown_contract.md). Use the context only with an action advertised by the selected source, call `analysis query-context get`, and assemble the coordinate only from its returned option fragments. Do not pass raw QP or infer a coordinate from display text.

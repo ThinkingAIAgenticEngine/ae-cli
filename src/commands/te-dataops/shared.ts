@@ -1,8 +1,15 @@
+import { randomBytes } from 'node:crypto';
+import { createWriteStream } from 'node:fs';
+import { mkdir, rename, unlink } from 'node:fs/promises';
+import { basename, dirname, join, resolve } from 'node:path';
+import { Readable } from 'node:stream';
+import { pipeline } from 'node:stream/promises';
 import { resolveHost } from '../../core/auth.js';
 import { getCliToken, clearCliToken } from '../../core/cli-token.js';
 import { PermissionError } from '../../core/errors.js';
 import { safeJsonParse } from '../../core/json-utils.js';
 import { logger } from '../../core/logger.js';
+import { internalCallSourceHeaders } from '../../core/internal-call-source.js';
 import type { DryRunResult, RuntimeContext } from '../../framework/types.js';
 
 type DataopsApiMethod = 'GET' | 'POST';
@@ -117,8 +124,9 @@ export async function downloadDataopsApi(
   ctx: RuntimeContext,
   path: string,
   params: Record<string, unknown>,
+  targetPath: string,
   retry = true,
-): Promise<Buffer> {
+): Promise<string> {
   const host = resolveHost(ctx.host());
   const token = await getCliToken(host);
   const url = buildUrl(host, path, compactArgs(params));
@@ -127,7 +135,7 @@ export async function downloadDataopsApi(
     headers: {
       'cli-token': token,
       'Accept': '*/*',
-      
+      ...internalCallSourceHeaders(),
     },
   });
 
@@ -137,13 +145,35 @@ export async function downloadDataopsApi(
   }
   if (resp.status === 401 && retry) {
     clearCliToken(host);
-    return downloadDataopsApi(ctx, path, params, false);
+    return downloadDataopsApi(ctx, path, params, targetPath, false);
   }
   if (!resp.ok) {
     const data = parseResponseBody(await resp.text(), url, resp.status, true);
     throw new Error(formatHttpError(resp.status, resp.statusText, data));
   }
-  return Buffer.from(await resp.arrayBuffer());
+  if (!resp.body) {
+    throw new Error('DataOps download response has no body.');
+  }
+
+  const outputPath = resolve(targetPath);
+  await mkdir(dirname(outputPath), { recursive: true });
+  const tempPath = join(
+    dirname(outputPath),
+    `.${basename(outputPath)}.part-${process.pid}-${randomBytes(6).toString('hex')}`,
+  );
+  let tempPresent = false;
+  try {
+    tempPresent = true;
+    await pipeline(
+      Readable.fromWeb(resp.body as any),
+      createWriteStream(tempPath, { flags: 'wx' }),
+    );
+    await rename(tempPath, outputPath);
+    tempPresent = false;
+    return outputPath;
+  } finally {
+    if (tempPresent) await unlink(tempPath).catch(() => undefined);
+  }
 }
 
 async function dataopsRequest(
@@ -161,7 +191,7 @@ async function dataopsRequest(
     'cli-token': token,
     'Accept': 'application/json',
     'Content-Type': 'application/json',
-    
+    ...internalCallSourceHeaders(),
   };
   const options: RequestInit = { method, headers };
   if (method !== 'GET') {

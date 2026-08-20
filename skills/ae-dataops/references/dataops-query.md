@@ -61,7 +61,7 @@ ae-cli dataops_ide +search_tables --spaceCode "${spaceCode}" --searchKey "user"
 
 ## Workflow C: Execute SQL Query (Download-Centered Async Flow)
 
-Use this flow for SQL query execution. Result rows are not returned through MCP/CLI; submit creates a Gaia download-center task directly.
+Use this flow for exactly one read-only SQL query. Result rows are not returned through MCP/CLI; submit creates a Gaia download-center task directly. The query semantics are preserved, but the result remains platform-bounded; when present, `downloadRowLimit` reports that cap. This is not an unlimited or full export.
 
 ```bash
 # Step 1: Submit SQL and create a download task. Defaults: repoCode=te_etl, engineType=TASK_ENGINE_TRINO.
@@ -72,7 +72,7 @@ ae-cli dataops_ide +submit_sql_query --spaceCode "${spaceCode}" --repoCode "te_e
 # Step 2: Poll the download task status by spaceCode/downloadTaskId. Rows are not returned through MCP/CLI.
 ae-cli dataops_ide +get_sql_query_status --spaceCode "${spaceCode}" --downloadTaskId ${downloadTaskId}
 
-# Step 3: CLI-only local save after downloadStatus=SUCCESS. Use a .zip suffix.
+# Step 3: CLI-only streaming save after downloadStatus=SUCCESS. The target is replaced only after the stream completes.
 ae-cli dataops_ide +get_sql_query_status --spaceCode "${spaceCode}" --downloadTaskId ${downloadTaskId} --downloadTo "./result.zip"
 
 # (Optional) Cancel the download task.
@@ -104,8 +104,8 @@ ae-cli dataops_ide +cancel_sql_query --spaceCode "${spaceCode}" --downloadTaskId
 - **Table search**: `+search_tables` requires `--spaceCode` and `--searchKey`. `--connType`, `--repoCode`, and `--size` are optional and default to `SPACE`, `te_etl`, and `20`. It returns `items`, `searchKey`, `size`, `totalCount`, `tableCount`, `viewCount`, `returnedCount`, `hasMore`, and `nextAction`.
 - **Table detail**: `+ide_get_table_detail` requires `--spaceCode`, `--catalog`, `--schema`, and `--tableName`. `--connType`, `--repoCode`, `--engineType`, `--entityType`, and `--includeDdl` are optional and default to `SPACE`, `te_etl`, `TASK_ENGINE_TRINO`, auto-detect, and `false`. It returns identity, storage metadata, columns, partitions, partition keys, optional layout fields, and `tableDdl` only when requested.
 - **Schema info**: `+get_schema_info` requires `--spaceCode`, `--catalog`, and `--schema`. `--connType` and `--repoCode` are optional and default to `SPACE` and `te_etl`. It returns only `schema`, `tableNum`, and `viewNum`.
-- **SQL submit**: `+submit_sql_query` requires `--spaceCode` and `--sql`. `--repoCode` and `--engineType` are optional and default to `te_etl` and `TASK_ENGINE_TRINO`. On success it returns `requestId`, `spaceCode`, `repoCode`, `downloadTaskId`, `downloadStatus`, `downloadApi`, `downloadParams`, and `nextAction`; rows are never returned.
-- **SQL status**: `+get_sql_query_status` requires `--spaceCode` and `--downloadTaskId`. `--requestId` is optional trace-only. `--downloadTo` is CLI-only; after `downloadStatus=SUCCESS` it saves the result zip and adds `localFile`. It returns status/progress metadata, `nextAction`, `downloadApi`, and `downloadParams`; rows are never returned.
+- **SQL submit**: `+submit_sql_query` requires `--spaceCode` and exactly one read-only query in `--sql`. `--repoCode` and `--engineType` are optional and default to `te_etl` and `TASK_ENGINE_TRINO`. On success it returns task metadata and, when exposed by Gaia, `downloadRowLimit`; rows are never returned and the result remains platform-bounded.
+- **SQL status**: `+get_sql_query_status` requires `--spaceCode` and `--downloadTaskId`. `--requestId` is optional trace-only. `--downloadTo` is CLI-only; after `downloadStatus=SUCCESS` it streams the result zip to a temporary sibling file, publishes it only after completion, and adds `localFile`. It returns status/progress metadata, `nextAction`, `downloadApi`, and `downloadParams`; rows are never returned.
 - **SQL cancel**: `+cancel_sql_query` requires `--spaceCode` and `--downloadTaskId`. `--requestId` is optional trace-only. It returns cancellation request metadata such as `downloadCancelStatus`.
 - **engineType**: `TASK_ENGINE_TRINO` (default, interactive queries) | `TASK_ENGINE_STARROCKS` (high-concurrency analytics)
 - **entityType**: optional `TABLE` or `VIEW` hint. Omit it unless the target type must be forced.

@@ -1,9 +1,9 @@
 /**
  * ae-cli agent command domain
  *
- * Unified export of 69 commands across Agent CRUD, conversations, automations, models,
+ * Unified export of 82 commands across Agent CRUD, conversations, automations, models,
  * MCP CRUD + market + OAuth + credentials, Skills CRUD + market + copy +
- * content + assets + approval + share, attachments, sandbox tools.
+ * content + assets + approval + share, generic approvals, attachments, sandbox tools.
  */
 
 import type { Command } from '../../framework/types.js';
@@ -78,6 +78,21 @@ import { listAttachments, addAttachment, delAttachment, attachmentStats } from '
 import { createAutomation, listAutomations, updateAutomation } from './automations.js';
 import { listSandboxTools } from './sandbox-tools.js';
 import { findArchivedConversations, restoreConversation } from './conversations.js';
+import {
+  approveApprovalTask,
+  cancelApprovalRequest,
+  getApprovalRequest,
+  getApprovalTask,
+  getApprovalType,
+  getApprovalEffect,
+  listApprovalEffects,
+  listApprovalRequests,
+  listApprovalTasks,
+  listApprovalTypes,
+  rejectApprovalTask,
+  retryApprovalEffect,
+  submitApprovalRequest,
+} from './approval-commands.js';
 
 const commands: Command[] = [
   // Agent CRUD
@@ -98,6 +113,11 @@ const commands: Command[] = [
   uploadSkill, rescanSkills,
   // Skill approval (company-scope publish)
   submitSkill, listSkillSubmissions, cancelSkillSubmission, approveSkill, rejectSkill,
+  // Generic versioned approval workflow
+  listApprovalTypes, getApprovalType,
+  listApprovalRequests, getApprovalRequest, submitApprovalRequest, cancelApprovalRequest,
+  listApprovalTasks, getApprovalTask, approveApprovalTask, rejectApprovalTask,
+  listApprovalEffects, getApprovalEffect, retryApprovalEffect,
   // Skill share (peer-to-peer)
   shareSkill, listSkillShares, acceptSkillShare, rejectSkillShare,
   // Attachment library management

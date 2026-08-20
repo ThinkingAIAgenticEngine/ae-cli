@@ -9,6 +9,7 @@ import { getCliToken, clearCliToken } from './cli-token.js';
 import { safeJsonParse } from './json-utils.js';
 import { logger } from './logger.js';
 import { PermissionError } from './errors.js';
+import { internalCallSourceHeaders } from './internal-call-source.js';
 import { readFile } from 'node:fs/promises';
 import { basename } from 'node:path';
 
@@ -19,6 +20,8 @@ export type CapabilityApiRequestOptions = {
   apiBaseUrl?: string;
   /** Retry once with a refreshed CLI token after HTTP 401. Defaults to true. */
   retryOnUnauthorized?: boolean;
+  /** Retry a legacy invalid-token HTTP 403 once. Defaults to true for existing callers. */
+  retryOnInvalidTokenForbidden?: boolean;
 };
 
 export interface CapabilityGatewaySuccess<T = any> {
@@ -189,7 +192,7 @@ async function requestOnce(
   const headers: Record<string, string> = {
     'cli-token': token,
     'Accept': accept,
-    
+    ...internalCallSourceHeaders(),
   };
   const init: RequestInit = { method, headers };
   if (body !== undefined && method !== 'GET') {
@@ -205,7 +208,7 @@ async function requestMultipartOnce(url: string, token: string, form: FormData):
     headers: {
       'cli-token': token,
       'Accept': 'application/json',
-      
+      ...internalCallSourceHeaders(),
     },
     body: form,
   });
@@ -217,7 +220,7 @@ async function requestDownloadOnce(url: string, token: string): Promise<Response
     headers: {
       'cli-token': token,
       'Accept': '*/*',
-      
+      ...internalCallSourceHeaders(),
     },
   });
 }
@@ -252,7 +255,10 @@ async function callGatewayWithEnvelope(
   if (resp.status === 403) {
     const error = await permissionError(resp);
     permissionMsg = error.message;
-    if (!isInvalidCliTokenMessage(permissionMsg)) {
+    if (
+      options.retryOnInvalidTokenForbidden === false
+      || !isInvalidCliTokenMessage(permissionMsg)
+    ) {
       throw error;
     }
   }

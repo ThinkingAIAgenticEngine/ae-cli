@@ -1,0 +1,11 @@
+user_id,status,score,is_active,notes
+u001,active,95,true,正常数据
+u002,inactive,88,false,
+u003,pending,,true,缺少分数
+u004,,100,,缺少状态和活跃标志
+u005,active,N/A,true,无效分数
+u006,active,0,false,零分
+u007,active,-1,true,负分
+u008,active,999.99,1,布尔值用数字
+u009,active,75.5,0,布尔值用数字
+u010,active,60.12345,true,多位小数

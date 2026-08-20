@@ -1,9 +1,9 @@
 export type PropType = 'string' | 'number' | 'bool' | 'datetime' | 'object' | 'array_row' | 'array_string';
 export type UpdateType = 'user_set' | 'user_setOnce' | 'user_add';
-export type Source = 'template' | 'prd' | 'chat' | 'codebase' | 'website' | 'autotrack' | 'business_dimension';
+export type Source = 'template' | 'prd' | 'chat' | 'codebase' | 'website' | 'autotrack' | 'business_dimension' | 'data';
 
 // SDK 集成模式
-export type SDKIntegrationMode = 'client_only' | 'server_only' | 'both';
+export type SDKIntegrationMode = 'client_only' | 'server_only' | 'both' | 'none';
 
 // 事件上报平台
 export type EventPlatform = 'client' | 'server' | 'both';

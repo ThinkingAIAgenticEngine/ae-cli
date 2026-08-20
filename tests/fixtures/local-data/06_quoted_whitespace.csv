@@ -1,0 +1,5 @@
+    user_id   , event_name ,  amount  , status
+ 'u001' , "purchase" , '99.50' , "completed"
+ 'u002' , 'login' ,  ''  , "success"
+"u003" , "purchase" , "150.00" , 'pending'
+u004,refund,75.00,completed

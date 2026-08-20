@@ -19,6 +19,7 @@
 
 import { execFileSync } from 'node:child_process';
 import { logger } from './logger.js';
+import { PermissionError } from './errors.js';
 
 // ---------- Types ----------
 
@@ -176,6 +177,7 @@ export type PollResult =
   | { status: 'slow_down' }
   | { status: 'expired' }
   | { status: 'unsupported' }
+  | { status: 'denied'; code: string; message: string; hint?: string }
   | { status: 'error'; message: string };
 
 export async function pollDeviceToken(host: string, deviceCode: string): Promise<PollResult> {
@@ -218,6 +220,21 @@ export async function pollDeviceToken(host: string, deviceCode: string): Promise
     if (err === 'slow_down') return { status: 'slow_down' };
     if (err === 'expired_token') return { status: 'expired' };
     return { status: 'error', message: `Unknown error: ${err ?? 'unknown'}` };
+  }
+
+  if (resp.status === 403) {
+    let errorBody: { code?: string; message?: string; hint?: string; error?: string } = {};
+    try {
+      errorBody = await resp.json() as typeof errorBody;
+    } catch {
+      // Fall through to the stable permission defaults below.
+    }
+    return {
+      status: 'denied',
+      code: errorBody.code ?? 'CLI_ACCESS_DISABLED',
+      message: errorBody.message ?? errorBody.error ?? 'CLI access is disabled for this account.',
+      hint: errorBody.hint,
+    };
   }
 
   // F-012: an old server without the device-code endpoint returns 404 or an HTML SPA page — fatal "unsupported" signal
@@ -305,6 +322,10 @@ export async function pollDeviceFlow(
       throw new Error(
         `Device code has expired. Please run ae-cli auth login again to restart the authorization flow.`,
       );
+    }
+
+    if (result.status === 'denied') {
+      throw new PermissionError(result.message, result.code, result.hint);
     }
 
     if (result.status === 'unsupported') {

@@ -20,6 +20,10 @@ const dashboardRun = readFileSync(
   new URL('../skills/ae-analysis/references/dashboard_report_data_run.md', import.meta.url),
   'utf8',
 );
+const dashboardGet = readFileSync(
+  new URL('../skills/ae-analysis/references/dashboard_get.md', import.meta.url),
+  'utf8',
+);
 const reportCreate = readFileSync(new URL('../skills/ae-analysis/references/report_create.md', import.meta.url), 'utf8');
 const reportUpdate = readFileSync(new URL('../skills/ae-analysis/references/report_update.md', import.meta.url), 'utf8');
 const reportList = readFileSync(new URL('../skills/ae-analysis/references/report_list.md', import.meta.url), 'utf8');
@@ -73,8 +77,10 @@ const analysisToolsDoc = readFileSync(
   'utf8',
 );
 
-assert.match(skill, /search only the matching row/);
-assert.match(skill, /do not read the exhaustive index end to end/);
+assert.match(skill, /Map the request to a command family before opening any reference/);
+assert.match(skill, /retention request goes directly to `references\/adhoc_run\.md`.*`retention` section.*`references\/ai_models\.md`/i);
+assert.match(skill, /`command_index\.md` is a search-only fallback/);
+assert.match(skill, /never open it with a whole-file read or print the entire file/i);
 assert.match(skill, /analysis boards, BI dashboards/);
 assert.match(skill, /native `analysis user-tag \.\.\.` and `analysis user-cluster \.\.\.`/);
 assert.match(skill, /member list commands are the exception: omission defaults to 1000 rows/);
@@ -144,6 +150,12 @@ assert.doesNotMatch(biPanelUpdate, /--payload/);
 
 assert.match(dashboardRun, /empty dashboard batch or report result with no rows is a successful query/i);
 assert.doesNotMatch(dashboardRun, /selected report IDs return no entries.*fails/i);
+assert.match(dashboardRun, /run `ae-cli analysis dashboard get` exactly once/i);
+assert.match(dashboardRun, /folder_name.*dashboard_name.*notes/is);
+assert.match(dashboardGet, /location.*space_id.*space_name.*folder_id.*folder_name/is);
+assert.match(dashboardGet, /notes.*note_id.*note_title.*description/is);
+assert.match(skill, /Before querying a selected dashboard's report data.*dashboard get/is);
+assert.match(skill, /folder_name.*dashboard_name.*notes/is);
 assert.match(adhocRun, /--timeout-seconds` defaults to 120 and has a maximum of 180/);
 assert.match(adhocRun, /path.*per path level.*`more`/i);
 assert.match(adhocRun, /returned_rows.*real business nodes.*excludes synthesized.*more/is);
@@ -210,6 +222,24 @@ assert.match(aiModels, /only valid for `part_date`/i);
 assert.match(aiModels, /Distribution filters must be attached to the corresponding `distribution_metrics\[\]\.filters`/);
 assert.match(aiModels, /`event`: without property use `total_count`, `user_count`, or `per_user_count`/);
 assert.match(aiModels, /`retention` simultaneous metrics: without property use `total_count`, `user_count`, or `per_user_count`/);
+assert.match(aiModels, /Initial-event and return-event property filters use the retention-specific shape/i);
+assert.match(aiModels, /Do not use top-level `filters`, `retention\.filters`, or `initial_event_filters`/);
+const retentionFilterExampleMatch = aiModels.match(
+  /Initial-event and return-event property filters use the retention-specific shape[\s\S]*?```json\n([\s\S]*?)\n```/i,
+);
+assert.ok(retentionFilterExampleMatch, 'retention filter example must contain a JSON block');
+const retentionFilterExample = JSON.parse(retentionFilterExampleMatch[1]) as {
+  retention: {
+    initial_filters: Array<{ event_property_name: string }>;
+    initial_filter_relation: string;
+    return_filters: Array<{ event_property_name: string }>;
+    return_filter_relation: string;
+  };
+};
+assert.equal(retentionFilterExample.retention.initial_filters[0]?.event_property_name, 'case_id');
+assert.equal(retentionFilterExample.retention.initial_filter_relation, 'and');
+assert.equal(retentionFilterExample.retention.return_filters[0]?.event_property_name, 'case_id');
+assert.equal(retentionFilterExample.retention.return_filter_relation, 'and');
 assert.match(aiModels, /`distribution`: without property use `count`, `active_days`, or `active_hours`/);
 assert.match(aiModels, /`attribution`: use `total_count` without `target_property`, or `sum` with a numeric `target_property`/);
 assert.match(aiModels, /`prop_analysis`: use `user_count` without property/);
@@ -220,6 +250,11 @@ assert.doesNotMatch(aiModels, /"target_aggregation": "user_count"/);
 assert.match(aiModels, /Do not use top-level `filters` or `relation` in a distribution definition/);
 assert.match(commandIndex, /global filters support user_property, cluster, and tag only/);
 assert.match(commandIndex, /express one day as session_interval=24 and session_unit=hour/);
+assert.match(commandIndex, /Search-only fallback/);
+assert.match(commandIndex, /Never load or print this exhaustive file in full/);
+assert.match(adhocRun, /validate that exact definition once.*run the same definition once/is);
+assert.match(adhocRun, /Never execute a simplified variant that omits requested filters or groups/i);
+assert.match(adhocRun, /inspect this command's model contract or capability schema once/i);
 assert.doesNotMatch(capabilitySkill, /sql-write .*--yes/);
 assert.doesNotMatch(capabilityCommandSource, /dashboard\.list .*--yes/);
 

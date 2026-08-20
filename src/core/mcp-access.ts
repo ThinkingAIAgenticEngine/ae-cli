@@ -36,7 +36,7 @@ function parseKbResponse(resp: Response, text: string): any {
   }
   if (resp.status === 401) {
     throw new Error(
-      `KB MCP token auth failed: HTTP ${resp.status} ${resp.statusText}`,
+      `KB API token auth failed: HTTP ${resp.status} ${resp.statusText}`,
     );
   }
 
@@ -44,7 +44,7 @@ function parseKbResponse(resp: Response, text: string): any {
 
   if (data.return_code === -1001) {
     throw new Error(
-      `KB MCP token auth failed: ${data.return_message || "unauthorized"} (code: ${data.return_code})`,
+      `KB API token auth failed: ${data.return_message || "unauthorized"} (code: ${data.return_code})`,
     );
   }
 

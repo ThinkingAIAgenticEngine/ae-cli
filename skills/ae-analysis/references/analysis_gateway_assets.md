@@ -97,8 +97,8 @@ Prefer the run/artifact commands over hand-written HTTP, Python, or curl. Analys
 | `dashboard-report add` | `analysis.dashboard_report.add` | Add reports to a dashboard | `--dashboard-id`, `--report-ids` | Add result |
 | `dashboard list` | `analysis.dashboard.list` | Find accessible dashboards | `--project-id`, optional `--queries`, `--fields`, `--limit`, `--offset` | Paginated dashboard summaries |
 | `dashboard create` | `analysis.dashboard.create` | Create a dashboard | `--project-id`, `--dashboard-name`, optional `--space-id`, `--folder-id` | Created dashboard |
-| `dashboard get` | `analysis.dashboard.get` | Inspect one dashboard definition/share/report structure, including creator and creation/update time | `--project-id`, `--dashboard-id` | Dashboard detail |
-| `dashboard update` | `analysis.dashboard.update` | Update settings or upsert a note | `--operation settings|note-upsert`, IDs, optional `--payload` | Update result |
+| `dashboard get` | `analysis.dashboard.get` | Inspect one dashboard location/definition/share/report structure, including notes, creator, and creation/update time | `--project-id`, `--dashboard-id` | Dashboard detail with location and normalized notes |
+| `dashboard update` | `analysis.dashboard.update` | Update settings, upsert a note, or replace the dashboard-level business filter | `--operation settings|note-upsert|business-filter`, IDs, optional `--filter`/`--payload` | Update result |
 | `dashboard share-info` | `analysis.dashboard.share_info` | Read dashboard sharing info | `--project-id`, `--dashboard-id` | Share info |
 | `dashboard share` | `analysis.dashboard.share` | Modify dashboard sharing | `--project-id`, `--dashboard-id`, `--payload` or `--member-authorities` | Share update result |
 | `dashboard delete` | `analysis.dashboard.delete` | Delete dashboards | `--project-id`, `--dashboard-ids '[...]'` | Delete result |
@@ -130,6 +130,7 @@ Prefer the run/artifact commands over hand-written HTTP, Python, or curl. Analys
 | `bi-panel-page-data run` | `analysis.bi_panel_page_data.run` | Bounded inline BI page data | `--panel-id`, `--page-key`, `--result-type charts|summary` | Inline page data |
 | `bi-panel-page-data export` | `analysis.bi_panel_page_data.export` | Large/long BI page data | same as run, optional `--artifact-format jsonl` | Async artifact descriptor |
 | `project-space list` | `analysis.project_space.list` | Find accessible project spaces | `--project-id`, optional list filters | Paginated project spaces |
+| `project-space business-filter-upsert` | `analysis.project_space.business_filter_upsert` | Create or replace the space-level business filter | `--project-id`, `--space-id`, `--filter` | Saved space filter |
 | `project-space get` | `analysis.project_space.get` | Inspect one project space | `--project-id`, `--space-id` | Project space detail |
 | `favorite add` | `analysis.favorite.add` | Favorite dashboard/BI/folder | required `--asset-id`, `--asset-type`; optional `--space-id` | Favorite result |
 | `favorite remove` | `analysis.favorite.remove` | Remove favorite | same as add | Remove result |

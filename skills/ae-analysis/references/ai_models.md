@@ -178,6 +178,33 @@ Use for retained/lost users from an initial event to a return event.
 
 Use `stat_type=lost` for lost-user analysis. Use `rtn_rate_or_num=count` when the user asks for user counts instead of rates.
 
+Initial-event and return-event property filters use the retention-specific shape below. Put them inside `retention`; use `event_property_name` instead of a generic `field` object. Do not use top-level `filters`, `retention.filters`, or `initial_event_filters`.
+
+```json
+{
+  "time_range": {"mode": "custom", "start_time": "2026-08-18 00:00:00", "end_time": "2026-08-18 23:59:59"},
+  "time_particle_size": "day",
+  "retention": {
+    "initial_event": "register",
+    "initial_filters": [
+      {"event_property_name": "case_id", "operator": "eq", "values": ["retention_test"]}
+    ],
+    "initial_filter_relation": "and",
+    "return_event": "login",
+    "return_filters": [
+      {"event_property_name": "case_id", "operator": "eq", "values": ["retention_test"]}
+    ],
+    "return_filter_relation": "and",
+    "stat_type": "retention",
+    "unit_num": 1,
+    "rtn_rate_or_num": "rate",
+    "groups": [
+      {"field": {"name": "channel", "type": "event_property"}}
+    ]
+  }
+}
+```
+
 ### `funnel`
 
 Use for ordered conversion steps with a conversion window.

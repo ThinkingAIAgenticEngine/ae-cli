@@ -1,0 +1,6 @@
+user_id,product_id,product_name,sku_code,zip_code
+u001,1001,无线耳机,sku_a001,310000
+u002,1002,机械键盘,sku_b002,100080
+u003,1003,显示器,sku_c003,510000
+u004,1004,鼠标,sku_d004,210000
+u005,1005,充电器,sku_e005,710000

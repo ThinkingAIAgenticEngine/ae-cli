@@ -1,0 +1,4 @@
+{"user_id":"u001","event_name":"purchase","amount":99.5}
+{"user_id":"u002","event_name":"login","status":"success","is_vip":false}
+{"user_id":"u003","city":"上海","channel":"app","order_time":"2024-01-15 12:30:00"}
+{"user_id":"u004","event_name":"refund","amount":50,"status":"completed","is_vip":true,"city":"北京","channel":"web","order_time":"2024-01-16 09:00:00","note":"damaged"}

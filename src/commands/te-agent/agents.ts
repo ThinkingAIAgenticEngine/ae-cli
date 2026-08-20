@@ -10,11 +10,11 @@
 
 import type { Command } from "../../framework/types.js";
 import {
-  getFromMainApp,
-  postToMainApp,
-  patchToMainApp,
-  deleteFromMainApp,
-} from "../../core/te-agent-client.js";
+  deleteAgentApi,
+  getAgentApi,
+  patchAgentApi,
+  postAgentApi,
+} from "./api-client.js";
 
 const BASE_PATH = "/api/sandbox/agent/agents";
 
@@ -56,7 +56,7 @@ export const listAgents: Command = {
     }
   },
   dryRun: (ctx) => ({ method: "GET", url: `${BASE_PATH}${buildQuery(ctx)}` }),
-  execute: async (ctx) => getFromMainApp(`${BASE_PATH}${buildQuery(ctx)}`),
+  execute: async (ctx) => getAgentApi(ctx, `${BASE_PATH}${buildQuery(ctx)}`),
 };
 
 /**
@@ -134,7 +134,7 @@ export const createAgent: Command = {
     const skillIds = ctx.json("skillIds");
     if (skillIds) body.skillIds = skillIds;
     if (ctx.bool("autoRename")) body.autoRename = true;
-    return postToMainApp(BASE_PATH, body);
+    return postAgentApi(ctx, BASE_PATH, body);
   },
 };
 
@@ -193,7 +193,7 @@ export const updateAgent: Command = {
     if (skillIds) body.skillIds = skillIds;
     // Boolean --enabled: distinguish "not provided" (omit) from explicit true/false
     if (ctx.str("enabled")) body.enabled = ctx.bool("enabled");
-    return patchToMainApp(`${BASE_PATH}/${encodeURIComponent(ctx.str("id"))}`, body);
+    return patchAgentApi(ctx, `${BASE_PATH}/${encodeURIComponent(ctx.str("id"))}`, body);
   },
 };
 
@@ -210,7 +210,7 @@ export const delAgent: Command = {
     url: `${BASE_PATH}/${encodeURIComponent(ctx.str("id"))}`,
   }),
   execute: async (ctx) => {
-    return deleteFromMainApp(`${BASE_PATH}/${encodeURIComponent(ctx.str("id"))}`);
+    return deleteAgentApi(ctx, `${BASE_PATH}/${encodeURIComponent(ctx.str("id"))}`);
   },
 };
 
@@ -227,6 +227,6 @@ export const getAgent: Command = {
     url: `${BASE_PATH}/${encodeURIComponent(ctx.str("id"))}`,
   }),
   execute: async (ctx) => {
-    return getFromMainApp(`${BASE_PATH}/${encodeURIComponent(ctx.str("id"))}`);
+    return getAgentApi(ctx, `${BASE_PATH}/${encodeURIComponent(ctx.str("id"))}`);
   },
 };

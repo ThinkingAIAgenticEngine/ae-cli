@@ -26,11 +26,11 @@
 
 import type { Command, RuntimeContext } from '../../framework/types.js';
 import {
-  getFromMainApp,
-  postToMainApp,
-  deleteFromMainApp,
-  patchToMainApp,
-} from '../../core/te-agent-client.js';
+  deleteAgentApi,
+  getAgentApi,
+  patchAgentApi,
+  postAgentApi,
+} from './api-client.js';
 import {
   MARKET_CATEGORIES,
   MARKET_SCOPES,
@@ -79,7 +79,7 @@ export const listMcps: Command = {
   execute: async (ctx) => {
     const scope = ctx.str('scope');
     const qs = scope ? `?scope=${encodeURIComponent(scope)}` : '';
-    return getFromMainApp(`${BASE_PATH}${qs}`);
+    return getAgentApi(ctx, `${BASE_PATH}${qs}`);
   },
 };
 
@@ -141,7 +141,7 @@ export const addMcp: Command = {
     return { method: 'POST', url: BASE_PATH, body };
   },
   execute: async (ctx) => {
-    const created = await postToMainApp<{ item: { id: string; name: string; displayName: string | null } }>(BASE_PATH, {
+    const created = await postAgentApi<{ item: { id: string; name: string; displayName: string | null } }>(ctx, BASE_PATH, {
       name: ctx.str('name'),
       url: ctx.str('url'),
       displayName: ctx.str('displayName') || undefined,
@@ -154,7 +154,7 @@ export const addMcp: Command = {
     const meta = buildMetaBody(ctx);
     if (id && meta) {
       try {
-        await patchToMainApp(`${MARKET_BASE_PATH}/${encodeURIComponent(id)}/meta`, meta);
+        await patchAgentApi(ctx, `${MARKET_BASE_PATH}/${encodeURIComponent(id)}/meta`, meta);
       } catch (err: any) {
         process.stderr.write(`Warning: MCP created but meta update failed: ${err?.message ?? err}\n`);
       }
@@ -176,7 +176,7 @@ export const delMcp: Command = {
     url: `${BASE_PATH}?id=${encodeURIComponent(ctx.str('id'))}`,
   }),
   execute: async (ctx) => {
-    return deleteFromMainApp(`${BASE_PATH}?id=${encodeURIComponent(ctx.str('id'))}`);
+    return deleteAgentApi(ctx, `${BASE_PATH}?id=${encodeURIComponent(ctx.str('id'))}`);
   },
 };
 
@@ -195,7 +195,7 @@ export const toggleMcp: Command = {
     body: { id: ctx.str('id'), enabled: ctx.bool('enabled') },
   }),
   execute: async (ctx) => {
-    return patchToMainApp(BASE_PATH, {
+    return patchAgentApi(ctx, BASE_PATH, {
       id: ctx.str('id'),
       enabled: ctx.bool('enabled'),
     });
@@ -234,7 +234,7 @@ export const listMcpMarket: Command = {
     url: `${MARKET_BASE_PATH}/market?${buildMarketQuery(ctx).toString()}`,
   }),
   execute: async (ctx) => {
-    return getFromMainApp(`${MARKET_BASE_PATH}/market?${buildMarketQuery(ctx).toString()}`);
+    return getAgentApi(ctx, `${MARKET_BASE_PATH}/market?${buildMarketQuery(ctx).toString()}`);
   },
 };
 
@@ -264,7 +264,8 @@ export const setMcpMeta: Command = {
     body: buildMetaBody(ctx),
   }),
   execute: async (ctx) => {
-    return patchToMainApp(
+    return patchAgentApi(
+      ctx,
       `${MARKET_BASE_PATH}/${encodeURIComponent(ctx.str('id'))}/meta`,
       buildMetaBody(ctx),
     );
@@ -363,7 +364,8 @@ export const updateMcp: Command = {
     body: buildUpdateBody(ctx),
   }),
   execute: async (ctx) => {
-    return patchToMainApp(
+    return patchAgentApi(
+      ctx,
       `${BASE_PATH}/${encodeURIComponent(ctx.str('id'))}`,
       buildUpdateBody(ctx),
     );
@@ -383,7 +385,7 @@ export const mcpTools: Command = {
     url: `${BASE_PATH}/${encodeURIComponent(ctx.str('id'))}/tools`,
   }),
   execute: async (ctx) => {
-    return getFromMainApp(`${BASE_PATH}/${encodeURIComponent(ctx.str('id'))}/tools`);
+    return getAgentApi(ctx, `${BASE_PATH}/${encodeURIComponent(ctx.str('id'))}/tools`);
   },
 };
 
@@ -408,12 +410,13 @@ export const mcpAuthStart: Command = {
   execute: async (ctx) => {
     // The sandbox endpoint always sets cliMode=true server-side; the --cli flag is
     // for documentation/compat only and is not sent in the body.
-    const result = await postToMainApp<{
+    const result = await postAgentApi<{
       authorizeUrl: string;
       expiresAt: string;
       redirectUri: string;
       server: { id: string; name: string; displayName: string | null; scope: string; providerKey: string | null };
     }>(
+      ctx,
       `${BASE_PATH}/${encodeURIComponent(ctx.str('id'))}/auth/start`,
       {
         redirectAfter: ctx.str('redirectAfter') || undefined,
@@ -446,7 +449,7 @@ export const mcpAuthStatus: Command = {
     url: `${BASE_PATH}/${encodeURIComponent(ctx.str('id'))}/auth/status`,
   }),
   execute: async (ctx) => {
-    return getFromMainApp(`${BASE_PATH}/${encodeURIComponent(ctx.str('id'))}/auth/status`);
+    return getAgentApi(ctx, `${BASE_PATH}/${encodeURIComponent(ctx.str('id'))}/auth/status`);
   },
 };
 
@@ -463,7 +466,8 @@ export const mcpAuthDisconnect: Command = {
     url: `${BASE_PATH}/${encodeURIComponent(ctx.str('id'))}/auth/disconnect`,
   }),
   execute: async (ctx) => {
-    return postToMainApp(
+    return postAgentApi(
+      ctx,
       `${BASE_PATH}/${encodeURIComponent(ctx.str('id'))}/auth/disconnect`,
       {},
     );
@@ -480,8 +484,8 @@ export const listMcpCredentials: Command = {
     method: 'GET',
     url: CRED_BASE_PATH,
   }),
-  execute: async () => {
-    return getFromMainApp(CRED_BASE_PATH);
+  execute: async (ctx) => {
+    return getAgentApi(ctx, CRED_BASE_PATH);
   },
 };
 
@@ -520,7 +524,7 @@ export const setMcpCredential: Command = {
     },
   }),
   execute: async (ctx) => {
-    return postToMainApp(CRED_BASE_PATH, {
+    return postAgentApi(ctx, CRED_BASE_PATH, {
       mcpServerId: ctx.str('mcpServerId'),
       authType: ctx.str('authType') || 'oauth',
       token: ctx.str('token') || undefined,
@@ -546,7 +550,7 @@ export const autoProvisionMcpCredentials: Command = {
   }),
   execute: async (ctx) => {
     const accessToken = ctx.str('accessToken') || await ctx.token();
-    return postToMainApp(`${CRED_BASE_PATH}/auto-provision`, { accessToken });
+    return postAgentApi(ctx, `${CRED_BASE_PATH}/auto-provision`, { accessToken });
   },
 };
 
@@ -561,7 +565,7 @@ export const mcpToken: Command = {
     url: `${CRED_BASE_PATH}/mcp-token`,
   }),
   execute: async (ctx) => {
-    const result = await getFromMainApp<{ token: string | null }>(`${CRED_BASE_PATH}/mcp-token`);
+    const result = await getAgentApi<{ token: string | null }>(ctx, `${CRED_BASE_PATH}/mcp-token`);
     if (process.stderr.isTTY) {
       process.stderr.write(
         `\n注意：返回明文 MCP Token，请妥善保管，避免写入 shell history 或日志。\n\n`,
@@ -591,6 +595,6 @@ export const mcpStats: Command = {
   },
   execute: async (ctx) => {
     const days = ctx.optionalNum('days') ?? 30;
-    return getFromMainApp(`${STATS_PATH}?days=${days}`);
+    return getAgentApi(ctx, `${STATS_PATH}?days=${days}`);
   },
 };

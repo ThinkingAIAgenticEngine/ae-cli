@@ -2,11 +2,30 @@ import fs from 'node:fs';
 import path from 'node:path';
 
 const destructiveCommand = /(?:delete|del-|remove|clear)/i;
+const booleanGlobalFlags = new Set(['--yes', '--dry-run', '--validate', '--no-update-check']);
+const valueGlobalFlags = new Set(['--host', '--mcp-url', '--format', '--jq']);
 
 function commandPrefix(command) {
-  const commandStart = command.includes('ae-cli ')
+  let commandStart = command.includes('ae-cli ')
     ? command.slice(command.indexOf('ae-cli '))
     : command.slice(command.indexOf('+'));
+  const tokens = commandStart.trim().split(/\s+/u);
+  if (tokens[0] === 'ae-cli') {
+    let commandIndex = 1;
+    while (commandIndex < tokens.length) {
+      const [flag] = tokens[commandIndex].split('=', 1);
+      if (booleanGlobalFlags.has(flag)) {
+        commandIndex += 1;
+        continue;
+      }
+      if (valueGlobalFlags.has(flag)) {
+        commandIndex += tokens[commandIndex].includes('=') ? 1 : 2;
+        continue;
+      }
+      break;
+    }
+    commandStart = ['ae-cli', ...tokens.slice(commandIndex)].join(' ');
+  }
   return commandStart.split(/\s--/u, 1)[0].trim().replace(/\s+/gu, ' ');
 }
 

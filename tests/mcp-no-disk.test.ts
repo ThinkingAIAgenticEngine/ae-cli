@@ -16,7 +16,8 @@
  *  6. sandbox-provisioned cli-token.json is read before minting
  *  7. secure-store cliToken wins over sandbox fallback for a different host
  *  8. mcpRequest (MCP JSON-RPC transport) sends cli-token header only
- *  9. mcpRequest: 401 clears the CLI token cache, re-mints, and retries once with refreshed headers
+ *  9. mcpRequest: 401 clears the CLI token cache, re-mints, and retries once with refreshed headers;
+ *     403 is a permission denial and is never retried
  * 10. getCliToken renews once per local day via /v1/ta/cli/token/renew; failure does not block
  */
 
@@ -477,9 +478,10 @@ await test('mcpRequest: 401 clears the CLI token cache, re-mints, and retries on
   }
 });
 
-await test('mcpRequest: 403 invalid cli-token clears the cache, re-mints, and retries once', async () => {
+await test('mcpRequest: 403 returns structured PermissionError without clearing or retrying', async () => {
   const { callMcpTool } = await import('../src/core/mcp.ts');
   const { setCliTokenManual, clearCliToken } = await import('../src/core/cli-token.ts');
+  const { PermissionError } = await import('../src/core/errors.ts');
   const { save, clear } = await import('../src/core/secure-store.ts');
 
   const host = 'https://test-invalid-cli-token-retry.internal';
@@ -493,6 +495,7 @@ await test('mcpRequest: 403 invalid cli-token clears the cache, re-mints, and re
   });
 
   let mcpCallCount = 0;
+  let generateCount = 0;
   const seenTokens: string[] = [];
   const prevFetch = globalThis.fetch;
   globalThis.fetch = (async (url, init) => {
@@ -502,25 +505,36 @@ await test('mcpRequest: 403 invalid cli-token clears the cache, re-mints, and re
       return new Response(JSON.stringify({ return_code: 0 }), { status: 200 });
     }
     if (urlStr.includes('/v1/ta/cli/token/generate')) {
+      generateCount++;
       return new Response(JSON.stringify({ return_code: 0, data: { userSecret: 'fresh-token' } }), { status: 200 });
     }
     mcpCallCount++;
     seenTokens.push(headers?.['cli-token'] ?? '');
-    if (mcpCallCount === 1) {
-      return new Response(
-        JSON.stringify({ error: { code: 'PERMISSION_DENIED', message: 'Your token is invalid' } }),
-        { status: 403, headers: { 'Content-Type': 'application/json' } },
-      );
-    }
-    return new Response(JSON.stringify({ jsonrpc: '2.0', id: 1, result: { content: [] } }), { status: 200 });
+    return new Response(
+      JSON.stringify({
+        error: {
+          code: 'PROJECT_CLI_DISABLED',
+          message: 'CLI access is disabled for this project.',
+          hint: 'Ask the project owner to enable CLI access.',
+        },
+      }),
+      { status: 403, headers: { 'Content-Type': 'application/json' } },
+    );
   }) as typeof fetch;
 
   try {
-    const result = await callMcpTool(`${host}/mcp/analysis/http/analysis`, 'list_dashboards', {}, host);
-    assert.equal(mcpCallCount, 2, 'should retry exactly once after an invalid cli-token 403');
+    await assert.rejects(
+      () => callMcpTool(`${host}/mcp/analysis/http/analysis`, 'list_dashboards', {}, host),
+      (error: Error) => {
+        assert.ok(error instanceof PermissionError);
+        assert.equal(error.code, 'PROJECT_CLI_DISABLED');
+        assert.equal(error.hint, 'Ask the project owner to enable CLI access.');
+        return true;
+      },
+    );
+    assert.equal(mcpCallCount, 1, '403 must not retry');
+    assert.equal(generateCount, 0, '403 must not re-mint a CLI token');
     assert.equal(seenTokens[0], 'stale-token', 'first attempt should use the stale cached token');
-    assert.equal(seenTokens[1], 'fresh-token', 'retry should use the freshly re-minted token');
-    assert.ok(result, 'should return a result after a successful retry');
   } finally {
     globalThis.fetch = prevFetch;
     clearCliToken(host);

@@ -1,0 +1,6 @@
+UserID,Event-Name,OrderAmount,product.category,123data,IP,Last_Login_Time,camelCaseField
+u001,track_purchase,99.50,electronics,e001,192.168.1.1,2024-01-15 10:30:00,value1
+u002,track_login,,accessories,e002,10.0.0.1,2024-01-15 11:00:00,value2
+u003,track_purchase,150.00,electronics,e003,172.16.0.1,2024-01-15 12:30:00,value3
+u004,track_refund,75.00,clothing,e004,fe80::1,2024-01-16 09:00:00,value4
+u005,track_purchase,200.00,electronics,e005,192.168.100.1,2024-01-16 14:00:00,value5

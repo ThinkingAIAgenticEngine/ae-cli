@@ -27,6 +27,14 @@ async function loadClientModule() {
   )) as typeof import('../src/core/te-agent-client.ts');
 }
 
+function isCliTokenControlPlaneRequest(url: string): boolean {
+  try {
+    return new URL(url).pathname.startsWith('/v1/ta/cli/token/');
+  } catch {
+    return false;
+  }
+}
+
 async function withEnv<T>(env: EnvPatch, fn: () => T | Promise<T>): Promise<T> {
   const prev: EnvPatch = {};
   for (const key of Object.keys(env)) {
@@ -342,14 +350,17 @@ try {
   });
 
   // -------------------------------------------------------------------------
-  // Task 5 tests: user-token path (Bearer) + hint passthrough
+  // Unified CLI-token path + legacy sandbox compatibility
   // -------------------------------------------------------------------------
 
-  await test('user token present, no sandbox credentials (URL only) → request sends Authorization: bearer (no X-Sandbox-*)', async () => {
+  await test('user session with CLI token, no sandbox credentials → request sends cli-token only', async () => {
     const calls: Array<{ url: string; init: RequestInit }> = [];
     const prevFetch = globalThis.fetch;
     globalThis.fetch = (async (url: string | URL | Request, init?: RequestInit) => {
       calls.push({ url: String(url), init: init ?? {} });
+      if (isCliTokenControlPlaneRequest(String(url))) {
+        return new Response(JSON.stringify({ return_code: 0 }), { status: 200 });
+      }
       return new Response(JSON.stringify({ models: [] }), { status: 200 });
     }) as typeof fetch;
 
@@ -357,8 +368,7 @@ try {
       await withEnv(
         {
           HOME: join(tmpRoot, 'bearer-test-home'),
-          // TE_CLAUDE_BASE_URL is set (provides URL), but no SANDBOX_ID / SECRET_KEY
-          TE_CLAUDE_BASE_URL: 'http://te-claude.local',
+          TE_CLAUDE_BASE_URL: 'http://te-claude-unified.local',
           SANDBOX_ID: undefined,
           SECRET_KEY: undefined,
           SANDBOX_SECRET_KEY: undefined,
@@ -366,10 +376,11 @@ try {
         },
         async () => {
           const { save } = await import('../src/core/secure-store.ts');
-          save('http://te-claude.local', {
+          save('http://te-claude-unified.local', {
             accessToken: 'user-access-token-abc',
             refreshToken: '',
             accessExpiresAt: new Date(Date.now() + 3600_000).toISOString(),
+            cliToken: 'cli-unified-token-abc',
           });
           const { getFromMainApp } = await loadClientModule();
           await getFromMainApp('/api/sandbox/agent/models');
@@ -379,19 +390,24 @@ try {
       globalThis.fetch = prevFetch;
     }
 
-    assert.equal(calls.length, 1);
-    const headers = calls[0].init.headers as Record<string, string>;
-    assert.equal(headers['Authorization'], 'bearer user-access-token-abc', 'should send Authorization: bearer');
+    const businessCalls = calls.filter((call) => !isCliTokenControlPlaneRequest(call.url));
+    assert.equal(businessCalls.length, 1);
+    const headers = businessCalls[0].init.headers as Record<string, string>;
+    assert.equal(headers['cli-token'], 'cli-unified-token-abc');
+    assert.equal(headers['Authorization'], undefined, 'should not send Authorization');
     assert.equal(headers['X-Sandbox-Id'], undefined, 'should not send X-Sandbox-Id');
     assert.equal(headers['X-Sandbox-Secret-Key'], undefined, 'should not send X-Sandbox-Secret-Key');
-    assert.equal(calls[0].url, 'http://te-claude.local/api/sandbox/agent/models');
+    assert.equal(businessCalls[0].url, 'http://te-claude-unified.local/api/sandbox/agent/models');
   });
 
-  await test('explicit host uses its user token for admin requests and preserves a 403 permission denial', async () => {
+  await test('explicit host uses its CLI token and classifies 403 as a permission denial', async () => {
     const calls: Array<{ url: string; init: RequestInit }> = [];
     const prevFetch = globalThis.fetch;
     globalThis.fetch = (async (url: string | URL | Request, init?: RequestInit) => {
       calls.push({ url: String(url), init: init ?? {} });
+      if (isCliTokenControlPlaneRequest(String(url))) {
+        return new Response(JSON.stringify({ return_code: 0 }), { status: 200 });
+      }
       return new Response(JSON.stringify({ error: 'Agent administrator role is required' }), {
         status: 403,
       });
@@ -415,6 +431,7 @@ try {
             accessToken: 'admin-host-access-token',
             refreshToken: '',
             accessExpiresAt: new Date(Date.now() + 3600_000).toISOString(),
+            cliToken: 'admin-host-cli-token',
           });
           const { getFromMainApp } = await loadClientModule();
           try {
@@ -428,14 +445,16 @@ try {
       globalThis.fetch = prevFetch;
     }
 
-    assert.equal(calls.length, 1);
-    assert.equal(calls[0].url, 'http://admin-host.local/agent/api/admin/members');
-    const headers = calls[0].init.headers as Record<string, string>;
-    assert.equal(headers['Authorization'], 'bearer admin-host-access-token');
+    const businessCalls = calls.filter((call) => !isCliTokenControlPlaneRequest(call.url));
+    assert.equal(businessCalls.length, 1);
+    assert.equal(businessCalls[0].url, 'http://admin-host.local/agent/api/admin/members');
+    const headers = businessCalls[0].init.headers as Record<string, string>;
+    assert.equal(headers['cli-token'], 'admin-host-cli-token');
+    assert.equal(headers['Authorization'], undefined);
     assert.equal(headers['X-Sandbox-Id'], undefined);
     assert.equal(headers['X-Sandbox-Secret-Key'], undefined);
     assert.ok(caught instanceof Error);
-    assert.equal((caught as { status?: number }).status, 403);
+    assert.equal(caught.name, 'PermissionError');
     assert.match((caught as Error).message, /Agent administrator role is required/);
   });
 
@@ -452,6 +471,9 @@ try {
     const prevFetch = globalThis.fetch;
     globalThis.fetch = (async (url: string | URL | Request, init?: RequestInit) => {
       calls.push({ url: String(url), init: init ?? {} });
+      if (isCliTokenControlPlaneRequest(String(url))) {
+        return new Response(JSON.stringify({ return_code: 0 }), { status: 200 });
+      }
       return new Response(JSON.stringify({ models: [] }), { status: 200 });
     }) as typeof fetch;
 
@@ -474,12 +496,13 @@ try {
       globalThis.fetch = prevFetch;
     }
 
-    assert.equal(calls.length, 1);
-    const headers = calls[0].init.headers as Record<string, string>;
+    const businessCalls = calls.filter((call) => !isCliTokenControlPlaneRequest(call.url));
+    assert.equal(businessCalls.length, 1);
+    const headers = businessCalls[0].init.headers as Record<string, string>;
     assert.equal(headers['cli-token'], 'cli_test_token_xyz', 'should send cli-token header');
     assert.equal(headers['Authorization'], undefined, 'should not send Authorization');
     assert.equal(headers['X-Sandbox-Id'], undefined, 'should not send X-Sandbox-Id');
-    assert.equal(calls[0].url, 'http://te-claude.local/api/sandbox/agent/models');
+    assert.equal(businessCalls[0].url, 'http://te-claude.local/api/sandbox/agent/models');
   });
 
   await test('sandbox credentials present → still sends X-Sandbox-Id / X-Sandbox-Secret-Key (original path unchanged)', async () => {
@@ -513,6 +536,41 @@ try {
     assert.equal(headers['X-Sandbox-Id'], 'sb-xyz', 'should send X-Sandbox-Id');
     assert.equal(headers['X-Sandbox-Secret-Key'], 'secret-xyz', 'should send X-Sandbox-Secret-Key');
     assert.equal(headers['Authorization'], undefined, 'should not send Authorization');
+  });
+
+  await test('sandbox multipart uploads leave Content-Type to fetch so the boundary is preserved', async () => {
+    const calls: Array<{ url: string; init: RequestInit }> = [];
+    const prevFetch = globalThis.fetch;
+    globalThis.fetch = (async (url: string | URL | Request, init?: RequestInit) => {
+      calls.push({ url: String(url), init: init ?? {} });
+      return new Response(JSON.stringify({ ok: true }), { status: 200 });
+    }) as typeof fetch;
+
+    try {
+      await withEnv(
+        {
+          HOME: join(tmpRoot, 'sandbox-upload-home'),
+          TE_CLAUDE_BASE_URL: 'http://te-claude-sandbox-upload.local',
+          SANDBOX_ID: 'sb-upload',
+          SECRET_KEY: 'secret-upload',
+          SANDBOX_SECRET_KEY: undefined,
+        },
+        async () => {
+          const { uploadToMainApp } = await loadClientModule();
+          const formData = new FormData();
+          formData.append('file', new Blob(['content']), 'test.txt');
+          await uploadToMainApp('/api/sandbox/agent/attachments/upload', formData);
+        },
+      );
+    } finally {
+      globalThis.fetch = prevFetch;
+    }
+
+    assert.equal(calls.length, 1);
+    const headers = calls[0].init.headers as Record<string, string>;
+    assert.equal(headers['X-Sandbox-Id'], 'sb-upload');
+    assert.equal(headers['X-Sandbox-Secret-Key'], 'secret-upload');
+    assert.equal(headers['Content-Type'], undefined);
   });
 
   await test('both sandbox credentials and user token absent → error includes hint', async () => {

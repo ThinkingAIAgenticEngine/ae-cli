@@ -12,7 +12,7 @@
  */
 
 import type { Command } from '../../framework/types.js';
-import { getFromMainApp, postToMainApp } from '../../core/te-agent-client.js';
+import { getAgentApi, postAgentApi } from './api-client.js';
 import {
   MARKET_CATEGORIES,
   SHARE_DIRECTIONS,
@@ -62,7 +62,7 @@ export const shareSkill: Command = {
     if (iconEmoji) body.iconEmoji = iconEmoji;
     const iconColor = ctx.str('iconColor');
     if (iconColor) body.iconColor = iconColor;
-    return postToMainApp(`${BASE}/${encodeURIComponent(ctx.str('id'))}/share`, body);
+    return postAgentApi(ctx, `${BASE}/${encodeURIComponent(ctx.str('id'))}/share`, body);
   },
 };
 
@@ -97,7 +97,7 @@ export const listSkillShares: Command = {
     params.set('direction', ctx.str('direction') || 'received');
     const status = ctx.str('status');
     if (status) params.set('status', status);
-    return getFromMainApp(`${BASE}/shares?${params.toString()}`);
+    return getAgentApi(ctx, `${BASE}/shares?${params.toString()}`);
   },
 };
 
@@ -114,7 +114,7 @@ export const acceptSkillShare: Command = {
     url: `${BASE}/shares/${encodeURIComponent(ctx.str('id'))}/accept`,
   }),
   execute: async (ctx) => {
-    return postToMainApp(`${BASE}/shares/${encodeURIComponent(ctx.str('id'))}/accept`, {});
+    return postAgentApi(ctx, `${BASE}/shares/${encodeURIComponent(ctx.str('id'))}/accept`, {});
   },
 };
 
@@ -131,6 +131,6 @@ export const rejectSkillShare: Command = {
     url: `${BASE}/shares/${encodeURIComponent(ctx.str('id'))}/reject`,
   }),
   execute: async (ctx) => {
-    return postToMainApp(`${BASE}/shares/${encodeURIComponent(ctx.str('id'))}/reject`, {});
+    return postAgentApi(ctx, `${BASE}/shares/${encodeURIComponent(ctx.str('id'))}/reject`, {});
   },
 };

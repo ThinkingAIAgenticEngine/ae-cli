@@ -6,13 +6,16 @@ import {
   load as secureStoreLoad,
   save as secureStoreSave,
   loadCliToken as loadSecureCliToken,
+  SecureStoreAuthError,
 } from './secure-store.js';
 import { safeJsonParse, safeReadJsonFile } from './json-utils.js';
 import { logger } from './logger.js';
+import { PermissionError } from './errors.js';
 import { normalizeUrl } from './url-utils.js';
 
 const CLI_TOKEN_GENERATE_PATH = '/v1/ta/cli/token/generate';
 const CLI_TOKEN_RENEW_PATH = '/v1/ta/cli/token/renew';
+const CLI_TOKEN_VALIDATE_PATH = '/v1/ta/cli/token/validate';
 
 /**
  * In-process CLI token cache (host -> token).
@@ -116,8 +119,8 @@ function clearRenewState(hostUrl?: string): void {
 /**
  * Mint a CLI token on-demand by calling /v1/ta/cli/token/generate with the AE access token.
  */
-async function generateCliToken(hostUrl: string): Promise<string> {
-  const accessToken = await getToken(hostUrl);
+async function generateCliToken(hostUrl: string, accessTokenOverride?: string): Promise<string> {
+  const accessToken = accessTokenOverride ?? await getToken(hostUrl);
   const base = hostUrl.replace(/\/+$/, '');
   const url = `${base}${CLI_TOKEN_GENERATE_PATH}`;
 
@@ -129,13 +132,29 @@ async function generateCliToken(hostUrl: string): Promise<string> {
   });
 
   if (!resp.ok) {
+    if (resp.status === 403) {
+      const text = await resp.text();
+      let body: any = {};
+      try {
+        body = text ? safeJsonParse(text) : {};
+      } catch {
+        // Older gateways may return an empty or non-JSON 403 response.
+      }
+      const message = body.message ?? body.return_message ?? 'CLI access is disabled for this account.';
+      const code = body.code ?? (String(message).includes('CLI_ACCESS_DISABLED') ? 'CLI_ACCESS_DISABLED' : undefined);
+      throw new PermissionError(message, code, body.hint);
+    }
     throw new Error(`CLI token generate HTTP error: ${resp.status} ${resp.statusText}`);
   }
 
   const data = safeJsonParse(await resp.text());
 
   if (data.return_code !== 0) {
-    throw new Error(`CLI token generate error: ${data.return_message || 'unknown'} (code: ${data.return_code})`);
+    const message = data.return_message || data.message || 'unknown';
+    if (data.code === 'CLI_ACCESS_DISABLED' || String(message).includes('CLI_ACCESS_DISABLED')) {
+      throw new PermissionError(message, 'CLI_ACCESS_DISABLED', data.hint);
+    }
+    throw new Error(`CLI token generate error: ${message} (code: ${data.return_code})`);
   }
 
   const cliToken = data.data?.userSecret;
@@ -144,6 +163,48 @@ async function generateCliToken(hostUrl: string): Promise<string> {
   }
 
   return cliToken;
+}
+
+/** Validate a CLI token without exposing it in the request URL. */
+export async function validateCliTokenOnServer(hostUrl: string, cliToken: string): Promise<void> {
+  const base = hostUrl.replace(/\/+$/, '');
+  const url = `${base}${CLI_TOKEN_VALIDATE_PATH}`;
+
+  let resp: Response;
+  try {
+    resp = await fetch(url, {
+      method: 'GET',
+      headers: {
+        Accept: 'application/json',
+        'cli-token': cliToken,
+      },
+    });
+  } catch (e: any) {
+    throw new SecureStoreAuthError(`Unable to validate CLI token for ${hostUrl}: ${e.message}`);
+  }
+
+  const responseText = await resp.text();
+  let data: any;
+  try {
+    data = safeJsonParse(responseText);
+  } catch {
+    data = undefined;
+  }
+
+  if (resp.status === 401 || resp.status === 403 || (data?.return_code !== undefined && data.return_code !== 0)) {
+    throw new SecureStoreAuthError(
+      `CLI token is invalid or expired for ${hostUrl}. ` +
+      `Run: ae-cli auth logout --host ${hostUrl}, then ae-cli auth login --host ${hostUrl}`,
+    );
+  }
+  if (!resp.ok) {
+    throw new SecureStoreAuthError(
+      `CLI token validation failed for ${hostUrl} (HTTP ${resp.status} ${resp.statusText})`,
+    );
+  }
+  if (data?.return_code !== 0) {
+    throw new SecureStoreAuthError(`CLI token validation returned an invalid response for ${hostUrl}`);
+  }
 }
 
 /**
@@ -297,7 +358,7 @@ export async function getCliToken(hostOverride?: string): Promise<string> {
   }
 
   // TODO: 后端 /v1/ta/cli/token/renew 发布后再打开
-  // await maybeRenewCliTokenDaily(hostUrl, token);
+  await maybeRenewCliTokenDaily(hostUrl, token);
   return token;
 }
 
@@ -305,14 +366,18 @@ export async function getCliToken(hostOverride?: string): Promise<string> {
  * Mint a CLI token with the current access token and persist it to secure-store.
  * Called eagerly after device login; also used by getCliToken when no token is cached.
  */
-export async function mintCliToken(hostUrl: string): Promise<string> {
+export async function mintCliToken(
+  hostUrl: string,
+  accessTokenOverride?: string,
+  persist = true,
+): Promise<string> {
   logger.info(`Generating CLI token for ${hostUrl}`);
-  const cliToken = await generateCliToken(hostUrl);
+  const cliToken = await generateCliToken(hostUrl, accessTokenOverride);
   _cliTokenCache.set(hostUrl, cliToken);
-  persistCliTokenIfPossible(hostUrl, cliToken);
+  if (persist) persistCliTokenIfPossible(hostUrl, cliToken);
   // Do not mark today's renew here: /generate returns an existing token without sliding
   // expireTime. getCliToken() will best-effort call /renew after resolve.
-  logger.info(`CLI token generated, cached, and persisted for ${hostUrl}`);
+  logger.info(`CLI token generated and cached${persist ? ' and persisted' : ''} for ${hostUrl}`);
   return cliToken;
 }
 

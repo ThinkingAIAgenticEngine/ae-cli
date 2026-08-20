@@ -6,11 +6,11 @@
  */
 
 import assert from 'node:assert/strict';
-import { mkdtemp, readFile, rm } from 'node:fs/promises';
+import { mkdtemp, readFile, readdir, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { join, relative } from 'node:path';
 import type { Command, RuntimeContext } from '../src/framework/types.js';
-import { callDataopsApi } from '../src/commands/te-dataops/shared.js';
+import { callDataopsApi, downloadDataopsApi } from '../src/commands/te-dataops/shared.js';
 import { addSyncSolution } from '../src/commands/te-dataops/integration/add-sync-solution.js';
 import { saveSyncSolution } from '../src/commands/te-dataops/integration/save-sync-solution.js';
 import { getTableStructure } from '../src/commands/te-dataops/integration/get-table-structure.js';
@@ -306,7 +306,6 @@ await test('callDataopsApi refreshes cli-token once on 401', async () => {
     if (urlStr.includes('/v1/ta/cli/token/generate')) {
       return new Response(JSON.stringify({ return_code: 0, data: { userSecret: 'fresh-dataops-token' } }), { status: 200 });
     }
-
     apiCallCount++;
     seenTokens.push(((init?.headers as Record<string, string>) ?? {})['cli-token'] ?? '');
     if (apiCallCount === 1) {
@@ -328,15 +327,21 @@ await test('callDataopsApi refreshes cli-token once on 401', async () => {
   }
 });
 
-await test('get_sql_query_status downloads with cli-token and never requests an access token', async () => {
+await test('get_sql_query_status streams the download with cli-token', async () => {
   const host = 'https://test-dataops-download.internal';
   const targetDir = await mkdtemp(join(tmpdir(), 'ae-cli-dataops-download-'));
   const targetFile = join(targetDir, 'result.zip');
-  const expected = Buffer.from('zip-result');
+  const targetArg = relative(process.cwd(), targetFile);
+  const chunks = [Buffer.from('zip-'), Buffer.from('result')];
+  const expected = Buffer.concat(chunks);
+  await writeFile(targetFile, 'old-result');
   clearCliToken(host);
   setCliTokenManual('cli-download-token', host);
 
   let accessTokenCalls = 0;
+  let arrayBufferCalls = 0;
+  let streamController: ReadableStreamDefaultController<Uint8Array> | undefined;
+  let execution: Promise<unknown> | undefined;
   const requestUrls: string[] = [];
   const requestHeaders: Record<string, string>[] = [];
   const previousFetch = globalThis.fetch;
@@ -352,27 +357,275 @@ await test('get_sql_query_status downloads with cli-token and never requests an 
         },
       }), { status: 200 });
     }
-    return new Response(expected, { status: 200 });
+    const response = new Response(new ReadableStream({
+      start(controller) {
+        streamController = controller;
+        controller.enqueue(chunks[0]);
+      },
+    }), { status: 200 });
+    Object.defineProperty(response, 'arrayBuffer', {
+      value: async () => {
+        arrayBufferCalls++;
+        throw new Error('download must not use arrayBuffer');
+      },
+    });
+    return response;
   }) as typeof fetch;
 
   try {
-    const result = await getSqlQueryStatus.execute(ctx({
+    execution = getSqlQueryStatus.execute(ctx({
       spaceCode: 'test_ly',
       downloadTaskId: '40',
-      downloadTo: targetFile,
+      downloadTo: targetArg,
     }, host, async () => {
       accessTokenCalls++;
       throw new Error('access token must not be requested');
     }));
 
+    let partialFile: string | undefined;
+    for (let i = 0; i < 100 && !partialFile; i++) {
+      const names = (await readdir(targetDir)).filter((name) => name.includes('.part-'));
+      if (names.length === 1
+        && (await readFile(join(targetDir, names[0]))).equals(chunks[0])) {
+        partialFile = names[0];
+        break;
+      }
+      await new Promise((resolve) => setTimeout(resolve, 5));
+    }
+    assert.ok(partialFile, 'first response chunk should be written before the stream completes');
+    assert.equal((await readFile(targetFile)).toString(), 'old-result');
+
+    streamController?.enqueue(chunks[1]);
+    streamController?.close();
+    streamController = undefined;
+    const result = await execution;
+
     assert.equal(accessTokenCalls, 0);
+    assert.equal(arrayBufferCalls, 0);
     assert.equal((result as any).localFile, targetFile);
     assert.deepEqual(await readFile(targetFile), expected);
     assert.match(requestUrls[1], /\/api\/cli\/dataops\/v1\/gaia\/ide\/sql-query-download/);
     assert.match(requestUrls[1], /spaceCode=test_ly/);
     assert.match(requestUrls[1], /taskId=40/);
     assert.equal(requestHeaders[1]['cli-token'], 'cli-download-token');
+    assert.equal(requestHeaders[1]['X-Source'], 'ae-cli');
+    assert.equal(requestHeaders[1].Accept, '*/*');
     assert.equal(requestHeaders[1].Authorization, undefined);
+    assert.deepEqual((await readdir(targetDir)).filter((name) => name.includes('.part-')), []);
+  } finally {
+    streamController?.error(new Error('test cleanup'));
+    await execution?.catch(() => undefined);
+    globalThis.fetch = previousFetch;
+    clearCliToken(host);
+    await rm(targetDir, { recursive: true, force: true });
+  }
+});
+
+await test('get_sql_query_status keeps the existing target when the stream fails', async () => {
+  const host = 'https://test-dataops-download-failure.internal';
+  const targetDir = await mkdtemp(join(tmpdir(), 'ae-cli-dataops-download-failure-'));
+  const targetFile = join(targetDir, 'result.zip');
+  const existing = Buffer.from('existing-result');
+  await writeFile(targetFile, existing);
+  clearCliToken(host);
+  setCliTokenManual('cli-download-token', host);
+
+  const previousFetch = globalThis.fetch;
+  globalThis.fetch = (async (url) => {
+    if (String(url).includes('/sql-query-status')) {
+      return new Response(JSON.stringify({
+        returnCode: 0,
+        data: {
+          downloadStatus: 'SUCCESS',
+          downloadParams: { spaceCode: 'test_ly', taskId: 40 },
+        },
+      }), { status: 200 });
+    }
+    return new Response(new ReadableStream({
+      start(controller) {
+        controller.enqueue(Buffer.from('partial'));
+        controller.error(new Error('download stream failed'));
+      },
+    }), { status: 200 });
+  }) as typeof fetch;
+
+  try {
+    await assert.rejects(
+      () => getSqlQueryStatus.execute(ctx({
+        spaceCode: 'test_ly',
+        downloadTaskId: '40',
+        downloadTo: targetFile,
+      }, host)),
+      /download stream failed/,
+    );
+    assert.deepEqual(await readFile(targetFile), existing);
+    assert.deepEqual((await readdir(targetDir)).filter((name) => name.includes('.part-')), []);
+  } finally {
+    globalThis.fetch = previousFetch;
+    clearCliToken(host);
+    await rm(targetDir, { recursive: true, force: true });
+  }
+});
+
+await test('get_sql_query_status keeps the existing target when the response has no body', async () => {
+  const host = 'https://test-dataops-download-empty.internal';
+  const targetDir = await mkdtemp(join(tmpdir(), 'ae-cli-dataops-download-empty-'));
+  const targetFile = join(targetDir, 'result.zip');
+  const existing = Buffer.from('existing-result');
+  await writeFile(targetFile, existing);
+  clearCliToken(host);
+  setCliTokenManual('cli-download-token', host);
+
+  const previousFetch = globalThis.fetch;
+  globalThis.fetch = (async (url) => {
+    if (String(url).includes('/sql-query-status')) {
+      return new Response(JSON.stringify({
+        returnCode: 0,
+        data: {
+          downloadStatus: 'SUCCESS',
+          downloadParams: { spaceCode: 'test_ly', taskId: 40 },
+        },
+      }), { status: 200 });
+    }
+    return new Response(null, { status: 200 });
+  }) as typeof fetch;
+
+  try {
+    await assert.rejects(
+      () => getSqlQueryStatus.execute(ctx({
+        spaceCode: 'test_ly',
+        downloadTaskId: '40',
+        downloadTo: targetFile,
+      }, host)),
+      /no body/,
+    );
+    assert.deepEqual(await readFile(targetFile), existing);
+    assert.deepEqual((await readdir(targetDir)).filter((name) => name.includes('.part-')), []);
+  } finally {
+    globalThis.fetch = previousFetch;
+    clearCliToken(host);
+    await rm(targetDir, { recursive: true, force: true });
+  }
+});
+
+await test('downloadDataopsApi refreshes cli-token once on 401', async () => {
+  const host = 'https://test-dataops-download-401.internal';
+  const targetDir = await mkdtemp(join(tmpdir(), 'ae-cli-dataops-download-401-'));
+  const targetFile = join(targetDir, 'result.zip');
+  clearCliToken(host);
+  clearSecureToken(host);
+  setCliTokenManual('stale-download-token', host);
+  saveSecureToken(host, {
+    accessToken: 'fake-access-token-for-download-401-test',
+    refreshToken: '',
+    accessExpiresAt: new Date(Date.now() + 60_000).toISOString(),
+  });
+
+  let downloadCalls = 0;
+  const seenTokens: string[] = [];
+  const previousFetch = globalThis.fetch;
+  globalThis.fetch = (async (url, init) => {
+    if (String(url).includes('/v1/ta/cli/token/generate')) {
+      return new Response(JSON.stringify({ return_code: 0, data: { userSecret: 'fresh-download-token' } }), { status: 200 });
+    }
+    downloadCalls++;
+    seenTokens.push(((init?.headers as Record<string, string>) ?? {})['cli-token'] ?? '');
+    if (downloadCalls === 1) return new Response('Unauthorized', { status: 401 });
+    return new Response('zip-result', { status: 200 });
+  }) as typeof fetch;
+
+  try {
+    const localFile = await downloadDataopsApi(ctx({}, host), '/download', {}, targetFile);
+    assert.equal(localFile, targetFile);
+    assert.equal(downloadCalls, 2);
+    assert.deepEqual(seenTokens, ['stale-download-token', 'fresh-download-token']);
+    assert.equal((await readFile(targetFile)).toString(), 'zip-result');
+  } finally {
+    globalThis.fetch = previousFetch;
+    clearCliToken(host);
+    clearSecureToken(host);
+    await rm(targetDir, { recursive: true, force: true });
+  }
+});
+
+await test('downloadDataopsApi treats 403 as PermissionError without replacing the target', async () => {
+  const host = 'https://test-dataops-download-403.internal';
+  const targetDir = await mkdtemp(join(tmpdir(), 'ae-cli-dataops-download-403-'));
+  const targetFile = join(targetDir, 'result.zip');
+  const existing = Buffer.from('existing-result');
+  await writeFile(targetFile, existing);
+  clearCliToken(host);
+  setCliTokenManual('denied-download-token', host);
+
+  let callCount = 0;
+  const previousFetch = globalThis.fetch;
+  globalThis.fetch = (async () => {
+    callCount++;
+    return new Response(JSON.stringify({ message: 'no permission for this download' }), { status: 403 });
+  }) as typeof fetch;
+
+  try {
+    await assert.rejects(
+      () => downloadDataopsApi(ctx({}, host), '/download', {}, targetFile),
+      (error: Error) => error instanceof PermissionError && /no permission/.test(error.message),
+    );
+    assert.equal(callCount, 1);
+    assert.deepEqual(await readFile(targetFile), existing);
+    assert.deepEqual((await readdir(targetDir)).filter((name) => name.includes('.part-')), []);
+  } finally {
+    globalThis.fetch = previousFetch;
+    clearCliToken(host);
+    await rm(targetDir, { recursive: true, force: true });
+  }
+});
+
+await test('downloadDataopsApi preserves the HTTP error and existing target on 500', async () => {
+  const host = 'https://test-dataops-download-500.internal';
+  const targetDir = await mkdtemp(join(tmpdir(), 'ae-cli-dataops-download-500-'));
+  const targetFile = join(targetDir, 'result.zip');
+  const existing = Buffer.from('existing-result');
+  await writeFile(targetFile, existing);
+  clearCliToken(host);
+  setCliTokenManual('failed-download-token', host);
+
+  const previousFetch = globalThis.fetch;
+  globalThis.fetch = (async () => new Response(
+    JSON.stringify({ message: 'download failed' }),
+    { status: 500, statusText: 'Internal Server Error' },
+  )) as typeof fetch;
+
+  try {
+    await assert.rejects(
+      () => downloadDataopsApi(ctx({}, host), '/download', {}, targetFile),
+      /download failed/,
+    );
+    assert.deepEqual(await readFile(targetFile), existing);
+    assert.deepEqual((await readdir(targetDir)).filter((name) => name.includes('.part-')), []);
+  } finally {
+    globalThis.fetch = previousFetch;
+    clearCliToken(host);
+    await rm(targetDir, { recursive: true, force: true });
+  }
+});
+
+await test('downloadDataopsApi removes the partial file when publishing the target fails', async () => {
+  const host = 'https://test-dataops-download-publish-failure.internal';
+  const targetDir = await mkdtemp(join(tmpdir(), 'ae-cli-dataops-download-publish-failure-'));
+  const targetPath = await mkdtemp(join(targetDir, 'result.zip-'));
+  const sentinel = join(targetPath, 'sentinel');
+  await writeFile(sentinel, 'keep-me');
+  clearCliToken(host);
+  setCliTokenManual('publish-failure-token', host);
+
+  const previousFetch = globalThis.fetch;
+  globalThis.fetch = (async () => new Response('zip-result', { status: 200 })) as typeof fetch;
+
+  try {
+    await assert.rejects(
+      () => downloadDataopsApi(ctx({}, host), '/download', {}, targetPath),
+    );
+    assert.equal((await readFile(sentinel)).toString(), 'keep-me');
+    assert.deepEqual((await readdir(targetDir)).filter((name) => name.includes('.part-')), []);
   } finally {
     globalThis.fetch = previousFetch;
     clearCliToken(host);

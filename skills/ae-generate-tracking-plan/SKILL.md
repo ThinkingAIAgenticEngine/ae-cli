@@ -21,7 +21,8 @@ description: "Interactive generation of an AE tracking plan and upload. Trigger 
 | 埋点模板 | Tracking Plan Template | Pre-built industry/genre xlsx templates |
 | 方案名称 | Plan Name | User-facing plan identifier |
 | 应用场景 | Application Scenario | One-sentence description of what the app does |
-| 素材来源 | Source Material Type | prd / chat / codebase / template |
+| 素材来源 | Source Material Type | prd / chat / codebase / template / data |
+| 数据样本 / 文件画像 | Data Sample / File Profile | Column→property mapping source from an `ae-data-integration` inspect profile (`source_type: data`) |
 | 业务维度 | Business Dimension | Revenue model, core loop, functional entries, currency system |
 | 收入模型 | Revenue Model | IAA / IAP / mixed / subscription / commission |
 | 核心循环 | Core Loop | Core gameplay loop (e.g. "grind stages → earn coins → gacha for heroes") |
@@ -115,8 +116,9 @@ Choose your source material (up to 2):
 3 - Codebase (local project path; hidden in sandbox) — Analyze source code to extract events and properties
 4 - Pre-built template (built-in industry and game genre templates) — Select a built-in template
 5 - Modify existing tracking plan (local AE format xlsx file) — Import an existing tracking plan xlsx as baseline for modification; can be combined with Product doc / Description / Codebase, but NOT with Pre-built template
+6 - Data sample / file profile (from ae-data-integration inspect) — Map data columns (CSV/Excel/JSONL) to events & properties from an inspect profile; single-source path, not combinable with other options
 
-Reply with number(s), e.g. 1,5 or 4. Select up to 2.
+Reply with number(s), e.g. 1,5 or 4. Select up to 2 (option 6 is single-source).
 ```
 
 If in a sandbox environment, ask exactly:
@@ -128,8 +130,9 @@ Choose your source material (up to 2):
 2 - Detailed description (conversational) — Describe app business flow, core features, user behaviors, monetization model, etc.
 3 - Pre-built template (built-in industry and game genre templates) — Select a built-in template
 4 - Modify existing tracking plan (sandbox workspace path) — Import an existing tracking plan xlsx as baseline for modification; can be combined with Product doc / Description, but NOT with Pre-built template
+5 - Data sample / file profile (from ae-data-integration inspect) — Map data columns (CSV/Excel/JSONL) to events & properties from an inspect profile; single-source path, not combinable with other options
 
-Reply with number(s), e.g. 1,4 or 3. Select up to 2.
+Reply with number(s), e.g. 1,4 or 3. Select up to 2 (option 5 is single-source).
 ```
 
 Do not rewrite this source material list as unnumbered bullets, cards, or prose. The user must be able to reply with the visible numbers.
@@ -153,8 +156,10 @@ Based on user selection, determine source material type and record to `meta.sour
 | Codebase only | `codebase` | Scan source code, extract events/properties from business logic |
 | Template only | `template` | Provide built-in template selection |
 | Existing plan only | `existing_plan` | Import xlsx as baseline (see "Modify Existing Tracking Plan Flow" below) |
+| Data sample only | `data` | Read the inspect profile (`ae-local-data-profile/v1`), map columns → events/properties (see "Data-path (source_type = data)" below) |
 | Any two-item combo | Join two types with `_` | First as baseline, second as supplement (priority: existing_plan → template → codebase → prd → chat) |
 | Existing plan + Pre-built template | **NOT allowed** | Both provide event baselines; semantic conflict |
+| Data sample + any other | **NOT allowed** | Data sample is a standalone single-source path |
 
 **Follow-up questions** (ask in follow-up order defined in Multi-Source Combination Rules below):
 - Product doc → if not in a sandbox environment, ask exactly:
@@ -184,6 +189,7 @@ Based on user selection, determine source material type and record to `meta.sour
 - Codebase → ask **"What is the project directory path?"**, then scan source to extract business logic
 - Pre-built template → display matching templates for user confirmation
 - Modify existing tracking plan → ask **"Please provide the xlsx file path of your existing tracking plan"**, then follow the flow below
+- Data sample → ask **"Please provide the path of the inspect profile JSON (or the run directory containing it)"**, then read the `ae-local-data-profile/v1` product and follow the "Data-path (source_type = data)" flow below
 
 **Modify Existing Tracking Plan Flow** (when user selects this option):
 
@@ -362,6 +368,49 @@ Use the baseline source's inference method as primary. Supplementary sources (es
   "iap_items": []
 }
 ```
+
+### Data-path (source_type = data) — condensed single-gate flow
+
+When the user selects the **Data sample / file profile** option (`source_type = data`), the flow diverges from the standard 5-item anchor. This path **maps table columns → events/properties** instead of inventing events from business understanding, and uses a **single confirmation gate** instead of the 5-segment Refine loop.
+
+**What to skip** (only Item 1 — Application Scenario and Item 2 — Data sample are collected):
+
+- **Item 3 (SDK Integration Config)** → skip. `meta.sdk_integration_mode = "none"` (data ingested via RESTful / LogBus / DataX, no SDK). No SDK auto-track events are injected (Phase 1.4 already skips `none`).
+- **Item 4 (User Identity System)** → skip the visitor-ID strategy question. Derive `meta.user_identity` from the inspect profile's `identity_candidates` instead (e.g. a `distinct_id` / `account_id` column), `account_id_source: "user_account"` when an account column exists, otherwise `"none"`.
+- **Business Dimension confirmation** → skip. Mapping is driven by columns, not by revenue model / core loop. `meta.business_dimension` stays empty.
+
+**Draft construction (replaces Phase 1.1/1.2/1.3 for the data path)**:
+
+1. **Read the inspect profile**: the `ae-local-data-profile/v1` JSON product (columns / types / samples / UE eligibility / mapping confidence). If it is not present or is stale, re-run `ae-cli data-integration inspect` for the source file first.
+2. **Event model determination** (reuse UE routing): single-table single-event `track` / single-table multi-event (event-name column) / single-table `user_set` / mixed. The agent may propose **splitting one table into multiple events** (e.g. an ad table split by `campaign_type` into `ad_show` / `ad_click`); such proposals MUST be confirmed in the gate.
+3. **Column → property mapping draft**:
+   - Identify system columns first: time field, `distinct_id` / `account_id`, event-name column, user-property-name column.
+   - Map the remaining columns to event properties / user properties / super properties.
+   - Naming: `snake_case` event/property names + `display_name` + `desc` + `event_tag` (language follows the user's input).
+   - Type inference: CSV columns default to `string`; infer `number` / `bool` / `datetime` / enum from field name + value distribution + business doc/prompt priors. **Uncertain or conflicting columns are marked "to-confirm" and asked only inside the gate** (do not ask column-by-column beforehand).
+4. **Single confirmation gate** (replaces Phase 2, see below).
+5. **Merge with existing plan** (reuse Phase 4.1/4.2 conflict detection).
+6. **Persist**: `.ae-cli/draft.json` → xlsx → upload (`sdk_integration_mode = none`).
+
+**Single confirmation gate (one round, one summary table)**:
+
+Present ONE merged table covering all of the following in a single message, then wait for a single reply:
+
+- **Event list**: `event_name` / `display_name` / `desc` / `event_tag` / `platform`.
+- **Property list**: `name` / `display_name` / `type` / `desc` / `source`, with uncertain types highlighted (marked "to-confirm").
+- **Field scope**: default to plan-internal fields only; include a **full-import switch** for bringing all source columns in.
+- **Unrecognized / dirty data handling**: how unmapped columns, null values, and unparseable rows are treated.
+- **Same-name property type conflicts**: flagged inline in the gate (see Phase 4.2 Type A).
+
+User replies once: `ok` (accept all), or targeted edits — rename / retype / add / remove individual columns or events. After the gate is confirmed, jump to Phase 3 (project token) then Phase 4 (merge + upload); do NOT enter the 5-segment Refine loop.
+
+**dry-run mode**:
+
+When the user requests dry-run (or the caller passes `data-integration plan --dry-run`), produce the draft preview + column→property mapping summary ONLY:
+
+- Show the single confirmation gate table (events + properties + field scope + unrecognized-data handling) and the mapping result, but do NOT write `.ae-cli/draft.json`.
+- Do NOT generate xlsx, do NOT archive to `plans/`, do NOT upload to AE.
+- State explicitly that nothing was persisted; the user can approve a real run afterwards.
 
 ### Item 3 — SDK Integration Config (client + server combined)
 
@@ -821,6 +870,8 @@ AE_LANG=<user_lang> ae-cli tracking code import-template --template-name "<templ
 ---
 
 ## Phase 2 — Refine (5-segment loop)
+
+> **Data path (`source_type = data`)**: skip this 5-segment loop entirely — use the single confirmation gate defined in "Data-path (source_type = data)" instead.
 
 In order, one conversation round per segment:
 

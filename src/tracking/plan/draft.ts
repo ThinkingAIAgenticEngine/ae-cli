@@ -67,8 +67,8 @@ export function injectAutotrackEvents(draft: Draft, locale: Locale = 'zh'): Draf
   const mode = draft.meta.sdk_integration_mode;
 
   // 仅 client_only 或 both 模式才注入自动采集事件
-  if (mode === 'server_only') {
-    return draft; // 服务端 SDK 无自动采集事件
+  if (mode !== 'client_only' && mode !== 'both') {
+    return draft; // server_only / none 模式无自动采集事件
   }
 
   // 多平台时 client_platforms 优先；单平台/无 platforms 时 fallback 到 client_sdk_type

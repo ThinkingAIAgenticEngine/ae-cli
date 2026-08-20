@@ -80,6 +80,9 @@ function tasksFor(files) {
   if (needs(files, [/tracking/i, /^test\/tracking-/])) {
     tasks.push(['npm', ['run', 'verify:tracking-tools']]);
   }
+  if (needs(files, [/data-integration/i, /local-data/i])) {
+    tasks.push(['npm', ['run', 'verify:tracking-tools']]);
+  }
   if (needs(files, [/self-check/i])) {
     tasks.push(['npm', ['run', 'verify:self-check-overlay']]);
   }
@@ -93,7 +96,13 @@ function tasksFor(files) {
     tasks.push(['npm', ['run', 'verify:engage-capability']]);
   }
 
-  return tasks;
+  const seen = new Set();
+  return tasks.filter((task) => {
+    const key = task.join(' ');
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
 }
 
 function formatTask([command, commandArgs]) {

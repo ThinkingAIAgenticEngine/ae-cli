@@ -10,7 +10,7 @@ export const dashboardGet = createAnalysisCapabilityCommand({
   resource: 'dashboard',
   command: 'get',
   capabilityId: 'analysis.dashboard.get',
-  description: 'Get one dashboard detail, including creator, create/update time, settings, reports, notes, and share information.',
+  description: 'Get one dashboard detail, including location, creator, create/update time, settings, reports, notes, and share information.',
   flags: [
     projectIdFlag,
     { name: 'dashboard-id', type: 'number', required: true, desc: 'Dashboard ID.' },

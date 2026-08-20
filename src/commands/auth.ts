@@ -3,10 +3,11 @@ import { resolveHost } from '../core/auth.js';
 import { normalizeUrl } from '../core/url-utils.js';
 import { loadConfig, saveConfig, removeHost, getFallbackCliToken } from '../core/config.js';
 import { printOutput, printError } from '../framework/output.js';
-import { clearCliToken, mintCliToken } from '../core/cli-token.js';
+import { clearCliToken, mintCliToken, validateCliTokenOnServer } from '../core/cli-token.js';
 import { runHostCompatCheck } from '../core/compat-check.js';
 import { getLocalCliPackageInfo } from '../core/package-info.js';
 import { logger } from '../core/logger.js';
+import { PermissionError } from '../core/errors.js';
 import { missingAeHostGuidance, missingAeHostHint } from '../core/host-guidance.js';
 import {
   runDeviceFlow,
@@ -16,7 +17,12 @@ import {
   DeviceFlowUnsupportedError,
   type DeviceTokenResponse,
 } from '../core/device-auth.js';
-import { save as secureStoreSave, load as secureStoreLoad, clear as secureStoreClear } from '../core/secure-store.js';
+import {
+  save as secureStoreSave,
+  load as secureStoreLoad,
+  clear as secureStoreClear,
+  SecureStoreAuthError,
+} from '../core/secure-store.js';
 
 /** Shared --host flag description (also available globally: ae-cli --host <url> auth <cmd>) */
 const HOST_OPTION_DESC = 'Override active AE host URL (e.g., https://ta.thinkingdata.cn)';
@@ -30,6 +36,20 @@ function getExplicitAuthHostOverride(program: Command, opts: AuthHostOpts): stri
 /** Resolve host for auth commands: --host (or global --host) first, else config activeHost. */
 function resolveAuthHost(program: Command, opts: AuthHostOpts): string {
   return resolveHost(getExplicitAuthHostOverride(program, opts));
+}
+
+async function validateExistingCliToken(host: string, cliToken: string): Promise<boolean> {
+  try {
+    await validateCliTokenOnServer(host, cliToken);
+    return true;
+  } catch (error) {
+    if (!(error instanceof SecureStoreAuthError)) {
+      throw error;
+    }
+    printError('auth', error.message);
+    process.exitCode = 1;
+    return false;
+  }
 }
 
 /** After a successful login with an explicit --host, make that host the active one. */
@@ -57,12 +77,14 @@ async function persistDeviceTokens(host: string, tokens: DeviceTokenResponse): P
   }
   const expiresAt = new Date(Date.now() + expiresInSeconds * 1000).toISOString();
   // I1: refresh_token is optional (may be absent in dev-login); pass empty string when missing
+  // 先签发 cli-token，再一次性落盘，避免权限拒绝时留下半登录状态。
+  const cliToken = await mintCliToken(host, tokens.access_token, false);
   secureStoreSave(host, {
     accessToken: tokens.access_token,
     refreshToken: tokens.refresh_token ?? '',
     accessExpiresAt: expiresAt,
+    cliToken,
   });
-  await mintCliToken(host);
   await runHostCompatCheck(getLocalCliPackageInfo(), host);
 }
 
@@ -168,6 +190,10 @@ export function registerAuth(program: Command): void {
           );
           process.exit(1);
         }
+        if (err instanceof PermissionError) {
+          printError('permission', err.message, err.hint, err.code);
+          process.exit(1);
+        }
         printError('auth', err.message);
         process.exit(1);
       }
@@ -195,6 +221,9 @@ export function registerAuth(program: Command): void {
       // Check secure-store first (written by the device code flow)
       const secureEntry = secureStoreLoad(host);
       if (secureEntry) {
+        if (secureEntry.cliToken && !(await validateExistingCliToken(host, secureEntry.cliToken))) {
+          return;
+        }
         // F-010: a stored credential means logged in. `accessExpiresAt` is a STATIC snapshot from login,
         // but the server slides the access token on use, so it is advisory only — real validity is decided
         // lazily (a command returns an auth error when the session is truly gone). The cliToken is
@@ -218,6 +247,9 @@ export function registerAuth(program: Command): void {
 
       const fallbackCliToken = getFallbackCliToken(host);
       if (fallbackCliToken) {
+        if (!(await validateExistingCliToken(host, fallbackCliToken))) {
+          return;
+        }
         await printOutput(
           {
             authenticated: true,

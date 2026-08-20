@@ -4,6 +4,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
 import { clearCliToken, setCliTokenManual } from '../src/core/cli-token.ts';
+import { PermissionError } from '../src/core/errors.ts';
 import { downloadFromMainApp, TeAgentApiError } from '../src/core/te-agent-client.ts';
 
 const host = 'https://download-system.test';
@@ -61,7 +62,7 @@ try {
   )) as typeof fetch;
   await assert.rejects(
     downloadFromMainApp('/api/admin/stats/export', httpFailurePath, host),
-    (error) => error instanceof TeAgentApiError && error.status === 403,
+    (error) => error instanceof PermissionError && error.message === 'permission denied',
   );
   await assert.rejects(readFile(httpFailurePath), /ENOENT/);
 

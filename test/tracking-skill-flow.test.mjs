@@ -86,4 +86,36 @@ test('Phase 4 existing-plan fetch does not force a host override', () => {
   assert.match(phase4, /cli-token\.json/);
 });
 
+test('Data-path (source_type = data) documents the single-gate + dry-run flow', () => {
+  const item2 = sectionBetween(
+    '### Item 2 — Source Material + Business Dimension (combined)',
+    '### Item 3 — SDK Integration Config (client + server combined)',
+  );
+  assert.match(item2, /6 - Data sample/);
+  assert.match(item2, /5 - Data sample/);
+  assert.match(item2, /Data sample only/);
+  assert.match(item2, /Data sample \+ any other/);
+  assert.match(item2, /option 6 is single-source/);
+
+  const dataPath = sectionBetween(
+    '### Data-path (source_type = data) — condensed single-gate flow',
+    '### Item 3 — SDK Integration Config (client + server combined)',
+  );
+  assert.match(dataPath, /maps table columns/);
+  assert.match(dataPath, /sdk_integration_mode = "none"/);
+  assert.match(dataPath, /Single confirmation gate/);
+  assert.match(dataPath, /dry-run mode/);
+  assert.match(dataPath, /do NOT write/);
+  assert.match(dataPath, /Do NOT generate xlsx/);
+  assert.match(dataPath, /nothing was persisted/);
+  assert.match(dataPath, /reuse Phase 4\.1\/4\.2/);
+
+  const phase2 = sectionBetween(
+    '## Phase 2 — Refine (5-segment loop)',
+    '### sdk_config (Phase 2 Segment 1)',
+  );
+  assert.match(phase2, /skip this 5-segment loop/);
+  assert.match(phase2, /single confirmation gate/);
+});
+
 console.log('All tracking skill flow tests passed.');

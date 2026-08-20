@@ -3,19 +3,31 @@
 /**
  * verify-agent-tools.mjs
  *
- * Verify all commands under src/commands/te-agent/:
- * 1. Scan .ts files and extract command names via regex
+ * Verify all commands registered under src/commands/te-agent/:
+ * 1. Load registered command metadata
  * 2. Duplicate check
- * 3. Count check (EXPECTED_COUNT = 69)
- * 4. Run ae-cli agent --help and verify all command names appear
+ * 3. Count check (EXPECTED_COUNT = 82)
+ * 4. Verify every flat or hierarchical command appears in the Commander tree
  */
 
-import { readFileSync, readdirSync, statSync } from "node:fs";
-import { join, basename } from "node:path";
-import { execFileSync, execSync } from "node:child_process";
+import { execFileSync } from "node:child_process";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
+
+import { Command as CommanderCommand } from "commander";
+
+import registeredCommands from "../src/commands/te-agent/index.ts";
+import { registerCommands } from "../src/framework/register.ts";
+import {
+  assertCommandRegistryMatches,
+  commandPath,
+  discoverCommandExports,
+  duplicateCommandPaths,
+  findCommanderCommand,
+} from "./agent-command-registry.mjs";
 
 const AGENT_DIR = "src/commands/te-agent";
-const EXPECTED_COUNT = 69;
+const EXPECTED_COUNT = 82;
 const SERVICE = "agent";
 
 let failed = false;
@@ -29,32 +41,22 @@ function ok(msg) {
   console.log(`✓ ${msg}`);
 }
 
-// ─── Step 1: Scan command files ──────────────────────────────
+// ─── Step 1: Load registered commands ────────────────────────
 
-function scanCommands(dir) {
-  const commands = [];
-  const entries = readdirSync(dir);
-  for (const entry of entries) {
-    const full = join(dir, entry);
-    const st = statSync(full);
-    if (st.isDirectory()) {
-      commands.push(...scanCommands(full));
-      continue;
-    }
-    if (!entry.endsWith(".ts") || entry === "index.ts") continue;
+const declaredEntries = await discoverCommandExports(AGENT_DIR);
+const declaredCommands = declaredEntries.map((entry) => entry.command);
+const commands = registeredCommands.map((command) => ({
+  command,
+  name: commandPath(command),
+}));
+ok(`Found ${declaredCommands.length} exported commands and ${commands.length} registered commands`);
 
-    const content = readFileSync(full, "utf8");
-    const re = /['"](\+[a-z][a-z0-9-]*)['"]/g;
-    let match;
-    while ((match = re.exec(content)) !== null) {
-      commands.push({ name: match[1], file: full });
-    }
-  }
-  return commands;
+try {
+  assertCommandRegistryMatches(declaredCommands, registeredCommands);
+  ok("Every exported command is registered exactly once");
+} catch (err) {
+  for (const message of err.message.split("\n")) fail(message);
 }
-
-const commands = scanCommands(AGENT_DIR);
-ok(`Found ${commands.length} commands`);
 
 const skillContentSource = readFileSync(join(AGENT_DIR, 'skill-content.ts'), 'utf8');
 if (!/function makeAssetDelCommand[\s\S]*?risk: 'high-risk-write'/.test(skillContentSource)) {
@@ -70,16 +72,15 @@ if (!/function makeAssetUploadCommand[\s\S]*?risk: 'write'/.test(skillContentSou
 
 // ─── Step 2: Duplicate check ─────────────────────────────────
 
-const names = commands.map((c) => c.name);
+const names = commands.map((item) => item.name);
 const uniqueNames = new Set(names);
-if (uniqueNames.size !== names.length) {
-  const seen = new Set();
-  for (const n of names) {
-    if (seen.has(n)) fail(`Duplicate command name: ${n}`);
-    seen.add(n);
-  }
+const duplicateNames = duplicateCommandPaths(registeredCommands);
+const duplicateDeclarations = duplicateCommandPaths(declaredCommands);
+if (duplicateNames.length > 0 || duplicateDeclarations.length > 0) {
+  for (const name of duplicateNames) fail(`Duplicate command path: ${name}`);
+  for (const name of duplicateDeclarations) fail(`Duplicate exported command path: ${name}`);
 } else {
-  ok("No duplicate command names");
+  ok("No duplicate command paths");
 }
 
 // ─── Step 3: Count check ─────────────────────────────────────
@@ -89,27 +90,24 @@ if (uniqueNames.size !== EXPECTED_COUNT) {
 } else {
   ok(`Command count ${uniqueNames.size} = ${EXPECTED_COUNT}`);
 }
+if (declaredCommands.length !== EXPECTED_COUNT) {
+  fail(`Expected ${EXPECTED_COUNT} exported commands, found ${declaredCommands.length}`);
+}
 
-// ─── Step 4: --help output verification ──────────────────────
+// ─── Step 4: Commander tree verification ─────────────────────
 
-try {
-  const helpOutput = execSync(`npx tsx src/index.ts ${SERVICE} --help`, {
-    encoding: "utf8",
-    timeout: 30000,
-  });
-
-  let allFound = true;
-  for (const name of uniqueNames) {
-    if (!helpOutput.includes(name)) {
-      fail(`Command missing from --help output: ${name}`);
-      allFound = false;
-    }
+const program = new CommanderCommand().name("ae-cli");
+registerCommands(program, registeredCommands);
+let allFound = true;
+for (const { command, name } of commands) {
+  const registered = findCommanderCommand(program, command);
+  if (!registered || !registered.helpInformation().includes(`Usage: ae-cli ${name}`)) {
+    fail(`Command missing from registered help tree: ${name}`);
+    allFound = false;
   }
-  if (allFound) {
-    ok(`--help output contains all ${uniqueNames.size} commands`);
-  }
-} catch (err) {
-  fail(`Failed to run --help: ${err.message}`);
+}
+if (allFound) {
+  ok(`Registered help tree contains all ${uniqueNames.size} commands`);
 }
 
 // ─── Step 5: Automation dry-run defaults ─────────────────────
@@ -145,48 +143,6 @@ try {
   } else {
     ok("+create-automation dry-run defaults to active status");
   }
-  const chatContextEnv = {
-    ...process.env,
-    TE_AGENT_CONVERSATION_ID: "conversation-from-chat",
-    TE_AGENT_CURRENT_AGENT_ID: "agent-from-chat",
-    TE_AGENT_CURRENT_MODEL_ID: "model-from-chat",
-  };
-  const chatContextDryRun = runDryRun([], chatContextEnv);
-  if (
-    chatContextDryRun?.body?.conversationId !== "conversation-from-chat" ||
-    chatContextDryRun?.body?.agentId !== "agent-from-chat" ||
-    chatContextDryRun?.body?.model !== "model-from-chat"
-  ) {
-    fail(
-      `+create-automation did not use chat context environment defaults: ${JSON.stringify(chatContextDryRun?.body)}`,
-    );
-  } else {
-    ok("+create-automation uses chat context environment defaults");
-  }
-
-  const explicitContextDryRun = runDryRun(
-    [
-      "--conversation-id",
-      "conversation-explicit",
-      "--agent-id",
-      "agent-explicit",
-      "--model",
-      "model-explicit",
-    ],
-    chatContextEnv,
-  );
-  if (
-    explicitContextDryRun?.body?.conversationId !== "conversation-explicit" ||
-    explicitContextDryRun?.body?.agentId !== "agent-explicit" ||
-    explicitContextDryRun?.body?.model !== "model-explicit"
-  ) {
-    fail(
-      `+create-automation explicit context flags did not override environment defaults: ${JSON.stringify(explicitContextDryRun?.body)}`,
-    );
-  } else {
-    ok("+create-automation explicit context flags override environment defaults");
-  }
-
   const chatContextEnv = {
     ...process.env,
     TE_AGENT_CONVERSATION_ID: "conversation-from-chat",

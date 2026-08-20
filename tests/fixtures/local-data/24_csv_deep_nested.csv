@@ -1,0 +1,4 @@
+user_id,event,time,profile
+u001,open,2026-08-10 10:00:00,"{""user_info"":{""name"":""alice"",""address"":{""city"":""上海"",""geo"":{""lat"":31.23,""lng"":121.47}}},""level"":3}"
+u002,open,2026-08-10 10:00:00,"{""user_info"":{""name"":""bob"",""address"":{""city"":""北京"",""geo"":{""lat"":39.90,""lng"":116.40}}},""level"":1}"
+u003,open,2026-08-10 10:00:00,"{""user_info"":{""name"":""carol"",""address"":{""city"":""广州"",""geo"":{""lat"":23.13,""lng"":113.26}}},""level"":2}"

@@ -62,7 +62,7 @@ Trigger when a user asks about:
 - **Configuration**: Debug mode / data validation / retry strategy
 - **Troubleshooting**: Upload failures / missing data / format errors
 
-**Do NOT trigger**: Inline Q&A within `ae-generate-tracking-plan` or `ae-generate-tracking-code` sessions (those skills have their own workflows).
+**Do NOT trigger**: Inline Q&A within `ae-generate-tracking-plan` or `ae-generate-tracking-code` sessions (those skills have their own workflows). Offline local-file import (CSV / Excel / JSONL → AE) is owned by the `ae-data-integration` skill — route those requests there instead of answering with LogBus / RESTful guidance.
 
 ## Workflow
 

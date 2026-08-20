@@ -13,8 +13,11 @@ import {
   formatTimestampInTimeZone,
   restoreConversation,
 } from "../src/commands/te-agent/conversations.ts";
+import { clearCliToken, setCliTokenManual } from "../src/core/cli-token.ts";
 import { TeAgentApiError } from "../src/core/te-agent-client.ts";
 import type { RuntimeContext } from "../src/framework/types.ts";
+
+const TEST_HOST = "http://agent-conversations.test";
 
 function ctx(values: Record<string, unknown>): RuntimeContext {
   return {
@@ -29,7 +32,7 @@ function ctx(values: Record<string, unknown>): RuntimeContext {
     querySql: async () => undefined,
     queryReportData: async () => undefined,
     token: async () => "",
-    host: () => "http://example.test",
+    host: () => TEST_HOST,
     mcpUrl: () => undefined,
     service: () => "agent",
     out: async () => undefined,
@@ -175,7 +178,11 @@ test("execute preserves UTC timestamps and defaults local output to Shanghai", a
   const previousFetch = globalThis.fetch;
   let requestedUrl = "";
   globalThis.fetch = (async (input: string | URL | Request) => {
-    requestedUrl = String(input);
+    const url = String(input);
+    if (new URL(url).pathname.startsWith("/v1/ta/cli/token/")) {
+      return new Response(JSON.stringify({ return_code: 1 }), { status: 500 });
+    }
+    requestedUrl = url;
     return new Response(
       JSON.stringify({
         items: [
@@ -193,6 +200,7 @@ test("execute preserves UTC timestamps and defaults local output to Shanghai", a
       { status: 200 },
     );
   }) as typeof fetch;
+  setCliTokenManual("conversation-test-token", TEST_HOST);
 
   try {
     await withEnv(
@@ -208,7 +216,7 @@ test("execute preserves UTC timestamps and defaults local output to Shanghai", a
         );
         assert.equal(
           requestedUrl,
-          "http://te-claude.test/api/sandbox/agent/conversations/archived?agentId=agent-1&limit=20",
+          `${TEST_HOST}/agent/api/sandbox/agent/conversations/archived?agentId=agent-1&limit=20`,
         );
         assert.deepEqual(output, {
           items: [
@@ -235,6 +243,7 @@ test("execute preserves UTC timestamps and defaults local output to Shanghai", a
     );
   } finally {
     globalThis.fetch = previousFetch;
+    clearCliToken(TEST_HOST);
   }
 });
 
@@ -243,7 +252,11 @@ test("restore is idempotent and preserves API conflict details", async () => {
   let requestedUrl = "";
   let responseStatus = 200;
   globalThis.fetch = (async (input: string | URL | Request) => {
-    requestedUrl = String(input);
+    const url = String(input);
+    if (new URL(url).pathname.startsWith("/v1/ta/cli/token/")) {
+      return new Response(JSON.stringify({ return_code: 1 }), { status: 500 });
+    }
+    requestedUrl = url;
     return responseStatus === 200
       ? new Response(
           JSON.stringify({ changed: false, conversationId: "conversation-1" }),
@@ -259,6 +272,7 @@ test("restore is idempotent and preserves API conflict details", async () => {
           { status: responseStatus },
         );
   }) as typeof fetch;
+  setCliTokenManual("conversation-test-token", TEST_HOST);
 
   try {
     await withEnv(
@@ -280,7 +294,7 @@ test("restore is idempotent and preserves API conflict details", async () => {
         );
         assert.equal(
           requestedUrl,
-          "http://te-claude.test/api/sandbox/agent/conversations/conversation-1/restore",
+          `${TEST_HOST}/agent/api/sandbox/agent/conversations/conversation-1/restore`,
         );
 
         responseStatus = 409;
@@ -298,5 +312,6 @@ test("restore is idempotent and preserves API conflict details", async () => {
     );
   } finally {
     globalThis.fetch = previousFetch;
+    clearCliToken(TEST_HOST);
   }
 });

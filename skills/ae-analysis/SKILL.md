@@ -1,6 +1,6 @@
 ---
 name: ae-analysis
-version: 4.2.0
+version: 4.2.2
 description: "Use ae-cli for AE/TE analysis-side data questions, asset operations, and asset governance: reports, analysis boards, BI dashboards, ad-hoc models, drilldown, detail data, alerts, clusters, tags, metrics, metadata, project configuration, tracking plans, governance asset lists/rules/lineage/impact/dependency, batch asset operations, projects, and resource links. Use when the user asks to query data, explain a change, export evidence, or inspect/create/update/govern analysis assets."
 ---
 
@@ -8,9 +8,11 @@ description: "Use ae-cli for AE/TE analysis-side data questions, asset operation
 
 This is the single entry skill for analysis intent and command execution.
 
-## Before any command
+## Route before reading
 
-1. If the command family is already known, open its dedicated reference directly. Otherwise search only the matching row in [`references/command_index.md`](references/command_index.md) (for example with `rg`); do not read the exhaustive index end to end.
+1. Map the request to a command family before opening any reference.
+   - Known family: open only its dedicated reference. For example, a retention request goes directly to `references/adhoc_run.md` plus the `retention` section of `references/ai_models.md`.
+   - Unknown family: search [`references/command_index.md`](references/command_index.md) with `rg` or an equivalent text-search tool and keep only the matching rows. `command_index.md` is a search-only fallback; never open it with a whole-file read or print the entire file.
 2. Read the selected command's dedicated reference before composing it:
    - `event list` -> `references/event_list.md`
    - `analysis dashboard list` -> `references/dashboard_list.md`
@@ -20,7 +22,7 @@ This is the single entry skill for analysis intent and command execution.
 5. For analysis data retrieval, choose `run` or `export` using [`references/analysis_data_retrieval.md`](references/analysis_data_retrieval.md).
 6. When an AI-QP compile failure contains `slot_kind`, `allowed_resource_types`, `search_targets`, and `next_action`, read and follow [`metadata_resolution.md`](metadata_resolution.md).
 
-The generated command index is exhaustive. This file contains routing and workflow rules only; do not duplicate a hand-maintained command inventory here.
+Routing is complete when one command family and its dedicated references are selected. The generated command index is exhaustive and must stay out of model context except for matching search rows. This file contains routing and workflow rules only; do not duplicate a hand-maintained command inventory here.
 
 ## Boundaries and priority
 
@@ -111,9 +113,10 @@ When the request can map to a saved business definition:
 
 1. Extract metric, dimensions, filters, time window, and comparison semantics.
 2. Search reports; use dashboard search only to discover candidate embedded reports.
-3. Read the candidate definition and verify semantic equality, not merely a similar name.
-4. Use report/dashboard data when the definition matches.
-5. Use `analysis adhoc run|export` when no definition matches, the user explicitly requests ad-hoc exploration, or custom grouping/filtering is required.
+3. Before querying a selected dashboard's report data, call `analysis dashboard get` exactly once with the verified project and dashboard IDs. Preserve non-empty `location.folder_name`, `dashboard_name`, `remark`, and `notes[].note_title/description` as authored dashboard context for all results from that dashboard. Do not repeat the detail call per report.
+4. Read the candidate definition and verify semantic equality, not merely a similar name.
+5. Use report/dashboard data when the definition matches.
+6. Use `analysis adhoc run|export` when no definition matches, the user explicitly requests ad-hoc exploration, or custom grouping/filtering is required.
 
 Do not call removed QP builders or schema helpers for ad-hoc analysis. `--definition` is the AI-facing contract from `ai_models.md`, not raw QP or a frontend DTO.
 
@@ -165,6 +168,7 @@ For attribution, use the algorithms and self-checks in [`references/analysis_int
 - Include the metric, time window, dimension/filter scope, value, and baseline needed to reproduce it.
 - Separate observed evidence from inferred causes and state uncertainty.
 - For attribution, include total absolute/percentage change and dimension contributions sorted by absolute delta; verify the contribution sum.
+- For saved dashboard answers, use non-empty `location.folder_name`, `dashboard_name`, `remark`, and `notes[].note_title/description` to establish business scope. Label folder names and notes as authored context, separately from observed query evidence.
 - Do not return an unexplained raw table.
 - State missing data, definition, permission, or capability constraints explicitly.
 

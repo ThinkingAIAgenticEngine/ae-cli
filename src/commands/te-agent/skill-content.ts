@@ -24,13 +24,13 @@ import { resolve, basename, extname } from 'node:path';
 
 import type { Command, RuntimeContext } from '../../framework/types.js';
 import {
-  getFromMainApp,
-  postToMainApp,
-  putToMainApp,
-  deleteFromMainApp,
-  uploadToMainApp,
-  getBufferFromMainApp,
-} from '../../core/te-agent-client.js';
+  deleteAgentApi,
+  getAgentApi,
+  getAgentBuffer,
+  postAgentApi,
+  putAgentApi,
+  uploadAgentApi,
+} from './api-client.js';
 import { CliValidationError } from '../../core/errors.js';
 import { MARKET_CATEGORIES, isValidMarketCategory } from './market-constants.js';
 import { assertValidSkillVersion } from './skill-version.js';
@@ -138,7 +138,7 @@ function makeAssetListCommand(
       url: `${BASE_PATH}/${encodeURIComponent(ctx.str('id'))}/${dirName}`,
     }),
     execute: async (ctx) => {
-      return getFromMainApp(`${BASE_PATH}/${encodeURIComponent(ctx.str('id'))}/${dirName}`);
+      return getAgentApi(ctx, `${BASE_PATH}/${encodeURIComponent(ctx.str('id'))}/${dirName}`);
     },
   };
 }
@@ -187,7 +187,7 @@ function makeAssetUploadCommand(
     }),
     execute: async (ctx) => {
       const fd = buildAssetFormData(ctx.str('file'), ctx.str('subPath') || undefined);
-      return uploadToMainApp(`${BASE_PATH}/${encodeURIComponent(ctx.str('id'))}/${dirName}`, fd);
+      return uploadAgentApi(ctx, `${BASE_PATH}/${encodeURIComponent(ctx.str('id'))}/${dirName}`, fd);
     },
   };
 }
@@ -245,7 +245,7 @@ function makeAssetReadCommand(
         .map((seg) => encodeURIComponent(seg))
         .join('/');
       const url = `${BASE_PATH}/${encodeURIComponent(ctx.str('id'))}/${dirName}/${encodedPath}`;
-      const { buffer, fileName, contentType } = await getBufferFromMainApp(url);
+      const { buffer, fileName, contentType } = await getAgentBuffer(ctx, url);
 
       // --output <path>: write binary to disk
       const outputPath = ctx.str('output');
@@ -303,7 +303,7 @@ function makeAssetDelCommand(
         .split('/')
         .map((seg) => encodeURIComponent(seg))
         .join('/');
-      return deleteFromMainApp(`${BASE_PATH}/${encodeURIComponent(ctx.str('id'))}/${dirName}/${encodedPath}`);
+      return deleteAgentApi(ctx, `${BASE_PATH}/${encodeURIComponent(ctx.str('id'))}/${dirName}/${encodedPath}`);
     },
   };
 }
@@ -430,7 +430,7 @@ export const editSkill: Command = {
     if (ctx.str('iconEmoji')) body.iconEmoji = ctx.str('iconEmoji');
     if (ctx.str('iconColor')) body.iconColor = ctx.str('iconColor');
     if (ctx.str('version')) body.version = ctx.str('version');
-    return putToMainApp(`${BASE_PATH}/${encodeURIComponent(ctx.str('id'))}`, body);
+    return putAgentApi(ctx, `${BASE_PATH}/${encodeURIComponent(ctx.str('id'))}`, body);
   },
 };
 
@@ -454,7 +454,7 @@ export const getSkillContent: Command = {
     url: `${BASE_PATH}/${encodeURIComponent(ctx.str('id'))}/content`,
   }),
   execute: async (ctx) => {
-    return getFromMainApp(`${BASE_PATH}/${encodeURIComponent(ctx.str('id'))}/content`);
+    return getAgentApi(ctx, `${BASE_PATH}/${encodeURIComponent(ctx.str('id'))}/content`);
   },
 };
 
@@ -690,7 +690,7 @@ export const uploadSkill: Command = {
     if (ctx.str('iconColor')) fd.append('iconColor', ctx.str('iconColor'));
     if (ctx.str('version')) fd.append('version', ctx.str('version'));
 
-    return uploadToMainApp(`${BASE_PATH}/upload`, fd);
+    return uploadAgentApi(ctx, `${BASE_PATH}/upload`, fd);
   },
 };
 
@@ -706,7 +706,7 @@ export const rescanSkills: Command = {
     method: 'POST',
     url: `${BASE_PATH}/rescan`,
   }),
-  execute: async () => {
-    return postToMainApp(`${BASE_PATH}/rescan`, {});
+  execute: async (ctx) => {
+    return postAgentApi(ctx, `${BASE_PATH}/rescan`, {});
   },
 };

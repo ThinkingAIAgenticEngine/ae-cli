@@ -1,0 +1,11 @@
+user_id,event_name,amount,status,order_time,channel,is_vip,user_meta,city
+u101,purchase,59.90,completed,2024-02-01 10:00:00,app,true,"{""level"": ""gold""}",重庆
+u102,purchase,120.00,pending,2024-02-01 11:30:00,web,false,"{""level"": ""silver""}",西安
+u103,login,,success,2024-02-02 09:15:00,app,true,"{""level"": ""gold""}",长沙
+u104,purchase,300.00,completed,2024/02/03 14:00:00,mini_program,false,"{""level"": ""bronze""}",苏州
+u105,refund,35.00,processing,20240204,web,true,"{""level"": ""silver""}",郑州
+u106,purchase,199.99,completed,1707352200,app,false,"{""level"": ""gold""}",青岛
+u107,login,,success,2024-02-04T16:30:00,web,true,,厦门
+u108,purchase,66.00,completed,2024-02-05 12:00:00.500,app,false,"{""level"": ""bronze""}",
+u109,purchase,88.80,cancelled,2024年2月15日 13:00:00,mini_program,true,"{""level"": ""gold""}",昆明
+u110,login,,success,15 Feb 2024 14:00:00,web,false,"{""level"": ""silver""}",哈尔滨

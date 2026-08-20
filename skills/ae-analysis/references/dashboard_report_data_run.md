@@ -2,7 +2,9 @@
 
 Execute bounded inline dashboard report data queries. Dashboard report data follows report-data model coverage: the 12 analysis report models from `ai_models.md` plus tag report data.
 
-Typical closed loop: find the dashboard -> inspect its reports -> resolve exact filter values when needed -> optionally resolve a physical query route -> run -> verify actual route and per-report warnings -> drill down through the returned report source.
+Typical closed loop: find the dashboard -> inspect its dashboard context and reports -> resolve exact filter values when needed -> optionally resolve a physical query route -> run -> verify actual route and per-report warnings -> drill down through the returned report source.
+
+Before the first data query for a selected dashboard, run `ae-cli analysis dashboard get` exactly once with the same `project_id` and `dashboard_id`. Preserve non-empty `location.folder_name`, `dashboard_name`, `remark`, and `notes[].note_title/description` as dashboard context for every report result in this dashboard query. A folder name such as `Campaign A` can provide business scope that a generic dashboard name such as `Base Data` does not. Treat notes as authored explanatory context, not as measured evidence. Do not repeat `dashboard get` for each report in the same continuous workflow unless the dashboard changes or the user explicitly requests a refresh.
 
 Routing: read [`analysis_data_retrieval.md`](analysis_data_retrieval.md) before choosing this `run` command instead of `dashboard-report-data export`.
 

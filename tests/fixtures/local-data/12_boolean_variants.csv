@@ -1,0 +1,7 @@
+user_id,event_name,vip_flag,premium_flag,opt_in,verified,active,ban_status
+u001,login,true,false,yes,no,1,0
+u002,purchase,FALSE,TRUE,Yes,No,0,1
+u003,login,True,False,YES,NO,true,false
+u004,logout,false,true,no,yes,True,False
+u005,view,0,1,false,true,0,1
+u006,share,1,0,true,false,1,0

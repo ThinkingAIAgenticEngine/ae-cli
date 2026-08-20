@@ -1,0 +1,4 @@
+user_id	event_name	amount	status	order_time	channel	is_vip	user_meta	city
+u001	purchase	99.50	completed	2024-01-15 10:30:00	app	true	{"level": "gold"}	上海
+u002	purchase	150.00	pending	2024-01-15 11:00:00	web	false	{"level": "silver"}	北京
+u003	login		success	2024-01-15 12:30:00	app	true	{"level": "gold"}	深圳

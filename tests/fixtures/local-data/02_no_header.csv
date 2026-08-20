@@ -1,0 +1,5 @@
+u001,purchase,99.50,completed,2024-01-15 10:30:00
+u002,login,,success,2024-01-15 11:00:00
+u003,purchase,150.00,pending,2024-01-15 12:30:00
+u004,refund,75.00,completed,2024-01-16 09:00:00
+u005,purchase,200.00,processing,2024-01-16 14:00:00

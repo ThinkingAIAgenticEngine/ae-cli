@@ -494,6 +494,48 @@ await test('buildVerificationUrl: builds device-activate URL', () => {
   assert.equal(url, `${HOST}/device-activate?user_code=ABCD-EFGH`);
 });
 
+// 22. pollDeviceToken: a denied activation preserves the stable permission contract
+await test('pollDeviceToken: 403 returns structured CLI_ACCESS_DISABLED denial', async () => {
+  const restore = mockFetch(async () =>
+    new Response(
+      JSON.stringify({
+        code: 'CLI_ACCESS_DISABLED',
+        message: 'CLI access is disabled for your account.',
+        hint: 'Ask an administrator to enable CLI access.',
+      }),
+      { status: 403, headers: { 'Content-Type': 'application/json' } },
+    ),
+  );
+  try {
+    const result = await pollDeviceToken(HOST, 'dc-denied');
+    assert.deepEqual(result, {
+      status: 'denied',
+      code: 'CLI_ACCESS_DISABLED',
+      message: 'CLI access is disabled for your account.',
+      hint: 'Ask an administrator to enable CLI access.',
+    });
+  } finally { restore(); }
+});
+
+await test('pollDeviceFlow: denied stops immediately with PermissionError', async () => {
+  const { PermissionError } = await import('../src/core/errors.ts');
+  let callCount = 0;
+  const restore = mockFetch(async () => {
+    callCount++;
+    return new Response(
+      JSON.stringify({ code: 'CLI_ACCESS_DISABLED', message: 'CLI access is disabled.' }),
+      { status: 403, headers: { 'Content-Type': 'application/json' } },
+    );
+  });
+  try {
+    await assert.rejects(
+      () => pollDeviceFlow(HOST, 'dc-denied', { intervalMs: 0, expiresIn: 30 }),
+      (error: Error) => error instanceof PermissionError && error.code === 'CLI_ACCESS_DISABLED',
+    );
+    assert.equal(callCount, 1, 'permission denial must stop polling immediately');
+  } finally { restore(); }
+});
+
 // ── summary ───────────────────────────────────────────────────────────────────
 
 process.stdout.write(`\n${pass} passed, ${fail} failed\n`);

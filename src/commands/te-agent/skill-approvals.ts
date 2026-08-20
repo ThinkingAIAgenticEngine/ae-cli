@@ -13,7 +13,7 @@
  */
 
 import type { Command } from '../../framework/types.js';
-import { getFromMainApp, postToMainApp } from '../../core/te-agent-client.js';
+import { getAgentApi, postAgentApi } from './api-client.js';
 import {
   MARKET_CATEGORIES,
   SUBMISSION_STATUSES,
@@ -66,7 +66,7 @@ export const submitSkill: Command = {
     if (iconEmoji) body.iconEmoji = iconEmoji;
     const iconColor = ctx.str('iconColor');
     if (iconColor) body.iconColor = iconColor;
-    return postToMainApp(`${BASE}/${encodeURIComponent(ctx.str('id'))}/submit`, body);
+    return postAgentApi(ctx, `${BASE}/${encodeURIComponent(ctx.str('id'))}/submit`, body);
   },
 };
 
@@ -99,7 +99,7 @@ export const listSkillSubmissions: Command = {
     if (status) params.set('status', status);
     if (ctx.bool('mine')) params.set('mine', 'true');
     const qs = params.toString();
-    return getFromMainApp(`${BASE}/submissions${qs ? `?${qs}` : ''}`);
+    return getAgentApi(ctx, `${BASE}/submissions${qs ? `?${qs}` : ''}`);
   },
 };
 
@@ -116,7 +116,7 @@ export const cancelSkillSubmission: Command = {
     url: `${BASE}/submissions/${encodeURIComponent(ctx.str('id'))}/cancel`,
   }),
   execute: async (ctx) => {
-    return postToMainApp(`${BASE}/submissions/${encodeURIComponent(ctx.str('id'))}/cancel`, {});
+    return postAgentApi(ctx, `${BASE}/submissions/${encodeURIComponent(ctx.str('id'))}/cancel`, {});
   },
 };
 
@@ -133,7 +133,7 @@ export const approveSkill: Command = {
     url: `${BASE}/submissions/${encodeURIComponent(ctx.str('id'))}/approve`,
   }),
   execute: async (ctx) => {
-    return postToMainApp(`${BASE}/submissions/${encodeURIComponent(ctx.str('id'))}/approve`, {});
+    return postAgentApi(ctx, `${BASE}/submissions/${encodeURIComponent(ctx.str('id'))}/approve`, {});
   },
 };
 
@@ -158,7 +158,7 @@ export const rejectSkill: Command = {
     body: { reason: ctx.str('reason') },
   }),
   execute: async (ctx) => {
-    return postToMainApp(`${BASE}/submissions/${encodeURIComponent(ctx.str('id'))}/reject`, {
+    return postAgentApi(ctx, `${BASE}/submissions/${encodeURIComponent(ctx.str('id'))}/reject`, {
       reason: ctx.str('reason'),
     });
   },

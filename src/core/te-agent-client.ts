@@ -1,12 +1,9 @@
 /**
  * te-agent main app HTTP client
  *
- * Auth header selection logic (priority high -> low):
- *   1. Sandbox credentials complete (url + sandboxId + sandboxSecretKey) -> X-Sandbox-Id / X-Sandbox-Secret-Key
- *   2. User access token present (secure-store)
- *      -> Authorization: bearer <accessToken>
- *   3. CLI token available (secure-store / cli-token.json) -> cli-token: <cliToken>
- *   4. Neither available -> throws TeAgentCredentialsError (with hint)
+ * Auth header selection logic:
+ *   1. Internal sandbox calls without a host override use X-Sandbox-Id / X-Sandbox-Secret-Key.
+ *   2. Explicit-host CLI calls use the unified cli-token credential.
  *
  * Independent of src/core/client.ts (AE platform client). Supports ae-cli sync / model / agent commands.
  */
@@ -16,8 +13,11 @@ import path from 'node:path';
 import { Readable } from 'node:stream';
 import { pipeline } from 'node:stream/promises';
 
-import { tryLoadTeAgentSandboxCredentials, loadTeAgentCredentials, TeAgentCredentialsError } from './te-agent-credentials.js';
+import { tryLoadTeAgentSandboxCredentials, TeAgentCredentialsError } from './te-agent-credentials.js';
+import { clearCliToken, getCliToken } from './cli-token.js';
 import { getActiveHost } from './config.js';
+import { PermissionError } from './errors.js';
+import { internalCallSourceHeaders } from './internal-call-source.js';
 
 export class TeAgentApiError extends Error {
   constructor(
@@ -34,8 +34,11 @@ export class TeAgentApiError extends Error {
 interface SignedRequest {
   url: string;
   headers: Record<string, string>;
-  rawBody: string;
+  authKind: 'sandbox' | 'cli-token';
+  tokenHost?: string;
 }
+
+type TeAgentHttpMethod = 'GET' | 'POST' | 'DELETE' | 'PATCH' | 'PUT';
 
 // Default request timeouts: 30s for regular endpoints, relaxed to 120s for file uploads
 const DEFAULT_TIMEOUT_MS = 30_000;
@@ -57,16 +60,58 @@ async function fetchWithTimeout(
     return await fetch(url, { ...init, signal: controller.signal });
   } catch (err: any) {
     if (err?.name === 'AbortError') {
-      throw new TeAgentApiError(`Request timed out (${timeoutMs}ms): ${url}`, 0, 'TIMEOUT');
+      throw new TeAgentApiError(
+        `Request timed out (${timeoutMs}ms) for ${safeRequestOrigin(url)}`,
+        0,
+        'TIMEOUT',
+      );
     }
-    throw new TeAgentApiError(`Network request failed: ${err?.message ?? err}`, 0, 'NETWORK_ERROR');
+    throw networkRequestError(url, err);
   } finally {
     clearTimeout(timer);
   }
 }
 
+function safeRequestOrigin(url: string): string {
+  try {
+    return new URL(url).origin;
+  } catch {
+    return 'the configured service';
+  }
+}
+
+function networkRequestError(url: string, error: unknown): TeAgentApiError {
+  const nestedCause = error && typeof error === 'object' && 'cause' in error
+    ? (error as { cause?: unknown }).cause
+    : undefined;
+  const root = nestedCause ?? error;
+  const detail = root && typeof root === 'object' ? root as {
+    code?: unknown;
+    address?: unknown;
+    hostname?: unknown;
+    port?: unknown;
+  } : {};
+  const code = typeof detail.code === 'string' ? detail.code : undefined;
+  const address = typeof detail.address === 'string'
+    ? detail.address
+    : typeof detail.hostname === 'string'
+      ? detail.hostname
+      : undefined;
+  const port = typeof detail.port === 'number' || typeof detail.port === 'string'
+    ? String(detail.port)
+    : undefined;
+  const endpoint = address ? `${address}${port ? `:${port}` : ''}` : undefined;
+  const cause = [code, endpoint].filter(Boolean).join(' ');
+  const suffix = cause ? ` (${cause})` : '';
+  return new TeAgentApiError(
+    `Network request failed for ${safeRequestOrigin(url)}${suffix}`,
+    0,
+    'NETWORK_ERROR',
+  );
+}
+
 /**
- * Resolves the te-claude base URL (used as fallback for the user Bearer path).
+ * Resolves the te-claude base URL used by CLI-token requests.
  * Priority: TE_CLAUDE_BASE_URL (full override) > activeHost + te-claude base path (default /agent).
  * Consistent with device-code login: bare activeHost points to the root analytics platform SPA; te-claude lives under the /agent basePath.
  */
@@ -84,16 +129,14 @@ function teClaudeBaseFromActiveHost(hostOverride?: string): string | undefined {
  * Builds a signed request (including auth headers + URL).
  *
  * Auth header selection logic:
- *   - Sandbox credentials complete -> X-Sandbox-Id / X-Sandbox-Secret-Key (preserves the in-sandbox path)
- *   - User access token present -> Authorization: bearer <token>
- *   - CLI token available -> cli-token header (te-claude resolves via /internal/cli/user-info)
- *   - Neither available -> throws TeAgentCredentialsError (with hint)
+ *   - Sandbox credentials complete and no explicit host -> X-Sandbox-* headers.
+ *   - Otherwise -> the unified cli-token credential for the selected host.
  */
 async function signRequest(
-  method: 'GET' | 'POST' | 'DELETE' | 'PATCH' | 'PUT',
+  method: TeAgentHttpMethod,
   path: string,
-  rawBody: string,
   hostOverride?: string,
+  includeJsonContentType = true,
 ): Promise<SignedRequest> {
   const sandboxCred = tryLoadTeAgentSandboxCredentials();
 
@@ -103,19 +146,15 @@ async function signRequest(
       'X-Sandbox-Id': sandboxCred.sandboxId,
       'X-Sandbox-Secret-Key': sandboxCred.sandboxSecretKey,
     };
-    if (method === 'POST' || method === 'PATCH' || method === 'PUT') {
+    if (includeJsonContentType && (method === 'POST' || method === 'PATCH' || method === 'PUT')) {
       headers['Content-Type'] = 'application/json';
     }
     return {
       url: `${sandboxCred.url.replace(/\/$/, '')}${path}`,
       headers,
-      rawBody,
+      authKind: 'sandbox',
     };
   }
-
-  // --- User Bearer path: access token from device login (secure-store) ---
-  const { getToken } = await import('./auth.js');
-  const { getCliToken } = await import('./cli-token.js');
 
   // Determine base URL: prefer the sandbox url field (reuse even if sandbox Id/Key are missing but URL is present),
   // otherwise fall back to the ae-cli-configured activeHost (set by the user via `ae-cli config set-host`).
@@ -132,49 +171,91 @@ async function signRequest(
   const hostForToken = hostOverride || getActiveHost() || baseUrl;
 
   const contentTypeHeader: Record<string, string> =
-    method === 'POST' || method === 'PATCH' || method === 'PUT' ? { 'Content-Type': 'application/json' } : {};
+    includeJsonContentType && (method === 'POST' || method === 'PATCH' || method === 'PUT')
+      ? { 'Content-Type': 'application/json' }
+      : {};
+  const cliToken = await getCliToken(hostForToken);
 
-  let accessToken: string | null = null;
-  try {
-    accessToken = await getToken(hostForToken);
-  } catch {
-    accessToken = null;
-  }
+  return {
+    url: `${baseUrl.replace(/\/$/, '')}${path}`,
+    headers: {
+      'cli-token': cliToken,
+      ...internalCallSourceHeaders(),
+      ...contentTypeHeader,
+    },
+    authKind: 'cli-token',
+    tokenHost: hostForToken,
+  };
+}
 
-  if (accessToken) {
-    return {
-      url: `${baseUrl.replace(/\/$/, '')}${path}`,
-      headers: {
-        'Authorization': `bearer ${accessToken}`,
-        ...contentTypeHeader,
-      },
-      rawBody,
-    };
-  }
+interface SignedFetchOptions {
+  method: TeAgentHttpMethod;
+  path: string;
+  body?: BodyInit;
+  hostOverride?: string;
+  includeJsonContentType?: boolean;
+  timeoutMs?: number;
+}
 
-  // --- CLI token path: no user access token; te-claude accepts cli-token header ---
-  let cliToken: string | null = null;
-  try {
-    cliToken = await getCliToken(hostForToken);
-  } catch {
-    cliToken = null;
-  }
-
-  if (cliToken) {
-    return {
-      url: `${baseUrl.replace(/\/$/, '')}${path}`,
-      headers: {
-        'cli-token': cliToken,
-        ...contentTypeHeader,
-      },
-      rawBody,
-    };
-  }
-
-  throw new TeAgentCredentialsError(
-    'No te-claude credentials available',
-    'Run ae-cli auth login, or execute inside a te-agent sandbox',
+async function fetchSignedWithRetry(options: SignedFetchOptions): Promise<Response> {
+  let signed = await signRequest(
+    options.method,
+    options.path,
+    options.hostOverride,
+    options.includeJsonContentType,
   );
+  const request = (requestToSend: SignedRequest) => fetchWithTimeout(
+    requestToSend.url,
+    {
+      method: options.method,
+      headers: requestToSend.headers,
+      body: options.body,
+    },
+    options.timeoutMs,
+  );
+
+  let response = await request(signed);
+  if (response.status === 401 && signed.authKind === 'cli-token' && signed.tokenHost) {
+    clearCliToken(signed.tokenHost);
+    signed = await signRequest(
+      options.method,
+      options.path,
+      options.hostOverride,
+      options.includeJsonContentType,
+    );
+    response = await request(signed);
+  }
+  return response;
+}
+
+function errorDetails(parsed: any, defaultErrorPrefix: string, status: number): {
+  message: string;
+  code?: string;
+  hint?: string;
+} {
+  const nested = parsed && typeof parsed === 'object' && parsed.error && typeof parsed.error === 'object'
+    ? parsed.error
+    : parsed;
+  const message = typeof parsed?.error === 'string'
+    ? parsed.error
+    : typeof nested?.message === 'string'
+      ? nested.message
+      : typeof parsed?.message === 'string'
+        ? parsed.message
+        : typeof parsed?.return_message === 'string'
+          ? parsed.return_message
+          : `${defaultErrorPrefix} ${status}`;
+  const code = typeof nested?.code === 'string'
+    ? nested.code
+    : typeof parsed?.code === 'string'
+      ? parsed.code
+      : undefined;
+  const hint = typeof nested?.hint === 'string'
+    ? nested.hint
+    : typeof parsed?.hint === 'string'
+      ? parsed.hint
+      : undefined;
+  return { message, code, hint };
 }
 
 async function parseResponse<T>(response: Response, defaultErrorPrefix: string): Promise<T> {
@@ -189,27 +270,19 @@ async function parseResponse<T>(response: Response, defaultErrorPrefix: string):
   }
 
   if (!response.ok) {
+    const details = errorDetails(parsed, defaultErrorPrefix, response.status);
+    if (response.status === 403) {
+      throw new PermissionError(details.message, details.code, details.hint);
+    }
     if (response.status === 401) {
-      // F-010: session expired. The access token slides server-side on use, so a dead one is only
-      // discovered here via a 401 (lazy). Surface a clean re-login hint instead of a raw status.
-      // F-016: 403 is NOT handled here — it means authenticated-but-forbidden (e.g. deleting a
-      // company/system resource). Let it fall through to surface the server's permission message.
       throw new TeAgentApiError(
-        `Session expired or unauthorized. Please run: ae-cli auth login`,
+        'Session expired or unauthorized. Please run: ae-cli auth login',
         response.status,
         'auth_expired',
         parsed,
       );
     }
-    const message =
-      typeof parsed === 'object' && parsed && typeof parsed.error === 'string'
-        ? parsed.error
-        : `${defaultErrorPrefix} ${response.status}`;
-    const code =
-      typeof parsed === 'object' && parsed && typeof parsed.code === 'string'
-        ? parsed.code
-        : undefined;
-    throw new TeAgentApiError(message, response.status, code, parsed);
+    throw new TeAgentApiError(details.message, response.status, details.code, parsed);
   }
 
   return parsed as T;
@@ -227,19 +300,18 @@ export async function postToMainApp<T = unknown>(
   hostOverride?: string,
 ): Promise<T> {
   const rawBody = JSON.stringify(body);
-  const signed = await signRequest('POST', path, rawBody, hostOverride);
-
-  const response = await fetchWithTimeout(signed.url, {
+  const response = await fetchSignedWithRetry({
     method: 'POST',
-    headers: signed.headers,
-    body: signed.rawBody,
+    path,
+    body: rawBody,
+    hostOverride,
   });
 
   return parseResponse<T>(response, 'Main app returned');
 }
 
 /**
- * GET from the main app with automatic sandbox auth header injection. Returns parsed JSON.
+ * GET from the main app with automatic auth header injection. Returns parsed JSON.
  *
  * @param path Main app endpoint path (including query string), e.g. /api/sandbox/models?current=cuid
  */
@@ -247,11 +319,10 @@ export async function getFromMainApp<T = unknown>(
   path: string,
   hostOverride?: string,
 ): Promise<T> {
-  const signed = await signRequest('GET', path, '', hostOverride);
-
-  const response = await fetchWithTimeout(signed.url, {
+  const response = await fetchSignedWithRetry({
     method: 'GET',
-    headers: signed.headers,
+    path,
+    hostOverride,
   });
 
   return parseResponse<T>(response, 'Main app returned');
@@ -374,11 +445,10 @@ export async function deleteFromMainApp<T = unknown>(
   path: string,
   hostOverride?: string,
 ): Promise<T> {
-  const signed = await signRequest('DELETE', path, '', hostOverride);
-
-  const response = await fetchWithTimeout(signed.url, {
+  const response = await fetchSignedWithRetry({
     method: 'DELETE',
-    headers: signed.headers,
+    path,
+    hostOverride,
   });
 
   return parseResponse<T>(response, 'Main app returned');
@@ -393,12 +463,11 @@ export async function patchToMainApp<T = unknown>(
   hostOverride?: string,
 ): Promise<T> {
   const rawBody = JSON.stringify(body);
-  const signed = await signRequest('PATCH', path, rawBody, hostOverride);
-
-  const response = await fetchWithTimeout(signed.url, {
+  const response = await fetchSignedWithRetry({
     method: 'PATCH',
-    headers: signed.headers,
-    body: signed.rawBody,
+    path,
+    body: rawBody,
+    hostOverride,
   });
 
   return parseResponse<T>(response, 'Main app returned');
@@ -413,12 +482,11 @@ export async function putToMainApp<T = unknown>(
   hostOverride?: string,
 ): Promise<T> {
   const rawBody = JSON.stringify(body);
-  const signed = await signRequest('PUT', path, rawBody, hostOverride);
-
-  const response = await fetchWithTimeout(signed.url, {
+  const response = await fetchSignedWithRetry({
     method: 'PUT',
-    headers: signed.headers,
-    body: signed.rawBody,
+    path,
+    body: rawBody,
+    hostOverride,
   });
 
   return parseResponse<T>(response, 'Main app returned');
@@ -433,41 +501,14 @@ export async function getBufferFromMainApp(
   path: string,
   hostOverride?: string,
 ): Promise<{ buffer: Buffer; fileName: string | null; contentType: string | null }> {
-  const signed = await signRequest('GET', path, '', hostOverride);
-
-  const response = await fetchWithTimeout(signed.url, {
+  const response = await fetchSignedWithRetry({
     method: 'GET',
-    headers: signed.headers,
+    path,
+    hostOverride,
   });
 
   if (!response.ok) {
-    // Reuse the error parsing logic from parseResponse for non-OK responses
-    const text = await response.text();
-    let parsed: any = undefined;
-    if (text) {
-      try {
-        parsed = JSON.parse(text);
-      } catch {
-        parsed = text;
-      }
-    }
-    if (response.status === 401) {
-      throw new TeAgentApiError(
-        'Session expired or unauthorized. Please run: ae-cli auth login',
-        response.status,
-        'auth_expired',
-        parsed,
-      );
-    }
-    const message =
-      typeof parsed === 'object' && parsed && typeof parsed.error === 'string'
-        ? parsed.error
-        : `Main app returned ${response.status}`;
-    const code =
-      typeof parsed === 'object' && parsed && typeof parsed.code === 'string'
-        ? parsed.code
-        : undefined;
-    throw new TeAgentApiError(message, response.status, code, parsed);
+    await parseResponse<never>(response, 'Main app returned');
   }
 
   const arrayBuffer = await response.arrayBuffer();
@@ -546,27 +587,32 @@ export async function downloadFromMainApp(
       );
     }
 
-    const signed = await signRequest('GET', requestPath, '', hostOverride);
+    let signed = await signRequest('GET', requestPath, hostOverride);
     let response: Response;
-    try {
-      response = await fetch(signed.url, {
-        method: 'GET',
-        headers: signed.headers,
-        signal: controller.signal,
-      });
-    } catch (error) {
-      if ((error as { name?: string })?.name === 'AbortError') {
-        throw new TeAgentApiError(
-          `Request timed out (${DOWNLOAD_TIMEOUT_MS}ms): ${signed.url}`,
-          0,
-          'TIMEOUT',
-        );
+    const request = async (requestToSend: SignedRequest): Promise<Response> => {
+      try {
+        return await fetch(requestToSend.url, {
+          method: 'GET',
+          headers: requestToSend.headers,
+          signal: controller.signal,
+        });
+      } catch (error) {
+        if ((error as { name?: string })?.name === 'AbortError') {
+          throw new TeAgentApiError(
+            `Request timed out (${DOWNLOAD_TIMEOUT_MS}ms) for ${safeRequestOrigin(requestToSend.url)}`,
+            0,
+            'TIMEOUT',
+          );
+        }
+        throw networkRequestError(requestToSend.url, error);
       }
-      throw new TeAgentApiError(
-        `Network request failed: ${error instanceof Error ? error.message : String(error)}`,
-        0,
-        'NETWORK_ERROR',
-      );
+    };
+
+    response = await request(signed);
+    if (response.status === 401 && signed.authKind === 'cli-token' && signed.tokenHost) {
+      clearCliToken(signed.tokenHost);
+      signed = await signRequest('GET', requestPath, hostOverride);
+      response = await request(signed);
     }
 
     if (!response.ok) {
@@ -614,7 +660,7 @@ export async function downloadFromMainApp(
 }
 
 /**
- * Upload multipart/form-data to the main app with automatic auth header injection (sandbox or user Bearer).
+ * Upload multipart/form-data to the main app with automatic auth header injection.
  * Does not manually set Content-Type; lets fetch automatically add the boundary.
  */
 export async function uploadToMainApp<T = unknown>(
@@ -622,69 +668,14 @@ export async function uploadToMainApp<T = unknown>(
   formData: FormData,
   hostOverride?: string,
 ): Promise<T> {
-  // Reuse signRequest decision logic, but do not set Content-Type for uploads (fetch adds boundary automatically)
-  const sandboxCred = tryLoadTeAgentSandboxCredentials();
-
-  let baseUrl: string;
-  let authHeaders: Record<string, string>;
-
-  if (!hostOverride && sandboxCred && sandboxCred.sandboxId && sandboxCred.sandboxSecretKey) {
-    // Sandbox path
-    baseUrl = sandboxCred.url.replace(/\/$/, '');
-    authHeaders = {
-      'X-Sandbox-Id': sandboxCred.sandboxId,
-      'X-Sandbox-Secret-Key': sandboxCred.sandboxSecretKey,
-    };
-  } else {
-    // User Bearer / CLI token path
-    const { getToken } = await import('./auth.js');
-    const { getCliToken } = await import('./cli-token.js');
-    baseUrl = (
-      hostOverride
-        ? teClaudeBaseFromActiveHost(hostOverride)
-        : sandboxCred?.url || teClaudeBaseFromActiveHost()
-    )?.replace(/\/$/, '') || '';
-    if (!baseUrl) {
-      throw new TeAgentCredentialsError(
-        'Cannot determine the te-claude service URL',
-        'Run ae-cli config set-host <url> to configure the service URL, or execute inside a te-agent sandbox',
-      );
-    }
-    const hostForToken = hostOverride || getActiveHost() || baseUrl;
-    let accessToken: string | null = null;
-    try {
-      accessToken = await getToken(hostForToken);
-    } catch {
-      accessToken = null;
-    }
-    if (accessToken) {
-      authHeaders = { 'Authorization': `bearer ${accessToken}` };
-    } else {
-      let cliToken: string | null = null;
-      try {
-        cliToken = await getCliToken(hostForToken);
-      } catch {
-        cliToken = null;
-      }
-      if (!cliToken) {
-        throw new TeAgentCredentialsError(
-          'No te-claude credentials available',
-          'Run ae-cli auth login, or execute inside a te-agent sandbox',
-        );
-      }
-      authHeaders = { 'cli-token': cliToken };
-    }
-  }
-
-  const response = await fetchWithTimeout(
-    `${baseUrl}${path}`,
-    {
-      method: 'POST',
-      headers: authHeaders,
-      body: formData,
-    },
-    UPLOAD_TIMEOUT_MS,
-  );
+  const response = await fetchSignedWithRetry({
+    method: 'POST',
+    path,
+    body: formData,
+    hostOverride,
+    includeJsonContentType: false,
+    timeoutMs: UPLOAD_TIMEOUT_MS,
+  });
 
   return parseResponse<T>(response, 'Upload failed');
 }

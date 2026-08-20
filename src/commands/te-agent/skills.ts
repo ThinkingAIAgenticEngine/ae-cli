@@ -8,7 +8,12 @@
  */
 
 import type { Command, RuntimeContext } from '../../framework/types.js';
-import { getFromMainApp, postToMainApp, deleteFromMainApp, patchToMainApp } from '../../core/te-agent-client.js';
+import {
+  deleteAgentApi,
+  getAgentApi,
+  patchAgentApi,
+  postAgentApi,
+} from './api-client.js';
 import {
   MARKET_CATEGORIES,
   MARKET_SCOPES,
@@ -77,7 +82,7 @@ export const listSkills: Command = {
   execute: async (ctx) => {
     const scope = ctx.str('scope');
     const qs = scope ? `?scope=${encodeURIComponent(scope)}` : '';
-    return getFromMainApp(`${BASE_PATH}${qs}`);
+    return getAgentApi(ctx, `${BASE_PATH}${qs}`);
   },
 };
 
@@ -174,9 +179,9 @@ export const addSkill: Command = {
   },
   execute: async (ctx) => {
     const instructions = await resolveInstructions(ctx.str('instructions'));
-    const created = await postToMainApp<{
+    const created = await postAgentApi<{
       item: { id: string; name: string; displayName: string | null };
-    }>(BASE_PATH, {
+    }>(ctx, BASE_PATH, {
       name: ctx.str('name'),
       description: ctx.str('description'),
       instructions,
@@ -188,7 +193,7 @@ export const addSkill: Command = {
     const meta = buildMetaBody(ctx);
     if (id && meta) {
       try {
-        await patchToMainApp(`${MARKET_BASE_PATH}/${encodeURIComponent(id)}/meta`, meta);
+        await patchAgentApi(ctx, `${MARKET_BASE_PATH}/${encodeURIComponent(id)}/meta`, meta);
       } catch (err: any) {
         process.stderr.write(`Warning: Skill created but meta update failed: ${err?.message ?? err}\n`);
       }
@@ -215,7 +220,7 @@ export const delSkill: Command = {
     url: `${BASE_PATH}?id=${encodeURIComponent(ctx.str('id'))}`,
   }),
   execute: async (ctx) => {
-    return deleteFromMainApp(`${BASE_PATH}?id=${encodeURIComponent(ctx.str('id'))}`);
+    return deleteAgentApi(ctx, `${BASE_PATH}?id=${encodeURIComponent(ctx.str('id'))}`);
   },
 };
 
@@ -244,7 +249,7 @@ export const toggleSkill: Command = {
     body: { id: ctx.str('id'), enabled: ctx.bool('enabled') },
   }),
   execute: async (ctx) => {
-    return patchToMainApp(BASE_PATH, {
+    return patchAgentApi(ctx, BASE_PATH, {
       id: ctx.str('id'),
       enabled: ctx.bool('enabled'),
     });
@@ -317,7 +322,7 @@ export const listSkillMarket: Command = {
     url: `${MARKET_BASE_PATH}/market?${buildMarketQuery(ctx).toString()}`,
   }),
   execute: async (ctx) => {
-    return getFromMainApp(`${MARKET_BASE_PATH}/market?${buildMarketQuery(ctx).toString()}`);
+    return getAgentApi(ctx, `${MARKET_BASE_PATH}/market?${buildMarketQuery(ctx).toString()}`);
   },
 };
 
@@ -367,7 +372,7 @@ export const setSkillMeta: Command = {
     body: buildMetaBody(ctx),
   }),
   execute: async (ctx) => {
-    return patchToMainApp(`${MARKET_BASE_PATH}/${encodeURIComponent(ctx.str('id'))}/meta`, buildMetaBody(ctx));
+    return patchAgentApi(ctx, `${MARKET_BASE_PATH}/${encodeURIComponent(ctx.str('id'))}/meta`, buildMetaBody(ctx));
   },
 };
 
@@ -414,6 +419,6 @@ export const copySkill: Command = {
     body: buildMetaBody(ctx) ?? {},
   }),
   execute: async (ctx) => {
-    return postToMainApp(`${MARKET_BASE_PATH}/${encodeURIComponent(ctx.str('id'))}/copy`, buildMetaBody(ctx) ?? {});
+    return postAgentApi(ctx, `${MARKET_BASE_PATH}/${encodeURIComponent(ctx.str('id'))}/copy`, buildMetaBody(ctx) ?? {});
   },
 };

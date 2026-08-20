@@ -12,10 +12,10 @@ import { resolve, basename, extname } from 'node:path';
 
 import type { Command, RuntimeContext } from '../../framework/types.js';
 import {
-  getFromMainApp,
-  deleteFromMainApp,
-  uploadToMainApp,
-} from '../../core/te-agent-client.js';
+  deleteAgentApi,
+  getAgentApi,
+  uploadAgentApi,
+} from './api-client.js';
 
 const LIST_PATH = '/api/sandbox/agent/attachments';
 const UPLOAD_PATH = '/api/sandbox/agent/attachments/upload';
@@ -79,7 +79,7 @@ function resolveFilePaths(ctx: RuntimeContext): string[] {
 /**
  * Build FormData and upload multiple files
  */
-async function uploadFiles(filePaths: string[]): Promise<any> {
+async function uploadFiles(ctx: RuntimeContext, filePaths: string[]): Promise<any> {
   const formData = new FormData();
   for (const filePath of filePaths) {
     const resolved = resolve(filePath);
@@ -91,7 +91,7 @@ async function uploadFiles(filePaths: string[]): Promise<any> {
     const blob = new Blob([buffer], { type: mimeType });
     formData.append('file', blob, basename(resolved));
   }
-  return uploadToMainApp(UPLOAD_PATH, formData);
+  return uploadAgentApi(ctx, UPLOAD_PATH, formData);
 }
 
 export const listAttachments: Command = {
@@ -127,7 +127,7 @@ export const listAttachments: Command = {
     if (ctx.num('page')) params.set('page', String(ctx.num('page')));
     if (ctx.num('pageSize')) params.set('pageSize', String(ctx.num('pageSize')));
     const qs = params.toString();
-    return getFromMainApp(`${LIST_PATH}${qs ? '?' + qs : ''}`);
+    return getAgentApi(ctx, `${LIST_PATH}${qs ? '?' + qs : ''}`);
   },
 };
 
@@ -149,7 +149,7 @@ export const addAttachment: Command = {
   },
   execute: async (ctx) => {
     const paths = resolveFilePaths(ctx);
-    return uploadFiles(paths);
+    return uploadFiles(ctx, paths);
   },
 };
 
@@ -166,7 +166,7 @@ export const delAttachment: Command = {
     url: `${LIST_PATH}?id=${encodeURIComponent(ctx.str('id'))}`,
   }),
   execute: async (ctx) => {
-    return deleteFromMainApp(`${LIST_PATH}?id=${encodeURIComponent(ctx.str('id'))}`);
+    return deleteAgentApi(ctx, `${LIST_PATH}?id=${encodeURIComponent(ctx.str('id'))}`);
   },
 };
 
@@ -180,7 +180,7 @@ export const attachmentStats: Command = {
     method: 'GET',
     url: STATS_PATH,
   }),
-  execute: async () => {
-    return getFromMainApp(STATS_PATH);
+  execute: async (ctx) => {
+    return getAgentApi(ctx, STATS_PATH);
   },
 };

@@ -24,18 +24,18 @@ Top-level `type` is exactly one of `condition`, `metric`, `first_last`, or `sql`
 
 ## Metric tag
 
-Required: `event`, `aggregation`. `property` and `time_range` are optional.
+Required: `event`, `aggregation`. `property`, `time_range`, and `filters` are optional. Filters support only event properties and user properties. A string `field` is an event property; use `{name,type:"user_property"}` for a user property.
 
 ```json
-{"type":"metric","metric":{"event":"pay","aggregation":"sum","property":"amount","time_range":{"mode":"previous","unit":"day","value":30}}}
+{"type":"metric","metric":{"event":"pay","aggregation":"sum","property":"amount","time_range":{"mode":"previous","unit":"day","value":30},"filters":{"relation":"and","items":[{"field":"channel","operator":"eq","values":["app"]},{"field":{"name":"country","type":"user_property"},"operator":"eq","values":["US"]}]}}}
 ```
 
 ## First/last tag
 
-Required: `event`, `occurrence=first|last`, and exactly one value source: `calculation` or `property`. `time_range` and `filters` are optional. Supplying neither or both value sources is rejected before execution.
+Required: `event`, `occurrence=first|last`, and exactly one value source: `calculation` or `property`. `time_range` and `filters` are optional. Filters support only event properties and user properties. A string `field` is an event property; use `{name,type:"user_property"}` for a user property. Supplying neither or both value sources is rejected before execution.
 
 ```json
-{"type":"first_last","first_last":{"event":"login","occurrence":"last","property":"platform","time_range":{"mode":"recent","unit":"day","value":30}}}
+{"type":"first_last","first_last":{"event":"login","occurrence":"last","property":"platform","time_range":{"mode":"recent","unit":"day","value":30},"filters":{"relation":"and","items":[{"field":{"name":"country","type":"user_property"},"operator":"eq","values":["US"]}]}}}
 ```
 
 ## SQL tag

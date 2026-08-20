@@ -1,0 +1,6 @@
+user_id,user_name,event_time,event_name
+1001,alice,1705314600,login
+1002,bob,1705318200000,purchase
+1003,carol,2024-01-15T10:30:00,logout
+1004,dave,2024/01/16 09:00:00,view
+1005,eve,20240116,purchase

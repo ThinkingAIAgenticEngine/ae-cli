@@ -83,4 +83,3 @@ ae-cli analysis input-file purpose list --project-id 1
 ## Related Skills
 
 - **`ae-analysis`**: `analysis-meta event get` / `analysis-meta property get` for detail, and `analysis-meta event list` / `analysis-meta property list` to discover names.
-- **Dev workflow**: `.cursor/skills/te-cli-capability-gateway` — inspect gateway schema when adding new metadata capabilities.

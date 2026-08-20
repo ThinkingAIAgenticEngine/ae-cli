@@ -1,0 +1,4 @@
+{"user_id":"u001","event_name":"purchase","amount":99.5,"score":"A+","level":3,"is_vip":true,"profile":{"age":30,"balance":100.0},"create_time":"2024-01-15 10:30:00"}
+{"user_id":"u002","event_name":"login","amount":"free","score":88,"level":"3","is_vip":"true","profile":{"age":"31","balance":"insufficient"},"create_time":"2024-01-15 11:00:00"}
+{"user_id":"u003","event_name":"purchase","amount":null,"score":null,"level":1,"is_vip":false,"profile":{"age":25,"balance":200.5},"create_time":"2024-01-15 12:30:00"}
+{"user_id":"u004","event_name":"refund","amount":150,"score":"B","level":"9","is_vip":"false","profile":{"age":"26","balance":null},"create_time":"2024-01-15 13:00:00"}

@@ -1,12 +1,13 @@
 ---
 name: ae-agent
-version: 1.5.1
-description: "AE Agent platform CLI for Agent, archived conversation, automation, model, MCP, Skill, attachment, and user-memory work. Use when managing these resources, browsing Agent markets, restoring archived conversations, creating scheduled automations, persisting user memory, or answering from user preferences, background, stable workflows, or historical conventions."
+version: 1.5.3
+description: "AE Agent platform CLI for Agent, approval, archived conversation, automation, model, MCP, Skill, attachment, and user-memory work. Use when managing these resources, browsing Agent markets, handling approval requests and tasks, restoring archived conversations, creating scheduled automations, persisting user memory, or answering from user preferences, background, stable workflows, or historical conventions."
 ---
 
 # ae-agent
 
 > **CRITICAL — Before running any `ae-cli agent +<command>` command, you MUST first read the corresponding `references/<command>.md`.** The reference filename equals the command name without the leading `+`, for example `+add-mcp` -> `references/add-mcp.md`.
+> **CRITICAL — Before running hierarchical approval commands, read the matching resource reference: `approval-type.md`, `approval-request.md`, `approval-task.md`, or `approval-effect.md`.**
 > **CRITICAL — Never guess record IDs (Agent / automation / model / MCP / Skill / submission / share / attachment).** Always use the appropriate `+list-*` command to discover real IDs first.
 > **CRITICAL — Agent platform resources are served under `/api/sandbox/agent/*`, but `ae-cli memory` is now served under `/api/cli/memory/v1/*` and uses the CLI token main chain.** Do not reference legacy memory paths.
 
@@ -22,6 +23,7 @@ Agent resource commands live under the `agent` service. Quick help:
 ae-cli agent --help
 ae-cli agent +list-agents --help
 ae-cli agent +create-automation --help
+ae-cli agent approval-request --help
 ```
 
 User memory commands live under the `memory` service:
@@ -32,11 +34,11 @@ ae-cli memory +<command> [options]
 
 ## Global AE CLI Rules
 
-- Use this skill for Agent platform resource management: Agents, archived conversations, automations, models, MCP servers, Skills, attachments, the MCP/Skill market, Skill copy/approval/share flows, and user memories.
-- **Read operations** (`+list-*`) can run directly once required IDs are known.
+- Use this skill for Agent platform resource management: Agents, generic approvals, archived conversations, automations, models, MCP servers, Skills, attachments, the MCP/Skill market, Skill copy/approval/share flows, and user memories.
+- **Read operations** (`risk: read`) can run directly once required IDs are known.
 - **Write operations** (`risk: write`) can run directly once required IDs and references are verified.
-- **Delete operations** (`risk: high-risk-write`) require explicit user authorization. Pass `--yes` only after the user confirms.
-- Prefer `--dry-run` before delete operations to inspect the request shape without executing.
+- **High-risk write operations** (`risk: high-risk-write`) require explicit user authorization. Pass `--yes` only after the user confirms.
+- Prefer `--dry-run` before high-risk write operations to inspect the request shape without executing.
 - Local-Agent runtime `memory +mark-used` is silent internal usage accounting after an answer actually uses memory.
 - Personal and company scope resources can be created/updated/deleted; company scope requires root/agent_admin role; system resources are read-only (exception: root users can approve/reject submissions and set company-scope meta).
 - Toggle operations on company/system resources only affect the current user's preference, not the global state.
@@ -49,7 +51,7 @@ ae-cli memory +<command> [options]
 | ------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------- |
 | `--format <json\|table>` | Output format. Default is JSON.                                                                                                              |
 | `--host <url>`           | Override the active AE host. Available on every command and may be placed after the subcommand, e.g. `ae-cli agent +<command> --host <url>`. |
-| `--yes`                  | Skip confirmation for `high-risk-write` (delete) operations.                                                                                 |
+| `--yes`                  | Skip confirmation for `high-risk-write` operations after explicit user authorization.                                                       |
 | `--dry-run`              | Show request details (method + URL + body) without executing.                                                                                |
 
 ### Output and Errors
@@ -65,13 +67,14 @@ Use `ae-agent` for all Agent platform resource work:
 - **Agents, conversations & automations**: list Agents, find/restore archived conversations, and create/list/update scheduled Agent automations.
 - **Models**: list, add, delete, toggle custom models.
 - **MCP servers**: list, add, delete, toggle MCP servers; browse the MCP market; set market meta.
-- **Skills**: list, add, delete, toggle Skills; browse the Skill market; set market meta; copy system/company Skills to personal; submit/approve/reject company-scope Skills; share/accept/reject peer-to-peer Skills.
+- **Approvals**: discover versioned approval types, submit/query/cancel approval requests, and query/approve/reject approval tasks.
+- **Skills**: list, add, delete, toggle Skills; browse the Skill market; set market meta; copy system/company Skills to personal; use legacy company-publish approval commands during the compatibility period; share/accept/reject peer-to-peer Skills.
 - **Attachments**: list, upload, soft-delete sandbox files in the attachment library.
 - **User Memory**: recall, account for, create, update, extract, organize, preview, and initialize long-term user memories through the `memory` domain.
 
 If the user's intent is data analysis, audience management, metadata governance, TeamRuns, or knowledge bases, switch to `ae-analysis` / `ae-engage` / `ae-dataops` / `ae-team` / `ae-kb`.
 
-## Tool Groups (69 commands)
+## Tool Groups (82 commands)
 
 ### Agents (5)
 
@@ -166,6 +169,13 @@ If the user's intent is data analysis, audience management, metadata governance,
 - `+approve-skill` ([doc](references/approve-skill.md)) — approve a submission (root only). Creates a company-scope copy
 - `+reject-skill` ([doc](references/reject-skill.md)) — reject a submission with a reason (root only)
 
+### Generic Approval Workflow (13)
+
+- `approval-type list|get` ([doc](references/approval-type.md)) — discover versioned approval definitions and input contracts
+- `approval-request list|get|submit|cancel` ([doc](references/approval-request.md)) — query, submit, and cancel approval requests with stable request IDs
+- `approval-task list|get|approve|reject` ([doc](references/approval-task.md)) — query and decide approval tasks with stable task IDs
+- `approval-effect list|get|retry` ([doc](references/approval-effect.md)) — inspect safe execution state and explicitly retry failed/manual-required Effects
+
 ### Skill Share (peer-to-peer) (4)
 
 - `+share-skill` ([doc](references/share-skill.md)) — share a personal Skill to a same-company user
@@ -188,7 +198,7 @@ If the user's intent is data analysis, audience management, metadata governance,
 
 Use the `memory` domain, not the `agent` domain. The memory domain uses te-claude CLI token APIs under `/api/cli/memory/v1/memories*`, like analysis-side CLI token transport. It must not call Web-only `/api/memories*`, `/api/agent-session-defaults*`, or legacy `/api/sandbox/agent/memories*`.
 
-> **CRITICAL — Memory commands marked `write` in the table below run without `--yes`; only `high-risk-write` delete operations use `--yes` after explicit user confirmation. For local Agents, `+mark-used` is silent internal accounting and also runs without `--yes`. Web Agents never call it.**
+> **CRITICAL — Memory commands marked `write` in the table below run without `--yes`. Within the memory domain, `high-risk-write` delete operations use `--yes` after explicit user confirmation. For local Agents, `+mark-used` is silent internal accounting and also runs without `--yes`. Web Agents never call it.**
 
 | Command              |  Risk | Purpose                                                                                        |
 | -------------------- | ----: | ---------------------------------------------------------------------------------------------- |
@@ -256,7 +266,7 @@ For a local Agent, a successful `+mark-used` response means only that the dedupl
 - **Market category keys**: `ae_preset | dev_tool | search_tool | data_query | content_gen | enterprise | life | automation | other`. Sort options: `newest | calls | likes` (`calls` sorts MCP by call count, Skill by download count). Market scope: `all | system | company | custom` (`custom` = personal).
 - **Meta on create/copy**: `+add-mcp` / `+add-skill` / `+copy-skill` accept optional `--category / --icon-emoji / --icon-color`; these are applied via a follow-up meta PATCH after creation. MCP creation still does NOT validate server connectivity.
 - **Copy vs toggle**: `+copy-skill` copies a system/company Skill to an independent personal copy. MCP has no copy (use `+toggle-mcp` to enable a system/company MCP per-user).
-- **Approval & share are Skill-only**: MCP has no approval or share flow. `+approve-skill` / `+reject-skill` require root.
+- **Approval & share boundaries**: MCP has no approval or share flow. Generic approval commands currently expose `skill.publish@1` and future registered approval types; legacy `+approve-skill` / `+reject-skill` remain during the compatibility period and require root.
 - **`--id` semantics differ by command**: `+submit-skill` / `+share-skill` / `+copy-skill` take a Skill ID; `+cancel-skill-submission` / `+approve-skill` / `+reject-skill` take a submission ID; `+accept-skill-share` / `+reject-skill-share` take a share ID.
 
 ## Typical Workflows

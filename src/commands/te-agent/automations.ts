@@ -8,10 +8,10 @@
 
 import type { Command, RuntimeContext } from "../../framework/types.js";
 import {
-  getFromMainApp,
-  patchToMainApp,
-  postToMainApp,
-} from "../../core/te-agent-client.js";
+  getAgentApi,
+  patchAgentApi,
+  postAgentApi,
+} from "./api-client.js";
 
 const BASE_PATH = "/api/sandbox/agent/automations";
 const SCHEDULE_KINDS = ["hourly", "daily", "weekly", "monthly"];
@@ -281,7 +281,7 @@ export const listAutomations: Command = {
     method: "GET",
     url: buildListPath(ctx),
   }),
-  execute: async (ctx) => getFromMainApp(buildListPath(ctx)),
+  execute: async (ctx) => getAgentApi(ctx, buildListPath(ctx)),
 };
 
 export const createAutomation: Command = {
@@ -351,7 +351,7 @@ export const createAutomation: Command = {
     url: BASE_PATH,
     body: buildCreateBody(ctx),
   }),
-  execute: async (ctx) => postToMainApp(BASE_PATH, buildCreateBody(ctx)),
+  execute: async (ctx) => postAgentApi(ctx, BASE_PATH, buildCreateBody(ctx)),
 };
 
 export const updateAutomation: Command = {
@@ -399,7 +399,8 @@ export const updateAutomation: Command = {
     body: buildUpdateBody(ctx),
   }),
   execute: async (ctx) =>
-    patchToMainApp(
+    patchAgentApi(
+      ctx,
       `${BASE_PATH}/${encodeURIComponent(ctx.str("id"))}`,
       buildUpdateBody(ctx),
     ),

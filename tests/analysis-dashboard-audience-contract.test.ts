@@ -16,6 +16,7 @@ import { queryCreateResultCluster } from '../src/commands/te-analysis/query/crea
 import { biPanelPageDataRun } from '../src/commands/te-analysis/bi-panel-page-data/run.ts';
 import { biPanelList } from '../src/commands/te-analysis/bi-panel/list.ts';
 import { projectSpaceList } from '../src/commands/te-analysis/project-space/list.ts';
+import { projectSpaceBusinessFilterUpsert } from '../src/commands/te-analysis/project-space/business-filter-upsert.ts';
 import { publicLinkList } from '../src/commands/te-analysis/public-link/list.ts';
 import { analysisAlertList } from '../src/commands/te-analysis/alert/list.ts';
 import { sqlTableList } from '../src/commands/te-analysis/sql-table/list.ts';
@@ -151,6 +152,41 @@ await test('dashboard update preserves integer refresh type and string status', 
   assert.equal(result.body.input.refresh_type, 1);
   assert.equal(result.body.input.dashboard_status, 'normal');
   assert.equal(dashboardUpdate.flags.find((flag) => flag.name === 'dashboard-status')!.type, 'string');
+});
+
+await test('dashboard update forwards dashboard-level business filter unchanged', async () => {
+  const filter = {
+    junction_kind: 'and',
+    ta_filters: [{
+      filter_type: 'SIMPLE',
+      column_name: '#country',
+      table_type: '1',
+      column_type: 'varchar',
+      select_type: 'string',
+      calcu_symbol: 'C00',
+      ftv: ['US'],
+      lack_value: false,
+    }],
+  };
+  const result = await dryBody(dashboardUpdate, {
+    'project-id': 1,
+    operation: 'business-filter',
+    'dashboard-id': 1001,
+    filter: JSON.stringify(filter),
+  });
+  assert.deepEqual(result.body.input.filter, filter);
+});
+
+await test('project space business filter upsert forwards the space-level filter', async () => {
+  const filter = { junction_kind: 'and', ta_filters: [] };
+  const result = await dryBody(projectSpaceBusinessFilterUpsert, {
+    'project-id': 1,
+    'space-id': 2001,
+    filter: JSON.stringify(filter),
+  });
+  assert.equal(projectSpaceBusinessFilterUpsert.capabilityId, 'analysis.project_space.business_filter_upsert');
+  assert.equal(result.body.input.space_id, 2001);
+  assert.deepEqual(result.body.input.filter, filter);
 });
 
 await test('condition create and update expose only fields accepted by Common', () => {

@@ -6,6 +6,9 @@
  */
 
 import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
 import {
   buildApiUrl,
   buildCapabilityGatewayUrl,
@@ -62,22 +65,60 @@ await test('listCapabilities sends cli-token header', async () => {
   clearCliToken(host);
   setCliTokenManual('cli-list-token', host);
 
-  let capturedHeader: string | undefined;
+  let capturedToken: string | undefined;
+  let capturedSource: string | undefined;
   let capturedUrl = '';
   const prevFetch = globalThis.fetch;
   globalThis.fetch = (async (url, init) => {
     capturedUrl = String(url);
-    capturedHeader = (init?.headers as Record<string, string>)?.['cli-token'];
+    capturedToken = (init?.headers as Record<string, string>)?.['cli-token'];
+    capturedSource = (init?.headers as Record<string, string>)?.['X-Source'];
     return new Response(JSON.stringify({ ok: true, data: [] }), { status: 200 });
   }) as typeof fetch;
 
   try {
     await listCapabilities(host, 'metadata', 42);
-    assert.equal(capturedHeader, 'cli-list-token');
+    assert.equal(capturedToken, 'cli-list-token');
+    assert.equal(capturedSource, 'ae-cli');
     assert.equal(new URL(capturedUrl).searchParams.get('project_id'), '42');
   } finally {
     globalThis.fetch = prevFetch;
     clearCliToken(host);
+  }
+});
+
+await test('listCapabilities marks sandbox calls as te-agent', async () => {
+  const host = 'https://test-cap-agent-source.internal';
+  const sandboxRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'ae-cli-agent-source-'));
+  const previousSandboxRoot = process.env.SANDBOX_RUNTIME_ROOT;
+  process.env.SANDBOX_RUNTIME_ROOT = sandboxRoot;
+  fs.mkdirSync(path.join(sandboxRoot, '.ae-config'), { recursive: true });
+  fs.writeFileSync(
+    path.join(sandboxRoot, '.ae-config', 'cli-token.json'),
+    JSON.stringify({ url: host, token: 'cli-agent-token' }),
+  );
+  clearCliToken(host);
+  setCliTokenManual('cli-agent-token', host);
+
+  let capturedSource: string | undefined;
+  const prevFetch = globalThis.fetch;
+  globalThis.fetch = (async (_url, init) => {
+    capturedSource = (init?.headers as Record<string, string>)?.['X-Source'];
+    return new Response(JSON.stringify({ ok: true, data: [] }), { status: 200 });
+  }) as typeof fetch;
+
+  try {
+    await listCapabilities(host, 'analysis', 20);
+    assert.equal(capturedSource, 'te-agent');
+  } finally {
+    globalThis.fetch = prevFetch;
+    clearCliToken(host);
+    if (previousSandboxRoot === undefined) {
+      delete process.env.SANDBOX_RUNTIME_ROOT;
+    } else {
+      process.env.SANDBOX_RUNTIME_ROOT = previousSandboxRoot;
+    }
+    fs.rmSync(sandboxRoot, { recursive: true, force: true });
   }
 });
 

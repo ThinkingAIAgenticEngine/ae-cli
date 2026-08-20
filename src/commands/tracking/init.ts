@@ -11,7 +11,7 @@ import {
 } from './home.js';
 import { t } from '../../tracking/i18n/translate.js';
 
-const SKILL_NAMES = ['ae-generate-tracking-plan', 'ae-generate-tracking-code', 'ae-data-integration-helper'] as const;
+const SKILL_NAMES = ['ae-generate-tracking-plan', 'ae-generate-tracking-code', 'ae-data-integration', 'ae-data-integration-helper'] as const;
 const CLAUDE_MD = 'CLAUDE.md';
 const AGENTS_MD = 'AGENTS.md';
 

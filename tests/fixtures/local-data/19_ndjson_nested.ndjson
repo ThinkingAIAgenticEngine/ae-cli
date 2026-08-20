@@ -1,0 +1,3 @@
+{"user_id":"u001","event_name":"purchase","amount":99.5,"user_info":{"name":"张三","level":"gold","age":28},"tags":["vip","premium"],"extra":{"source":"campaign","id":123},"create_time":"2024-01-15 10:30:00"}
+{"user_id":"u002","event_name":"login","amount":null,"user_info":{"name":"李四","level":"silver","age":35},"tags":["new_user"],"extra":null,"create_time":"2024-01-15 11:00:00"}
+{"user_id":"u003","event_name":"purchase","amount":200,"user_info":{"name":"王五","level":"gold","age":42,"vip_since":"2023-06-01"},"tags":["vip","premium","early_adopter"],"extra":{"source":"organic"},"create_time":"2024-01-15 12:30:00"}

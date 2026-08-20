@@ -1,0 +1,6 @@
+order_id,user_id,items,user_profile,total_amount
+ord001,u001,"[{""sku"": ""a1"", ""qty"": 2, ""price"": 49.99}, {""sku"": ""b1"", ""qty"": 1, ""price"": 29.99}]","{""name"": ""alice"", ""level"": 3, ""tags"": [""vip"", ""premium""]}",129.97
+ord002,u002,"[{""sku"": ""c1"", ""qty"": 1, ""price"": 88.00}]","{""name"": ""bob"", ""level"": 1, ""tags"": [""new""]}",88.00
+ord003,u003,"[{""sku"": ""a1"", ""qty"": 3, ""price"": 49.99}]","{""name"": ""carol"", ""level"": 2, ""tags"": [""vip""]}",149.97
+ord004,u004,"[{""sku"": ""d1"", ""qty"": 1, ""price"": 199.00}, {""sku"": ""e1"", ""qty"": 1, ""price"": 35.00}]","{""name"": ""dave"", ""level"": 1, ""tags"": []}",234.00
+ord005,u005,,,0.00

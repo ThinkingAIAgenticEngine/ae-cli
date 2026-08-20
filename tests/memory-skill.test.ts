@@ -30,7 +30,7 @@ const expectedCommands = [
   "+write-context",
 ];
 
-assert.match(skill, /^version: 1\.5\.1$/m);
+assert.match(skill, /^version: 1\.5\.3$/m);
 assert.deepEqual(
   memoryCommands.map((command) => command.command),
   expectedCommands,

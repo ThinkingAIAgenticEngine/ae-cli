@@ -6,7 +6,7 @@
  */
 
 import type { Command, RuntimeContext } from "../../framework/types.js";
-import { getFromMainApp, postToMainApp } from "../../core/te-agent-client.js";
+import { getAgentApi, postAgentApi } from "./api-client.js";
 
 const CONVERSATION_PATH = "/api/sandbox/agent/conversations";
 const ARCHIVE_SEARCH_PATH = `${CONVERSATION_PATH}/archived`;
@@ -194,7 +194,8 @@ export const findArchivedConversations: Command = {
   }),
   execute: async (ctx) => {
     const timeZone = readTimeZone(ctx);
-    const result = await getFromMainApp<ArchivedConversationApiResult>(
+    const result = await getAgentApi<ArchivedConversationApiResult>(
+      ctx,
       buildArchivedConversationSearchPath(ctx),
     );
     return {
@@ -225,10 +226,11 @@ export const restoreConversation: Command = {
     body: {},
   }),
   execute: async (ctx) => {
-    const result = await postToMainApp<{
+    const result = await postAgentApi<{
       changed: boolean;
       conversationId: string;
     }>(
+      ctx,
       `${CONVERSATION_PATH}/${encodeURIComponent(ctx.str("conversationId"))}/restore`,
       {},
     );

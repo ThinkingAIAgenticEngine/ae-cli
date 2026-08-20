@@ -11,7 +11,7 @@
  * re-login will not help. The runner surfaces this as `type: 'permission'` and does NOT suggest re-login.
  */
 export class PermissionError extends Error {
-  constructor(message: string, public readonly code?: string) {
+  constructor(message: string, public readonly code?: string, public readonly hint?: string) {
     super(message);
     this.name = 'PermissionError';
   }
@@ -81,6 +81,31 @@ export class CommunityReportError extends Error {
   constructor(message: string, options: CommunityReportErrorOptions = {}) {
     super(message, options.cause === undefined ? undefined : { cause: options.cause });
     this.name = 'CommunityReportError';
+    this.code = options.code;
+    this.httpStatus = options.httpStatus;
+    this.hint = options.hint;
+    this.meta = options.meta;
+  }
+}
+
+export interface LocalDataUploadErrorOptions {
+  code?: string | number;
+  httpStatus?: number;
+  hint?: string;
+  meta?: Record<string, unknown>;
+  cause?: unknown;
+}
+
+/** A body-safe failure from the unauthenticated /sync_json data-plane transport. */
+export class LocalDataUploadError extends Error {
+  readonly code?: string | number;
+  readonly httpStatus?: number;
+  readonly hint?: string;
+  readonly meta?: Record<string, unknown>;
+
+  constructor(message: string, options: LocalDataUploadErrorOptions = {}) {
+    super(message, options.cause === undefined ? undefined : { cause: options.cause });
+    this.name = 'LocalDataUploadError';
     this.code = options.code;
     this.httpStatus = options.httpStatus;
     this.hint = options.hint;

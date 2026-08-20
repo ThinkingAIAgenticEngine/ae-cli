@@ -4,21 +4,23 @@ import { getCliToken, clearCliToken } from './cli-token.js';
 import { safeJsonParse } from './json-utils.js';
 import { logger } from './logger.js';
 import { PermissionError } from './errors.js';
+import { internalCallSourceHeaders } from './internal-call-source.js';
 
-/** Extract a human-readable permission message from a 403 response body, with a sensible fallback (F-018). */
-async function permissionMessage(resp: Response): Promise<string> {
+/** Extract structured permission details from a 403 response body. */
+async function permissionDetails(resp: Response): Promise<{ message: string; code?: string; hint?: string }> {
   const text = await resp.text().catch(() => '');
   try {
     const d: any = safeJsonParse(text);
     const msg = d && (d.error?.message || (typeof d.error === 'string' ? d.error : undefined) || d.message);
-    if (msg && typeof msg === 'string') return msg;
+    if (msg && typeof msg === 'string') {
+      return {
+        message: msg,
+        code: typeof d.code === 'string' ? d.code : typeof d.error?.code === 'string' ? d.error.code : undefined,
+        hint: typeof d.hint === 'string' ? d.hint : typeof d.error?.hint === 'string' ? d.error.hint : undefined,
+      };
+    }
   } catch { /* non-JSON body */ }
-  return 'Permission denied for this resource (HTTP 403)';
-}
-
-function isInvalidCliTokenMessage(message: string): boolean {
-  return /\b(cli[-_\s]?token|token)\b.*\binvalid\b/i.test(message)
-    || /\binvalid\b.*\b(cli[-_\s]?token|token)\b/i.test(message);
+  return { message: 'Permission denied for this resource (HTTP 403)' };
 }
 
 const MCP_PROTOCOL_VERSION = '2025-11-25';
@@ -167,7 +169,7 @@ async function mcpRequest(
     'Content-Type': 'application/json',
     'Accept': 'application/json, text/event-stream',
     'mcp-protocol-version': MCP_PROTOCOL_VERSION,
-    
+    ...internalCallSourceHeaders(),
     ...buildAuthHeaders(token),
   };
 
@@ -178,17 +180,14 @@ async function mcpRequest(
   });
 
   if (!resp.ok) {
-    let permissionMsg: string | undefined;
     if (resp.status === 403) {
-      permissionMsg = await permissionMessage(resp);
-      if (!isInvalidCliTokenMessage(permissionMsg)) {
-        // F-018: 403 = authenticated-but-forbidden (permission/scope), NOT a token issue.
-        throw new PermissionError(permissionMsg);
-      }
+      const permission = await permissionDetails(resp);
+      // 403 一律是权限拒绝；不清理凭证、不重新签发、不重试。
+      throw new PermissionError(permission.message, permission.code, permission.hint);
     }
-    // 401, or 403 with an explicit invalid CLI token message: clear cache and retry once.
-    if (resp.status === 401 || (resp.status === 403 && permissionMsg)) {
-      logger.warn(`MCP request failed (${resp.status === 403 ? permissionMsg : 'HTTP 401'}) for ${hostUrl}, refreshing CLI token`);
+    // 仅 401 清理缓存并重新签发一次。
+    if (resp.status === 401) {
+      logger.warn(`MCP request failed (HTTP 401) for ${hostUrl}, refreshing CLI token`);
       clearCliToken(hostUrl);
       const newToken = await getCliToken(hostUrl);
 
@@ -203,7 +202,8 @@ async function mcpRequest(
       });
       // F-018: a 403 after re-mint is a genuine permission denial, not a token problem.
       if (retryResp.status === 403) {
-        throw new PermissionError(await permissionMessage(retryResp));
+        const permission = await permissionDetails(retryResp);
+        throw new PermissionError(permission.message, permission.code, permission.hint);
       }
       if (!retryResp.ok) {
         throw new Error(`MCP HTTP error: ${retryResp.status} ${retryResp.statusText}`);

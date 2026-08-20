@@ -66,4 +66,32 @@ ae-cli system smtp test --company-id 1 --receiver ops@example.com --yes
   },
 );
 
+await withTempSkills(
+  {
+    'example/references/command_index.md': `# Commands
+
+| CLI command | Capability ID | Risk | Flags | Reference |
+|---|---|---|---|---|
+| \`ae-cli example retry\` | example.retry | high-risk-write |  |  |
+| \`ae-cli example list\` | example.list | read |  |  |
+`,
+    'example/references/actions.md': `# Actions
+
+Domain: **Example / read + high-risk-write**
+
+\`\`\`bash
+ae-cli --yes example retry --expected-version 1
+ae-cli --yes example list
+\`\`\`
+`,
+  },
+  async (root) => {
+    const result = await run({ root });
+    assert.equal(result.ok, false);
+    assert.equal(result.findings.length, 1, JSON.stringify(result.findings));
+    assert.match(result.findings[0].msg, /actions\.md:7 uses --yes for a read command example/);
+    console.log('  ✓ leading global flags retain command-level risk enforcement');
+  },
+);
+
 console.log('\nrelease-gate skill-risk-examples tests passed\n');

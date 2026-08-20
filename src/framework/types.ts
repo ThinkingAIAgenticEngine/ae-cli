@@ -10,6 +10,8 @@ export interface Flag {
   desc: string;
   /** Always redact this flag's value from command logs. */
   sensitive?: boolean;
+  /** Collect repeated occurrences into an array (string-typed flags only). */
+  variadic?: boolean;
   /** Shown in validation errors when this required flag is missing. */
   hint?: string;
   alias?: string;
@@ -58,9 +60,12 @@ export interface RuntimeContext {
   optionalNum(name: string): number | undefined;
   bool(name: string): boolean;
   json(name: string): any;
+  /** Repeated flag values in order. Empty array when absent. */
+  list(name: string): string[];
 
   api(method: string, path: string, params?: Record<string, any>, data?: any): Promise<any>;
   communityReport(endpoint: string, rawBody: string): Promise<any>;
+  localDataUpload(endpoint: string, rawBody: string, options?: Record<string, any>): Promise<any>;
   querySql(projectId: number, sql: string): Promise<any>;
   queryReportData(projectId: number, reportId: number, qp: any, eventModel: number, options?: Record<string, any>): Promise<any>;
 

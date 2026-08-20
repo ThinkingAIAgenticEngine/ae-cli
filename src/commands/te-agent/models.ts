@@ -11,11 +11,11 @@
 
 import type { Command } from "../../framework/types.js";
 import {
-  getFromMainApp,
-  postToMainApp,
-  deleteFromMainApp,
-  patchToMainApp,
-} from "../../core/te-agent-client.js";
+  deleteAgentApi,
+  getAgentApi,
+  patchAgentApi,
+  postAgentApi,
+} from "./api-client.js";
 
 const BASE_PATH = "/api/sandbox/agent/models";
 
@@ -55,7 +55,8 @@ export const listModels: Command = {
     // 返回 { items: [...] } 且不支持 current 参数；本地用 TE_AGENT_CURRENT_MODEL_ID
     // 计算 isCurrent，并保持 { models: [...] } 输出契约不变（对消费者透明）。
     const current = process.env.TE_AGENT_CURRENT_MODEL_ID?.trim();
-    const data = await getFromMainApp<{ items?: Array<{ id: string }> }>(
+    const data = await getAgentApi<{ items?: Array<{ id: string }> }>(
+      ctx,
       `${BASE_PATH}${qs ? `?${qs}` : ""}`,
     );
     const items = (data?.items ?? []) as Record<string, unknown>[];
@@ -136,7 +137,7 @@ export const addModel: Command = {
     },
   }),
   execute: async (ctx) => {
-    return postToMainApp(BASE_PATH, {
+    return postAgentApi(ctx, BASE_PATH, {
       modelId: ctx.str("modelId"),
       displayName: ctx.str("name"),
       baseUrl: ctx.str("baseUrl"),
@@ -183,7 +184,7 @@ export const delModel: Command = {
   execute: async (ctx) => {
     const scope = ctx.str("scope") || "personal";
     const qs = `id=${encodeURIComponent(ctx.str("id"))}&scope=${encodeURIComponent(scope)}`;
-    return deleteFromMainApp(`${BASE_PATH}?${qs}`);
+    return deleteAgentApi(ctx, `${BASE_PATH}?${qs}`);
   },
 };
 
@@ -212,7 +213,7 @@ export const toggleModel: Command = {
     body: { id: ctx.str("id"), enabled: ctx.bool("enabled") },
   }),
   execute: async (ctx) => {
-    return patchToMainApp(BASE_PATH, {
+    return patchAgentApi(ctx, BASE_PATH, {
       id: ctx.str("id"),
       enabled: ctx.bool("enabled"),
     });
@@ -287,7 +288,7 @@ export const updateModel: Command = {
     if (contextLength !== undefined) body.contextLength = contextLength;
     if (ctx.bool("autoRename")) body.autoRename = true;
     body.scope = ctx.str("scope") || "personal";
-    return postToMainApp(BASE_PATH, body);
+    return postAgentApi(ctx, BASE_PATH, body);
   },
 };
 
@@ -335,6 +336,6 @@ export const testModel: Command = {
     if (provider) body.provider = provider;
     const id = ctx.str("id");
     if (id) body.existingConfigId = id;
-    return postToMainApp(`${BASE_PATH}/test`, body);
+    return postAgentApi(ctx, `${BASE_PATH}/test`, body);
   },
 };

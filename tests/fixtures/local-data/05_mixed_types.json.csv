@@ -1,0 +1,9 @@
+user_id,name,score,is_active,register_date,tags,extra_info,empty_col
+u001,alice,95,true,2024-01-15,"[""vip"",""premium""]","{""level"":1,""vip"":true}",should_be_skipped
+u002,bob,88,false,2024-01-16,"[""new"",""trial""]","{""level"":2,""vip"":false}",
+u003,carol,72,true,2024-01-17,,,
+u004,dave,0,false,2024-01-18,"[""vip"",""enterprise""]","{""level"":3,""vip"":true}",also_skipped
+u005,eve,-1,true,2024-01-19,"[""basic""]","{""level"":0}",should_be_skipped_too
+u006,frank,100,false,2024-01-20,,
+u007,grace,99.5,true,2024-01-21,"[""vip""]","{""level"":5,""vip"":true}",
+u008,henry,,false,2024-01-22,,

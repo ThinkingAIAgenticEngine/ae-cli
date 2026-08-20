@@ -173,7 +173,7 @@ Detailed metadata browsing, SQL query, async download, and cancel workflows live
 Key constraints:
 - IDE is query-only; create/modify/delete tables with `dataops_datatable`.
 - Prefer `dataops_datatable +dict_search_tables` for table discovery unless raw engine metadata or schema browsing is required.
-- SQL query submission creates a download task; rows are not returned inline.
+- Submit exactly one read-only SQL query. It creates a platform-bounded download task; rows are not returned inline and the result is not an unlimited or full export.
 
 ---
 

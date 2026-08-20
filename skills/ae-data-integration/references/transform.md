@@ -1,0 +1,65 @@
+# Transform — column → UE mapping
+
+Precondition: the tracking plan ([tracking-plan.md](tracking-plan.md)) has been generated and confirmed. A field mapping is not a tracking plan; if the plan is missing, return to tracking-plan.md first.
+
+Read [UE mapping](ue-mapping.md) and apply these gates:
+
+- At least one real account/distinct ID source exists, or an explicitly user-approved fixed placeholder (`account_id_value`/`distinct_id_value`) or `random_pool`.
+- A real event/profile time source exists and is within the supported window.
+- Track data has a verified event column or user-approved default event name.
+- Low-confidence or mixed mappings are explicitly reviewed.
+
+Confirm the system fields with the user before touching properties. These are the top-level `#` fields, and users may not understand them, so explain each in plain language before asking; never infer a decision from a column name alone.
+
+1. **`#type` / mode.** Confirm the recommendation's `mode` (`track` / `user_set` / `mixed`). If `record_type_field` is set, confirm each distinct value normalizes to one of the eight record types. Ask whether the data reports events (→ `track`) or modifies user profiles (→ `user_set` or another profile type).
+2. **`#account_id` and `#distinct_id` — ask together; at least one is required.** Explain both: `#account_id` identifies logged-in users (database `user_id`, phone, member ID); `#distinct_id` identifies anonymous visitors (device/cookie/visitor ID). Present every `identity_candidates` entry from the inspect result alongside the recommendation's `account_id_field`/`distinct_id_field` picks, and ask which column maps to `#account_id`, which to `#distinct_id`, and whether both apply. A column named `user_id` can be either an anonymous or a login ID — only the user knows. If a required identity column is missing, offer an explicit `account_id_value`/`distinct_id_value` placeholder or `random_pool`; never invent one.
+3. **`#time`.** Confirm the time column and the source timezone (an IANA name from the user/project context). Leave `time_format` unset unless auto-detection failed (US/EU ambiguous dates). Also confirm the data's `#zone_offset` — the whole-hour UTC offset AE applies to those times, emitted inside `properties` (not top-level). The property's value is a number, so ask the user in numeric terms ("is the offset 8, i.e. UTC+8?") and set `zone_offset_value` to that integer; when a column carries the offset per row, set `zone_offset_field` instead. The two are mutually exclusive.
+4. **`#event_name` (track only).** Confirm the event-name column, or a reviewed `default_event_name` when no column exists.
+5. **`#ip` / `#uuid` (optional).** Ask only when the data has an IP- or UUID-like column; map it via `ip_field`/`uuid_field`, otherwise skip.
+
+When an `#event_name`, `#account_id`, or `#distinct_id` column's values do not satisfy AE naming rules (pure Chinese, uppercase, spaces), do not stop — scan the distinct values, list them to the user, and ask for one AE-name replacement each; record the pairs in `value_mapping` (see [UE mapping](ue-mapping.md)). A value with no matching key keeps its original text and fails validation, so confirm every distinct value is covered or excluded. The same mechanism applies to a property column via that entry's own `value_mapping`.
+
+Then confirm the property set with the user before saving the mapping. Present every property as a readable table — one row per property with source column, target AE name, and type — never dump the raw mapping JSON at the user. Whether the rows are event or user properties follows `mode`: `track` → **event properties**, `user_set` (or another profile mode) → **user properties**, `mixed` → the same set applies to both event and user rows.
+
+Walk the table item by item:
+
+1. **Auto-renamed targets.** Recommendation sanitizes column names (camelCase split, illegal chars → `_`, digit-leading → `field_`, nothing recognizable → `field_N`). Show each source → target; ask for a manual name for every `field_N` fallback and rewrite the `target`.
+2. **Types.** Confirm each inferred type (`number`/`string`/`boolean`/`datetime`/`list`/`object`). ID-like columns stay `string` even when numeric; `object`/`list` columns carry `transform: 'json'`. A type is locked on first receipt, so review it before committing. If the user changes a type, warn how many rows would fail coercion — `convert` reports each failing row with its error code, so run it with the tentative mapping and confirm the quarantined count before finalizing.
+3. **Exclusions.** Ask which columns to drop and record them as `exclude_columns`.
+
+Before saving, present the complete mapping for a final sign-off on one grouped page — system fields (`#type`/mode, `#account_id`, `#distinct_id`, `#time` + source timezone, `#zone_offset`, `#event_name`, `#ip`/`#uuid`), then the property table (source column → target AE name → type), then excluded columns — and wait for an explicit yes. Never dump the raw mapping JSON at the user.
+
+Save the reviewed `ae-local-data-mapping/v1` JSON locally. Convert into a new output directory:
+
+```bash
+ae-cli data-integration convert \
+  --input-file '<path>' \
+  --mapping '<mapping.json>' \
+  --output-dir '.ae-cli/data-integration/<run-id>'
+```
+
+For multiple files, repeat `--input-file` and pass a wildcard mapping plus `--type-resolutions` when inspect reported conflicts:
+
+```bash
+ae-cli data-integration convert \
+  --input-file '<a.csv>' --input-file '<b.csv>' \
+  --mapping '<wildcard-mapping.json>' \
+  --type-resolutions '<resolutions.json>' \
+  --output-dir '.ae-cli/data-integration/<run-id>'
+```
+
+The command never modifies the source. Inspect `manifest.json`; summarize valid and quarantined counts and the block reason. Do not expose rows from `invalid.rows.jsonl` unless the user specifically asks to inspect the local quarantine.
+
+## Re-report only the failed rows (salvage loop)
+
+Re-uploading the whole `valid.ue.jsonl` would re-send rows that already succeeded (track events would duplicate, `user_add` would double-count). Instead, re-process only the quarantined rows against the fixed mapping, anchored to the same source:
+
+```bash
+ae-cli data-integration convert \
+  --input-file '<same-source>' \
+  --mapping '<fixed-mapping.json>' \
+  --salvage-from '<run-dir>/invalid.rows.jsonl' \
+  --output-dir '.ae-cli/data-integration/<run-id>-salvage'
+```
+
+This emits a `valid.ue.jsonl` containing only the rows that now pass, plus a new `invalid.rows.jsonl` with whatever still fails. Fixes are rarely one-shot, so repeat: feed each round's `invalid.rows.jsonl` into the next `--salvage-from` until no rows fail or the user stops. Each round's `valid.ue.jsonl` is disjoint from earlier rounds', so upload each round independently (same confirmation and `--allow-clean-subset` gates as a normal upload). `--salvage-from` is single-file only and the source must be the same file that produced the quarantine.

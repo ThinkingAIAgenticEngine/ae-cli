@@ -14,10 +14,10 @@ export const dashboardUpdate = createAnalysisCapabilityCommand({
   resource: 'dashboard',
   command: 'update',
   capabilityId: 'analysis.dashboard.update',
-  description: 'Update dashboard settings or create/update a dashboard note. Use --operation settings or note-upsert.',
+  description: 'Update dashboard settings, create/update a dashboard note, or replace the dashboard-level business filter. Use --operation settings, note-upsert, or business-filter.',
   flags: [
     projectIdFlag,
-    { name: 'operation', type: 'string', required: true, desc: 'Update operation: settings or note-upsert.' },
+    { name: 'operation', type: 'string', required: true, desc: 'Update operation: settings, note-upsert, or business-filter.' },
     { name: 'dashboard-id', type: 'number', required: false, desc: 'Dashboard ID for a single-dashboard update.' },
     { name: 'dashboard-ids', type: 'json', required: false, desc: 'Dashboard ID array for batch settings updates.' },
     { name: 'dashboard-name', type: 'string', required: false, desc: 'Dashboard name for single rename.' },
@@ -28,6 +28,7 @@ export const dashboardUpdate = createAnalysisCapabilityCommand({
     { name: 'note-title', type: 'string', required: false, desc: 'Dashboard note title.' },
     { name: 'description', type: 'string', required: false, desc: 'Dashboard note description.' },
     { name: 'ui-config', type: 'string', required: false, desc: 'Dashboard or note UI config string.' },
+    { name: 'filter', type: 'json', required: false, desc: 'Dashboard-level business filter in snake_case QP form. Required with --operation business-filter. Pass {"junction_kind":"and","ta_filters":[]} to clear it.' },
     payloadFlag,
   ],
   risk: 'write',
@@ -44,6 +45,7 @@ export const dashboardUpdate = createAnalysisCapabilityCommand({
     note_title: optionalString(ctx, 'note-title'),
     description: optionalString(ctx, 'description'),
     ui_config: optionalString(ctx, 'ui-config'),
+    filter: optionalJson(ctx, 'filter'),
     payload: optionalJson(ctx, 'payload'),
   }),
 });

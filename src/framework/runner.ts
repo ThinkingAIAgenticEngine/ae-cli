@@ -6,7 +6,7 @@ import { safeJsonParse } from '../core/json-utils.js';
 import { logger } from '../core/logger.js';
 import { TeAgentCredentialsError } from '../core/te-agent-credentials.js';
 import { SecureStoreAuthError } from '../core/secure-store.js';
-import { CliValidationError, CommunityReportError, PermissionError } from '../core/errors.js';
+import { CliValidationError, CommunityReportError, LocalDataUploadError, PermissionError } from '../core/errors.js';
 import { TeAgentApiError } from '../core/te-agent-client.js';
 import { CapabilityGatewayError } from '../core/capability-api.js';
 import { requiresConfirmation } from '../core/capability-risk.js';
@@ -50,6 +50,7 @@ export async function runCommand(cmd: Command, opts: Record<string, any>, global
     const missingRequired = cmd.flags.filter((flag) => {
       if (!flag.required) return false;
       const val = opts[camelCase(flag.name)];
+      if (flag.variadic) return !Array.isArray(val) || val.length === 0;
       return val === undefined || val === null || val === '';
     });
     if (missingRequired.length > 0) {
@@ -69,6 +70,7 @@ export async function runCommand(cmd: Command, opts: Record<string, any>, global
     const LIMIT_FLAG_PATTERNS = [/limit/i, /page_size/i, /pagesize/i, /row_limit/i, /block_limit/i, /top[-_]?k/i];
     for (const flag of cmd.flags) {
       const val = opts[camelCase(flag.name)];
+      if (flag.variadic) continue;
 
       // Boolean flags: parseBooleanValue returns the raw string when the value is not a
       // recognized boolean. Surface a unified JSON validation error instead of a Node stack trace.
@@ -81,6 +83,7 @@ export async function runCommand(cmd: Command, opts: Record<string, any>, global
       }
 
       if (flag.type !== 'number') continue;
+      if (flag.variadic) continue;
       if (val === undefined || val === null || val === '') continue;
       const num = Number(val);
       if (!Number.isFinite(num)) {
@@ -110,6 +113,7 @@ export async function runCommand(cmd: Command, opts: Record<string, any>, global
     // Validate string contract constraints before any local dry-run or remote request.
     for (const flag of cmd.flags) {
       if (flag.type !== 'string') continue;
+      if (flag.variadic) continue;
       const val = opts[camelCase(flag.name)];
       if (val === undefined || val === null || val === '') continue;
       const error = stringFlagValidationError(flag, String(val));
@@ -178,7 +182,7 @@ export async function runCommand(cmd: Command, opts: Record<string, any>, global
     }
     const message = err.message || String(err);
     if (!(err instanceof CommunityReportError)) {
-      logger.error(`Command failed: ${message}`);
+      if (!(err instanceof LocalDataUploadError)) logger.error(`Command failed: ${message}`);
     }
     // F-018: classify by structured error type (instanceof), NOT by substring-matching the message —
     // string matching mislabeled permission denials (403, message contains "403"/"auth") as session
@@ -196,12 +200,14 @@ export async function runCommand(cmd: Command, opts: Record<string, any>, global
       printError('config', message, err.hint);
     } else if (err instanceof PermissionError) {
       // authenticated-but-forbidden — surface the server's reason; re-login won't help
-      printError('permission', message, undefined, err.code);
+      printError('permission', message, err.hint, err.code);
     } else if (err instanceof CapabilityGatewayError) {
       printError('api', message, err.hint ?? capabilityGatewayHint(err), err.code, err.meta);
     } else if (err instanceof CommunityReportError) {
       // The message/hint may come from the ingestion response. Keep it visible to the caller but
       // never persist it to CLI logs; the dedicated client records only URL/status/byte counts.
+      printError('api', message, err.hint, err.code, err.meta, { log: false });
+    } else if (err instanceof LocalDataUploadError) {
       printError('api', message, err.hint, err.code, err.meta, { log: false });
     } else if (err instanceof SecureStoreAuthError) {
       printError('auth', message, 'Run: ae-cli auth login');
@@ -298,6 +304,14 @@ function createRuntimeContext(cmd: Command, opts: Record<string, any>, globalOpt
     return _communityReportModule;
   }
 
+  let _localDataUploadModule: typeof import('../core/local-data-upload-client.js') | null = null;
+  async function getLocalDataUploadClient() {
+    if (!_localDataUploadModule) {
+      _localDataUploadModule = await import('../core/local-data-upload-client.js');
+    }
+    return _localDataUploadModule;
+  }
+
   const ctx: RuntimeContext = {
     str(name: string): string {
       return String(opts[camelCase(name)] ?? '');
@@ -325,6 +339,12 @@ function createRuntimeContext(cmd: Command, opts: Record<string, any>, globalOpt
         process.exit(1);
       }
     },
+    list(name: string): string[] {
+      const val = opts[camelCase(name)];
+      if (Array.isArray(val)) return val.map(String);
+      if (val === undefined || val === null || val === '') return [];
+      return [String(val)];
+    },
 
     async api(method: string, path: string, params?: Record<string, any>, data?: any): Promise<any> {
       const client = await getClient();
@@ -348,6 +368,11 @@ function createRuntimeContext(cmd: Command, opts: Record<string, any>, globalOpt
     async queryReportData(projectId: number, reportId: number, qp: any, eventModel: number, options?: Record<string, any>): Promise<any> {
       const client = await getClient();
       return client.queryReportData(projectId, reportId, qp, eventModel, options, ctx.host());
+    },
+
+    async localDataUpload(endpoint: string, rawBody: string, options?: Record<string, any>): Promise<any> {
+      const client = await getLocalDataUploadClient();
+      return client.localDataUpload(endpoint, rawBody, options);
     },
 
     async token(): Promise<string> {
