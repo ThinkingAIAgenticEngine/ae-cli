@@ -68,7 +68,7 @@ CLI 同时面向团队成员与 AI agent，**源码内容与所有用户可见�
 { service, command, description, flags[], risk, usesAeHost?, validate?, dryRun?, execute }
 ```
 
-- `command` 用 `+` 前缀，如 `+query`、`+list_events`。
+- `command` 用 `+` 前缀，如 `+grep`、`+list_events`。
 - 命令文件放在 `src/commands/<domain>/<cmd>.ts`，并在该 domain 的 `index.ts` 里登记到命令数组 + 具名导出。
 
 ### CLI / Capability 命名契约

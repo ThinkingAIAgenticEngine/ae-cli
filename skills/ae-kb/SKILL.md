@@ -1,7 +1,7 @@
 ---
 name: ae-kb
 version: 1.0.0
-description: "AE/TE knowledge base CLI manual for creating, querying, LLM-powered ask, listing accessible knowledge bases, deterministic index/grep/read retrieval, checking status, uploading, compiling, schema generation, URL sources, source deletion, and knowledge base deletion. Use when the user asks to manage TE/AE/ThinkingEngine knowledge bases, upload documents or URLs to a knowledge base, query knowledge, ask knowledge bases with an LLM, list accessible knowledge bases, inspect knowledge base indexes, search knowledge base pages, read a specific knowledge base page, check knowledge base status, generate schemas, compile knowledge, remove sources, or delete a knowledge base. Must use ae-cli kb commands and must not guess knowledge base names, scopes, page paths, source display names, JSON payload shapes, or URL formats."
+description: "AE/TE knowledge base CLI manual for creating, querying, LLM-powered ask, listing accessible knowledge bases, deterministic index/grep/read retrieval, checking status, uploading, compiling, schema generation, URL sources, source deletion, and knowledge base deletion. Use when the user asks to manage TE/AE/ThinkingEngine knowledge bases, upload documents or URLs to a knowledge base, query knowledge, ask knowledge bases with an LLM, list accessible knowledge bases, inspect knowledge base indexes, search knowledge base pages, read a specific knowledge base page, check knowledge base status, generate schemas, compile knowledge, remove sources, or delete a knowledge base. To choose which knowledge base is worth searching, use the ae-kb-discovery skill first; this skill runs the retrieval once a target is chosen. Must use ae-cli kb commands and must not guess knowledge base names, scopes, page paths, source display names, JSON payload shapes, or URL formats."
 ---
 
 # ae-kb
@@ -15,25 +15,27 @@ ae-cli kb +<command> [options]
 ## Global Rules
 
 - Use this skill for TE/AE knowledge base tasks: create, query, ask with LLM, list accessible knowledge bases, inspect indexes, grep pages, read pages, check status, upload sources, add URL sources, generate schema, compile, remove source files, and delete knowledge bases.
+- **Searching a knowledge base for an answer is the most common task. If that is what you are doing, go straight to [Explore Knowledge Base Pages](#explore-knowledge-base-pages) and read [`references/query-workflow.md`](references/query-workflow.md) first — it is the retrieval procedure. The other commands below are for managing knowledge bases, not answering from them.**
 - Read operations can run directly after required inputs are known. Write operations require explicit user intent and normally keep the confirmation prompt unless the user asks to bypass it.
 - Prefer `--dry-run` before destructive or broad writes when the user has not already validated the target.
 - Do not invent knowledge base names, scopes, source display names, or JSON payloads. Ask the user or query known context when values are missing.
+- When building a `--sources` ref (or `+read --source`), copy the exact `scope` and `name` from `+list` output — run `ae-cli kb +list` first when the scope of a named knowledge base is unknown.
 - JSON flags must be valid JSON strings, usually wrapped in single quotes in shell commands.
 - Successful commands return JSON by default. Use `--format table` only when a table is easier for a human to scan. Envelope may include optional `_notice.host_compat`.
 - `--host <url>` overrides the active AE host. It is available on every command and may be placed after the subcommand, e.g. `ae-cli kb +<command> --host <url>`.
 - **CRITICAL — Host compat (do this first):** After each `ae-cli` run, check stderr and `_notice.host_compat`. If either is present, open the user reply with a short ⚠️ version warning and **quote the `npm i -g` / `npx skills add` (or update-cluster) lines verbatim**, then present the business result. Soft tip; `ok: true` can still carry the notice.
-- For external-agent retrieval, prefer the deterministic flow `+index` -> `+grep` -> `+read`: inspect navigation, locate candidate pages, then open the exact page or line window. Use `+ask` only when the user wants an LLM-synthesized answer and accepts token consumption.
+- Retrieval (`+index` / `+grep` / `+read`) is deterministic and server-side LLM-free; use it for simple factual lookups. Use `+ask` when the question requires synthesizing across multiple pages or multi-hop reasoning.
 
 ## Commands
 
 | Command | Risk | Purpose |
 |---|---:|---|
-| `+query` | read | Query one or more knowledge bases with a natural-language question. |
-| `+ask` | read | LLM-powered Q&A over knowledge bases. Consumes platform tokens. |
+| `+ask` | read | LLM-powered Q&A over knowledge bases; for multi-page synthesis or multi-hop questions. |
+| `+ask-status` | read | Query the current status of an ask execution by `--execution-id` without polling. |
 | `+list` | read | List accessible knowledge bases filtered by buildStatus (default: compiled). |
 | `+index` | read | List accessible knowledge bases and their `index.md` navigation maps. |
 | `+grep` | read | Keyword-search knowledge base pages and return matched lines with context. |
-| `+read` | read | Read a full knowledge base page or a line window. |
+| `+read` | read | Read a full knowledge base page, a line window, or (with `--outline`) only the page heading tree. |
 | `+new` | write | Create a new personal or company knowledge base. |
 | `+add` | write | Upload local files, a non-recursive directory, or HTTP(S) pages converted to markdown. |
 | `+url` | write | Upload a URL source directly with optional display name and parsing instruction. |
@@ -123,34 +125,26 @@ Use `+status` to inspect the current status of a knowledge base.
 ae-cli kb +status --name engineering-handbook
 ```
 
-### Query Knowledge
-
-Use `+query` with a natural-language question. Optionally scope to specific knowledge bases or tune result count and locale.
-
-```bash
-ae-cli kb +query \
-  --query "How do we release a dashboard?" \
-  --sources '[{"scope":"company","name":"engineering-handbook"}]' \
-  --top-k 10 \
-  --locale zh
-```
-
-When `--sources` is provided, each entry requires:
-
-- `scope`: knowledge base scope such as `personal` or `company`.
-- `name`: knowledge base name.
-
 ### Ask Knowledge (LLM)
 
-Use `+ask` when the user wants an LLM-synthesized answer. This endpoint calls a large language model and **consumes platform tokens**. Prefer `+index` -> `+grep` -> `+read` when deterministic retrieval is enough.
+Use `+ask` when the question requires synthesizing across multiple pages or multi-hop reasoning — a server-side agent runs the full retrieval loop and returns a synthesized answer with its source paths. Prefer `+index` -> `+grep` -> `+read` when deterministic retrieval is enough.
+
+The `+ask` command uses asynchronous submit/poll: by default, it automatically polls for completion (every 5s, up to 10 minutes) and prints the final answer. The output JSON is isomorphic to the previous synchronous response, so consumers require no changes.
 
 ```bash
+# Default: submit and poll for completion
 ae-cli kb +ask \
   --question "How do we troubleshoot payment alerts?" \
   --sources '[{"scope":"company","name":"engineering-handbook"}]' \
   --model-id claude-sonnet-4-6 \
   --max-turns 50 \
   --locale zh
+
+# Submit only, return executionId immediately (for batch processing)
+ae-cli kb +ask --question "..." --no-wait
+
+# Query execution status later
+ae-cli kb +ask-status --execution-id <id>
 ```
 
 - `--question`, alias `-q`: required natural-language question (1-2000 characters).
@@ -158,10 +152,12 @@ ae-cli kb +ask \
 - `--model-id`: optional LLM model ID. Omit to use the platform default.
 - `--max-turns`: optional agent turn limit (1-100, server default 50).
 - `--locale`: optional locale: `zh`, `en`, `ja`, or `ko`.
+- `--no-wait`: optional boolean flag. Return immediately after submission with `{executionId, status}`, without polling.
+- **Failure handling**: If execution fails, the command exits non-zero and prints an error message on stderr prefixed with the typed error code, e.g. `[timeout] ...` / `[model_error] ...` / `[invalid_sources] ...` (followed by the executionId). Treat the bracketed code as the machine-readable failure type.
 
 ### List Accessible Knowledge Bases
 
-Use `+list` when you only need accessible knowledge base metadata without loading `index.md` navigation maps. By default it returns knowledge bases with `buildStatus: compiled`:
+Use `+list` when you only need accessible knowledge base metadata without loading `index.md` navigation maps. Omit `--build-status` to default to `compiled`; pass `idle` / `pending` / `compiling` / `compiled` / `failed` to filter by a specific status (system knowledge bases are always listed regardless of status):
 
 ```bash
 ae-cli kb +list
@@ -172,6 +168,8 @@ ae-cli kb +list --build-status compiled
 ### Explore Knowledge Base Pages
 
 Use the deterministic retrieval primitives when an agent needs to explore knowledge base content like a code repository. These endpoints do not call an LLM on the server side.
+
+**Before running a real query, read [`references/query-workflow.md`](references/query-workflow.md)** — it is the step-by-step procedure for turning a question into an answer without crawling. It covers candidate indexing, copied-path grep, same-page read windows, linked-page re-grep, outline-derived ranges, and coverage assessment. This section below is the per-command reference the workflow draws on.
 
 Start with `+list` or `+index` to discover accessible knowledge bases. Use `+index` when you also need navigation maps:
 
@@ -190,26 +188,30 @@ Then use `+grep` to locate likely pages and line numbers:
 ae-cli kb +grep \
   --query "sandbox configuration" \
   --sources '[{"scope":"company","name":"engineering-handbook"}]' \
+  --paths '["wiki/sandbox.md"]' \
   --top-k 10
 ```
 
-Finally use `+read` to open the exact page, optionally with a line window:
+Each grep hit carries `path`, `line`, `breadcrumb`, a context snippet, and the section range of the matched line (`sectionStartLine` / `sectionEndLine`). `line` is the hit anchor; `sectionStartLine` / `sectionEndLine` are the enclosing heading-section boundaries. Choose the smallest reliable `--offset` / `--limit` window that preserves the needed evidence; use the section range when the answer needs whole-section context.
+
+Use `+read --outline` when the current target page has no reliable grep range and headings are needed to choose a section:
 
 ```bash
 ae-cli kb +read \
   --source '{"scope":"company","name":"engineering-handbook"}' \
   --path "wiki/sandbox.md" \
-  --offset 1 \
-  --limit 200
+  --outline
 ```
 
-Retrieval rules:
+Then use `+read` to open the selected window, using the hit anchor, a section boundary from same-page or linked-page grep, or two adjacent outline headings:
 
-- `+list` accepts optional `--build-status` (default `compiled`) and `--locale`. Returns accessible knowledge base metadata including `buildStatus`, without `index.md` navigation maps.
-- `+index` accepts optional `--sources` and `--locale`; omit `--sources` to list all accessible knowledge bases.
-- `+grep` requires `--query` / `-q`; optional `--sources`, `--top-k` (1-50, default 10), and `--locale`.
-- `+read` requires `--source` pointing to exactly one knowledge base and `--path` relative to the knowledge base root; optional `--offset`, `--limit` (1-10000), and `--locale`.
-- Do not guess a `--path`; get it from `+index` or `+grep` results.
+```bash
+ae-cli kb +read \
+  --source '{"scope":"company","name":"engineering-handbook"}' \
+  --path "wiki/sandbox.md" \
+  --offset 42 \
+  --limit 60
+```
 
 ### Remove One Source
 
@@ -233,21 +235,10 @@ ae-cli kb +remove --name engineering-handbook
 
 ## Command Reference
 
-### `+query`
-
-```bash
-ae-cli kb +query --query "<question>" [--sources '[{"scope":"company","name":"kb-name"}]'] [--top-k 10] [--locale zh|en|ja|ko]
-```
-
-- `--query`, alias `-q`: required natural-language question.
-- `--sources`: optional JSON array of knowledge base refs. Omit to search all accessible knowledge bases.
-- `--top-k`: optional max number of hits, 1-50, default 10.
-- `--locale`: optional locale: `zh`, `en`, `ja`, or `ko`.
-
 ### `+ask`
 
 ```bash
-ae-cli kb +ask --question "<question>" [--sources '[{"scope":"company","name":"kb-name"}]'] [--model-id claude-sonnet-4-6] [--max-turns 50] [--locale zh|en|ja|ko]
+ae-cli kb +ask --question "<question>" [--sources '[{"scope":"company","name":"kb-name"}]'] [--model-id claude-sonnet-4-6] [--max-turns 50] [--locale zh|en|ja|ko] [--no-wait]
 ```
 
 - `--question`, alias `-q`: required natural-language question (1-2000 characters).
@@ -255,7 +246,18 @@ ae-cli kb +ask --question "<question>" [--sources '[{"scope":"company","name":"k
 - `--model-id`: optional LLM model ID. Omit to use the platform default.
 - `--max-turns`: optional agent turn limit (1-100, server default 50).
 - `--locale`: optional locale: `zh`, `en`, `ja`, or `ko`.
-- **Token cost**: this command invokes an LLM on the server and consumes platform tokens. Prefer `+index` -> `+grep` -> `+read` for token-free deterministic retrieval.
+- `--no-wait`: optional. Return immediately with `{executionId, status}` instead of polling.
+- When to use: multi-page synthesis or multi-hop questions. For simple factual lookups, prefer `+index` / `+grep` / `+read`.
+- Output: By default, polls and returns `{executionId, answer, sources, modelUsage, toolCallCount, maxTurns, modelId}` (same fields as the previous synchronous response, plus `executionId`). With `--no-wait`, returns `{executionId, status}` immediately. On failure, exits non-zero with a stderr message prefixed by the typed error code (`[timeout]`, `[model_error]`, `[invalid_sources]`, `[process_restart]`).
+
+### `+ask-status`
+
+```bash
+ae-cli kb +ask-status --execution-id <id>
+```
+
+- `--execution-id`: required. The execution ID returned by `+ask` submission.
+- Output: Returns the current execution state: `{executionId, status, elapsedMs?, answer?, sources?, modelUsage?, toolCallCount?, error?}`. Does not poll; returns a single snapshot.
 
 ### `+list`
 
@@ -263,7 +265,7 @@ ae-cli kb +ask --question "<question>" [--sources '[{"scope":"company","name":"k
 ae-cli kb +list [--build-status compiled] [--locale zh|en|ja|ko]
 ```
 
-- `--build-status`: optional build status filter (default: `compiled`).
+- `--build-status`: optional; one of `idle` / `pending` / `compiling` / `compiled` / `failed`. Omit to default to `compiled` (system knowledge bases are always listed regardless of status).
 - `--locale`: optional locale: `zh`, `en`, `ja`, or `ko`.
 - Response items include `buildStatus`.
 
@@ -279,24 +281,27 @@ ae-cli kb +index [--sources '[{"scope":"company","name":"kb-name"}]'] [--locale 
 ### `+grep`
 
 ```bash
-ae-cli kb +grep --query "<keywords>" [--sources '[{"scope":"company","name":"kb-name"}]'] [--top-k 10] [--locale zh|en|ja|ko]
+ae-cli kb +grep --query "<keywords>" --sources '[{"scope":"company","name":"kb-name"}]' --paths '["wiki/page.md"]' [--top-k 10] [--locale zh|en|ja|ko]
 ```
 
-- `--query`, alias `-q`: required keywords to search across knowledge bases.
-- `--sources`: optional JSON array of knowledge base refs. Omit to search all accessible knowledge bases.
+- `--query`, alias `-q`: required keywords to search.
+- `--sources`: required JSON array of knowledge base refs.
+- `--paths`: required JSON array of wiki pages or subdirectories **copied** from `+index`. A single page is still an array, e.g. `["wiki/sandbox.md"]`. Distinct from `+read --path` (one string).
 - `--top-k`: optional max number of hits, 1-50, default 10.
 - `--locale`: optional locale: `zh`, `en`, `ja`, or `ko`.
+- Each hit includes `sectionStartLine` / `sectionEndLine`: the line range of the section (bounded by the nearest headings) containing the matched line. Use it as the `+read` window.
 
 ### `+read`
 
 ```bash
-ae-cli kb +read --source '{"scope":"company","name":"kb-name"}' --path "index.md" [--offset 1] [--limit 200] [--locale zh|en|ja|ko]
+ae-cli kb +read --source '{"scope":"company","name":"kb-name"}' --path "index.md" [--offset 1] [--limit 200] [--outline] [--locale zh|en|ja|ko]
 ```
 
 - `--source`: required JSON object pointing to exactly one knowledge base.
 - `--path`: required page path relative to the knowledge base root, such as `index.md` or `wiki/concepts/data-model.md`.
 - `--offset`: optional 1-based start line.
 - `--limit`: optional max line count, 1-10000.
+- `--outline`: optional. Return only the whole-page heading tree (`{level, heading, line}`) with empty content, independent of `--offset` / `--limit`. Use it on long pages to choose which section to read.
 - `--locale`: optional locale: `zh`, `en`, `ja`, or `ko`.
 
 ### `+new`

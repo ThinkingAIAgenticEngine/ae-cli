@@ -1,6 +1,7 @@
 import { basename } from 'node:path';
 import type { Command } from '../../../framework/types.js';
-import { detectHeaderRow, inspectLocalDataInput, peekDelimitedRecords, readExcelSheetHeaders, selectDataSet } from './input.js';
+import { assessFileSize } from './estimate.js';
+import { detectHeaderRow, inspectLocalDataInput, peekDelimitedRecords, readExcelSheetHeaders, resolveLocalDataInputMeta, selectDataSet } from './input.js';
 import type { ExcelSheetHeaders, LocalDataInput } from './input.js';
 import { buildColumnUnion, detectColumnTypeConflicts } from './multi.js';
 import type { MultiFileProfile } from './multi.js';
@@ -23,6 +24,30 @@ export const dataIntegrationInspect: Command = {
     { name: 'headerless', type: 'boolean', default: false, desc: 'Treat the first row as data and auto-generate col_1..col_N names.' },
   ],
   risk: 'read',
+  // Fast size/time pre-check (stat + format/encoding sniff only — no sha256, no profile).
+  // Lets agents surface the estimate before committing to a multi-minute full inspection.
+  dryRun: async (ctx) => {
+    const files = ctx.list('input-file').map((filePath: string) => {
+      const meta = resolveLocalDataInputMeta(filePath);
+      const assessment = assessFileSize(basename(filePath), meta.format, meta.sizeBytes, meta.encoding);
+      return {
+        file: basename(filePath),
+        format: meta.format,
+        size_bytes: meta.sizeBytes,
+        size: assessment.size,
+        ...(assessment.estimatedDuration ? { estimated_duration: assessment.estimatedDuration } : {}),
+        ...(assessment.warning ? { warning: assessment.warning } : {}),
+        ...(assessment.reason ? { reason: assessment.reason } : {}),
+        ...(assessment.memoryRisk ? { memory_risk: true } : {}),
+        ...(assessment.rejected ? { rejected: true } : {}),
+      };
+    });
+    return {
+      version: 'ae-local-data-estimate/v1',
+      files,
+      has_large_file: files.some((file) => Boolean(file.warning) || file.rejected),
+    };
+  },
   execute: async (ctx) => {
     const inputFiles = ctx.list('input-file');
     const headerNames = splitHeaders(ctx.str('headers'));

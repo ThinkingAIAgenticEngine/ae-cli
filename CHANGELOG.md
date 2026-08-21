@@ -1,3 +1,15 @@
+### 6.1.17
+**Date:** 2026-08-21
+
+**Changes:**
+
+#### Knowledge Base
+* Rework KB discovery around deterministic `+index` → `+grep` → `+read` navigation: add `+read --outline` and the `ae-kb-discovery` Skill, require explicit `--sources` / `--paths` scoping for `+grep`, validate `+list --build-status`, and retire `+query`
+* Change `kb +ask` to submit-and-poll execution while preserving synchronous-by-default output; add `--no-wait` and `kb +ask-status` for long-running questions, and refine source, section-range, and page-window guidance
+
+#### Data Integration
+* Remove the 200 MB hard limit for non-XLS local files and raise the legacy XLS limit to 1 GB; add dry-run size/time estimates and non-blocking processing-time or memory-risk warnings before large-file inspection
+
 ### 6.0.44
 **Date:** 2026-08-20
 

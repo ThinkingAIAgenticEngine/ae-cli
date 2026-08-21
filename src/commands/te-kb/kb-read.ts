@@ -17,6 +17,7 @@ function buildBody(ctx: RuntimeContext): Record<string, unknown> {
   if (offset) body.offset = offset;
   const limit = ctx.num('limit');
   if (limit) body.limit = limit;
+  if (ctx.bool('outline')) body.outline = true;
   const locale = ctx.str('locale');
   if (locale) body.locale = locale;
   return body;
@@ -26,7 +27,7 @@ export const kbRead: Command = {
   service: 'kb',
   command: '+read',
   description:
-    'Read a full knowledge base page (or a line window) via POST /agent/api/external/knowledge-bases/read. Use after +index / +grep locate a candidate page.',
+    'Read a full knowledge base page (or a line window) via POST /agent/api/external/knowledge-bases/read. Use after +index / +grep locate a candidate page. Pass --outline to get only the page heading tree (no content) and pick a section to read.',
   flags: [
     {
       name: 'source',
@@ -42,6 +43,12 @@ export const kbRead: Command = {
     },
     { name: 'offset', type: 'number', required: false, desc: 'Start line (1-based). Omit to read from the beginning.' },
     { name: 'limit', type: 'number', required: false, desc: 'Max number of lines to return (1-10000).' },
+    {
+      name: 'outline',
+      type: 'boolean',
+      required: false,
+      desc: 'Return only the page outline (headings with line numbers), no content. Use it to decide which section to read on long pages.',
+    },
     { name: 'locale', type: 'string', required: false, desc: 'Optional locale: zh | en | ja | ko' },
   ],
   risk: 'read',

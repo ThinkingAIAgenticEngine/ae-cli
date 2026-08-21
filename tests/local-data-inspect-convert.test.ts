@@ -17,11 +17,19 @@ import { CliValidationError } from '../src/core/errors.js';
 import {
   inspectLocalDataInput,
   readExcelSheetHeaders,
+  resolveLocalDataInputMeta,
   selectDataSet,
   sha256File,
 } from '../src/commands/data-integration/local-data/input.js';
 import { profileLocalData } from '../src/commands/data-integration/local-data/profile.js';
-import { detectHeaderPresence } from '../src/commands/data-integration/local-data/inspect.js';
+import {
+  assessFileSize,
+  estimateProcessingSeconds,
+  formatDuration,
+  largeFileTimeWarning,
+  xlsMemoryWarning,
+} from '../src/commands/data-integration/local-data/estimate.js';
+import { dataIntegrationInspect, detectHeaderPresence } from '../src/commands/data-integration/local-data/inspect.js';
 import { buildNestedTree } from '../src/commands/data-integration/local-data/flatten.js';
 import { convertLocalData, convertRow, stripQuotes } from '../src/commands/data-integration/local-data/conversion.js';
 import type { LocalDataMapping } from '../src/commands/data-integration/local-data/types.js';
@@ -325,20 +333,86 @@ try {
     );
   }
 
-  const tooLargePath = join(root, 'too-large.csv');
-  writeFileSync(tooLargePath, 'x');
-  truncateSync(tooLargePath, 200 * 1024 * 1024 + 1);
+  // Size gate: streaming formats have no hard cap — a >1 GB CSV resolves with a
+  // stderr time-estimate warning; XLS keeps a 1 GB hard ceiling (whole-workbook parse).
+  const largeCsvPath = join(root, 'large.csv');
+  writeFileSync(largeCsvPath, 'x');
+  truncateSync(largeCsvPath, 1024 * 1024 * 1024 + 1);
+  const stderrLines: string[] = [];
+  const originalStderrWrite = process.stderr.write.bind(process.stderr);
+  process.stderr.write = ((chunk: unknown) => {
+    stderrLines.push(String(chunk));
+    return true;
+  }) as unknown as typeof process.stderr.write;
+  let largeCsvInput: Awaited<ReturnType<typeof inspectLocalDataInput>> | undefined;
+  try {
+    largeCsvInput = await inspectLocalDataInput(largeCsvPath);
+  } finally {
+    process.stderr.write = originalStderrWrite;
+  }
+  assert.ok(largeCsvInput, 'a >1 GB CSV must not be rejected');
+  assert.equal(largeCsvInput.sizeBytes, 1024 * 1024 * 1024 + 1);
+  assert.ok(stderrLines.join('').includes('estimated to take'), 'large CSV must warn with a time estimate');
+
+  const largeXlsPath = join(root, 'large.xls');
+  writeFileSync(largeXlsPath, 'x');
+  truncateSync(largeXlsPath, 1024 * 1024 * 1024 + 1);
   await assert.rejects(
-    inspectLocalDataInput(tooLargePath),
+    inspectLocalDataInput(largeXlsPath),
     (error: unknown) => error instanceof CliValidationError && error.code === 'LOCAL_DATA_FILE_TOO_LARGE',
   );
-  const tooLargeXlsPath = join(root, 'too-large.xls');
-  writeFileSync(tooLargeXlsPath, 'x');
-  truncateSync(tooLargeXlsPath, 50 * 1024 * 1024 + 1);
-  await assert.rejects(
-    inspectLocalDataInput(tooLargeXlsPath),
-    (error: unknown) => error instanceof CliValidationError && error.code === 'LOCAL_DATA_FILE_TOO_LARGE',
+  const largeXlsxPath = join(root, 'large-risk.xlsx');
+  writeFileSync(largeXlsxPath, 'x');
+  truncateSync(largeXlsxPath, 1024 * 1024 * 1024 + 1);
+
+  // estimate.ts: throughput table and warning text are deterministic.
+  assert.equal(estimateProcessingSeconds('xls', 1024 * 1024 * 1024), 0, 'XLS is not time-gated');
+  assert.ok(estimateProcessingSeconds('csv', 1024 * 1024 * 1024) > 0);
+  assert.ok(
+    estimateProcessingSeconds('csv', 1024 * 1024 * 1024, 'gbk')
+      > estimateProcessingSeconds('csv', 1024 * 1024 * 1024, 'utf-8'),
+    'GBK must estimate a longer runtime than UTF-8',
   );
+  assert.match(xlsMemoryWarning('big.xls', 150 * 1024 * 1024), /150 MB/);
+  assert.match(xlsMemoryWarning('big.xls', 150 * 1024 * 1024), /memory/i);
+  assert.match(
+    largeFileTimeWarning('big.csv', 1024 * 1024 * 1024, 'csv'),
+    /estimated to take roughly \d+ to \d+ minutes/,
+  );
+  assert.match(largeFileTimeWarning('big.csv', 5 * 1024 * 1024 * 1024, 'csv'), /minutes/);
+  assert.match(formatDuration(0.5), /seconds/);
+
+  // assessFileSize: the size gate rendered as structured data (shared by stderr + dry-run).
+  const bigCsvAssessment = assessFileSize('big.csv', 'csv', 1024 * 1024 * 1024 + 1);
+  assert.equal(bigCsvAssessment.rejected, false);
+  assert.equal(bigCsvAssessment.memoryRisk, false);
+  assert.match(bigCsvAssessment.estimatedDuration ?? '', /minutes/);
+  assert.match(bigCsvAssessment.warning ?? '', /estimated to take/);
+  assert.equal(assessFileSize('small.csv', 'csv', 1024 * 1024).warning, null);
+  assert.equal(assessFileSize('small.csv', 'csv', 1024 * 1024).estimatedDuration, null);
+  const rejectedXlsAssessment = assessFileSize('huge.xls', 'xls', 1024 * 1024 * 1024 + 1);
+  assert.equal(rejectedXlsAssessment.rejected, true);
+  assert.match(rejectedXlsAssessment.reason ?? '', /larger than 1 GB/i);
+  assert.match(assessFileSize('big.xls', 'xls', 150 * 1024 * 1024).warning ?? '', /memory/i);
+  const largeXlsxAssessment = assessFileSize('big.xlsx', 'xlsx', 1024 * 1024 * 1024 + 1);
+  assert.equal(largeXlsxAssessment.memoryRisk, true);
+  assert.match(largeXlsxAssessment.warning ?? '', /shared string table/i);
+  const largeJsonAssessment = assessFileSize('big.json', 'json', 1024 * 1024 * 1024 + 1);
+  assert.equal(largeJsonAssessment.memoryRisk, true);
+  assert.match(largeJsonAssessment.warning ?? '', /root object or a very large record/i);
+
+  // inspect --dry-run returns a fast size estimate without hashing or profiling.
+  const estimateResult = await dataIntegrationInspect.dryRun!({ list: () => [csvPath] } as any);
+  assert.equal(estimateResult.version, 'ae-local-data-estimate/v1');
+  assert.equal(estimateResult.files[0].format, 'csv');
+  assert.equal(estimateResult.files[0].size_bytes, statSync(csvPath).size);
+  assert.equal(estimateResult.has_large_file, false);
+  const rejectedEstimateResult = await dataIntegrationInspect.dryRun!({ list: () => [largeXlsPath] } as any);
+  assert.equal(rejectedEstimateResult.files[0].rejected, true);
+  assert.match(rejectedEstimateResult.files[0].reason ?? '', /larger than 1 GB/i);
+  const riskEstimateResult = await dataIntegrationInspect.dryRun!({ list: () => [largeXlsxPath] } as any);
+  assert.equal(riskEstimateResult.files[0].memory_risk, true);
+  assert.match(riskEstimateResult.files[0].warning ?? '', /shared string table/i);
 
   const noIdentityPath = join(root, 'aggregate.csv');
   writeFileSync(noIdentityPath, 'date,total\n2026-08-10,10\n');

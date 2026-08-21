@@ -200,7 +200,10 @@ ae-cli kb +add --name engineering-handbook --files '["./docs/guide.md","https://
 ae-cli kb +schema --name engineering-handbook
 ae-cli kb +compile --name engineering-handbook
 ae-cli kb +status --name engineering-handbook
-ae-cli kb +query -q "How is the sandbox configured?" --top-k 10
+ae-cli kb +ask -q "How is the sandbox configured?"
+# Submit only, poll later:
+ae-cli kb +ask -q "Another question" --no-wait
+ae-cli kb +ask-status --execution-id <id>
 ```
 
 External Agents can use deterministic retrieval without a server-side LLM:
@@ -208,7 +211,7 @@ External Agents can use deterministic retrieval without a server-side LLM:
 ```bash
 ae-cli kb +list
 ae-cli kb +index --sources '[{"scope":"company","name":"engineering-handbook"}]'
-ae-cli kb +grep -q "sandbox config" --sources '[{"scope":"company","name":"engineering-handbook"}]'
+ae-cli kb +grep -q "sandbox config" --sources '[{"scope":"company","name":"engineering-handbook"}]' --paths '["wiki/sandbox.md"]'
 ae-cli kb +read --source '{"scope":"company","name":"engineering-handbook"}' --path "wiki/sandbox.md"
 ```
 

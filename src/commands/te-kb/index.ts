@@ -1,5 +1,4 @@
 import type { Command } from '../../framework/types.js';
-import { query } from './query.js';
 import { add } from './add.js';
 import { compile } from './compile.js';
 import { remove } from './remove.js';
@@ -12,11 +11,12 @@ import { kbList } from './kb-list.js';
 import { kbGrep } from './kb-grep.js';
 import { kbRead } from './kb-read.js';
 import { ask } from './ask.js';
+import { askStatus } from './ask-status.js';
 import { url } from './url.js';
 
 const commands: Command[] = [
-  query,
   ask,
+  askStatus,
   add,
   url,
   compile,
@@ -32,4 +32,4 @@ const commands: Command[] = [
 ];
 
 export default commands;
-export { query, ask, add, url, compile, remove, create, rmSource, schema, status, kbList, kbIndex, kbGrep, kbRead };
+export { ask, askStatus, add, url, compile, remove, create, rmSource, schema, status, kbList, kbIndex, kbGrep, kbRead };

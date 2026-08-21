@@ -44,7 +44,7 @@ test('isNewer handles prerelease core segment', () => {
 });
 
 test('shouldSkipUpdateCheck respects --no-update-check', () => {
-  assert.equal(shouldSkipUpdateCheck(['node', 'ae-cli', '--no-update-check', 'kb', '+query']), true);
+  assert.equal(shouldSkipUpdateCheck(['node', 'ae-cli', '--no-update-check', 'kb', '+grep']), true);
 });
 
 test('shouldSkipUpdateCheck respects --version', () => {
@@ -59,7 +59,7 @@ test('shouldSkipUpdateCheck allows a subcommand --version value', () => {
 });
 
 test('shouldSkipUpdateCheck allows normal commands', () => {
-  assert.equal(shouldSkipUpdateCheck(['node', 'ae-cli', 'kb', '+query']), false);
+  assert.equal(shouldSkipUpdateCheck(['node', 'ae-cli', 'kb', '+grep']), false);
 });
 
 test('update dry-run prints local-first CLI and Skills plan', () => {

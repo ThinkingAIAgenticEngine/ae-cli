@@ -17,10 +17,9 @@ import { SaxesParser } from 'saxes';
 import { CliValidationError } from '../../../core/errors.js';
 import { detectEncoding, decodeTextStream, decodeFileSample } from './encoding.js';
 import { flattenDelimitedRow, flattenLocalDataRow } from './flatten.js';
+import { assessFileSize } from './estimate.js';
 import type { HeaderDetection, LocalDataFormat, LocalDataRow, LocalDataSet } from './types.js';
 
-const MAX_STREAMING_FILE_BYTES = 200 * 1024 * 1024;
-const MAX_XLS_FILE_BYTES = 50 * 1024 * 1024;
 const XLSX = (XLSXMod as any).default ?? XLSXMod;
 const require = createRequire(import.meta.url);
 const ExcelWorksheetReader = require('exceljs/lib/stream/xlsx/worksheet-reader') as new (
@@ -39,7 +38,22 @@ export interface LocalDataInput {
   encoding?: string;
 }
 
-export async function inspectLocalDataInput(filePath: string): Promise<LocalDataInput> {
+export interface LocalDataInputMeta {
+  filePath: string;
+  format: LocalDataFormat;
+  sizeBytes: number;
+  /** Delimiter for sniffed `.txt` content (`,` or `\t`); undefined for known extensions. */
+  delimiter?: string;
+  /** Detected text encoding for text formats; undefined for binary XLS/XLSX. */
+  encoding?: string;
+}
+
+/**
+ * Resolve cheap input metadata (path, format, size, delimiter, encoding) without hashing
+ * or reading beyond the sniff/encoding samples. Shared by the full input inspection and
+ * `--dry-run` size estimates.
+ */
+export function resolveLocalDataInputMeta(filePath: string): LocalDataInputMeta {
   let format = resolveFormat(filePath);
   let delimiter: string | undefined;
   let encoding: string | undefined;
@@ -63,35 +77,51 @@ export async function inspectLocalDataInput(filePath: string): Promise<LocalData
       location: { field: 'input-file' },
     });
   }
-  const maxBytes = format === 'xls' ? MAX_XLS_FILE_BYTES : MAX_STREAMING_FILE_BYTES;
-  if (sizeBytes > maxBytes) {
-    throw new CliValidationError(
-      `${format.toUpperCase()} input exceeds the supported file size limit.`,
-      {
-        code: 'LOCAL_DATA_FILE_TOO_LARGE',
-        hint: `Split the file below ${format === 'xls' ? '50' : '200'} MB and retry.`,
-        location: { field: 'input-file' },
-      },
-    );
-  }
-
   if (format !== 'xls' && format !== 'xlsx' && !encoding) {
     encoding = detectEncoding(filePath);
   }
 
+  return {
+    filePath,
+    format,
+    sizeBytes,
+    ...(delimiter ? { delimiter } : {}),
+    ...(encoding ? { encoding } : {}),
+  };
+}
+
+export async function inspectLocalDataInput(filePath: string): Promise<LocalDataInput> {
+  const meta = resolveLocalDataInputMeta(filePath);
+  emitSizeWarning(meta.filePath, meta.format, meta.sizeBytes, meta.encoding);
+
   try {
     return {
-      filePath,
-      format,
-      sizeBytes,
+      ...meta,
       sha256: await sha256File(filePath),
-      dataSets: await discoverDataSets(filePath, format),
-      ...(delimiter ? { delimiter } : {}),
-      ...(encoding ? { encoding } : {}),
+      dataSets: await discoverDataSets(filePath, meta.format),
     };
   } catch (error) {
     if (error instanceof CliValidationError) throw error;
-    throw localDataParseError(format);
+    throw localDataParseError(meta.format);
+  }
+}
+
+/**
+ * Size gate: large XLS workbooks keep a hard ceiling (whole-workbook parse can OOM),
+ * while other formats are only warned when a single command would run for a long time.
+ * Warnings go to stderr and never block; the XLS ceiling is the only rejection.
+ */
+function emitSizeWarning(filePath: string, format: LocalDataFormat, sizeBytes: number, encoding?: string): void {
+  const assessment = assessFileSize(basename(filePath), format, sizeBytes, encoding);
+  if (assessment.rejected) {
+    throw new CliValidationError('XLS input exceeds the supported file size limit.', {
+      code: 'LOCAL_DATA_FILE_TOO_LARGE',
+      hint: 'XLS files larger than 1 GB are not supported; convert the workbook to XLSX or split it first.',
+      location: { field: 'input-file' },
+    });
+  }
+  if (assessment.warning) {
+    process.stderr.write(`${assessment.warning}\n`);
   }
 }
 

@@ -200,7 +200,10 @@ ae-cli kb +add --name engineering-handbook --files '["./docs/guide.md","https://
 ae-cli kb +schema --name engineering-handbook
 ae-cli kb +compile --name engineering-handbook
 ae-cli kb +status --name engineering-handbook
-ae-cli kb +query -q "如何配置沙盒？" --top-k 10
+ae-cli kb +ask -q "如何配置沙盒？"
+# 仅提交，后续轮询：
+ae-cli kb +ask -q "另一个问题" --no-wait
+ae-cli kb +ask-status --execution-id <id>
 ```
 
 外部 Agent 可以使用不依赖服务端 LLM 的确定性检索：
@@ -208,7 +211,7 @@ ae-cli kb +query -q "如何配置沙盒？" --top-k 10
 ```bash
 ae-cli kb +list
 ae-cli kb +index --sources '[{"scope":"company","name":"engineering-handbook"}]'
-ae-cli kb +grep -q "沙盒配置" --sources '[{"scope":"company","name":"engineering-handbook"}]'
+ae-cli kb +grep -q "沙盒配置" --sources '[{"scope":"company","name":"engineering-handbook"}]' --paths '["wiki/sandbox.md"]'
 ae-cli kb +read --source '{"scope":"company","name":"engineering-handbook"}' --path "wiki/sandbox.md"
 ```
 

@@ -11,9 +11,9 @@ interface KnowledgeBaseRef {
 function buildBody(ctx: RuntimeContext): Record<string, unknown> {
   const body: Record<string, unknown> = {
     query: ctx.str('query'),
+    sources: ctx.json('sources') as KnowledgeBaseRef[],
+    paths: ctx.json('paths') as string[],
   };
-  const sources = ctx.json('sources') as KnowledgeBaseRef[] | undefined;
-  if (sources) body.sources = sources;
   const topK = ctx.num('top-k');
   if (topK) body.topK = topK;
   const locale = ctx.str('locale');
@@ -25,7 +25,7 @@ export const kbGrep: Command = {
   service: 'kb',
   command: '+grep',
   description:
-    'Keyword-search knowledge base pages via POST /agent/api/external/knowledge-bases/grep. Returns matched lines with path, line number, breadcrumb and context snippet. Use +read to open a page returned here.',
+    'Keyword-search knowledge base pages via POST /agent/api/external/knowledge-bases/grep. Returns matched lines with path, line number, breadcrumb, context snippet, and the section line range (sectionStartLine/sectionEndLine) of each hit. Copy --paths from +index (wiki pages or subdirectories). Use +read with the hit range to open the section.',
   flags: [
     {
       name: 'query',
@@ -37,10 +37,16 @@ export const kbGrep: Command = {
     {
       name: 'sources',
       type: 'json',
-      required: false,
-      desc: 'Optional JSON array of knowledge base refs to scope the search, e.g. [{"scope":"company","name":"engineering-handbook"}]. Omit to search all accessible knowledge bases.',
+      required: true,
+      desc: 'JSON array of knowledge base refs, e.g. [{"scope":"company","name":"engineering-handbook"}]',
     },
-    { name: 'top-k', type: 'number', required: false, desc: 'Max number of hits to return (1-10000, default 10)' },
+    {
+      name: 'paths',
+      type: 'json',
+      required: true,
+      desc: 'JSON array of wiki pages or subdirectories copied from +index, e.g. ["wiki/sandbox.md"] or ["wiki/guides"]',
+    },
+    { name: 'top-k', type: 'number', required: false, desc: 'Max number of hits to return (1-50, default 10)' },
     { name: 'locale', type: 'string', required: false, desc: 'Optional locale: zh | en | ja | ko' },
   ],
   risk: 'read',

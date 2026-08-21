@@ -1,11 +1,24 @@
 import type { Command, RuntimeContext } from '../../framework/types.js';
 import { kbApi } from '../../core/mcp-access.js';
+import { printError } from '../../framework/output.js';
 
 const API_PATH = '/agent/api/external/knowledge-bases/list';
 const DEFAULT_BUILD_STATUS = 'compiled';
+const VALID_BUILD_STATUSES = ['idle', 'pending', 'compiling', 'compiled', 'failed'] as const;
 
 function getBuildStatus(ctx: RuntimeContext): string {
   return ctx.str('build-status') || DEFAULT_BUILD_STATUS;
+}
+
+function validateBuildStatus(ctx: RuntimeContext): void {
+  const value = ctx.str('build-status');
+  if (value && !VALID_BUILD_STATUSES.includes(value as (typeof VALID_BUILD_STATUSES)[number])) {
+    printError(
+      'validation',
+      `Invalid --build-status: ${value}. Valid values: ${VALID_BUILD_STATUSES.join(' | ')} (omit to default to ${DEFAULT_BUILD_STATUS}).`,
+    );
+    process.exit(1);
+  }
 }
 
 function buildBody(ctx: RuntimeContext): Record<string, unknown> {
@@ -28,11 +41,14 @@ export const kbList: Command = {
       type: 'string',
       required: false,
       default: DEFAULT_BUILD_STATUS,
-      desc: 'Filter by knowledge base build status (default: compiled)',
+      desc: `Filter by knowledge base build status: ${VALID_BUILD_STATUSES.join(' | ')} (default: ${DEFAULT_BUILD_STATUS} when omitted)`,
     },
     { name: 'locale', type: 'string', required: false, desc: 'Optional locale: zh | en | ja | ko' },
   ],
   risk: 'read',
+  validate: (ctx) => {
+    validateBuildStatus(ctx);
+  },
   dryRun: (ctx) => ({
     method: 'POST',
     url: `${ctx.host().replace(/\/$/, '')}${API_PATH}`,

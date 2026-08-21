@@ -8,9 +8,22 @@ Confirm:
 2. The desired outcome: AE ingestion, local analysis, or help deciding.
 3. For ingestion, the target environment/project if already known.
 
-Accept one or more CSV, TSV, TXT, JSON, JSONL (NDJSON), XLS, or XLSX files. CSV/TSV/TXT/JSON/JSONL/XLSX may be at most 200 MB each; XLS may be at most 50 MB each.
+Accept one or more CSV, TSV, TXT, JSON, JSONL (NDJSON), XLS, or XLSX files. CSV/TSV/TXT/JSON/JSONL/XLSX have no hard size limit; files over 1 GB print a stderr warning with an estimated processing time and suggest splitting. XLS over 100 MB prints a memory-risk warning (the legacy parser loads the whole workbook, roughly 5-10x file size); XLS over 1 GB is still rejected — convert it to XLSX or split it first.
 
 ## Inspect without exposing raw values
+
+Before the full inspection (which streams and profiles the entire file and can take
+minutes on large files), pre-check the size and time estimate:
+
+```bash
+ae-cli data-integration inspect --input-file '<path>' --dry-run
+```
+
+For each file that reports a `warning`, `memory_risk: true`, or `rejected: true`,
+surface the `estimated_duration` / `reason` / `warning` to the user verbatim and
+confirm before running the real `inspect`. Never start a multi-minute or memory-risk
+job without the user seeing the estimate and risk first. A rejected file cannot
+proceed; follow its `reason` instead of asking for confirmation.
 
 Run:
 

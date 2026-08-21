@@ -1,7 +1,13 @@
 import type { Command, RuntimeContext } from '../../framework/types.js';
 import { kbApi } from '../../core/mcp-access.js';
+import {
+  ASK_API_PATH as API_PATH,
+  buildFailedMessage,
+  pollUntilSettled,
+  transformCompletedResponse,
+  type AskExecutionResponse,
+} from './ask-shared.js';
 
-const API_PATH = '/agent/api/external/knowledge-bases/ask';
 const VALID_LOCALES = new Set(['zh', 'en', 'ja', 'ko']);
 const MIN_QUESTION_LEN = 1;
 const MAX_QUESTION_LEN = 2000;
@@ -55,7 +61,7 @@ export const ask: Command = {
   service: 'kb',
   command: '+ask',
   description:
-    'Ask knowledge bases via LLM-powered retrieval (POST /agent/api/external/knowledge-bases/ask). Consumes platform tokens. Prefer +index -> +grep -> +read for deterministic, token-free lookup.',
+    'Ask knowledge bases via LLM-powered retrieval (POST /agent/api/external/knowledge-bases/ask). Consumes platform tokens. Prefer +index -> +grep -> +read for deterministic, token-free lookup. By default, polls for completion; use --no-wait to return immediately with executionId.',
   flags: [
     {
       name: 'question',
@@ -83,6 +89,12 @@ export const ask: Command = {
       desc: 'Optional agent turn limit (1-100, default 50 on server when omitted).',
     },
     { name: 'locale', type: 'string', required: false, desc: 'Optional locale: zh | en | ja | ko' },
+    {
+      name: 'no-wait',
+      type: 'boolean',
+      required: false,
+      desc: 'Return immediately after submission with executionId, without polling for completion.',
+    },
   ],
   risk: 'read',
   validate: (ctx) => {
@@ -95,5 +107,40 @@ export const ask: Command = {
     url: `${ctx.host().replace(/\/$/, '')}${API_PATH}`,
     body: buildBody(ctx),
   }),
-  execute: async (ctx) => kbApi(ctx, 'POST', API_PATH, {}, buildBody(ctx)),
+  execute: async (ctx) => {
+    const noWait = ctx.bool('no-wait');
+
+    const submitResponse = (await kbApi(ctx, 'POST', API_PATH, {}, buildBody(ctx))) as {
+      executionId: string;
+      status: string;
+    };
+
+    if (!submitResponse.executionId) {
+      throw new Error('Invalid submit response: missing executionId');
+    }
+
+    const executionId = submitResponse.executionId;
+
+    if (noWait) {
+      return {
+        executionId,
+        status: submitResponse.status,
+      };
+    }
+
+    const finalResponse = await pollUntilSettled(
+      (id) => kbApi(ctx, 'GET', API_PATH, { executionId: id }) as Promise<AskExecutionResponse>,
+      executionId,
+    );
+
+    if (finalResponse.status === 'completed') {
+      return transformCompletedResponse(finalResponse);
+    }
+
+    if (finalResponse.status === 'failed') {
+      throw new Error(buildFailedMessage(finalResponse));
+    }
+
+    throw new Error(`Unexpected execution status: ${finalResponse.status}`);
+  },
 };
