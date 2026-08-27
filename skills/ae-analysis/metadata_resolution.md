@@ -1,6 +1,11 @@
-# Structured AI-QP metadata resolution
+# Analysis metadata resolution
 
-Use this workflow only when `analysis adhoc run|export`, report create, or report update fails with `AI_QP_COMPILE_FAILED` and metadata errors contain:
+Enter this workflow through either path:
+
+1. `analysis adhoc run|export`, report create, or report update fails with `AI_QP_COMPILE_FAILED` and its metadata errors contain the structured fields below.
+2. Ordinary event, property, metric, cluster, or tag metadata discovery has completed two successful remote miss rounds in the same host, project, authenticated principal, and Agent conversation, and a third remote discovery round would otherwise be needed.
+
+For the structured compiler path, the metadata errors contain:
 
 - `path`
 - `slot_kind`
@@ -10,7 +15,7 @@ Use this workflow only when `analysis adhoc run|export`, report create, or repor
 - `candidates`
 - `next_action`
 
-The Common compiler returns every unresolved slot from the same compile attempt. Treat that complete error array as one resolution plan. Do not run this workflow independently for each `path`.
+The Common compiler returns every unresolved slot from the same compile attempt. Treat that complete error array as one resolution plan. Do not run the structured path independently for each `path`.
 
 `allowed_resource_types` and `search_targets` are authoritative for their exact paths. Do not add, remove, prioritize, or reinterpret resource types. `search_targets[].constraints` must be applied when filtering local rows.
 
@@ -65,6 +70,35 @@ Before reuse, require both files and verify:
 
 If any check fails, discard the cached pair for this workflow and fetch it again. A `.part` file or JSONL without the completed metadata sidecar is never valid.
 
+## Ordinary discovery workflow
+
+1. Keep one miss budget for the current host, project, authenticated principal, and Agent conversation.
+2. One ordinary discovery round is one successful remote event, property, metric, cluster, or tag list/search request. Put the current phrase and its useful synonyms in one `--queries` array instead of issuing one request per synonym.
+3. A round consumes one miss only when it returns no confirmable candidate. A plausible candidate stops discovery and requires explicit user confirmation; it is not a miss.
+4. Project lookup, exact `get`, filter-value lookup, and data queries do not consume this metadata-discovery budget. Validation, permission, network, and server errors are failures, do not consume a miss, and must not trigger the full-catalog fallback.
+5. After at most two ordinary miss rounds, do not issue a third resource-specific list/search. The third remote metadata-discovery round must be exactly one aggregate search using every accumulated deduplicated query and the union of applicable resource types:
+
+```bash
+ae-cli analysis-meta catalog list \
+  --project-id <project_id> \
+  --queries '["<all accumulated deduplicated queries>"]' \
+  --resource-types '["<union of applicable resource types>"]' \
+  --limit-per-type 20
+```
+
+6. If the aggregate response contains a confirmable candidate, stop and ask for confirmation. If it remains unresolved or returns `has_more=true` without a candidate, download the complete catalog exactly once:
+
+```bash
+ae-cli analysis-meta catalog export \
+  --project-id <project_id> \
+  --output "<catalog_dir>/catalog.jsonl"
+```
+
+7. Search the complete JSONL locally, return only a small candidate subset to model context, and require confirmation before binding. A local no-match is a complete negative result for that snapshot.
+8. Once the valid complete catalog exists, use it for every later metadata discovery in the same scope. Do not call online resource-specific metadata list/search commands or `analysis-meta catalog list|export` again. An exact `get` for details not present in the catalog remains outside the discovery budget.
+
+This caps ordinary online metadata discovery at three successful remote rounds before the full-catalog fallback becomes eligible: at most two resource-specific misses followed by one aggregate catalog search. Errors never advance that counter.
+
 ## Compile-wide workflow
 
 1. Read the complete compiler error array.
@@ -112,7 +146,7 @@ ae-cli analysis-meta catalog export \
 
 A reject-all response is a state transition, not task cancellation. Run the aggregate online search at most once for the rejected path set, then use the same complete-catalog fallback above if needed. Never repeat candidates the user already rejected. If the complete catalog has no different candidate, ask for an exact canonical name or a changed business definition.
 
-Do not call event, property, metric, cluster, or tag list commands in this structured workflow. Do not run `--queries` synonym rounds: the aggregate online search is one call for the whole compile error array, never one call per path or resource type. The unified catalog capability replaces both repeated online searches and per-resource full exports.
+Do not call event, property, metric, cluster, or tag list commands after entering the structured workflow. Do not run `--queries` synonym rounds: the aggregate online search is one call for the whole compile error array, never one call per path or resource type. The unified catalog capability replaces both repeated online searches and per-resource full exports.
 
 Once a valid complete catalog exists for the current host, project, principal, and conversation, never call `analysis-meta catalog list` again in that scope, and never call `analysis-meta catalog export` again either. Search the complete local snapshot instead; a local no-match is a complete negative result for this snapshot.
 

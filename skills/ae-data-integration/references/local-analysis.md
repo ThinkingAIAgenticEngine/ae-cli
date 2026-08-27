@@ -1,6 +1,6 @@
 # Local analysis
 
-Keep the source on the local machine. Generated scripts and reports belong under `.ae-cli/data-integration/<run-id>/` with restrictive permissions.
+Keep the source on the local machine. Generated scripts and reports belong under `.ae-cli/data-integration/runs/<run-id>/` with restrictive permissions.
 Set the directory to `0700` and generated scripts/reports to `0600`.
 
 ## Default report when no question is supplied

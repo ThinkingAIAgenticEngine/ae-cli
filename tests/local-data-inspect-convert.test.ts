@@ -20,19 +20,21 @@ import {
   resolveLocalDataInputMeta,
   selectDataSet,
   sha256File,
-} from '../src/commands/data-integration/local-data/input.js';
-import { profileLocalData } from '../src/commands/data-integration/local-data/profile.js';
+  streamLocalDataRows,
+} from '../src/commands/data-integration/input.js';
+import { profileLocalData } from '../src/commands/data-integration/profile.js';
 import {
   assessFileSize,
   estimateProcessingSeconds,
   formatDuration,
   largeFileTimeWarning,
   xlsMemoryWarning,
-} from '../src/commands/data-integration/local-data/estimate.js';
-import { dataIntegrationInspect, detectHeaderPresence } from '../src/commands/data-integration/local-data/inspect.js';
-import { buildNestedTree } from '../src/commands/data-integration/local-data/flatten.js';
-import { convertLocalData, convertRow, stripQuotes } from '../src/commands/data-integration/local-data/conversion.js';
-import type { LocalDataMapping } from '../src/commands/data-integration/local-data/types.js';
+} from '../src/commands/data-integration/estimate.js';
+import { dataIntegrationInspect, detectHeaderPresence } from '../src/commands/data-integration/inspect.js';
+import { buildNestedTree } from '../src/commands/data-integration/flatten.js';
+import { convertLocalData, convertRow } from '../src/commands/data-integration/conversion.js';
+import { stripQuotes } from '../src/commands/data-integration/field-spec.js';
+import type { LocalDataMapping } from '../src/commands/data-integration/types.js';
 
 const root = mkdtempSync(join(tmpdir(), 'ae-local-data-convert-'));
 const XLSX = (XLSXMod as any).default ?? XLSXMod;
@@ -258,12 +260,26 @@ try {
   assert.equal(tags?.elementKind, 'primitive');
   // buildNestedTree is a pure reducer over sampled rows.
   const tree = buildNestedTree([
-    { a: 1, nested: { b: 'x' }, list: [1, 2] },
-    { a: 2, nested: { b: 'y' }, list: [] },
+    { a: 1, nested: { b: 'x' }, list: [1, 2], orders: [{ id: 'A' }] },
+    { a: 2, nested: { b: 'y' }, list: [], orders: [] },
   ]);
   assert.equal(tree.find((node) => node.name === 'a')?.inferredType, 'number');
   assert.equal(tree.find((node) => node.name === 'nested')?.kind, 'object');
   assert.equal(tree.find((node) => node.name === 'list')?.elementKind, 'primitive');
+  assert.equal(tree.find((node) => node.name === 'orders')?.elementKind, 'object', 'an object array exposes elementKind object');
+
+  // NDJSON record-root object arrays infer as array_row (object array), not list/array_string.
+  const objectArrayInput = await inspectLocalDataInput(fixture('22_ndjson_object_array.ndjson'));
+  const objectArrayProfile = await profileLocalData(objectArrayInput, selectDataSet(objectArrayInput), 'Asia/Shanghai', { collectNestedTree: true });
+  const ordersNode = objectArrayProfile.nested_tree!.find((node) => node.name === 'orders');
+  assert.equal(ordersNode?.kind, 'array');
+  assert.equal(ordersNode?.elementKind, 'object');
+  assert.equal(objectArrayProfile.columns.find((column) => column.name === 'orders')?.inferred_type, 'list');
+  const ordersProp = objectArrayProfile.recommended_mapping.properties.find((property) => property.source === 'orders');
+  assert.equal(ordersProp?.type, 'array_row', 'a list of objects must map to array_row');
+  assert.equal(ordersProp?.transform, 'json');
+  const scalarTagsProp = objectArrayProfile.recommended_mapping.properties.find((property) => property.source === 'tags');
+  assert.equal(scalarTagsProp?.type, 'list', 'a list of strings stays list');
 
   // CSV/TSV JSON-encoded object columns surface a cell-relative nested tree; array cells stay list.
   const csvNestedInput = await inspectLocalDataInput(fixture('10_array_object_data.csv'));
@@ -275,7 +291,15 @@ try {
   assert.equal(userProfileCol.nested_tree!.find((node) => node.name === 'tags')?.kind, 'array');
   const itemsCol = csvNestedProfile.columns.find((column) => column.name === 'items');
   assert.equal(itemsCol?.inferred_type, 'list', 'items is a JSON array cell');
-  assert.equal(itemsCol?.nested_tree, undefined, 'array cells are kept whole, no tree');
+  const itemsTree = itemsCol?.nested_tree;
+  assert.ok(itemsTree && itemsTree.length === 1, 'items exposes one array node');
+  assert.equal(itemsTree[0].kind, 'array');
+  assert.equal(itemsTree[0].elementKind, 'object', 'object array cells enumerate element fields');
+  assert.ok(itemsTree[0].children!.some((node) => node.name === 'sku' && node.kind === 'primitive'));
+  // A JSON object-array cell maps to array_row with declared `items.<field>` sub-properties.
+  const itemsProp = csvNestedProfile.recommended_mapping.properties.find((property) => property.source === 'items' && !property.target.includes('.'));
+  assert.equal(itemsProp?.type, 'array_row', 'an object array cell maps to array_row');
+  assert.ok(csvNestedProfile.recommended_mapping.properties.some((property) => property.target === 'items.sku'), 'items.sku sub-property is declared');
 
   // Multi-level nested JSON in a CSV cell: the column tree recurses through each object level.
   const deepCsvInput = await inspectLocalDataInput(fixture('24_csv_deep_nested.csv'));
@@ -292,6 +316,36 @@ try {
   assert.equal(geo!.children!.find((node) => node.name === 'lat')?.inferredType, 'number');
   assert.equal(address!.children!.find((node) => node.name === 'city')?.inferredType, 'string');
 
+  // Excel JSON-encoded object columns surface the same cell-relative nested tree as CSV.
+  const excelNestedRows = [
+    ['user_id', 'ext'],
+    ['u-1', '{"sku":{"id":"s1","type":"consumable"},"coupon":{"off":0.8}}'],
+    ['u-2', '{"sku":{"id":"s2","type":"durable"},"coupon":{"off":0.5}}'],
+  ];
+  const xlsxNestedPath = join(root, 'nested.xlsx');
+  const xlsxNestedBook = new ExcelJS.Workbook();
+  xlsxNestedBook.addWorksheet('data').addRows(excelNestedRows);
+  await xlsxNestedBook.xlsx.writeFile(xlsxNestedPath);
+  const xlsxNestedInput = await inspectLocalDataInput(xlsxNestedPath);
+  const xlsxNestedProfile = await profileLocalData(xlsxNestedInput, selectDataSet(xlsxNestedInput), 'Asia/Shanghai', { collectNestedTree: true });
+  const xlsxExtCol = xlsxNestedProfile.columns.find((column) => column.name === 'ext');
+  assert.equal(xlsxExtCol?.inferred_type, 'object');
+  assert.ok(xlsxExtCol?.nested_tree, 'an XLSX JSON column must expose a cell-relative nested tree');
+  const xlsxSku = xlsxExtCol.nested_tree!.find((node) => node.name === 'sku');
+  assert.equal(xlsxSku?.kind, 'object');
+  assert.equal(xlsxSku!.children!.find((node) => node.name === 'type')?.inferredType, 'string');
+  assert.equal(xlsxExtCol.nested_tree!.find((node) => node.name === 'coupon')?.kind, 'object');
+
+  const xlsNestedPath = join(root, 'nested.xls');
+  const xlsNestedBook = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(xlsNestedBook, XLSX.utils.aoa_to_sheet(excelNestedRows), 'data');
+  XLSX.writeFile(xlsNestedBook, xlsNestedPath, { bookType: 'xls' });
+  const xlsNestedInput = await inspectLocalDataInput(xlsNestedPath);
+  const xlsNestedProfile = await profileLocalData(xlsNestedInput, selectDataSet(xlsNestedInput), 'Asia/Shanghai', { collectNestedTree: true });
+  const xlsExtCol = xlsNestedProfile.columns.find((column) => column.name === 'ext');
+  assert.ok(xlsExtCol?.nested_tree, 'an XLS JSON column must expose a cell-relative nested tree');
+  assert.equal(xlsExtCol.nested_tree!.find((node) => node.name === 'sku')?.kind, 'object');
+
   // All 8 record types are counted in the manifest via a mixed-mode conversion.
   const eightPath = join(root, 'eight.csv');
   writeFileSync(eightPath,
@@ -306,7 +360,7 @@ try {
       + 'u-1,user_uniq_append,,2026-08-10 10:00:00\n');
   const eightSha = await sha256File(eightPath);
   const eightMapping: LocalDataMapping = {
-    version: 'ae-local-data-mapping/v1',
+    version: 'ae-data-integration-mapping/v1',
     source: { sha256: eightSha, format: 'csv', data_set: '$' },
     mode: 'mixed',
     confidence: 'high',
@@ -429,7 +483,7 @@ try {
       + ',bad-time,JP,"[]"\n');
   const sourceSha = await sha256File(usersPath);
   const mapping: LocalDataMapping = {
-    version: 'ae-local-data-mapping/v1',
+    version: 'ae-data-integration-mapping/v1',
     source: { sha256: sourceSha, format: 'csv', data_set: '$' },
     mode: 'user_set',
     confidence: 'high',
@@ -525,6 +579,72 @@ try {
     assert.equal(overLimits.errors.filter((error) => error.code === 'PROPERTY_LIMIT_EXCEEDED').length, 4);
   }
 
+  // Ragged CSV rows: extra fields are dropped and missing fields are treated as empty, with a
+  // stderr warning. Neither case quarantines the row when identity/time stay intact.
+  const raggedPath = join(root, 'ragged.csv');
+  writeFileSync(raggedPath,
+    'account_id,updated_at,country\n'
+      + 'u-1,2026-08-10 10:00:00,CN,EXTRA\n'
+      + 'u-2,2026-08-10 11:00:00\n');
+  const raggedSha = await sha256File(raggedPath);
+  const raggedMapping: LocalDataMapping = {
+    version: 'ae-data-integration-mapping/v1',
+    source: { sha256: raggedSha, format: 'csv', data_set: '$' },
+    mode: 'user_set',
+    confidence: 'high',
+    account_id_field: 'account_id',
+    time: { field: 'updated_at', format: 'auto', source_timezone: 'Asia/Shanghai' },
+    properties: [{ source: 'country', target: 'country', type: 'string' }],
+  };
+  const raggedStderrLines: string[] = [];
+  process.stderr.write = ((chunk: unknown) => {
+    raggedStderrLines.push(String(chunk));
+    return true;
+  }) as unknown as typeof process.stderr.write;
+  let ragged: Awaited<ReturnType<typeof convertLocalData>>;
+  try {
+    ragged = await convertLocalData({
+      inputFile: raggedPath,
+      mapping: raggedMapping,
+      outputDir: join(root, 'ragged-out'),
+      now: new Date('2026-08-11T00:00:00Z'),
+    });
+  } finally {
+    process.stderr.write = originalStderrWrite;
+  }
+  assert.equal(ragged.manifest.output.valid_records, 2, 'ragged rows with intact identity/time stay valid');
+  assert.equal(ragged.manifest.output.invalid_records, 0);
+  assert.ok(raggedStderrLines.join('').includes('column count different from the header row'));
+  assert.equal(
+    (raggedStderrLines.join('').match(/column count different from the header row/g) ?? []).length,
+    1,
+    'ragged warning is emitted exactly once (not once per internal pass)',
+  );
+
+  // A header-only source (no data rows) blocks with a specific reason, not a generic failure.
+  const headerOnlyPath = join(root, 'header-only.csv');
+  writeFileSync(headerOnlyPath, 'account_id,updated_at,country\n');
+  const headerOnlySha = await sha256File(headerOnlyPath);
+  const headerOnlyConverted = await convertLocalData({
+    inputFile: headerOnlyPath,
+    mapping: { ...raggedMapping, source: { sha256: headerOnlySha, format: 'csv', data_set: '$' } },
+    outputDir: join(root, 'header-only-out'),
+    now: new Date('2026-08-11T00:00:00Z'),
+  });
+  assert.equal(headerOnlyConverted.status, 'blocked');
+  assert.equal(headerOnlyConverted.manifest.output.valid_records, 0);
+  assert.equal(headerOnlyConverted.manifest.output.invalid_records, 0);
+  assert(headerOnlyConverted.manifest.blocked_reasons.includes('The source contained no data rows.'));
+
+  // A program error thrown from the row callback propagates as itself — it is never relabeled
+  // as a source parse error (LOCAL_DATA_INPUT_INVALID).
+  await assert.rejects(
+    streamLocalDataRows(csvInput, selectDataSet(csvInput), () => { throw new Error('row-callback-boom'); }),
+    (error: unknown) => error instanceof Error
+      && !(error instanceof CliValidationError)
+      && error.message === 'row-callback-boom',
+  );
+
   chmodSync(root, 0o700);
 
   // stripQuotes strips paired single/double quotes and trims; unmatched quotes and
@@ -543,7 +663,7 @@ try {
   // convertRow must strip quotes from identity, event name, and properties before
   // value_mapping / type coercion (regression for 06_quoted_whitespace.csv).
   const quotedMapping: LocalDataMapping = {
-    version: 'ae-local-data-mapping/v1',
+    version: 'ae-data-integration-mapping/v1',
     source: { sha256: '*', format: 'csv', data_set: '$' },
     mode: 'track',
     confidence: 'high',

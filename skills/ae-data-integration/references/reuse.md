@@ -4,21 +4,25 @@ Before walking the full pipeline for a new file, check whether a **handoff packa
 
 ## When
 
-Run reuse right after `inspect`, only when the profile is `ue_eligible` and a `.ae-data-integration/index.json` exists. It is read-only and makes no writes.
+Run reuse right after `inspect`, only when the profile is `ue_eligible` and a `.ae-cli/data-integration/index.json` exists. It is read-only and makes no writes.
 
 ## CLI
 
 ```
-ae-cli data-integration reuse --mapping <recommended_mapping> [--out-dir .ae-data-integration]
+ae-cli data-integration reuse --mapping <recommended_mapping> [--out-dir .ae-cli/data-integration]
 ```
 
 - `--mapping` — the candidate mapping, typically `inspect`'s `recommended_mapping` (the new file's structure, inferred exactly as Source would infer it).
-- `--out-dir` — handoff root. Default `.ae-data-integration/`.
+- `--out-dir` — handoff root. Optional. Without it, `reuse` searches in order: the current directory's `.ae-cli/data-integration/`, then each parent directory upward, then `~/.ae-cli/data-integration/` as a global fallback — so a package written in another directory or another session is still reachable.
 - `--dry-run` previews the fingerprint and match verdict without reading frozen packages.
+
+## Search paths
+
+When `--out-dir` is omitted, the result carries `searched_paths` — the exact `index.json` paths probed, in order. A `matched: false` result with a non-empty `searched_paths` means all of them were checked; a missing global fallback (no `$HOME`) simply omits it from the list.
 
 ## Matching
 
-The command computes the same **structure fingerprint** the handoff index is keyed on — columns (source name + type), event model, identity fields, and excluded columns — and looks it up in `index.json`. Business logic (the frozen event name, `value_mapping`, transforms, `time_format`) is not part of the key, so a same-shape file with different content or a different file name still matches.
+The command computes the same **structure fingerprint** the handoff index is keyed on — the raw source columns (by name, reconstructed so flatten, exclude, and account-vs-distinct decisions don't move it), the format, and the event model — and looks it up in `index.json`. Business logic (the frozen event name, `value_mapping`, transforms, `time_format`, `flatten_rules`, `exclude_columns`, and the system-field assignments) is not part of the key, so a same-shape file with different content or a different file name still matches.
 
 ## Result
 
@@ -26,7 +30,7 @@ The command computes the same **structure fingerprint** the handoff index is key
 - **Match** (`matched: true`): the result carries the matched package — `mapping_file`, optional `plan_file`, the frozen `default_event_name` (so the user sees which event name will be reused), and a `run` command:
 
 ```
-node .ae-data-integration/<fingerprint[:16]>/transform.mjs <new-input-file> [<output-dir>]
+node .ae-cli/data-integration/<fingerprint[:16]>/transform.mjs <new-input-file> [<output-dir>]
 ```
 
 ## Confirmation gate

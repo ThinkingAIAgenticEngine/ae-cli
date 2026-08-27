@@ -5,14 +5,14 @@ import {
   decodeFileSample,
   detectEncoding,
   ENCODING_FALLBACKS,
-} from '../src/commands/data-integration/local-data/encoding.js';
+} from '../src/commands/data-integration/encoding.js';
 import {
   inspectLocalDataInput,
   selectDataSet,
   sniffDelimiter,
   sniffFormat,
-} from '../src/commands/data-integration/local-data/input.js';
-import { profileLocalData } from '../src/commands/data-integration/local-data/profile.js';
+} from '../src/commands/data-integration/input.js';
+import { profileLocalData } from '../src/commands/data-integration/profile.js';
 
 const fixture = (name: string): string => fileURLToPath(new URL(`fixtures/local-data/${name}`, import.meta.url));
 

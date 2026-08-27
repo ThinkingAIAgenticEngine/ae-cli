@@ -193,6 +193,14 @@ export const directoryOffsetFlag: Flag = {
   min: 0,
 };
 
+export const certificationScopeFlag: Flag = {
+  name: 'certification-scope',
+  type: 'string',
+  required: false,
+  desc: 'Asset certification filter scope: project follows the project switch, certified returns only certified assets, all returns every asset.',
+  default: 'project',
+};
+
 export const payloadFlag: Flag = {
   name: 'payload',
   type: 'json',
@@ -296,7 +304,17 @@ export function reportListInput(ctx: RuntimeContext): Record<string, unknown> {
   return compactInput({
     ...listInput(ctx),
     model_types: optionalJson(ctx, 'model-types'),
+    certification_scope: certificationScopeInput(ctx),
   });
+}
+
+export function certificationScopeInput(ctx: RuntimeContext): string | undefined {
+  const value = optionalString(ctx, 'certification-scope');
+  if (value === undefined) return undefined;
+  if (!['project', 'certified', 'all'].includes(value)) {
+    throw new Error('--certification-scope must be project, certified, or all.');
+  }
+  return value;
 }
 
 export function dashboardReportDataInput(ctx: RuntimeContext): Record<string, unknown> {

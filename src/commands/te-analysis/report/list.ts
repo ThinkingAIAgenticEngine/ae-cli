@@ -1,4 +1,5 @@
 import {
+  certificationScopeFlag,
   createAnalysisCapabilityCommand,
   fieldsFlag,
   directoryOffsetFlag,
@@ -14,7 +15,15 @@ export const reportList = createAnalysisCapabilityCommand({
   command: 'list',
   capabilityId: 'analysis.report.list',
   description: 'List analysis reports visible to the current user through the capability gateway.',
-  flags: [projectIdFlag, queriesFlag, fieldsFlag, reportModelTypesFlag, reportListLimitFlag, directoryOffsetFlag],
+  flags: [
+    projectIdFlag,
+    queriesFlag,
+    fieldsFlag,
+    reportModelTypesFlag,
+    reportListLimitFlag,
+    directoryOffsetFlag,
+    certificationScopeFlag,
+  ],
   risk: 'read',
   validate: validateQueriesFlag,
   buildInput: reportListInput,

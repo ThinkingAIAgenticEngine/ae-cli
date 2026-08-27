@@ -1,13 +1,13 @@
 import assert from 'node:assert/strict';
-import { convertRow } from '../src/commands/data-integration/local-data/conversion.js';
+import { convertRow } from '../src/commands/data-integration/conversion.js';
 import {
   findFirstTimeFormat,
   isParseableByAnyFormat,
   parseTimeByAnyFormat,
   TIME_FORMATS,
   tryStrptime,
-} from '../src/commands/data-integration/local-data/time.js';
-import type { LocalDataMapping } from '../src/commands/data-integration/local-data/types.js';
+} from '../src/commands/data-integration/time.js';
+import type { LocalDataMapping } from '../src/commands/data-integration/types.js';
 
 assert.equal(TIME_FORMATS.length, 21);
 
@@ -29,7 +29,7 @@ assert.ok(findFirstTimeFormat('20240116'));
 assert.equal(parseTimeByAnyFormat('20240116')?.day, 16);
 
 const mapping: LocalDataMapping = {
-  version: 'ae-local-data-mapping/v1',
+  version: 'ae-data-integration-mapping/v1',
   source: { sha256: 'a'.repeat(64), format: 'csv', data_set: '$' },
   mode: 'track',
   confidence: 'high',

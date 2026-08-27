@@ -32,6 +32,45 @@ export function missingRequiredFlagsError(
   return { message, hint };
 }
 
+interface TeAgentApiErrorPresentation {
+  message?: string;
+  hint?: string;
+  code?: string;
+  meta?: Record<string, unknown>;
+}
+
+function readSkillCurrentVersion(body: unknown): string | undefined {
+  if (!body || typeof body !== 'object' || Array.isArray(body)) return undefined;
+  const currentVersion = (body as Record<string, unknown>).currentVersion;
+  if (typeof currentVersion !== 'string') return undefined;
+  return /^(0|[1-9]\d*)\.(0|[1-9]\d*)$/.test(currentVersion)
+    ? currentVersion
+    : undefined;
+}
+
+/** Surface only customer-safe recovery details for known Skill update conflicts. */
+export function teAgentApiErrorPresentation(err: TeAgentApiError): TeAgentApiErrorPresentation {
+  if (err.code === 'SKILL_VERSION_CONFLICT') {
+    const currentVersion = readSkillCurrentVersion(err.body);
+    return {
+      message: 'The Skill content changed, and the new version must be greater than the current version.',
+      code: err.code,
+      hint: currentVersion
+        ? `Retry with --version set to a major.minor version greater than ${currentVersion}.`
+        : 'Retry with --version set to a major.minor version greater than the current Skill version.',
+      ...(currentVersion ? { meta: { currentVersion } } : {}),
+    };
+  }
+  if (err.code === 'SKILL_HISTORY_CONFLICT') {
+    return {
+      message: 'The Skill cannot be safely updated right now.',
+      code: err.code,
+      hint: 'The Skill cannot be safely updated right now. Please contact your administrator.',
+    };
+  }
+  return {};
+}
+
 export async function runCommand(cmd: Command, opts: Record<string, any>, globalOpts: GlobalOptions): Promise<void> {
   try {
     const ctx = createRuntimeContext(cmd, opts, globalOpts);
@@ -217,7 +256,14 @@ export async function runCommand(cmd: Command, opts: Record<string, any>, global
       } else if (err.status === 401) {
         printError('auth', message, 'Run: ae-cli auth login');
       } else {
-        printError('api', message);
+        const presentation = teAgentApiErrorPresentation(err);
+        printError(
+          'api',
+          presentation.message ?? message,
+          presentation.hint,
+          presentation.code,
+          presentation.meta,
+        );
       }
     } else if (looksLikeAuthFailure(message)) {
       // Narrow fallback for plain Errors signaling a genuine token/session failure (e.g. mcp-token mint

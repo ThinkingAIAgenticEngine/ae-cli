@@ -131,6 +131,49 @@ await test('createCapabilityCommand dry-run posts to gateway dry-run via routed 
   }
 });
 
+await test('createCapabilityCommand assigns request_id for validate and dry-run', async () => {
+  clearCapabilityGatewayRoutesForTest();
+  registerCapabilityGatewayRoute('metadata', { gatewayDomain: 'analysis' });
+  const host = 'https://test-cap-cmd-lifecycle-request-id.internal';
+  setCliTokenManual('cli-cmd-lifecycle-token', host);
+
+  const capturedRequestIds: string[] = [];
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = (async (_input: any, init?: any) => {
+    const body = init?.body ? JSON.parse(String(init.body)) : undefined;
+    if (body?.input) {
+      capturedRequestIds.push(body.input.request_id);
+    }
+    return new Response(JSON.stringify({ ok: true, data: { valid: true, dry_run: true } }), {
+      status: 200,
+    });
+  }) as typeof fetch;
+
+  try {
+    const cmd = createCapabilityCommand({
+      cliService: 'metadata',
+      resource: 'event',
+      command: 'delete',
+      capabilityId: 'metadata.event.delete',
+      description: 'test',
+      flags: [{ name: 'request-id', type: 'string', desc: 'Optional request id.' }],
+      risk: 'high-risk-write',
+      buildInput: () => ({ project_id: 1, event_name: 'login' }),
+    });
+
+    await cmd.validateInput!(makeCtx(host));
+    await cmd.dryRun!(makeCtx(host));
+
+    assert.equal(capturedRequestIds.length, 2);
+    for (const requestId of capturedRequestIds) {
+      assert.match(requestId, /^cli_[0-9a-f]{32}$/);
+    }
+  } finally {
+    globalThis.fetch = originalFetch;
+    clearCliToken(host);
+  }
+});
+
 await test('createCapabilityCommand validateInput posts to gateway validate via routed domain', async () => {
   clearCapabilityGatewayRoutesForTest();
   registerCapabilityGatewayRoute('metadata', { gatewayDomain: 'analysis' });

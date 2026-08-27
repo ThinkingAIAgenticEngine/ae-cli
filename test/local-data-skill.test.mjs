@@ -52,7 +52,7 @@ assert.match(source, /NDJSON/);
 assert.match(source, /GBK/);
 assert.match(source, /nested_tree/);
 assert.match(source, /cell-relative/);
-assert.match(source, /Judge first, then confirm/i);
+assert.match(source, /Review the recommended mapping's per-field decision/i);
 assert.match(source, /Never keep the `col_1\.\.col_N` placeholders/i);
 assert.match(source, /propose a meaningful name/i);
 

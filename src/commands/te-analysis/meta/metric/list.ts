@@ -1,5 +1,7 @@
 import {
   compactInput,
+  certificationScopeFlag,
+  certificationScopeInput,
   createAnalysisMetaCapabilityCommand,
   directoryLimitFlag,
   fieldsFlag,
@@ -29,6 +31,7 @@ export const metadataMetricList = createAnalysisMetaCapabilityCommand({
     directoryLimitFlag,
     directoryOffsetFlag,
     { name: 'authenticated-only', type: 'boolean', required: false, desc: 'When true, return only authenticated metrics.' },
+    certificationScopeFlag,
   ],
   risk: 'read',
   validate: validateCatalogListFlags,
@@ -40,5 +43,6 @@ export const metadataMetricList = createAnalysisMetaCapabilityCommand({
     limit: optionalNumber(ctx, 'limit'),
     offset: optionalNumber(ctx, 'offset'),
     authenticated_only: optionalBoolean(ctx, 'authenticated-only'),
+    certification_scope: certificationScopeInput(ctx),
   })),
 });

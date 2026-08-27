@@ -6,6 +6,7 @@ import {
   AE_CLI_SKILLS_REPO,
   normalizeCliVersion,
   OPEN_SOURCE_AE_CLI_PACKAGE,
+  OPEN_SOURCE_NPM_REGISTRY,
   versionLine,
 } from './version-compat.js';
 import { normalizeUrl } from './url-utils.js';
@@ -238,7 +239,7 @@ export function buildVersionInstallPlan(targetRaw: string, globalRoot = '<npm-ro
   return {
     target,
     commands: [
-      `npm install -g ${OPEN_SOURCE_AE_CLI_PACKAGE}@${target}`,
+      `npm install -g ${OPEN_SOURCE_AE_CLI_PACKAGE}@${target} --registry=${OPEN_SOURCE_NPM_REGISTRY}`,
       `npx -y skills add ${localSkills} -g -y`,
       `npx -y skills add ${AE_CLI_SKILLS_REPO}#v${target} -g -y`,
     ],
@@ -406,7 +407,13 @@ export function installVersion(
       progress(`[ae-cli] [1/2] Installing ae-cli ${target}...`);
       const npmResult = runner(
         npm,
-        ['install', '-g', `${OPEN_SOURCE_AE_CLI_PACKAGE}@${target}`],
+        [
+          'install',
+          '-g',
+          `${OPEN_SOURCE_AE_CLI_PACKAGE}@${target}`,
+          '--registry',
+          OPEN_SOURCE_NPM_REGISTRY,
+        ],
         COMMAND_TIMEOUT_MS,
       );
       if (!commandSucceeded(npmResult)) {

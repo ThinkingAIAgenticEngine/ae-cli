@@ -26,6 +26,35 @@ This policy does not apply to:
 - `analysis-meta`, metadata, DataOps, Community, Engage, or other business modules.
 - Report/dashboard/BI asset list commands, catalog exports, definition import/export, or management commands.
 
+## Cache policy for report and ad-hoc data
+
+Apply this cache policy to `analysis adhoc run|export` and
+`analysis report-data run|export`:
+
+- For an ordinary query, omit `--use-cache`; its effective default is `true`.
+  This allows a cache read but does not prove that the query actually hit a
+  cache.
+- Pass `--use-cache false` only when the user explicitly asks for fresh data,
+  a refresh or recomputation, to bypass/disable cache, or says the underlying
+  data was just updated. Words such as "latest" or "current" trigger this only
+  when they refer to data freshness, not merely to a selected time window.
+- When the user explicitly compares with a freshly refreshed analysis UI,
+  pass `--use-cache false`. A request that merely mentions a report or UI does
+  not imply this freshness requirement.
+- If the user reports that CLI/Agent data differs from the analysis UI, repeat
+  the same semantic query exactly once with `--use-cache false`. Preserve the
+  project, asset or model definition, filters, time range, timezone, cluster
+  route, and other query inputs. Explain that any difference may come from
+  cache policy or refresh timing; do not enter a retry loop.
+
+The Agent cannot observe whether another browser session is open, whether a UI
+query used cache, or whether the user is demonstrating the product. Never infer
+a demo scenario and never change cache policy based only on the audience or
+interface. `--use-cache` controls whether cache reads are allowed for this CLI
+query; it neither changes the saved asset/UI configuration nor exposes an
+actual cache-hit result. Do not claim cache hit or miss unless the response
+contains explicit backend evidence.
+
 ## Decision rule
 
 Synchronous data commands use `--preview-rows` for the maximum business rows

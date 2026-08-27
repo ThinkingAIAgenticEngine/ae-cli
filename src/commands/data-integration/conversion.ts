@@ -15,7 +15,7 @@ import {
 import { once } from 'node:events';
 import { basename, join, resolve } from 'node:path';
 import { createInterface } from 'node:readline';
-import { CliValidationError } from '../../../core/errors.js';
+import { CliValidationError } from '../../core/errors.js';
 import { inspectLocalDataInput, selectDataSet, sha256File, streamLocalDataRows } from './input.js';
 import type { LocalDataInput } from './input.js';
 import { isValidAeName } from './mapping.js';
@@ -25,26 +25,14 @@ import { IDENTITY_MAX_LENGTH, isMissing, isUserProfileType, normalizeRecordType,
 import { parseTimeByAnyFormat, tryStrptime } from './time.js';
 import type { WallTimeParts } from './time.js';
 import type { LocalDataManifest, LocalDataMapping, LocalDataRow, LocalDataSet, TypeResolutions, UeRecordType } from './types.js';
+import { isPrivateIp, isValidIp, isValidUuid, stripQuotes } from './field-spec.js';
 
 const SORT_CHUNK_SIZE = 10_000;
 const THREE_YEARS_MS = 3 * 365 * 24 * 60 * 60 * 1000;
 const THREE_DAYS_MS = 3 * 24 * 60 * 60 * 1000;
 
-/**
- * Strip paired single or double quotes around a string value, then trim surrounding
- * whitespace. Mirrors `stripQuotes` in the standalone `ae-file-data-import` tool: only a
- * paired quote pair is removed (`'u001'` -> `u001`, `"purchase"` -> `purchase`); a single
- * unmatched quote is preserved. Non-string values pass through untouched so NDJSON
- * numbers, booleans, lists, and objects keep their native type.
- */
-export function stripQuotes(value: unknown): unknown {
-  if (typeof value !== 'string') return value;
-  const text = value;
-  if (text.length >= 2 && ((text.startsWith('"') && text.endsWith('"')) || (text.startsWith("'") && text.endsWith("'")))) {
-    return text.slice(1, -1).trim();
-  }
-  return text.trim();
-}
+/** A system field whose value violated its spec was dropped from the row (row kept). */
+type FieldSkipCode = 'INVALID_IP' | 'INVALID_UUID';
 
 export interface ConvertLocalDataOptions {
   inputFile: string;
@@ -83,11 +71,14 @@ export async function convertLocalData(options: ConvertLocalDataOptions): Promis
     headerNames: options.mapping.headers,
     flattenRules: options.mapping.flatten_rules,
     mergeSheets: options.mergeSheets,
+    // The profile pass inside convert is internal (it writes profile.json); the ragged-row
+    // warning is surfaced by the conversion pass below instead, so suppress it here.
+    warnRagged: false,
   };
   const salvageSet = options.salvageFrom ? readSalvageRowNumbers(options.salvageFrom) : undefined;
   let salvageMatched = 0;
   const runId = `${formatRunTimestamp(new Date())}-${randomUUID().slice(0, 8)}`;
-  const outputDir = resolve(options.outputDir || join('.ae-cli', 'data-integration', runId));
+  const outputDir = resolve(options.outputDir || join('.ae-cli', 'data-integration', 'runs', runId));
   prepareOutputDirectory(outputDir);
 
   const profile = await profileLocalData(input, dataSet, options.mapping.time.source_timezone, streamOptions);
@@ -105,8 +96,11 @@ export async function convertLocalData(options: ConvertLocalDataOptions): Promis
   let validRecords = 0;
   let invalidRecords = 0;
   const recordTypes: Partial<Record<UeRecordType, number>> = {};
+  const skippedFields: Record<string, number> = {};
+  let lanIpRecords = 0;
+  const flattenMisses: Record<string, number> = {};
 
-  await streamLocalDataRows(
+  const rowCount = await streamLocalDataRows(
     input,
     dataSet,
     async (row, rowNumber) => {
@@ -120,6 +114,10 @@ export async function convertLocalData(options: ConvertLocalDataOptions): Promis
       }
       validRecords += 1;
       recordTypes[result.recordType] = (recordTypes[result.recordType] ?? 0) + 1;
+      if (result.lanIp) lanIpRecords += 1;
+      for (const skip of result.skips) {
+        skippedFields[skip.code] = (skippedFields[skip.code] ?? 0) + 1;
+      }
       const line = JSON.stringify(result.record);
       if (isUserProfileType(result.recordType)) {
         userSetBuffer.push({ key: result.sortKey, line });
@@ -131,13 +129,15 @@ export async function convertLocalData(options: ConvertLocalDataOptions): Promis
     {
       headerNames: streamOptions.headerNames,
       flattenRules: streamOptions.flattenRules,
+      flattenMisses,
       mergeSheets: streamOptions.mergeSheets,
     },
   );
   if (userSetBuffer.length > 0) flushSortChunk(outputDir, userSetBuffer, sortChunks);
-  trackStream.end();
-  invalidStream.end();
-  await Promise.all([once(trackStream, 'finish'), once(invalidStream, 'finish')]);
+  await Promise.all([finishStream(trackStream), finishStream(invalidStream)]);
+  for (const [outColumn, count] of Object.entries(flattenMisses)) {
+    process.stderr.write(`Warning: flatten rule "${outColumn}" did not materialize for ${count} row(s).\n`);
+  }
   if (salvageSet && salvageMatched === 0) {
     throw new CliValidationError('The salvage file lists no rows from this source.', {
       code: 'LOCAL_DATA_SALVAGE_NO_MATCH',
@@ -149,12 +149,11 @@ export async function convertLocalData(options: ConvertLocalDataOptions): Promis
   const validStream = secureWriteStream(validPath);
   if (existsSync(trackTempPath)) {
     for await (const chunk of createReadStream(trackTempPath)) {
-      if (!validStream.write(chunk)) await once(validStream, 'drain');
+      await writeRaw(validStream, chunk);
     }
   }
   await mergeSortChunks(sortChunks, validStream);
-  validStream.end();
-  await once(validStream, 'finish');
+  await finishStream(validStream);
   if (existsSync(trackTempPath)) unlinkSync(trackTempPath);
   for (const path of sortChunks) if (existsSync(path)) unlinkSync(path);
 
@@ -163,8 +162,9 @@ export async function convertLocalData(options: ConvertLocalDataOptions): Promis
   writeSecureText(transformPath, createTransformScript(options.inputFile, mappingPath));
   const validBytes = statSize(validPath);
   const blockedReasons = [
+    ...(rowCount === 0 ? ['The source contained no data rows.'] : []),
+    ...(rowCount > 0 && validRecords === 0 ? ['No valid UE records were generated.'] : []),
     ...(invalidRecords > 0 ? ['Some source rows failed UE validation.'] : []),
-    ...(validRecords === 0 ? ['No valid UE records were generated.'] : []),
   ];
   const manifest: LocalDataManifest = {
     version: 'ae-local-data-manifest/v1',
@@ -186,6 +186,9 @@ export async function convertLocalData(options: ConvertLocalDataOptions): Promis
       invalid_records: invalidRecords,
       valid_bytes: validBytes,
       record_types: recordTypes,
+      ...(Object.keys(skippedFields).length > 0 ? { skipped_fields: skippedFields } : {}),
+      ...(lanIpRecords > 0 ? { lan_ip_records: lanIpRecords } : {}),
+      ...(Object.keys(flattenMisses).length > 0 ? { flatten_misses: flattenMisses } : {}),
     },
     blocked_reasons: blockedReasons,
   };
@@ -230,6 +233,7 @@ export async function convertLocalDataMulti(options: ConvertLocalDataMultiOption
       collectSamples: true,
       headerNames: options.mapping.headers,
       flattenRules: options.mapping.flatten_rules,
+      warnRagged: false,
     });
     profiled.push({ file: basename(inputFile), profile });
   }
@@ -248,7 +252,7 @@ export async function convertLocalDataMulti(options: ConvertLocalDataMultiOption
 
   const parent = resolve(
     options.outputDir
-    || join('.ae-cli', 'data-integration', `${formatRunTimestamp(new Date())}-${randomUUID().slice(0, 8)}`),
+    || join('.ae-cli', 'data-integration', 'runs', `${formatRunTimestamp(new Date())}-${randomUUID().slice(0, 8)}`),
   );
   prepareOutputDirectory(parent);
 
@@ -280,7 +284,7 @@ export function convertRow(
   rowNumber: number,
   mapping: LocalDataMapping,
   now: Date,
-): { ok: true; recordType: UeRecordType; record: Record<string, unknown>; sortKey: string }
+): { ok: true; recordType: UeRecordType; record: Record<string, unknown>; sortKey: string; skips: Array<{ code: FieldSkipCode; field: string }>; lanIp: boolean }
   | { ok: false; errors: Array<{ code: string; field?: string }> } {
   const errors: Array<{ code: string; field?: string }> = [];
   const accountId = resolveIdentity(row, mapping.account_id_field, mapping.value_mapping?.account_id, mapping.account_id_value, mapping.random_pool?.account_ids, errors);
@@ -330,12 +334,37 @@ export function convertRow(
     }
   }
 
-  const ip = readOptionalField(row, mapping.ip_field);
-  const uuid = readOptionalField(row, mapping.uuid_field);
+  const skips: Array<{ code: FieldSkipCode; field: string }> = [];
+  let lanIp = false;
+  // #ip is event-data-only (track); user profile records never carry it.
+  let ip: string | undefined;
+  if (recordType === 'track') {
+    const rawIp = readOptionalField(row, mapping.ip_field);
+    if (rawIp) {
+      if (isValidIp(rawIp)) {
+        ip = rawIp;
+        lanIp = isPrivateIp(rawIp);
+      } else {
+        skips.push({ code: 'INVALID_IP', field: mapping.ip_field! });
+      }
+    }
+  }
+  // #uuid applies to both event and user data; a non-UUID value skips only the field.
+  let uuid: string | undefined;
+  {
+    const rawUuid = readOptionalField(row, mapping.uuid_field);
+    if (rawUuid) {
+      if (isValidUuid(rawUuid)) uuid = rawUuid;
+      else skips.push({ code: 'INVALID_UUID', field: mapping.uuid_field! });
+    }
+  }
 
   const excluded = new Set(mapping.exclude_columns ?? []);
   const properties: Record<string, unknown> = {};
   for (const property of mapping.properties) {
+    // A dotted target is a plan-only sub-property declaration: the parent object/array_row
+    // carries the nested value, so a child row never reads or emits data of its own.
+    if (property.target.includes('.')) continue;
     if (excluded.has(property.source)) continue;
     let value = stripQuotes(row[property.source]);
     if (isMissing(value)) continue;
@@ -349,12 +378,13 @@ export function convertRow(
       properties[property.target] = converted.value;
     }
   }
-  const zoneOffset = mapping.zone_offset_value !== undefined
+  // #zone_offset is event-data-only (track); user profile records never carry it.
+  const zoneOffset = recordType === 'track' && mapping.zone_offset_value !== undefined
     ? resolveZoneOffsetValue(mapping.zone_offset_value, now)
-    : mapping.zone_offset_field
+    : recordType === 'track' && mapping.zone_offset_field
       ? readZoneOffset(row, mapping.zone_offset_field)
       : undefined;
-  if (mapping.zone_offset_field && zoneOffset === undefined) {
+  if (recordType === 'track' && mapping.zone_offset_field && zoneOffset === undefined) {
     errors.push({ code: 'INVALID_ZONE_OFFSET', field: mapping.zone_offset_field });
   }
   if (errors.length > 0 || !recordType || !normalizedTime) return { ok: false, errors };
@@ -374,6 +404,8 @@ export function convertRow(
     recordType,
     record,
     sortKey: `${accountId ?? distinctId ?? ''}\u0000${normalizedTime.instant.toISOString()}\u0000${String(rowNumber).padStart(12, '0')}`,
+    skips,
+    lanIp,
   };
 }
 
@@ -524,7 +556,7 @@ function convertProperty(
         ? { ok: true, value: normalized.formatted }
         : { ok: false, code: 'PROPERTY_TYPE_CONFLICT' };
     }
-    if (type === 'list') {
+    if (type === 'list' || type === 'array_row') {
       if (!Array.isArray(value)) return { ok: false, code: 'PROPERTY_TYPE_CONFLICT' };
       return isPropertyWithinLimits(value, type)
         ? { ok: true, value }
@@ -727,7 +759,7 @@ function flushSortChunk(
   buffer.length = 0;
 }
 
-async function mergeSortChunks(paths: string[], output: ReturnType<typeof createWriteStream>): Promise<void> {
+async function mergeSortChunks(paths: string[], output: SecureWritable): Promise<void> {
   const cursors = await Promise.all(paths.map(async (path) => {
     const iterator = createInterface({ input: createReadStream(path), crlfDelay: Infinity })[Symbol.asyncIterator]();
     return { iterator, current: await readSortItem(iterator) };
@@ -761,12 +793,50 @@ function prepareOutputDirectory(path: string): void {
   chmodSync(path, 0o700);
 }
 
-function secureWriteStream(path: string) {
-  return createWriteStream(path, { encoding: 'utf8', mode: 0o600, flags: 'wx' });
+/** A write stream plus a promise that rejects on its first error, so a disk-full (ENOSPC) or
+ * permission failure surfaces as a thrown error instead of hanging `once(stream, 'finish')`. */
+interface SecureWritable {
+  stream: ReturnType<typeof createWriteStream>;
+  path: string;
+  errorPromise: Promise<never>;
 }
 
-async function writeLine(stream: ReturnType<typeof createWriteStream>, line: string): Promise<void> {
-  if (!stream.write(`${line}\n`)) await once(stream, 'drain');
+function secureWriteStream(path: string): SecureWritable {
+  const stream = createWriteStream(path, { encoding: 'utf8', mode: 0o600, flags: 'wx' });
+  let fail: ((error: Error) => void) | undefined;
+  const errorPromise = new Promise<never>((_, reject) => { fail = reject; });
+  // Prevent an unhandled rejection if the stream errors before a write/finish awaits it.
+  errorPromise.catch(() => {});
+  stream.on('error', (error) => fail?.(error));
+  return { stream, path, errorPromise };
+}
+
+function writeFailure(path: string, error: unknown): Error {
+  const detail = error instanceof Error ? error.message : String(error);
+  return new Error(`Failed to write "${path}": ${detail}. Check available disk space and directory permissions.`, { cause: error });
+}
+
+async function writeRaw(target: SecureWritable, data: string | Buffer): Promise<void> {
+  try {
+    if (!target.stream.write(data)) {
+      await Promise.race([once(target.stream, 'drain'), target.errorPromise]);
+    }
+  } catch (error) {
+    throw writeFailure(target.path, error);
+  }
+}
+
+async function writeLine(target: SecureWritable, line: string): Promise<void> {
+  await writeRaw(target, `${line}\n`);
+}
+
+async function finishStream(target: SecureWritable): Promise<void> {
+  try {
+    target.stream.end();
+    await Promise.race([once(target.stream, 'finish'), target.errorPromise]);
+  } catch (error) {
+    throw writeFailure(target.path, error);
+  }
 }
 
 function writeSecureJson(path: string, value: unknown): void {

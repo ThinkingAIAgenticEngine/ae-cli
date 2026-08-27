@@ -227,6 +227,32 @@ await test('analysis-meta event list sends search pagination projection and auth
   });
 });
 
+await test('analysis-meta event list normalizes backend events to the directory items contract', async () => {
+  const cmd = await importCmd('src/commands/te-analysis/meta/event/list.ts', 'metadataEventList');
+  const { result } = await captureCapabilityExecute(cmd, {
+    projectId: 1,
+    limit: 20,
+    offset: 0,
+  }, {
+    events: [{ event_name: 'login', event_desc: 'Login' }],
+    total: 1,
+    limit: 20,
+    offset: 0,
+    has_more: false,
+    next_offset: null,
+  });
+
+  assert.deepEqual(JSON.parse(JSON.stringify(result)), {
+    items: [{ event_name: 'login', event_desc: 'Login' }],
+    total: 1,
+    limit: 20,
+    offset: 0,
+    has_more: false,
+    next_offset: null,
+  });
+  assert.equal('events' in result, false);
+});
+
 await test('analysis-meta event export writes one complete private JSON file without leaking output path', async () => {
   const cmd = await importCmd('src/commands/te-analysis/meta/event/export.ts', 'metadataEventExport');
   assert.equal(cmd.flags.find((flag) => flag.name === 'output')?.required, true);
@@ -1096,6 +1122,121 @@ await test('analysis-meta asset-authentication list uses standalone metadata res
   const { url, body } = await captureCapabilityDryRun(cmd, { projectId: 1, limit: 100, offset: 100 });
   assert.equal(url, `${HOST}/api/cli/analysis/v1/capabilities/metadata.asset_authentication.list/dry-run`);
   assert.deepEqual(body.input, { project_id: 1, limit: 100, offset: 100 });
+});
+
+await test('analysis-governance asset-authentication list sends typed server-side filters', async () => {
+  const cmd = await importCmd(
+    'src/commands/te-analysis/governance/asset-authentication-list.ts',
+    'analysisGovernanceAssetAuthenticationList',
+  );
+  const { url, body } = await captureCapabilityDryRun(cmd, {
+    projectId: 3,
+    assetTypes: ['dashboard', 'report'],
+    authenticationStatus: 0,
+    queries: ['gateway'],
+    heatCountGt: 50,
+    userCountGt: 5,
+    match: 'any',
+    fields: ['resource_type', 'resource_key', 'heat_count90d'],
+    limit: 100,
+    offset: 0,
+  });
+  assert.equal(url, `${HOST}/api/cli/analysis/v1/capabilities/governance.asset_authentication.list/dry-run`);
+  assert.deepEqual(body.input, {
+    project_id: 3,
+    asset_types: ['dashboard', 'report'],
+    authentication_status: 0,
+    queries: ['gateway'],
+    heat_count_gt: 50,
+    user_count_gt: 5,
+    match: 'any',
+    fields: ['resource_type', 'resource_key', 'heat_count90d'],
+    limit: 100,
+    offset: 0,
+  });
+});
+
+await test('analysis-governance asset-authentication export atomically writes JSONL and exact sidecar', async () => {
+  const cmd = await importCmd(
+    'src/commands/te-analysis/governance/asset-authentication-export.ts',
+    'analysisGovernanceAssetAuthenticationExport',
+  );
+  assert.equal(cmd.flags.some((flag) => flag.name === 'limit'), false);
+  assert.equal(cmd.flags.some((flag) => flag.name === 'offset'), false);
+  const dir = await mkdtemp(path.join(tmpdir(), 'ae-cli-asset-authentication-'));
+  const output = path.join(dir, 'assets.jsonl');
+  try {
+    const rows = [
+      { resource_type: 'dashboard', resource_key: '4350', display_name: 'Gateway' },
+      { resource_type: 'report', resource_key: '18111', display_name: 'Usage' },
+    ];
+    const { body, result } = await captureCapabilityExecute(cmd, {
+      projectId: 3,
+      assetTypes: ['dashboard', 'report'],
+      output,
+    }, {
+      assets: rows,
+      total: 2,
+      complete: true,
+      project_id: 3,
+      stat_as_of: '2026-08-25',
+      snapshot_hash: 'a'.repeat(64),
+    });
+    assert.deepEqual(body.input, { project_id: 3, asset_types: ['dashboard', 'report'] });
+    assert.equal(result.output_path, output);
+    assert.equal(result.metadata_path, `${output}.meta.json`);
+    assert.deepEqual(
+      (await readFile(output, 'utf8')).trim().split('\n').map((line) => JSON.parse(line)),
+      rows,
+    );
+    const metadata = JSON.parse(await readFile(`${output}.meta.json`, 'utf8'));
+    assert.equal(metadata.complete, true);
+    assert.equal(metadata.project_id, 3);
+    assert.equal(metadata.total, 2);
+    assert.equal(metadata.stat_as_of, '2026-08-25');
+    assert.equal(metadata.snapshot_hash, 'a'.repeat(64));
+    assert.match(metadata.checksum, /^[a-f0-9]{64}$/);
+    assert.equal((await stat(output)).mode & 0o777, 0o600);
+    assert.equal((await stat(`${output}.meta.json`)).mode & 0o777, 0o600);
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
+await test('analysis-governance asset-authentication update normalizes JSONL rows to asset_refs', async () => {
+  const cmd = await importCmd(
+    'src/commands/te-analysis/governance/asset-authentication-update.ts',
+    'analysisGovernanceAssetAuthenticationUpdate',
+  );
+  const dir = await mkdtemp(path.join(tmpdir(), 'ae-cli-asset-authentication-update-'));
+  const assetFile = path.join(dir, 'selected.jsonl');
+  try {
+    await writeFile(assetFile, [
+      JSON.stringify({ resource_type: 'dashboard', resource_key: '4350', display_name: 'Gateway' }),
+      JSON.stringify({ resource_type: 'event', resource_key: 'ai_model_usage' }),
+      '',
+    ].join('\n'));
+    const { url, body } = await captureCapabilityDryRun(cmd, {
+      projectId: 3,
+      authenticationStatus: 1,
+      assetFile,
+      expectedSnapshotHash: 'b'.repeat(64),
+      requestId: `cli_${'c'.repeat(32)}`,
+    });
+    assert.equal(url, `${HOST}/api/cli/analysis/v1/capabilities/governance.asset_authentication.update/dry-run`);
+    assert.deepEqual(body.input, {
+      project_id: 3,
+      authentication_status: 1,
+      asset_refs: [
+        { resource_type: 'dashboard', resource_key: '4350' },
+        { resource_type: 'event', resource_key: 'ai_model_usage' },
+      ],
+      expected_snapshot_hash: 'b'.repeat(64),
+      request_id: `cli_${'c'.repeat(32)}`,
+    });
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
 });
 
 await test('analysis-governance rule list sends shared pagination', async () => {

@@ -3,6 +3,7 @@ import {
   evaluateCompat,
   formatCompatNotice,
   formatPinCommands,
+  formatUpgradeCommands,
   normalizeCliVersion,
   resolvePinTarget,
   sameVersionLine,
@@ -30,26 +31,29 @@ assert.equal(resolvePinTarget('6.1.3'), null); // no public 6.1.x tag yet
 
 const pins13 = formatPinCommands('6.0.13');
 assert.ok(pins13[0].includes('@thinkingai/ae-cli@1.0.28'));
+assert.ok(pins13[0].includes('--registry=https://registry.npmjs.org'));
 assert.ok(pins13[1].includes('#v1.0.28'));
 
 const pins = formatPinCommands('6.0.20');
 assert.ok(pins[0].includes('@thinkingai/ae-cli@6.0.20'));
+assert.ok(pins[0].includes('--registry=https://registry.npmjs.org'));
 assert.ok(pins[1].includes('#v6.0.20'));
 
 const newer = formatCompatNotice(evaluateCompat('6.0.31', '6.0.20', '6.0'));
 assert.match(newer ?? '', /local 6\.0\.31 > environment 6\.0\.20/);
-assert.match(newer ?? '', /skills add/);
+assert.match(newer ?? '', /ae-cli update/);
 
 const mappedPin = formatCompatNotice(evaluateCompat('6.0.32', '6.0.13', '6.0'));
 assert.match(mappedPin ?? '', /local 6\.0\.32 > environment 6\.0\.13/);
-assert.match(mappedPin ?? '', /@thinkingai\/ae-cli@1\.0\.28/);
-assert.match(mappedPin ?? '', /#v1\.0\.28/);
-assert.match(mappedPin ?? '', /GitHub usually published later/);
+assert.match(mappedPin ?? '', /ae-cli update/);
 
 const older = formatCompatNotice(evaluateCompat('6.0.32', '6.0.33', '6.0'));
 assert.match(older ?? '', /local 6\.0\.32 < environment 6\.0\.33/);
-assert.match(older ?? '', /Upgrade CLI \+ skills to the environment version/);
-assert.match(older ?? '', /@thinkingai\/ae-cli@6\.0\.33/);
-assert.match(older ?? '', /#v6\.0\.33/);
+assert.match(older ?? '', /ae-cli update/);
+
+const upgrades = formatUpgradeCommands('6.0.33');
+assert.ok(upgrades[0].includes('@thinkingai/ae-cli@6.0.33'));
+assert.ok(upgrades[0].includes('--registry=https://registry.npmjs.org'));
+assert.ok(upgrades[1].includes('#v6.0.33'));
 
 process.stdout.write('version-compat tests: passed\n');

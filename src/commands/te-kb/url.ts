@@ -32,7 +32,7 @@ export const url: Command = {
     { name: 'name', type: 'string', required: true, desc: 'Knowledge base name' },
     { name: 'url', type: 'string', required: true, desc: 'Source URL to upload' },
     { name: 'display-name', type: 'string', required: false, desc: 'Optional display name for the URL source' },
-    { name: 'parse-instruction', type: 'string', required: false, desc: 'Optional parsing instruction for the URL source' },
+    { name: 'parse-instruction', type: 'string', required: false, desc: 'Optional parsing instruction for the URL source; ignored for Lark/Feishu doc URLs (the server applies its own Feishu parsing)' },
   ],
   risk: 'write',
   validate: (ctx) => {

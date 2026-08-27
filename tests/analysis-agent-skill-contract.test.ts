@@ -24,6 +24,10 @@ const dashboardGet = readFileSync(
   new URL('../skills/ae-analysis/references/dashboard_get.md', import.meta.url),
   'utf8',
 );
+const dashboardUpdate = readFileSync(
+  new URL('../skills/ae-analysis/references/dashboard_update.md', import.meta.url),
+  'utf8',
+);
 const reportCreate = readFileSync(new URL('../skills/ae-analysis/references/report_create.md', import.meta.url), 'utf8');
 const reportUpdate = readFileSync(new URL('../skills/ae-analysis/references/report_update.md', import.meta.url), 'utf8');
 const reportList = readFileSync(new URL('../skills/ae-analysis/references/report_list.md', import.meta.url), 'utf8');
@@ -32,6 +36,10 @@ const reportDataRun = readFileSync(new URL('../skills/ae-analysis/references/rep
 const reportDataExport = readFileSync(new URL('../skills/ae-analysis/references/report_data_export.md', import.meta.url), 'utf8');
 const adhocRun = readFileSync(new URL('../skills/ae-analysis/references/adhoc_run.md', import.meta.url), 'utf8');
 const adhocExport = readFileSync(new URL('../skills/ae-analysis/references/adhoc_export.md', import.meta.url), 'utf8');
+const analysisDataRetrieval = readFileSync(
+  new URL('../skills/ae-analysis/references/analysis_data_retrieval.md', import.meta.url),
+  'utf8',
+);
 const drilldownUserEventsRun = readFileSync(
   new URL('../skills/ae-analysis/references/drilldown_user_events_run.md', import.meta.url),
   'utf8',
@@ -64,6 +72,18 @@ const commandIndex = readFileSync(
   new URL('../skills/ae-analysis/references/command_index.md', import.meta.url),
   'utf8',
 );
+const personalSemanticList = readFileSync(
+  new URL('../skills/ae-analysis/references/personal_semantic_preference_list.md', import.meta.url),
+  'utf8',
+);
+const personalSemanticAdd = readFileSync(
+  new URL('../skills/ae-analysis/references/personal_semantic_preference_add.md', import.meta.url),
+  'utf8',
+);
+const personalSemanticGet = readFileSync(
+  new URL('../skills/ae-analysis/references/personal_semantic_preference_get.md', import.meta.url),
+  'utf8',
+);
 const capabilitySkill = readFileSync(
   new URL('../skills/ae-capability/SKILL.md', import.meta.url),
   'utf8',
@@ -91,6 +111,8 @@ assert.match(skill, /Never relabel an empty report\/dashboard result as query fa
 assert.match(skill, /`meta\.partial: true` is partial success/);
 assert.match(skill, /`meta\.request_id`, `meta\.invocation_id`, `meta\.stage`/);
 assert.match(skill, /Do not retry an unchanged failed command/);
+assert.match(skill, /once per host.*user.*project.*conversation/i);
+assert.match(skill, /asset_context.*resource_type.*resource_key.*display_name/is);
 assert.match(skill, /ae-cli generates.*request_id.*before dispatch/i);
 assert.match(skill, /Probe the first page exactly once/);
 assert.match(skill, /continue only with the returned `next_offset` while `has_more` is true/);
@@ -110,7 +132,19 @@ assert.match(skill, /structured AI-QP metadata failures/);
 assert.match(skill, /`allowed_resource_types` is authoritative/);
 assert.match(skill, /Never use a candidate.*without user confirmation/);
 assert.match(skill, /compiler candidates already exist.*confirm without another metadata call/i);
+assert.match(skill, /one discovery budget per host, project, authenticated principal, and Agent conversation/i);
+assert.match(skill, /successful remote search round with no confirmable candidate consumes one miss/i);
+assert.match(skill, /candidate stops discovery and requires user confirmation.*not a miss/i);
+assert.match(skill, /Validation, permission, network, and server errors.*do not consume.*must not trigger a full export/i);
+assert.match(skill, /After at most two ordinary miss rounds, the third remote discovery round must be one aggregate/i);
+assert.match(skill, /Once a valid complete catalog exists, do not call online resource-specific metadata list\/search commands or `analysis-meta catalog list\|export` again/i);
 assert.match(metadataResolution, /Treat that complete error array as one resolution plan/i);
+assert.match(metadataResolution, /Ordinary discovery workflow/);
+assert.match(metadataResolution, /Project lookup, exact `get`, filter-value lookup, and data queries do not consume/i);
+assert.match(metadataResolution, /third remote metadata-discovery round must be exactly one aggregate search/i);
+assert.match(metadataResolution, /at most two resource-specific misses followed by one aggregate catalog search/i);
+assert.match(metadataResolution, /Errors never advance that counter/i);
+assert.match(metadataResolution, /exact `get` for details not present in the catalog remains outside the discovery budget/i);
 assert.match(metadataResolution, /one JSONL file/i);
 assert.match(metadataResolution, /ae-cli analysis-meta catalog list/);
 assert.match(metadataResolution, /exactly one aggregate online search/i);
@@ -154,8 +188,14 @@ assert.match(dashboardRun, /run `ae-cli analysis dashboard get` exactly once/i);
 assert.match(dashboardRun, /folder_name.*dashboard_name.*notes/is);
 assert.match(dashboardGet, /location.*space_id.*space_name.*folder_id.*folder_name/is);
 assert.match(dashboardGet, /notes.*note_id.*note_title.*description/is);
+assert.match(dashboardGet, /effective_settings.*approximate_calculation.*fixed_timezone.*scheduled_precompute.*cache/is);
+assert.match(dashboardGet, /filter_config.*fixed_time.*dashboard_default.*dashboard_business.*space_business/is);
+assert.match(dashboardGet, /saved filters as already applied.*do not copy them into `--filters`/is);
+assert.match(dashboardGet, /supported=false.*could not be fully mapped/is);
+assert.match(dashboardUpdate, /operation=default-filter.*dashboard-wide default filter/is);
 assert.match(skill, /Before querying a selected dashboard's report data.*dashboard get/is);
 assert.match(skill, /folder_name.*dashboard_name.*notes/is);
+assert.match(skill, /effective_settings.*filter_config.*already applied.*AND/is);
 assert.match(adhocRun, /--timeout-seconds` defaults to 120 and has a maximum of 180/);
 assert.match(adhocRun, /path.*per path level.*`more`/i);
 assert.match(adhocRun, /returned_rows.*real business nodes.*excludes synthesized.*more/is);
@@ -190,6 +230,15 @@ assert.match(reportDataRun, /resolved current-user timezone.*project default/);
 assert.doesNotMatch(reportDataRun, /"recent_day":"past7"/);
 assert.match(reportDataExport, /same export response/);
 
+assert.match(analysisDataRetrieval, /ordinary query, omit `--use-cache`/i);
+assert.match(analysisDataRetrieval, /allows a cache read but does not prove.*actually hit/is);
+assert.match(analysisDataRetrieval, /fresh data.*refresh or recomputation.*bypass\/disable cache/is);
+assert.match(analysisDataRetrieval, /"latest" or "current".*data freshness.*time window/is);
+assert.match(analysisDataRetrieval, /freshly refreshed analysis UI.*`--use-cache false`/is);
+assert.match(analysisDataRetrieval, /differs from the analysis UI.*exactly once.*`--use-cache false`/is);
+assert.match(analysisDataRetrieval, /Never infer\s+a demo scenario/i);
+assert.match(analysisDataRetrieval, /Do not claim cache hit or miss unless.*explicit backend evidence/is);
+
 assert.match(adhocRun, /current runtime synchronous maximum/);
 assert.match(adhocRun, /go directly to `analysis adhoc export`/);
 assert.match(adhocRun, /Do not lower the requested row count/);
@@ -208,6 +257,12 @@ assert.match(runInspect, /same export response/);
 assert.match(artifactDownload, /same export response/);
 
 assert.match(assetUrl, /post-write resource link completion/);
+assert.match(personalSemanticList, /HOT_160_PLUS_RECENT_40/);
+assert.match(personalSemanticList, /resource_ref_count.*resource_types/is);
+assert.doesNotMatch(personalSemanticList, /data\.items\[\].*heat.*freshness/i);
+assert.match(personalSemanticAdd, /--resource-refs/);
+assert.match(personalSemanticAdd, /data\.preference/);
+assert.match(personalSemanticGet, /data\.preference/);
 assert.match(assetUrl, /`raw_url` plus `markdown_link`/);
 assert.match(aiModels, /`tag_name` is the only tag-report name field/);
 assert.match(aiModels, /最近7天.*近7天.*"mode":"recent".*`recentDay=0-7`.*是/);

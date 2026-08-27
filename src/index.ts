@@ -79,6 +79,10 @@ async function loadCommands(): Promise<Command[]> {
     commands.push(...metadata.default);
   } catch {}
   try {
+    const personalSemanticPreference = await import('./commands/personal-semantic-preference/index.js');
+    commands.push(...personalSemanticPreference.default);
+  } catch {}
+  try {
     const dataIntegration = await import('./commands/data-integration/index.js');
     commands.push(...dataIntegration.default);
   } catch {}

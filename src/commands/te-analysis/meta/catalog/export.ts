@@ -1,5 +1,7 @@
 import {
   compactInput,
+  certificationScopeFlag,
+  certificationScopeInput,
   createAnalysisMetaCapabilityCommand,
   optionalNumber,
   optionalString,
@@ -23,12 +25,13 @@ export const metadataCatalogExport = createAnalysisMetaCapabilityCommand({
     materialize: catalogArtifactMaterializer('analysis_metadata'),
   },
   description: 'Export the complete accessible analysis metadata catalog to JSONL with an integrity sidecar.',
-  flags: [projectIdFlag, requestIdFlag, asyncTimeoutSecondsFlag],
+  flags: [projectIdFlag, requestIdFlag, asyncTimeoutSecondsFlag, certificationScopeFlag],
   risk: 'read',
   validate: validateCatalogExportFlags,
   buildInput: (ctx) => compactInput({
     ...projectInput(ctx),
     request_id: optionalString(ctx, 'request-id'),
     timeout_seconds: optionalNumber(ctx, 'timeout-seconds'),
+    certification_scope: certificationScopeInput(ctx),
   }),
 });

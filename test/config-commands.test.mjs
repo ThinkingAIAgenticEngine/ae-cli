@@ -130,6 +130,27 @@ test('configured hosts do not emit trial guidance', () => {
   assert.doesNotMatch(`${status.stdout}\n${status.stderr}`, /request-demo/);
 });
 
+test('auth logout clears credentials without removing the configured host', () => {
+  const home = tempHome();
+  const config = {
+    activeHost: 'https://ta.prod.example',
+    hosts: {
+      'https://ta.prod.example': { label: 'prod' },
+    },
+  };
+  writeConfig(home, config);
+
+  const result = runCli(home, ['auth', 'logout']);
+  assert.equal(result.status, 0, result.stderr);
+  assert.deepEqual(parseJson(result.stdout).data, {
+    cleared: true,
+    host: 'https://ta.prod.example',
+  });
+  assert.match(result.stderr, /Credentials cleared for https:\/\/ta\.prod\.example/);
+  assert.doesNotMatch(result.stderr, /config cleared/i);
+  assert.deepEqual(readConfig(home), config);
+});
+
 test('config use switches by exact url before label', () => {
   const home = tempHome();
   writeConfig(home, {

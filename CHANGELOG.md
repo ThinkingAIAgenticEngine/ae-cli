@@ -1,3 +1,26 @@
+### 6.0.46
+**Date:** 2026-08-27
+
+**Changes:**
+
+#### Data Integration
+* Expand `data-integration handoff` into a reusable delivery package with frozen mappings, pipeline descriptors, shape checks, executable transform/upload stages, runbooks, and a shareable zip for processing future files with the same structure
+* Harden local-data transformation with explicit AE system-field contracts, structured failure classification, quarantined-row salvage guidance, quote/UUID/IP handling, and working `flatten_rules` support for XLS and XLSX inputs
+
+#### Analysis & Governance
+* Add `analysis-governance asset-authentication` list, export, and update commands with server-side filtering, complete private JSONL exports, typed asset identities, snapshot conflict protection, and structured batch results
+* Add the `personal-semantic-preference` domain for listing, reading, creating, updating, and deleting the authenticated user's project-scoped semantic preferences
+* Expose normalized effective dashboard settings and saved default, business, space, and fixed-time filter configurations through dashboard get/update workflows
+* Define deterministic analysis cache and metadata-discovery behavior: bypass cache only for explicit freshness needs, retry UI mismatches once without cache, cap online metadata misses, and reuse one complete local catalog snapshot
+
+#### Knowledge Base & Engage
+* Let `kb +url` rely on server-side Lark/Feishu URL detection and parsing, without requiring a client `--platform` flag; clarify that custom parse instructions are ignored for Lark/Feishu document URLs
+* Harden Engage A/B task construction by keeping experiment group tuples aligned across experiment and channel content lists, requiring main-goal touch-cycle fields, and verifying persisted groups after save
+
+#### Agent & CLI
+* Harden Skill editing and version synchronization with actionable version-conflict recovery, customer-safe history-conflict errors, internal-only rescan guidance, and explicit public npm registry selection during version installation
+* Preserve Host configuration on `auth logout`, and stop capability discovery from guessing unregistered domains or retrying empty catalogs without deployment or permission evidence
+
 ### 6.0.45
 **Date:** 2026-08-21
 

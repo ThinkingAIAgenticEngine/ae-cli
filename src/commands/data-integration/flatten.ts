@@ -49,7 +49,11 @@ export function flattenJSON(
  * default depth-1 flattening; each rule maps an output column to a dot-path source value
  * (stringified when object/array).
  */
-export function buildRowWithFlatten(obj: any, flattenRules: Record<string, string>): Record<string, string> {
+export function buildRowWithFlatten(
+  obj: any,
+  flattenRules: Record<string, string>,
+  misses?: Record<string, number>,
+): Record<string, string> {
   const row: Record<string, string> = {};
   const coveredRoots = new Set(Object.values(flattenRules).map((path) => path.split('.')[0]));
 
@@ -60,16 +64,25 @@ export function buildRowWithFlatten(obj: any, flattenRules: Record<string, strin
 
   for (const [outColumn, sourcePath] of Object.entries(flattenRules)) {
     const value = getNestedValue(obj, sourcePath);
-    row[outColumn] = value == null ? '' : (typeof value === 'object' ? JSON.stringify(value) : String(value));
+    if (value == null) {
+      recordFlattenMiss(misses, outColumn);
+      row[outColumn] = '';
+    } else {
+      row[outColumn] = typeof value === 'object' ? JSON.stringify(value) : String(value);
+    }
   }
   return row;
 }
 
 /** Flatten a parsed NDJSON record when rules are given; otherwise pass objects through unchanged. */
-export function flattenLocalDataRow(value: unknown, flattenRules?: Record<string, string>): LocalDataRow {
+export function flattenLocalDataRow(
+  value: unknown,
+  flattenRules?: Record<string, string>,
+  misses?: Record<string, number>,
+): LocalDataRow {
   if (value !== null && typeof value === 'object' && !Array.isArray(value)) {
     if (flattenRules && Object.keys(flattenRules).length > 0) {
-      return buildRowWithFlatten(value, flattenRules) as unknown as LocalDataRow;
+      return buildRowWithFlatten(value, flattenRules, misses) as unknown as LocalDataRow;
     }
     return value as LocalDataRow;
   }
@@ -77,31 +90,46 @@ export function flattenLocalDataRow(value: unknown, flattenRules?: Record<string
 }
 
 /**
- * Apply flatten_rules to a delimited (CSV/TSV) row. Each rule's path is `<column>.<dot.path>`,
- * where `<column>` names a cell holding JSON-encoded nested data: parse that cell, extract the
- * sub-path, and write the value to the rule's out column. Non-JSON, missing, or absent cells are
- * left untouched. This mirrors NDJSON flattening with one extra parse step, since the nested
- * object lives inside a string cell rather than being the row itself.
+ * Apply flatten_rules to a delimited or Excel (CSV/TSV/XLSX/XLS) row. Each rule's path is
+ * `<column>.<dot.path>`, where `<column>` names a cell holding JSON-encoded nested data: parse
+ * that cell, extract the sub-path, and write the value to the rule's out column. Non-JSON,
+ * missing, or absent cells are left untouched. This mirrors NDJSON flattening with one extra
+ * parse step, since the nested object lives inside a string cell rather than being the row itself.
  */
-export function flattenDelimitedRow(row: LocalDataRow, flattenRules: Record<string, string>): LocalDataRow {
+export function flattenDelimitedRow(
+  row: LocalDataRow,
+  flattenRules: Record<string, string>,
+  misses?: Record<string, number>,
+): LocalDataRow {
   const result: LocalDataRow = { ...row };
   for (const [outColumn, path] of Object.entries(flattenRules)) {
     const dot = path.indexOf('.');
-    if (dot <= 0) continue; // requires <column>.<sub-path>
+    if (dot <= 0) { recordFlattenMiss(misses, outColumn); continue; } // requires <column>.<sub-path>
     const column = path.slice(0, dot);
     const cell = row[column];
-    if (typeof cell !== 'string') continue;
+    if (typeof cell !== 'string') { recordFlattenMiss(misses, outColumn); continue; }
     let parsed: unknown;
     try {
       parsed = JSON.parse(cell);
     } catch {
+      recordFlattenMiss(misses, outColumn);
       continue;
     }
     const value = getNestedValue(parsed, path.slice(dot + 1));
-    if (value === null || value === undefined) continue;
+    if (value === null || value === undefined) { recordFlattenMiss(misses, outColumn); continue; }
     result[outColumn] = typeof value === 'object' ? JSON.stringify(value) : String(value);
   }
   return result;
+}
+
+/**
+ * Record a flatten rule that did not materialize for a row (missing path, non-JSON cell, or a
+ * rule without a `<column>.<sub-path>` shape). Counts are surfaced in the convert manifest's
+ * `flatten_misses` and a stderr warning so a mistyped path never silently drops fields.
+ */
+function recordFlattenMiss(misses: Record<string, number> | undefined, outColumn: string): void {
+  if (!misses) return;
+  misses[outColumn] = (misses[outColumn] ?? 0) + 1;
 }
 
 /**
@@ -115,6 +143,29 @@ export function buildNestedTree(rows: unknown[]): NestedNode[] {
   const objects = rows.filter((row): row is Record<string, unknown> =>
     row !== null && typeof row === 'object' && !Array.isArray(row));
   return buildObjectChildren(objects, '');
+}
+
+/**
+ * Build a bounded tree for one delimited JSON column from its sampled cell values. Object cells
+ * become the object's child list (cell-relative paths, matching what `buildNestedTree` yields for
+ * record roots); array cells become a single array node whose element fields are enumerated when
+ * the elements are objects. The dominant shape wins when a column mixes both.
+ */
+export function buildColumnNestedTree(cells: unknown[]): NestedNode[] {
+  const objects = cells.filter((cell): cell is Record<string, unknown> =>
+    cell !== null && typeof cell === 'object' && !Array.isArray(cell));
+  const arrays = cells.filter(Array.isArray);
+  if (objects.length >= arrays.length) {
+    return objects.length > 0 ? buildObjectChildren(objects, '') : [];
+  }
+  const elements = arrays.flat() as unknown[];
+  const elementObjects = elements.filter(
+    (value): value is Record<string, unknown> => value !== null && typeof value === 'object' && !Array.isArray(value),
+  );
+  const elementKind: 'object' | 'primitive' = elementObjects.length > 0 ? 'object' : 'primitive';
+  const node: NestedNode = { path: '', name: '', kind: 'array', elementKind, nonEmpty: elements.length > 0 };
+  if (elementKind === 'object') node.children = buildObjectChildren(elementObjects, '');
+  return [node];
 }
 
 function buildObjectChildren(objects: Record<string, unknown>[], parentPath: string): NestedNode[] {
@@ -145,10 +196,21 @@ function buildNode(path: string, name: string, values: unknown[], nonEmpty: bool
   if (structural > 0 && structural >= values.length - structural) {
     if (arrays.length > objects.length) {
       const elementValues = arrays.flat() as unknown[];
-      const elementKind = elementValues.some((value) => value !== null && typeof value === 'object')
-        ? 'object'
-        : 'primitive';
-      return { path, name, kind: 'array', elementKind, nonEmpty };
+      const elementObjects = elementValues.filter(
+        (value): value is Record<string, unknown> => value !== null && typeof value === 'object' && !Array.isArray(value),
+      );
+      const elementKind = elementObjects.length > 0 ? 'object' : 'primitive';
+      // Object arrays expose the union of their element-object fields, so the inspect
+      // recommendation can declare `orders.sku`-style sub-properties instead of only knowing
+      // the element kind.
+      return {
+        path,
+        name,
+        kind: 'array',
+        elementKind,
+        nonEmpty,
+        ...(elementKind === 'object' ? { children: buildObjectChildren(elementObjects, path) } : {}),
+      };
     }
     return { path, name, kind: 'object', children: buildObjectChildren(objects, path), nonEmpty };
   }

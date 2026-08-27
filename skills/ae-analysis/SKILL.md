@@ -1,6 +1,6 @@
 ---
 name: ae-analysis
-version: 4.2.2
+version: 4.2.3
 description: "Use ae-cli for AE/TE analysis-side data questions, asset operations, and asset governance: reports, analysis boards, BI dashboards, ad-hoc models, drilldown, detail data, alerts, clusters, tags, metrics, metadata, project configuration, tracking plans, governance asset lists/rules/lineage/impact/dependency, batch asset operations, projects, and resource links. Use when the user asks to query data, explain a change, export evidence, or inspect/create/update/govern analysis assets."
 ---
 
@@ -16,6 +16,7 @@ This is the single entry skill for analysis intent and command execution.
 2. Read the selected command's dedicated reference before composing it:
    - `event list` -> `references/event_list.md`
    - `analysis dashboard list` -> `references/dashboard_list.md`
+   - `personal-semantic-preference list` -> `references/personal_semantic_preference_list.md`
    - replace hyphens with underscores in gateway filenames.
 3. For an AI-facing ad-hoc definition, also read [`references/ai_models.md`](references/ai_models.md).
 4. For cluster/tag `--definition-request`, also read the matching [`references/user_cluster_models.md`](references/user_cluster_models.md) or [`references/user_tag_models.md`](references/user_tag_models.md). Shared primitives live in [`references/audience_models.md`](references/audience_models.md).
@@ -32,6 +33,7 @@ Use this skill for these CLI services:
 - `analysis-meta`: gateway metadata assets, events, properties, virtual metadata, metrics, data tables, exchange rules, and super metadata.
 - `analysis-governance`: gateway asset governance operations, including governed asset lists/exports, lineage, dependency, impact, query history, rule schema/list/create/update/delete, batch asset actions, and operation records. Use this service for asset governance workflows, not for metadata event/property/metric CRUD.
 - `tracking`: gateway tracking plan, checking, ingest, live-data, and event blacklist operations.
+- `personal-semantic-preference`: current user's project-scoped personal semantic preferences. Use it as agent context before resolving ambiguous business wording, asset choices, or recurring user preferences.
 
 For metadata gateway detail outside the commands in the generated index, use the metadata skill. For Engage, DataOps, or Community work, use the corresponding skill.
 
@@ -97,15 +99,38 @@ Before a project-scoped command:
 3. If there are multiple plausible projects, the host is unclear, or no project matches, show the candidates and ask; never guess.
 4. Re-verify after the user changes project, host, or environment.
 
+### Personal Semantic Preferences
+
+Before answering project-scoped analysis or asset-governance requests, call `ae-cli personal-semantic-preference list --project-id <project_id>` once per host, authenticated user, project, and conversation after the project is resolved. Keep that lightweight directory in conversation context; do not page it, search the database, or call list again for each question. The backend returns at most 200 entries using `HOT_160_PLUS_RECENT_40` and may return fewer to keep the payload within its size limit.
+
+Use the returned compact catalog only as context. If one item is actually adopted to interpret the user's wording, asset selection, metric preference, or output style, fetch it with `ae-cli personal-semantic-preference get --project-id <project_id> --id <preference_id> --mark-used`. This also applies when the matched item is being used as the target for an `update`. Do not pass `--mark-used` for items that were only inspected or rejected.
+
+The Agent owns the personal preference capture trigger. Choose `context_type` by meaning:
+
+- `preference`: durable interpretation or output preference without an exact asset binding.
+- `asset_context`: durable user wording or intent bound to one or more exact project assets. Send the complete ordered `resource_refs` array; each item has `resource_type`, string `resource_key`, and `display_name`. This identity is generic across reports, dashboards, events, properties, metrics, tags, clusters, data tables, and future asset types.
+- `experience`: a confirmed reusable work method without an exact asset binding.
+- `background`: stable personal context without an exact asset binding.
+
+Any stable choice of a concrete asset, including an event-selection scenario, must use `asset_context`; do not encode asset IDs only in prose. A current-user working definition remains eligible for personal storage even when it would also benefit other users. Store it only as the current user's preference; do not copy the bound asset definition into its content or imply that it is shared authority. Keep future governance or lifecycle instructions out of the stored content. Do not save transient task details, one-off analysis results, company knowledge, or standalone metadata facts.
+
+An explicit stable statement, correction, or confirmation that passes that evidence gate authorizes `personal-semantic-preference add` or `update` without a second "save" confirmation. Compare against the already loaded catalog first; when one existing preference matches, fetch it with `--mark-used`, update that existing preference, and avoid creating a duplicate. Otherwise add a new one. An explicit instruction not to retain it always wins. Delete remains high risk and requires explicit user confirmation.
+
+After a successful add, update, or delete, merge that response into the conversation's cached directory locally. Do not call list again merely to observe the write.
+
+Stale or expired preferences are automatically hidden by list filtering and backend maintenance. Do not look for or invent a separate command for that behavior.
+
 ### C. FUZZY_SEARCH_FALLBACK
 
-For saved-asset operations on reports, dashboards, metrics, clusters, tags, and alerts, use the relevant list/search command first unless an exact ID or canonical asset name was already verified. For event, property, metric, cluster, and tag catalogs, put the user's phrase and its useful synonyms in one `--queries` JSON array; matching is OR across at most 20 keywords. For ordinary asset discovery, broaden the keyword batch up to two times, then list all candidates. If no resource exists, stop instead of fabricating one.
+For saved-asset operations on reports, dashboards, metrics, clusters, tags, and alerts, use the relevant list/search command first unless an exact ID or canonical asset name was already verified. For saved assets outside the analysis metadata catalog, broaden the keyword batch up to two times, then list all candidates. If no resource exists, stop instead of fabricating one.
+
+For ordinary event, property, metric, cluster, and tag metadata discovery, keep one discovery budget per host, project, authenticated principal, and Agent conversation. Put the user's phrase and its useful synonyms in one `--queries` JSON array; matching is OR across at most 20 keywords. A successful remote search round with no confirmable candidate consumes one miss. A candidate stops discovery and requires user confirmation; it is not a miss. Validation, permission, network, and server errors are failures: they do not consume the budget and must not trigger a full export. After at most two ordinary miss rounds, the third remote discovery round must be one aggregate `analysis-meta catalog list` using the accumulated deduplicated queries and the union of applicable resource types. If that aggregate search is still unresolved, export the complete unified catalog exactly once and reuse it locally as defined in `metadata_resolution.md`. Once a valid complete catalog exists, do not call online resource-specific metadata list/search commands or `analysis-meta catalog list|export` again in that scope.
 
 Only when explicitly complete event, property, metric, cluster, or tag metadata is needed, use that resource's `export --output <temporary_path>/<resource>` command. Event/property/metric exports use `.json`; cluster/tag exports use `.jsonl` and an integrity sidecar. Search the temporary file locally and keep the full rows out of model context. Do not page repeatedly to synthesize a complete catalog.
 
 Do not pre-list events or properties before constructing an AI-facing intent model. Pass the user's wording directly in `definition`; the backend resolves it and returns `resolved` evidence. Call event/property metadata commands only when the user explicitly asks to inspect metadata, a structured compiler error instructs `next_action=search_candidates`, or the compiler reports an explicit metadata-resolution capability gap. When compiler candidates already exist, ask the user to confirm without another metadata call. If the user explicitly rejects every candidate for that path, treat the rejected set as exhausted and continue through the one aggregate-search workflow in `metadata_resolution.md`; do not terminate the original task or repeat the rejected candidates.
 
-The generic saved-asset search rule above does not control structured AI-QP metadata failures. For those failures, `allowed_resource_types` is authoritative: collect the whole compiler error array and follow the one aggregate online search, optional full-catalog, conversation-reuse workflow in `metadata_resolution.md`. Never use a candidate from either path without user confirmation.
+The ordinary discovery budget does not replace the entry path for structured AI-QP metadata failures. For those failures, `allowed_resource_types` is authoritative: collect the whole compiler error array and follow the one aggregate online search, optional full-catalog, conversation-reuse workflow in `metadata_resolution.md`. Never use a candidate from either path without user confirmation.
 
 ### Existing business asset before ad-hoc
 
@@ -113,7 +138,7 @@ When the request can map to a saved business definition:
 
 1. Extract metric, dimensions, filters, time window, and comparison semantics.
 2. Search reports; use dashboard search only to discover candidate embedded reports.
-3. Before querying a selected dashboard's report data, call `analysis dashboard get` exactly once with the verified project and dashboard IDs. Preserve non-empty `location.folder_name`, `dashboard_name`, `remark`, and `notes[].note_title/description` as authored dashboard context for all results from that dashboard. Do not repeat the detail call per report.
+3. Before querying a selected dashboard's report data, call `analysis dashboard get` exactly once with the verified project and dashboard IDs. Inspect `effective_settings` and `filter_config`; dashboard default, dashboard business, and space business filters are already applied and call-time filters add AND conditions. Honor the saved fixed time unless the user explicitly supplies a supported time override. Preserve non-empty `location.folder_name`, `dashboard_name`, `remark`, and `notes[].note_title/description` as authored dashboard context for all results from that dashboard. Do not repeat the detail call per report.
 4. Read the candidate definition and verify semantic equality, not merely a similar name.
 5. Use report/dashboard data when the definition matches.
 6. Use `analysis adhoc run|export` when no definition matches, the user explicitly requests ad-hoc exploration, or custom grouping/filtering is required.

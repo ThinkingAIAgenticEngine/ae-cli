@@ -1,7 +1,7 @@
 import { Command } from 'commander';
 import { resolveHost } from '../core/auth.js';
 import { normalizeUrl } from '../core/url-utils.js';
-import { loadConfig, saveConfig, removeHost, getFallbackCliToken } from '../core/config.js';
+import { loadConfig, saveConfig, getFallbackCliToken } from '../core/config.js';
 import { printOutput, printError } from '../framework/output.js';
 import { clearCliToken, mintCliToken, validateCliTokenOnServer } from '../core/cli-token.js';
 import { runHostCompatCheck } from '../core/compat-check.js';
@@ -268,7 +268,7 @@ export function registerAuth(program: Command): void {
 
   auth
     .command('logout')
-    .description('Clear stored credentials (access token, CLI token, and host config) for a host (--host or active host)')
+    .description('Clear stored credentials (access token, refresh token, and CLI token) for a host (--host or active host)')
     .option('--host <url>', HOST_OPTION_DESC)
     .action(async (opts: AuthHostOpts) => {
       const host = resolveAuthHost(program, opts);
@@ -278,8 +278,7 @@ export function registerAuth(program: Command): void {
       }
       clearCliToken(host);
       secureStoreClear(host);
-      removeHost(host);
-      process.stderr.write(`[ae-cli] Credentials and config cleared for ${host}\n`);
+      process.stderr.write(`[ae-cli] Credentials cleared for ${host}\n`);
       await printOutput({ cleared: true, host }, program.opts().format || 'json');
     });
 }

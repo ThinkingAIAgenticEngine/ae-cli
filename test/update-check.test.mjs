@@ -73,7 +73,10 @@ test('update dry-run prints local-first CLI and Skills plan', () => {
   assert.equal(body.ok, true);
   assert.equal(body.data.action, 'update');
   assert.equal(body.data.target, '6.0.34');
-  assert.equal(body.data.commands[0], 'npm install -g @thinkingai/ae-cli@6.0.34');
+  assert.equal(
+    body.data.commands[0],
+    'npm install -g @thinkingai/ae-cli@6.0.34 --registry=https://registry.npmjs.org',
+  );
   assert.match(body.data.commands[1], /npx -y skills add .*@thinkingai.*ae-cli.*skills -g -y/);
   assert.equal(
     body.data.commands[2],

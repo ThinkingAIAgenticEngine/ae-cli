@@ -1,5 +1,7 @@
 import {
   compactInput,
+  certificationScopeFlag,
+  certificationScopeInput,
   createAnalysisMetaCapabilityCommand,
   projectIdFlag,
   projectInput,
@@ -77,6 +79,7 @@ export const metadataCatalogList = createAnalysisMetaCapabilityCommand({
     queriesFlag,
     resourceTypesFlag,
     limitPerTypeFlag,
+    certificationScopeFlag,
   ],
   risk: 'read',
   validate: validateMetadataCatalogList,
@@ -85,5 +88,6 @@ export const metadataCatalogList = createAnalysisMetaCapabilityCommand({
     queries: optionalQueries(ctx),
     resource_types: optionalResourceTypes(ctx),
     limit_per_type: ctx.optionalNum('limit-per-type'),
+    certification_scope: certificationScopeInput(ctx),
   }),
 });

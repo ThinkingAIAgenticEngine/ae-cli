@@ -1,6 +1,7 @@
-import type { Command } from '../../../framework/types.js';
+import type { Command } from '../../framework/types.js';
 import { convertLocalData, convertLocalDataMulti } from './conversion.js';
 import { readLocalDataMapping } from './mapping.js';
+import { MAPPING_VERSION } from './types.js';
 
 export const dataIntegrationConvert: Command = {
   service: 'data-integration',
@@ -9,8 +10,8 @@ export const dataIntegrationConvert: Command = {
   description: 'Convert one or more local data sets into validated UE JSONL and quarantine invalid rows.',
   flags: [
     { name: 'input-file', type: 'string', required: true, sensitive: true, variadic: true, desc: 'Source local data file. Repeat for multiple files (requires a wildcard mapping). The source is never modified.' },
-    { name: 'mapping', type: 'string', required: true, sensitive: true, desc: 'ae-local-data-mapping/v1 JSON, file path, or @file.' },
-    { name: 'output-dir', type: 'string', sensitive: true, desc: 'New or empty output directory. Default: .ae-cli/data-integration/<run-id>.' },
+    { name: 'mapping', type: 'string', required: true, sensitive: true, desc: `${MAPPING_VERSION} JSON, file path, or @file.` },
+    { name: 'output-dir', type: 'string', sensitive: true, desc: 'New or empty output directory. Default: .ae-cli/data-integration/runs/<run-id>.' },
     { name: 'type-resolutions', type: 'json', sensitive: true, desc: 'JSON object resolving cross-file column type conflicts (unify, split, or skip).' },
     { name: 'merge-sheets', type: 'boolean', default: false, desc: 'Stream every worksheet in file order instead of a single selected sheet.' },
     { name: 'salvage-from', type: 'string', sensitive: true, desc: 'Re-process only the rows listed in a previous run\'s invalid.rows.jsonl, against the current (fixed) mapping. Single-file only.' },

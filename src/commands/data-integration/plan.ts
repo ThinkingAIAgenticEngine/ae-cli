@@ -1,9 +1,12 @@
 import { writeFile } from 'node:fs/promises';
-import type { Command } from '../../../framework/types.js';
-import { CliValidationError } from '../../../core/errors.js';
+import type { Command } from '../../framework/types.js';
+import { CliValidationError } from '../../core/errors.js';
 import { readLocalDataMapping } from './mapping.js';
 import type { LocalDataMapping } from './types.js';
-import type { Draft, Event, PropType, Property, Source } from '../../../tracking/plan/types.js';
+import { MAPPING_VERSION } from './types.js';
+import { validateDraft } from '../../tracking/xlsx/write.js';
+import { validateAndFix } from '../../tracking/plan/fix.js';
+import type { Draft, Event, PropType, Property, Source } from '../../tracking/plan/types.js';
 
 const VALID_LOCALES = new Set(['zh', 'en', 'ja', 'ko']);
 const EVENT_NAME_RE = /^[a-z][a-z0-9_]*$/;
@@ -25,6 +28,7 @@ function toPropType(type: LocalDataMapping['properties'][number]['type']): PropT
     case 'datetime': return 'datetime';
     case 'list': return 'array_string';
     case 'object': return 'object';
+    case 'array_row': return 'array_row';
     case 'string': return 'string';
   }
 }
@@ -42,13 +46,19 @@ export function buildDraftFromMapping(options: PlanDraftOptions): Draft {
   const excluded = new Set(mapping.exclude_columns ?? []);
   const properties: Property[] = mapping.properties
     .filter((property) => !excluded.has(property.source))
-    .map((property) => ({
-      name: property.target,
-      display_name: property.source,
-      desc: property.desc ?? property.source,
-      type: toPropType(property.type),
-      source: 'data' as Source,
-    }));
+    .map((property) => {
+      // A dotted target is a plan-only sub-property declaration: its display name defaults to the
+      // leaf segment rather than the parent source column, so sibling sub-properties never collide
+      // on one display name.
+      const leaf = property.target.includes('.') ? property.target.split('.').pop()! : undefined;
+      return {
+        name: property.target,
+        display_name: leaf ?? property.source,
+        desc: property.desc ?? leaf ?? property.source,
+        type: toPropType(property.type),
+        source: 'data' as Source,
+      };
+    });
   const propNames = properties.map((property) => property.name);
 
   const eventNames = resolveEventNames(options);
@@ -140,7 +150,7 @@ function buildPlanDraft(ctx: Parameters<Command['execute']>[0]): Draft {
       location: { field: 'lang' },
     });
   }
-  return buildDraftFromMapping({
+  const draft = buildDraftFromMapping({
     mapping,
     planName: ctx.str('plan-name').trim() || mapping.default_event_name || 'local-data',
     eventNames: ctx.list('event-name'),
@@ -148,6 +158,19 @@ function buildPlanDraft(ctx: Parameters<Command['execute']>[0]): Draft {
     lang,
     projectId: ctx.optionalNum('project-id'),
   });
+  // Auto-fix deterministic draft issues (duplicate display names) before the strict gate, so a
+  // composite-type problem fails fast here instead of round-tripping through the AE upload.
+  validateAndFix(draft);
+  try {
+    validateDraft(draft);
+  } catch (error) {
+    throw new CliValidationError('The tracking-plan draft is invalid.', {
+      code: 'LOCAL_DATA_PLAN_INVALID_DRAFT',
+      hint: error instanceof Error ? error.message : String(error),
+      location: { field: 'mapping' },
+    });
+  }
+  return draft;
 }
 
 export const dataIntegrationPlan: Command = {
@@ -156,7 +179,7 @@ export const dataIntegrationPlan: Command = {
   usesAeHost: false,
   description: 'Convert a confirmed local-data mapping into a tracking-plan draft.json (source_type=data, sdk_integration_mode=none).',
   flags: [
-    { name: 'mapping', type: 'string', required: true, sensitive: true, desc: 'Confirmed ae-local-data-mapping/v1 JSON, file path, or @file.' },
+    { name: 'mapping', type: 'string', required: true, sensitive: true, desc: `Confirmed ${MAPPING_VERSION} JSON, file path, or @file.` },
     { name: 'event-name', type: 'string', variadic: true, desc: 'Concrete event name (track/mixed without default_event_name). Repeat for multiple events.' },
     { name: 'plan-name', type: 'string', desc: 'Plan name. Default: the mapping default_event_name, else "local-data".' },
     { name: 'app-type', type: 'string', default: 'unknown', desc: 'Application type recorded in draft meta (informational).' },

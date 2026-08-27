@@ -5,13 +5,13 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import type { RuntimeContext } from '../src/framework/types.js';
 import { CliValidationError, LocalDataUploadError } from '../src/core/errors.js';
-import { sha256File } from '../src/commands/data-integration/local-data/input.js';
+import { sha256File } from '../src/commands/data-integration/input.js';
 import {
   assembleSyncJsonBody,
   resolveSyncJsonEndpoint,
   dataIntegrationUpload,
-} from '../src/commands/data-integration/local-data/upload.js';
-import type { LocalDataManifest } from '../src/commands/data-integration/local-data/types.js';
+} from '../src/commands/data-integration/upload.js';
+import type { LocalDataManifest } from '../src/commands/data-integration/types.js';
 
 const root = mkdtempSync(join(tmpdir(), 'ae-local-data-upload-command-'));
 try {

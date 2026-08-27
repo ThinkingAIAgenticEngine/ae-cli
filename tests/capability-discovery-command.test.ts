@@ -15,6 +15,7 @@ import { registerCapability } from '../src/commands/capability/index.ts';
 import '../src/commands/te-analysis/index.ts';
 import {
   CapabilityCommandValidationError,
+  emptyCapabilityCatalogWarning,
   filterCapabilities,
   normalizeCapabilityList,
   parseCapabilityInput,
@@ -93,9 +94,29 @@ await test('resolveCapabilityGatewayDomain uses a registered CLI domain route', 
   assert.equal(resolveCapabilityGatewayDomain('metadata.event.get'), 'analysis');
 });
 
-await test('resolveCapabilityGatewayDomain falls back to the capability namespace', () => {
+await test('resolveCapabilityGatewayDomain preserves generic namespace fallback', () => {
   clearCapabilityGatewayRoutesForTest();
   assert.equal(resolveCapabilityGatewayDomain('engage.flow.list'), 'engage');
+});
+
+await test('resolveCapabilityListDomain rejects an unregistered discovery domain', () => {
+  clearCapabilityGatewayRoutesForTest();
+  registerCapabilityGatewayRoute('analysis', { gatewayDomain: 'analysis' });
+  registerCapabilityGatewayRoute('metadata', { gatewayDomain: 'analysis' });
+  assert.throws(
+    () => resolveCapabilityListDomain('gateway'),
+    (error: unknown) => error instanceof CapabilityCommandValidationError
+      && error.code === 'CAPABILITY_DOMAIN_NOT_REGISTERED'
+      && error.message === "Capability domain 'gateway' is not registered."
+      && error.hint === 'Registered domains: analysis, metadata. Do not guess domain names.',
+  );
+});
+
+await test('empty capability catalog warns against guessing domains and repeated retries', () => {
+  const warning = emptyCapabilityCatalogWarning([]);
+  assert.match(warning ?? '', /does not prove that the project permission is missing/);
+  assert.match(warning ?? '', /Stop discovery instead of guessing other domains or retrying/);
+  assert.equal(emptyCapabilityCatalogWarning([{ id: 'analysis.report.list' }]), undefined);
 });
 
 await test('parseOptionalProjectId accepts positive safe integers and rejects invalid values', () => {

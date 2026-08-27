@@ -1,4 +1,4 @@
-import { CliValidationError } from '../../../core/errors.js';
+import { CliValidationError } from '../../core/errors.js';
 import { isValidAeName } from './mapping.js';
 import type {
   LocalDataColumnUnionEntry,

@@ -36,6 +36,10 @@ export function findGatewayDomain(cliService: string): string | undefined {
   return cliServiceRoutes.get(cliService)?.gatewayDomain;
 }
 
+export function listRegisteredCapabilityDomains(): string[] {
+  return [...cliServiceRoutes.keys()].sort();
+}
+
 /**
  * Resolve gateway route domain for a CLI service.
  * Priority: env (`AE_CLI_CAPABILITY_GATEWAY_DOMAIN[_SERVICE]`) > call-site override > registered route.

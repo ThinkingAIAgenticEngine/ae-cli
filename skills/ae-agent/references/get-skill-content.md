@@ -30,7 +30,7 @@ ae-cli agent +get-skill-content --dry-run --id <skill-cuid>
 
 ## Next Steps on Failure
 - `404` / not found: re-run `+list-skills` to verify the Skill ID.
-- `file_not_found`: the Skill record exists but the SKILL.md file is missing on disk — use `+rescan-skills` (root) to sync.
+- `file_not_found`: the Skill content is unavailable. Ask the user to contact their administrator; do not recommend internal maintenance commands.
 
 ## Recommended Chaining
 - `+list-skills` → confirm `id` → `+get-skill-content` → `+edit-skill` (if changes needed)

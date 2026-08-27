@@ -39,7 +39,9 @@ If `selection_required=true`, show only the Sheet/JSON Path candidates and ask t
 ae-cli data-integration inspect --input-file '<path>' --data-set '<candidate-id>' --source-timezone '<iana-timezone>'
 ```
 
-Report row/column counts, field types, missing/unique/time-parse ratios, UE eligibility, mapping confidence, and warnings. Samples are bounded (up to 5 distinct, truncated) — summarize, never paste them. ID-like columns (`id`, `*_id`, `*_key`, `*_code`, `*_no`, `*_num`) stay `string` even when every value is numeric; JSON-encoded object/array values inside CSV cells are recognized as `object`/`list`, not `string`. Read [UE routing](ue-routing.md) before choosing a branch.
+Report row/column counts, field types, missing/unique/time-parse ratios, UE eligibility, mapping confidence, and warnings. Samples are bounded (up to 5 distinct, truncated) — summarize, never paste them. ID-like columns (`id`, `*_id`, `*_key`, `*_code`, `*_no`, `*_num`) stay `string` even when every value is numeric; JSON-encoded object/array values inside CSV cells are recognized as `object`/`list`, not `string`. IP- and UUID-named columns are additionally checked against their value specs: inspect warns how many non-empty values are invalid IPv4/IPv6, private/LAN IPs, or non-UUID strings, so the user can decide whether to map them as `ip_field`/`uuid_field`. Read [UE routing](ue-routing.md) before choosing a branch.
+
+A stderr `Warning: … column count different from the header row …` means the CSV/TSV has ragged rows (extra fields dropped, missing fields treated as empty); report it as a data-quality signal. For how every pipeline failure — abnormal data, parse errors, and program errors — is classified and handled, see [error handling](error-handling.md).
 
 ## Advanced input
 
@@ -49,20 +51,24 @@ Report row/column counts, field types, missing/unique/time-parse ratios, UE elig
 - **Excel sheets** — `--merge-sheets` streams every worksheet in file order instead of a single selected sheet; otherwise ask which sheet/`--data-set` to use. Inspect also reports `header_consistency` (`all_same` or `different`) across a workbook's sheets, with `header_details` listing each sheet's header row when they differ; prefer `--merge-sheets` only when headers match.
 - **Multi-file type conflicts** — when the same column has different inferred types across files, present each conflict and resolve with `--type-resolutions` on `convert` (see [transform](transform.md)).
 
-## Nested flattening (NDJSON/JSON records and JSON-encoded CSV/TSV cells)
+## Nested flattening (NDJSON/JSON records and JSON-encoded CSV/TSV/Excel cells)
 
-Nested data is flattened one level per user decision. This flow is agent-driven and non-interactive: never pipe pre-filled answers into any prompt, and never silently pick `Flatten` for a node.
+Nested data is analyzed per field, and the recommended mapping encodes one decision per container: keep whole, flatten one level, or flatten to the leaves. This flow is agent-driven and non-interactive: never pipe pre-filled answers into any prompt, and never silently pick a depth for a node.
 
 1. **Locate the nested structure.**
    - NDJSON/JSON: read the top-level `nested_tree` from the inspect result (record-root paths).
-   - CSV/TSV: a JSON-encoded object column carries its own tree at `columns[].nested_tree` (paths relative to that cell). Array cells (`items`-style) are `list` columns and carry no tree.
+   - CSV/TSV/Excel: a JSON-encoded column carries its own tree at `columns[].nested_tree` (paths relative to that cell). Object cells list child keys; array cells (`items`-style) expose an `elementKind` and, for object arrays, the union of the element fields.
    Object nodes list child keys, array nodes carry an `elementKind`, primitive leaves carry an inferred type and bounded samples. Summarize node kinds, never paste samples.
-2. **Judge first, then confirm.** Read the node names and inferred types and propose, per container, whether to flatten (and to what depth), keep as JSON, or keep as a list. Present the proposal as a table and default to it; ask the user to confirm or adjust. Only ask node-by-node for the nodes you cannot judge from the names.
-   - Business-entity names with stable scalar children (`user_info`, `address`, `order`) → propose flattening to the leaves.
-   - Generic container names (`payload`, `data`, `config`, `meta`, `extra`, `attributes`) → propose keeping as JSON, unless the user wants a specific sub-field.
-   - Arrays are always kept as a list property and never split.
-   - Nesting deeper than one level with no clear intent → propose keeping as JSON or flattening only the first level.
-3. **Record the answers in `flatten_rules` (`{ "out_column": "dot.path" }`).**
+2. **Review the recommended mapping's per-field decision, then confirm adjustments.**
+   The recommended mapping already encodes, per container, a data-driven depth decision — the depth is not uniform across fields:
+   - **Keep whole** — a single-level object (every child scalar or a scalar array) is declared `type: 'object'` with `transform: 'json'`, plus one `parent.child` sub-property per child; a single-level object array is declared `type: 'array_row'` with one `parent.child` sub-property per element field. The parent entry carries the native value and conversion emits it once; each child is a plan-only declaration (scalar or `list`) that never reads a column of its own.
+   - **Flatten one level / to the leaves** — an object that itself contains an object or object array cannot be kept whole; it collapses one level and each child is decided independently: scalar children become flat properties materialized through `flatten_rules`, and nested objects/arrays recurse until a single-level container is reached (which is then kept whole).
+   - **Scalar array** — `["a","b"]` stays `list` (→ AE `array_string`), a leaf with no children.
+   - **Nested element field** — an element field that is itself an object/array stays inside the array data and is not declared as a sub-property (array-element flattening is not supported); the mapping warns so it is never silently dropped.
+   Present the resulting property list as a table and default to it; ask the user to confirm or adjust only where you disagree with a node's inferred decision (business-entity names with stable scalar children vs generic containers like `payload`/`data`/`config` vs nesting deeper than one level with no clear intent).
+3. **Record overrides in `flatten_rules` (`{ "out_column": "dot.path" }`) and `exclude_columns`.**
+   The recommended mapping already carries the flatten rules for its collapsed levels. When you override it:
    - NDJSON/JSON: the path is from the record root (`user_info.name`).
-   - CSV/TSV: the path is `<column>.<cell-relative path>` (`user_profile.name`), and add the source column to `exclude_columns` so the whole object is not also mapped.
-   A leaf path becomes a snake_case out column when not explicitly named (`user_info.address.geo.lat` → `user_info_address_geo_lat`; CSV prefixes the column: `user_profile.level` → `user_profile_level`). A string that looks like a number (phone, zip, ID) is kept as a string unless the user says otherwise. Containers kept whole are declared `type: 'object'`/`'list'` **with `transform: 'json'`** so conversion restores the native structure.
+   - CSV/TSV/Excel: the path is `<column>.<cell-relative path>` (`user_profile.name`), and add the source column to `exclude_columns` so the whole object is not also mapped.
+   - **`flatten_rules` only materializes the out column in the row — it does not emit it.** For every out column, also add a `properties` entry with `source` set to that out-column name (plus `target`/`type`/`desc`); otherwise the flattened value is silently dropped from the output record.
+   A leaf path becomes a snake_case out column when not explicitly named (`user_info.address.geo.lat` → `user_info_address_geo_lat`; cell-relative rules prefix the column: `user_profile.level` → `user_profile_level`). A string that looks like a number (phone, zip, ID) is kept as a string unless the user says otherwise. Containers kept whole are declared `type: 'object'`/`'array_row'`/`'list'` **with `transform: 'json'`** so conversion restores the native structure; a kept whole `object`/`array_row` also declares its scalar children as dotted `parent.child` sub-properties in `properties`.

@@ -11,6 +11,8 @@ import { editSkill, uploadSkill } from '../src/commands/te-agent/skill-content.t
 import { assertValidSkillVersion } from '../src/commands/te-agent/skill-version.ts';
 import { buildSkillZip, pushSkillItems, readSkillVersion } from '../src/commands/sync/index.ts';
 import { TeAgentApiError } from '../src/core/te-agent-client.ts';
+import { formatError } from '../src/framework/output.ts';
+import { teAgentApiErrorPresentation } from '../src/framework/runner.ts';
 
 function context(values: Record<string, unknown>): RuntimeContext {
   return {
@@ -53,6 +55,55 @@ assert.doesNotThrow(() => editSkill.validate?.(context({ id: 'skill-id', instruc
 assert.equal(readSkillVersion('---\nname: demo\nversion: "1.10"\n---\nbody\n'), '1.10');
 assert.equal(readSkillVersion('---\nname: demo\n---\nbody\n'), undefined);
 
+const versionConflictError = new TeAgentApiError(
+  'Run repair/rescan after checking the database checksum.',
+  409,
+  'SKILL_VERSION_CONFLICT',
+  { currentVersion: '1.10', diagnosticMessage: 'checksum mismatch in database history' },
+);
+const versionConflictPresentation = teAgentApiErrorPresentation(versionConflictError);
+assert.deepEqual(versionConflictPresentation, {
+  message: 'The Skill content changed, and the new version must be greater than the current version.',
+  code: 'SKILL_VERSION_CONFLICT',
+  hint: 'Retry with --version set to a major.minor version greater than 1.10.',
+  meta: { currentVersion: '1.10' },
+});
+const versionConflictEnvelope = JSON.parse(formatError(
+  'api',
+  versionConflictPresentation.message ?? versionConflictError.message,
+  versionConflictPresentation.hint,
+  versionConflictPresentation.code,
+  versionConflictPresentation.meta,
+));
+assert.doesNotMatch(
+  `${versionConflictEnvelope.error.message} ${versionConflictEnvelope.error.hint} ${JSON.stringify(versionConflictEnvelope.meta)}`,
+  /repair|rescan|database|checksum|history/i,
+);
+
+const historyConflictError = new TeAgentApiError(
+  'Database history checksum mismatch; run repair and rescan.',
+  409,
+  'SKILL_HISTORY_CONFLICT',
+  { currentVersion: '1.10', diagnosticMessage: 'repair and rescan required' },
+);
+const historyConflictPresentation = teAgentApiErrorPresentation(historyConflictError);
+assert.deepEqual(historyConflictPresentation, {
+  message: 'The Skill cannot be safely updated right now.',
+  code: 'SKILL_HISTORY_CONFLICT',
+  hint: 'The Skill cannot be safely updated right now. Please contact your administrator.',
+});
+const historyConflictEnvelope = JSON.parse(formatError(
+  'api',
+  historyConflictPresentation.message ?? historyConflictError.message,
+  historyConflictPresentation.hint,
+  historyConflictPresentation.code,
+  historyConflictPresentation.meta,
+));
+assert.doesNotMatch(
+  `${historyConflictEnvelope.error.message} ${historyConflictEnvelope.error.hint} ${JSON.stringify(historyConflictEnvelope.meta)}`,
+  /repair|rescan|database|checksum/i,
+);
+
 const editSkillReference = readFileSync(
   join(process.cwd(), 'skills', 'ae-agent', 'references', 'edit-skill.md'),
   'utf8',
@@ -90,6 +141,22 @@ assert.equal(editResult.status, 0, editResult.stderr);
 const editDryRun = JSON.parse(editResult.stdout);
 assert.equal(editDryRun.data.body.version, '2.2');
 assert.equal(editDryRun.data.body.description, 'updated description');
+
+const agentHelpResult = spawnSync(
+  process.execPath,
+  ['--import', 'tsx', 'src/index.ts', '--no-update-check', 'agent', '--help'],
+  { encoding: 'utf8' },
+);
+assert.equal(agentHelpResult.status, 0, agentHelpResult.stderr);
+assert.doesNotMatch(agentHelpResult.stdout, /\+rescan-skills/);
+
+const rescanDryRunResult = spawnSync(
+  process.execPath,
+  ['--import', 'tsx', 'src/index.ts', '--no-update-check', '--dry-run', 'agent', '+rescan-skills'],
+  { encoding: 'utf8' },
+);
+assert.equal(rescanDryRunResult.status, 0, rescanDryRunResult.stderr);
+assert.equal(JSON.parse(rescanDryRunResult.stdout).data.url, '/api/sandbox/agent/skills/rescan');
 
 const root = mkdtempSync(join(tmpdir(), 'ae-cli-skill-version-'));
 try {

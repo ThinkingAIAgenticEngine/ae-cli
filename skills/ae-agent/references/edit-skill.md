@@ -68,6 +68,9 @@ ae-cli agent +edit-skill --dry-run --id <skill-cuid> --name new-name --version 2
 
 - `404` / not found: re-run `+list-skills` to verify the Skill ID and scope.
 - `409` / name conflict: use `--name` with a different name, or consider `+upload-skill` with `--auto-rename`.
+- `SKILL_VERSION_CONFLICT`: read `meta.currentVersion`, choose a strictly higher `major.minor` value, and retry the same command with `--version`.
+- `SKILL_HISTORY_CONFLICT`: stop retrying and tell the user, "The Skill cannot be safely updated right now. Please contact your administrator."
+- Do not recommend internal maintenance commands or expose diagnostic payloads in a customer-facing response.
 
 ## Recommended Chaining
 

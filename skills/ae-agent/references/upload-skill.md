@@ -87,11 +87,14 @@ ae-cli agent +upload-skill --dry-run --file ./my-skill.zip
 
 - `File not found`: verify the local file path.
 - `--file must be a .zip file`: only ZIP format is supported.
-- `ZIP 中缺少 SKILL.md`: ensure the ZIP contains a `SKILL.md` file.
-- `缺少名称或内容`: the SKILL.md is missing the `name` field or content — fix the ZIP.
-- `缺少描述`: the SKILL.md is missing the description — fix the ZIP or use `--description`.
-- `数据库写入失败`: DB write failed — retry or check server logs.
+- Missing `SKILL.md`: ensure the ZIP contains a `SKILL.md` file.
+- Missing name or content: add the `name` field and Skill content to `SKILL.md`.
+- Missing description: add a description to `SKILL.md` or use `--description`.
+- The upload could not be saved: retry once, then contact the administrator if it still fails.
 - `409` / name conflict: use `--auto-rename` or choose a different `--name`.
+- `SKILL_VERSION_CONFLICT`: read `meta.currentVersion`, choose a strictly higher `major.minor` value, and retry the same replacement with `--version`.
+- `SKILL_HISTORY_CONFLICT`: stop retrying and tell the user, "The Skill cannot be safely updated right now. Please contact your administrator."
+- Do not recommend internal maintenance commands or expose diagnostic payloads in a customer-facing response.
 
 ## Recommended Chaining
 

@@ -3,24 +3,27 @@ import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { convertLocalData, convertRow } from '../src/commands/data-integration/local-data/conversion.js';
+import ExcelJS from 'exceljs';
+import XLSXMod from 'xlsx';
+import { convertLocalData, convertRow } from '../src/commands/data-integration/conversion.js';
 import {
   buildRowWithFlatten,
   flattenDelimitedRow,
   flattenLocalDataRow,
   getNestedValue,
-} from '../src/commands/data-integration/local-data/flatten.js';
-import { sha256File } from '../src/commands/data-integration/local-data/input.js';
-import { validateMapping } from '../src/commands/data-integration/local-data/mapping.js';
+} from '../src/commands/data-integration/flatten.js';
+import { sha256File } from '../src/commands/data-integration/input.js';
+import { validateMapping } from '../src/commands/data-integration/mapping.js';
 import { CliValidationError } from '../src/core/errors.js';
-import type { LocalDataMapping } from '../src/commands/data-integration/local-data/types.js';
+import type { LocalDataMapping } from '../src/commands/data-integration/types.js';
 
+const XLSX = (XLSXMod as any).default ?? XLSXMod;
 const fixture = (name: string): string => fileURLToPath(new URL(`fixtures/local-data/${name}`, import.meta.url));
 const root = mkdtempSync(join(tmpdir(), 'ae-local-data-mapping-extras-'));
 const now = new Date('2026-08-11T00:00:00Z');
 
 const baseMapping: LocalDataMapping = {
-  version: 'ae-local-data-mapping/v1',
+  version: 'ae-data-integration-mapping/v1',
   source: { sha256: 'a'.repeat(64), format: 'csv', data_set: '$' },
   mode: 'track',
   confidence: 'high',
@@ -120,7 +123,7 @@ try {
   const headerless = fixture('02_no_header.csv');
   const headerlessSha = await sha256File(headerless);
   const headerlessMapping: LocalDataMapping = {
-    version: 'ae-local-data-mapping/v1',
+    version: 'ae-data-integration-mapping/v1',
     source: { sha256: headerlessSha, format: 'csv', data_set: '$' },
     mode: 'track',
     confidence: 'high',
@@ -147,7 +150,7 @@ try {
   const ndjson = fixture('19_ndjson_nested.ndjson');
   const ndjsonSha = await sha256File(ndjson);
   const ndjsonMapping: LocalDataMapping = {
-    version: 'ae-local-data-mapping/v1',
+    version: 'ae-data-integration-mapping/v1',
     source: { sha256: ndjsonSha, format: 'jsonl', data_set: '$' },
     mode: 'track',
     confidence: 'high',
@@ -175,7 +178,7 @@ try {
   const deepNested = fixture('21_ndjson_deep_nested.ndjson');
   const deepSha = await sha256File(deepNested);
   const deepMapping: LocalDataMapping = {
-    version: 'ae-local-data-mapping/v1',
+    version: 'ae-data-integration-mapping/v1',
     source: { sha256: deepSha, format: 'jsonl', data_set: '$' },
     mode: 'track',
     confidence: 'high',
@@ -216,6 +219,23 @@ try {
     ),
     { user_profile: '{"name":"alice","level":3,"tags":["vip"]}', profile_name: 'alice', profile_level: '3' },
   );
+
+  // Flatten miss counting: a rule that does not materialize for a row (missing path, non-JSON
+  // cell, or a path without a <column>. prefix) is counted per out-column; the row itself is kept.
+  const delimitedMisses: Record<string, number> = {};
+  const delimitedMissed = flattenDelimitedRow(
+    { profile: '{"name":"alice"}', broken: 'not-json', empty: null },
+    { profile_missing: 'profile.age', broken_name: 'broken.name', no_prefix: 'missingdot' },
+    delimitedMisses,
+  );
+  assert.equal(delimitedMissed.profile_missing, undefined, 'a missing path writes no out column');
+  assert.equal(delimitedMissed.broken_name, undefined, 'a non-JSON cell writes no out column');
+  assert.deepEqual(delimitedMisses, { profile_missing: 1, broken_name: 1, no_prefix: 1 });
+
+  const ndjsonMisses: Record<string, number> = {};
+  const ndjsonMissed = flattenLocalDataRow({ a: { b: 1 } }, { out: 'a.missing' }, ndjsonMisses);
+  assert.equal(ndjsonMissed.out, '', 'a missing NDJSON path materializes an empty string');
+  assert.deepEqual(ndjsonMisses, { out: 1 });
   const csvNestedSrc = join(root, 'csv-nested.csv');
   writeFileSync(csvNestedSrc,
     'user_id,event,time,profile\n'
@@ -223,7 +243,7 @@ try {
     + 'u-2,open,2026-08-10 10:00:00,"{""name"":""bob"",""level"":1}"\n');
   const csvNestedSha = await sha256File(csvNestedSrc);
   const csvNestedMapping: LocalDataMapping = {
-    version: 'ae-local-data-mapping/v1',
+    version: 'ae-data-integration-mapping/v1',
     source: { sha256: csvNestedSha, format: 'csv', data_set: '$' },
     mode: 'track',
     confidence: 'high',
@@ -252,7 +272,7 @@ try {
   const deepCsvSrc = fixture('24_csv_deep_nested.csv');
   const deepCsvSha = await sha256File(deepCsvSrc);
   const deepCsvMapping: LocalDataMapping = {
-    version: 'ae-local-data-mapping/v1',
+    version: 'ae-data-integration-mapping/v1',
     source: { sha256: deepCsvSha, format: 'csv', data_set: '$' },
     mode: 'track',
     confidence: 'high',
@@ -284,6 +304,140 @@ try {
   assert.equal(deepCsvLines[0].properties.profile, undefined, 'the source column is excluded');
   assert.equal(deepCsvLines[1].properties.profile_city, '北京');
   assert.equal(deepCsvLines[2].properties.profile_lat, 23.13);
+
+  // XLSX nested-JSON flatten: same cell-relative rules as CSV, including deep paths. A cell
+  // holding broken JSON skips the rule (CSV parity) instead of quarantining the row.
+  const xlsxRows = [
+    ['user_id', 'event', 'time', 'ext'],
+    ['u-1', 'buy', '2026-08-10 10:00:00', '{"sku":{"id":"s1","type":"consumable"},"coupon":{"off":0.8}}'],
+    ['u-2', 'buy', '2026-08-10 11:00:00', '{"sku":{"id":"s2","type":"durable"},"coupon":{"off":0.5}}'],
+    ['u-3', 'buy', '2026-08-10 12:00:00', '{broken'],
+  ];
+  const xlsxNestedSrc = join(root, 'xlsx-nested.xlsx');
+  const xlsxWorkbook = new ExcelJS.Workbook();
+  xlsxWorkbook.addWorksheet('data').addRows(xlsxRows);
+  await xlsxWorkbook.xlsx.writeFile(xlsxNestedSrc);
+  const excelNestedMapping = (sha256: string, format: 'xls' | 'xlsx'): LocalDataMapping => ({
+    version: 'ae-data-integration-mapping/v1',
+    source: { sha256, format, data_set: 'sheet:data' },
+    mode: 'track',
+    confidence: 'high',
+    account_id_field: 'user_id',
+    event_name_field: 'event',
+    time: { field: 'time', format: 'auto', source_timezone: 'Asia/Shanghai' },
+    flatten_rules: { sku_type: 'ext.sku.type', coupon_off: 'ext.coupon.off' },
+    exclude_columns: ['ext'],
+    properties: [
+      { source: 'sku_type', target: 'sku_type', type: 'string' },
+      { source: 'coupon_off', target: 'coupon_off', type: 'number' },
+    ],
+  });
+  const xlsxNestedOut = join(root, 'xlsx-nested');
+  const xlsxNestedConverted = await convertLocalData({
+    inputFile: xlsxNestedSrc,
+    mapping: excelNestedMapping(await sha256File(xlsxNestedSrc), 'xlsx'),
+    outputDir: xlsxNestedOut,
+    now,
+  });
+  assert.equal(xlsxNestedConverted.status, 'ready');
+  assert.equal(xlsxNestedConverted.manifest.output.valid_records, 3);
+  const xlsxNestedLines = readFileSync(join(xlsxNestedOut, 'valid.ue.jsonl'), 'utf8').trim().split('\n').map(JSON.parse);
+  assert.equal(xlsxNestedLines[0].properties.sku_type, 'consumable');
+  assert.equal(xlsxNestedLines[0].properties.coupon_off, 0.8);
+  assert.equal(xlsxNestedLines[1].properties.sku_type, 'durable');
+  assert.equal(xlsxNestedLines[1].properties.coupon_off, 0.5);
+  assert.equal(xlsxNestedLines[0].properties.ext, undefined, 'the source column is excluded');
+  assert.equal(xlsxNestedLines[2].properties.sku_type, undefined, 'a broken JSON cell skips the rule');
+
+  // XLS nested-JSON flatten: identical behavior to XLSX on the same data.
+  const xlsNestedSrc = join(root, 'xls-nested.xls');
+  const xlsWorkbook = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(xlsWorkbook, XLSX.utils.aoa_to_sheet(xlsxRows), 'data');
+  XLSX.writeFile(xlsWorkbook, xlsNestedSrc, { bookType: 'xls' });
+  const xlsNestedOut = join(root, 'xls-nested');
+  const xlsNestedConverted = await convertLocalData({
+    inputFile: xlsNestedSrc,
+    mapping: excelNestedMapping(await sha256File(xlsNestedSrc), 'xls'),
+    outputDir: xlsNestedOut,
+    now,
+  });
+  assert.equal(xlsNestedConverted.status, 'ready');
+  assert.equal(xlsNestedConverted.manifest.output.valid_records, 3);
+  const xlsNestedLines = readFileSync(join(xlsNestedOut, 'valid.ue.jsonl'), 'utf8').trim().split('\n').map(JSON.parse);
+  assert.equal(xlsNestedLines[0].properties.sku_type, 'consumable');
+  assert.equal(xlsNestedLines[0].properties.coupon_off, 0.8);
+  assert.equal(xlsNestedLines[1].properties.sku_type, 'durable');
+  assert.equal(xlsNestedLines[2].properties.sku_type, undefined, 'a broken JSON cell skips the rule');
+
+  // --merge-sheets: flatten_rules apply to every worksheet, not just the first.
+  const mergedSrc = join(root, 'xlsx-nested-merged.xlsx');
+  const mergedWorkbook = new ExcelJS.Workbook();
+  mergedWorkbook.addWorksheet('jan').addRows(xlsxRows.slice(0, 2));
+  mergedWorkbook.addWorksheet('feb').addRows([xlsxRows[0], xlsxRows[2]]);
+  await mergedWorkbook.xlsx.writeFile(mergedSrc);
+  const mergedOut = join(root, 'xlsx-nested-merged');
+  const mergedConverted = await convertLocalData({
+    inputFile: mergedSrc,
+    mapping: excelNestedMapping(await sha256File(mergedSrc), 'xlsx'),
+    outputDir: mergedOut,
+    mergeSheets: true,
+    now,
+  });
+  assert.equal(mergedConverted.status, 'ready');
+  assert.equal(mergedConverted.manifest.output.valid_records, 2);
+  const mergedLines = readFileSync(join(mergedOut, 'valid.ue.jsonl'), 'utf8').trim().split('\n').map(JSON.parse);
+  assert.equal(mergedLines[0].properties.sku_type, 'consumable', 'sheet 1 rows are flattened');
+  assert.equal(mergedLines[1].properties.sku_type, 'durable', 'sheet 2 rows are flattened too');
+
+  const mergedXlsSrc = join(root, 'xls-nested-merged.xls');
+  const mergedXlsBook = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(mergedXlsBook, XLSX.utils.aoa_to_sheet(xlsxRows.slice(0, 2)), 'jan');
+  XLSX.utils.book_append_sheet(mergedXlsBook, XLSX.utils.aoa_to_sheet([xlsxRows[0], xlsxRows[2]]), 'feb');
+  XLSX.writeFile(mergedXlsBook, mergedXlsSrc, { bookType: 'xls' });
+  const mergedXlsOut = join(root, 'xls-nested-merged');
+  const mergedXlsConverted = await convertLocalData({
+    inputFile: mergedXlsSrc,
+    mapping: excelNestedMapping(await sha256File(mergedXlsSrc), 'xls'),
+    outputDir: mergedXlsOut,
+    mergeSheets: true,
+    now,
+  });
+  assert.equal(mergedXlsConverted.status, 'ready');
+  const mergedXlsLines = readFileSync(join(mergedXlsOut, 'valid.ue.jsonl'), 'utf8').trim().split('\n').map(JSON.parse);
+  assert.equal(mergedXlsLines[0].properties.sku_type, 'consumable', 'XLS sheet 1 rows are flattened');
+  assert.equal(mergedXlsLines[1].properties.sku_type, 'durable', 'XLS sheet 2 rows are flattened too');
+
+  // Validation: flatten_rules are accepted for every format whose reader applies them.
+  for (const format of ['csv', 'tsv', 'json', 'jsonl', 'xls', 'xlsx'] as const) {
+    assert.doesNotThrow(
+      () => validateMapping({ ...baseMapping, source: { ...baseMapping.source, format }, flatten_rules: { out: 'ext.sku.type' } }),
+      `flatten_rules must validate for ${format}`,
+    );
+  }
+
+  // Flatten misses flow into manifest.output.flatten_misses and never block the manifest.
+  const missSrc = join(root, 'flatten-miss.csv');
+  writeFileSync(missSrc,
+    'user_id,event,time,profile\n'
+    + 'u-1,open,2026-08-10 10:00:00,"{""name"":""alice""}"\n'
+    + 'u-2,open,2026-08-10 10:00:00,"{""age"":20}"\n');
+  const missSha = await sha256File(missSrc);
+  const missMapping: LocalDataMapping = {
+    version: 'ae-data-integration-mapping/v1',
+    source: { sha256: missSha, format: 'csv', data_set: '$' },
+    mode: 'track',
+    confidence: 'high',
+    account_id_field: 'user_id',
+    event_name_field: 'event',
+    time: { field: 'time', format: 'auto', source_timezone: 'Asia/Shanghai' },
+    flatten_rules: { profile_name: 'profile.name' },
+    exclude_columns: ['profile'],
+    properties: [{ source: 'profile_name', target: 'profile_name', type: 'string' }],
+  };
+  const missConverted = await convertLocalData({ inputFile: missSrc, mapping: missMapping, outputDir: join(root, 'flatten-miss'), now });
+  assert.equal(missConverted.status, 'ready', 'flatten misses do not block the manifest');
+  assert.equal(missConverted.manifest.output.valid_records, 2);
+  assert.deepEqual(missConverted.manifest.output.flatten_misses, { profile_name: 1 }, 'the second row lacks profile.name');
 
   // A null nested value inside an object property is "missing", not a limit violation: it must
   // not quarantine the whole row (23_ndjson_type_conflict row 4 regression).
@@ -326,16 +480,89 @@ try {
     uuid_field: 'request_id',
   };
   const sysRow = convertRow(
-    { user: 'u-1', event: 'open', t: '2026-08-10 10:00:00', client_ip: '1.2.3.4', request_id: 'abc-123' },
+    { user: 'u-1', event: 'open', t: '2026-08-10 10:00:00', client_ip: '1.2.3.4', request_id: '6ba7b810-9dad-11d1-80b4-00c04fd430c8' },
     4, sysMapping, now,
   );
   assert(sysRow.ok);
   assert.equal(sysRow.record['#ip'], '1.2.3.4');
-  assert.equal(sysRow.record['#uuid'], 'abc-123');
+  assert.equal(sysRow.record['#uuid'], '6ba7b810-9dad-11d1-80b4-00c04fd430c8');
   const sysNoIp = convertRow({ user: 'u-1', event: 'open', t: '2026-08-10 10:00:00' }, 5, sysMapping, now);
   assert(sysNoIp.ok);
   assert.equal(sysNoIp.record['#ip'], undefined);
   assert.equal(sysNoIp.record['#uuid'], undefined);
+
+  // Invalid #uuid/#ip values skip only that field (the row is kept); a private/LAN IP is
+  // kept but flagged so the report can tell the user AE cannot geolocate it.
+  const badUuid = convertRow(
+    { user: 'u-1', event: 'open', t: '2026-08-10 10:00:00', client_ip: '1.2.3.4', request_id: 'abc-123' },
+    6, sysMapping, now,
+  );
+  assert(badUuid.ok, 'an invalid #uuid skips the field, not the row');
+  assert.equal(badUuid.record['#uuid'], undefined);
+  assert.equal(badUuid.record['#ip'], '1.2.3.4');
+  assert.deepEqual(badUuid.skips, [{ code: 'INVALID_UUID', field: 'request_id' }]);
+
+  const badIp = convertRow(
+    { user: 'u-1', event: 'open', t: '2026-08-10 10:00:00', client_ip: 'not-an-ip' },
+    7, sysMapping, now,
+  );
+  assert(badIp.ok, 'an invalid #ip skips the field, not the row');
+  assert.equal(badIp.record['#ip'], undefined);
+  assert.deepEqual(badIp.skips, [{ code: 'INVALID_IP', field: 'client_ip' }]);
+
+  const lanIp = convertRow(
+    { user: 'u-1', event: 'open', t: '2026-08-10 10:00:00', client_ip: '192.168.1.10' },
+    8, sysMapping, now,
+  );
+  assert(lanIp.ok);
+  assert.equal(lanIp.record['#ip'], '192.168.1.10', 'a private IP is kept');
+  assert.equal(lanIp.lanIp, true, 'a private IP is flagged for the report');
+
+  // #ip and #zone_offset are event-data-only: a user_set row never carries them, but keeps #uuid.
+  const userSetSys: LocalDataMapping = {
+    ...baseMapping,
+    mode: 'user_set',
+    account_id_field: 'user',
+    event_name_field: undefined,
+    ip_field: 'client_ip',
+    uuid_field: 'request_id',
+    zone_offset_value: 8,
+  };
+  const userSetSysRow = convertRow(
+    { user: 'u-1', t: '2026-08-10 10:00:00', client_ip: '1.2.3.4', request_id: '6ba7b810-9dad-11d1-80b4-00c04fd430c8' },
+    9, userSetSys, now,
+  );
+  assert(userSetSysRow.ok);
+  assert.equal(userSetSysRow.record['#ip'], undefined, 'user data has no #ip');
+  assert.equal(userSetSysRow.record.properties['#zone_offset'], undefined, 'user data has no #zone_offset');
+  assert.equal(userSetSysRow.record['#uuid'], '6ba7b810-9dad-11d1-80b4-00c04fd430c8', 'user data keeps #uuid');
+
+  // Field skips are non-blocking and aggregate into manifest.output.skipped_fields /
+  // lan_ip_records so the agent reports them to the user at the end.
+  const skipSrc = join(root, 'skip.csv');
+  writeFileSync(skipSrc,
+    'account_id,event,client_ip,request_id,time\n'
+    + 'u-1,open,1.2.3.4,6ba7b810-9dad-11d1-80b4-00c04fd430c8,2026-08-10 10:00:00\n'
+    + 'u-2,open,bad-ip,6ba7b810-9dad-11d1-80b4-00c04fd430c8,2026-08-10 10:00:00\n'
+    + 'u-3,open,10.0.0.1,not-a-uuid,2026-08-10 10:00:00\n');
+  const skipSha = await sha256File(skipSrc);
+  const skipMapping: LocalDataMapping = {
+    version: 'ae-data-integration-mapping/v1',
+    source: { sha256: skipSha, format: 'csv', data_set: '$' },
+    mode: 'track',
+    confidence: 'high',
+    account_id_field: 'account_id',
+    event_name_field: 'event',
+    ip_field: 'client_ip',
+    uuid_field: 'request_id',
+    time: { field: 'time', format: 'auto', source_timezone: 'Asia/Shanghai' },
+    properties: [],
+  };
+  const skipConverted = await convertLocalData({ inputFile: skipSrc, mapping: skipMapping, outputDir: join(root, 'skip'), now });
+  assert.equal(skipConverted.status, 'ready', 'field skips do not block the manifest');
+  assert.equal(skipConverted.manifest.output.valid_records, 3);
+  assert.deepEqual(skipConverted.manifest.output.skipped_fields, { INVALID_IP: 1, INVALID_UUID: 1 });
+  assert.equal(skipConverted.manifest.output.lan_ip_records, 1);
 
   // zone_offset: option 1 is a fixed integer (or an IANA name resolved to its offset) and
   // option 2 reads the offset per row from a source column; both emit #zone_offset under properties.
@@ -385,7 +612,7 @@ try {
     + 'u-3,open,20,many,2026-08-10 10:00:00\n');
   const salvageSha = await sha256File(salvageSrc);
   const salvageBase = (overrides: Partial<LocalDataMapping>): LocalDataMapping => ({
-    version: 'ae-local-data-mapping/v1',
+    version: 'ae-data-integration-mapping/v1',
     source: { sha256: salvageSha, format: 'csv', data_set: '$' },
     mode: 'track',
     confidence: 'high',

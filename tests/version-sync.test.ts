@@ -58,6 +58,7 @@ assert.equal(evaluateAutoAttempt(dailyLimited.entry, '6.1.10', now).allowed, tru
 const plan = buildVersionInstallPlan('6.1.9', path.join('/tmp', 'npm root with spaces'));
 assert.equal(plan.target, '6.1.9');
 assert.match(plan.commands[0], /npm install -g @thinkingai\/ae-cli@6\.1\.9/);
+assert.match(plan.commands[0], /--registry=https:\/\/registry\.npmjs\.org/);
 assert.match(plan.commands[1], /npm root with spaces/);
 assert.match(plan.commands[2], /ThinkingAIAgenticEngine\/ae-cli#v6\.1\.9/);
 assert.deepEqual(plan.skillsSources, ['installed-package', 'github-fallback']);
@@ -92,6 +93,16 @@ function createInstalledPackage(version: string): { root: string; skillsPath: st
   });
   assert.equal(result.ok, true);
   if (result.ok) assert.equal(result.skillsSource, 'local');
+  assert.deepEqual(
+    calls.find((args) => args[0] === 'install'),
+    [
+      'install',
+      '-g',
+      '@thinkingai/ae-cli@6.1.9',
+      '--registry',
+      'https://registry.npmjs.org',
+    ],
+  );
   assert.equal(calls.some((args) => args.includes(`${installed.skillsPath}`)), true);
   assert.equal(calls.some((args) => args.some((arg) => arg.includes('ThinkingAIAgenticEngine'))), false);
 }

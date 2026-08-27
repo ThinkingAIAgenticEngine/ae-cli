@@ -15,6 +15,7 @@ import { printError, printOutput } from '../../framework/output.js';
 import type { OutputFormat } from '../../framework/types.js';
 import {
   CapabilityCommandValidationError,
+  emptyCapabilityCatalogWarning,
   filterCapabilities,
   normalizeCapabilityList,
   parseCapabilityInput,
@@ -53,7 +54,13 @@ export function registerCapability(program: Command): void {
         const projectId = parseOptionalProjectId(opts.projectId);
         const catalog = normalizeCapabilityList(await listCapabilities(host, gatewayDomain, projectId));
         const capabilities = filterCapabilities(catalog, opts.domain);
-        return { domain: opts.domain, count: capabilities.length, capabilities };
+        const warning = emptyCapabilityCatalogWarning(catalog);
+        return {
+          domain: opts.domain,
+          count: capabilities.length,
+          capabilities,
+          ...(warning ? { warning } : {}),
+        };
       });
     })
     .addHelpText(
@@ -75,7 +82,14 @@ export function registerCapability(program: Command): void {
         const projectId = parseOptionalProjectId(opts.projectId);
         const catalog = normalizeCapabilityList(await listCapabilities(host, gatewayDomain, projectId));
         const capabilities = filterCapabilities(catalog, opts.domain, query);
-        return { domain: opts.domain, query, count: capabilities.length, capabilities };
+        const warning = emptyCapabilityCatalogWarning(catalog);
+        return {
+          domain: opts.domain,
+          query,
+          count: capabilities.length,
+          capabilities,
+          ...(warning ? { warning } : {}),
+        };
       });
     })
     .addHelpText(

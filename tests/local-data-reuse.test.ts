@@ -5,13 +5,18 @@ import { join } from 'node:path';
 import {
   HANDOFF_INDEX_VERSION,
   structureFingerprint,
-} from '../src/commands/data-integration/local-data/handoff.js';
-import type { HandoffIndexEntry } from '../src/commands/data-integration/local-data/handoff.js';
-import { detectReuse } from '../src/commands/data-integration/local-data/reuse.js';
-import type { LocalDataMapping } from '../src/commands/data-integration/local-data/types.js';
+} from '../src/commands/data-integration/handoff.js';
+import type { HandoffIndexEntry } from '../src/commands/data-integration/handoff.js';
+import { detectReuse } from '../src/commands/data-integration/reuse.js';
+import {
+  findReuseRoot,
+  globalHandoffDir,
+  upwardHandoffDirs,
+} from '../src/commands/data-integration/handoff-root.js';
+import type { LocalDataMapping } from '../src/commands/data-integration/types.js';
 
 const baseMapping: LocalDataMapping = {
-  version: 'ae-local-data-mapping/v1',
+  version: 'ae-data-integration-mapping/v1',
   source: { sha256: 'a'.repeat(64), format: 'csv', data_set: '$' },
   mode: 'track',
   confidence: 'high',
@@ -117,6 +122,45 @@ const entryFor = (fingerprint: string, overrides: Partial<HandoffIndexEntry> = {
     const result = detectReuse(candidate, dir);
     assert.equal(result.matched, false);
     assert.equal(result.match, undefined);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+}
+
+// findReuseRoot: the nearest package wins, found from the cwd or an ancestor.
+{
+  const root = mkdtempSync(join(tmpdir(), 'reuse-root-'));
+  try {
+    const nested = join(root, 'a', 'b');
+    mkdirSync(join(nested, '.ae-cli', 'data-integration'), { recursive: true });
+    writeFileSync(join(nested, '.ae-cli', 'data-integration', 'index.json'), '{}');
+    assert.equal(findReuseRoot(nested), join(nested, '.ae-cli', 'data-integration'));
+    const deeper = join(nested, 'c');
+    mkdirSync(deeper, { recursive: true });
+    assert.equal(findReuseRoot(deeper), join(nested, '.ae-cli', 'data-integration'));
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+}
+
+// findReuseRoot falls back to the global directory when nothing exists upward.
+{
+  const dir = mkdtempSync(join(tmpdir(), 'reuse-empty-'));
+  try {
+    assert.equal(findReuseRoot(dir), globalHandoffDir());
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+}
+
+// upwardHandoffDirs walks from the start directory to the filesystem root.
+{
+  const dir = mkdtempSync(join(tmpdir(), 'reuse-up-'));
+  try {
+    const chain = upwardHandoffDirs(dir);
+    assert.equal(chain[0], join(dir, '.ae-cli', 'data-integration'));
+    assert.ok(chain.length >= 2);
+    assert.ok(new Set(chain).size === chain.length);
   } finally {
     rmSync(dir, { recursive: true, force: true });
   }

@@ -1,4 +1,13 @@
-import { createAnalysisCapabilityCommand, directoryLimitFlag, directoryOffsetFlag, listInput, projectIdFlag } from '../capability-shared.js';
+import {
+  certificationScopeFlag,
+  certificationScopeInput,
+  compactInput,
+  createAnalysisCapabilityCommand,
+  directoryLimitFlag,
+  directoryOffsetFlag,
+  listInput,
+  projectIdFlag,
+} from '../capability-shared.js';
 import { queriesFlag, validateQueriesFlag } from '../catalog-list.js';
 
 export const dashboardList = createAnalysisCapabilityCommand({
@@ -18,8 +27,12 @@ export const dashboardList = createAnalysisCapabilityCommand({
     },
     directoryLimitFlag,
     directoryOffsetFlag,
+    certificationScopeFlag,
   ],
   risk: 'read',
   validate: validateQueriesFlag,
-  buildInput: listInput,
+  buildInput: (ctx) => compactInput({
+    ...listInput(ctx),
+    certification_scope: certificationScopeInput(ctx),
+  }),
 });

@@ -1,6 +1,8 @@
 import {
   artifactFormatFlag,
   asyncTimeoutSecondsFlag,
+  certificationScopeFlag,
+  certificationScopeInput,
   compactInput,
   createAnalysisCapabilityCommand,
   exportLifecycleInput,
@@ -27,6 +29,7 @@ export const reportListExport = createAnalysisCapabilityCommand({
     requestIdFlag,
     artifactFormatFlag,
     asyncTimeoutSecondsFlag,
+    certificationScopeFlag,
   ],
   risk: 'read',
   validate: validateQueriesFlag,
@@ -35,6 +38,7 @@ export const reportListExport = createAnalysisCapabilityCommand({
     queries: optionalQueries(ctx),
     fields: optionalJson(ctx, 'fields'),
     model_types: optionalJson(ctx, 'model-types'),
+    certification_scope: certificationScopeInput(ctx),
     ...exportLifecycleInput(ctx),
   }),
 });

@@ -26,7 +26,7 @@ export type UeRecordType =
   | 'user_append'
   | 'user_uniq_append';
 
-export type UePropertyType = 'number' | 'string' | 'boolean' | 'datetime' | 'list' | 'object';
+export type UePropertyType = 'number' | 'string' | 'boolean' | 'datetime' | 'list' | 'object' | 'array_row';
 
 /** Header-row detection verdict for delimited input (bounded sample of raw records). */
 export interface HeaderDetection {
@@ -35,7 +35,7 @@ export interface HeaderDetection {
   reason: string;
 }
 
-/** One node of a bounded recursive structure surfaced by inspect: NDJSON/JSON records (record-root paths) or a delimited JSON-encoded object column (cell-relative paths). */
+/** One node of a bounded recursive structure surfaced by inspect: NDJSON/JSON records (record-root paths) or a delimited/Excel JSON-encoded object column (cell-relative paths). */
 export interface NestedNode {
   /** Dot path from the record root, e.g. `user_info.address`. */
   path: string;
@@ -67,7 +67,7 @@ export interface LocalDataColumnProfile {
   time_parse_ratio: number;
   /** Bounded inspect-only samples: up to 5 distinct, truncated values. */
   samples?: string[];
-  /** Delimited input only: bounded nested tree of a JSON-encoded object column (cell-relative paths). */
+  /** Delimited/Excel input only: bounded nested tree of a JSON-encoded object column (cell-relative paths). */
   nested_tree?: NestedNode[];
 }
 
@@ -79,8 +79,11 @@ export interface IdentityCandidate {
   missing_ratio: number;
 }
 
+/** Schema version of the `ae-data-integration-mapping` document. Bump only on a non-backward-compatible change. */
+export const MAPPING_VERSION = 'ae-data-integration-mapping/v1' as const;
+
 export interface LocalDataMapping {
-  version: 'ae-local-data-mapping/v1';
+  version: typeof MAPPING_VERSION;
   source: {
     sha256: string;
     format: LocalDataFormat;
@@ -120,15 +123,15 @@ export interface LocalDataMapping {
   };
   /** Source columns skipped when building event properties. */
   exclude_columns?: string[];
-  /** NDJSON nested flatten: { outColumn: 'dot.path' }. */
+  /** Nested flatten: { outColumn: 'dot.path' }. JSON/NDJSON paths are record-relative; CSV/TSV/Excel paths are <column>.<cell-relative path>. */
   flatten_rules?: Record<string, string>;
   /** Explicit column names for headerless files. Presence means the first row is data. */
   headers?: string[];
   /** Fill a missing/empty #time with the current time, for user-profile rows only (explicit user decision). */
   missing_time?: 'now';
-  /** Source column for the optional #ip system field (client IP; AE resolves geo). */
+  /** Source column for the optional #ip system field (client IP; AE resolves geo). Event data only; a value that is not a valid IPv4/IPv6 is dropped from the row. */
   ip_field?: string;
-  /** Source column for the optional #uuid system field (short-window deduplication ID). */
+  /** Source column for the optional #uuid system field (standard 36-character UUID, both data kinds). A non-UUID value is dropped from the row. */
   uuid_field?: string;
   /** Fixed #zone_offset preset property (integer UTC hours -12..14, or an IANA name resolved to its offset). */
   zone_offset_value?: number | string;
@@ -196,6 +199,12 @@ export interface LocalDataManifest {
     invalid_records: number;
     valid_bytes: number;
     record_types: Partial<Record<UeRecordType, number>>;
+    /** System fields dropped per spec-violation code (`INVALID_IP`, `INVALID_UUID`); the row itself is kept. */
+    skipped_fields?: Record<string, number>;
+    /** Rows whose #ip is a private/LAN address (kept, but AE cannot geolocate it). */
+    lan_ip_records?: number;
+    /** Flatten out-columns that did not materialize for some rows (missing path / non-JSON cell); the row is kept. */
+    flatten_misses?: Record<string, number>;
   };
   blocked_reasons: string[];
 }

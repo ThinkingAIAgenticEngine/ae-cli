@@ -1,9 +1,11 @@
 import { readFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
-import type { Command } from '../../../framework/types.js';
+import type { Command } from '../../framework/types.js';
 import { readLocalDataMapping } from './mapping.js';
 import { readHandoffIndex, structureFingerprint } from './handoff.js';
+import { findReuseRoot, reuseSearchPaths } from './handoff-root.js';
 import type { LocalDataFormat, LocalDataMapping } from './types.js';
+import { MAPPING_VERSION } from './types.js';
 
 /** A reusable package matched by structure fingerprint. */
 export interface ReuseMatch {
@@ -80,26 +82,41 @@ export const dataIntegrationReuse: Command = {
   service: 'data-integration',
   command: 'reuse',
   usesAeHost: false,
-  description: 'Match a candidate mapping against the .ae-data-integration/ handoff index and propose a reusable package.',
+  description: 'Match a candidate mapping against the .ae-cli/data-integration/ handoff index and propose a reusable package.',
   flags: [
-    { name: 'mapping', type: 'string', required: true, sensitive: true, desc: 'Candidate ae-local-data-mapping/v1 JSON, file path, or @file (typically inspect recommended_mapping).' },
-    { name: 'out-dir', type: 'string', sensitive: true, desc: 'Handoff root directory. Default: .ae-data-integration.' },
+    { name: 'mapping', type: 'string', required: true, sensitive: true, desc: `Candidate ${MAPPING_VERSION} JSON, file path, or @file (typically inspect recommended_mapping).` },
+    { name: 'out-dir', type: 'string', sensitive: true, desc: 'Handoff root directory. Default: nearest .ae-cli/data-integration/ upward from cwd, then ~/.ae-cli/data-integration/.' },
   ],
   risk: 'read',
   dryRun: async (ctx) => {
     const mapping = readLocalDataMapping(ctx.str('mapping'));
-    const outDir = resolve(ctx.str('out-dir').trim() || '.ae-data-integration');
+    const outDir = resolveReuseOutDir(ctx);
     const result = detectReuse(mapping, outDir);
     return {
       action: 'reuse_detect',
       fingerprint: result.fingerprint,
       matched: result.matched,
       index_file: result.index_file,
+      searched_paths: searchedIndexPaths(ctx),
     };
   },
   execute: async (ctx) => {
     const mapping = readLocalDataMapping(ctx.str('mapping'));
-    const outDir = resolve(ctx.str('out-dir').trim() || '.ae-data-integration');
-    return detectReuse(mapping, outDir);
+    const outDir = resolveReuseOutDir(ctx);
+    const result = detectReuse(mapping, outDir);
+    return { ...result, searched_paths: searchedIndexPaths(ctx) };
   },
 };
+
+function resolveReuseOutDir(ctx: Parameters<Command['execute']>[0]): string {
+  const explicit = ctx.str('out-dir').trim();
+  if (explicit) return resolve(explicit);
+  return findReuseRoot() ?? resolve(join('.ae-cli', 'data-integration'));
+}
+
+/** Index paths reuse searched, in order, for agents to diagnose an empty match. */
+function searchedIndexPaths(ctx: Parameters<Command['execute']>[0]): string[] {
+  const explicit = ctx.str('out-dir').trim();
+  const dirs = explicit ? [resolve(explicit)] : reuseSearchPaths();
+  return dirs.map((dir) => join(dir, 'index.json'));
+}

@@ -27,6 +27,8 @@ export interface Command {
   /** Optional space-separated resource path before the command. */
   resource?: string;
   command: string;
+  /** Keep compatibility or administrator-only commands callable without listing them in help. */
+  hidden?: boolean;
   /** Set false for commands whose transport is intentionally unrelated to the active AE host. */
   usesAeHost?: boolean;
   /** Canonical gateway capability ID for machine-readable registry verification. */

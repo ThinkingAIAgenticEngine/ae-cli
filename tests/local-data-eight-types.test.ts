@@ -1,11 +1,11 @@
 import assert from 'node:assert/strict';
-import { convertRow } from '../src/commands/data-integration/local-data/conversion.js';
+import { convertRow } from '../src/commands/data-integration/conversion.js';
 import {
   isUserProfileType,
   normalizeRecordType,
   USER_PROFILE_TYPES,
-} from '../src/commands/data-integration/local-data/profile.js';
-import type { LocalDataMapping } from '../src/commands/data-integration/local-data/types.js';
+} from '../src/commands/data-integration/profile.js';
+import type { LocalDataMapping } from '../src/commands/data-integration/types.js';
 
 // All 8 canonical record types plus aliases normalize onto the same enum.
 const aliases: Array<[unknown, string | undefined]> = [
@@ -42,7 +42,7 @@ assert.equal(isUserProfileType('bogus'), false);
 
 // Mixed mode: `#event_name` is emitted only for track rows; record_type value mapping applies.
 const mixedMapping: LocalDataMapping = {
-  version: 'ae-local-data-mapping/v1',
+  version: 'ae-data-integration-mapping/v1',
   source: { sha256: 'a'.repeat(64), format: 'csv', data_set: '$' },
   mode: 'mixed',
   confidence: 'high',

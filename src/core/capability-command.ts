@@ -51,13 +51,13 @@ export function createCapabilityCommand(config: CreateCapabilityCommandConfig): 
     validateInput: async (ctx) => {
       const gatewayDomain = resolveGatewayDomain(config.cliService, config.gatewayDomain);
       const requestHost = config.requestHost ?? ctx.host();
-      const input = config.buildInput(ctx);
+      const input = withLifecycleRequestId(config, config.buildInput(ctx));
       return validateCapability(requestHost, gatewayDomain, config.capabilityId, input);
     },
     dryRun: async (ctx) => {
       const gatewayDomain = resolveGatewayDomain(config.cliService, config.gatewayDomain);
       const requestHost = config.requestHost ?? ctx.host();
-      const input = config.buildInput(ctx);
+      const input = withLifecycleRequestId(config, config.buildInput(ctx));
       return dryRunCapability(requestHost, gatewayDomain, config.capabilityId, input);
     },
     execute: async (ctx) => {

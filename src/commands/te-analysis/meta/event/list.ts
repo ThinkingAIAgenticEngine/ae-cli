@@ -1,5 +1,7 @@
 import {
   compactInput,
+  certificationScopeFlag,
+  certificationScopeInput,
   createAnalysisMetaCapabilityCommand,
   directoryLimitFlag,
   fieldsFlag,
@@ -28,6 +30,7 @@ export const metadataEventList = createAnalysisMetaCapabilityCommand({
     directoryLimitFlag,
     directoryOffsetFlag,
     { name: 'authenticated-only', type: 'boolean', required: false, desc: 'When true, return only authenticated events.' },
+    certificationScopeFlag,
   ],
   risk: 'read',
   validate: validateCatalogListFlags,
@@ -38,5 +41,20 @@ export const metadataEventList = createAnalysisMetaCapabilityCommand({
     limit: optionalNumber(ctx, 'limit'),
     offset: optionalNumber(ctx, 'offset'),
     authenticated_only: optionalBoolean(ctx, 'authenticated-only'),
+    certification_scope: certificationScopeInput(ctx),
   }),
+  postProcess: normalizeEventDirectory,
 });
+
+function normalizeEventDirectory(result: unknown): unknown {
+  if (result === null || typeof result !== 'object' || Array.isArray(result)) {
+    return result;
+  }
+  const directory = result as Record<string, unknown>;
+  const items = Array.isArray(directory.items) ? directory.items : directory.events;
+  if (!Array.isArray(items)) {
+    return result;
+  }
+  const { events: _events, ...rest } = directory;
+  return { ...rest, items };
+}

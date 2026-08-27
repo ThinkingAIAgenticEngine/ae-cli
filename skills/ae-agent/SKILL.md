@@ -74,7 +74,7 @@ Use `ae-agent` for all Agent platform resource work:
 
 If the user's intent is data analysis, audience management, metadata governance, TeamRuns, or knowledge bases, switch to `ae-analysis` / `ae-engage` / `ae-dataops` / `ae-team` / `ae-kb`.
 
-## Tool Groups (82 commands)
+## Tool Groups (81 commands)
 
 ### Agents (5)
 
@@ -128,7 +128,7 @@ If the user's intent is data analysis, audience management, metadata governance,
 - `+del-skill` ([doc](references/del-skill.md)) — delete a personal Skill (physical delete)
 - `+toggle-skill` ([doc](references/toggle-skill.md)) — enable or disable a Skill
 
-### Skill content & assets (16)
+### Skill content & assets (15)
 
 - `+edit-skill` ([doc](references/edit-skill.md)) — edit a Skill's content (name/description/instructions/category/icon)
 - `+get-skill-content` ([doc](references/get-skill-content.md)) — read a Skill's SKILL.md source
@@ -145,7 +145,6 @@ If the user's intent is data analysis, audience management, metadata governance,
 - `+read-skill-script` ([doc](references/read-skill-script.md)) — read a script file (binary-safe with `--output`)
 - `+del-skill-script` ([doc](references/del-skill-script.md)) — delete a script file
 - `+upload-skill` ([doc](references/upload-skill.md)) — create/replace a Skill from a ZIP package (parses SKILL.md; 5MB)
-- `+rescan-skills` ([doc](references/rescan-skills.md)) — rescan local filesystem and sync Skills to DB (root only)
 
 ### Market (browse) (2)
 
@@ -261,7 +260,7 @@ For a local Agent, a successful `+mark-used` response means only that the dedupl
 - **MCP connectivity**: `+add-mcp` does NOT validate server connectivity — an unreachable URL is accepted at create time and only fails when the agent calls the MCP at runtime. Double-check the URL.
 - **Attachments**: upload supports files up to 50MB each, with a 1GB user quota. Batch uploads support partial success — individual file failures don't affect others.
 - **Skill `--instructions @-`**: reads from stdin, useful for piping long instruction text.
-- **Skill content versions**: `+add-skill` accepts optional `--version`; `+edit-skill` content changes and `+upload-skill --replace-skill-id` require a higher `major.minor` version.
+- **Skill content versions**: `+add-skill` accepts optional `--version`; `+edit-skill` content changes and `+upload-skill --replace-skill-id` require a higher `major.minor` version. On `SKILL_VERSION_CONFLICT`, read `meta.currentVersion` and retry with a strictly higher version. On `SKILL_HISTORY_CONFLICT`, stop retrying and tell the user that the Skill cannot be safely updated right now and that they should contact their administrator. Never recommend internal maintenance commands or expose diagnostic payloads in a customer-facing response.
 - **Skill sync push**: each selected Skill is uploaded as a ZIP to the versioned server endpoint. The server commits the canonical package before success; the CLI no longer copies it after the response.
 - **Market category keys**: `ae_preset | dev_tool | search_tool | data_query | content_gen | enterprise | life | automation | other`. Sort options: `newest | calls | likes` (`calls` sorts MCP by call count, Skill by download count). Market scope: `all | system | company | custom` (`custom` = personal).
 - **Meta on create/copy**: `+add-mcp` / `+add-skill` / `+copy-skill` accept optional `--category / --icon-emoji / --icon-color`; these are applied via a follow-up meta PATCH after creation. MCP creation still does NOT validate server connectivity.

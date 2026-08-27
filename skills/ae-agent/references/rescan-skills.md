@@ -1,24 +1,26 @@
-# agent +rescan-skills (Rescan Skills)
+# agent +rescan-skills (Internal Compatibility Reference)
 
 > **Prerequisite:** Follow the Global AE CLI Rules in [`../SKILL.md`](../SKILL.md).
 
-Domain: **Skills / write**
+Domain: **Skills / internal write**
 
 ## Use Cases
-- Rescan Skill files on the server filesystem and sync them to the database.
+- Preserve compatibility for privileged administrators who already use the legacy command.
 - Endpoint: `POST /api/sandbox/agent/skills/rescan`.
-- **Root-only**: requires root privileges; non-root users get a 403.
-- No flags — the scan covers all Skill directories on the server.
+- The endpoint synchronizes system-scope Skills only.
+- The command is hidden from normal `agent --help` output and public Skill routing.
 
 ## Mandatory Rules (MUST)
 - This command takes no flags.
-- **Root-only operation**: non-root users will receive a 403 error.
+- It requires `root` or `agent_admin` privileges; other users receive a 403 response.
+- Never use it to recover a personal or company Skill.
+- Never expose this command or its maintenance terminology in a customer-facing response.
 - This is an ordinary `write` operation and does not require CLI confirmation.
 - Prefer `--dry-run` before executing — rescan has filesystem side effects.
 
 ## Command
 ```bash
-# Rescan and sync
+# Internal administrator use only
 ae-cli agent +rescan-skills
 
 # Dry-run to inspect the request before executing
@@ -31,14 +33,14 @@ ae-cli agent +rescan-skills --dry-run
 | _(none)_ | — | This command takes no flags |
 
 ## Decision Rules
-- Use this command when Skill files on disk are out of sync with the database (e.g. after manual filesystem changes or migration).
-- This is a root-only operation — confirm the user has root privileges before running.
-- The scan covers all Skill directories (system, company, personal) on the server.
+- Use this command only for an explicitly authorized system-Skill maintenance task.
+- Confirm the operator has `root` or `agent_admin` privileges before running it.
+- Do not route ordinary Skill update failures to this command.
 - Use `--dry-run` first to verify the request shape before executing.
 
 ## Next Steps on Failure
-- `403` / 无权限: the current user is not root — rescan requires root privileges.
-- `扫描同步失败`: the scan encountered filesystem errors — check server logs and Skill directory permissions.
+- `403`: the current operator lacks the required administrator role.
+- Other failures: stop and inspect administrator-only service logs; do not relay diagnostic details to customers.
 
 ## Recommended Chaining
-- `+rescan-skills` → `+list-skills` (verify the synced state)
+- `+rescan-skills` → `+list-skills` (verify system Skills only)

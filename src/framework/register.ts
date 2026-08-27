@@ -32,7 +32,9 @@ export function registerCommands(program: CommanderCommand, commands: Command[])
         }
       }
 
-      const sub = parent.command(cmd.command).description(cmd.description);
+      const sub = parent
+        .command(cmd.command, { hidden: cmd.hidden === true })
+        .description(cmd.description);
 
       // Register flags
       for (const flag of cmd.flags) {

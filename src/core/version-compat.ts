@@ -4,6 +4,9 @@ import { HISTORICAL_CLUSTER_TO_PUBLIC_PIN } from './legacy-cli-version-map.js';
 /** Open-source npm package used in pin / upgrade hints. */
 export const OPEN_SOURCE_AE_CLI_PACKAGE = '@thinkingai/ae-cli';
 
+/** Public npm registry that publishes the open-source CLI package. */
+export const OPEN_SOURCE_NPM_REGISTRY = 'https://registry.npmjs.org';
+
 /** GitHub skills repo for `npx skills add …#v{ver}`. */
 export const AE_CLI_SKILLS_REPO = 'ThinkingAIAgenticEngine/ae-cli';
 
@@ -139,7 +142,7 @@ export function formatPinCommands(expectedVersion: string): string[] {
   const ver = resolvePinTarget(expectedVersion);
   if (!ver) return [];
   return [
-    `npm i -g ${OPEN_SOURCE_AE_CLI_PACKAGE}@${ver}`,
+    `npm i -g ${OPEN_SOURCE_AE_CLI_PACKAGE}@${ver} --registry=${OPEN_SOURCE_NPM_REGISTRY}`,
     `npx skills add ${AE_CLI_SKILLS_REPO}#v${ver} -g -y`,
   ];
 }
@@ -149,7 +152,7 @@ export function formatUpgradeCommands(expectedVersion: string): string[] {
   const ver = expectedVersion.trim().replace(/^v/i, '');
   if (!/^\d+\.\d+\.\d+(?:[-+].*)?$/.test(ver)) return [];
   return [
-    `npm i -g ${OPEN_SOURCE_AE_CLI_PACKAGE}@${ver}`,
+    `npm i -g ${OPEN_SOURCE_AE_CLI_PACKAGE}@${ver} --registry=${OPEN_SOURCE_NPM_REGISTRY}`,
     `npx skills add ${AE_CLI_SKILLS_REPO}#v${ver} -g -y`,
   ];
 }

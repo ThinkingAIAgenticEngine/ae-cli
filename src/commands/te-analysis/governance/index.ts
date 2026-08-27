@@ -19,8 +19,14 @@ import { analysisMetaAssetBatchDashboardScheduleFreeze } from '../meta/asset/bat
 import { analysisMetaAssetBatchHandover } from '../meta/asset/batch-handover.js';
 import { analysisMetaAssetOperationRecordList } from '../meta/asset/operation-record-list.js';
 import { analysisMetaAssetOperationRecordExport } from '../meta/asset/operation-record-export.js';
+import { analysisGovernanceAssetAuthenticationList } from './asset-authentication-list.js';
+import { analysisGovernanceAssetAuthenticationExport } from './asset-authentication-export.js';
+import { analysisGovernanceAssetAuthenticationUpdate } from './asset-authentication-update.js';
 
 const commands: Command[] = [
+  analysisGovernanceAssetAuthenticationList,
+  analysisGovernanceAssetAuthenticationExport,
+  analysisGovernanceAssetAuthenticationUpdate,
   analysisMetaAssetUsageList,
   analysisMetaAssetUsageExport,
   analysisMetaAssetBatchInfoExport,

@@ -14,7 +14,7 @@ import StreamArray from 'stream-json/streamers/StreamArray.js';
 import StreamValues from 'stream-json/streamers/StreamValues.js';
 import * as unzipper from 'unzipper';
 import { SaxesParser } from 'saxes';
-import { CliValidationError } from '../../../core/errors.js';
+import { CliValidationError } from '../../core/errors.js';
 import { detectEncoding, decodeTextStream, decodeFileSample } from './encoding.js';
 import { flattenDelimitedRow, flattenLocalDataRow } from './flatten.js';
 import { assessFileSize } from './estimate.js';
@@ -157,10 +157,41 @@ export interface StreamLocalDataOptions {
   headerNames?: string[];
   /** Headerless delimited/Excel input: auto-generate col_1..col_N from the first row. */
   noHeader?: boolean;
-  /** NDJSON nested flatten rules: { outColumn: 'dot.path' }. */
+  /** Nested flatten rules: { outColumn: 'dot.path' }. JSON/NDJSON paths are row-relative; CSV/TSV/Excel paths are <column>.<cell-relative path>. */
   flattenRules?: Record<string, string>;
+  /** Collector for flatten rules that did not materialize for a row (keyed by out-column). */
+  flattenMisses?: Record<string, number>;
   /** Stream every worksheet in file order instead of a single selected sheet. */
   mergeSheets?: boolean;
+  /** Emit the ragged-row stderr warning (default true). Internal passes suppress it. */
+  warnRagged?: boolean;
+}
+
+/**
+ * Marker for an error thrown by the per-row callback (a program error such as a disk-full
+ * during output), as opposed to a parse error from the source stream. `streamLocalDataRows`
+ * re-throws these untouched so a write failure or mapping bug is never misreported as a
+ * malformed input file.
+ */
+class LocalDataRowCallbackError extends Error {
+  constructor(readonly cause: unknown) {
+    super(cause instanceof Error ? cause.message : String(cause));
+    this.name = 'LocalDataRowCallbackError';
+  }
+}
+
+/** Wrap the row callback so its failures are distinguishable from source parse failures. */
+function wrapRowCallback(
+  onRow: (row: LocalDataRow, rowNumber: number) => void | Promise<void>,
+): (row: LocalDataRow, rowNumber: number) => void | Promise<void> {
+  return async (row, rowNumber) => {
+    try {
+      await onRow(row, rowNumber);
+    } catch (error) {
+      if (error instanceof CliValidationError) throw error;
+      throw new LocalDataRowCallbackError(error);
+    }
+  };
 }
 
 export async function streamLocalDataRows(
@@ -175,24 +206,30 @@ export async function streamLocalDataRows(
     headerNames: options.headerNames,
     noHeader: options.noHeader,
     flattenRules: options.flattenRules,
+    flattenMisses: options.flattenMisses,
     mergeSheets: options.mergeSheets,
+    warnRagged: options.warnRagged,
   };
+  const wrappedRow = wrapRowCallback(onRow);
   try {
     switch (input.format) {
       case 'csv':
       case 'tsv':
-        return await streamDelimited(input.filePath, onRow, opts);
+        return await streamDelimited(input.filePath, wrappedRow, opts);
       case 'jsonl':
-        return await streamJsonLines(input.filePath, onRow, opts);
+        return await streamJsonLines(input.filePath, wrappedRow, opts);
       case 'json':
-        return await streamJson(input.filePath, dataSet.selector ?? '$', onRow, opts);
+        return await streamJson(input.filePath, dataSet.selector ?? '$', wrappedRow, opts);
       case 'xlsx':
-        return await streamXlsx(input.filePath, dataSet.label, onRow, opts);
+        return await streamXlsx(input.filePath, dataSet.label, wrappedRow, opts);
       case 'xls':
-        return await streamXls(input.filePath, dataSet.label, onRow, opts);
+        return await streamXls(input.filePath, dataSet.label, wrappedRow, opts);
     }
   } catch (error) {
     if (error instanceof CliValidationError) throw error;
+    if (error instanceof LocalDataRowCallbackError) {
+      throw error.cause instanceof Error ? error.cause : error;
+    }
     throw localDataParseError(input.format);
   }
 }
@@ -418,6 +455,8 @@ async function streamDelimited(
     headerNames = firstRecord.map((_, index) => `col_${index + 1}`);
   }
 
+  // Array records let us detect width mismatches (extra fields dropped, missing fields null)
+  // instead of silently relaxing the column count behind csv-parse's object mapping.
   const parser = parseCsv({
     bom: true,
     delimiter,
@@ -425,33 +464,37 @@ async function streamDelimited(
     relax_column_count: true,
     skip_empty_lines: true,
     trim: true,
-    columns: headerNames
-      ? headerNames
-      : (headers: string[]) => dedupeHeaders(headers.map((header) => String(header).trim())),
   });
   decodeTextStream(filePath, encoding).pipe(parser);
   let count = 0;
-  for await (const value of parser) {
+  let widthMismatches = 0;
+  let resolvedHeaders = headerNames;
+  for await (const raw of parser) {
+    const values = raw as string[];
+    if (!resolvedHeaders) {
+      // First record is the header row; consume it, don't emit it as data.
+      resolvedHeaders = dedupeHeaders(values.map((header) => String(header).trim()));
+      continue;
+    }
+    if (values.length !== resolvedHeaders.length) widthMismatches += 1;
     count += 1;
-    const row = normalizeDelimitedRow(value, headerNames);
+    const row: LocalDataRow = {};
+    for (let index = 0; index < resolvedHeaders.length; index += 1) {
+      row[resolvedHeaders[index]] = values[index] ?? null;
+    }
     await onRow(
       options.flattenRules && Object.keys(options.flattenRules).length > 0
-        ? flattenDelimitedRow(row, options.flattenRules)
+        ? flattenDelimitedRow(row, options.flattenRules, options.flattenMisses)
         : row,
       count,
     );
   }
-  return count;
-}
-
-function normalizeDelimitedRow(value: unknown, headerNames?: string[]): LocalDataRow {
-  if (!headerNames || value === null || typeof value !== 'object' || Array.isArray(value)) {
-    return normalizeRow(value);
+  if (widthMismatches > 0 && options.warnRagged !== false) {
+    process.stderr.write(
+      `Warning: ${widthMismatches} record(s) had a column count different from the header row; extra fields were dropped and missing fields were treated as empty.\n`,
+    );
   }
-  const source = value as Record<string, unknown>;
-  const row: LocalDataRow = {};
-  for (const header of headerNames) row[header] = source[header] ?? null;
-  return row;
+  return count;
 }
 
 async function streamJsonLines(
@@ -473,7 +516,7 @@ async function streamJsonLines(
         location: { record: count },
       });
     }
-    await onRow(flattenLocalDataRow(value, options.flattenRules), count);
+    await onRow(flattenLocalDataRow(value, options.flattenRules, options.flattenMisses), count);
   }
   return count;
 }
@@ -495,7 +538,7 @@ async function streamJson(
     : source.pipe(parser).pipe(Pick.pick({ filter: selector })).pipe(streamer);
   for await (const item of chain as AsyncIterable<{ value: unknown }>) {
     count += 1;
-    await onRow(flattenLocalDataRow(item.value, options.flattenRules), count);
+    await onRow(flattenLocalDataRow(item.value, options.flattenRules, options.flattenMisses), count);
   }
   return count;
 }
@@ -552,7 +595,13 @@ async function streamXlsx(
       }
       if (values.every(isMissing)) continue;
       count += 1;
-      await onRow(Object.fromEntries(headers.map((header, index) => [header, values[index] ?? null])), count);
+      const row = Object.fromEntries(headers.map((header, index) => [header, values[index] ?? null]));
+      await onRow(
+        options.flattenRules && Object.keys(options.flattenRules).length > 0
+          ? flattenDelimitedRow(row, options.flattenRules)
+          : row,
+        count,
+      );
     }
   }
   return count;
@@ -744,17 +793,16 @@ async function streamXls(
     for (const values of rows.slice(start)) {
       if (values.every(isMissing)) continue;
       count += 1;
-      await onRow(Object.fromEntries(headers.map((header, index) => [header, values[index] ?? null])), count);
+      const row = Object.fromEntries(headers.map((header, index) => [header, values[index] ?? null]));
+      await onRow(
+        options.flattenRules && Object.keys(options.flattenRules).length > 0
+          ? flattenDelimitedRow(row, options.flattenRules)
+          : row,
+        count,
+      );
     }
   }
   return count;
-}
-
-function normalizeRow(value: unknown): LocalDataRow {
-  if (value !== null && typeof value === 'object' && !Array.isArray(value)) {
-    return value as LocalDataRow;
-  }
-  return { value };
 }
 
 function normalizeExcelValue(value: ExcelJS.CellValue): unknown {

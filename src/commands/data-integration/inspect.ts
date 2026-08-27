@@ -1,5 +1,5 @@
 import { basename } from 'node:path';
-import type { Command } from '../../../framework/types.js';
+import type { Command } from '../../framework/types.js';
 import { assessFileSize } from './estimate.js';
 import { detectHeaderRow, inspectLocalDataInput, peekDelimitedRecords, readExcelSheetHeaders, resolveLocalDataInputMeta, selectDataSet } from './input.js';
 import type { ExcelSheetHeaders, LocalDataInput } from './input.js';

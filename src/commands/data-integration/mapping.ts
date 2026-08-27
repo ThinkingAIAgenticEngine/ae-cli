@@ -1,8 +1,14 @@
 import { readFileSync } from 'node:fs';
-import { CliValidationError } from '../../../core/errors.js';
+import { CliValidationError } from '../../core/errors.js';
+import { MAPPING_VERSION } from './types.js';
 import type { LocalDataMapping } from './types.js';
 
 const VALID_PROPERTY_NAME = /^[a-z][a-z0-9_]{0,49}$/;
+/** Dotted `parent.child` sub-property declaration; each segment is a flat AE name. */
+const VALID_CHILD_PROPERTY_NAME = /^[a-z][a-z0-9_]{0,49}(\.[a-z][a-z0-9_]{0,49})+$/;
+
+/** Formats whose readers apply flatten_rules; add a new format here only after wiring its reader. */
+const FLATTEN_SUPPORTED_FORMATS = ['csv', 'tsv', 'json', 'jsonl', 'xls', 'xlsx'];
 
 export function readLocalDataMapping(raw: string, options?: { sourceWildcard?: boolean }): LocalDataMapping {
   const trimmed = raw.trim();
@@ -35,8 +41,8 @@ export function readLocalDataMapping(raw: string, options?: { sourceWildcard?: b
 }
 
 export function validateMapping(value: unknown, options?: { sourceWildcard?: boolean }): asserts value is LocalDataMapping {
-  if (!isRecord(value) || value.version !== 'ae-local-data-mapping/v1') {
-    throw mappingError('Mapping version must be ae-local-data-mapping/v1.');
+  if (!isRecord(value) || value.version !== MAPPING_VERSION) {
+    throw mappingError(`Mapping version must be ${MAPPING_VERSION}.`);
   }
   const sha256Valid = typeof value.source?.sha256 === 'string'
     && (options?.sourceWildcard
@@ -82,12 +88,13 @@ export function validateMapping(value: unknown, options?: { sourceWildcard?: boo
   }
   if (!Array.isArray(value.properties)) throw mappingError('Mapping properties must be an array.');
   const targets = new Set<string>();
+  const propertyTypes = new Map<string, { type: string; source: string }>();
   for (const property of value.properties) {
     if (!isRecord(property)
       || typeof property.source !== 'string'
       || typeof property.target !== 'string'
-      || !VALID_PROPERTY_NAME.test(property.target)
-      || !['number', 'string', 'boolean', 'datetime', 'list', 'object'].includes(String(property.type))
+      || !(VALID_PROPERTY_NAME.test(property.target) || VALID_CHILD_PROPERTY_NAME.test(property.target))
+      || !['number', 'string', 'boolean', 'datetime', 'list', 'object', 'array_row'].includes(String(property.type))
       || (property.transform !== undefined
         && !['stringify', 'number', 'boolean', 'json'].includes(String(property.transform)))
       || (property.value_mapping !== undefined && !isStringMap(property.value_mapping))
@@ -99,6 +106,25 @@ export function validateMapping(value: unknown, options?: { sourceWildcard?: boo
     }
     if (targets.has(property.target)) throw mappingError('Property target names must be unique.');
     targets.add(property.target);
+    propertyTypes.set(property.target, { type: String(property.type), source: property.source });
+  }
+  // A dotted target is a plan-only sub-property declaration: the first segment must name an
+  // object/array_row property in the same pool, the child must be scalar or list (never a nested
+  // object/array), and the child reads from its parent's source column — the nested value lives
+  // inside the parent, so a child never reads a column of its own.
+  for (const property of value.properties) {
+    if (!property.target.includes('.')) continue;
+    const parentName = property.target.split('.')[0];
+    const parent = propertyTypes.get(parentName);
+    if (!parent || (parent.type !== 'object' && parent.type !== 'array_row')) {
+      throw mappingError(`The sub-property "${property.target}" references "${parentName}", which is not an object/array_row property in this mapping.`);
+    }
+    if (property.type === 'object' || property.type === 'array_row') {
+      throw mappingError(`The sub-property "${property.target}" must be scalar or list, not ${property.type}.`);
+    }
+    if (property.source !== parent.source) {
+      throw mappingError(`The sub-property "${property.target}" must read from the same source column as its parent "${parentName}".`);
+    }
   }
 
   if (value.time_format !== undefined
@@ -145,6 +171,9 @@ export function validateMapping(value: unknown, options?: { sourceWildcard?: boo
   }
   if (value.flatten_rules !== undefined) {
     if (!isRecord(value.flatten_rules)) throw mappingError('flatten_rules must be an object of { column: dot.path }.');
+    if (!FLATTEN_SUPPORTED_FORMATS.includes(String(value.source.format))) {
+      throw mappingError(`flatten_rules are not supported for ${String(value.source.format)} input.`);
+    }
     for (const [column, path] of Object.entries(value.flatten_rules)) {
       if (!VALID_PROPERTY_NAME.test(column) || typeof path !== 'string' || !path.trim()) {
         throw mappingError('flatten_rules keys must be legal AE property names and values must be non-empty dot paths.');
@@ -190,6 +219,39 @@ export function validateMapping(value: unknown, options?: { sourceWildcard?: boo
 
 export function isValidAeName(value: string): boolean {
   return VALID_PROPERTY_NAME.test(value);
+}
+
+/**
+ * Every raw source column a mapping reads, sorted by name: properties, system-field
+ * columns, and skipped columns. A flatten out-column is derived at transform time and
+ * never a raw source column, so it is skipped and the raw column each rule reads from
+ * (the first path segment) is added instead. This is the table-shape view that both the
+ * shape gate and the reuse fingerprint key on.
+ */
+export function sourceColumns(mapping: LocalDataMapping): string[] {
+  const columns = new Set<string>();
+  const flattenOut = new Set(Object.keys(mapping.flatten_rules ?? {}));
+  for (const property of mapping.properties) {
+    if (!flattenOut.has(property.source)) columns.add(property.source);
+  }
+  for (const path of Object.values(mapping.flatten_rules ?? {})) {
+    const root = path.split('.')[0];
+    if (root) columns.add(root);
+  }
+  const systemFields = [
+    mapping.account_id_field,
+    mapping.distinct_id_field,
+    mapping.record_type_field,
+    mapping.event_name_field,
+    mapping.time.field,
+    mapping.ip_field,
+    mapping.uuid_field,
+    mapping.zone_offset_field,
+  ];
+  for (const field of systemFields) if (field) columns.add(field);
+  for (const column of mapping.exclude_columns ?? []) columns.add(column);
+  for (const header of mapping.headers ?? []) columns.add(header);
+  return [...columns].sort();
 }
 
 function mappingError(message: string): CliValidationError {

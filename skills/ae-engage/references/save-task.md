@@ -426,6 +426,11 @@ When the guide points to event-based completion or experiment-driven main-goal r
 Read `fieldRules.blocks.controlConfig.completionIndicatorDef.filterPropertySelectTypes` and exclude
 every property type listed under `excluded` before constructing its `filters`.
 
+For a main goal (`completionIndicatorType=0`), always include `touch_cycle_num` and
+`touch_cycle_num_unit`. If the user does not request another completion window, use
+`touch_cycle_num=1` and `touch_cycle_num_unit="day"`. Static Capability validation may accept a
+main goal without these fields, but the Hermes save service rejects it.
+
 Important constraints that still apply:
 
 - `doNotDisturb.enableDoNotDisturb=true` requires `startTime` and `endTime` in `HH:mm`
@@ -444,6 +449,81 @@ compatibility field, and partial task updates preserve the existing server value
 client-side condition has no semantic field in the current contract, stop and report that it cannot
 be safely authored through this Capability.
 
+### 4.7 Verified A/B Task Template
+
+Use this shape as the starting point for a server-channel split experiment. Replace every
+placeholder with metadata discovered from the current project.
+
+```json
+{
+  "baseInfo": {
+    "taskName": "<taskName>",
+    "taskDesc": "<taskDescription>",
+    "tzOffset": "<projectTimezoneOrDefaultSentinel>"
+  },
+  "channelConfig": {
+    "channelType": 1,
+    "channelId": "<verifiedChannelId>",
+    "groupContentList": [
+      {
+        "expGroupName": "Control",
+        "expGroupType": 1,
+        "percentageInExperiment": 50,
+        "order": 0,
+        "contentList": [{ "pushLanguageCode": "default", "content": "<channelContentJsonString>" }]
+      },
+      {
+        "expGroupName": "Experiment A",
+        "expGroupType": 2,
+        "percentageInExperiment": 50,
+        "order": 1,
+        "contentList": [{ "pushLanguageCode": "default", "content": "<channelContentJsonString>" }]
+      }
+    ]
+  },
+  "targetConfig": {
+    "targetClusterType": 1,
+    "definitionRequest": "<semanticAudienceDefinition>"
+  },
+  "triggerConfig": { "triggerType": 2 },
+  "controlConfig": {
+    "completionIndicatorDef": {
+      "completionIndicators": [
+        {
+          "completionIndicatorType": 0,
+          "touch_cycle_num": 1,
+          "touch_cycle_num_unit": "day",
+          "eventDefinition": {
+            "type": "event",
+            "event": "<verifiedGoalEvent>",
+            "aggregation": "count",
+            "operator": "gte",
+            "value": 1
+          }
+        }
+      ]
+    },
+    "frequencyLimits": { "enableFrequencyLimits": false, "ruleList": [] }
+  },
+  "expConfig": {
+    "enableExp": true,
+    "expType": 1,
+    "percentageInLayer": 100,
+    "expIndicatorBizType": 1,
+    "controlGroupSkipPush": false,
+    "expGroupList": [
+      { "expGroupName": "Control", "expGroupType": 1, "percentageInExperiment": 50, "order": 0 },
+      { "expGroupName": "Experiment A", "expGroupType": 2, "percentageInExperiment": 50, "order": 1 }
+    ]
+  }
+}
+```
+
+The experiment group tuple (`expGroupName`, `expGroupType`, `percentageInExperiment`, `order`)
+must be identical between each `expConfig.expGroupList` entry and its corresponding
+`channelConfig.groupContentList` entry. Validate the final request, save it, then call `task get`
+and verify both persisted lists; a successful task ID alone is not sufficient verification.
+
 ---
 
 ## 5. Final Self-Check Before `engage-task task save`
@@ -461,6 +541,8 @@ Before submission, verify:
 9. No unsupported `triggerType=6` is used.
 10. Ordered steps contain `eventDefinition` and sequence metadata, not persisted aggregate fields.
 11. No placeholder IDs or fabricated resource names remain in the request.
+12. Every main goal includes `touch_cycle_num` and `touch_cycle_num_unit`.
+13. For experiments, `expGroupList` and `groupContentList` contain identical group tuples.
 
 ---
 

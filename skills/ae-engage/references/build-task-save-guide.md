@@ -229,6 +229,8 @@ When experiment mode is enabled (`context.enableExp=true` or draft `expConfig.en
 - capability `engage-task.task.build-save-guide` enriches `handoff.reqTemplate.channelConfig.groupContentList`
   so each entry carries `expGroupName`, `expGroupType`, `percentageInExperiment`, `order`, and `contentList`
 - do not drop those association fields when filling content; they must stay aligned with `expConfig.expGroupList`
+- copy the complete group tuple (`expGroupName`, `expGroupType`, `percentageInExperiment`, `order`)
+  into both lists; matching only by list position is not sufficient
 
 ### 4.8 `fieldRules`
 
@@ -300,6 +302,11 @@ Apply this rule only to
 `completionIndicatorDef.completionIndicators[].eventDefinition.filters`. Trigger-event filters have
 their own scenario rules and are not subject to this completion-filter restriction.
 
+For `completionIndicatorType=0`, also read and preserve `requiredMainGoalFields` and
+`touchCycleRule`. A valid main goal includes `touch_cycle_num` and `touch_cycle_num_unit`; use `1`
+and `day` when no custom completion window is requested. Do not rely on static `--validate` alone
+because the save service performs this additional business validation.
+
 ### 4.9 `handoff`
 
 This is the final section before `save_task`.
@@ -336,6 +343,8 @@ Recommended usage pattern:
    definition directly
 7. omit `clientConfig.clientQp`; partial updates preserve the server-authored value
 8. call `engage-task task save`
+9. after an experiment save succeeds, call `engage-task task get` and verify that both
+   `exp_config.exp_group_list` and `group_content_list` contain the expected group tuples
 
 ---
 

@@ -3,16 +3,16 @@ import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { CliValidationError } from '../src/core/errors.js';
-import { convertLocalDataMulti } from '../src/commands/data-integration/local-data/conversion.js';
+import { convertLocalDataMulti } from '../src/commands/data-integration/conversion.js';
 import {
   applyTypeResolutions,
   buildColumnUnion,
   buildPerFileMapping,
   detectColumnTypeConflicts,
   validateTypeResolutions,
-} from '../src/commands/data-integration/local-data/multi.js';
-import type { MultiFileProfile } from '../src/commands/data-integration/local-data/multi.js';
-import type { LocalDataMapping, LocalDataProfile } from '../src/commands/data-integration/local-data/types.js';
+} from '../src/commands/data-integration/multi.js';
+import type { MultiFileProfile } from '../src/commands/data-integration/multi.js';
+import type { LocalDataMapping, LocalDataProfile } from '../src/commands/data-integration/types.js';
 
 const root = mkdtempSync(join(tmpdir(), 'ae-local-data-conflicts-'));
 const now = new Date('2026-08-11T00:00:00Z');
@@ -43,7 +43,7 @@ function profile(amountType: LocalDataProfile['columns'][number]['inferred_type'
 }
 
 const baseMapping: LocalDataMapping = {
-  version: 'ae-local-data-mapping/v1',
+  version: 'ae-data-integration-mapping/v1',
   source: { sha256: '*', format: 'csv', data_set: '$' },
   mode: 'track',
   confidence: 'high',

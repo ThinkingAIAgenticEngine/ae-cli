@@ -250,7 +250,7 @@ export function catalogExportPostProcess(resourceType: string, arrayField: strin
   };
 }
 
-async function assertRegularFileOrMissing(filePath: string, allowReplace = true): Promise<void> {
+export async function assertRegularFileOrMissing(filePath: string, allowReplace = true): Promise<void> {
   try {
     const value = await lstat(filePath);
     if (!value.isFile()) {
@@ -266,7 +266,7 @@ async function assertRegularFileOrMissing(filePath: string, allowReplace = true)
   }
 }
 
-async function publishCatalogPair(
+export async function publishCatalogPair(
   dataPartPath: string,
   dataPath: string,
   metaPartPath: string,

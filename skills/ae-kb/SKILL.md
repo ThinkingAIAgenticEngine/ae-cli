@@ -97,7 +97,7 @@ ae-cli kb +url \
   --parse-instruction "Keep headings and code blocks"
 ```
 
-`--url` must be `http(s)`.
+`--url` must be `http(s)`. The server detects the platform from the URL automatically: URLs on a `*.feishu.cn` or `*.larksuite.com` subdomain are parsed with the Feishu pipeline (including sub-documents, using the server's own Feishu parsing instruction — `--parse-instruction` is ignored for them); all other URLs are fetched as regular web pages.
 
 ### Generate Schema and Compile
 

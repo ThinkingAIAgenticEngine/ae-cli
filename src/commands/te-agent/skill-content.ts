@@ -699,7 +699,8 @@ export const uploadSkill: Command = {
 export const rescanSkills: Command = {
   service: 'agent',
   command: '+rescan-skills',
-  description: 'Rescan Skill files and sync to database (root only)',
+  hidden: true,
+  description: 'Compatibility-only Skill inventory synchronization (system scope)',
   flags: [],
   risk: 'write',
   dryRun: () => ({

@@ -13,7 +13,7 @@ try {
 
   const wildcard = join(root, 'wildcard.json');
   writeFileSync(wildcard, JSON.stringify({
-    version: 'ae-local-data-mapping/v1',
+    version: 'ae-data-integration-mapping/v1',
     source: { sha256: '*', format: 'csv', data_set: '$' },
     mode: 'track',
     confidence: 'high',
@@ -25,7 +25,7 @@ try {
 
   const pinned = join(root, 'pinned.json');
   writeFileSync(pinned, JSON.stringify({
-    version: 'ae-local-data-mapping/v1',
+    version: 'ae-data-integration-mapping/v1',
     source: { sha256: 'a'.repeat(64), format: 'csv', data_set: '$' },
     mode: 'track',
     confidence: 'high',

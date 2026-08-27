@@ -2,6 +2,7 @@ import { readFileSync } from 'node:fs';
 import { safeJsonParse } from '../../core/json-utils.js';
 import {
   findGatewayDomain,
+  listRegisteredCapabilityDomains,
   resolveGatewayDomain,
 } from '../../core/capability-routing.js';
 
@@ -26,7 +27,13 @@ export function capabilityNamespace(capabilityId: string): string {
 
 export function resolveCapabilityGatewayDomain(capabilityId: string, domainOverride?: string): string {
   const cliDomain = domainOverride?.trim() || capabilityNamespace(capabilityId);
-  return resolveCapabilityListDomain(cliDomain);
+  if (!cliDomain) {
+    throw new CapabilityCommandValidationError(
+      'Cannot determine the capability domain.',
+      'Pass --domain <domain>.',
+    );
+  }
+  return resolveGatewayDomain(cliDomain, findGatewayDomain(cliDomain) ?? cliDomain);
 }
 
 export function resolveCapabilityListDomain(cliDomain: string): string {
@@ -36,7 +43,28 @@ export function resolveCapabilityListDomain(cliDomain: string): string {
       'Pass --domain <domain>.',
     );
   }
-  return resolveGatewayDomain(cliDomain, findGatewayDomain(cliDomain) ?? cliDomain);
+  const gatewayDomain = findGatewayDomain(cliDomain);
+  if (gatewayDomain === undefined) {
+    const registeredDomains = listRegisteredCapabilityDomains();
+    const registeredHint = registeredDomains.length > 0
+      ? `Registered domains: ${registeredDomains.join(', ')}.`
+      : 'No capability domains are registered in this ae-cli process.';
+    throw new CapabilityCommandValidationError(
+      `Capability domain '${cliDomain}' is not registered.`,
+      `${registeredHint} Do not guess domain names.`,
+      'CAPABILITY_DOMAIN_NOT_REGISTERED',
+    );
+  }
+  return resolveGatewayDomain(cliDomain, gatewayDomain);
+}
+
+export function emptyCapabilityCatalogWarning(capabilities: CapabilitySummary[]): string | undefined {
+  if (capabilities.length > 0) {
+    return undefined;
+  }
+  return 'No capabilities were returned. This does not prove that the project permission is missing. '
+    + 'Stop discovery instead of guessing other domains or retrying. If capabilities are expected, '
+    + 'verify the capability deployment, enabled features, and permissions.';
 }
 
 export function parseOptionalProjectId(raw?: string): number | undefined {

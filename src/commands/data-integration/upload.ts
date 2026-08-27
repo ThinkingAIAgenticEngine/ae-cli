@@ -1,8 +1,8 @@
 import { createReadStream, readFileSync, statSync } from 'node:fs';
 import { basename, dirname, resolve } from 'node:path';
 import { createInterface } from 'node:readline';
-import type { Command, RuntimeContext } from '../../../framework/types.js';
-import { CliValidationError, LocalDataUploadError } from '../../../core/errors.js';
+import type { Command, RuntimeContext } from '../../framework/types.js';
+import { CliValidationError, LocalDataUploadError } from '../../core/errors.js';
 import { sha256File } from './input.js';
 import type { LocalDataManifest } from './types.js';
 

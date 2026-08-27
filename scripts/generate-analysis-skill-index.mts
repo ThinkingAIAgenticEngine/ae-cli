@@ -2,6 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import type { Command, Flag } from '../src/framework/types.js';
 import { baseCommands as analysisCommands } from '../src/commands/te-analysis/index.js';
+import personalSemanticPreferenceCommands from '../src/commands/personal-semantic-preference/index.js';
 
 const root = process.cwd();
 const referencesDir = path.join(root, 'skills/ae-analysis/references');
@@ -26,7 +27,10 @@ const sharedReferences = new Set([
   'user_tag_models.md',
 ]);
 
-const commands = deduplicate(analysisCommands)
+const commands = deduplicate([
+  ...analysisCommands,
+  ...personalSemanticPreferenceCommands,
+])
   .sort((left, right) => commandPath(left).localeCompare(commandPath(right)));
 
 const expectedCommandReferences = new Set(commands.map(referenceName));
@@ -117,7 +121,7 @@ function referenceName(command: Command): string {
       : command.resource;
     return `${resource}_${command.command}`.replaceAll('-', '_').replaceAll(/\s+/g, '_') + '.md';
   }
-  return `${command.command.replace(/^\+/, '').replaceAll('-', '_')}.md`;
+  return `${command.service}_${command.command.replace(/^\+/, '')}`.replaceAll('-', '_') + '.md';
 }
 
 function commandContract(command: Command): string {

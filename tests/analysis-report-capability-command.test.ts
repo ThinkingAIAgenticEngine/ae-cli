@@ -91,7 +91,7 @@ function ctx(values: Record<string, unknown>): RuntimeContext {
 }
 
 async function dryBody(
-  command: { dryRun?: (ctx: RuntimeContext) => unknown },
+  command: { dryRun?: (ctx: RuntimeContext) => unknown; flags?: Array<{ name: string }> },
   input: Record<string, unknown>,
 ): Promise<{ url: string; body: any }> {
   clearCapabilityGatewayRoutesForTest();
@@ -108,6 +108,10 @@ async function dryBody(
   }) as typeof fetch;
   try {
     await command.dryRun!(ctx(input));
+    if (command.flags?.some((flag) => flag.name === 'request-id') && input['request-id'] === undefined) {
+      assert.match(body.input.request_id, /^cli_[0-9a-f]{32}$/);
+      delete body.input.request_id;
+    }
     return { url, body };
   } finally {
     globalThis.fetch = originalFetch;

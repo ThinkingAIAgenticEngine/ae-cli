@@ -1,5 +1,5 @@
 import ExcelJS from 'exceljs';
-import type { Draft, PropType, UpdateType, EventPlatform, Event } from '../plan/types.js';
+import type { Draft, PropType, UpdateType, EventPlatform, Event, Property } from '../plan/types.js';
 import { type Locale, sheetName, headerName, typeToDisplay } from '../i18n/xlsx.js';
 import { t } from '../i18n/translate.js';
 import { getTagPriority } from './tag-priority.js';
@@ -258,8 +258,36 @@ export function validateDraft(d: Draft): void {
     }
   }
 
+  // 规则 4: 对象/对象组必须至少有一个子属性
+  // 规则 5: 复合类型（对象/对象组）的子属性只能是标量或 array_string，不能是 object/array_row
+  validateCompositeRules(eventProps, 'Event property', errors);
+  validateCompositeRules(d.user_properties, 'User property', errors);
+
   if (errors.length > 0) {
     throw new Error(`Draft validation failed:\n${errors.map(e => '  - ' + e).join('\n')}`);
+  }
+}
+
+/**
+ * Composite-type (object/array_row) shape rules shared by the event and user property pools:
+ * a composite parent must have at least one `parent.child` child, and every child of a composite
+ * parent must be scalar or array_string — a nested object/object-array has to be flattened further.
+ */
+function validateCompositeRules(props: Property[], poolLabel: string, errors: string[]): void {
+  const composite = new Set<string>(
+    props.filter((prop) => prop.type === 'array_row' || prop.type === 'object').map((prop) => prop.name),
+  );
+  for (const parent of composite) {
+    if (!props.some((prop) => prop.name.startsWith(`${parent}.`))) {
+      errors.push(`${poolLabel} "${parent}" has no child properties (object/array_row require at least one child).`);
+    }
+  }
+  for (const prop of props) {
+    if (!prop.name.includes('.')) continue;
+    const parent = prop.name.split('.')[0];
+    if (composite.has(parent) && (prop.type === 'object' || prop.type === 'array_row')) {
+      errors.push(`${poolLabel} "${prop.name}" has type "${prop.type}"; composite children must be scalar or array_string (flatten nested objects/arrays further).`);
+    }
   }
 }
 
