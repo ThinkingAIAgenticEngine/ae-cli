@@ -1,4 +1,4 @@
-### 6.0.46
+### 6.1.18
 **Date:** 2026-08-27
 
 **Changes:**
@@ -20,6 +20,10 @@
 #### Agent & CLI
 * Harden Skill editing and version synchronization with actionable version-conflict recovery, customer-safe history-conflict errors, internal-only rescan guidance, and explicit public npm registry selection during version installation
 * Preserve Host configuration on `auth logout`, and stop capability discovery from guessing unregistered domains or retrying empty catalogs without deployment or permission evidence
+
+#### 6.1-only: Project Semantics & Atlas Experiment
+* Add the `project-semantic` domain and `ae-project-semantic` Skill for governed asset-package export, evidence-scoped recommendation generation, deterministic candidate validation and submission, candidate activation, semantic lifecycle management, and release publishing
+* Extend Atlas Experiment with Feature whitelist list/save/status/delete commands and full metric-binding replacement with guardrail roles; scope duplicate-ID validation to each whitelist bucket and hide the unsupported internal `observation` metric role
 
 ### 6.0.45
 **Date:** 2026-08-21
@@ -53,7 +57,7 @@
 #### DataOps
 * Stream SQL query download results directly to local files for safer handling of large result sets
 
-### 6.0.42
+### 6.1.14
 **Date:** 2026-08-13
 
 **Changes:**
@@ -67,7 +71,7 @@
 * Allow existing user tags and clusters to update their enabled auto-refresh Quartz cron without enabling auto refresh or triggering recomputation
 * Tighten favorite, metric creation, virtual-property SQL update, and dimension-table binding contracts; clarify metric display names in analysis model guidance
 
-### 6.0.41
+### 6.1.13
 **Date:** 2026-08-06
 
 **Changes:**
@@ -93,7 +97,11 @@
 * Remove preset MCP fallback from product Skills and add a release-gate check
 * Complete additional `ae-cli system` coverage for usage CSV stream export, sandbox-tool lifecycle, models, and member statistics that landed after 6.0.40
 
-### 6.0.40
+#### 6.1-only: Atlas Experiment
+* Clarify that adjacent `compound` groups with the same `relation` are flattened on Atlas experiment save/submit so generated cluster QP stays within backend layer limits; different relations are preserved
+* Remove preset MCP / te-mcp fallback wording from experiment design and insight Skills
+
+### 6.1.12
 **Date:** 2026-07-31
 
 **Changes:**
@@ -108,7 +116,11 @@
 * Clarify per-event and behavior-sequence `time_range` requirements and filter-property contracts, including technical-name or structured field references, `array_row` object-group filters, and rejection of unsupported or unknown fields
 * Add `engage-activity.activity-data.detail` guidance for delivery-trend queries, covering activity/topic/task selection, time grains, cancellation request IDs, and indicator semantics
 
-### 6.0.39
+#### 6.1-only: Atlas Experiment
+* Add curated `experiment report summary`, `experiment report sample-size`, and `experiment report metric-trend` commands, and enumerate the supported `capability search --domain` values
+* Harden experiment save and metric workflows with native camelCase DTO guidance, authoritative schema checks, verified metric IDs, `METRIC_NOT_FOUND` / `METRIC_IN_USE` handling, and clearer project-ID resolution
+
+### 6.1.11
 **Date:** 2026-07-30
 
 **Changes:**
@@ -131,7 +143,11 @@
 * Remove obsolete `engage-setting query cluster-qp-skill`; build semantic audience, trigger, and completion definitions from Analysis models for Hermes compilation, including `targetDefinitionRequest` compilation before legacy Flow validation
 * Clarify Webhook versus client channel parameters and document optional `relationProps` on task save
 
-### 6.0.38
+#### 6.1-only: Atlas Experiment
+* Add `ae-experiment-design` and `ae-experiment-insight` Skills for experiment planning, SDK/exposure readiness, result analysis, and diagnostic playbooks
+* Add experiment-save build-guide and validation commands, and tighten metric-property and integer allocation contracts, including a required allocation total of 100
+
+### 6.1.10
 **Date:** 2026-07-30
 
 **Changes:**
@@ -143,7 +159,7 @@
 #### CLI / Agent
 * Switch Skills release synchronization to the centralized system service, with updated packaging scripts and regression coverage
 
-### 6.0.37
+### 6.1.9
 **Date:** 2026-07-28
 
 **Changes:**
@@ -156,6 +172,10 @@
 #### Tracking & documentation
 * Fix tracking-code generation Wiki references to use `~/.ae-cli/wiki/raw` and `~/.ae-cli/wiki/synthesis`
 * Refresh bilingual internal/public README documentation and add a Chinese changelog
+
+#### 6.1-only: Atlas Experiment
+* Add the `experiment` capability domain for experiment lifecycle, reports, sample-size and metric trends, traffic-layer conflict checks, Features, metrics, buckets, operation logs, and batch deletion
+* Add the `ae-experiment` Skill and verification coverage, including readiness checks and high-risk write guidance
 
 ### 6.0.36
 **Date:** 2026-07-24
