@@ -122,7 +122,7 @@ const clusterDefinitionRequestFlag: Flag = {
 const optionalClusterDefinitionRequestFlag: Flag = {
   ...clusterDefinitionRequestFlag,
   required: false,
-  desc: 'Optional semantic snake_case cluster definition. Read user_cluster_models.md; raw filts, C-codes, ftv, columnName, and backend DTOs are rejected.',
+  desc: 'Optional semantic snake_case cluster definition. Its type must match the existing cluster type; update cannot change the analysis entity. Read user_cluster_models.md; raw filts, C-codes, ftv, columnName, and backend DTOs are rejected.',
 };
 
 const tagDefinitionRequestFlag: Flag = {
@@ -634,7 +634,7 @@ const commands: Command[] = [
     zoneOffsetFlag,
     entityIdFlag,
   ], 'write', (ctx) => clusterWriteInput(ctx, true)),
-  capability('user-cluster', 'update', 'analysis.user_cluster.update', 'Update a condition or SQL user cluster. Pass only fields that should change.', [
+  capability('user-cluster', 'update', 'analysis.user_cluster.update', 'Update a condition or SQL user cluster without changing its existing type or analysis entity. Pass only fields that should change.', [
     projectIdFlag,
     clusterNameFlag,
     optionalDisplayNameFlag,
@@ -643,7 +643,7 @@ const commands: Command[] = [
     remarkFlag,
     zoneOffsetFlag,
     autoRefreshCronFlag,
-  ], 'write', (ctx) => clusterWriteInput(ctx, false)),
+  ], 'high-risk-write', (ctx) => clusterWriteInput(ctx, false)),
   idImportCapability(capability('user-cluster', 'create-id', 'analysis.user_cluster.create_id', 'Create a cluster by mapping imported values to an analysis entity.', [
     projectIdFlag,
     { ...newClusterNameFlag, required: false, desc: 'Optional cluster_name; generated if omitted. When provided, it must satisfy the 1-80 character machine-name contract.' },

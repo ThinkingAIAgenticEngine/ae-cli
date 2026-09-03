@@ -7,6 +7,8 @@ Top-level variants:
 - condition: `{"type":"condition","conditions":{"relation":"and|or","items":[...]}}`
 - SQL: `{"type":"sql","sql":"...","params":[{"name":"partdate","type":"part_date","recent_day":"1-7"}]}`
 
+For `user-cluster update`, `type` must match the existing cluster type. The update command cannot change a cluster between condition and SQL, and it cannot change the cluster's analysis entity.
+
 For SQL clusters, quote Trino special identifiers with double quotes, for example `{"type":"sql","sql":"SELECT \"#user_id\" FROM v_user_1 WHERE vip_level >= 3"}`. This applies to identifiers containing `#`, `$`, `@`, spaces, or punctuation; single quotes are string literals.
 
 If a SQL cluster reads an event table, include a predicate on the quoted `"$part_date"` date-partition column; the backend rejects event-table SQL without it. This does not apply to the user-table example above.

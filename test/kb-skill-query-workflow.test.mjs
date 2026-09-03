@@ -5,6 +5,8 @@ import { fileURLToPath } from 'node:url';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const skill = readFileSync(path.join(ROOT, 'skills/ae-kb/SKILL.md'), 'utf8');
+const readme = readFileSync(path.join(ROOT, 'README.md'), 'utf8');
+const readmeZh = readFileSync(path.join(ROOT, 'README.zh.md'), 'utf8');
 const workflow = readFileSync(
   path.join(ROOT, 'skills/ae-kb/references/query-workflow.md'),
   'utf8',
@@ -83,6 +85,31 @@ test('workflow requires subquestion coverage before answering', () => {
   assert.match(assess, /every answered subquestion is supported by read sections/);
   assert.match(assess, /say which subquestion is\s+not covered/);
   assert.match(assess, /instead of filling it from memory/);
+});
+
+test('source deletion discovers an exact source ID first and keeps legacy compatibility explicit', () => {
+  const sourceFlow = sectionBetween(
+    skill,
+    '### List Sources',
+    '### Delete a Knowledge Base',
+  );
+  assert.match(sourceFlow, /ae-cli kb \+list-sources --name/);
+  assert.match(sourceFlow, /exact `id`/);
+  assert.match(sourceFlow, /ae-cli kb \+rm-source[\s\S]*--id/);
+  assert.match(sourceFlow, /legacy compatibility/i);
+  assert.match(sourceFlow, /do not guess (?:a )?source ID/i);
+  assert.match(sourceFlow, /high-risk-write/);
+  assert.match(sourceFlow, /Transition status: transitional/);
+});
+
+test('English and Chinese READMEs document ID-first source deletion and the legacy flag', () => {
+  for (const documentation of [readme, readmeZh]) {
+    assert.match(documentation, /ae-cli kb \+list-sources --name/);
+    assert.match(documentation, /ae-cli kb \+rm-source[^\n]*--id/);
+    assert.match(documentation, /--display-name/);
+  }
+  assert.match(readme, /legacy compatibility/i);
+  assert.match(readmeZh, /兼容旧命令/);
 });
 
 console.log('All kb skill query workflow tests passed.');

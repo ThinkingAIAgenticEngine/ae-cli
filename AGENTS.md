@@ -4,7 +4,7 @@
 
 ## 1. 项目简介 · 谁在用这个 CLI
 
-`@tant/ae-cli`（命令 `ae-cli`）是 ThinkingAI AE 平台的命令行工具，TypeScript / ESM，Node ≥ 18。
+`@tant/ae-cli`（命令 `ae-cli`）是 ThinkingAI AE 平台的命令行工具，TypeScript / ESM，Node ≥ 20。
 
 **主要使用者既是团队成员，也是 AI agent**（Claude Code、Codex、Cursor 等）。由此引出两条贯穿全文的约束：
 

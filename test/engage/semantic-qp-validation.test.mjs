@@ -6,6 +6,7 @@ const {
   validateSemanticEventDefinition,
   validateSemanticMetricDefinition,
   validateTaskTriggerPeriodDefinition,
+  validateTaskAudienceChannelCompatibility,
 } = await import('../../src/commands/te-engage/semantic-qp-validation.ts');
 
 const behaviorSequenceAudience = {
@@ -177,6 +178,37 @@ assert.throws(
     },
   }, '--req'),
   /periodTimeSymbol must be one of: TS01, TS02, TS03, TS04/,
+);
+
+assert.doesNotThrow(() => validateTaskAudienceChannelCompatibility({
+  channelConfig: { channelType: 2 },
+  targetConfig: { targetClusterType: 2, clusterKey: 'cluster_1' },
+}, '--req'));
+assert.throws(
+  () => validateTaskAudienceChannelCompatibility({
+    channelConfig: { channelType: 2 },
+    targetConfig: { targetClusterType: 3 },
+  }, '--req'),
+  /targetClusterType=3 .* is not supported for server-side delivery/,
+);
+assert.doesNotThrow(() => validateTaskAudienceChannelCompatibility({
+  channelConfig: { channelType: 3 },
+  targetConfig: { targetClusterType: 3 },
+}, '--req'));
+assert.throws(
+  () => validateTaskAudienceChannelCompatibility({
+    channelConfig: { channelType: 3 },
+    targetConfig: { targetClusterType: 2, clusterKey: 'cluster_1' },
+  }, '--req'),
+  /targetClusterType=2 .* is not supported for client-side delivery/,
+);
+assert.throws(
+  () => validateTaskAudienceChannelCompatibility({
+    channelConfig: { channelType: 2 },
+    clientConfig: { clientQp: { filts: [] } },
+    targetConfig: { targetClusterType: 3 },
+  }, '--req'),
+  /targetClusterType=3 .* is not supported for server-side delivery/,
 );
 
 console.log('Semantic QP validation tests passed.');

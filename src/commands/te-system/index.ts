@@ -16,6 +16,9 @@ import { modelCommands } from './models.js';
 import { usageCommands } from './usage.js';
 import { costControlCommands } from './cost-control.js';
 import { channelCommands } from './channels.js';
+import { channelRoutingCommands } from './channel-routing.js';
+import { channelWhatsAppCommands } from './channel-whatsapp.js';
+import { channelBindingCommands } from './channel-bindings.js';
 import { sandboxToolCommands } from './sandbox-tools.js';
 
 const commands: Command[] = [
@@ -25,6 +28,9 @@ const commands: Command[] = [
   ...usageCommands,
   ...costControlCommands,
   ...channelCommands,
+  ...channelRoutingCommands,
+  ...channelWhatsAppCommands,
+  ...channelBindingCommands,
   ...sandboxToolCommands,
 ];
 

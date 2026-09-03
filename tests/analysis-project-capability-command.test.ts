@@ -11,10 +11,12 @@ import {
   registerCapabilityGatewayRoute,
 } from '../src/core/capability-routing.ts';
 import { clearCliToken, setCliTokenManual } from '../src/core/cli-token.ts';
+import { CliValidationError } from '../src/core/errors.ts';
 import { projectPermissionBindingList } from '../src/commands/te-analysis/project/permission-binding/list.ts';
 import { projectRoleDelete } from '../src/commands/te-analysis/project/role/delete.ts';
 import { projectRoleGet } from '../src/commands/te-analysis/project/role/get.ts';
 import { projectRoleUserList } from '../src/commands/te-analysis/project/role-user/list.ts';
+import { projectTimezoneUpdate } from '../src/commands/te-analysis/project/timezone/update.ts';
 import projectCommands from '../src/commands/te-analysis/project/index.ts';
 
 let pass = 0;
@@ -136,6 +138,31 @@ await test('project permission-binding list forwards project_id', async () => {
     company_id: 1,
     project_ids: [1],
   });
+});
+
+await test('project timezone update forwards the item-specific toggle payload', async () => {
+  assert.deepEqual(await dryInput(projectTimezoneUpdate, {
+    'project-id': 606,
+    item: 'timezone_toggle',
+    payload: '{"toggle":true}',
+  }), {
+    project_id: 606,
+    item: 'timezone_toggle',
+    payload: { toggle: true },
+  });
+});
+
+await test('project timezone update rejects response-only toggle fields before dispatch', async () => {
+  await assert.rejects(
+    () => dryInput(projectTimezoneUpdate, {
+      'project-id': 606,
+      item: 'timezone_toggle',
+      payload: '{"time_zone_enabled":true}',
+    }),
+    (error: unknown) => error instanceof CliValidationError
+      && error.code === 'INVALID_TIMEZONE_PAYLOAD'
+      && /requires boolean field toggle/.test(error.message),
+  );
 });
 
 if (fail > 0) {

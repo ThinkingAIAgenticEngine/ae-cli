@@ -13,6 +13,8 @@ ae-cli analysis-meta property create --dry-run
 
 Capability id: `metadata.property.create`.
 
+Authorization requires the single project function permission `editSuperMeta` with the `metadata:write` scope. In the zh-CN permission UI, this permission is labeled `元数据管理 > 编辑`; the corresponding English label is `Metadata Management > Edit`. This is the same project permission used by `metadata.super_metadata.batch_create`. If either command returns `PROJECT_PERMISSION_DENIED`, do not retry with a different payload and do not describe the two capability IDs as two separate permissions. Ask a project administrator to grant this shared project permission to the current identity.
+
 Input sends `project_id`, `table_type`, `payload`.
 
 Output is a successful gateway envelope with no business data. Read back with `property get` using the same table type.

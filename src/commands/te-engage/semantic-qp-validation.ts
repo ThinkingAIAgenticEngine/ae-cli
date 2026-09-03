@@ -84,6 +84,22 @@ export function validateTaskTriggerPeriodDefinition(value: unknown, path: string
   enumValue(primaryRule.periodTimeSymbol, TASK_TRIGGER_PERIOD_SYMBOLS, symbolPath);
 }
 
+/** Validates task audience compatibility for server-side versus client-side delivery. */
+export function validateTaskAudienceChannelCompatibility(value: unknown, path: string): void {
+  const request = object(value, path);
+  if (!isObject(request.channelConfig) || !isObject(request.targetConfig)) return;
+  const channelType = request.channelConfig.channelType;
+  const targetClusterType = request.targetConfig.targetClusterType;
+  if (typeof channelType !== 'number' || typeof targetClusterType !== 'number') return;
+  const clientSide = channelType === 3;
+  if (clientSide && targetClusterType === 2) {
+    invalid(`${path}.targetConfig.targetClusterType=2 (existing cluster) is not supported for client-side delivery; use 1 or 3.`);
+  }
+  if (!clientSide && targetClusterType === 3) {
+    invalid(`${path}.targetConfig.targetClusterType=3 (all users) is not supported for server-side delivery; use 1 or 2.`);
+  }
+}
+
 /** Recursively validates semantic definitions embedded in native DTO fields. */
 function walk(value: unknown, path: string): void {
   if (Array.isArray(value)) {

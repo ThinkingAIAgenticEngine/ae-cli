@@ -12,6 +12,8 @@ ae-cli analysis-meta super-metadata batch-create --project-id <project_id> --eve
 
 Capability id: `metadata.super_metadata.batch_create`.
 
+Authorization requires the single project function permission `editSuperMeta` with the `metadata:write` scope. In the zh-CN permission UI, this permission is labeled `元数据管理 > 编辑`; the corresponding English label is `Metadata Management > Edit`. This is the same project permission used by `metadata.property.create`. If either command returns `PROJECT_PERMISSION_DENIED`, do not retry with a different payload and do not describe the two capability IDs as two separate permissions. Ask a project administrator to grant this shared project permission to the current identity.
+
 Input sends `project_id` plus any non-empty JSON arrays among `events`, `event_properties`, and `user_properties`. Use snake_case object fields exactly as documented by the common-service schema:
 
 - Event items: `event_name`, optional `event_desc`, optional `remark`, optional `super_event_prop_names`.

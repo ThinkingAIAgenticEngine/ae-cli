@@ -64,6 +64,18 @@ const runInspect = readFileSync(new URL('../skills/ae-analysis/references/run_in
 const artifactDownload = readFileSync(new URL('../skills/ae-analysis/references/artifact_download.md', import.meta.url), 'utf8');
 const assetUrl = readFileSync(new URL('../skills/ae-analysis/references/asset_url_get.md', import.meta.url), 'utf8');
 const aiModels = readFileSync(new URL('../skills/ae-analysis/references/ai_models.md', import.meta.url), 'utf8');
+const audienceModels = readFileSync(
+  new URL('../skills/ae-analysis/references/audience_models.md', import.meta.url),
+  'utf8',
+);
+const userTagModels = readFileSync(
+  new URL('../skills/ae-analysis/references/user_tag_models.md', import.meta.url),
+  'utf8',
+);
+const userTagCreate = readFileSync(
+  new URL('../skills/ae-analysis/references/user_tag_create.md', import.meta.url),
+  'utf8',
+);
 const metadataResolution = readFileSync(
   new URL('../skills/ae-analysis/metadata_resolution.md', import.meta.url),
   'utf8',
@@ -82,6 +94,18 @@ const personalSemanticAdd = readFileSync(
 );
 const personalSemanticGet = readFileSync(
   new URL('../skills/ae-analysis/references/personal_semantic_preference_get.md', import.meta.url),
+  'utf8',
+);
+const projectTimezoneUpdate = readFileSync(
+  new URL('../skills/ae-analysis/references/project_timezone_update.md', import.meta.url),
+  'utf8',
+);
+const superMetadataBatchCreate = readFileSync(
+  new URL('../skills/ae-analysis/references/super_metadata_batch_create.md', import.meta.url),
+  'utf8',
+);
+const propertyCreate = readFileSync(
+  new URL('../skills/ae-analysis/references/property_create.md', import.meta.url),
   'utf8',
 );
 const capabilitySkill = readFileSync(
@@ -263,10 +287,26 @@ assert.doesNotMatch(personalSemanticList, /data\.items\[\].*heat.*freshness/i);
 assert.match(personalSemanticAdd, /--resource-refs/);
 assert.match(personalSemanticAdd, /data\.preference/);
 assert.match(personalSemanticGet, /data\.preference/);
+assert.match(projectTimezoneUpdate, /timezone_toggle.*\{"toggle":true\}/s);
+assert.match(projectTimezoneUpdate, /`time_zone_enabled` response field is not accepted/);
+assert.match(superMetadataBatchCreate, /single project function permission `editSuperMeta`/);
+assert.match(superMetadataBatchCreate, /zh-CN permission UI.*`元数据管理 > 编辑`/);
+assert.match(superMetadataBatchCreate, /do not describe the two capability IDs as two separate permissions/i);
+assert.match(propertyCreate, /same project permission used by `metadata\.super_metadata\.batch_create`/);
 assert.match(assetUrl, /`raw_url` plus `markdown_link`/);
 assert.match(aiModels, /`tag_name` is the only tag-report name field/);
 assert.match(aiModels, /最近7天.*近7天.*"mode":"recent".*`recentDay=0-7`.*是/);
 assert.match(aiModels, /过去7天.*前7天.*"mode":"previous".*`recentDay=1-7`.*否/);
+assert.match(audienceModels, /Today.*"mode":"recent","unit":"day","value":1/);
+assert.match(audienceModels, /This month.*"mode":"recent","unit":"month","value":1/);
+assert.match(audienceModels, /fixed date through today.*"mode":"start_to_today","start_time":"2026-07-01"/i);
+assert.match(audienceModels, /fixed date through yesterday.*"mode":"start_to_yesterday","start_time":"2026-07-01"/i);
+assert.match(audienceModels, /Do not pass backend `recent_day` encodings inside `time_range`/);
+assert.doesNotMatch(audienceModels, /\b(?:M0|W0|Q0|Y0|StartToNow|StartToYesterday)\b/);
+assert.match(userTagModels, /first_last[\s\S]*"mode":"recent","unit":"month","value":1/);
+assert.match(userTagModels, /first_last[\s\S]*"mode":"start_to_today","start_time":"2026-07-01"/);
+assert.match(userTagCreate, /First\/last tag for this month/);
+assert.match(userTagCreate, /"mode":"recent","unit":"month","value":1/);
 assert.match(aiModels, /`second`: `1\.\.999`/);
 assert.match(aiModels, /`minute`: `1\.\.999`/);
 assert.match(aiModels, /`hour`: `1\.\.24`/);
@@ -330,6 +370,7 @@ for (const row of commandRows.filter(({ risk }) => risk !== 'high-risk-write')) 
 }
 
 for (const command of [
+  'ae-cli analysis user-cluster update',
   'ae-cli analysis user-cluster delete',
   'ae-cli analysis user-tag delete',
   'ae-cli analysis history-tag clear',

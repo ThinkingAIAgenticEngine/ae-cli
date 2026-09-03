@@ -1,7 +1,7 @@
 ---
 name: ae-kb
 version: 1.0.0
-description: "AE/TE knowledge base CLI manual for creating, querying, LLM-powered ask, listing accessible knowledge bases, deterministic index/grep/read retrieval, checking status, uploading, compiling, schema generation, URL sources, source deletion, and knowledge base deletion. Use when the user asks to manage TE/AE/ThinkingEngine knowledge bases, upload documents or URLs to a knowledge base, query knowledge, ask knowledge bases with an LLM, list accessible knowledge bases, inspect knowledge base indexes, search knowledge base pages, read a specific knowledge base page, check knowledge base status, generate schemas, compile knowledge, remove sources, or delete a knowledge base. To choose which knowledge base is worth searching, use the ae-kb-discovery skill first; this skill runs the retrieval once a target is chosen. Must use ae-cli kb commands and must not guess knowledge base names, scopes, page paths, source display names, JSON payload shapes, or URL formats."
+description: 'AE/TE knowledge base CLI manual for creating, importing read-only compiled snapshots, querying, LLM-powered ask, listing accessible knowledge bases and their sources, deterministic index/grep/read retrieval, checking status, uploading, compiling, schema generation, URL sources, source deletion, and knowledge base deletion. Use when the user asks to manage TE/AE/ThinkingEngine knowledge bases, import a compiled Markdown ZIP snapshot, upload documents or URLs to a knowledge base, query knowledge, ask knowledge bases with an LLM, list accessible knowledge bases or source metadata, inspect knowledge base indexes, search knowledge base pages, read a specific knowledge base page, check knowledge base status, generate schemas, compile knowledge, remove sources, or delete a knowledge base. To choose which knowledge base is worth searching, use the ae-kb-discovery skill first; this skill runs the retrieval once a target is chosen. Must use ae-cli kb commands and must not guess knowledge base names, scopes, page paths, source IDs, source display names, JSON payload shapes, or URL formats.'
 ---
 
 # ae-kb
@@ -14,11 +14,11 @@ ae-cli kb +<command> [options]
 
 ## Global Rules
 
-- Use this skill for TE/AE knowledge base tasks: create, query, ask with LLM, list accessible knowledge bases, inspect indexes, grep pages, read pages, check status, upload sources, add URL sources, generate schema, compile, remove source files, and delete knowledge bases.
+- Use this skill for TE/AE knowledge base tasks: create, import a compiled snapshot, query, ask with LLM, list accessible knowledge bases and their sources, inspect indexes, grep pages, read pages, check status, upload sources, add URL sources, generate schema, compile, remove source files, and delete knowledge bases.
 - **Searching a knowledge base for an answer is the most common task. If that is what you are doing, go straight to [Explore Knowledge Base Pages](#explore-knowledge-base-pages) and read [`references/query-workflow.md`](references/query-workflow.md) first — it is the retrieval procedure. The other commands below are for managing knowledge bases, not answering from them.**
 - Read operations can run directly after required inputs are known. Write operations require explicit user intent and normally keep the confirmation prompt unless the user asks to bypass it.
 - Prefer `--dry-run` before destructive or broad writes when the user has not already validated the target.
-- Do not invent knowledge base names, scopes, source display names, or JSON payloads. Ask the user or query known context when values are missing.
+- Do not invent knowledge base names, scopes, source IDs, source display names, or JSON payloads. Ask the user or query known context when values are missing.
 - When building a `--sources` ref (or `+read --source`), copy the exact `scope` and `name` from `+list` output — run `ae-cli kb +list` first when the scope of a named knowledge base is unknown.
 - JSON flags must be valid JSON strings, usually wrapped in single quotes in shell commands.
 - Successful commands return JSON by default. Use `--format table` only when a table is easier for a human to scan. Envelope may include optional `_notice.host_compat`.
@@ -33,16 +33,19 @@ ae-cli kb +<command> [options]
 | `+ask` | read | LLM-powered Q&A over knowledge bases; for multi-page synthesis or multi-hop questions. |
 | `+ask-status` | read | Query the current status of an ask execution by `--execution-id` without polling. |
 | `+list` | read | List accessible knowledge bases filtered by buildStatus (default: compiled). |
+| `+list-sources` | read | List source metadata for one knowledge base so exact source identifiers can be discovered safely. |
 | `+index` | read | List accessible knowledge bases and their `index.md` navigation maps. |
 | `+grep` | read | Keyword-search knowledge base pages and return matched lines with context. |
 | `+read` | read | Read a full knowledge base page, a line window, or (with `--outline`) only the page heading tree. |
 | `+new` | write | Create a new personal or company knowledge base. |
+| `+import` | write | Import a compiled Markdown ZIP as a personal read-only snapshot. |
+| `+import-status` | read | Query one snapshot import task by `--request-id` without polling. |
 | `+add` | write | Upload local files, a non-recursive directory, or HTTP(S) pages converted to markdown. |
 | `+url` | write | Upload a URL source directly with optional display name and parsing instruction. |
 | `+schema` | write | Generate the compile schema for a knowledge base. |
 | `+compile` | write | Compile a knowledge base in incremental or full mode. |
 | `+status` | read | Query the current status of a knowledge base. |
-| `+rm-source` | write | Delete one source file from a knowledge base by display name. |
+| `+rm-source` | high-risk-write | Delete one source from a knowledge base by stable ID; exact display name is legacy compatibility only. |
 | `+remove` | write | Delete an entire knowledge base. |
 
 ## Common Workflows
@@ -66,6 +69,36 @@ Optional fields:
 - `--tags`: JSON array, max 2 tags, each up to 15 characters.
 - `--project-id`: optional project ID to bind.
 - `--project-name`: optional project display name.
+
+### Import a Compiled Snapshot
+
+Use `+import` only for a ZIP whose root contains `index.md` and at least one
+`wiki/**/*.md` page. The server validates all archive paths, limits, UTF-8 text, and Wiki links.
+
+```bash
+ae-cli kb +import \
+  --file ./knowledge-base.zip \
+  --name "Imported handbook" \
+  --description "Compiled documentation snapshot" \
+  --tags '["docs","handbook"]'
+
+# The submission returns requestId + queued. Query one snapshot later:
+ae-cli kb +import-status --request-id <requestId>
+```
+
+- The result is always a `personal` read-only snapshot; there is no `--scope`, `--force`, or replace option.
+- Imported snapshots support list, Index/Wiki reading, grep/read, Ask, and deletion. They do not expose source, Schema, usage, compile, member, settings, ownership-transfer, or company-publish operations.
+- The ZIP is limited to 50 MB and supports Markdown text only. Local images, attachments, other binaries, broken Wiki links, and ambiguous Wiki links are rejected by the server.
+- Submission returns `{requestId, status: "queued"}` immediately. It does not wait for ZIP validation or publication.
+- `+import-status` returns one of `queued`, `running`, `succeeded`, or `failed`; success includes `knowledgeBaseId`, and failure includes a stable error code/message.
+- If a `requestId` was returned, query it before retrying. If no request ID was received, run `ae-cli kb +list` before retrying the same name. A repeated same-name import is rejected.
+
+- Transition status: transitional
+- Owning module: te-claude External Knowledge Base Import API
+- Current transport: authenticated KB external REST through `kbUpload` for submission and `kbApi` for status lookup.
+- Gateway target: TBD (`kb.snapshot.import` proposed)
+- Review after: 2026-12-01
+- Exit condition: migrate to a typed Gateway capability when the equivalent multipart import capability is available, or remove this command if dynamic Gateway execution provides the same file-handling and output contract.
 
 ### Upload Files or Directories
 
@@ -107,7 +140,17 @@ Generate the schema first when the knowledge base needs a compile schema.
 ae-cli kb +schema --name engineering-handbook
 ```
 
-Use `--force` only to recover a stuck `generating` status. Use `--model` only when the user provides the model display name.
+Use `--force` only when `+status` reports `schema_generating` and the user explicitly wants to replace the current generation attempt. The replacement may consume additional tokens. Use `--model` only when the user provides the model display name.
+
+To add one-time guidance for this generation without changing stored knowledge base metadata, pass `--custom-instructions`. The server trims the value, treats whitespace-only input as absent, and accepts up to 10,000 Unicode characters. Do not include secrets or credentials.
+
+```bash
+ae-cli kb +schema \
+  --name engineering-handbook \
+  --custom-instructions "Prioritize troubleshooting workflows and preserve command examples"
+```
+
+Use `--dry-run` to inspect the request body before sending it. While generation is running, a request without `--force` is idempotent only when it supplies no new model or effective custom instructions; otherwise it fails with `KB_SCHEMA_GENERATION_IN_PROGRESS`. With `--force`, the selected model and custom instructions apply to the replacement attempt. Invalid text fails with `KB_SCHEMA_CUSTOM_INSTRUCTIONS_INVALID`.
 
 Compile after sources and schema are ready:
 
@@ -213,9 +256,34 @@ ae-cli kb +read \
   --limit 60
 ```
 
+### List Sources
+
+List sources first to discover the stable identifier for the intended source:
+
+```bash
+ae-cli kb +list-sources --name engineering-handbook
+```
+
+Copy the exact `id` from the response into `+rm-source`. Do not guess a source ID from a local filename, URL, display name, or an older upload response.
+
+- Transition status: transitional
+- Owning module: te-claude External Knowledge Base Sources API
+- Current transport: authenticated KB external REST through `kbApi`.
+- Gateway target: TBD (`kb.source.list` proposed)
+- Review after: 2026-12-03
+- Exit condition: migrate to a typed Gateway capability when an equivalent source-list capability is available, or remove this command if dynamic Gateway execution provides the same discoverability and safe output contract.
+
 ### Remove One Source
 
-Use `+rm-source` only when the source display name is known exactly.
+Use `+rm-source --id` with the exact ID returned by the current `+list-sources` response. This is a `high-risk-write`; keep the interactive confirmation unless the user has explicitly authorized `--yes`.
+
+```bash
+ae-cli kb +rm-source \
+  --name engineering-handbook \
+  --id cm-source-id
+```
+
+`--display-name` is retained for legacy compatibility only when a stable source ID is unavailable:
 
 ```bash
 ae-cli kb +rm-source \
@@ -223,7 +291,7 @@ ae-cli kb +rm-source \
   --display-name kb-1780046712-guide.md
 ```
 
-If the user only gives a loose source name, do not guess. Ask for the exact uploaded display name.
+If the user only gives a loose source name, do not guess a source ID. Run `+list-sources`, identify the intended row from returned metadata, and ask only when multiple rows remain ambiguous.
 
 ### Delete a Knowledge Base
 
@@ -316,6 +384,30 @@ ae-cli kb +new --name "<name>" [--scope personal|company] [--description "..."] 
 ae-cli kb +add --name "<name>" --files '["./a.md","./docs","https://example.com/page"]'
 ```
 
+### `+import`
+
+```bash
+ae-cli kb +import --file "./knowledge-base.zip" --name "<name>" [--description "..."] [--tags '["t1","t2"]'] [--project-id "..."]
+```
+
+- `--file`: required local `.zip` file.
+- `--name`: required personal knowledge-base name, up to 30 characters.
+- `--description`: optional, up to 200 characters.
+- `--tags`: optional JSON array, max 2 unique tags, each up to 15 characters.
+- `--project-id`: optional project binding.
+- Scope and terminal build state are generated by the server and cannot be supplied by the client.
+- Output: `{requestId, status: "queued"}`. Use `+import-status`; the command does not poll.
+
+### `+import-status`
+
+```bash
+ae-cli kb +import-status --request-id <requestId>
+```
+
+- `--request-id`: required ID returned by `+import`.
+- Output: `{requestId, status, knowledgeBaseId?, errorCode?, errorMessage?}`.
+- Returns a single snapshot and does not poll. A failed import is returned as `status: "failed"` with its stable error code/message; an unknown or inaccessible request exits non-zero.
+
 ### `+url`
 
 ```bash
@@ -325,8 +417,13 @@ ae-cli kb +url --name "<name>" --url "https://example.com/page" [--display-name 
 ### `+schema`
 
 ```bash
-ae-cli kb +schema --name "<name>" [--force] [--model "<model displayName>"]
+ae-cli kb +schema --name "<name>" [--force] [--model "<model displayName>"] [--custom-instructions "<one-time guidance>"]
 ```
+
+- `--custom-instructions`: Optional per-run schema-generation guidance. It is not persisted; whitespace-only input is omitted. The server allows at most 10,000 Unicode characters and rejects disallowed control characters. Do not include secrets or credentials.
+- `--force`: Replace the current attempt only when schema generation is already running and the user explicitly requests the replacement. The selected model and custom instructions apply to the new attempt, which may consume additional tokens.
+- `--dry-run`: Shows the same `customInstructions` request field that execution will send.
+- Errors: `KB_SCHEMA_CUSTOM_INSTRUCTIONS_INVALID` means the field failed validation. `KB_SCHEMA_GENERATION_IN_PROGRESS` means generation is active and a request without `--force` supplied a new model or effective custom instructions.
 
 ### `+compile`
 
@@ -340,11 +437,25 @@ ae-cli kb +compile --name "<name>" [--mode incremental|full]
 ae-cli kb +status --name "<name>"
 ```
 
+### `+list-sources`
+
+```bash
+ae-cli kb +list-sources --name "<name>"
+```
+
+- `--name`: required knowledge base name.
+- Output: Safe source metadata including the stable `id` needed by `+rm-source`; raw paths, hashes, credentials, and source content are not returned.
+- Copy the exact `id` from the current response before deleting a source; never guess it.
+
 ### `+rm-source`
 
 ```bash
-ae-cli kb +rm-source --name "<name>" --display-name "<uploaded source display name>"
+ae-cli kb +rm-source --name "<name>" --id "<source-id>"
 ```
+
+- `--id`: preferred stable source identifier copied from `+list-sources`.
+- `--display-name`: legacy compatibility selector used only when an ID is unavailable.
+- If both are supplied, `--id` wins. The command removes one source only.
 
 ### `+remove`
 

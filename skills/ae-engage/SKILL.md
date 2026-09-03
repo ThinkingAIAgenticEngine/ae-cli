@@ -585,6 +585,9 @@ For task draft creation or update, use this workflow:
    and every-completion events use count/eq/1. Completion target and experiment main-goal event
    filters must not use properties whose metadata `select_type` is `datetime`. Never construct
    persisted QP fields.
+   Select the audience by delivery side: server-side channels allow custom (`1`) or existing (`2`)
+   and reject all users (`3`); `client_push` (`channelType=3`) allows custom (`1`) or all users (`3`)
+   and rejects existing (`2`). Do not infer audience support from `triggerType` alone.
 4. `ae-cli engage-task task save --project-id <projectId> --req '{...}'`
 5. `ae-cli engage-task task submit-approval --project-id <projectId> --task-id <taskId>`
 

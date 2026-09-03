@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 
 const {
+  CliTokenValidationUnavailableError,
   validateCliTokenOnServer,
 } = await import('../src/core/cli-token.ts');
 const { SecureStoreAuthError } = await import('../src/core/secure-store.ts');
@@ -64,6 +65,67 @@ await test('rejects an invalid or expired CLI token', async () => {
         && error.message.includes('auth login'),
     );
     assert.equal(calls, 1, 'validation failure must not trigger an automatic mint');
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+await test('reports an unavailable validation endpoint separately from an invalid token', async () => {
+  const host = 'https://test-cli-validation-unsupported.internal';
+
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = (async () => new Response('Not Found', {
+    status: 404,
+    statusText: 'Not Found',
+  })) as typeof fetch;
+
+  try {
+    await assert.rejects(
+      () => validateCliTokenOnServer(host, 'cli_token_for_older_server'),
+      (error: unknown) => error instanceof CliTokenValidationUnavailableError
+        && error.message.includes('validation is unavailable')
+        && error.message.includes('HTTP 404'),
+    );
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+await test('treats an older server access-token error as unsupported validation', async () => {
+  const host = 'https://test-cli-validation-old-server.internal';
+
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = (async () => new Response(JSON.stringify({
+    return_code: -1001,
+    return_message: 'Invalid access token',
+  }), { status: 200 })) as typeof fetch;
+
+  try {
+    await assert.rejects(
+      () => validateCliTokenOnServer(host, 'cli_token_for_older_server'),
+      (error: unknown) => error instanceof CliTokenValidationUnavailableError
+        && error.message.includes('unsupported response'),
+    );
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+await test('reports network validation failures as unavailable', async () => {
+  const host = 'https://test-cli-validation-offline.internal';
+
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = (async () => {
+    throw new Error('connection refused');
+  }) as typeof fetch;
+
+  try {
+    await assert.rejects(
+      () => validateCliTokenOnServer(host, 'cli_token_for_unreachable_server'),
+      (error: unknown) => error instanceof CliTokenValidationUnavailableError
+        && error.message.includes('Unable to validate CLI token')
+        && error.message.includes('connection refused'),
+    );
   } finally {
     globalThis.fetch = originalFetch;
   }

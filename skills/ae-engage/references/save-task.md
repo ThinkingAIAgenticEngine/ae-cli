@@ -245,6 +245,12 @@ Use the guide to decide which audience shape applies:
 - `targetClusterType=2`: existing cluster, requires `clusterKey`
 - `targetClusterType=3`: all users, forbids `definitionRequest` and `clusterKey`
 
+Audience availability depends on delivery side:
+
+- Server-side channels support `targetClusterType=1` (custom) and `2` (existing), but not `3` (all users).
+- `client_push` (`channelType=3`) supports `targetClusterType=1` (custom) and `3` (all users), but not `2` (existing).
+- Determine the delivery side from the selected real channel; do not infer audience support from `triggerType` alone.
+
 For a custom audience, pass the semantic definition directly. Do not create an intermediate
 cluster or copy persisted QP.
 

@@ -2,6 +2,7 @@ import { createEngageTaskCapabilityCommand } from '../../shared.js';
 import { readRequiredJsonObject } from '../../utils.js';
 import {
   validateEmbeddedSemanticDefinitions,
+  validateTaskAudienceChannelCompatibility,
   validateTaskTriggerPeriodDefinition,
 } from '../../semantic-qp-validation.js';
 
@@ -15,6 +16,7 @@ export const taskSave = createEngageTaskCapabilityCommand({
   risk: 'write', validate: (ctx) => {
     const req = readRequiredJsonObject(ctx, 'req');
     validateEmbeddedSemanticDefinitions(req, '--req');
+    validateTaskAudienceChannelCompatibility(req, '--req');
     validateTaskTriggerPeriodDefinition(req, '--req');
   },
   buildInput: (ctx) => ({ project_id: ctx.num('project-id'), req: readRequiredJsonObject(ctx, 'req') }),

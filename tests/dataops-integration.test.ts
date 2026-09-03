@@ -65,6 +65,17 @@ function ctx(
   };
 }
 
+type FetchHandler = (url: string | URL | Request, init?: RequestInit) => Promise<Response>;
+
+function withSuccessfulCliTokenRenew(handler: FetchHandler): typeof fetch {
+  return (async (url, init) => {
+    if (String(url).includes('/v1/ta/cli/token/renew')) {
+      return new Response(JSON.stringify({ return_code: 0 }), { status: 200 });
+    }
+    return handler(url, init);
+  }) as typeof fetch;
+}
+
 console.log('dataops integration');
 
 await test('get_table_structure exposes catalog flag', () => {
@@ -248,10 +259,10 @@ await test('callDataopsApi sends cli-token header without Authorization', async 
 
   let capturedHeaders: Record<string, string> = {};
   const prevFetch = globalThis.fetch;
-  globalThis.fetch = (async (_url, init) => {
+  globalThis.fetch = withSuccessfulCliTokenRenew(async (_url, init) => {
     capturedHeaders = init?.headers as Record<string, string>;
     return new Response(JSON.stringify({ returnCode: 0, data: [{ spaceCode: 'demo' }] }), { status: 200 });
-  }) as typeof fetch;
+  });
 
   try {
     await callDataopsApi(ctx({}, host), 'repo_list_spaces');
@@ -270,10 +281,10 @@ await test('callDataopsApi treats 403 as PermissionError without retry', async (
 
   let callCount = 0;
   const prevFetch = globalThis.fetch;
-  globalThis.fetch = (async () => {
+  globalThis.fetch = withSuccessfulCliTokenRenew(async () => {
     callCount++;
     return new Response(JSON.stringify({ message: 'no permission for this space' }), { status: 403 });
-  }) as typeof fetch;
+  });
 
   try {
     await assert.rejects(
@@ -301,7 +312,7 @@ await test('callDataopsApi refreshes cli-token once on 401', async () => {
   let apiCallCount = 0;
   const seenTokens: string[] = [];
   const prevFetch = globalThis.fetch;
-  globalThis.fetch = (async (url, init) => {
+  globalThis.fetch = withSuccessfulCliTokenRenew(async (url, init) => {
     const urlStr = String(url);
     if (urlStr.includes('/v1/ta/cli/token/generate')) {
       return new Response(JSON.stringify({ return_code: 0, data: { userSecret: 'fresh-dataops-token' } }), { status: 200 });
@@ -312,7 +323,7 @@ await test('callDataopsApi refreshes cli-token once on 401', async () => {
       return new Response(JSON.stringify({ message: 'Unauthorized' }), { status: 401 });
     }
     return new Response(JSON.stringify({ returnCode: 0, data: { ok: true } }), { status: 200 });
-  }) as typeof fetch;
+  });
 
   try {
     const result = await callDataopsApi(ctx({}, host), 'repo_list_spaces');
@@ -345,7 +356,7 @@ await test('get_sql_query_status streams the download with cli-token', async () 
   const requestUrls: string[] = [];
   const requestHeaders: Record<string, string>[] = [];
   const previousFetch = globalThis.fetch;
-  globalThis.fetch = (async (url, init) => {
+  globalThis.fetch = withSuccessfulCliTokenRenew(async (url, init) => {
     requestUrls.push(String(url));
     requestHeaders.push((init?.headers as Record<string, string>) ?? {});
     if (String(url).includes('/sql-query-status')) {
@@ -370,7 +381,7 @@ await test('get_sql_query_status streams the download with cli-token', async () 
       },
     });
     return response;
-  }) as typeof fetch;
+  });
 
   try {
     execution = getSqlQueryStatus.execute(ctx({
@@ -431,7 +442,7 @@ await test('get_sql_query_status keeps the existing target when the stream fails
   setCliTokenManual('cli-download-token', host);
 
   const previousFetch = globalThis.fetch;
-  globalThis.fetch = (async (url) => {
+  globalThis.fetch = withSuccessfulCliTokenRenew(async (url) => {
     if (String(url).includes('/sql-query-status')) {
       return new Response(JSON.stringify({
         returnCode: 0,
@@ -447,7 +458,7 @@ await test('get_sql_query_status keeps the existing target when the stream fails
         controller.error(new Error('download stream failed'));
       },
     }), { status: 200 });
-  }) as typeof fetch;
+  });
 
   try {
     await assert.rejects(
@@ -477,7 +488,7 @@ await test('get_sql_query_status keeps the existing target when the response has
   setCliTokenManual('cli-download-token', host);
 
   const previousFetch = globalThis.fetch;
-  globalThis.fetch = (async (url) => {
+  globalThis.fetch = withSuccessfulCliTokenRenew(async (url) => {
     if (String(url).includes('/sql-query-status')) {
       return new Response(JSON.stringify({
         returnCode: 0,
@@ -488,7 +499,7 @@ await test('get_sql_query_status keeps the existing target when the response has
       }), { status: 200 });
     }
     return new Response(null, { status: 200 });
-  }) as typeof fetch;
+  });
 
   try {
     await assert.rejects(
@@ -524,7 +535,7 @@ await test('downloadDataopsApi refreshes cli-token once on 401', async () => {
   let downloadCalls = 0;
   const seenTokens: string[] = [];
   const previousFetch = globalThis.fetch;
-  globalThis.fetch = (async (url, init) => {
+  globalThis.fetch = withSuccessfulCliTokenRenew(async (url, init) => {
     if (String(url).includes('/v1/ta/cli/token/generate')) {
       return new Response(JSON.stringify({ return_code: 0, data: { userSecret: 'fresh-download-token' } }), { status: 200 });
     }
@@ -532,7 +543,7 @@ await test('downloadDataopsApi refreshes cli-token once on 401', async () => {
     seenTokens.push(((init?.headers as Record<string, string>) ?? {})['cli-token'] ?? '');
     if (downloadCalls === 1) return new Response('Unauthorized', { status: 401 });
     return new Response('zip-result', { status: 200 });
-  }) as typeof fetch;
+  });
 
   try {
     const localFile = await downloadDataopsApi(ctx({}, host), '/download', {}, targetFile);
@@ -559,10 +570,10 @@ await test('downloadDataopsApi treats 403 as PermissionError without replacing t
 
   let callCount = 0;
   const previousFetch = globalThis.fetch;
-  globalThis.fetch = (async () => {
+  globalThis.fetch = withSuccessfulCliTokenRenew(async () => {
     callCount++;
     return new Response(JSON.stringify({ message: 'no permission for this download' }), { status: 403 });
-  }) as typeof fetch;
+  });
 
   try {
     await assert.rejects(
@@ -589,10 +600,10 @@ await test('downloadDataopsApi preserves the HTTP error and existing target on 5
   setCliTokenManual('failed-download-token', host);
 
   const previousFetch = globalThis.fetch;
-  globalThis.fetch = (async () => new Response(
+  globalThis.fetch = withSuccessfulCliTokenRenew(async () => new Response(
     JSON.stringify({ message: 'download failed' }),
     { status: 500, statusText: 'Internal Server Error' },
-  )) as typeof fetch;
+  ));
 
   try {
     await assert.rejects(
@@ -618,7 +629,7 @@ await test('downloadDataopsApi removes the partial file when publishing the targ
   setCliTokenManual('publish-failure-token', host);
 
   const previousFetch = globalThis.fetch;
-  globalThis.fetch = (async () => new Response('zip-result', { status: 200 })) as typeof fetch;
+  globalThis.fetch = withSuccessfulCliTokenRenew(async () => new Response('zip-result', { status: 200 }));
 
   try {
     await assert.rejects(

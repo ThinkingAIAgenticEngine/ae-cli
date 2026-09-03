@@ -311,7 +311,7 @@ export function capabilityGatewayHint(err: CapabilityGatewayError): string | und
   }
   if (err.httpStatus === 404 && !err.code) {
     const base =
-      'The current host returned 404 for this capability route. Do not keep retrying the same command; verify the backend route/capability deployment. If --host points directly to a local Common service instead of the deployed gateway, scope AE_CLI_CAPABILITY_GATEWAY_DOMAIN= to this command so it uses /api/cli/v1.';
+      'The current host returned 404 for this capability route. Do not keep retrying the same command; verify the backend route/capability deployment.';
     return compatExtra ? `${base}\n${compatExtra}` : base;
   }
   return undefined;

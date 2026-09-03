@@ -2,11 +2,14 @@ import assert from 'node:assert/strict';
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import {
   HANDOFF_INDEX_VERSION,
   structureFingerprint,
 } from '../src/commands/data-integration/handoff.js';
 import type { HandoffIndexEntry } from '../src/commands/data-integration/handoff.js';
+import { inspectLocalDataInput, selectDataSet } from '../src/commands/data-integration/input.js';
+import { profileLocalData } from '../src/commands/data-integration/profile.js';
 import { detectReuse } from '../src/commands/data-integration/reuse.js';
 import {
   findReuseRoot,
@@ -14,6 +17,8 @@ import {
   upwardHandoffDirs,
 } from '../src/commands/data-integration/handoff-root.js';
 import type { LocalDataMapping } from '../src/commands/data-integration/types.js';
+
+const fixture = (name: string): string => fileURLToPath(new URL(`fixtures/local-data/${name}`, import.meta.url));
 
 const baseMapping: LocalDataMapping = {
   version: 'ae-data-integration-mapping/v1',
@@ -164,6 +169,23 @@ const entryFor = (fingerprint: string, overrides: Partial<HandoffIndexEntry> = {
   } finally {
     rmSync(dir, { recursive: true, force: true });
   }
+}
+
+// A real same-shape pair: 25_reuse_same_shape.csv carries the same columns and format as
+// 01_normal_ecommerce.csv with different rows, so a handoff package built from 01 must match it by
+// structure fingerprint. The candidate above fakes this in memory; the fixture proves it end to end
+// through inspect + profile, which is the reuse path a same-shape delivery package depends on.
+{
+  const firstInput = await inspectLocalDataInput(fixture('01_normal_ecommerce.csv'));
+  const sameShapeInput = await inspectLocalDataInput(fixture('25_reuse_same_shape.csv'));
+  const first = await profileLocalData(firstInput, selectDataSet(firstInput), 'Asia/Shanghai');
+  const sameShape = await profileLocalData(sameShapeInput, selectDataSet(sameShapeInput), 'Asia/Shanghai');
+  assert.notEqual(sameShapeInput.sha256, firstInput.sha256, 'same shape, different rows');
+  assert.equal(
+    structureFingerprint(sameShape.recommended_mapping),
+    structureFingerprint(first.recommended_mapping),
+    "same columns and format produce the same structure fingerprint, so 01's handoff matches 25",
+  );
 }
 
 process.stdout.write('local data reuse tests: passed\n');

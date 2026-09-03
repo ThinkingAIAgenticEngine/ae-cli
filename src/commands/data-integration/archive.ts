@@ -1,4 +1,4 @@
-import archiver from 'archiver';
+import { ZipArchive } from 'archiver';
 import { createWriteStream, readdirSync, statSync } from 'node:fs';
 import { join, relative, sep } from 'node:path';
 
@@ -10,7 +10,7 @@ import { join, relative, sep } from 'node:path';
 export async function zipPackage(dir: string, zipPath: string): Promise<void> {
   await new Promise<void>((resolvePromise, rejectPromise) => {
     const output = createWriteStream(zipPath, { mode: 0o600 });
-    const zip = archiver('zip', { zlib: { level: 9 } });
+    const zip = new ZipArchive({ zlib: { level: 9 } });
     output.on('close', resolvePromise);
     output.on('error', rejectPromise);
     zip.on('error', rejectPromise);

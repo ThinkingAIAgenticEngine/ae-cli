@@ -52,7 +52,7 @@ the user decide — never to guess an encoding or structure and retry silently.
 | `LOCAL_DATA_INPUT_INVALID` | Generic parse failure (malformed CSV/TSV/JSON/XLS) | Verify encoding and structure, then retry without changing the source |
 | `LOCAL_DATA_JSONL_INVALID` | A JSONL line is not valid JSON (`location.record` names the line) | Point at the offending record |
 | `LOCAL_DATA_JSON_ROOT_INVALID` | JSON root is not an object or array | Check the file's top-level shape |
-| `LOCAL_DATA_XLSX_INVALID` | Workbook metadata missing / no readable sheets / worksheet entry missing | Re-export the workbook |
+| `LOCAL_DATA_XLSX_INVALID` | Workbook metadata missing / no readable sheets / worksheet entry missing | Re-export the workbook (sheet recognition accepts `<sheet>` and namespaced `<x:sheet>` alike, so this is a real metadata gap) |
 | `LOCAL_DATA_SET_NOT_FOUND` / `LOCAL_DATA_SET_REQUIRED` | Sheet or JSON Path not found / ambiguous | Ask which `--data-set` to use |
 
 A parse error is never a reason to change the mapping or the tracking plan. Report the code and
@@ -80,6 +80,59 @@ as itself, not as `LOCAL_DATA_INPUT_INVALID`.
 Write failures (disk full `ENOSPC`, permission denied `EACCES`) do not hang the command: the
 output streams fail with a clear `Failed to write "<path>"` message telling the user to check disk
 space and directory permissions. Fix the environment, then re-run into a fresh output directory.
+
+## File-level data-quality severity
+
+The classes above are per row or per field. The user also needs one verdict for the file as a whole,
+and its signals arrive scattered across the manifest and stderr. Grade them before reporting so the
+same file gets the same verdict no matter who reports it.
+
+| Severity | Signal | Handling |
+| --- | --- | --- |
+| Critical | Established with the user to be a cumulative snapshot or an aggregate report (see [ue-routing.md](ue-routing.md)); a required identity or time column empty for the whole file | Do not upload. Resolve with the user first |
+| High | `manifest.output.invalid_records` is a large share of the row count; inspect reported `leading_title_rows` or `header_signal` and the user has not yet said whether those rows are a title/banner; inspect reported `xlsx_structure.merged_covered_cells` and the user has not yet said whether the merged label belongs on the rows the block covers; `summary_rows` was reported and the user has not yet said whether those rows are totals or real records; `duplicate_keys` was reported and the user has not yet said whether the repeated rows are separate observations | Upload is allowed, but name the item explicitly in the confirmation gate and in the completion response |
+| Medium | `manifest.output.skipped_fields`; ragged delimited rows; `manifest.output.flatten_misses`; `manifest.output.unreadable_cells`; `xlsx_structure.hidden_rows` or `hidden_columns` read as data | Report the counts; the gate is unchanged |
+| Low | `manifest.output.lan_ip_records` | Report once |
+
+Rules:
+
+- Severity is reported, never silently applied. A Critical finding stops the pipeline and is stated
+  as a data finding, not as a program error.
+- Grade only what the run actually emitted. Every signal that belongs at High or Critical above now
+  has a detector, so grade it from what the run reported — never tell the user the tool checked
+  something it did not.
+- `unreadable_cells` counts XLSX cells that carried no value the tool may use, grouped by cause:
+  `formula_no_cached_value` (the file stores a formula but not the result Excel last computed),
+  `error_value` (`#N/A`, `#DIV/0!`, …), `unreadable_object` (an unrecognized cell shape). The cells
+  read as missing and their rows are kept, so the record count says nothing about them — a column
+  that is empty in AE while the spreadsheet looks full is this. The tool never evaluates a formula
+  and never guesses a result; the fix is to recalculate and re-export in Excel, or to export values
+  instead of formulas. `inspect` reports the same counts before conversion.
+- `xlsx_structure` records worksheet layout the rows themselves cannot carry: `merged_covered_cells`
+  counts cells that are empty only because a merged block covers them (Excel shows the value on the
+  block's first row), `hidden_rows` and `hidden_columns` name what the worksheet hides. The default
+  read changes none of it, so these counts describe what was uploaded: a column mostly missing in AE
+  while the spreadsheet looks full is the first of them. `merged_cells_filled` and
+  `excluded_hidden_rows` say what the run did about it, which is only ever what the user asked for
+  via `--fill-merged-cells` / `--exclude-hidden-rows` (mapping: `fill_merged_cells` /
+  `exclude_hidden_rows`). XLSX only — a legacy `.xls` workbook is not scanned.
+- `summary_rows` names rows that read as a summary line rather than an observation, by `row` (the
+  data-row ordinal) and `signals`: `total_label` (a cell reads as `合计` / `总计` / `小计` / `汇总` / `Total` /
+  `Subtotal`) and `column_total` (a number equal to the total of its column's other rows). The rows
+  were converted like any other, so this is a finding about what was uploaded: one fabricated event
+  whose amount is the whole group's, and a column whose reported `sum` is twice its real total. There
+  is no flag that drops a data row, because a row labelled `合计` is sometimes a real record; the fix
+  is to remove it from the source file or re-export without it. Any format, `.xls` included.
+- `duplicate_keys` names rows the source repeated under the same business key, by `key_columns` (the
+  columns compared), `duplicate_groups`, `extra_rows` (surplus records an upload would carry), and
+  `groups` with `count`, the data-row `rows`, and a `key_hash` prefix — never the key's own values.
+  Nothing was removed: a repeat is sometimes a real pair of records, two order lines in the same
+  checkout second, and AE appends accepted events with no way to un-send one, so ask the user whether
+  the rows are separate observations; if not, have them remove the rows from the source file. Values
+  are compared as written, so a repeat spelled two ways is missed, and `tracking_truncated` means
+  distinct keys outran the scan's budget and there may be more. Any format, `.xls` included.
+- A large quarantine share has no fixed threshold. State the ratio and the dominant error `code`,
+  and let the user judge.
 
 ## Cross-cutting rules
 

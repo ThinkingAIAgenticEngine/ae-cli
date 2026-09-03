@@ -22,6 +22,28 @@ Classification order:
 
 Aggregated metrics, pivot tables, cross-tabs, model outputs, free-form documents, and records without real identity/time should normally use local analysis.
 
+### Time coverage is not native granularity
+
+A parseable time column establishes only when the rows are stamped, not what period each metric
+covers. A daily report and a cumulative snapshot both look like one row per user per point in time,
+so they satisfy every condition above and are then ingested as per-period events — inflating totals
+in a way that stays invisible in ratios, because numerator and denominator scale together.
+
+Native granularity must come from the user, a data dictionary, or a complete period structure in the
+data itself. Do not infer it from the file name, the first/last date, the interval between rows, or
+the row count; none of those is evidence.
+
+When the data carries numeric columns and any of the following holds, ask the user to state whether
+each row's value is the amount that occurred in that period or the total accumulated up to that
+point, and do not proceed until they answer:
+
+- Paired start/end time columns (`start_date`/`end_date`, `period_begin`/`period_end`).
+- Values for one identity that never decrease over time.
+- Column names carrying a to-date sense (`cumulative`, `total`, `ltv`, `累计`, `总`).
+
+An unanswered question, a cumulative snapshot, or overlapping periods route to local analysis
+instead.
+
 ## Route to local analysis
 
 Choose local analysis when:
@@ -29,6 +51,7 @@ Choose local analysis when:
 - The user wants insights, not project ingestion.
 - UE identity or time prerequisites are missing.
 - Each row is an aggregate rather than a user/event record.
+- The rows are a cumulative snapshot, or their native granularity could not be established.
 - Conversion would invent semantics or discard important structure.
 - The user declines an uncertain mapping or destination.
 

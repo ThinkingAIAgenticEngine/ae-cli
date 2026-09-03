@@ -25,11 +25,29 @@ A property is either a name or a typed object:
 
 ## Time range
 
+Use semantic `mode`, `unit`, and `value` fields. Always pass `unit` with `recent` or `previous`; the supported units are `day`, `week`, `month`, `quarter`, and `year`.
+
+| User intent | `time_range` |
+|---|---|
+| Today | `{"mode":"recent","unit":"day","value":1}` |
+| This week | `{"mode":"recent","unit":"week","value":1}` |
+| This month | `{"mode":"recent","unit":"month","value":1}` |
+| This quarter | `{"mode":"recent","unit":"quarter","value":1}` |
+| This year | `{"mode":"recent","unit":"year","value":1}` |
+| Yesterday | `{"mode":"previous","unit":"day","value":1}` |
+| Previous month | `{"mode":"previous","unit":"month","value":1}` |
+| From a fixed date through today | `{"mode":"start_to_today","start_time":"2026-07-01"}` |
+| From a fixed date through yesterday | `{"mode":"start_to_yesterday","start_time":"2026-07-01"}` |
+
+Use `custom` only when both boundaries are fixed:
+
 ```json
 {"mode":"recent","unit":"day","value":7}
 {"mode":"previous","unit":"day","value":30}
 {"mode":"custom","start_time":"2026-07-01","end_time":"2026-07-07"}
 ```
+
+Do not pass backend `recent_day` encodings inside `time_range`; the capability compiles the semantic object to the existing analysis representation.
 
 ## Filter group
 

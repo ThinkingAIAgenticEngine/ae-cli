@@ -130,6 +130,33 @@ test('configured hosts do not emit trial guidance', () => {
   assert.doesNotMatch(`${status.stdout}\n${status.stderr}`, /request-demo/);
 });
 
+test('auth status trusts a stored CLI token when server-side validation is unavailable', () => {
+  const home = tempHome();
+  const host = 'http://127.0.0.1:1';
+  writeConfig(home, {
+    activeHost: host,
+    hosts: {
+      [host]: { label: 'older-server' },
+    },
+  });
+  const fallbackDir = path.join(home, '.ae-config');
+  fs.mkdirSync(fallbackDir, { recursive: true });
+  fs.writeFileSync(
+    path.join(fallbackDir, 'cli-token.json'),
+    JSON.stringify({ url: host, token: 'cli_token_for_older_server' }),
+  );
+
+  const status = runCli(home, ['auth', 'status']);
+  assert.equal(status.status, 0, status.stderr);
+  assert.deepEqual(parseJson(status.stdout).data, {
+    authenticated: true,
+    host,
+    source: 'sandbox-cli-token',
+    hasCliToken: true,
+    note: 'sandbox-provisioned cli-token.json; no user access token in secure-store',
+  });
+});
+
 test('auth logout clears credentials without removing the configured host', () => {
   const home = tempHome();
   const config = {

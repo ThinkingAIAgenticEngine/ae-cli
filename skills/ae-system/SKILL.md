@@ -1,7 +1,7 @@
 ---
 name: ae-system
-version: 1.1.0
-description: "AE Agent system administration CLI for root and agent administrators. Use when the user asks to manage Agent members, sandboxes and shared tools, company model visibility/defaults/pricing, usage statistics and exports, cost quotas, balance alerts, or IM channels. Must use ae-cli system commands, discover real IDs before writes, and never attempt to bypass a permission denial."
+version: 1.2.0
+description: "AE Agent system administration CLI for root and agent administrators. Use when the user asks to manage Agent members, sandboxes and shared tools, company model visibility/defaults/pricing, usage statistics and exports, cost quotas, balance alerts, IM channels, channel routing, WhatsApp Web linking, or Feishu user bindings. Must use ae-cli system commands, discover real IDs before writes, and never attempt to bypass a permission denial."
 ---
 
 # ae-system
@@ -10,12 +10,13 @@ Use the `system` domain for Agent system administration:
 
 ```bash
 ae-cli system +<command> [options]
+ae-cli system <resource> <action> [options]
 ```
 
 ## Mandatory Rules
 
 - These commands are only for users whose Agent role is `root` or `agent_admin`.
-- The te-agent `/api/admin/**` endpoint is the final authorization boundary. A member receives a permission error (HTTP 403). Do not retry login or attempt a different endpoint after a 403.
+- The te-agent `/api/admin/**` and `/api/cli/channel/v1/**` endpoints are the final authorization boundaries. A member receives a permission error (HTTP 403). Do not retry login or attempt a different endpoint after a 403.
 - Run `ae-cli auth login --host <host>` before using this domain. System administration requires a user access-token session; sandbox identity headers are not an authorization substitute.
 - `+npm-install` is the exception that must also run inside a Linux te-agent sandbox because it packages the installed Linux files. It still requires the logged-in user to be `root` or `agent_admin`.
 - Discover real IDs with a list command before any update or delete. Never guess a user, sandbox, model, quota rule, or channel ID.
@@ -353,40 +354,37 @@ Rules:
 
 ### Channels
 
+For channel setup, routing, WhatsApp Web linking, or Feishu user binding, read [references/channel-management.md](references/channel-management.md) before taking action. It defines the two confirmation phases and the `ae-cli` plus Feishu OpenAPI MCP workflow.
+
 | Command | Risk | Purpose |
 | --- | --- | --- |
-| `+list-channels` | read | List Feishu, Lark, and Slack channels. |
+| `+list-channels` | read | List all configured channels. |
+| `channel get` | read | Read one channel, its verification state, and endpoints. |
 | `+create-channel` | write | Create one channel. |
 | `+update-channel` | write | Update channel settings, credentials, model, prompt, or enabled state. |
 | `+remove-channel` | high-risk-write | Delete a channel, unbind users, and stop its connection. |
+| `channel verify` | write | Verify credentials and discover endpoints. |
+| `channel routing get` | read | Read one endpoint's group message routing. |
+| `channel routing set` | write | Replace one endpoint's group message routing. |
+| `channel whatsapp-web status` | read | Read a WhatsApp Web link state and QR data. |
+| `channel whatsapp-web start` | write | Start or resume WhatsApp Web QR linking. |
+| `channel whatsapp-web unlink` | high-risk-write | Unlink WhatsApp Web and remove stored credentials. |
+| `channel binding list` | read | List channel user bindings. |
+| `channel binding bind-feishu` | write | Bind one Feishu user. |
+| `+bind-feishu-users` | write | Bind 1-100 Feishu users and optionally assign Agents. |
+| `channel binding unbind` | high-risk-write | Delete one channel user binding. |
+| `channel binding set-agent` | write | Set or clear one binding's private-chat default Agent. |
 
-Always use `@file` for channel payloads when they contain credentials:
+Use canonical snake_case request fields. The four original commands also accept their legacy camelCase JSON fields for compatibility. Always use `@file` for credentials and batch rosters:
 
 ```bash
 ae-cli system +create-channel --channel @channel.json
 ae-cli system +update-channel --id <channel-id> --channel @channel-update.json
+ae-cli system +bind-feishu-users \
+  --channel-id <channel-id> \
+  --endpoint-id <endpoint-id> \
+  --bindings @bindings.json
 ```
-
-Create schema:
-
-```json
-{
-  "name": "Required display name",
-  "type": "feishu",
-  "config": {
-    "appId": "Feishu/Lark",
-    "appSecret": "Feishu/Lark",
-    "botToken": "Slack",
-    "appToken": "Slack",
-    "clientId": "optional",
-    "clientSecret": "optional"
-  },
-  "model": "optional Model.id or modelId::scope",
-  "systemPrompt": "optional"
-}
-```
-
-Update accepts a partial object with `name`, `config`, `model`, `systemPrompt`, `enabled`, or `unbindUsers`. Channel type is immutable after creation. Dry-run replaces secret values with `***`.
 
 ## Permission Errors
 
@@ -412,9 +410,9 @@ An authenticated `root` or `agent_admin` is still scoped to their own company. T
 
 ## Transport Status
 
-This is a Transitional L2 domain backed by te-agent `/api/admin/**`.
+This is a Transitional domain backed by te-agent `/api/admin/**` and `/api/cli/channel/v1/**`.
 
-- Maintainer: te-agent admin routes and `src/commands/te-system/**`.
-- Migration target: system Capability Gateway.
+- Maintainer: te-agent admin/channel-management routes and `src/commands/te-system/**`.
+- Migration target: system and channel Capability Gateways.
 - Review date: 2026-10-24.
 - Exit condition: migrate after equivalent gateway schema, auth, risk, dry-run, and output contracts are stable.

@@ -32,10 +32,16 @@ Required: `event`, `aggregation`. `property`, `time_range`, and `filters` are op
 
 ## First/last tag
 
-Required: `event`, `occurrence=first|last`, and exactly one value source: `calculation` or `property`. `time_range` and `filters` are optional. Filters support only event properties and user properties. A string `field` is an event property; use `{name,type:"user_property"}` for a user property. Supplying neither or both value sources is rejected before execution.
+Required: `event`, `occurrence=first|last`, and exactly one value source: `calculation` or `property`. `time_range` and `filters` are optional. Filters support only event properties and user properties. A string `field` is an event property; use `{name,type:"user_property"}` for a user property. Supplying neither or both value sources is rejected before execution. Use the semantic time mappings in [`audience_models.md`](audience_models.md) for dynamic ranges such as today, this month, or a fixed start date through today.
 
 ```json
-{"type":"first_last","first_last":{"event":"login","occurrence":"last","property":"platform","time_range":{"mode":"recent","unit":"day","value":30},"filters":{"relation":"and","items":[{"field":{"name":"country","type":"user_property"},"operator":"eq","values":["US"]}]}}}
+{"type":"first_last","first_last":{"event":"login","occurrence":"last","property":"platform","time_range":{"mode":"recent","unit":"month","value":1},"filters":{"relation":"and","items":[{"field":{"name":"country","type":"user_property"},"operator":"eq","values":["US"]}]}}}
+```
+
+From a fixed date through today:
+
+```json
+{"type":"first_last","first_last":{"event":"login","occurrence":"first","calculation":"specific_time","time_range":{"mode":"start_to_today","start_time":"2026-07-01"}}}
 ```
 
 ## SQL tag

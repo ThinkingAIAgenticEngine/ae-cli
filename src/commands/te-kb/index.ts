@@ -8,11 +8,14 @@ import { schema } from './schema.js';
 import { status } from './status.js';
 import { kbIndex } from './kb-index.js';
 import { kbList } from './kb-list.js';
+import { listSources } from './list-sources.js';
 import { kbGrep } from './kb-grep.js';
 import { kbRead } from './kb-read.js';
 import { ask } from './ask.js';
 import { askStatus } from './ask-status.js';
 import { url } from './url.js';
+import { importSnapshot } from './import.js';
+import { importStatus } from './import-status.js';
 
 const commands: Command[] = [
   ask,
@@ -22,6 +25,7 @@ const commands: Command[] = [
   compile,
   remove,
   create,
+  listSources,
   rmSource,
   schema,
   status,
@@ -29,7 +33,9 @@ const commands: Command[] = [
   kbIndex,
   kbGrep,
   kbRead,
+  importSnapshot,
+  importStatus,
 ];
 
 export default commands;
-export { ask, askStatus, add, url, compile, remove, create, rmSource, schema, status, kbList, kbIndex, kbGrep, kbRead };
+export { ask, askStatus, add, url, compile, remove, create, rmSource, schema, status, kbList, kbIndex, kbGrep, kbRead, importSnapshot, importStatus, listSources };

@@ -202,6 +202,12 @@ await test('condition create and update expose only fields accepted by Common', 
   }
   assert.equal(flagNames(user('user-cluster', 'update-id')).includes('entity-id'), false);
   assert.equal(flagNames(user('user-tag', 'update-id')).includes('entity-id'), true);
+  assert.equal(user('user-cluster', 'update').risk, 'high-risk-write');
+  assert.match(user('user-cluster', 'update').description, /without changing its existing type or analysis entity/);
+  assert.match(
+    user('user-cluster', 'update').flags.find((flag) => flag.name === 'definition-request')!.desc,
+    /type must match the existing cluster type; update cannot change the analysis entity/,
+  );
 });
 
 await test('audience writes publish the UI-compatible string limits', () => {

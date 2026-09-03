@@ -16,7 +16,7 @@ Use `preference` for durable interpretation/output preferences, `asset_context` 
 
 `--request-id` is an idempotency key; omit it for ordinary interactive use and the CLI will generate one.
 
-This command creates only a current-user preference; it never creates or approves a project semantic. Do not reject an otherwise valid personal preference merely because the same content may benefit other users, and do not imply that the saved preference is shared authority. Keep project-candidate recommendation separate: after personal capture, ask whether to recommend broadly reusable content as a project semantic candidate, and submit nothing without that choice.
+This command creates only a current-user preference. Do not reject an otherwise valid personal preference merely because the same content may benefit other users, and do not imply that the saved preference is shared authority.
 
 Store only the present working preference. Do not append future governance or lifecycle instructions. Do not use this command for company knowledge, standalone metadata facts, reports, dashboards, transient task details, one-off analysis results, or automatic stale/expired preference handling.
 

@@ -3,17 +3,23 @@ import { basename, extname } from 'node:path';
 import type {
   IdentityCandidate,
   InferredValueType,
+  LocalDataCellIssue,
   LocalDataColumnProfile,
+  LocalDataDuplicateKeyGroup,
+  LocalDataDuplicateKeyReport,
   LocalDataMapping,
+  LocalDataNumericSummary,
   LocalDataProfile,
   LocalDataRow,
   LocalDataSet,
+  LocalDataSummaryRow,
+  LocalDataValueFrequency,
   NestedNode,
   UeRecordType,
 } from './types.js';
 import { MAPPING_VERSION } from './types.js';
 import type { LocalDataInput } from './input.js';
-import { streamLocalDataRows } from './input.js';
+import { streamLocalDataRows, cellIssueWarnings, createXlsxStructureCollector, xlsxStructureReport, xlsxStructureWarnings } from './input.js';
 import { buildColumnNestedTree, buildNestedTree } from './flatten.js';
 import { isParseableByAnyFormat, findFirstTimeFormat } from './time.js';
 import { isPrivateIp, isValidIp, isValidUuid } from './field-spec.js';
@@ -23,6 +29,30 @@ const GLOBAL_UNIQUE_SAMPLE_LIMIT = 200_000;
 const IDENTITY_MAX_LENGTH = 128;
 const COLUMN_SAMPLE_LIMIT = 5;
 const SAMPLE_TRUNCATE_LENGTH = 40;
+/** Distinct values tracked per column for the frequency table; past it the table is dropped, not truncated. */
+const VALUE_FREQUENCY_LIMIT = 200;
+/** Frequency rows reported — enough to show a whole enum without turning the profile into a value dump. */
+const VALUE_FREQUENCY_TOP = 10;
+/** Numeric values retained per column for the quantiles; past it they are reservoir-sampled. */
+const NUMERIC_SAMPLE_LIMIT = 5_000;
+/** Summary-row candidates retained. A file holds a handful of total rows; a longer list means the scan is matching something else. */
+const SUMMARY_ROW_CANDIDATE_LIMIT = 50;
+/** Row ordinals named in the warning; the rest stay in `summary_rows`. */
+const SUMMARY_ROW_WARNING_LIMIT = 10;
+/** A longer cell is prose that happens to begin with 合计, not a row label. */
+const SUMMARY_LABEL_MAX_LENGTH = 24;
+/** Matched as a prefix: a real label is often scoped (`小计（华东）`). */
+const SUMMARY_LABELS_CJK = ['合计', '总计', '小计', '汇总'];
+/** Matched against the whole cell: a note beginning `summary of …` is not a total row. */
+const SUMMARY_LABELS_LATIN = new Set(['total', 'totals', 'subtotal', 'sub total', 'grand total', 'sum']);
+/** Distinct business keys tracked; past it a repeat of a key first seen later cannot be recognized. */
+const DUPLICATE_KEY_TRACK_LIMIT = 200_000;
+/** Groups reported, most repeated first. A key repeated across the whole file needs one example, not thousands. */
+const DUPLICATE_GROUP_LIMIT = 20;
+/** Row ordinals kept per group — enough to open the file at the repeat and compare the two rows. */
+const DUPLICATE_GROUP_ROW_LIMIT = 10;
+/** Groups named in the warning; the rest stay in `duplicate_keys.groups`. */
+const DUPLICATE_WARNING_GROUP_LIMIT = 3;
 const NESTED_TREE_SAMPLE_LIMIT = 1000;
 
 /** Record types that target user profile tables (no #event_name; all non-track types). */
@@ -54,6 +84,27 @@ interface ColumnAccumulator {
   lanIpCount: number;
   samples: string[];
   sampleSet: Set<string>;
+  /** Truncated value → rows carrying it, tracked up to VALUE_FREQUENCY_LIMIT distinct values. */
+  valueCounts: Map<string, number>;
+  valueCountsOverflow: boolean;
+  numericCount: number;
+  numericSum: number;
+  numericMin: number;
+  numericMax: number;
+  /** Reservoir of numeric values for the quantiles; holds all of them below NUMERIC_SAMPLE_LIMIT. */
+  numericSamples: number[];
+  /** Column named like an identity or a time field, so a row that leaves it empty carries no observation. */
+  keyLike: boolean;
+}
+
+/**
+ * A row held back for the summary-row check. Whether its numbers are column totals can only be
+ * decided once the stream ends, so the row's numeric cells travel with it.
+ */
+interface SummaryRowCandidate {
+  row: number;
+  labelColumn?: string;
+  numericCells: Array<[string, number]>;
 }
 
 const ACCOUNT_NAMES = ['#account_id', 'account_id', 'accountid', 'user_id', 'userid', 'uid', 'member_id', '账号', '用户id', '账户id'];
@@ -81,6 +132,18 @@ export interface ProfileLocalDataOptions {
   mergeSheets?: boolean;
   /** Emit the ragged-row stderr warning (default true). Internal passes suppress it. */
   warnRagged?: boolean;
+  /** Delimited/Excel: leading title/banner rows discarded before the header row is interpreted. */
+  skipRows?: number;
+  /** XLSX: copy each merged block's value into the cells its own range covers. */
+  fillMergedCells?: boolean;
+  /** XLSX: leave rows hidden in the source worksheet out of the profile. */
+  excludeHiddenRows?: boolean;
+  /**
+   * Columns whose combined value identifies one observation, for the duplicate-key scan. `convert`
+   * passes the mapping's own identity/time/event columns; without it the scan falls back to matching
+   * column names, and reports which columns it used.
+   */
+  duplicateKeyFields?: string[];
 }
 
 export async function profileLocalData(
@@ -103,11 +166,22 @@ export async function profileLocalData(
   let nestedObjects: unknown[] = [];
   let nestedSeen = 0;
   const delimitedNested = new Map<string, { seen: number; values: unknown[] }>();
+  const excelDateColumns = new Set<string>();
+  const cellIssues = new Map<LocalDataCellIssue, Map<string, number>>();
+  // Merged blocks and hidden rows/columns are XLSX-only facts that live outside the row data; the
+  // reader collects them in its own pass and reports them here.
+  const xlsxStructure = input.format === 'xlsx' ? createXlsxStructureCollector() : undefined;
+  const summaryCandidates: SummaryRowCandidate[] = [];
+  let summaryCandidatesTruncated = false;
+  // The key columns must be settled while the first row is in hand — the profile is a single pass,
+  // so a column decided from a post-stream verdict would arrive too late to compare anything.
+  let duplicateKeys: DuplicateKeyTracker | undefined;
+  let duplicateKeysResolved = false;
 
   await streamLocalDataRows(
     input,
     dataSet,
-    (row) => {
+    (row, rowNumber) => {
       rowCount += 1;
       if (collectNestedTree && row !== null && typeof row === 'object' && !Array.isArray(row)) {
         nestedSeen += 1;
@@ -118,6 +192,12 @@ export async function profileLocalData(
           if (slot < NESTED_TREE_SAMPLE_LIMIT) nestedObjects[slot] = row;
         }
       }
+      // Summary-row state for this row: the label it may carry, its numbers, and whether it left
+      // every identity/time column empty — a row with nothing to attach an observation to.
+      let labelColumn: string | undefined;
+      let numericCells: Array<[string, number]> | undefined;
+      let keyColumnsPresent = false;
+      let keyColumnsFilled = false;
       for (const name of new Set([...columns.keys(), ...Object.keys(row)])) {
         let accumulator = columns.get(name);
         if (!accumulator) {
@@ -135,10 +215,24 @@ export async function profileLocalData(
             lanIpCount: 0,
             samples: [],
             sampleSet: new Set(),
+            valueCounts: new Map(),
+            valueCountsOverflow: false,
+            numericCount: 0,
+            numericSum: 0,
+            numericMin: Number.POSITIVE_INFINITY,
+            numericMax: Number.NEGATIVE_INFINITY,
+            numericSamples: [],
+            keyLike: matchesName(name, ACCOUNT_NAMES)
+              || matchesName(name, DISTINCT_NAMES)
+              || matchesName(name, TIME_NAMES),
           };
           columns.set(name, accumulator);
         }
         const value = row[name];
+        if (accumulator.keyLike) {
+          keyColumnsPresent = true;
+          if (!isMissing(value)) keyColumnsFilled = true;
+        }
         if (isMissing(value)) {
           accumulator.missing += 1;
           continue;
@@ -155,7 +249,19 @@ export async function profileLocalData(
         } else {
           accumulator.uniqueOverflow = true;
         }
-        if (options.collectSamples) recordSample(accumulator, value);
+        if (options.collectSamples) {
+          recordSample(accumulator, value);
+          recordValueFrequency(accumulator, value);
+        }
+        // Numeric totals are kept on both paths because a column's sum is what a summary row is
+        // recognized by; only the reservoir behind the quantiles is inspect-only.
+        if (type === 'number') {
+          const numeric = Number(value);
+          recordNumeric(accumulator, numeric, options.collectSamples === true);
+          if (Number.isFinite(numeric)) (numericCells ??= []).push([name, numeric]);
+        } else if (labelColumn === undefined && matchesSummaryLabel(value)) {
+          labelColumn = name;
+        }
         if (collectDelimitedTree && typeof value === 'string') {
           const trimmed = value.trim();
           if (trimmed.startsWith('{') || trimmed.startsWith('[')) {
@@ -197,6 +303,22 @@ export async function profileLocalData(
           if (normalized) recognizedRecordTypes.add(normalized);
         }
       }
+      // A row is a summary-line candidate when it labels itself one, or when it carries numbers
+      // while every identity/time column in the file is empty. Whether those numbers are the
+      // column's total is settled after the stream, so the row is retained until then.
+      if (labelColumn !== undefined || (keyColumnsPresent && !keyColumnsFilled && numericCells !== undefined)) {
+        if (summaryCandidates.length < SUMMARY_ROW_CANDIDATE_LIMIT) {
+          summaryCandidates.push({ row: rowNumber, labelColumn, numericCells: numericCells ?? [] });
+        } else {
+          summaryCandidatesTruncated = true;
+        }
+      }
+      if (!duplicateKeysResolved) {
+        duplicateKeysResolved = true;
+        const keyColumns = resolveDuplicateKeyColumns(Object.keys(row), options.duplicateKeyFields);
+        if (keyColumns) duplicateKeys = createDuplicateKeyTracker(keyColumns);
+      }
+      if (duplicateKeys) recordDuplicateKey(duplicateKeys, row, rowNumber);
     },
     {
       delimiter: options.delimiter,
@@ -205,7 +327,13 @@ export async function profileLocalData(
       noHeader: options.noHeader,
       flattenRules: options.flattenRules,
       mergeSheets: options.mergeSheets,
+      excelDateColumns,
+      cellIssues,
       warnRagged: options.warnRagged,
+      skipRows: options.skipRows,
+      xlsxStructure,
+      fillMergedCells: options.fillMergedCells,
+      excludeHiddenRows: options.excludeHiddenRows,
     },
   );
 
@@ -235,6 +363,9 @@ export async function profileLocalData(
     recognizedRecordTypes,
     sourceTimezone,
     headerNames: options.headerNames,
+    skipRows: options.skipRows,
+    fillMergedCells: options.fillMergedCells,
+    excludeHiddenRows: options.excludeHiddenRows,
     timeFormatByColumn,
     nestedTree,
   });
@@ -250,6 +381,26 @@ export async function profileLocalData(
       if (column.lanIpCount > 0) warnings.push(`${column.name}: ${column.lanIpCount} value(s) are private/LAN IP addresses; AE cannot resolve geo information for them.`);
     }
   }
+  if (excelDateColumns.size > 0) {
+    // Before these cells were read through the workbook's number formats they profiled as plain
+    // numbers, so an earlier run may have mapped them as such — and an AE property type cannot be
+    // changed once received. Name the columns so the agent can ask instead of assuming.
+    warnings.push(`${[...excelDateColumns].join(', ')}: read as date/time value(s) from the Excel number format rather than as Excel serial numbers. If these columns were uploaded to AE before, they may have been received as number properties, whose type is now locked; confirm with the user before mapping them.`);
+  }
+  // These cells read as missing, so `missing_ratio` already moved; the warning is what explains it.
+  warnings.push(...cellIssueWarnings(cellIssues));
+  // A merged block or a hidden row is invisible in the profiled rows themselves: the column simply
+  // looks sparse, or the row count is simply higher than the user expects.
+  if (xlsxStructure) warnings.push(...xlsxStructureWarnings(xlsxStructure));
+  const structureReport = xlsxStructure ? xlsxStructureReport(xlsxStructure) : undefined;
+  // A total row is invisible in the profile otherwise: it inflates the record count by one and the
+  // column's own sum by a factor of two, and both still look like ordinary data.
+  const summaryRows = confirmSummaryRows(summaryCandidates, columns);
+  if (summaryRows.length > 0) warnings.push(summaryRowWarning(summaryRows, summaryCandidatesTruncated));
+  // A repeated key is invisible in the profile otherwise, and AE has no way to un-send an event once
+  // the receiver has accepted it — so the finding is only useful before the upload, never after.
+  const duplicateKeyReport = duplicateKeys ? buildDuplicateKeyReport(duplicateKeys) : undefined;
+  if (duplicateKeyReport) warnings.push(duplicateKeyWarning(duplicateKeyReport));
   if (rowCount === 0) warnings.push('The selected data set contains no data rows.');
 
   return {
@@ -271,6 +422,9 @@ export async function profileLocalData(
     ),
     warnings,
     ...(nestedTree ? { nested_tree: nestedTree } : {}),
+    ...(structureReport ? { xlsx_structure: structureReport } : {}),
+    ...(summaryRows.length > 0 ? { summary_rows: summaryRows } : {}),
+    ...(duplicateKeyReport ? { duplicate_keys: duplicateKeyReport } : {}),
   };
 }
 
@@ -322,6 +476,11 @@ function recommendMapping(input: {
   recognizedRecordTypes: Set<string>;
   sourceTimezone: string;
   headerNames?: string[];
+  /** Carried into the mapping so a later convert reads the same rows inspect profiled. */
+  skipRows?: number;
+  /** Carried into the mapping so a later convert treats merged blocks and hidden rows identically. */
+  fillMergedCells?: boolean;
+  excludeHiddenRows?: boolean;
   timeFormatByColumn: Map<string, string>;
   /** NDJSON/JSON record-root tree for per-key flatten recommendations. */
   nestedTree?: NestedNode[];
@@ -397,6 +556,9 @@ function recommendMapping(input: {
     },
     ...(time ? { time_format: input.timeFormatByColumn.get(time.name) } : {}),
     ...(input.headerNames && input.headerNames.length > 0 ? { headers: input.headerNames } : {}),
+    ...(input.skipRows ? { skip_rows: input.skipRows } : {}),
+    ...(input.fillMergedCells ? { fill_merged_cells: true } : {}),
+    ...(input.excludeHiddenRows ? { exclude_hidden_rows: true } : {}),
     ...(recordType ? { record_type_field: recordType.name } : {}),
     ...(event ? { event_name_field: event.name } : {}),
     ...(mode !== 'user_set' && !event
@@ -426,7 +588,7 @@ function formatColumnProfile(
   // ID-like columns (…_id/_key/_code/_no/_num, "id", or any "*id") stay strings even when
   // every value is numeric, preserving leading zeros and full precision.
   const finalType = inferred === 'number' && idLikeColumn(column.name) ? 'string' : inferred;
-  return {
+  const profile: LocalDataColumnProfile = {
     name: column.name,
     inferred_type: finalType,
     missing_count: column.missing,
@@ -438,6 +600,18 @@ function formatColumnProfile(
     time_parse_ratio: ratio(column.timeParseCount, column.nonMissing),
     ...(includeSamples ? { samples: column.samples } : {}),
   };
+  // Both carry values read out of the file, so they follow `samples` and stay out of the convert
+  // manifest. The distribution is reported only for a column that is actually numeric: the sum of a
+  // numeric user ID would be arithmetic on an identifier.
+  if (includeSamples) {
+    const frequency = formatValueFrequency(column);
+    if (frequency) profile.value_frequency = frequency;
+    if (finalType === 'number') {
+      const summary = formatNumericSummary(column);
+      if (summary) profile.numeric_summary = summary;
+    }
+  }
+  return profile;
 }
 
 function findCandidate(columns: LocalDataColumnProfile[], names: string[]): LocalDataColumnProfile | undefined {
@@ -731,6 +905,257 @@ function recordSample(accumulator: ColumnAccumulator, value: unknown): void {
   if (accumulator.sampleSet.has(text)) return;
   accumulator.sampleSet.add(text);
   accumulator.samples.push(text);
+}
+
+/**
+ * Counts a value under its truncated text. Once a column shows more distinct values than the
+ * budget, counting stops being useful — a column with thousands of distinct values has no
+ * meaningful "most frequent" — so the column is flagged and its table dropped rather than reported
+ * from a partial count that would name whichever values happened to appear first.
+ */
+function recordValueFrequency(accumulator: ColumnAccumulator, value: unknown): void {
+  if (accumulator.valueCountsOverflow) return;
+  const text = truncateSample(value);
+  const seen = accumulator.valueCounts.get(text);
+  if (seen !== undefined) {
+    accumulator.valueCounts.set(text, seen + 1);
+    return;
+  }
+  if (accumulator.valueCounts.size >= VALUE_FREQUENCY_LIMIT) {
+    accumulator.valueCountsOverflow = true;
+    accumulator.valueCounts.clear();
+    return;
+  }
+  accumulator.valueCounts.set(text, 1);
+}
+
+function recordNumeric(accumulator: ColumnAccumulator, numeric: number, retainForQuantiles: boolean): void {
+  if (!Number.isFinite(numeric)) return;
+  accumulator.numericCount += 1;
+  accumulator.numericSum += numeric;
+  if (numeric < accumulator.numericMin) accumulator.numericMin = numeric;
+  if (numeric > accumulator.numericMax) accumulator.numericMax = numeric;
+  if (!retainForQuantiles) return;
+  if (accumulator.numericSamples.length < NUMERIC_SAMPLE_LIMIT) {
+    accumulator.numericSamples.push(numeric);
+    return;
+  }
+  // Reservoir rather than the first N: a file sorted by this column would otherwise report the
+  // quantiles of its smallest values as the quantiles of the whole column.
+  const slot = randomInt(accumulator.numericCount);
+  if (slot < NUMERIC_SAMPLE_LIMIT) accumulator.numericSamples[slot] = numeric;
+}
+
+/** The column's frequency table, most frequent first; absent when the distinct values overflowed. */
+function formatValueFrequency(accumulator: ColumnAccumulator): LocalDataValueFrequency[] | undefined {
+  if (accumulator.valueCountsOverflow || accumulator.valueCounts.size === 0) return undefined;
+  const ordered = [...accumulator.valueCounts.entries()]
+    .sort((left, right) => right[1] - left[1] || left[0].localeCompare(right[0]));
+  // A table whose most frequent value appears once carries no frequency information — every value
+  // is distinct, so this is an ID or free-text column and the "top values" would just be the first
+  // values in the file, printed for nothing.
+  if (ordered[0][1] < 2) return undefined;
+  return ordered
+    .slice(0, VALUE_FREQUENCY_TOP)
+    .map(([value, count]) => ({ value, count, ratio: ratio(count, accumulator.nonMissing) }));
+}
+
+function formatNumericSummary(accumulator: ColumnAccumulator): LocalDataNumericSummary | undefined {
+  if (accumulator.numericCount === 0 || accumulator.numericSamples.length === 0) return undefined;
+  const sorted = [...accumulator.numericSamples].sort((left, right) => left - right);
+  return {
+    count: accumulator.numericCount,
+    min: round(accumulator.numericMin),
+    max: round(accumulator.numericMax),
+    sum: round(accumulator.numericSum),
+    mean: round(accumulator.numericSum / accumulator.numericCount),
+    p25: round(quantile(sorted, 0.25)),
+    median: round(quantile(sorted, 0.5)),
+    p75: round(quantile(sorted, 0.75)),
+    quantiles_approximate: accumulator.numericCount > accumulator.numericSamples.length,
+  };
+}
+
+/** Linear-interpolation quantile over sorted values, the reading spreadsheets and pandas agree on. */
+function quantile(sorted: number[], fraction: number): number {
+  const position = (sorted.length - 1) * fraction;
+  const lower = Math.floor(position);
+  const upper = Math.ceil(position);
+  if (lower === upper) return sorted[lower];
+  return sorted[lower] + (sorted[upper] - sorted[lower]) * (position - lower);
+}
+
+/** Trims float noise so a total reads as 45.6 rather than 45.599999999999994. */
+function round(value: number): number {
+  return Number.isFinite(value) ? Number(value.toFixed(6)) : value;
+}
+
+/**
+ * Whether a cell reads as a row label rather than a value. CJK labels are matched as a prefix
+ * because a real one is often scoped; Latin ones must be the whole cell, or a note beginning
+ * `summary of …` would be read as a total row.
+ */
+function matchesSummaryLabel(value: unknown): boolean {
+  if (typeof value !== 'string') return false;
+  const text = value.trim().replace(/[\s:：、,，.。]+$/u, '');
+  if (text.length === 0 || text.length > SUMMARY_LABEL_MAX_LENGTH) return false;
+  if (SUMMARY_LABELS_CJK.some((label) => text.startsWith(label))) return true;
+  return SUMMARY_LABELS_LATIN.has(text.toLowerCase());
+}
+
+/**
+ * Settles the retained candidates against the column totals. A summary row holds the total of the
+ * column's other rows, and the running total already counts the summary row itself, so the row's own
+ * value is exactly half of it.
+ */
+function confirmSummaryRows(
+  candidates: SummaryRowCandidate[],
+  columns: Map<string, ColumnAccumulator>,
+): LocalDataSummaryRow[] {
+  const confirmed: LocalDataSummaryRow[] = [];
+  for (const candidate of candidates) {
+    const totalColumns: string[] = [];
+    for (const [name, value] of candidate.numericCells) {
+      const accumulator = columns.get(name);
+      // Two equal values would each be "half the total" of the pair, and a zero total is met by
+      // every zero: neither is a finding, so a column needs a body of rows behind it first.
+      if (!accumulator || accumulator.numericCount < 3 || value === 0) continue;
+      const total = accumulator.numericSum;
+      if (Math.abs(value * 2 - total) <= Math.max(1e-6, Math.abs(total) * 1e-9)) totalColumns.push(name);
+    }
+    const signals: LocalDataSummaryRow['signals'] = [];
+    if (candidate.labelColumn !== undefined) signals.push('total_label');
+    if (totalColumns.length > 0) signals.push('column_total');
+    // An empty-key row whose numbers are not a column total is just a sparse row, not a summary.
+    if (signals.length === 0) continue;
+    confirmed.push({
+      row: candidate.row,
+      signals,
+      ...(candidate.labelColumn !== undefined ? { label_column: candidate.labelColumn } : {}),
+      ...(totalColumns.length > 0 ? { total_columns: totalColumns } : {}),
+    });
+  }
+  return confirmed;
+}
+
+function summaryRowWarning(rows: LocalDataSummaryRow[], truncated: boolean): string {
+  const shown = rows.slice(0, SUMMARY_ROW_WARNING_LIMIT).map((entry) => entry.row);
+  const remaining = rows.length - shown.length;
+  const labelled = rows.filter((entry) => entry.signals.includes('total_label')).length;
+  const totals = rows.filter((entry) => entry.signals.includes('column_total')).length;
+  const reasons = [
+    labelled > 0 ? `${labelled} carry a total-like label (合计 / 总计 / 小计 / 汇总 / Total / Subtotal)` : undefined,
+    totals > 0 ? `${totals} hold a number equal to the total of its column's other rows` : undefined,
+  ].filter((reason) => reason !== undefined).join('; ');
+  const scope = truncated
+    ? ` The scan stopped after ${SUMMARY_ROW_CANDIDATE_LIMIT} candidate rows, so there may be more.`
+    : '';
+  return `${rows.length} row(s) read as a summary line rather than an observation: ${reasons}. Rows ${shown.join(', ')}${remaining > 0 ? ` and ${remaining} more` : ''} (data-row ordinals, the numbering invalid.rows.jsonl and --salvage-from use; see summary_rows).${scope} Nothing was removed and nothing changed: convert writes these rows as records, and every number reported for their columns counts them, so a real total row makes that column's sum twice its actual total and its max the total. There is no flag that drops a data row; when the user confirms a row is a total, remove it from the source file or re-export without it, then inspect again.`;
+}
+
+/**
+ * Running state of the duplicate-key scan. Non-repeated keys hold only their first row number, so a
+ * file of a million unique keys costs one map entry each rather than a group object each.
+ */
+interface DuplicateKeyTracker {
+  columns: string[];
+  firstRow: Map<string, number>;
+  groups: Map<string, { count: number; rows: number[]; rowsTruncated: boolean }>;
+  checkedRows: number;
+  overflow: boolean;
+}
+
+/**
+ * Picks the columns whose combined value identifies one observation. Explicit fields (the mapping's
+ * own) are used as given; otherwise identity and time must both be recognizable by name. Either way
+ * a single column is not a key: identity alone calls every second row of a returning user a repeat,
+ * and time alone calls every row in the same second one.
+ */
+function resolveDuplicateKeyColumns(names: string[], explicit?: string[]): string[] | undefined {
+  if (explicit && explicit.length > 0) {
+    const unique = [...new Set(explicit.filter((name) => name.length > 0))];
+    return unique.length > 1 ? unique : undefined;
+  }
+  const identity = names.find((name) => matchesName(name, ACCOUNT_NAMES))
+    ?? names.find((name) => matchesName(name, DISTINCT_NAMES));
+  const time = names.find((name) => matchesName(name, TIME_NAMES));
+  if (!identity || !time) return undefined;
+  const event = names.find((name) => matchesName(name, EVENT_NAMES));
+  return event ? [identity, time, event] : [identity, time];
+}
+
+function createDuplicateKeyTracker(columns: string[]): DuplicateKeyTracker {
+  return { columns, firstRow: new Map(), groups: new Map(), checkedRows: 0, overflow: false };
+}
+
+/**
+ * Compares one row's key against the rows before it. Values are joined as an array so that
+ * `["a","b"]` cannot collide with `["ab",""]`, and compared as written: two spellings of the same
+ * instant are two different keys.
+ */
+function recordDuplicateKey(tracker: DuplicateKeyTracker, row: LocalDataRow, rowNumber: number): void {
+  const parts: string[] = [];
+  for (const name of tracker.columns) {
+    const value = row[name];
+    // A row missing part of its key identifies nothing; counting those together would make every
+    // blank-key row a duplicate of every other.
+    if (isMissing(value)) return;
+    parts.push(sampleText(value).trim());
+  }
+  tracker.checkedRows += 1;
+  const hash = createHash('sha256').update(JSON.stringify(parts)).digest('hex');
+  const group = tracker.groups.get(hash);
+  if (group) {
+    group.count += 1;
+    if (group.rows.length < DUPLICATE_GROUP_ROW_LIMIT) group.rows.push(rowNumber);
+    else group.rowsTruncated = true;
+    return;
+  }
+  const firstRow = tracker.firstRow.get(hash);
+  if (firstRow !== undefined) {
+    tracker.groups.set(hash, { count: 2, rows: [firstRow, rowNumber], rowsTruncated: false });
+    return;
+  }
+  if (tracker.firstRow.size >= DUPLICATE_KEY_TRACK_LIMIT) {
+    tracker.overflow = true;
+    return;
+  }
+  tracker.firstRow.set(hash, rowNumber);
+}
+
+function buildDuplicateKeyReport(tracker: DuplicateKeyTracker): LocalDataDuplicateKeyReport | undefined {
+  if (tracker.groups.size === 0) return undefined;
+  const ordered = [...tracker.groups.entries()]
+    .sort(([, left], [, right]) => right.count - left.count || left.rows[0] - right.rows[0]);
+  let extraRows = 0;
+  for (const [, group] of ordered) extraRows += group.count - 1;
+  const groups: LocalDataDuplicateKeyGroup[] = ordered.slice(0, DUPLICATE_GROUP_LIMIT).map(([hash, group]) => ({
+    key_hash: hash.slice(0, 16),
+    count: group.count,
+    rows: group.rows,
+    ...(group.rowsTruncated ? { rows_truncated: true } : {}),
+  }));
+  return {
+    key_columns: tracker.columns,
+    checked_rows: tracker.checkedRows,
+    duplicate_groups: ordered.length,
+    extra_rows: extraRows,
+    groups,
+    ...(ordered.length > DUPLICATE_GROUP_LIMIT ? { groups_truncated: true } : {}),
+    ...(tracker.overflow ? { tracking_truncated: true } : {}),
+  };
+}
+
+function duplicateKeyWarning(report: LocalDataDuplicateKeyReport): string {
+  const examples = report.groups
+    .slice(0, DUPLICATE_WARNING_GROUP_LIMIT)
+    .map((group) => `rows ${group.rows.join(', ')}${group.rows_truncated ? ', …' : ''} (${group.count}×)`)
+    .join('; ');
+  const remaining = report.duplicate_groups - Math.min(report.groups.length, DUPLICATE_WARNING_GROUP_LIMIT);
+  const scope = report.tracking_truncated
+    ? ` Tracking stopped after ${DUPLICATE_KEY_TRACK_LIMIT} distinct keys, so there may be more.`
+    : '';
+  return `${report.duplicate_groups} business key(s) appear on more than one row, ${report.extra_rows} extra row(s) in total, over ${report.checked_rows} row(s) that carried a value in every key column. Key: ${report.key_columns.join(' + ')}. Examples: ${examples}${remaining > 0 ? ` and ${remaining} more group(s)` : ''} (data-row ordinals, the numbering invalid.rows.jsonl and --salvage-from use; see duplicate_keys).${scope} Nothing was removed: repeated rows are sometimes real (one order line per product), and AE appends every accepted event with no way to un-send it, so this has to be settled before upload. Ask the user whether the repeats are separate observations; if they are not, remove them from the source file and inspect again. Values are compared as written, so two spellings of the same instant are two different keys, and a source with a unique key of its own (an order id) is not compared on it unless the mapping names it.`;
 }
 
 function truncateSample(value: unknown): string {

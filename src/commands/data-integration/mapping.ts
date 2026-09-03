@@ -10,6 +10,13 @@ const VALID_CHILD_PROPERTY_NAME = /^[a-z][a-z0-9_]{0,49}(\.[a-z][a-z0-9_]{0,49})
 /** Formats whose readers apply flatten_rules; add a new format here only after wiring its reader. */
 const FLATTEN_SUPPORTED_FORMATS = ['csv', 'tsv', 'json', 'jsonl', 'xls', 'xlsx'];
 
+/** Formats with a row order to skip. JSON/NDJSON records have no leading title rows. */
+const SKIP_ROWS_SUPPORTED_FORMATS = ['csv', 'tsv', 'xls', 'xlsx'];
+
+/** Merge ranges and hidden row/column flags are read from worksheet XML, which only .xlsx carries. */
+const XLSX_STRUCTURE_SUPPORTED_FORMATS = ['xlsx'];
+const XLSX_STRUCTURE_FIELDS = ['fill_merged_cells', 'exclude_hidden_rows'] as const;
+
 export function readLocalDataMapping(raw: string, options?: { sourceWildcard?: boolean }): LocalDataMapping {
   const trimmed = raw.trim();
   let text: string;
@@ -182,6 +189,23 @@ export function validateMapping(value: unknown, options?: { sourceWildcard?: boo
   }
   if (value.headers !== undefined && !isNonEmptyStringArray(value.headers, true)) {
     throw mappingError('headers must be a non-empty array of unique strings.');
+  }
+  if (value.skip_rows !== undefined) {
+    if (typeof value.skip_rows !== 'number' || !Number.isInteger(value.skip_rows) || value.skip_rows < 1) {
+      throw mappingError('skip_rows must be a positive integer.');
+    }
+    if (!SKIP_ROWS_SUPPORTED_FORMATS.includes(String(value.source.format))) {
+      throw mappingError(`skip_rows is not supported for ${String(value.source.format)} input.`);
+    }
+  }
+  for (const field of XLSX_STRUCTURE_FIELDS) {
+    if (value[field] === undefined) continue;
+    if (typeof value[field] !== 'boolean') {
+      throw mappingError(`${field} must be a boolean when provided.`);
+    }
+    if (!XLSX_STRUCTURE_SUPPORTED_FORMATS.includes(String(value.source.format))) {
+      throw mappingError(`${field} is not supported for ${String(value.source.format)} input.`);
+    }
   }
   if (value.missing_time !== undefined && value.missing_time !== 'now') {
     throw mappingError('missing_time must be "now" when provided.');

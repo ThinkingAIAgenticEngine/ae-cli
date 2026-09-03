@@ -36,11 +36,15 @@ compounds when reusing `definition_request`; flattening them changes audience se
 For the second sequence step, omit `relative_to_first` or set it to `false`; use `true` only
 from the third step onward when its window must be measured from step 1.
 
-For existing-cluster audiences (`targetClusterType=2`), you may copy server-authored definitions via:
+For server-side existing-cluster audiences (`targetClusterType=2`), you may copy server-authored definitions via:
 
 ```bash
 ae-cli analysis user-cluster get --project-id <projectId> --cluster-names '["<cluster_name>"]'
 ```
+
+Server-side channels allow custom (`1`) or existing (`2`) audiences and reject all users (`3`).
+`client_push` (`channelType=3`) allows custom (`1`) or all users (`3`) and rejects existing (`2`).
+Always pass `channelType` in `context` so the guide can validate this matrix.
 
 4. Build the final grouped `save_task.req`.
 5. Submit with `ae-cli engage-task task save --project-id <projectId> --req '{...}'`.

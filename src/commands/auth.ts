@@ -3,7 +3,12 @@ import { resolveHost } from '../core/auth.js';
 import { normalizeUrl } from '../core/url-utils.js';
 import { loadConfig, saveConfig, getFallbackCliToken } from '../core/config.js';
 import { printOutput, printError } from '../framework/output.js';
-import { clearCliToken, mintCliToken, validateCliTokenOnServer } from '../core/cli-token.js';
+import {
+  clearCliToken,
+  mintCliToken,
+  validateCliTokenOnServer,
+  CliTokenValidationUnavailableError,
+} from '../core/cli-token.js';
 import { runHostCompatCheck } from '../core/compat-check.js';
 import { getLocalCliPackageInfo } from '../core/package-info.js';
 import { logger } from '../core/logger.js';
@@ -43,6 +48,12 @@ async function validateExistingCliToken(host: string, cliToken: string): Promise
     await validateCliTokenOnServer(host, cliToken);
     return true;
   } catch (error) {
+    if (error instanceof CliTokenValidationUnavailableError) {
+      // Older common-service versions do not expose the validation endpoint. Preserve the
+      // legacy status behavior and let authenticated commands detect a truly invalid token.
+      logger.warn(`auth status: ${error.message}; trusting the stored CLI token for compatibility`);
+      return true;
+    }
     if (!(error instanceof SecureStoreAuthError)) {
       throw error;
     }

@@ -20,6 +20,7 @@ The AE Data Development and Operations domain provides capabilities for data war
 | `dataops_flow` | Flow creation, node deletion, and orchestration | `dataops-flow-create` |
 | `dataops_flow` | Flow execution and monitoring | `dataops-flow-monitor` |
 | `dataops_operations` | Operations instance search, details, and task logs | `dataops-flow-monitor` |
+| `dataops_operations` | Backfill job creation, full draft update, deletion, execution, plans, stop, and rerun | `dataops-backfill` |
 | `dataops_ide` | Data exploration and SQL queries | `dataops-query` |
 | `dataops_integration` | Datasource and data integration | `dataops-integration` |
 
@@ -63,6 +64,7 @@ You must understand the following key concepts before use, otherwise errors are 
 |----|--------|-------------|
 | **executeId** | Returned by `dataops_flow +execute_flow` | Early stop handle before the scheduler `flowInstanceId` is available |
 | **flowInstanceId** | Returned by `dataops_operations +search_flow_instances` | Operations perspective instance inspection and stop |
+| **jobId** | Returned by `dataops_operations +create_backfill_job` or `+search_backfill_jobs` | Persistent backfill job detail and lifecycle actions |
 
 ### Environment and Defaults
 
@@ -73,6 +75,8 @@ You must understand the following key concepts before use, otherwise errors are 
 | `dataops_operations +get_flow_instance_detail` | Instance detail | Inspect one instance DAG and task statuses |
 | `dataops_operations +get_task_instance_detail` | Task detail/logs | Inspect one task and include logs only when needed |
 | `dataops_operations +stop_flow_instance` | Instance stop | Stop by exactly one of `executeId` or `flowInstanceId` |
+| `dataops_operations +list_backfill_flows` | Backfill source discovery | Returns eligible PROD flows and whether ST is required |
+| `dataops_operations +search_backfill_jobs` | Backfill job search | Filter persistent jobs and obtain `jobId` |
 
 ### Schema Naming Rules
 
@@ -91,6 +95,8 @@ You must understand the following key concepts before use, otherwise errors are 
 ```
 Create DEV Flow → Create/Update DEV SQL, Integration, Workflow Instance Check, or Task Instance Check Tasks → Configure Dependencies/Schedule → Preview Release → Release to PROD → PROD Manual Execution / Operations Troubleshooting
 ```
+
+Backfill lifecycle: Discover eligible PROD flow → Create or fully update DRAFT job → Run explicitly → Search / inspect plans → Stop or rerun the complete job; delete only after target inspection
 
 ### CRON Format (6 fields)
 
@@ -115,6 +121,7 @@ Choose the appropriate scenario skill based on user intent to get complete step-
 | Create flow, add or delete nodes, configure schedule, release | `dataops-flow-create` | create flow, new workflow, configure schedule, add task node, delete task node, release, cron, scheduled execution |
 | View execution status, troubleshoot failures, view logs | `dataops-flow-monitor` | execute flow, running instance, monitor, logs, stop, DAG, troubleshoot |
 | Search operation instances across a space | `dataops-flow-monitor` | operations instance, flow instance search, status statistics, owner statistics |
+| Create or operate a persistent multi-date backfill job | `dataops-backfill` | backfill, fill historical data, base date range, backfill plans, stop backfill, rerun backfill |
 | Create datasource, configure sync solution, execute sync | `dataops-integration` | datasource, sync, integration, field mapping, data ingestion, MySQL, ClickHouse, DatabricksJdbc |
 | Browse metadata, search tables, execute SQL queries | `dataops-query` | query, SQL, data exploration, search tables, view table structure, IDE, catalog, select |
 | Create tables and views | `dataops-table` | create table, table creation, view, data dictionary, table details, DDL |
@@ -155,13 +162,16 @@ Flow orchestration is divided into two scenario skills: **creation and configura
 
 **Lifecycle: DEV configuration and preview → Release to PROD → PROD manual execution and operations troubleshooting**
 
-Detailed creation/configuration commands live in [`references/dataops-flow-create.md`](references/dataops-flow-create.md). Detailed execution, monitoring, operation instance, task log, and stop commands live in [`references/dataops-flow-monitor.md`](references/dataops-flow-monitor.md).
+Detailed creation/configuration commands live in [`references/dataops-flow-create.md`](references/dataops-flow-create.md). Detailed execution, monitoring, operation instance, task log, and stop commands live in [`references/dataops-flow-monitor.md`](references/dataops-flow-monitor.md). Persistent multi-date backfill jobs live in [`references/dataops-backfill.md`](references/dataops-backfill.md).
 
 Key constraints:
 - Create and update tasks in DEV, preview/release before PROD execution.
 - Treat `+delete_task` as high-risk: verify the target with `+get_flow_overview`, preview with `--dry-run`, and use `--yes` only after explicit user confirmation. Deletion affects DEV; release the flow to apply it to PROD.
 - `+execute_flow` always runs PROD; it returns `executeId` for early stop.
 - Prefer `flowInstanceId` from operations search for stable inspection and troubleshooting.
+- A backfill job is persistent and batches multiple base dates; do not emulate it by looping `+execute_flow`.
+- Create and run backfill jobs as separate steps. `+rerun_backfill_job` reruns the complete job, not only failed plans.
+- `+update_backfill_job` replaces a DRAFT job's complete configuration; inspect the job first and do not treat it as a partial patch. Treat `+delete_backfill_job` as high-risk and preview it with `--dry-run` before confirmation.
 - Reference workspace parameters in task SQL as `${paramKey}`.
 
 ---

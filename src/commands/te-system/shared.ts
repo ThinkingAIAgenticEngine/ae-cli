@@ -22,6 +22,7 @@ export interface AdminRequest {
 }
 
 interface AdminCommandConfig {
+  resource?: string;
   command: string;
   description: string;
   flags: Flag[];
@@ -44,8 +45,12 @@ interface AdminDownloadCommandConfig {
 const SECRET_KEYS = new Set([
   'appsecret',
   'bottoken',
+  'botsecret',
   'apptoken',
   'clientsecret',
+  'corpsecret',
+  'serviceaccountjson',
+  'privatekey',
   'apikey',
   'secret',
   'token',
@@ -54,6 +59,13 @@ const SECRET_KEYS = new Set([
 export function assertAdminPath(path: string): void {
   if (path === '/api/admin' || path.startsWith('/api/admin/')) return;
   throw new CliValidationError('System commands may only call /api/admin endpoints');
+}
+
+export function assertCliChannelPath(path: string): void {
+  if (path === '/api/cli/channel/v1' || path.startsWith('/api/cli/channel/v1/')) return;
+  throw new CliValidationError(
+    'Channel commands may only call /api/cli/channel/v1 endpoints',
+  );
 }
 
 export async function getAdmin<T = unknown>(
@@ -82,8 +94,12 @@ export async function downloadAdmin(
   return downloadFromMainApp(path, outputPath, host);
 }
 
-async function executeAdminRequest(ctx: RuntimeContext, request: AdminRequest): Promise<unknown> {
-  assertAdminPath(request.path);
+async function executeSignedRequest(
+  ctx: RuntimeContext,
+  request: AdminRequest,
+  assertPath: (path: string) => void,
+): Promise<unknown> {
+  assertPath(request.path);
   const host = ctx.host();
   switch (request.method) {
     case 'GET':
@@ -99,9 +115,13 @@ async function executeAdminRequest(ctx: RuntimeContext, request: AdminRequest): 
   }
 }
 
-export function createAdminCommand(config: AdminCommandConfig): Command {
+function createSignedCommand(
+  config: AdminCommandConfig,
+  assertPath: (path: string) => void,
+): Command {
   return {
     service: 'system',
+    ...(config.resource ? { resource: config.resource } : {}),
     command: config.command,
     description: config.description,
     flags: config.flags,
@@ -111,12 +131,12 @@ export function createAdminCommand(config: AdminCommandConfig): Command {
     preflight: config.risk === 'high-risk-write'
       ? (ctx) => {
           const request = config.prepare(ctx);
-          assertAdminPath(request.path);
+          assertPath(request.path);
         }
       : undefined,
     dryRun: (ctx) => {
       const request = config.prepare(ctx);
-      assertAdminPath(request.path);
+      assertPath(request.path);
       return {
         method: request.method,
         url: request.path,
@@ -125,8 +145,27 @@ export function createAdminCommand(config: AdminCommandConfig): Command {
           : { body: config.redactDryRun ? redactSecrets(request.body) : request.body }),
       };
     },
-    execute: async (ctx) => executeAdminRequest(ctx, config.prepare(ctx)),
+    execute: async (ctx) => executeSignedRequest(ctx, config.prepare(ctx), assertPath),
   };
+}
+
+export function createAdminCommand(config: AdminCommandConfig): Command {
+  return createSignedCommand(config, assertAdminPath);
+}
+
+export function createCliChannelCommand(config: AdminCommandConfig): Command {
+  const command = createSignedCommand(config, assertCliChannelPath);
+  const execute = command.execute;
+  return {
+    ...command,
+    execute: async (ctx) => unwrapCliChannelResponse(await execute(ctx)),
+  };
+}
+
+export function unwrapCliChannelResponse(value: unknown): unknown {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return value;
+  const envelope = value as Record<string, unknown>;
+  return envelope.ok === true && 'data' in envelope ? envelope.data : value;
 }
 
 export function createAdminDownloadCommand(config: AdminDownloadCommandConfig): Command {
@@ -266,7 +305,9 @@ export function redactSecrets(value: unknown): unknown {
   return Object.fromEntries(
     Object.entries(value as Record<string, unknown>).map(([key, item]) => [
       key,
-      SECRET_KEYS.has(key.toLowerCase()) ? '***' : redactSecrets(item),
+      SECRET_KEYS.has(key.toLowerCase().replace(/[^a-z0-9]/g, ''))
+        ? '***'
+        : redactSecrets(item),
     ]),
   );
 }

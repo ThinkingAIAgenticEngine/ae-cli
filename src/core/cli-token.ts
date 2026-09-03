@@ -17,6 +17,22 @@ const CLI_TOKEN_GENERATE_PATH = '/v1/ta/cli/token/generate';
 const CLI_TOKEN_RENEW_PATH = '/v1/ta/cli/token/renew';
 const CLI_TOKEN_VALIDATE_PATH = '/v1/ta/cli/token/validate';
 
+/** The configured host cannot serve the optional CLI token validation endpoint yet. */
+export class CliTokenValidationUnavailableError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'CliTokenValidationUnavailableError';
+  }
+}
+
+function isExplicitCliTokenRejection(data: any, responseText: string): boolean {
+  const code = String(data?.code ?? data?.error?.code ?? '');
+  const message = String(data?.return_message ?? data?.message ?? data?.error?.message ?? responseText);
+  return /cli[_-]?token[_-]?(invalid|expired)/i.test(code)
+    || /cli[-_\s]?token.*\b(invalid|expired)\b/i.test(message)
+    || /\b(invalid|expired)\b.*cli[-_\s]?token/i.test(message);
+}
+
 /**
  * In-process CLI token cache (host -> token).
  * Valid only within the current process lifetime; the durable copy lives in secure-store.
@@ -180,7 +196,7 @@ export async function validateCliTokenOnServer(hostUrl: string, cliToken: string
       },
     });
   } catch (e: any) {
-    throw new SecureStoreAuthError(`Unable to validate CLI token for ${hostUrl}: ${e.message}`);
+    throw new CliTokenValidationUnavailableError(`Unable to validate CLI token for ${hostUrl}: ${e.message}`);
   }
 
   const responseText = await resp.text();
@@ -191,19 +207,19 @@ export async function validateCliTokenOnServer(hostUrl: string, cliToken: string
     data = undefined;
   }
 
-  if (resp.status === 401 || resp.status === 403 || (data?.return_code !== undefined && data.return_code !== 0)) {
+  if (isExplicitCliTokenRejection(data, responseText)) {
     throw new SecureStoreAuthError(
       `CLI token is invalid or expired for ${hostUrl}. ` +
       `Run: ae-cli auth logout --host ${hostUrl}, then ae-cli auth login --host ${hostUrl}`,
     );
   }
   if (!resp.ok) {
-    throw new SecureStoreAuthError(
-      `CLI token validation failed for ${hostUrl} (HTTP ${resp.status} ${resp.statusText})`,
+    throw new CliTokenValidationUnavailableError(
+      `CLI token validation is unavailable for ${hostUrl} (HTTP ${resp.status} ${resp.statusText})`,
     );
   }
   if (data?.return_code !== 0) {
-    throw new SecureStoreAuthError(`CLI token validation returned an invalid response for ${hostUrl}`);
+    throw new CliTokenValidationUnavailableError(`CLI token validation returned an unsupported response for ${hostUrl}`);
   }
 }
 

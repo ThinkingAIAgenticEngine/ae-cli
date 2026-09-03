@@ -16,7 +16,7 @@ import { once } from 'node:events';
 import { basename, join, resolve } from 'node:path';
 import { createInterface } from 'node:readline';
 import { CliValidationError } from '../../core/errors.js';
-import { inspectLocalDataInput, selectDataSet, sha256File, streamLocalDataRows } from './input.js';
+import { inspectLocalDataInput, selectDataSet, sha256File, streamLocalDataRows, cellIssueCounts, cellIssueWarnings, createXlsxStructureCollector, xlsxStructureReport, xlsxStructureWarnings } from './input.js';
 import type { LocalDataInput } from './input.js';
 import { isValidAeName } from './mapping.js';
 import { applyTypeResolutions, buildPerFileMapping, detectColumnTypeConflicts, validateTypeResolutions } from './multi.js';
@@ -24,7 +24,7 @@ import type { MultiFileProfile } from './multi.js';
 import { IDENTITY_MAX_LENGTH, isMissing, isUserProfileType, normalizeRecordType, profileLocalData } from './profile.js';
 import { parseTimeByAnyFormat, tryStrptime } from './time.js';
 import type { WallTimeParts } from './time.js';
-import type { LocalDataManifest, LocalDataMapping, LocalDataRow, LocalDataSet, TypeResolutions, UeRecordType } from './types.js';
+import type { LocalDataCellIssue, LocalDataManifest, LocalDataMapping, LocalDataRow, LocalDataSet, TypeResolutions, UeRecordType } from './types.js';
 import { isPrivateIp, isValidIp, isValidUuid, stripQuotes } from './field-spec.js';
 
 const SORT_CHUNK_SIZE = 10_000;
@@ -69,11 +69,24 @@ export async function convertLocalData(options: ConvertLocalDataOptions): Promis
     : selectDataSet(input, options.mapping.source.data_set);
   const streamOptions = {
     headerNames: options.mapping.headers,
+    skipRows: options.mapping.skip_rows,
     flattenRules: options.mapping.flatten_rules,
     mergeSheets: options.mergeSheets,
+    // Both XLSX layout decisions come from the mapping, so the rows converted here are the rows
+    // inspect profiled — the mapping is the only place the user's answer to them is recorded.
+    fillMergedCells: options.mapping.fill_merged_cells,
+    excludeHiddenRows: options.mapping.exclude_hidden_rows,
     // The profile pass inside convert is internal (it writes profile.json); the ragged-row
     // warning is surfaced by the conversion pass below instead, so suppress it here.
     warnRagged: false,
+    // The mapping's own columns are the key worth checking for repeats: they are what AE will
+    // receive as identity, time, and event name. A file-wide `default_event_name` is the same on
+    // every row, so it distinguishes nothing and is left out.
+    duplicateKeyFields: [
+      options.mapping.account_id_field ?? options.mapping.distinct_id_field,
+      options.mapping.time.field,
+      options.mapping.event_name_field,
+    ].filter((field): field is string => typeof field === 'string' && field.length > 0),
   };
   const salvageSet = options.salvageFrom ? readSalvageRowNumbers(options.salvageFrom) : undefined;
   let salvageMatched = 0;
@@ -99,6 +112,10 @@ export async function convertLocalData(options: ConvertLocalDataOptions): Promis
   const skippedFields: Record<string, number> = {};
   let lanIpRecords = 0;
   const flattenMisses: Record<string, number> = {};
+  const cellIssues = new Map<LocalDataCellIssue, Map<string, number>>();
+  // The converted rows no longer show the source layout, so the manifest is the only record that a
+  // merged block or a hidden row was there at all, and what this run did about it.
+  const xlsxStructure = input.format === 'xlsx' ? createXlsxStructureCollector() : undefined;
 
   const rowCount = await streamLocalDataRows(
     input,
@@ -128,9 +145,14 @@ export async function convertLocalData(options: ConvertLocalDataOptions): Promis
     },
     {
       headerNames: streamOptions.headerNames,
+      skipRows: streamOptions.skipRows,
       flattenRules: streamOptions.flattenRules,
       flattenMisses,
+      cellIssues,
       mergeSheets: streamOptions.mergeSheets,
+      fillMergedCells: streamOptions.fillMergedCells,
+      excludeHiddenRows: streamOptions.excludeHiddenRows,
+      xlsxStructure,
     },
   );
   if (userSetBuffer.length > 0) flushSortChunk(outputDir, userSetBuffer, sortChunks);
@@ -138,6 +160,17 @@ export async function convertLocalData(options: ConvertLocalDataOptions): Promis
   for (const [outColumn, count] of Object.entries(flattenMisses)) {
     process.stderr.write(`Warning: flatten rule "${outColumn}" did not materialize for ${count} row(s).\n`);
   }
+  // These cells were written as missing, so the record count says nothing about them.
+  for (const warning of cellIssueWarnings(cellIssues)) {
+    process.stderr.write(`Warning: ${warning}\n`);
+  }
+  // Same reason: a merged block reads as a sparse column and a hidden row reads as an ordinary one.
+  if (xlsxStructure) {
+    for (const warning of xlsxStructureWarnings(xlsxStructure, options.mapping.exclude_columns)) {
+      process.stderr.write(`Warning: ${warning}\n`);
+    }
+  }
+  const structureReport = xlsxStructure ? xlsxStructureReport(xlsxStructure) : undefined;
   if (salvageSet && salvageMatched === 0) {
     throw new CliValidationError('The salvage file lists no rows from this source.', {
       code: 'LOCAL_DATA_SALVAGE_NO_MATCH',
@@ -161,6 +194,12 @@ export async function convertLocalData(options: ConvertLocalDataOptions): Promis
   writeSecureJson(mappingPath, options.mapping);
   writeSecureText(transformPath, createTransformScript(options.inputFile, mappingPath));
   const validBytes = statSize(validPath);
+  // The conservation equation: every streamed data row lands in exactly one bucket, so the source
+  // side and the output side must always add up. Keeping both in the manifest is what lets the next
+  // reader notice a row dropped or duplicated between the source and the output. A salvage run
+  // streams the whole file but only re-processes the listed rows, so its source side is the match
+  // count, not the file's row count.
+  const sourceRows = salvageSet ? salvageMatched : rowCount;
   const blockedReasons = [
     ...(rowCount === 0 ? ['The source contained no data rows.'] : []),
     ...(rowCount > 0 && validRecords === 0 ? ['No valid UE records were generated.'] : []),
@@ -182,6 +221,7 @@ export async function convertLocalData(options: ConvertLocalDataOptions): Promis
       valid_file: basename(validPath),
       valid_sha256: await sha256File(validPath),
       invalid_file: basename(invalidPath),
+      source_rows: sourceRows,
       valid_records: validRecords,
       invalid_records: invalidRecords,
       valid_bytes: validBytes,
@@ -189,6 +229,10 @@ export async function convertLocalData(options: ConvertLocalDataOptions): Promis
       ...(Object.keys(skippedFields).length > 0 ? { skipped_fields: skippedFields } : {}),
       ...(lanIpRecords > 0 ? { lan_ip_records: lanIpRecords } : {}),
       ...(Object.keys(flattenMisses).length > 0 ? { flatten_misses: flattenMisses } : {}),
+      ...(cellIssues.size > 0 ? { unreadable_cells: cellIssueCounts(cellIssues) } : {}),
+      ...(structureReport ? { xlsx_structure: structureReport } : {}),
+      ...(profile.summary_rows ? { summary_rows: profile.summary_rows } : {}),
+      ...(profile.duplicate_keys ? { duplicate_keys: profile.duplicate_keys } : {}),
     },
     blocked_reasons: blockedReasons,
   };
@@ -232,6 +276,7 @@ export async function convertLocalDataMulti(options: ConvertLocalDataMultiOption
     const profile = await profileLocalData(input, dataSet, sourceTimezone, {
       collectSamples: true,
       headerNames: options.mapping.headers,
+      skipRows: options.mapping.skip_rows,
       flattenRules: options.mapping.flatten_rules,
       warnRagged: false,
     });

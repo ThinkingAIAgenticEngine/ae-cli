@@ -14,7 +14,7 @@ import {
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 
-import archiver from 'archiver';
+import { ZipArchive } from 'archiver';
 
 import { CliValidationError } from '../../core/errors.js';
 
@@ -567,7 +567,7 @@ async function writeArchive(
 ): Promise<void> {
   await new Promise<void>((resolvePromise, rejectPromise) => {
     const output = createWriteStream(archivePath, { mode: 0o600 });
-    const zip = archiver('zip', { zlib: { level: 9 } });
+    const zip = new ZipArchive({ zlib: { level: 9 } });
     output.on('close', resolvePromise);
     output.on('error', rejectPromise);
     zip.on('error', rejectPromise);
