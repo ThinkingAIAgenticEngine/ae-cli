@@ -305,8 +305,44 @@ Fallback branch keeps only `branchId` + `branchType: 2`.
 #### `ab_split_flow`
 
 ```json
-{ "branchList": [ { "branchId": "<branchId>", "branchName": "Control Group", "branchType": 1, "order": 1, "percentageInExperiment": 34 }, { "branchId": "<branchId>", "branchName": "Experiment Group A", "branchType": 2, "order": 2, "percentageInExperiment": 33 } ], "indicatorsDef": [], "activateIndicatorsDef": null }
+{
+  "branchList": [
+    { "branchId": "control", "branchName": "Control Group", "branchType": 1, "order": 1, "percentageInExperiment": 50 },
+    { "branchId": "experiment_a", "branchName": "Experiment Group A", "branchType": 2, "order": 2, "percentageInExperiment": 50 }
+  ],
+  "indicatorsDef": [
+    {
+      "indicatorsUuid": "metric_1",
+      "name": "Maximum payment amount",
+      "desc": "",
+      "completionIndicatorType": 0,
+      "touch_cycle_num": 1,
+      "touch_cycle_num_unit": "day",
+      "eventDefinition": {
+        "type": "event",
+        "event": "payment",
+        "aggregation": "max",
+        "property": "pay_amount",
+        "operator": "gt",
+        "value": 0,
+        "filters": {
+          "relation": "and",
+          "items": [
+            { "field": "gold", "operator": "gt", "values": [20] }
+          ]
+        }
+      }
+    }
+  ],
+  "activateIndicatorsDef": null
+}
 ```
+
+Use `eventDefinition` for new Capability requests. Its top-level `operator` compares the aggregate
+result with `value`; each `filters.items[].operator` compares an event property with its `values`.
+Both comparison levels are explicit and must not be omitted. Do not construct persisted fields such
+as `event`, `taPropQuota`, `uceCalcuSymbol`, `num`, `filts`, or `calcuSymbol`; Hermes compiles them.
+Legacy `event` remains accepted temporarily for older clients, but never send both fields.
 
 #### `event_judge`
 

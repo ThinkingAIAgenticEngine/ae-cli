@@ -41,6 +41,7 @@ const DOMAIN_TO_SKILL = {
   'te-audience': 'ae-analysis',
   'te-common': 'ae-analysis',
   'te-engage': 'ae-engage',
+  'te-experiment': 'ae-experiment',
   'te-dataops': 'ae-dataops',
   'te-community': 'ae-community',
   'te-kb': 'ae-kb',

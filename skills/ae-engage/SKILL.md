@@ -398,6 +398,8 @@ When the user wants to "create a flow / generate a flow canvas / save a flow", d
 3. Build condition-related nodes with semantic `targetDefinitionRequest` and
    `triggerDefinition` objects. Resolve real event and property names through Analysis metadata;
    do not create an intermediate cluster merely to obtain persisted QP.
+   For `ab_split_flow` indicators, use `indicatorsDef[].eventDefinition`; always provide the
+   aggregate `operator`/`value` and every event-property filter's `operator`/`values`.
 
 4. Before building touchpoint nodes such as `message_push`, `wechat_push`, or `webhook_push`, you must call:
 

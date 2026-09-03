@@ -2,7 +2,7 @@
 
 # ae-cli
 
-`ae-cli` is the command-line client for the ThinkingAI AgenticEngine (AE) platform. It provides stable, structured interfaces for both AI Agents and human operators across analytics, metadata, tracking, Engage, DataOps, knowledge bases, Agent resources, and system administration.
+`ae-cli` is the command-line client for the ThinkingAI AgenticEngine (AE) platform. It provides stable, structured interfaces for both AI Agents and human operators across analytics, experimentation, metadata, tracking, Engage, DataOps, knowledge bases, Agent resources, and system administration.
 
 The CLI is designed around:
 
@@ -108,6 +108,7 @@ Run `ae-cli --help` or `ae-cli <command> --help` for the authoritative command l
 | Command or domain | Purpose |
 |---|---|
 | `analysis` | Reports, dashboards, ad-hoc analysis, drilldowns, details, alerts, and analysis schemas |
+| `experiment` | Atlas experiments, reports, traffic layers, buckets, Features, metrics, and operation logs |
 | `analysis-meta` | Event/property metadata, metrics, virtual metadata, tracking governance, and project configuration |
 | `analysis-governance` | Asset search, lineage, impact analysis, and governance operations |
 | `metadata` | Capability-backed data-table and property operations |
@@ -249,6 +250,7 @@ The npm package includes the same `skills/` directory used by the public reposit
 |---|---|
 | `ae-capability` | Capability discovery and generic invocation |
 | `ae-analysis`, `ae-analysis-global` | Analysis, audience, metadata, governance, and multi-cluster workflows |
+| `ae-experiment` | Atlas experiment, Feature, metric, traffic-layer, and report workflows |
 | `ae-metadata` | Capability-backed metadata data-table operations |
 | `ae-engage` | Engage operations and workflow guidance |
 | `ae-dataops` | Data warehouse, flow, IDE, integration, and operations |
@@ -300,6 +302,7 @@ npm run build
 npm run qa-changed
 npm run self-check
 npm run check:release
+npm run verify:experiment-tools
 npm run verify:update-check
 npm run verify:version-sync
 ```

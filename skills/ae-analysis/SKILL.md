@@ -99,11 +99,23 @@ Before a project-scoped command:
 3. If there are multiple plausible projects, the host is unclear, or no project matches, show the candidates and ask; never guess.
 4. Re-verify after the user changes project, host, or environment.
 
+### Project Semantics
+
+Before answering project-scoped analysis or asset-governance requests, call `ae-cli project-semantic list --project-id <project_id>` once after the project is resolved. This is the governed project semantic catalog. The list is already filtered to active, fresh project semantics and sorted by heat, so do not page or search the database yourself.
+
+If one project semantic is actually adopted to interpret the user's wording, asset selection, metric definition, calculation convention, or project-wide business rule, fetch it with `ae-cli project-semantic get --project-id <project_id> --id <semantic_id> --mark-used`. Do not pass `--mark-used` for project semantics that were only inspected or rejected.
+
+For project semantic recommendation, switch to the `ae-project-semantic` skill. This skill only consumes published project semantics during analysis tasks.
+
+Published project semantics are the formal project-wide authority. A current-turn user instruction may request a different analysis, but the result must be labeled as an explicit non-formal deviation rather than silently replacing the published definition.
+
 ### Personal Semantic Preferences
 
 Before answering project-scoped analysis or asset-governance requests, call `ae-cli personal-semantic-preference list --project-id <project_id>` once per host, authenticated user, project, and conversation after the project is resolved. Keep that lightweight directory in conversation context; do not page it, search the database, or call list again for each question. The backend returns at most 200 entries using `HOT_160_PLUS_RECENT_40` and may return fewer to keep the payload within its size limit.
 
 Use the returned compact catalog only as context. If one item is actually adopted to interpret the user's wording, asset selection, metric preference, or output style, fetch it with `ae-cli personal-semantic-preference get --project-id <project_id> --id <preference_id> --mark-used`. This also applies when the matched item is being used as the target for an `update`. Do not pass `--mark-used` for items that were only inspected or rejected.
+
+Apply the two catalogs by authority and purpose, not as one flat ranking. Published project semantics define the formal business meaning. Personal semantics supply the current user's defaults, interpretation corrections, asset choices, and output preferences where they do not conflict. If a personal semantic conflicts with a published project semantic, use the project semantic for the formal result and explicitly disclose the difference; never silently overwrite the personal record. If the user explicitly requests the personal alternative for the current task, execute it as a labeled non-formal variation.
 
 The Agent owns the personal preference capture trigger. Choose `context_type` by meaning:
 
@@ -112,11 +124,15 @@ The Agent owns the personal preference capture trigger. Choose `context_type` by
 - `experience`: a confirmed reusable work method without an exact asset binding.
 - `background`: stable personal context without an exact asset binding.
 
-Any stable choice of a concrete asset, including an event-selection scenario, must use `asset_context`; do not encode asset IDs only in prose. A current-user working definition remains eligible for personal storage even when it would also benefit other users. Store it only as the current user's preference; do not copy the bound asset definition into its content or imply that it is shared authority. Keep future governance or lifecycle instructions out of the stored content. Do not save transient task details, one-off analysis results, company knowledge, or standalone metadata facts.
+Any stable choice of a concrete asset, including an event-selection scenario, must use `asset_context`; do not encode asset IDs only in prose. During a project task, collect durable current-user preferences, stable interpretation corrections, reusable asset-selection choices, recurring output preferences, and current-user working definitions that have not become approved project semantics. A working definition remains eligible for personal storage even when it would also benefit other project users. Store it only as the current user's preference; never describe it as approved project authority or copy a bound asset definition into its content. Keep future governance or lifecycle instructions out of the stored content. Do not save transient task details, one-off analysis results, company knowledge, standalone metadata facts, reports, or dashboards as personal preferences.
 
 An explicit stable statement, correction, or confirmation that passes that evidence gate authorizes `personal-semantic-preference add` or `update` without a second "save" confirmation. Compare against the already loaded catalog first; when one existing preference matches, fetch it with `--mark-used`, update that existing preference, and avoid creating a duplicate. Otherwise add a new one. An explicit instruction not to retain it always wins. Delete remains high risk and requires explicit user confirmation.
 
+Personal capture and project recommendation are independent. Save or update the personal semantic first when its evidence gate is met. If the same content looks reusable as a formal project-wide definition, finish the current task and then ask whether the user wants to recommend it as a project semantic candidate. Do not make project recommendation a prerequisite for personal capture, do not submit a candidate without that user choice, and never approve or publish on behalf of an ordinary user.
+
 After a successful add, update, or delete, merge that response into the conversation's cached directory locally. Do not call list again merely to observe the write.
+
+When a later published project semantic matches a personal semantic, treat the project semantic as formal and allow the personal record to become redundant, expire, or merge through the supported lifecycle. When they conflict, keep the project semantic formal, disclose the conflict, and preserve the personal record unless the user explicitly changes or deletes it. These are consumption and lifecycle rules; do not append them to the stored personal semantic content.
 
 Stale or expired preferences are automatically hidden by list filtering and backend maintenance. Do not look for or invent a separate command for that behavior.
 
