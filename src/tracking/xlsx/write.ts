@@ -13,8 +13,8 @@ const PLATFORM_TO_XLSX: Record<EventPlatform, string> = {
 
 const VALID_PROP_TYPES = new Set<PropType>(['string', 'number', 'bool', 'datetime', 'object', 'array_row', 'array_string']);
 const VALID_UPDATE_TYPES = new Set<UpdateType>(['user_set', 'user_setOnce', 'user_add']);
-const SNAKE_CASE_RE = /^[a-z][a-z0-9_]*$/;
 const PROP_NAME_RE = /^[a-zA-Z#][a-zA-Z0-9_.]*$/;
+const EVENT_NAME_RE = /^[A-Za-z][A-Za-z0-9_]*$/;
 
 // ---- Column width helpers ----
 
@@ -79,11 +79,13 @@ function autoFitSheet(ws: ExcelJS.Worksheet, maxWidth: number = 55): void {
 export function validateDraft(d: Draft): void {
   const errors: string[] = [];
 
-  // Validate event names
+  // Validate event names. Case is decided by the caller/agent — AE accepts uppercase,
+  // and the lowercase-by-default convention is a skill-side rule, not a CLI constraint.
+  const eventNameRe = EVENT_NAME_RE;
   const eventNames = new Set<string>();
   for (const evt of d.events) {
-    if (!SNAKE_CASE_RE.test(evt.event_name)) {
-      errors.push(`Event name "${evt.event_name}" does not match snake_case pattern`);
+    if (!eventNameRe.test(evt.event_name)) {
+      errors.push(`Event name "${evt.event_name}" has invalid characters`);
     }
     if (eventNames.has(evt.event_name)) {
       errors.push(`Duplicate event_name: "${evt.event_name}"`);

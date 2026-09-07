@@ -9,7 +9,7 @@ import { validateAndFix } from '../../tracking/plan/fix.js';
 import type { Draft, Event, PropType, Property, Source } from '../../tracking/plan/types.js';
 
 const VALID_LOCALES = new Set(['zh', 'en', 'ja', 'ko']);
-const EVENT_NAME_RE = /^[a-z][a-z0-9_]*$/;
+const EVENT_NAME_RE = /^[A-Za-z][A-Za-z0-9_]*$/;
 
 export interface PlanDraftOptions {
   mapping: LocalDataMapping;
@@ -111,7 +111,7 @@ function resolveEventNames(options: PlanDraftOptions): string[] {
       if (!EVENT_NAME_RE.test(name)) {
         throw new CliValidationError(`The event name "${name}" is not a legal AE event name.`, {
           code: 'LOCAL_DATA_PLAN_INVALID_EVENT_NAME',
-          hint: 'Event names must match ^[a-z][a-z0-9_]*$.',
+          hint: 'Event names must match ^[A-Za-z][A-Za-z0-9_]*$.',
           location: { field: 'event-name' },
         });
       }

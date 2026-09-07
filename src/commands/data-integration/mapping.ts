@@ -6,6 +6,8 @@ import type { LocalDataMapping } from './types.js';
 const VALID_PROPERTY_NAME = /^[a-z][a-z0-9_]{0,49}$/;
 /** Dotted `parent.child` sub-property declaration; each segment is a flat AE name. */
 const VALID_CHILD_PROPERTY_NAME = /^[a-z][a-z0-9_]{0,49}(\.[a-z][a-z0-9_]{0,49})+$/;
+/** AE event names allow uppercase (existing customer events); properties stay lowercase-only. */
+const VALID_EVENT_NAME = /^[A-Za-z][A-Za-z0-9_]{0,49}$/;
 
 /** Formats whose readers apply flatten_rules; add a new format here only after wiring its reader. */
 const FLATTEN_SUPPORTED_FORMATS = ['csv', 'tsv', 'json', 'jsonl', 'xls', 'xlsx'];
@@ -90,7 +92,7 @@ export function validateMapping(value: unknown, options?: { sourceWildcard?: boo
   if (value.mode !== 'user_set' && !value.event_name_field && !value.default_event_name) {
     throw mappingError('Track mappings require an event field or default event name.');
   }
-  if (value.default_event_name && !VALID_PROPERTY_NAME.test(value.default_event_name)) {
+  if (value.default_event_name && !VALID_EVENT_NAME.test(value.default_event_name)) {
     throw mappingError('The default event name is not a legal AE event name.');
   }
   if (!Array.isArray(value.properties)) throw mappingError('Mapping properties must be an array.');
@@ -141,7 +143,7 @@ export function validateMapping(value: unknown, options?: { sourceWildcard?: boo
   if (value.event_meta !== undefined) {
     if (!isRecord(value.event_meta)) throw mappingError('event_meta must be an object keyed by AE event name.');
     for (const [name, meta] of Object.entries(value.event_meta)) {
-      if (!VALID_PROPERTY_NAME.test(name)
+      if (!VALID_EVENT_NAME.test(name)
         || !isRecord(meta)
         || (meta.desc !== undefined && (typeof meta.desc !== 'string' || !meta.desc.trim() || meta.desc.length > 200))
         || (meta.tag !== undefined && (typeof meta.tag !== 'string' || !meta.tag.trim() || meta.tag.length > 64))) {
@@ -157,7 +159,7 @@ export function validateMapping(value: unknown, options?: { sourceWildcard?: boo
       if (!isStringMap(map)) throw mappingError(`value_mapping.${key} must map strings to strings.`);
       if (key === 'event_name') {
         for (const target of Object.values(map)) {
-          if (!VALID_PROPERTY_NAME.test(target)) {
+          if (!VALID_EVENT_NAME.test(target)) {
             throw mappingError('value_mapping.event_name values must be legal AE event names.');
           }
         }
@@ -243,6 +245,10 @@ export function validateMapping(value: unknown, options?: { sourceWildcard?: boo
 
 export function isValidAeName(value: string): boolean {
   return VALID_PROPERTY_NAME.test(value);
+}
+
+export function isValidEventName(value: string): boolean {
+  return VALID_EVENT_NAME.test(value);
 }
 
 /**

@@ -79,7 +79,7 @@ Phase 0 → 1 → 2 → 3 → 4, do not skip steps.
 > CLI messages, and auto-track/i18n-owned labels must come from `src/tracking/i18n` via `AE_LANG=<user_lang>` and `draft.meta.lang`.
 > When a localized label is needed, inspect `src/tracking/i18n` and use the existing resource key/value; do not invent translations from the model.
 > If template business text needs localization and the CLI/i18n resources do not provide it, preserve the imported text and ask the user before rewriting business semantics.
-> Only identifier fields like `event_name`, `prop_name` remain in English snake_case (canonical format).
+> Only identifier fields like `event_name`, `prop_name` remain in English. Property names are `snake_case`; event names are lowercase by default, uppercase only when the user asks to preserve it.
 > This skill only cares about command behavior, not internal implementation.
 
 ---
@@ -210,7 +210,7 @@ Based on user selection, determine source material type and record to `meta.sour
    | Severity | Examples | Handling | User Action |
    |---|---|---|---|
    | 🔧 **Minor** (auto-fixable) | `display_name` duplicate, `array_row` sub-property inconsistency, event name duplicate | `--fix` auto-fixes, writes to `draft.json`. Inform user of what was fixed. | None (informed) |
-   | ⚠️ **Medium** (needs confirmation) | snake_case violation, property name duplicate, invalid property type, nested property parent is not a composite type | List each issue with current value → suggested fix. User confirms item by item before writing to `draft.json`. | Confirm each fix |
+   | ⚠️ **Medium** (needs confirmation) | property name snake_case violation, property name duplicate, invalid property type, nested property parent is not a composite type | List each issue with current value → suggested fix. User confirms item by item before writing to `draft.json`. | Confirm each fix |
    | 🛑 **Severe** | File cannot be parsed, or events array is empty after import | Reject. Tell user the specific issue. User fixes **original file** and re-imports. | Fix original file |
 
    **Medium issue confirmation format**:
@@ -219,7 +219,7 @@ Based on user selection, determine source material type and record to `meta.sour
 
    | # | Issue | Location | Current | Suggested |
    |---|-------|----------|---------|------------|
-   | 1 | snake_case | event_name | UserLogin | user_login |
+   | 1 | snake_case | event_name | UserLogin | user_login (keep UserLogin only if the user asked to preserve case) |
    | 2 | snake_case | prop_name | vipLevel | vip_level |
    | 3 | invalid type | property "level" | integer | number |
 
@@ -242,7 +242,7 @@ Based on user selection, determine source material type and record to `meta.sour
    - **Events**: Player interaction actions (click/swipe/trigger), scene transitions, game state changes (start/pause/end), business flow nodes (purchase/upgrade/unlock)
    - **Event Properties**: Action parameters (bullet type/enemy level/item ID), state values (score/HP/coins), context (level ID/difficulty/mode)
    - **User Properties**: Persistent state (level/experience/VIP/cumulative spend)
-5. Map extracted results to AE naming conventions (`snake_case` event names + `display_name` in user's language)
+5. Map extracted results to AE naming conventions (event names lowercase by default, uppercase only on request; property names `snake_case`; + `display_name` in user's language)
 6. Confirm extracted results with user, supplement missing items
 
 **Business Dimension Confirmation**:
@@ -386,7 +386,7 @@ When the user selects the **Data sample / file profile** option (`source_type = 
 3. **Column → property mapping draft**:
    - Identify system columns first: time field, `distinct_id` / `account_id`, event-name column, user-property-name column.
    - Map the remaining columns to event properties / user properties / super properties.
-   - Naming: `snake_case` event/property names + `display_name` + `desc` + `event_tag` (language follows the user's input).
+   - Naming: `snake_case` property names, event names lowercase by default (uppercase only on request) + `display_name` + `desc` + `event_tag` (language follows the user's input).
    - Type inference: CSV columns default to `string`; infer `number` / `bool` / `datetime` / enum from field name + value distribution + business doc/prompt priors. **Uncertain or conflicting columns are marked "to-confirm" and asked only inside the gate** (do not ask column-by-column beforehand).
 4. **Single confirmation gate** (replaces Phase 2, see below).
 5. **Merge with existing plan** (reuse Phase 4.1/4.2 conflict detection).
@@ -656,7 +656,7 @@ Draft
 **Property types** (enum): `string` / `number` / `bool` / `datetime` /
 `object` (single object, with sub-properties) / `array_row` (object array, supports `parent.child` nesting) / `array_string` (string array)
 
-**Naming rules**: Event names / property names must be `snake_case`; use `display_name` field for human-readable names.
+**Naming rules**: Property names must be `snake_case`; event names are lowercase by default, and uppercase is kept only when the user asks to preserve it. Use `display_name` for human-readable names.
 
 ### 1.2 Merge Source Materials
 
@@ -817,7 +817,8 @@ AE_LANG=<user_lang> ae-cli tracking plan draft --in .ae-cli/draft.json --out .ae
 |---|---|---|
 | Display name uniqueness | Within same property pool, `display_name` must not repeat | ✅ Add distinguishing prefix |
 | Object array consistency | Same `array_row` across different events must have identical sub-properties | ✅ Fill missing sub-properties |
-| snake_case | Event/property names must match `^[a-z][a-z0-9_]*$` | ❌ Manual fix needed |
+| Property name snake_case | Property names must match `^[a-z][a-z0-9_]*$` | ❌ Manual fix needed |
+| Event name format | Event names match `^[A-Za-z][A-Za-z0-9_]*$`; lowercase by default, uppercase kept on request | ❌ Manual fix needed |
 | Property name uniqueness | Property names must not repeat | ❌ Manual fix needed |
 | Event name uniqueness | Event names must not repeat | ✅ Remove later duplicates |
 
@@ -1255,7 +1256,7 @@ Continue append (without fixing) / Modify draft / Switch to replace?
 
 #### Conflict Type B: Same-name events (advisory)
 
-AE merge-by-name: Same-name events are not overwritten; new-name events are added.
+AE merge-by-name: Same-name events are not overwritten; new-name events are added. Event names are case-sensitive (`Purchase` ≠ `purchase`) — changing only the case creates a new event, not a rename.
 
 **Detection logic**:
 

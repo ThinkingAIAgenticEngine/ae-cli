@@ -135,10 +135,14 @@ const options = (overrides: Partial<LocalDataMapping>, eventNames: string[] = []
   assert.equal(draft.event_properties.length, 4);
 }
 
-// --event-name values must be legal AE event names.
+// --event-name values must be legal AE event names; uppercase is allowed (properties stay lowercase-only).
+{
+  const draft = options({ default_event_name: undefined, event_name_field: 'event' }, ['Purchase']);
+  assert.equal(draft.events[0].event_name, 'Purchase');
+}
 {
   assert.throws(
-    () => options({ default_event_name: undefined, event_name_field: 'event' }, ['Purchase']),
+    () => options({ default_event_name: undefined, event_name_field: 'event' }, ['购买']),
     (error: unknown) => error instanceof CliValidationError && error.code === 'LOCAL_DATA_PLAN_INVALID_EVENT_NAME',
   );
 }
