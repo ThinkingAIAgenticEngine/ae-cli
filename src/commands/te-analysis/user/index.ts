@@ -150,6 +150,21 @@ const autoRefreshCronFlag: Flag = {
   desc: 'Optional Quartz cron expression for an existing enabled auto-refresh schedule. This does not enable auto refresh.',
 };
 
+const tagAutoRefreshFlags: Flag[] = [
+  {
+    name: 'enable-auto-refresh', type: 'boolean', required: false,
+    desc: 'Enable or disable periodic refresh. Omit to preserve the setting on update. Enabling on create requires a schedule.',
+  },
+  {
+    ...autoRefreshCronFlag,
+    desc: 'Quartz cron expression in the tag timezone. Enables periodic refresh. Mutually exclusive with --auto-refresh-schedule.',
+  },
+  {
+    name: 'auto-refresh-schedule', type: 'json', required: false,
+    desc: 'Schedule object: frequency daily|weekly|monthly, time HH:mm, weekdays (weekly, ISO 1=Monday to 7=Sunday), month_days (monthly, 1-31). Enables periodic refresh in the tag timezone. Example: {"frequency":"daily","time":"02:30"}.',
+  },
+];
+
 const entityIdFlag: Flag = {
   name: 'entity-id',
   type: 'number',
@@ -445,6 +460,18 @@ function clusterWriteInput(ctx: RuntimeContext, create: boolean): Record<string,
 function tagWriteInput(ctx: RuntimeContext, create: boolean): Record<string, unknown> {
   const definitionRequest = optionalJson(ctx, 'definition-request');
   validateDefinitionRequest(create, definitionRequest);
+  const enabled = optionalBoolean(ctx, 'enable-auto-refresh');
+  const cron = optionalString(ctx, 'auto-refresh-cron');
+  const schedule = optionalJson(ctx, 'auto-refresh-schedule');
+  if (cron !== undefined && schedule !== undefined) {
+    throw new Error('Pass only one of --auto-refresh-cron and --auto-refresh-schedule');
+  }
+  if (enabled === false && (cron !== undefined || schedule !== undefined)) {
+    throw new Error('Cannot set a schedule with --enable-auto-refresh false');
+  }
+  if (create && enabled === true && cron === undefined && schedule === undefined) {
+    throw new Error('Enabling auto refresh on create requires --auto-refresh-schedule or --auto-refresh-cron');
+  }
   return compactInput({
     project_id: ctx.num('project-id'),
     tag_name: ctx.str('tag-name'),
@@ -453,7 +480,9 @@ function tagWriteInput(ctx: RuntimeContext, create: boolean): Record<string, unk
     authenticated_only: optionalBoolean(ctx, 'authenticated-only'),
     remark: create ? undefined : optionalString(ctx, 'remark'),
     zone_offset: optionalNumber(ctx, 'zone-offset'),
-    auto_refresh_cron: create ? undefined : optionalString(ctx, 'auto-refresh-cron'),
+    enable_auto_refresh: enabled,
+    auto_refresh_cron: cron,
+    auto_refresh_schedule: schedule,
     entity_id: create ? optionalNumber(ctx, 'entity-id') : undefined,
   });
 }
@@ -727,6 +756,7 @@ const commands: Command[] = [
     authenticatedOnlyFlag,
     zoneOffsetFlag,
     entityIdFlag,
+    ...tagAutoRefreshFlags,
   ], 'write', (ctx) => tagWriteInput(ctx, true)),
   capability('user-tag', 'update', 'analysis.user_tag.update', 'Update a user tag. Pass only fields that should change.', [
     projectIdFlag,
@@ -736,7 +766,7 @@ const commands: Command[] = [
     authenticatedOnlyFlag,
     remarkFlag,
     zoneOffsetFlag,
-    autoRefreshCronFlag,
+    ...tagAutoRefreshFlags,
   ], 'write', (ctx) => tagWriteInput(ctx, false)),
   capability('user-tag', 'refresh', 'analysis.user_tag.refresh', 'Refresh a user tag by exact tag_name.', [
     projectIdFlag,

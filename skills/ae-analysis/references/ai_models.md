@@ -124,12 +124,12 @@ Property aggregation example:
 {
   "time_range": {"mode": "previous", "unit": "day", "value": 7},
   "metrics": [
-    {"event": "purchase", "display_name": "Purchase revenue", "aggregation": "sum", "property": "amount"}
+    {"event": "purchase", "aggregation": "sum", "property": "amount"}
   ]
 }
 ```
 
-Set optional `display_name` on an event metric when the report should show a business-facing metric name. It applies to regular event metrics, saved metrics, and formula metrics. Omit it to use the event name or the default formula-metric label.
+Omit `display_name` by default; apply business-facing labels in the final answer instead. Add this optional field only when the target host's capability schema or a successful validation explicitly supports `display_name` for that command. Support can differ by deployment and command; a saved report supporting it does not prove ad-hoc support. If rejected, remove only the unsupported label, preserving events, aggregations, properties, filters, and formula dependencies.
 
 Formula metric example:
 
@@ -138,7 +138,6 @@ Formula metric example:
   "time_range": {"mode": "previous", "unit": "day", "value": 7},
   "metrics": [
     {
-      "display_name": "Revenue per user",
       "formula": "revenue / users",
       "dependencies": [
         {"alias": "revenue", "event": "purchase", "aggregation": "sum", "property": "amount"},
@@ -228,6 +227,27 @@ Use for ordered conversion steps with a conversion window.
 ```
 
 If the user asks to match users across events by a shared event property, set `relation_event_property_name`.
+
+Step-level event-property filters belong inside the matching `funnel.steps[].filters`. Use `event_property_name`, not the common `field` object. `values` is an array of strings, including `"true"` / `"false"` for boolean properties; omit values for existence operators. For example, ordered registration -> login -> first payment:
+
+```json
+{
+  "time_range": {"mode": "previous", "unit": "day", "value": 14},
+  "time_particle_size": "day",
+  "funnel": {
+    "steps": [
+      {"event": "register"},
+      {"event": "login"},
+      {"event": "payment", "filters": [
+        {"event_property_name": "is_first_pay", "operator": "eq", "values": ["true"]}
+      ]}
+    ],
+    "window": {"value": 7, "unit": "day"}
+  }
+}
+```
+
+Preserve step order, conversion window, and all requested filters when correcting input. Only actual funnel results support step counts and conversion rates; independent event UVs are not an ordered funnel.
 
 ### `distribution`
 

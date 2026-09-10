@@ -66,11 +66,13 @@ Each mapped system field carries a value spec, enforced at both inspect (warning
 | Field | Value spec | On violation (convert) |
 | --- | --- | --- |
 | `#account_id` / `#distinct_id` | Non-empty string, at most 128 characters | Row error `MISSING_USER_ID` (absent) / `USER_ID_TOO_LONG` (>128) |
-| `#event_name` | `^[a-z][a-z0-9_]{0,49}$` (lowercase snake_case, letter-leading, ≤50 chars) | Row error `INVALID_EVENT_NAME` |
+| `#event_name` | `^[A-Za-z][A-Za-z0-9_]{0,49}$` (letter-leading letters/digits/underscore, ≤50 chars; lowercase by default, uppercase kept only on user request) | Row error `INVALID_EVENT_NAME` |
 | `#time` | One of the supported formats, within 3 years back / 3 days forward | Row error `INVALID_TIME` / `TIME_OUT_OF_RANGE` |
 | `#ip` | Valid IPv4 or IPv6. Event data only | Field skip `INVALID_IP`; a private/LAN IP is kept and reported — AE cannot geolocate it |
 | `#zone_offset` | Integer -12..14 (or an IANA name for `zone_offset_value`). Event data only | Row error `INVALID_ZONE_OFFSET` |
 | `#uuid` | Standard 36-character UUID (`xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx`). Both data kinds | Field skip `INVALID_UUID` |
+
+Event-name case is decided entirely by the mapping, never by the CLI — the CLI performs no case conversion and has no flag for it. The name AE receives is the source `event_name_field` value (or `default_event_name` when there is no event column), optionally replaced by a `value_mapping.event_name` target; `data-integration plan --event-name` passes each name through unchanged. Lowercase is the default: lowercase the name when writing the mapping (a `value_mapping.event_name` entry such as `Purchase` → `purchase`, or a lowercase `default_event_name`). To keep uppercase, skip that lowercasing: leave a legal uppercase source value unmapped so it passes through, write an uppercase `value_mapping.event_name` target only when the source value is not itself a legal name (e.g. `购买` → `Purchase`), or write an uppercase `default_event_name` / `--event-name`.
 
 A field skip is not a row failure: the row is kept with its other fields, and the count is reported in `manifest.output.skipped_fields` so the agent tells the user at the end. `#uuid` is never auto-generated — it comes only from a mapped source column.
 
@@ -147,7 +149,8 @@ Values with an explicit offset or `Z` are parsed by the JavaScript `Date` constr
 - Identity values remain strings and are at most 128 characters.
 - Source timezone is an IANA name derived from user/project context.
 - `#zone_offset`, when set, is a whole-hour integer in -12..14 (or an IANA name/column that resolves to one) and is emitted inside `properties`, never at the top level.
-- Event/property names are lowercase snake_case, begin with a letter, and are at most 50 characters.
+- Event names begin with a letter and are at most 50 characters; lowercase is the default, uppercase is kept only when the user asks to preserve it.
+- Property names are lowercase snake_case (letter-leading, at most 50 characters).
 - Target property names are unique and do not collide with UE system fields.
 - Types are one of `string`, `number`, `boolean`, `datetime`, `list`, `object`, or `array_row`.
 - Text is at most 2 KB; numbers stay within -9E15..9E15.

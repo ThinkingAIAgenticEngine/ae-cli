@@ -292,7 +292,9 @@ const criticalReferenceTokens = {
   'skills/ae-analysis/references/dashboard_update.md': ['refresh_type', '0', '1', 'dashboard_status', 'normal', 'freeze', 'dashboard_job_schedule'],
   'skills/ae-analysis/references/audience_models.md': ['Operators', 'Property reference', 'Time range', 'Filter group'],
   'skills/ae-analysis/references/user_cluster_models.md': ['event', 'user', 'tag', 'cluster', 'compound', 'behavior_sequence', 'condition', 'SQL'],
-  'skills/ae-analysis/references/user_tag_models.md': ['condition', 'metric', 'first_last', 'SQL'],
+  'skills/ae-analysis/references/user_tag_models.md': [
+    'condition', 'metric', 'first_last', 'SQL', 'percentile', '5', '99',
+  ],
   'skills/ae-analysis/references/user_cluster_member_export.md': ['native full-download SQL', 'does not concatenate preview pages', 'jsonl|csv', 'members.jsonl.gz'],
   'skills/ae-analysis/references/user_tag_member_export.md': ['native current-tag or history-tag full-download SQL', 'does not concatenate preview pages', 'jsonl|csv', 'tag-members.jsonl.gz'],
   'skills/ae-analysis/references/history_tag_data_drilldown_export.md': ['native full user download', 'jsonl|csv', 'history-tag-drilldown.jsonl.gz'],

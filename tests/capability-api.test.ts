@@ -22,8 +22,18 @@ import {
   uploadInputFileBytes,
   validateCapability,
 } from '../src/core/capability-api.ts';
-import { setCliTokenManual, clearCliToken } from '../src/core/cli-token.ts';
+import {
+  setCliTokenManual as persistCliTokenManual,
+  clearCliToken,
+  localRenewDate,
+} from '../src/core/cli-token.ts';
 import { PermissionError } from '../src/core/errors.ts';
+import { loadCliToken, markCredentialRenewed, SecureStoreAuthError } from '../src/core/secure-store.ts';
+
+function setCliTokenManual(token: string, host: string): void {
+  persistCliTokenManual(token, host);
+  markCredentialRenewed(host, token, localRenewDate());
+}
 
 let pass = 0;
 let fail = 0;
@@ -425,71 +435,51 @@ await test('executeCapability: non-2xx response exposes capability error body', 
   }
 });
 
-await test('executeCapability: 401 clears cache and retries once', async () => {
+await test('executeCapability: 401 preserves the CLI token and never retries or mints', async () => {
   const host = 'https://test-capi-401.internal';
-  const { save, clear } = await import('../src/core/secure-store.ts');
   clearCliToken(host);
-  clear(host);
   setCliTokenManual('stale-token', host);
-  save(host, {
-    accessToken: 'fake-access-token-for-401-test',
-    refreshToken: '',
-    accessExpiresAt: new Date(Date.now() + 3600_000).toISOString(),
-  });
 
   let apiCallCount = 0;
+  let generateCallCount = 0;
   const seenTokens: string[] = [];
   const prevFetch = globalThis.fetch;
   globalThis.fetch = (async (url, init) => {
     const urlStr = String(url);
     const token = (init?.headers as Record<string, string> | undefined)?.['cli-token'];
     if (urlStr.includes('/v1/ta/cli/token/generate')) {
-      return new Response(JSON.stringify({ return_code: 0, data: { userSecret: 'fresh-token' } }), { status: 200 });
+      generateCallCount++;
+      return new Response(JSON.stringify({ return_code: 0, data: { userSecret: 'unexpected-token' } }), { status: 200 });
     }
     apiCallCount++;
     seenTokens.push(token ?? '');
-    if (apiCallCount === 1) {
-      return new Response('Unauthorized', { status: 401 });
-    }
-    return new Response(JSON.stringify({ ok: true, data: { ok: true } }), { status: 200 });
+    return new Response('Unauthorized', { status: 401 });
   }) as typeof fetch;
 
   try {
-    const result = await executeCapability(host, 'metadata', 'metadata.event.get', { project_id: 1, event_name: 'a' });
-    assert.equal(apiCallCount, 2);
-    assert.equal(seenTokens[0], 'stale-token');
-    assert.ok(seenTokens[1]);
-    assert.notEqual(seenTokens[1], 'stale-token');
-    assert.equal(JSON.stringify(result), JSON.stringify({ ok: true }));
+    await assert.rejects(
+      () => executeCapability(host, 'metadata', 'metadata.event.get', { project_id: 1, event_name: 'a' }),
+      (error: unknown) => error instanceof SecureStoreAuthError && /auth login/.test(error.message),
+    );
+    assert.equal(apiCallCount, 1);
+    assert.deepEqual(seenTokens, ['stale-token']);
+    assert.equal(generateCallCount, 0);
+    assert.equal(loadCliToken(host), 'stale-token');
   } finally {
     globalThis.fetch = prevFetch;
     clearCliToken(host);
-    clear(host);
   }
 });
 
-await test('executeCapability: retry non-2xx response exposes capability error body', async () => {
+await test('executeCapability: non-2xx response exposes capability error body without retry', async () => {
   const host = 'https://test-capi-401-422.internal';
-  const { save, clear } = await import('../src/core/secure-store.ts');
   clearCliToken(host);
-  clear(host);
-  setCliTokenManual('stale-token', host);
-  save(host, {
-    accessToken: 'fake-access-token-for-401-422-test',
-    refreshToken: '',
-    accessExpiresAt: new Date(Date.now() + 3600_000).toISOString(),
-  });
+  setCliTokenManual('capability-token', host);
 
   let apiCallCount = 0;
   const prevFetch = globalThis.fetch;
-  globalThis.fetch = (async (url) => {
-    if (String(url).includes('/v1/ta/cli/token/generate')) {
-      return new Response(JSON.stringify({ return_code: 0, data: { userSecret: 'fresh-token' } }), { status: 200 });
-    }
+  globalThis.fetch = (async () => {
     apiCallCount++;
-    if (apiCallCount === 1) {
-      return new Response('Unauthorized', { status: 401 });
-    }
     return new Response(
       JSON.stringify({
         ok: false,
@@ -513,11 +503,10 @@ await test('executeCapability: retry non-2xx response exposes capability error b
         return true;
       },
     );
-    assert.equal(apiCallCount, 2);
+    assert.equal(apiCallCount, 1);
   } finally {
     globalThis.fetch = prevFetch;
     clearCliToken(host);
-    clear(host);
   }
 });
 
@@ -557,17 +546,10 @@ await test('uploadInputFileBytes: non-2xx response exposes capability error body
   }
 });
 
-await test('executeCapability: 403 invalid cli-token clears cache and retries once', async () => {
+await test('executeCapability: legacy 403 invalid CLI token is auth failure without retry', async () => {
   const host = 'https://test-capi-invalid-token.internal';
-  const { save, clear } = await import('../src/core/secure-store.ts');
   clearCliToken(host);
-  clear(host);
   setCliTokenManual('stale-token', host);
-  save(host, {
-    accessToken: 'fake-access-token-for-invalid-cli-token-test',
-    refreshToken: '',
-    accessExpiresAt: new Date(Date.now() + 3600_000).toISOString(),
-  });
 
   let apiCallCount = 0;
   const seenTokens: string[] = [];
@@ -575,36 +557,32 @@ await test('executeCapability: 403 invalid cli-token clears cache and retries on
   globalThis.fetch = (async (url, init) => {
     const urlStr = String(url);
     const token = (init?.headers as Record<string, string> | undefined)?.['cli-token'];
-    if (urlStr.includes('/v1/ta/cli/token/generate')) {
-      return new Response(JSON.stringify({ return_code: 0, data: { userSecret: 'fresh-token' } }), { status: 200 });
-    }
+    assert.ok(!urlStr.includes('/v1/ta/cli/token/generate'));
     apiCallCount++;
     seenTokens.push(token ?? '');
-    if (apiCallCount === 1) {
-      return new Response(
-        JSON.stringify({
-          ok: false,
-          error: {
-            type: 'permission',
-            message: 'Your token is invalid. Please verify your token and try again.',
-          },
-        }),
-        { status: 403, headers: { 'Content-Type': 'application/json' } },
-      );
-    }
-    return new Response(JSON.stringify({ ok: true, data: { ok: true } }), { status: 200 });
+    return new Response(
+      JSON.stringify({
+        ok: false,
+        error: {
+          type: 'permission',
+          message: 'Your token is invalid. Please verify your token and try again.',
+        },
+      }),
+      { status: 403, headers: { 'Content-Type': 'application/json' } },
+    );
   }) as typeof fetch;
 
   try {
-    const result = await executeCapability(host, 'metadata', 'metadata.data_table.list', { project_id: 1 });
-    assert.equal(apiCallCount, 2);
-    assert.equal(seenTokens[0], 'stale-token');
-    assert.equal(seenTokens[1], 'fresh-token');
-    assert.equal(JSON.stringify(result), JSON.stringify({ ok: true }));
+    await assert.rejects(
+      () => executeCapability(host, 'metadata', 'metadata.data_table.list', { project_id: 1 }),
+      SecureStoreAuthError,
+    );
+    assert.equal(apiCallCount, 1);
+    assert.deepEqual(seenTokens, ['stale-token']);
+    assert.equal(loadCliToken(host), 'stale-token');
   } finally {
     globalThis.fetch = prevFetch;
     clearCliToken(host);
-    clear(host);
   }
 });
 

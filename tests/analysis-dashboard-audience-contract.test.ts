@@ -40,6 +40,7 @@ async function test(name: string, fn: () => void | Promise<void>) {
 
 function context(values: Record<string, unknown>): RuntimeContext {
   return {
+    has: (name) => Object.prototype.hasOwnProperty.call(values, name),
     str: (name) => values[name] === undefined ? '' : String(values[name]),
     num: (name) => Number(values[name]),
     optionalNum: (name) => values[name] === undefined ? undefined : Number(values[name]),
@@ -154,6 +155,34 @@ await test('dashboard update preserves integer refresh type and string status', 
   assert.equal(dashboardUpdate.flags.find((flag) => flag.name === 'dashboard-status')!.type, 'string');
 });
 
+await test('dashboard note update omits untouched optional fields', async () => {
+  const result = await dryBody(dashboardUpdate, {
+    'project-id': 1,
+    operation: 'note-upsert',
+    'dashboard-id': 1001,
+    'note-id': 9,
+    description: 'Updated content',
+  });
+  assert.equal(result.body.input.dashboard_id, 1001);
+  assert.equal(result.body.input.note_id, 9);
+  assert.equal(result.body.input.description, 'Updated content');
+  assert.equal('note_title' in result.body.input, false);
+  assert.match(dashboardUpdate.flags.find((flag) => flag.name === 'note-title')!.desc, /preserved on update/);
+});
+
+await test('dashboard note update preserves explicitly empty text fields', async () => {
+  const result = await dryBody(dashboardUpdate, {
+    'project-id': 1,
+    operation: 'note-upsert',
+    'dashboard-id': 1001,
+    'note-id': 9,
+    'note-title': '',
+    description: '',
+  });
+  assert.equal(result.body.input.note_title, '');
+  assert.equal(result.body.input.description, '');
+});
+
 await test('dashboard update forwards dashboard-level business filter unchanged', async () => {
   const filter = {
     junction_kind: 'and',
@@ -254,7 +283,7 @@ await test('audience updates expose and forward auto refresh cron', async () => 
     const command = user(resource, 'update');
     const flag = command.flags.find((item) => item.name === 'auto-refresh-cron');
     assert.ok(flag, `${resource} update must expose --auto-refresh-cron`);
-    assert.match(flag.desc, /does not enable auto refresh/i);
+    assert.match(flag.desc, resource === 'user-tag' ? /enables periodic refresh/i : /does not enable auto refresh/i);
 
     const args: Record<string, unknown> = {
       'project-id': 1,
@@ -264,6 +293,36 @@ await test('audience updates expose and forward auto refresh cron', async () => 
       resource === 'user-cluster' ? 'retained_users' : 'user_level';
     const { body } = await dryBody(command, args);
     assert.equal(body.input.auto_refresh_cron, '0 30 2 * * ? *');
+  }
+});
+
+await test('tag create and update forward schedules and preserve an explicit false switch', async () => {
+  for (const action of ['create', 'update']) {
+    const command = user('user-tag', action);
+    const args = {
+      'project-id': 1, 'tag-name': 'scheduled_tag', 'display-name': 'Scheduled tag',
+      ...(action === 'create' ? { 'definition-request': { type: 'condition', condition_values: [] } } : {}),
+    };
+    const schedule = { frequency: 'weekly', time: '02:30', weekdays: [1, 7] };
+    const scheduled = await dryBody(command, { ...args, 'auto-refresh-schedule': schedule });
+    assert.deepEqual(scheduled.body.input.auto_refresh_schedule, schedule);
+    const disabled = await dryBody(command, { ...args, 'enable-auto-refresh': false });
+    assert.equal(disabled.body.input.enable_auto_refresh, false);
+    const omitted = await dryBody(command, args);
+    assert.equal('enable_auto_refresh' in omitted.body.input, false);
+    assert.equal('auto_refresh_schedule' in omitted.body.input, false);
+    assert.equal('auto_refresh_cron' in omitted.body.input, false);
+    const cron = await dryBody(command, { ...args, 'auto-refresh-cron': '0 30 2 * * ? *' });
+    assert.equal(cron.body.input.auto_refresh_cron, '0 30 2 * * ? *');
+    await assert.rejects(dryBody(command, {
+      ...args, 'auto-refresh-schedule': schedule, 'enable-auto-refresh': false,
+    }), /Cannot set a schedule/);
+    await assert.rejects(dryBody(command, {
+      ...args, 'auto-refresh-schedule': schedule, 'auto-refresh-cron': '0 30 2 * * ? *',
+    }), /Pass only one/);
+    if (action === 'create') {
+      await assert.rejects(dryBody(command, { ...args, 'enable-auto-refresh': true }), /requires/);
+    }
   }
 });
 

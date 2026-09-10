@@ -1,5 +1,6 @@
 import type { Command, RuntimeContext } from '../../framework/types.js';
 import { kbApi } from '../../core/mcp-access.js';
+import { getExternalKnowledgeBaseTargetScope } from './target-scope.js';
 
 const API_PATH = '/agent/api/external/knowledge-bases/sources/url';
 
@@ -14,6 +15,9 @@ function buildBody(ctx: RuntimeContext): Record<string, unknown> {
     name: ctx.str('name'),
     url: ctx.str('url'),
   };
+
+  const scope = getExternalKnowledgeBaseTargetScope(ctx);
+  if (scope) body.scope = scope;
 
   const displayName = ctx.str('display-name');
   if (displayName) body.displayName = displayName;
@@ -30,12 +34,14 @@ export const url: Command = {
   description: 'Upload a URL source to a knowledge base.',
   flags: [
     { name: 'name', type: 'string', required: true, desc: 'Knowledge base name' },
+    { name: 'scope', type: 'string', required: false, desc: 'Exact knowledge base scope: personal | company (omit for personal → company fallback)' },
     { name: 'url', type: 'string', required: true, desc: 'Source URL to upload' },
     { name: 'display-name', type: 'string', required: false, desc: 'Optional display name for the URL source' },
     { name: 'parse-instruction', type: 'string', required: false, desc: 'Optional parsing instruction for the URL source; ignored for Lark/Feishu doc URLs (the server applies its own Feishu parsing)' },
   ],
   risk: 'write',
   validate: (ctx) => {
+    getExternalKnowledgeBaseTargetScope(ctx);
     validateUrl(ctx.str('url'));
   },
   dryRun: (ctx) => ({

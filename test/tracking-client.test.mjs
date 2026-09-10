@@ -2,7 +2,12 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { TrackingClient } from '../src/core/tracking-client.ts';
-import { clearCliToken, setCliTokenManual } from '../src/core/cli-token.ts';
+import { clearCliToken, localRenewDate, setCliTokenManual } from '../src/core/cli-token.ts';
+import {
+  loadCliToken,
+  markCredentialRenewed,
+  SecureStoreAuthError,
+} from '../src/core/secure-store.ts';
 
 const ROOT = path.join(path.dirname(new URL(import.meta.url).pathname), '..');
 
@@ -71,6 +76,52 @@ await testAsync('deleteProgram routes public hosts through the analysis capabili
     requestedUrl,
     `${host}/api/cli/analysis/v1/capabilities/track.program.delete/execute`,
   );
+});
+
+await testAsync('debug API HTTP 401 preserves the CLI token and does not retry', async () => {
+  const host = 'https://tracking-401.example';
+  const previousFetch = globalThis.fetch;
+  let requestCount = 0;
+  setCliTokenManual('tracking-cli-token', host);
+  markCredentialRenewed(host, 'tracking-cli-token', localRenewDate());
+  globalThis.fetch = async () => {
+    requestCount++;
+    return new Response(JSON.stringify({ return_code: -1001, return_message: 'Unauthorized' }), {
+      status: 401,
+    });
+  };
+
+  try {
+    await assert.rejects(() => new TrackingClient(host).listDevice(1), SecureStoreAuthError);
+    assert.equal(requestCount, 1);
+    assert.equal(loadCliToken(host), 'tracking-cli-token');
+  } finally {
+    globalThis.fetch = previousFetch;
+    clearCliToken(host);
+  }
+});
+
+await testAsync('debug API auth envelope preserves the CLI token and does not retry', async () => {
+  const host = 'https://tracking-envelope-auth.example';
+  const previousFetch = globalThis.fetch;
+  let requestCount = 0;
+  setCliTokenManual('tracking-envelope-token', host);
+  markCredentialRenewed(host, 'tracking-envelope-token', localRenewDate());
+  globalThis.fetch = async () => {
+    requestCount++;
+    return new Response(JSON.stringify({ return_code: -1001, return_message: 'CLI token expired' }), {
+      status: 200,
+    });
+  };
+
+  try {
+    await assert.rejects(() => new TrackingClient(host).listDevice(1), SecureStoreAuthError);
+    assert.equal(requestCount, 1);
+    assert.equal(loadCliToken(host), 'tracking-envelope-token');
+  } finally {
+    globalThis.fetch = previousFetch;
+    clearCliToken(host);
+  }
 });
 
 test('capability input-file upload uses cli-token auth', () => {

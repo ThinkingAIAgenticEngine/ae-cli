@@ -25,6 +25,10 @@ ae-cli agent approval-request cancel --approval-request-id <request-id> --expect
 - A requester may cancel their own pending request without a reason. A company manager cancelling another user's request must provide `--reason`.
 - Write commands are ordinary `write` operations. They do not require `--yes`.
 
+## Agent Company Publication
+
+Read [Agent distribution](agent-distribution.md) for dependency preflight, immutable snapshot preview, and the complete workflow. Use `--approval-type-id agent.publish@1 --resource-id <agent-id>` with the selected type's payload contract; do not use legacy Skill-only submission commands. Agent and bundled personal Skills are reviewed together, independently of standalone Skill approvals. An approved request is not proof of successful publication: inspect its Effect result.
+
 ## Dry-run Boundary
 
 `--dry-run` is a local method, URL, and body preview. It does not call te-agent and therefore does not verify server permissions, current request state, artifact availability, registered type state, or future conditional routing.

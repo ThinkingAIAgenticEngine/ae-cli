@@ -36,6 +36,7 @@ Use this skill when the user wants to bring a **local data file** (CSV/TSV/TXT/J
 | Generate / upload a project-level tracking plan (source material is PRD / chat / template / code; deliverable is a real platform tracking plan) | ae-generate-tracking-plan |
 | Upload documents / URLs to a knowledge base | ae-kb |
 | Reports / dashboards / queries / governance on data already in AE | ae-analysis |
+| Dimension / dictionary data (a stable-entity lookup — city / product / device) to load as a dimension table bound to a property | ae-metadata |
 
 This skill also produces a tracking-plan draft (`source_type: data`) as a governance prerequisite; that draft is an input to ae-generate-tracking-plan, not a substitute for its five-phase platform plan.
 
@@ -43,7 +44,7 @@ This skill also produces a tracking-plan draft (`source_type: data`) as a govern
 
 Walk the four submodules in order. Each submodule is its own reference; follow it and come back here for the next step.
 
-1. **Source — business identification.** Read [references/source-inspect.md](references/source-inspect.md). Profile every file fully, infer its business meaning using business-doc / user-prompt priors, then pick a branch via [references/ue-routing.md](references/ue-routing.md).
+1. **Source — business identification.** Read [references/source-inspect.md](references/source-inspect.md). Profile every file fully, infer its business meaning using business-doc / user-prompt priors, then pick a branch via [references/ue-routing.md](references/ue-routing.md): UE ingestion, dimension routing ([references/dimension-routing.md](references/dimension-routing.md)), or local analysis.
 2. **Reuse check.** If the profile is `ue_eligible`, read [references/reuse.md](references/reuse.md) and match the recommended mapping against the handoff index. `reuse` searches the current directory's `.ae-cli/data-integration/` upward, then `~/.ae-cli/data-integration/`, so a package written elsewhere is still found. A match proposes a frozen package; after one explicit confirmation, run the returned `transform.mjs` command and jump to Sink (step 5). No match → continue.
 3. **Tracking plan.** Read [references/tracking-plan.md](references/tracking-plan.md). The plan is generated from the mapping (`plan --mapping`), so confirm the recommended mapping's key system fields with the user first — `mode`, `#account_id`/`#distinct_id`, `#time` + timezone, `#event_name`, `#ip`/`#uuid` (see [references/transform.md](references/transform.md) steps 1–5) — then generate the event/property plan and get a single explicit confirmation from the user before touching data. The plan is a separate, required deliverable from the transform mapping: a user who supplies a column→field mapping directly has **not** completed this step, so build the plan from the confirmed mapping anyway. `user_set` still requires a plan (no events; every property becomes a user property). This step runs for **every** file: a second or later file merges its new events and properties into the existing project plan (tracking-plan.md step 4) — an existing plan is never a reason to skip it.
 4. **Transform.** Read [references/transform.md](references/transform.md). Map columns to AE system fields and properties, convert, and quarantine dirty rows per [references/ue-mapping.md](references/ue-mapping.md).

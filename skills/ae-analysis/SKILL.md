@@ -1,6 +1,6 @@
 ---
 name: ae-analysis
-version: 4.2.3
+version: 4.2.5
 description: "Use ae-cli for AE/TE analysis-side data questions, asset operations, and asset governance: reports, analysis boards, BI dashboards, ad-hoc models, drilldown, detail data, alerts, clusters, tags, metrics, metadata, project configuration, tracking plans, governance asset lists/rules/lineage/impact/dependency, batch asset operations, projects, and resource links. Use when the user asks to query data, explain a change, export evidence, or inspect/create/update/govern analysis assets."
 ---
 
@@ -17,9 +17,11 @@ This is the single entry skill for analysis intent and command execution.
    - `event list` -> `references/event_list.md`
    - `analysis dashboard list` -> `references/dashboard_list.md`
    - `personal-semantic-preference list` -> `references/personal_semantic_preference_list.md`
+   - Asset center cross-source configuration (资产中心 / 跨源资产配置 / Excel 配置表导入): L3 discovery via `capability search "cross_source_config" --domain metadata --project-id <id>`; read [`references/cross_source_config.md`](references/cross_source_config.md) for workbook upload and validation. No dedicated business commands.
    - replace hyphens with underscores in gateway filenames.
 3. For an AI-facing ad-hoc definition, also read [`references/ai_models.md`](references/ai_models.md).
 4. For cluster/tag `--definition-request`, also read the matching [`references/user_cluster_models.md`](references/user_cluster_models.md) or [`references/user_tag_models.md`](references/user_tag_models.md). Shared primitives live in [`references/audience_models.md`](references/audience_models.md).
+   - For tag periodic refresh, read `references/user_tag_create.md` or `references/user_tag_update.md`; they cover the enable switch, frequency/time schedule, cron alternative, and timezone behavior.
 5. For analysis data retrieval, choose `run` or `export` using [`references/analysis_data_retrieval.md`](references/analysis_data_retrieval.md).
 6. When an AI-QP compile failure contains `slot_kind`, `allowed_resource_types`, `search_targets`, and `next_action`, read and follow [`metadata_resolution.md`](metadata_resolution.md).
 
@@ -30,7 +32,7 @@ Routing is complete when one command family and its dedicated references are sel
 Use this skill for these CLI services:
 
 - `analysis`: reports, dashboards, BI panels, ad-hoc analysis, drilldown, detail data, alerts, clusters, tags, and async runs/artifacts.
-- `analysis-meta`: gateway metadata assets, events, properties, virtual metadata, metrics, data tables, exchange rules, and super metadata.
+- `analysis-meta`: gateway metadata assets, events, properties, virtual metadata, metrics, data tables, exchange rules, and super metadata. Cross-source asset configuration uses the metadata L3 catalog instead.
 - `analysis-governance`: gateway asset governance operations, including governed asset lists/exports, lineage, dependency, impact, query history, rule schema/list/create/update/delete, batch asset actions, and operation records. Use this service for asset governance workflows, not for metadata event/property/metric CRUD.
 - `tracking`: gateway tracking plan, checking, ingest, live-data, and event blacklist operations.
 - `personal-semantic-preference`: current user's project-scoped personal semantic preferences. Use it as agent context before resolving ambiguous business wording, asset choices, or recurring user preferences.
@@ -70,6 +72,13 @@ Interpret gateway envelopes by state:
 - `ok: false` is failure. Preserve `error.code`, `error.message`, and `meta.request_id`, `meta.invocation_id`, `meta.stage`, and `meta.failures` when present.
 - Do not retry an unchanged failed command or guess alternative payload shapes. Retry only after applying concrete validation/clarification guidance or correcting a verified transient condition.
 
+Failure evidence:
+
+- A process exit code of 0 is not business success when the envelope says `ok: false`. Prefer direct CLI invocation; if a shell pipeline is necessary, preserve the CLI exit status with `set -o pipefail` and retain the complete error envelope rather than truncating it.
+- `TE_TOOL_POLICY_DENIED` identifies the runtime authorization stage. Report its exact reason; it does not prove a backend schema check passed or that the user needs to log in again. Do not bypass policy or retry by changing the business scope.
+- `INVALID_ANALYSIS_DEFINITION` / `INVALID_CAPABILITY_INPUT` identifies an input failure. Correct all relevant fields together within the allowed retry budget. Say "validation passed" only after an explicit successful validation response for the same complete definition on the same host.
+- `QUERY_FAILED` establishes that the query failed; it does not establish the database or engine root cause. Preserve the returned error and correlation IDs, leave unavailable values unknown (not zero), and stop when the user requests no retries. Distinguish observed errors from unverified hypotheses.
+
 For every gateway command that exposes `--request-id`, ae-cli generates a `request_id` and prints it to stderr before dispatch when the caller omits it. Preserve that ID with the final envelope and diagnostics. Pass an explicit `--request-id cli_<32 lowercase hex>` only when a caller-owned correlation ID is required.
 
 ### Execution invariants
@@ -99,23 +108,11 @@ Before a project-scoped command:
 3. If there are multiple plausible projects, the host is unclear, or no project matches, show the candidates and ask; never guess.
 4. Re-verify after the user changes project, host, or environment.
 
-### Project Semantics
-
-Before answering project-scoped analysis or asset-governance requests, call `ae-cli project-semantic list --project-id <project_id>` once after the project is resolved. This is the governed project semantic catalog. The list is already filtered to active, fresh project semantics and sorted by heat, so do not page or search the database yourself.
-
-If one project semantic is actually adopted to interpret the user's wording, asset selection, metric definition, calculation convention, or project-wide business rule, fetch it with `ae-cli project-semantic get --project-id <project_id> --id <semantic_id> --mark-used`. Do not pass `--mark-used` for project semantics that were only inspected or rejected.
-
-For project semantic recommendation, switch to the `ae-project-semantic` skill. This skill only consumes published project semantics during analysis tasks.
-
-Published project semantics are the formal project-wide authority. A current-turn user instruction may request a different analysis, but the result must be labeled as an explicit non-formal deviation rather than silently replacing the published definition.
-
 ### Personal Semantic Preferences
 
 Before answering project-scoped analysis or asset-governance requests, call `ae-cli personal-semantic-preference list --project-id <project_id>` once per host, authenticated user, project, and conversation after the project is resolved. Keep that lightweight directory in conversation context; do not page it, search the database, or call list again for each question. The backend returns at most 200 entries using `HOT_160_PLUS_RECENT_40` and may return fewer to keep the payload within its size limit.
 
 Use the returned compact catalog only as context. If one item is actually adopted to interpret the user's wording, asset selection, metric preference, or output style, fetch it with `ae-cli personal-semantic-preference get --project-id <project_id> --id <preference_id> --mark-used`. This also applies when the matched item is being used as the target for an `update`. Do not pass `--mark-used` for items that were only inspected or rejected.
-
-Apply the two catalogs by authority and purpose, not as one flat ranking. Published project semantics define the formal business meaning. Personal semantics supply the current user's defaults, interpretation corrections, asset choices, and output preferences where they do not conflict. If a personal semantic conflicts with a published project semantic, use the project semantic for the formal result and explicitly disclose the difference; never silently overwrite the personal record. If the user explicitly requests the personal alternative for the current task, execute it as a labeled non-formal variation.
 
 The Agent owns the personal preference capture trigger. Choose `context_type` by meaning:
 
@@ -124,15 +121,11 @@ The Agent owns the personal preference capture trigger. Choose `context_type` by
 - `experience`: a confirmed reusable work method without an exact asset binding.
 - `background`: stable personal context without an exact asset binding.
 
-Any stable choice of a concrete asset, including an event-selection scenario, must use `asset_context`; do not encode asset IDs only in prose. During a project task, collect durable current-user preferences, stable interpretation corrections, reusable asset-selection choices, recurring output preferences, and current-user working definitions that have not become approved project semantics. A working definition remains eligible for personal storage even when it would also benefit other project users. Store it only as the current user's preference; never describe it as approved project authority or copy a bound asset definition into its content. Keep future governance or lifecycle instructions out of the stored content. Do not save transient task details, one-off analysis results, company knowledge, standalone metadata facts, reports, or dashboards as personal preferences.
+Any stable choice of a concrete asset, including an event-selection scenario, must use `asset_context`; do not encode asset IDs only in prose. A current-user working definition remains eligible for personal storage even when it would also benefit other users. Store it only as the current user's preference; do not copy the bound asset definition into its content or imply that it is shared authority. Keep future governance or lifecycle instructions out of the stored content. Do not save transient task details, one-off analysis results, company knowledge, or standalone metadata facts.
 
 An explicit stable statement, correction, or confirmation that passes that evidence gate authorizes `personal-semantic-preference add` or `update` without a second "save" confirmation. Compare against the already loaded catalog first; when one existing preference matches, fetch it with `--mark-used`, update that existing preference, and avoid creating a duplicate. Otherwise add a new one. An explicit instruction not to retain it always wins. Delete remains high risk and requires explicit user confirmation.
 
-Personal capture and project recommendation are independent. Save or update the personal semantic first when its evidence gate is met. If the same content looks reusable as a formal project-wide definition, finish the current task and then ask whether the user wants to recommend it as a project semantic candidate. Do not make project recommendation a prerequisite for personal capture, do not submit a candidate without that user choice, and never approve or publish on behalf of an ordinary user.
-
 After a successful add, update, or delete, merge that response into the conversation's cached directory locally. Do not call list again merely to observe the write.
-
-When a later published project semantic matches a personal semantic, treat the project semantic as formal and allow the personal record to become redundant, expire, or merge through the supported lifecycle. When they conflict, keep the project semantic formal, disclose the conflict, and preserve the personal record unless the user explicitly changes or deletes it. These are consumption and lifecycle rules; do not append them to the stored personal semantic content.
 
 Stale or expired preferences are automatically hidden by list filtering and backend maintenance. Do not look for or invent a separate command for that behavior.
 

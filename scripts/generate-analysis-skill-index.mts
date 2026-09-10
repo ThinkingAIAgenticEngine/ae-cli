@@ -17,6 +17,7 @@ const sharedReferences = new Set([
   'analysis_interpretation.md',
   'audience_models.md',
   'command_index.md',
+  'cross_source_config.md',
   'folder_create.md',
   'folder_delete.md',
   'folder_share.md',

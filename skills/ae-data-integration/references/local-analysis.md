@@ -1,5 +1,7 @@
 # Local analysis
 
+Dimension / dictionary data (a stable-entity lookup with a join key) is not local-analysis material — it routes to ae-metadata as a dimension table. See [ue-routing.md](ue-routing.md) and [dimension-routing.md](dimension-routing.md).
+
 Keep the source on the local machine. Generated scripts and reports belong under `.ae-cli/data-integration/runs/<run-id>/` with restrictive permissions.
 Set the directory to `0700` and generated scripts/reports to `0600`.
 

@@ -40,7 +40,7 @@ function runCli(args, env) {
   });
 }
 
-test("kb +import submits an async task and +import-status reads its terminal state", async () => {
+test("kb +import supports explicit company scope and keeps personal as the default", async () => {
   const temporaryRoot = mkdtempSync(path.join(tmpdir(), "ae-cli-kb-import-"));
   const archivePath = path.join(temporaryRoot, "knowledge-base.zip");
   writeFileSync(archivePath, Buffer.from("zip bytes"));
@@ -102,12 +102,23 @@ test("kb +import submits an async task and +import-status reads its terminal sta
           );
           return;
         }
+        if (responseMode === "task-forbidden") {
+          response.writeHead(403, { "content-type": "application/json" });
+          response.end(
+            JSON.stringify({
+              error: "Snapshot import status is not allowed for this user",
+              errorCode: "KB_SNAPSHOT_IMPORT_FORBIDDEN",
+            }),
+          );
+          return;
+        }
         response.writeHead(200, { "content-type": "application/json" });
         response.end(
           responseMode === "task-failed"
             ? JSON.stringify({
                 requestId: "request-1",
                 status: "failed",
+                scope: "personal",
                 knowledgeBaseId: null,
                 errorCode: "KB_SNAPSHOT_NAME_CONFLICT",
                 errorMessage:
@@ -116,6 +127,7 @@ test("kb +import submits an async task and +import-status reads its terminal sta
             : JSON.stringify({
                 requestId: "request-1",
                 status: "succeeded",
+                scope: "personal",
                 knowledgeBaseId: "kb-imported-1",
                 errorCode: null,
                 errorMessage: null,
@@ -159,6 +171,7 @@ test("kb +import submits an async task and +import-status reads its terminal sta
         JSON.stringify({
           requestId: "request-1",
           status: "queued",
+          scope: request.url?.includes("scope=company") ? "company" : "personal",
         }),
       );
     });
@@ -205,9 +218,13 @@ test("kb +import submits an async task and +import-status reads its terminal sta
     assert.deepEqual(output.data, {
       requestId: "request-1",
       status: "queued",
+      scope: "personal",
     });
     assert.equal(received.method, "POST");
-    assert.equal(received.url, "/agent/api/external/knowledge-bases/import");
+    assert.equal(
+      received.url,
+      "/agent/api/external/knowledge-bases/import?scope=personal",
+    );
     assert.equal(received.headers["cli-token"], "cli-kb-import-test");
     assert.equal(received.headers.authorization, undefined);
     assert.match(
@@ -219,8 +236,8 @@ test("kb +import submits an async task and +import-status reads its terminal sta
     assert.match(received.body, /name="description"\r\n\r\nRead-only docs/);
     assert.equal((received.body.match(/name="tags"/g) ?? []).length, 2);
     assert.match(received.body, /name="projectId"\r\n\r\nproject-1/);
+    assert.match(received.body, /name="scope"\r\n\r\npersonal/);
     for (const forbiddenField of [
-      "scope",
       "contentMode",
       "buildStatus",
       "schemaStatus",
@@ -231,6 +248,61 @@ test("kb +import submits an async task and +import-status reads its terminal sta
         new RegExp(`name="${forbiddenField}"`),
       );
     }
+
+    const companyResult = await runCli(
+      [
+        "--host",
+        host,
+        "kb",
+        "+import",
+        "--file",
+        archivePath,
+        "--name",
+        "Company snapshot",
+        "--scope",
+        "company",
+      ],
+      {
+        HOME: path.join(temporaryRoot, "home"),
+        SANDBOX_RUNTIME_ROOT: runtimeRoot,
+      },
+    );
+    assert.equal(companyResult.status, 0, companyResult.stderr);
+    assert.deepEqual(JSON.parse(companyResult.stdout).data, {
+      requestId: "request-1",
+      status: "queued",
+      scope: "company",
+    });
+    assert.equal(
+      received.url,
+      "/agent/api/external/knowledge-bases/import?scope=company",
+    );
+    assert.match(received.body, /name="scope"\r\n\r\ncompany/);
+
+    const requestsBeforeInvalidScope = requestCount;
+    const invalidScope = await runCli(
+      [
+        "--host",
+        host,
+        "kb",
+        "+import",
+        "--file",
+        archivePath,
+        "--name",
+        "Invalid snapshot",
+        "--scope",
+        "tenant",
+      ],
+      {
+        HOME: path.join(temporaryRoot, "home"),
+        SANDBOX_RUNTIME_ROOT: runtimeRoot,
+      },
+    );
+    assert.equal(invalidScope.status, 1);
+    assert.equal(requestCount, requestsBeforeInvalidScope);
+    const invalidScopeOutput = JSON.parse(invalidScope.stderr);
+    assert.equal(invalidScopeOutput.error.type, "validation");
+    assert.match(invalidScopeOutput.error.message, /personal \| company/);
 
     responseMode = "unauthorized-once";
     const requestsBeforeUnauthorizedRetry = requestCount;
@@ -279,6 +351,7 @@ test("kb +import submits an async task and +import-status reads its terminal sta
     assert.deepEqual(JSON.parse(statusResult.stdout).data, {
       requestId: "request-1",
       status: "succeeded",
+      scope: "personal",
       knowledgeBaseId: "kb-imported-1",
       errorCode: null,
       errorMessage: null,
@@ -301,6 +374,7 @@ test("kb +import submits an async task and +import-status reads its terminal sta
     assert.deepEqual(JSON.parse(conflict.stdout).data, {
       requestId: "request-1",
       status: "failed",
+      scope: "personal",
       knowledgeBaseId: null,
       errorCode: "KB_SNAPSHOT_NAME_CONFLICT",
       errorMessage:
@@ -348,6 +422,20 @@ test("kb +import submits an async task and +import-status reads its terminal sta
       /server supports kb \+import-status/,
     );
 
+    responseMode = "task-forbidden";
+    const forbiddenStatus = await runCli(
+      ["--host", host, "kb", "+import-status", "--request-id", "request-1"],
+      {
+        HOME: path.join(temporaryRoot, "home"),
+        SANDBOX_RUNTIME_ROOT: runtimeRoot,
+      },
+    );
+    assert.equal(forbiddenStatus.status, 1);
+    const forbiddenStatusOutput = JSON.parse(forbiddenStatus.stderr);
+    assert.equal(forbiddenStatusOutput.error.type, "permission");
+    assert.equal(forbiddenStatusOutput.error.code, "KB_SNAPSHOT_IMPORT_FORBIDDEN");
+    assert.match(forbiddenStatusOutput.error.hint, /server supports kb \+import-status/);
+
     responseMode = "forbidden";
     const requestsBeforeForbidden = requestCount;
     const forbidden = await runCli(
@@ -360,6 +448,8 @@ test("kb +import submits an async task and +import-status reads its terminal sta
         archivePath,
         "--name",
         "Imported KB",
+        "--scope",
+        "company",
       ],
       {
         HOME: path.join(temporaryRoot, "home"),
@@ -432,10 +522,8 @@ test("kb +import submits an async task and +import-status reads its terminal sta
     assert.equal(help.status, 0, help.stderr);
     assert.match(help.stdout, /--file/);
     assert.match(help.stdout, /--name/);
-    assert.doesNotMatch(
-      help.stdout,
-      /--scope|--force|--replace|--version|--rollback|--request-id/,
-    );
+    assert.match(help.stdout, /--scope/);
+    assert.doesNotMatch(help.stdout, /--force|--replace|--version|--rollback|--request-id/);
 
     const statusHelp = await runCli(["kb", "+import-status", "--help"], {
       HOME: path.join(temporaryRoot, "home"),

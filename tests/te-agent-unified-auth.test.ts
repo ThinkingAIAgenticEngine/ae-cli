@@ -27,9 +27,9 @@ process.env.SECRET_KEY = 'sandbox-secret-must-not-leak';
 delete process.env.SANDBOX_SECRET_KEY;
 
 const { getFromMainApp, TeAgentApiError } = await import('../src/core/te-agent-client.ts');
-const { clearCliToken } = await import('../src/core/cli-token.ts');
+const { clearCliToken, setCliTokenManual } = await import('../src/core/cli-token.ts');
 const { PermissionError } = await import('../src/core/errors.ts');
-const { save } = await import('../src/core/secure-store.ts');
+const { loadCliToken, markCredentialRenewed } = await import('../src/core/secure-store.ts');
 
 let passed = 0;
 let failed = 0;
@@ -47,12 +47,14 @@ async function test(name: string, run: () => Promise<void>): Promise<void> {
 }
 
 function seedSession(host: string, cliToken: string): void {
-  save(host, {
-    accessToken: `access-for-${cliToken}`,
-    refreshToken: `refresh-for-${cliToken}`,
-    accessExpiresAt: new Date(Date.now() + 3_600_000).toISOString(),
-    cliToken,
-  });
+  setCliTokenManual(cliToken, host);
+  const now = new Date();
+  const localDate = [
+    now.getFullYear(),
+    String(now.getMonth() + 1).padStart(2, '0'),
+    String(now.getDate()).padStart(2, '0'),
+  ].join('-');
+  markCredentialRenewed(host, cliToken, localDate);
 }
 
 function authPath(url: string): string | null {
@@ -86,7 +88,7 @@ try {
     clearCliToken(host);
   });
 
-  await test('agent HTTP 401 clears the CLI token and retries exactly once', async () => {
+  await test('agent HTTP 401 preserves the CLI token and does not retry or mint', async () => {
     const host = 'http://agent-retry.local';
     seedSession(host, 'cli-agent-old');
     const businessCalls: FetchCall[] = [];
@@ -97,31 +99,27 @@ try {
       const pathname = authPath(url);
       if (pathname) {
         authCalls.push(pathname);
-        if (pathname.endsWith('/generate')) {
-          return new Response(
-            JSON.stringify({ return_code: 0, data: { userSecret: 'cli-agent-new' } }),
-            { status: 200 },
-          );
-        }
         return new Response(JSON.stringify({ return_code: 0 }), { status: 200 });
       }
 
       businessCalls.push({ url, headers: new Headers(init?.headers) });
-      if (businessCalls.length === 1) {
-        return new Response(
-          JSON.stringify({ error: 'CLI token expired', code: 'cli_token_invalid' }),
-          { status: 401 },
-        );
-      }
-      return new Response(JSON.stringify({ agents: [] }), { status: 200 });
+      return new Response(
+        JSON.stringify({ error: 'CLI token expired', code: 'cli_token_invalid' }),
+        { status: 401 },
+      );
     }) as typeof fetch;
 
-    await getFromMainApp('/api/sandbox/agent/agents', host);
+    await assert.rejects(
+      () => getFromMainApp('/api/sandbox/agent/agents', host),
+      (error: unknown) => error instanceof TeAgentApiError
+        && error.status === 401
+        && error.code === 'auth_expired',
+    );
 
-    assert.equal(businessCalls.length, 2);
+    assert.equal(businessCalls.length, 1);
     assert.equal(businessCalls[0].headers.get('cli-token'), 'cli-agent-old');
-    assert.equal(businessCalls[1].headers.get('cli-token'), 'cli-agent-new');
-    assert.equal(authCalls.filter((pathname) => pathname.endsWith('/generate')).length, 1);
+    assert.equal(authCalls.length, 0);
+    assert.equal(loadCliToken(host), 'cli-agent-old');
     clearCliToken(host);
   });
 
@@ -157,11 +155,7 @@ try {
     );
 
     assert.equal(businessCalls.length, 1);
-    assert.deepEqual(
-      authCalls,
-      ['/v1/ta/cli/token/renew'],
-      'the 403 response must not trigger an additional token refresh request',
-    );
+    assert.deepEqual(authCalls, [], 'the 403 response must not trigger an auth request');
     clearCliToken(host);
   });
 

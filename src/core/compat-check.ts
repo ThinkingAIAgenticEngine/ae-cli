@@ -2,7 +2,6 @@ import fs from 'fs';
 import path from 'path';
 import { getActiveHost, getConfigDir } from './config.js';
 import { peekCliToken } from './cli-token.js';
-import { getToken } from './auth.js';
 import { isAeSandboxRuntime } from './sandbox-runtime.js';
 import { shouldSkipUpdateCheck } from './update-check.js';
 import {
@@ -154,21 +153,12 @@ export async function fetchCliConfig(
 ): Promise<{ clusterVersion: string | null; aeCliVersion: string | null } | null> {
   const url = new URL(CLI_CONFIG_PATH, host.endsWith('/') ? host : `${host}/`);
   url.searchParams.set('cli-token', cliToken);
-  const headers: Record<string, string> = { Accept: 'application/json' };
-  try {
-    const accessToken = await getToken(host);
-    if (accessToken) {
-      headers.Authorization = `bearer ${accessToken}`;
-    }
-  } catch {
-    // cli-token-only / sandbox: rely on ANONY_PATHS + query cli-token after backend whitelist.
-  }
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
   try {
     const resp = await fetch(url.toString(), {
       signal: controller.signal,
-      headers,
+      headers: { Accept: 'application/json' },
     });
     if (!resp.ok) return null;
     const body = (await resp.json()) as { data?: CliConfigPayload } & CliConfigPayload;

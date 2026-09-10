@@ -132,6 +132,24 @@ test('tracking plan validate exits non-zero for an invalid draft', () => {
   }
 });
 
+test('tracking plan validate accepts uppercase event names', () => {
+  const dir = mkdtempSync(path.join(tmpdir(), 'ae-cli-upper-event-'));
+  const input = path.join(dir, 'draft.json');
+  try {
+    writeFileSync(input, JSON.stringify({
+      meta: { app_type: '', sdk_integration_mode: 'client_only', plan_name: 'upper' },
+      events: [{ event_name: 'Purchase', source: 'chat', prop_names: [] }],
+      event_properties: [],
+      common_event_properties: [],
+      user_properties: [],
+    }));
+    const r = runCli(['tracking', 'plan', 'validate', '--in', input]);
+    assert.equal(r.status, 0, r.stderr);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
 test('tracking wiki query runs locally', () => {
   const r = runCli(['tracking', 'wiki', 'query', '--keyword', 'sdk']);
   assert.equal(r.status, 0, r.stderr);

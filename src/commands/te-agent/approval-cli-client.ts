@@ -5,25 +5,13 @@ import {
   type CapabilityApiRequestOptions,
 } from '../../core/capability-api.js';
 import type { RuntimeContext } from '../../framework/types.js';
+import { resolveTeClaudeBaseUrl } from '../../core/te-claude-base-url.js';
 
 const APPROVAL_GATEWAY_DOMAIN = 'approval';
-const DEFAULT_TE_CLAUDE_BASE_PATH = '/agent';
 
 type ApprovalCliRequestOptions = Pick<CapabilityApiRequestOptions, 'retryOnUnauthorized'>;
 
-function normalizeBasePath(value: string): string {
-  const trimmed = value.trim();
-  if (!trimmed || trimmed === '/') return '';
-  return `/${trimmed.replace(/^\/+|\/+$/g, '')}`;
-}
-
-export function resolveApprovalApiBaseUrl(host: string): string {
-  const base = host.replace(/\/+$/, '');
-  const basePath = normalizeBasePath(
-    process.env.TE_CLAUDE_BASE_PATH ?? process.env.AE_API_PREFIX ?? DEFAULT_TE_CLAUDE_BASE_PATH,
-  );
-  return basePath && !base.endsWith(basePath) ? `${base}${basePath}` : base;
-}
+export const resolveApprovalApiBaseUrl = resolveTeClaudeBaseUrl;
 
 export function buildApprovalCliUrl(ctx: RuntimeContext, path: string): string {
   return buildCapabilityGatewayUrl(resolveApprovalApiBaseUrl(ctx.host()), APPROVAL_GATEWAY_DOMAIN, path);

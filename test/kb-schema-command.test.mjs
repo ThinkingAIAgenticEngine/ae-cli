@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import test from 'node:test';
 
 import { executeSchema, schema } from '../src/commands/te-kb/schema.ts';
 import { parseKbResponse } from '../src/core/mcp-access.ts';
@@ -22,9 +23,26 @@ assert.deepEqual(customInstructionsFlag, {
   desc: 'Optional per-run instructions for generating this knowledge base schema',
 });
 
+const scopeFlag = schema.flags.find((flag) => flag.name === 'scope');
+assert.deepEqual(scopeFlag, {
+  name: 'scope',
+  type: 'string',
+  required: false,
+  desc: 'Exact knowledge base scope: personal | company (omit for personal → company fallback)',
+});
+
+const modelFlag = schema.flags.find((flag) => flag.name === 'model');
+test('kb +schema command > documents model references instead of display names', () => {
+  assert.match(modelFlag?.desc ?? '', /model reference/i);
+  assert.match(modelFlag?.desc ?? '', /Model\.id/);
+  assert.match(modelFlag?.desc ?? '', /modelId::scope/);
+  assert.doesNotMatch(modelFlag?.desc ?? '', /displayName/);
+});
+
 const withCustomInstructions = schema.dryRun(
   makeContext({
     name: 'engineering-handbook',
+    scope: 'company',
     force: true,
     model: 'claude-sonnet-4-6',
     'custom-instructions': 'Prioritize troubleshooting workflows.',
@@ -35,6 +53,7 @@ assert.deepEqual(withCustomInstructions, {
   url: 'https://ta.example/agent/api/external/knowledge-bases/schema',
   body: {
     name: 'engineering-handbook',
+    scope: 'company',
     force: true,
     model: 'claude-sonnet-4-6',
     customInstructions: 'Prioritize troubleshooting workflows.',
@@ -47,6 +66,10 @@ const withoutCustomInstructions = schema.dryRun(
 assert.deepEqual(withoutCustomInstructions.body, {
   name: 'engineering-handbook',
 });
+assert.throws(
+  () => schema.validate(makeContext({ name: 'engineering-handbook', scope: 'system' })),
+  /Invalid --scope.*personal.*company/,
+);
 
 const apiCalls = [];
 await executeSchema(

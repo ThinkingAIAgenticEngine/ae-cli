@@ -12,7 +12,7 @@ ae-cli personal-semantic-preference update --project-id <project_id> --id <prefe
 
 The update replaces all editable fields. Include the full intended `title`, `summary`, `content`, keywords, and asset bindings rather than a partial patch. `asset_context` requires 1 to 50 complete ordered `resource_refs`; other context types cannot contain non-empty refs.
 
-This command updates only the current-user preference; it does not update, approve, or publish project semantics. Do not block the update merely because the same content may benefit other users, and do not imply that the saved preference is shared authority. Keep project-candidate recommendation separate and ask before submitting it.
+This command updates only the current-user preference. Do not block the update merely because the same content may benefit other users, and do not imply that the saved preference is shared authority.
 
 Keep future governance and lifecycle handling out of the stored content. Do not use this command for shared knowledge, standalone metadata facts, reports, dashboards, transient task details, one-off analysis results, or automatic stale/expired preference handling.
 

@@ -3,15 +3,17 @@ import { Command } from 'commander';
 import { resolveHost } from '../../core/auth.js';
 import {
   CapabilityGatewayError,
-  dryRunCapability,
-  executeCapability,
+  dryRunCapabilityWithEnvelope,
+  executeCapabilityWithEnvelope,
   inspectCapability,
-  listCapabilities,
-  validateCapability,
+  inspectCapabilityWithEnvelope,
+  listCapabilitiesWithEnvelope,
+  validateCapabilityWithEnvelope,
+  type CapabilityGatewaySuccess,
 } from '../../core/capability-api.js';
 import { PermissionError } from '../../core/errors.js';
 import { SecureStoreAuthError } from '../../core/secure-store.js';
-import { printError, printOutput } from '../../framework/output.js';
+import { printError, printOutput, withOutputMetadata } from '../../framework/output.js';
 import type { OutputFormat } from '../../framework/types.js';
 import {
   CapabilityCommandValidationError,
@@ -52,15 +54,16 @@ export function registerCapability(program: Command): void {
       await executeAndPrint(program, async (host) => {
         const gatewayDomain = resolveCapabilityListDomain(opts.domain);
         const projectId = parseOptionalProjectId(opts.projectId);
-        const catalog = normalizeCapabilityList(await listCapabilities(host, gatewayDomain, projectId));
+        const envelope = await listCapabilitiesWithEnvelope(host, gatewayDomain, projectId);
+        const catalog = normalizeCapabilityList(envelope.data);
         const capabilities = filterCapabilities(catalog, opts.domain);
         const warning = emptyCapabilityCatalogWarning(catalog);
-        return {
+        return withOutputMetadata({
           domain: opts.domain,
           count: capabilities.length,
           capabilities,
           ...(warning ? { warning } : {}),
-        };
+        }, envelope.meta);
       });
     })
     .addHelpText(
@@ -74,50 +77,30 @@ export function registerCapability(program: Command): void {
     .command('search')
     .description('Search capability IDs and descriptions in a domain')
     .argument('<query>', 'Case-insensitive search terms')
-    .requiredOption(
-      '--domain <domain>',
-      'Capability namespace. One of: analysis, project, system, tracking, metadata, '
-      + 'experiment, engage-flow, engage-task, engage-setting, engage-scene, '
-      + 'engage-activity, engage-workbench, community',
-    )
+    .requiredOption('--domain <domain>', 'Capability namespace, such as analysis or metadata')
     .option('--project-id <project-id>', 'Filter by project membership, permissions, and enabled features')
     .action(async (query: string, opts: { domain: string; projectId?: string }) => {
       await executeAndPrint(program, async (host) => {
         const gatewayDomain = resolveCapabilityListDomain(opts.domain);
         const projectId = parseOptionalProjectId(opts.projectId);
-        const catalog = normalizeCapabilityList(await listCapabilities(host, gatewayDomain, projectId));
+        const envelope = await listCapabilitiesWithEnvelope(host, gatewayDomain, projectId);
+        const catalog = normalizeCapabilityList(envelope.data);
         const capabilities = filterCapabilities(catalog, opts.domain, query);
         const warning = emptyCapabilityCatalogWarning(catalog);
-        return {
+        return withOutputMetadata({
           domain: opts.domain,
           query,
           count: capabilities.length,
           capabilities,
           ...(warning ? { warning } : {}),
-        };
+        }, envelope.meta);
       });
     })
     .addHelpText(
       'after',
-      '\nDomains (--domain):\n' +
-      '  analysis, project, system, tracking, metadata,\n' +
-      '  experiment, engage-flow, engage-task, engage-setting,\n' +
-      '  engage-scene, engage-activity, engage-workbench, community\n' +
       '\nExamples:\n' +
       '  ae-cli capability search "dashboard list" --domain analysis\n' +
-      '  ae-cli capability search "dashboard list" --domain analysis --project-id 1\n' +
-      '  ae-cli capability search "info list" --domain project\n' +
-      '  ae-cli capability search "usage" --domain system\n' +
-      '  ae-cli capability search "plan" --domain tracking\n' +
-      '  ae-cli capability search "data_table" --domain metadata\n' +
-      '  ae-cli capability search "report" --domain experiment\n' +
-      '  ae-cli capability search "flow" --domain engage-flow\n' +
-      '  ae-cli capability search "task" --domain engage-task\n' +
-      '  ae-cli capability search "channel" --domain engage-setting\n' +
-      '  ae-cli capability search "strategy" --domain engage-scene\n' +
-      '  ae-cli capability search "topic" --domain engage-activity\n' +
-      '  ae-cli capability search "workbench" --domain engage-workbench\n' +
-      '  ae-cli capability search "post" --domain community',
+      '  ae-cli capability search "dashboard list" --domain analysis --project-id 1',
     );
 
   capability
@@ -129,7 +112,7 @@ export function registerCapability(program: Command): void {
     .action(async (capabilityId: string, opts: { domain?: string; projectId?: string }) => {
       await executeAndPrint(program, async (host) => {
         const gatewayDomain = resolveCapabilityGatewayDomain(capabilityId, opts.domain);
-        return inspectCapability(host, gatewayDomain, capabilityId, parseOptionalProjectId(opts.projectId));
+        return gatewayOutput(await inspectCapabilityWithEnvelope(host, gatewayDomain, capabilityId, parseOptionalProjectId(opts.projectId)), host);
       });
     })
     .addHelpText(
@@ -153,7 +136,7 @@ export function registerCapability(program: Command): void {
     .action(async (capabilityId: string, opts: { domain?: string; input?: string }) => {
       await executeAndPrint(program, async (host) => {
         const gatewayDomain = resolveCapabilityGatewayDomain(capabilityId, opts.domain);
-        return validateCapability(host, gatewayDomain, capabilityId, parseCapabilityInput(opts.input));
+        return gatewayOutput(await validateCapabilityWithEnvelope(host, gatewayDomain, capabilityId, parseCapabilityInput(opts.input)), host);
       });
     })
     .addHelpText(
@@ -184,7 +167,7 @@ export function registerCapability(program: Command): void {
     .action(async (capabilityId: string, opts: { domain?: string; input?: string }) => {
       await executeAndPrint(program, async (host) => {
         const gatewayDomain = resolveCapabilityGatewayDomain(capabilityId, opts.domain);
-        return dryRunCapability(host, gatewayDomain, capabilityId, parseCapabilityInput(opts.input));
+        return gatewayOutput(await dryRunCapabilityWithEnvelope(host, gatewayDomain, capabilityId, parseCapabilityInput(opts.input)), host);
       });
     })
     .addHelpText(
@@ -213,11 +196,11 @@ export function registerCapability(program: Command): void {
         }
 
         if (globalOpts.validate) {
-          return validateCapability(host, gatewayDomain, capabilityId, input);
+          return gatewayOutput(await validateCapabilityWithEnvelope(host, gatewayDomain, capabilityId, input), host);
         }
 
         if (globalOpts.dryRun) {
-          return dryRunCapability(host, gatewayDomain, capabilityId, input);
+          return gatewayOutput(await dryRunCapabilityWithEnvelope(host, gatewayDomain, capabilityId, input), host);
         }
 
         if (!globalOpts.yes) {
@@ -232,7 +215,7 @@ export function registerCapability(program: Command): void {
           }
         }
 
-        return executeCapability(host, gatewayDomain, capabilityId, input);
+        return gatewayOutput(await executeCapabilityWithEnvelope(host, gatewayDomain, capabilityId, input), host);
       });
     })
     .addHelpText(
@@ -241,6 +224,17 @@ export function registerCapability(program: Command): void {
       '  ae-cli capability run analysis.dashboard.list --input \'{"project_id":1}\'\n' +
       '  ae-cli capability run analysis.dashboard.list --input input.json',
     );
+}
+
+function gatewayOutput(envelope: CapabilityGatewaySuccess, host: string): unknown {
+  return withOutputMetadata(withPageUrl(envelope.data, host), envelope.meta);
+}
+
+function withPageUrl(value: unknown, host: string): unknown {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return value;
+  const record = value as Record<string, unknown>;
+  if (typeof record.page_path !== 'string' || !/^\/(?![\\/])/.test(record.page_path) || record.page_url !== undefined) return value;
+  return { ...record, page_url: new URL(record.page_path, host).toString() };
 }
 
 async function executeAndPrint(
@@ -266,12 +260,12 @@ async function executeAndPrint(
       process.exitCode = 1;
       return;
     }
-    printCapabilityError(error);
+    printCapabilityError(error, host);
     process.exitCode = 1;
   }
 }
 
-function printCapabilityError(error: unknown): void {
+function printCapabilityError(error: unknown, host: string): void {
   if (error instanceof CapabilityCommandValidationError) {
     printError('validation', error.message, error.hint, error.code);
     return;
@@ -285,7 +279,7 @@ function printCapabilityError(error: unknown): void {
     return;
   }
   if (error instanceof CapabilityGatewayError) {
-    printError('api', error.message, error.hint, error.code);
+    printError('api', error.message, error.hint, error.code, withPageUrl(error.meta, host) as Record<string, unknown> | undefined);
     return;
   }
   const message = error instanceof Error ? error.message : String(error);

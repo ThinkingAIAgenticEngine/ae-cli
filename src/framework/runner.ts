@@ -261,13 +261,13 @@ export async function runCommand(cmd: Command, opts: Record<string, any>, global
           'api',
           presentation.message ?? message,
           presentation.hint,
-          presentation.code,
+          presentation.code ?? err.code,
           presentation.meta,
         );
       }
     } else if (looksLikeAuthFailure(message)) {
-      // Narrow fallback for plain Errors signaling a genuine token/session failure (e.g. mcp-token mint
-      // returning -1001 / "Invalid access token"). Deliberately excludes 403 / forbidden / permission.
+      // Narrow compatibility fallback for plain auth errors returned by older services.
+      // Deliberately excludes 403 / forbidden / permission.
       printError('auth', message, 'Run: ae-cli auth login');
     } else {
       printError('api', message);
@@ -311,7 +311,7 @@ export function capabilityGatewayHint(err: CapabilityGatewayError): string | und
   }
   if (err.httpStatus === 404 && !err.code) {
     const base =
-      'The current host returned 404 for this capability route. Do not keep retrying the same command; verify the backend route/capability deployment. If --host points directly to a local Common service instead of the deployed gateway, scope AE_CLI_CAPABILITY_GATEWAY_DOMAIN= to this command so it uses /api/cli/v1.';
+      'The current host returned 404 for this capability route. Do not keep retrying the same command; verify the backend route/capability deployment.';
     return compatExtra ? `${base}\n${compatExtra}` : base;
   }
   return undefined;
@@ -333,15 +333,6 @@ export function looksLikeAuthFailure(message: string): boolean {
 }
 
 function createRuntimeContext(cmd: Command, opts: Record<string, any>, globalOpts: GlobalOptions): RuntimeContext {
-  // Lazy imports to avoid circular dependencies
-  let _clientModule: any = null;
-  async function getClient() {
-    if (!_clientModule) {
-      _clientModule = await import('../core/client.js');
-    }
-    return _clientModule;
-  }
-
   let _communityReportModule: typeof import('../core/community-report-client.js') | null = null;
   async function getCommunityReportClient() {
     if (!_communityReportModule) {
@@ -359,6 +350,9 @@ function createRuntimeContext(cmd: Command, opts: Record<string, any>, globalOpt
   }
 
   const ctx: RuntimeContext = {
+    has(name: string): boolean {
+      return Object.prototype.hasOwnProperty.call(opts, camelCase(name));
+    },
     str(name: string): string {
       return String(opts[camelCase(name)] ?? '');
     },
@@ -392,38 +386,14 @@ function createRuntimeContext(cmd: Command, opts: Record<string, any>, globalOpt
       return [String(val)];
     },
 
-    async api(method: string, path: string, params?: Record<string, any>, data?: any): Promise<any> {
-      const client = await getClient();
-      if (method.toUpperCase() === 'GET') {
-        return client.httpGet(path, params, ctx.host());
-      } else {
-        return client.httpRequest(method, path, params, data, ctx.host());
-      }
-    },
-
     async communityReport(endpoint: string, rawBody: string): Promise<any> {
       const client = await getCommunityReportClient();
       return client.communityReport(endpoint, rawBody);
     },
 
-    async querySql(projectId: number, sql: string): Promise<any> {
-      const client = await getClient();
-      return client.querySql(projectId, sql, ctx.host());
-    },
-
-    async queryReportData(projectId: number, reportId: number, qp: any, eventModel: number, options?: Record<string, any>): Promise<any> {
-      const client = await getClient();
-      return client.queryReportData(projectId, reportId, qp, eventModel, options, ctx.host());
-    },
-
     async localDataUpload(endpoint: string, rawBody: string, options?: Record<string, any>): Promise<any> {
       const client = await getLocalDataUploadClient();
       return client.localDataUpload(endpoint, rawBody, options);
-    },
-
-    async token(): Promise<string> {
-      const { getToken } = await import('../core/auth.js');
-      return getToken(ctx.host());
     },
 
     host(): string {

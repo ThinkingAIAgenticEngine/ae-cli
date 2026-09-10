@@ -16,7 +16,7 @@
  *  6. sandbox-provisioned cli-token.json is read before minting
  *  7. secure-store cliToken wins over sandbox fallback for a different host
  *  8. mcpRequest (MCP JSON-RPC transport) sends cli-token header only
- *  9. mcpRequest: 401 clears the CLI token cache, re-mints, and retries once with refreshed headers;
+ *  9. mcpRequest: 401 preserves the CLI token and asks the user to log in again without retrying;
  *     403 is a permission denial and is never retried
  * 10. getCliToken renews once per local day via /v1/ta/cli/token/renew; failure does not block
  */
@@ -67,43 +67,27 @@ await test('clearCliToken clears in-process cache (forces a mint attempt afterwa
 
 // ── test 2: clearCliToken(host) also clears the persisted copy ───────────
 
-await test('clearCliToken(host) clears the persisted secure-store cliToken (not accessToken/refreshToken)', async () => {
+await test('clearCliToken(host) clears both CLI-token credential files', async () => {
   const { setCliTokenManual, clearCliToken } = await import('../src/core/cli-token.ts');
-  const { save, load, clear } = await import('../src/core/secure-store.ts');
+  const { load, listCredentials } = await import('../src/core/secure-store.ts');
 
   const host = 'https://test-cli-clear-persist.internal';
-  clear(host);
-  save(host, {
-    accessToken: 'acc',
-    refreshToken: 'ref',
-    accessExpiresAt: new Date(Date.now() + 3600_000).toISOString(),
-  });
-
   setCliTokenManual('minted-abc', host);
   assert.equal(load(host)?.cliToken, 'minted-abc', 'setCliTokenManual should persist when a secure-store session exists');
 
   clearCliToken(host);
   assert.equal(load(host)?.cliToken, undefined, 'clearCliToken should remove the persisted cliToken');
-  assert.equal(load(host)?.accessToken, 'acc', 'clearCliToken must NOT touch accessToken');
-  assert.equal(load(host)?.refreshToken, 'ref', 'clearCliToken must NOT touch refreshToken');
-
-  clear(host);
+  assert.deepEqual(listCredentials(host), []);
 });
 
 // ── test 3: getCliToken mints on demand, persists, and caches ────────────
 
-await test('getCliToken mints via /v1/ta/cli/token/generate, persists to secure-store, and reuses cache', async () => {
-  const { getCliToken, clearCliToken } = await import('../src/core/cli-token.ts');
-  const { save, load, clear } = await import('../src/core/secure-store.ts');
+await test('mintCliToken uses the login access token only for generate and does not persist it', async () => {
+  const { mintCliToken, clearCliToken } = await import('../src/core/cli-token.ts');
+  const { load } = await import('../src/core/secure-store.ts');
 
   const host = 'https://test-cli-mint.internal';
   clearCliToken(host);
-  clear(host);
-  save(host, {
-    accessToken: 'access-for-mint',
-    refreshToken: '',
-    accessExpiresAt: new Date(Date.now() + 3600_000).toISOString(),
-  });
 
   let mintCallCount = 0;
   const prevFetch = globalThis.fetch;
@@ -118,46 +102,30 @@ await test('getCliToken mints via /v1/ta/cli/token/generate, persists to secure-
         { status: 200 },
       );
     }
-    if (urlStr.includes('/v1/ta/cli/token/renew')) {
-      return new Response(JSON.stringify({ return_code: 0 }), { status: 200 });
-    }
     throw new Error(`Unexpected fetch: ${urlStr}`);
   }) as typeof fetch;
 
   try {
-    const token1 = await getCliToken(host);
-    assert.equal(token1, 'minted-cli-token-1', 'should return the freshly-minted token');
+    const token = await mintCliToken(host, 'access-for-mint');
+    assert.equal(token, 'minted-cli-token-1', 'should return the freshly-minted token');
     assert.equal(mintCallCount, 1, 'should mint exactly once');
-    assert.equal(load(host)?.cliToken, 'minted-cli-token-1', 'minted cliToken should be persisted to secure-store');
-
-    const token2 = await getCliToken(host);
-    assert.equal(token2, 'minted-cli-token-1', 'second call should reuse the in-process cache');
-    assert.equal(mintCallCount, 1, 'should NOT re-mint on a subsequent call within the same process');
+    assert.equal(load(host), null, 'minting alone must not persist access token or CLI token');
   } finally {
     globalThis.fetch = prevFetch;
     clearCliToken(host);
-    clear(host);
   }
 });
 
 // ── log redaction grep verification ───────────────────────────────────────
 
-await test('log redaction: validateToken sends accessToken in form body, not URL query', async () => {
+await test('access-token auth client and checkToken flow have been removed', async () => {
   const authSrc = fs.readFileSync(
     path.join(process.cwd(), 'src/core/auth.ts'),
     'utf8',
   );
-
-  assert.ok(
-    authSrc.includes("method: 'POST'") &&
-    authSrc.includes("'Content-Type': 'application/x-www-form-urlencoded'") &&
-    authSrc.includes('new URLSearchParams({ accessToken: token })'),
-    'validateToken should send accessToken as a form-encoded body param (server @RequestParam), not JSON body',
-  );
-  assert.ok(
-    !authSrc.includes('?accessToken=') && !authSrc.includes('checkToken?accessToken'),
-    'validateToken should not append token to the URL query (avoid log leak)',
-  );
+  assert.equal(authSrc.includes('accessToken'), false);
+  assert.equal(authSrc.includes('checkToken'), false);
+  assert.equal(fs.existsSync(path.join(process.cwd(), 'src/core/client.ts')), false);
 });
 
 await test('osascript has been removed from the codebase (T4 verification)', async () => {
@@ -428,25 +396,19 @@ await test('mcpRequest sends cli-token header only (no mcp-token)', async () => 
   }
 });
 
-// ── test 6: 401/403 → clear cache, re-mint, retry once ───────────────────
+// ── test 6: 401/403 preserve credentials and never retry ────────────────
 
-await test('mcpRequest: 401 clears the CLI token cache, re-mints, and retries once with refreshed cli-token header', async () => {
+await test('mcpRequest: 401 asks for login without re-minting or deleting the stored CLI token', async () => {
   const { callMcpTool } = await import('../src/core/mcp.ts');
   const { setCliTokenManual, clearCliToken } = await import('../src/core/cli-token.ts');
-  const { save, clear } = await import('../src/core/secure-store.ts');
+  const { loadCliToken, SecureStoreAuthError } = await import('../src/core/secure-store.ts');
 
   const host = 'https://test-401-retry.internal';
   clearCliToken(host);
-  clear(host);
   setCliTokenManual('stale-token', host);
-  save(host, {
-    accessToken: 'fake-access-token-for-401-test',
-    refreshToken: '',
-    accessExpiresAt: new Date(Date.now() + 3600_000).toISOString(),
-  });
 
   let mcpCallCount = 0;
-  const seenTokens: string[] = [];
+  let generateCount = 0;
   const prevFetch = globalThis.fetch;
   globalThis.fetch = (async (url, init) => {
     const urlStr = String(url);
@@ -455,26 +417,25 @@ await test('mcpRequest: 401 clears the CLI token cache, re-mints, and retries on
       return new Response(JSON.stringify({ return_code: 0 }), { status: 200 });
     }
     if (urlStr.includes('/v1/ta/cli/token/generate')) {
+      generateCount++;
       return new Response(JSON.stringify({ return_code: 0, data: { userSecret: 'fresh-token' } }), { status: 200 });
     }
     mcpCallCount++;
-    seenTokens.push(headers?.['cli-token'] ?? '');
-    if (mcpCallCount === 1) {
-      return new Response('Unauthorized', { status: 401 });
-    }
-    return new Response(JSON.stringify({ jsonrpc: '2.0', id: 1, result: { content: [] } }), { status: 200 });
+    assert.equal(headers?.['cli-token'], 'stale-token');
+    return new Response('Unauthorized', { status: 401 });
   }) as typeof fetch;
 
   try {
-    const result = await callMcpTool(`${host}/mcp/analysis/http/analysis`, 'list_dashboards', {}, host);
-    assert.equal(mcpCallCount, 2, 'should retry exactly once after a 401');
-    assert.equal(seenTokens[0], 'stale-token', 'first attempt should use the stale cached token');
-    assert.equal(seenTokens[1], 'fresh-token', 'retry should use the freshly re-minted token');
-    assert.ok(result, 'should return a result after a successful retry');
+    await assert.rejects(
+      () => callMcpTool(`${host}/mcp/analysis/http/analysis`, 'list_dashboards', {}, host),
+      (error: unknown) => error instanceof SecureStoreAuthError && error.message.includes('auth login'),
+    );
+    assert.equal(mcpCallCount, 1, '401 must not retry with an unavailable access token');
+    assert.equal(generateCount, 0, '401 must not call CLI token generate');
+    assert.equal(loadCliToken(host), 'stale-token', 'status/logout remains able to inspect or remove the credential');
   } finally {
     globalThis.fetch = prevFetch;
     clearCliToken(host);
-    clear(host);
   }
 });
 
@@ -561,11 +522,13 @@ await test('getCliToken renews once per local day; success skips subsequent rene
 
   let renewCount = 0;
   const prevFetch = globalThis.fetch;
-  globalThis.fetch = (async (url) => {
+  globalThis.fetch = (async (url, init) => {
     const urlStr = String(url);
     if (urlStr.includes('/v1/ta/cli/token/renew')) {
       renewCount++;
       assert.ok(urlStr.includes('cli-token=cli_renew_token'), 'renew must pass cli-token query');
+      assert.equal((init?.headers as Record<string, string>).Authorization, undefined,
+        'renew must never attach an access token');
       return new Response(JSON.stringify({ return_code: 0 }), { status: 200 });
     }
     throw new Error(`Unexpected fetch: ${urlStr}`);
@@ -579,7 +542,8 @@ await test('getCliToken renews once per local day; success skips subsequent rene
     const renewFile = path.join(getConfigDir(), 'cli-token-renew.json');
     assert.ok(fs.existsSync(renewFile), 'renew success should persist local day marker');
     const store = JSON.parse(fs.readFileSync(renewFile, 'utf8'));
-    assert.equal(store[host]?.date, localRenewDate());
+    assert.ok(Object.entries(store).some(([key, value]: [string, any]) =>
+      key.startsWith(`${host}#`) && value.date === localRenewDate()));
   } finally {
     globalThis.fetch = prevFetch;
     clearCliToken(host);
@@ -623,8 +587,10 @@ await test('getCliToken renew state uses normalized host key (trailing slash ded
 
     const renewFile = path.join(getConfigDir(), 'cli-token-renew.json');
     const store = JSON.parse(fs.readFileSync(renewFile, 'utf8'));
-    assert.equal(store[hostPlain]?.date, localRenewDate());
-    assert.equal(store[hostSlash], undefined, 'legacy trailing-slash key should not be persisted');
+    assert.ok(Object.entries(store).some(([key, value]: [string, any]) =>
+      key.startsWith(`${hostPlain}#`) && value.date === localRenewDate()));
+    assert.equal(Object.keys(store).some((key) => key.startsWith(`${hostSlash}#`)), false,
+      'trailing-slash key should not be persisted');
   } finally {
     globalThis.fetch = prevFetch;
     clearCliToken(hostSlash);
@@ -665,7 +631,8 @@ await test('getCliToken renew failure does not block token return and retries ne
     const renewFile = path.join(getConfigDir(), 'cli-token-renew.json');
     if (fs.existsSync(renewFile)) {
       const store = JSON.parse(fs.readFileSync(renewFile, 'utf8'));
-      assert.equal(store[host], undefined, 'failed renew must not persist a success marker for this host');
+      assert.equal(Object.keys(store).some((key) => key.startsWith(`${host}#`)), false,
+        'failed renew must not persist a success marker for this host');
     }
   } finally {
     globalThis.fetch = prevFetch;

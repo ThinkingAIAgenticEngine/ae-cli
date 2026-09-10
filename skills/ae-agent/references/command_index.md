@@ -1,9 +1,16 @@
-# Generic Approval Command Risk Index
+# Agent Distribution and Generic Approval Command Risk Index
 
-This index provides command-level risk metadata for generic approval examples. The command implementation remains the source of truth for runtime admission.
+This index provides command-level risk metadata for Agent distribution and generic approval examples. These commands are Transitional; the references record their migration contracts. The command implementation remains the source of truth for runtime admission.
 
 | CLI command                                  | Transport                     | Risk            | Reference            |
 | -------------------------------------------- | ----------------------------- | --------------- | -------------------- |
+| `ae-cli agent bundle preview` | CLI-token-only versioned REST | read | agent-distribution.md |
+| `ae-cli agent share recipients` | CLI-token-only versioned REST | read | agent-distribution.md |
+| `ae-cli agent share create` | CLI-token-only versioned REST | write | agent-distribution.md |
+| `ae-cli agent share list` | CLI-token-only versioned REST | read | agent-distribution.md |
+| `ae-cli agent share accept` | CLI-token-only versioned REST | write | agent-distribution.md |
+| `ae-cli agent share reject` | CLI-token-only versioned REST | write | agent-distribution.md |
+| `ae-cli agent submission preview` | CLI-token-only versioned REST | read | agent-distribution.md |
 | `ae-cli agent approval-type list`            | CLI-token-only versioned REST | read            | approval-type.md     |
 | `ae-cli agent approval-type get`             | CLI-token-only versioned REST | read            | approval-type.md     |
 | `ae-cli agent approval-request list`         | CLI-token-only versioned REST | read            | approval-request.md  |

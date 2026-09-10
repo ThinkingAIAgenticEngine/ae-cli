@@ -17,7 +17,6 @@
  * +mcp-auth-disconnect            — disconnect MCP OAuth (POST /mcp-servers/[id]/auth/disconnect)
  * +list-mcp-credentials           — list per-user MCP credentials (GET /mcp-credentials)
  * +set-mcp-credential             — upsert per-user MCP credential (POST /mcp-credentials)
- * +auto-provision-mcp-credentials — auto-provision system MCP credentials (POST /mcp-credentials/auto-provision)
  * +mcp-token                      — get plaintext MCP token (GET /mcp-credentials/mcp-token)
  *
  * 统计:
@@ -530,27 +529,6 @@ export const setMcpCredential: Command = {
       token: ctx.str('token') || undefined,
       expiresAt: ctx.str('expiresAt') || undefined,
     });
-  },
-};
-
-export const autoProvisionMcpCredentials: Command = {
-  service: 'agent',
-  command: '+auto-provision-mcp-credentials',
-  description: 'Auto-provision credentials for all system MCP servers using the current access token',
-  flags: [
-    { name: 'access-token', type: 'string', required: false, desc: 'Access token (defaults to the current session token from ctx.token())' },
-  ],
-  risk: 'write',
-  dryRun: (ctx) => ({
-    method: 'POST',
-    url: `${CRED_BASE_PATH}/auto-provision`,
-    body: {
-      accessToken: ctx.str('accessToken') || '<current-session-token>',
-    },
-  }),
-  execute: async (ctx) => {
-    const accessToken = ctx.str('accessToken') || await ctx.token();
-    return postAgentApi(ctx, `${CRED_BASE_PATH}/auto-provision`, { accessToken });
   },
 };
 

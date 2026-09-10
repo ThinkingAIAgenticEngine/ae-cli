@@ -2,7 +2,7 @@
 
 # ae-cli
 
-`ae-cli` 是 ThinkingAI AgenticEngine（AE）平台的命令行客户端，为 AI Agent 和人工操作提供稳定、结构化的接口，覆盖分析、实验、元数据、埋点、运营、DataOps、知识库、Agent 资源及系统管理。
+`ae-cli` 是 ThinkingAI AgenticEngine（AE）平台的命令行客户端，为 AI Agent 和人工操作提供稳定、结构化的接口，覆盖分析与项目配置、元数据、埋点、本地数据接入、运营、DataOps、知识库、Agent 资源、用户记忆及系统管理。
 
 CLI 的核心设计包括：
 
@@ -105,31 +105,47 @@ ae-cli capability run analysis.dashboard.list --input '{"project_id":1}'
 ae-cli capability list --domain analysis --jq '.data.capabilities[] | .id'
 ```
 
-## 命令范围
+## 命令地图
 
-运行 `ae-cli --help` 或 `ae-cli <command> --help` 获取权威命令清单。
+下表逐项覆盖当前所有根命令。使用 `ae-cli --help` 查看根命令，使用 `ae-cli <命令> --help` 查看下一层资源或操作；层级命令可以继续追加 `--help`，例如 `ae-cli project member --help`。服务端动态能力通过 `ae-cli capability list|search|inspect` 发现。
 
-| 命令或业务域 | 用途 |
-|---|---|
-| `analysis` | 报告、看板、即席分析、下钻、详情、告警和分析模型 |
-| `experiment` | Atlas 实验、报表、流量层、分桶、Feature、指标和操作日志 |
-| `analysis-meta` | 事件/属性元数据、指标、虚拟元数据、埋点治理和项目配置 |
-| `analysis-governance` | 资产搜索、血缘、影响分析和治理操作 |
-| `metadata` | 基于 Capability Gateway 的数据表和属性操作 |
-| `tracking` | 埋点方案生命周期、SDK 示例、检查、采集诊断、代码生成和内置 Wiki |
-| `engage-flow`、`engage-task`、`engage-setting`、`engage-scene`、`engage-activity`、`engage-workbench` | 运营流程、任务、设置、策略、活动和工作台 |
-| `community` | 社区帖子、评论、话题、情感、直播和报告工作流 |
-| `dataops_repo`、`dataops_datatable`、`dataops_flow`、`dataops_ide`、`dataops_integration`、`dataops_operations` | 数仓、数据表、任务流、IDE、数据集成和运维工作流 |
-| `kb` | 知识库生命周期、LLM 查询及确定性的 index/grep/read 检索 |
-| `agent` | Agent、自动化、模型、MCP、Skills、附件、凭证和沙盒工具 |
-| `system` | root/admin 的成员、沙盒、共享工具、模型、用量、配额和 IM 渠道管理 |
-| `team` | Agent Team 生命周期，以及 TeamRun 执行、对话、结果和产物 |
-| `capability` | 能力发现、Schema 查看、参数校验、dry-run 和通用执行 |
-| `auth`、`config` | 按 Host 隔离的认证和多环境配置 |
-| `api` | 用于诊断或过渡场景的原始认证 HTTP 请求 |
-| `sync` | 在本地工作区与 Agent 应用之间推送或拉取 Skills 和 MCP |
-| `model` | 在 Agent 沙盒中切换当前工作区模型 |
-| `update` | 将 CLI 和 Skills 同步到当前 Host 要求的版本 |
+<!-- root-command-surface:start -->
+| 类别 | 根命令 | 用途 |
+|---|---|---|
+| 分析与项目 | `analysis` | 报告、看板、即席分析、下钻、详情、告警、标签和分群 |
+| 分析与项目 | `analysis-meta` | 事件/属性目录、指标、虚拟元数据、埋点治理和项目分析配置 |
+| 分析与项目 | `analysis-governance` | 数据资产搜索、血缘、影响分析、认证和治理 |
+| 分析与项目 | `project` | 项目信息、成员、角色、权限、实体、时区和交接配置 |
+| 分析与项目 | `metadata` | 基于 Capability Gateway 的数据表、属性及维度表绑定 |
+| 分析与项目 | `personal-semantic-preference` | 当前用户按项目维护轻量个人语义偏好 |
+| 数据与埋点 | `tracking` | 埋点方案、SDK 示例、检查、采集诊断、代码生成和内置 Wiki |
+| 数据与埋点 | `data-integration` | 检查、规划、转换、上传、交接和复用本地 CSV/JSON/Excel 数据 |
+| 社区洞察 | `community` | 社区帖子、评论、话题、情感、直播和报告工作流 |
+| 运营 | `engage-flow` | 运营流程管理 |
+| 运营 | `engage-task` | 运营任务及触达内容管理 |
+| 运营 | `engage-setting` | 渠道、受众和运营设置 |
+| 运营 | `engage-scene` | 运营场景和策略管理 |
+| 运营 | `engage-activity` | 活动、专题及其任务管理 |
+| 运营 | `engage-workbench` | 运营工作台和待办管理 |
+| 运营 | `engage-query` | 运营查询、异步导出和产物管理 |
+| DataOps | `dataops_repo` | 数仓和数据源管理 |
+| DataOps | `dataops_datatable` | 数据表生命周期管理 |
+| DataOps | `dataops_flow` | 开发流程、调度和补数作业管理 |
+| DataOps | `dataops_ide` | IDE 查询及结果下载 |
+| DataOps | `dataops_integration` | 数据集成任务管理 |
+| DataOps | `dataops_operations` | 运维、监控和告警工作流 |
+| Agent 平台 | `kb` | 知识库生命周期、LLM 问答及确定性的 index/grep/read 检索 |
+| Agent 平台 | `agent` | Agent、审批、自动化、模型、MCP、Skills、附件、凭证和沙盒工具 |
+| Agent 平台 | `memory` | 用户记忆、Top-K 上下文写入和实际采用计数 |
+| Agent 平台 | `team` | Agent Team 和 TeamRun 的执行、对话、结果及产物 |
+| Agent 平台 | `system` | root/admin 的成员、沙盒、工具、模型、用量、配额和渠道管理 |
+| 通用工具 | `capability` | 能力发现、Schema 查看、参数校验、dry-run 和通用执行 |
+| 通用工具 | `auth` | 按 Host 登录、查看状态及管理同一 Host 的多个账号 |
+| 通用工具 | `config` | 添加、切换、重命名和删除 Host 环境 |
+| 通用工具 | `sync` | 在本地工作区与 Agent 应用之间推送或拉取 Skills 和 MCP |
+| 通用工具 | `model` | 在 Agent 沙盒中查看并切换当前工作区模型 |
+| 通用工具 | `update` | 将 CLI 和 Skills 同步到当前 Host 要求的版本 |
+<!-- root-command-surface:end -->
 
 ## Capability Gateway
 
@@ -150,16 +166,24 @@ ae-cli capability run analysis.report.list --input input.json
 
 Gateway 命令遵循 [Capability 命令收录规则](docs/capability-command-admission.md)。常见工作流可以提供精选命令，长尾能力则保持动态发现。
 
+`analysis user-tag create|update` 支持一次配置自动更新：传入 `--auto-refresh-schedule '{"frequency":"daily","time":"02:30"}'`（也支持每周、每月），或使用 `--auto-refresh-cron`。用 `--enable-auto-refresh false` 关闭自动更新。仅修改调度计划不触发即时重算；省略调度参数则保留原计划。详见[创建标签](skills/ae-analysis/references/user_tag_create.md)和[更新标签](skills/ae-analysis/references/user_tag_update.md)。
+
 ## 认证与多环境
 
 凭证按 Host 独立存储，切换环境不会复用其他 Host 的 token。
 在终端运行 `ae-cli config`，可以交互式添加、激活、重命名或删除环境。
+运行 `ae-cli auth` 可以交互式选择当前 Host 的 active 账号；省略 `--account` 的 `ae-cli auth use` 也会打开同一个选择器。
 脚本和 Agent 应使用非交互子命令：
 
 ```bash
 ae-cli auth login --host https://host-a.example.com
 ae-cli auth status --host https://host-a.example.com
+# 少量需要同一 Host 多账号的场景
+ae-cli auth login --host https://host-a.example.com --add
+ae-cli auth list --host https://host-a.example.com
+ae-cli auth use --host https://host-a.example.com --account <login-name-or-open-id>
 ae-cli auth logout --host https://host-a.example.com
+ae-cli auth logout --host https://host-a.example.com --all
 
 ae-cli config list
 ae-cli config current
@@ -170,6 +194,10 @@ ae-cli config remove pre-production --yes
 ```
 
 `<env>` 可以是完整 URL 或唯一 label。交互管理器和 `config list` 都会明确标识 active 环境。当还存在其他环境时，不允许直接删除 active 环境；应先显式切换。`config set-host` 作为兼容命令继续保留，其语义是添加或更新 Host 并立即激活。
+
+普通 `auth login` 保持一个 Host 一个账号的简单语义，并替换该 Host 已保存的账号；仅在需要时使用 `--add` 保留其他账号。`auth status` 只展示 CLI Token 状态；新版后端可同时返回账号和到期时间，旧版后端不支持 `/validate` 时仍按历史行为信任本地 CLI Token，且不会输出含 null 字段的 `account`。
+
+新版 CLI 只持久化 CLI Token，不保存 access token 或 refresh token。多账号保存在加密的 V1 凭据文件中，同时维护旧文件格式的当前账号投影，保证 CLI 自动降级后仍可登录；再次升级时会合并旧 CLI 对投影的登录、切换或退出变更。
 
 登录使用跨平台设备码流程。当前环境无法打开浏览器时，可使用 `--no-browser`。
 试用引导仅在尚未配置 Host 时出现；已配置环境的正常命令和认证流程不会展示该提示。
@@ -202,15 +230,27 @@ JSON 参数通常支持内联 JSON、`@file`、文件路径或通过 `-` 从 std
 
 ```bash
 ae-cli kb +new --scope company --name engineering-handbook --description "Team docs"
-ae-cli kb +add --name engineering-handbook --files '["./docs/guide.md","https://example.com/page"]'
-ae-cli kb +schema --name engineering-handbook
-ae-cli kb +compile --name engineering-handbook
-ae-cli kb +status --name engineering-handbook
+ae-cli kb +import --file ./knowledge-base.zip --name "Imported handbook"
+ae-cli kb +import-status --request-id <requestId>
+ae-cli kb +add --name engineering-handbook --scope company --files '["./docs/guide.md","https://example.com/page"]'
+ae-cli kb +list-sources --name engineering-handbook --scope company
+ae-cli kb +rm-source --name engineering-handbook --scope company --id <source-id>
+# 兼容旧命令：无法取得来源 ID 时仍可使用精确展示名
+ae-cli kb +rm-source --name engineering-handbook --scope company --display-name kb-1780046712-guide.md
+ae-cli kb +schema --name engineering-handbook --scope company --model <model-ref>
+ae-cli kb +compile --name engineering-handbook --scope company --model <model-ref>
+ae-cli kb +status --name engineering-handbook --scope company
 ae-cli kb +ask -q "如何配置沙盒？"
 # 仅提交，后续轮询：
 ae-cli kb +ask -q "另一个问题" --no-wait
 ae-cli kb +ask-status --execution-id <id>
 ```
+
+`kb +list-sources` 返回稳定的来源 `id`。请把精确的 `id` 复制到 `kb +rm-source`，不要根据文件名或 URL 猜测。`--display-name` 仅用于无法取得 ID 时的旧版兼容。
+
+按名称管理知识库的命令都支持可选 `--scope personal|company`；省略时保留 personal 到 company 的旧查找顺序。Schema 与 Compile 优先使用 `ae-cli agent +list-models` 返回的模型记录 `id`；历史 `modelId` 和 `modelId::scope` 仍兼容，`displayName` 不是稳定引用。
+
+`kb +import` 接受最大 50 MB 的编译后 Markdown ZIP，根目录必须包含 `index.md`，页面放在 `wiki/**/*.md`。命令立即返回 `{requestId, status: "queued"}`；通过 `ae-cli kb +import-status --request-id <requestId>` 查询 `queued`、`running`、`succeeded` 或 `failed`。导入成功后可执行列表、Index/Wiki、grep/read、Ask 和删除；个人只读快照不支持来源、Schema、用量、编译、成员/设置、所有权转移和公司发布。
 
 外部 Agent 可以使用不依赖服务端 LLM 的确定性检索：
 
@@ -218,7 +258,7 @@ ae-cli kb +ask-status --execution-id <id>
 ae-cli kb +list
 ae-cli kb +index --sources '[{"scope":"company","name":"engineering-handbook"}]'
 ae-cli kb +grep -q "沙盒配置" --sources '[{"scope":"company","name":"engineering-handbook"}]' --paths '["wiki/sandbox.md"]'
-ae-cli kb +read --source '{"scope":"company","name":"engineering-handbook"}' --path "wiki/sandbox.md"
+ae-cli kb +read --source '{"scope":"company","name":"engineering-handbook"}' --path "wiki/sandbox.md" --limit 2000 --expand block
 ```
 
 ## Agent 与系统管理
@@ -232,19 +272,32 @@ ae-cli agent +list-mcps
 ae-cli agent +list-skills
 ae-cli agent +list-automations
 ae-cli agent +list-attachments
+ae-cli agent approval-type list
+ae-cli agent approval-request list --status pending
+ae-cli agent approval-task list --status pending
+ae-cli agent approval-effect list --status manual_required
 ```
 
-`system` 域调用管理接口 `/api/admin/**`，要求当前用户拥有 `root` 或 `agent_admin` 角色：
+通用审批命令使用 Agent 应用 `/agent` base path 下的版本化 CLI-token REST。提交类型专属的 snake_case payload 前，先用 `approval-type get` 获取契约。Effect 人工重试属于 `high-risk-write`，必须提供可审计理由并显式传入 `--yes`。写命令的 `--dry-run` 仅在本地预览请求，不验证服务端权限、实时状态或未来条件流转。
+
+`system` 域调用管理接口 `/api/admin/**` 和版本化渠道接口 `/api/cli/channel/v1/**`，要求当前用户拥有 `root` 或 `agent_admin` 角色：
 
 ```bash
 ae-cli system +list-members --status enabled
 ae-cli system +list-sandboxes
-ae-cli system +get-usage-summary --days 30
+ae-cli system +get-sandbox-config
+ae-cli system +get-usage-summary --days 30 --refresh true
+ae-cli system +export-usage --start-date 2026-07-01 --end-date 2026-07-31 --group-by user --output ./system-usage.csv
 ae-cli system +list-quota-rules
 ae-cli system +list-channels
+ae-cli system channel routing get --endpoint-id <endpoint-id>
+ae-cli --dry-run system +bind-feishu-users --channel-id <channel-id> --endpoint-id <endpoint-id> --bindings @bindings.json
+ae-cli system +list-sandbox-tools
 ```
 
-最终权限始终由服务端校验。遇到权限错误时不要重试或绕过。
+system 域现有 71 条命令，覆盖成员、沙箱、共享沙箱工具、模型与价格、用量下钻与 CSV 导出、成本控制、配额和渠道。渠道管理覆盖九类渠道、Endpoint 路由、WhatsApp Web 扫码关联，以及 1-100 人飞书批量绑定的逐项结果与公共/逐人默认 Agent 分配。CSV 导出必须显式指定本地路径，采用流式写入，不覆盖已有文件，失败时清理不完整文件。
+
+最终权限、公司隔离和资源归属始终由服务端校验。“没有对应 CLI 命令”不是安全边界：拥有 Bash/网络能力的 Agent 仍可直接构造 HTTP 请求。遇到权限错误时不要重试或绕过，不要调用明确排除的其他系统成员删除或底层沙箱编排接口；所有管理员写操作都应先 dry-run 并取得用户明确确认。Skill、dry-run 和 CLI 确认提示只是防误操作措施，不能替代服务端鉴权；`--yes` 会跳过该提示。
 
 ## Agent Skills
 
@@ -254,13 +307,13 @@ npm 包内包含与公开仓库一致的 `skills/` 目录：
 |---|---|
 | `ae-capability` | Capability 发现和通用调用 |
 | `ae-analysis`、`ae-analysis-global` | 分析、受众、元数据、治理及多集群工作流 |
-| `ae-experiment` | Atlas 实验、Feature、指标、流量层和报表工作流 |
 | `ae-metadata` | 基于 Capability Gateway 的元数据数据表操作 |
 | `ae-engage` | 运营操作和工作流指南 |
 | `ae-dataops` | 数仓、任务流、IDE、数据集成和运维 |
 | `ae-community` | 社区分析和报告 |
-| `ae-kb` | 知识库生命周期和检索 |
-| `ae-agent`、`ae-system`、`ae-team` | Agent 资源、系统管理和 TeamRun 工作流 |
+| `ae-data-integration` | 本地 CSV/JSON/Excel 数据的检查、映射、转换、上传和可复用交接 |
+| `ae-kb`、`ae-kb-discovery` | 知识库生命周期、问答、确定性检索及只读知识库发现 |
+| `ae-agent`、`ae-system`、`ae-team` | Agent 资源与用户记忆（含 `memory +write-context`）、系统管理和 TeamRun 工作流 |
 | `ae-generate-tracking-plan`、`ae-generate-tracking-code` | 埋点方案和埋点代码生成 |
 | `ae-data-integration-helper` | SDK 和 LogBus2 集成指南 |
 
@@ -292,7 +345,6 @@ npm run dev -- --help
 src/
 ├── core/          # 认证、配置、客户端、兼容性和版本同步
 ├── framework/     # 命令注册、生命周期、输出和错误
-├── api/           # 原始认证 API 访问
 └── commands/      # 业务域和 CLI 工具
 skills/            # 随 npm 包发布的 Agent Skills
 self-check/        # 发布和文档一致性检查
@@ -303,10 +355,12 @@ test/, tests/      # 命令、契约和回归测试
 
 ```bash
 npm run build
+npm test
 npm run qa-changed
 npm run self-check
 npm run check:release
-npm run verify:experiment-tools
+npm run verify:readme
+npm run verify:auth-credentials
 npm run verify:update-check
 npm run verify:version-sync
 ```

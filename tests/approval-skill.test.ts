@@ -7,7 +7,7 @@ const skill = fs.readFileSync(new URL('../skills/ae-agent/SKILL.md', import.meta
 const approvalCommands = agentCommands.filter((command) => command.resource?.startsWith('approval-'));
 
 assert.equal(approvalCommands.length, 13);
-assert.match(skill, /^version: 1\.5\.3$/m);
+assert.match(skill, /^version: 1\.5\.6$/m);
 assert.match(skill, /## Generic Approval Workflow \(13\)/);
 assert.match(
   skill,

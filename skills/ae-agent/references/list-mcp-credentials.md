@@ -61,5 +61,5 @@ ae-cli agent +list-mcp-credentials --dry-run
 - `401` / auth expired: run `ae-cli auth login`.
 
 ## Recommended Chaining
-- `+list-mcp-credentials` (check) → `+set-mcp-credential` (set) or `+auto-provision-mcp-credentials` (bulk)
+- `+list-mcp-credentials` (check) → `+set-mcp-credential` (set)
 - `+list-mcp-credentials` → `+mcp-token` (get plaintext token for useMcpToken servers)

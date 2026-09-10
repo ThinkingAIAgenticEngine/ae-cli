@@ -68,7 +68,7 @@ CLI 同时面向团队成员与 AI agent，**源码内容与所有用户可见�
 { service, command, description, flags[], risk, usesAeHost?, validate?, dryRun?, execute }
 ```
 
-- `command` 用 `+` 前缀，如 `+grep`、`+list_events`。
+- 新增命令使用 `<domain> <resource> <action>`，动作和 flag 使用 kebab-case；不要因内部编排、上传或轮询增加 `+` 前缀。已有 `+` 命令保持兼容。
 - 命令文件放在 `src/commands/<domain>/<cmd>.ts`，并在该 domain 的 `index.ts` 里登记到命令数组 + 具名导出。
 
 ### CLI / Capability 命名契约
@@ -151,7 +151,7 @@ KB 的"生成编译准则（schema）→ 编译（compile）"是异步流程，�
 
 - **提交信息**：`type: 中文描述`，`type ∈ feat | fix | docs | refactor | chore | …`。例：`feat: 新增 kb 导出命令`、`fix: 去掉不用的方法`。
 - **分支**：
-  - `feat/*` 特性、`integration/*` 集成、`release/*` 发布、`master` 主干。
+  - `feat/*` 特性、`integration/*` 集成、`release/*` 版本维护；`master` 不作为开发、集成、发布或审核配置的基线。
   - 个人分支建议 `feat/<name>-dev`，基于最新 `integration/*` 拉取。
 - **提 PR / MR 前**：`npm run build` 通过 + 相关 `verify:*` 通过 +（改过本文件时）`npm run check:agents-docs` 通过。
 - **禁止**提交 token / 密钥。

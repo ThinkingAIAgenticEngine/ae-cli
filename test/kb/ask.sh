@@ -15,14 +15,13 @@ run() { node dist/index.js --dry-run --host "$HOST" kb +ask "$@"; }
 run_status() { node dist/index.js --dry-run --host "$HOST" kb +ask-status "$@"; }
 
 echo "[contract] kb +ask with all parameters -> POST /ask with body"
-out="$(run --question "$QUESTION" --sources "$SOURCES" --model-id claude-sonnet-4-6 --max-turns 50 --locale zh)"
+out="$(run --question "$QUESTION" --sources "$SOURCES" --model-id claude-sonnet-4-6 --locale zh)"
 echo "$out" | grep -q '"method"' || { echo "  ERROR: expected method field" >&2; echo "$out" >&2; exit 1; }
 echo "$out" | grep -q 'POST' || { echo "  ERROR: expected POST method" >&2; echo "$out" >&2; exit 1; }
 echo "$out" | grep -q '/agent/api/external/knowledge-bases/ask' || { echo "  ERROR: expected API path in url" >&2; exit 1; }
 echo "$out" | grep -q '"question"' || { echo "  ERROR: expected question in body" >&2; exit 1; }
 echo "$out" | grep -q '"modelId"' || { echo "  ERROR: expected modelId in body" >&2; exit 1; }
 echo "$out" | grep -q 'claude-sonnet-4-6' || { echo "  ERROR: expected modelId value in body" >&2; exit 1; }
-echo "$out" | grep -q '"maxTurns"' || { echo "  ERROR: expected maxTurns in body" >&2; exit 1; }
 echo "$out" | grep -q '"locale"' || { echo "  ERROR: expected locale in body" >&2; exit 1; }
 echo "  OK"
 

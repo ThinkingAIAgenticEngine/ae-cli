@@ -1,8 +1,9 @@
-import { clearCliToken, getCliToken } from './cli-token.js';
+import { getCliToken } from './cli-token.js';
 import { executeCapability, uploadInputFileBytes } from './capability-api.js';
 import { safeJsonParse } from './json-utils.js';
 import type { TEUploadError, TEUploadResponse } from '../tracking/plan/fix.js';
 import { logger } from './logger.js';
+import { SecureStoreAuthError } from './secure-store.js';
 
 export interface TEProperty {
   name: string;
@@ -209,7 +210,6 @@ export class TrackingClient {
     params: Record<string, string | number> = {},
     body?: unknown,
     method: 'GET' | 'POST' = body === undefined ? 'GET' : 'POST',
-    retry = true,
   ): Promise<T | undefined> {
     const token = await this.resolveCliToken();
     const url = buildUrl(this.host, modulePath, params);
@@ -227,10 +227,10 @@ export class TrackingClient {
     const env = safeJsonParse(await resp.text()) as TEEnvelope<T>;
     logger.api(method, url, resp.status, body, env);
 
-    if (resp.status === 401 && retry) {
-      clearCliToken(this.host);
-      this.cliToken = await getCliToken(this.host);
-      return this.requestJson(modulePath, params, body, method, false);
+    if (resp.status === 401) {
+      throw new SecureStoreAuthError(
+        `The stored CLI token for ${this.host} is invalid or expired. Run: ae-cli auth login --host ${this.host}`,
+      );
     }
     if (resp.status === 403) {
       throw new Error(env?.return_message || 'Permission denied');
@@ -238,10 +238,10 @@ export class TrackingClient {
     if (!resp.ok) {
       throw new Error(`AE API HTTP error: ${resp.status} ${resp.statusText}`);
     }
-    if (env?.return_code === -1001 && retry) {
-      clearCliToken(this.host);
-      this.cliToken = await getCliToken(this.host);
-      return this.requestJson(modulePath, params, body, method, false);
+    if (env?.return_code === -1001) {
+      throw new SecureStoreAuthError(
+        `The stored CLI token for ${this.host} is invalid or expired. Run: ae-cli auth login --host ${this.host}`,
+      );
     }
     if (env?.return_code !== 0 && env?.return_code !== undefined) {
       throw new Error(env.return_message || `AE API error (code: ${env.return_code})`);

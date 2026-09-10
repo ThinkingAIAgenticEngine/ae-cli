@@ -498,6 +498,22 @@ await test('management commands map exact capability ids and snake_case ids', as
   );
 });
 
+await test('adhoc funnel preflight reports every step-filter shape error together without leaking values', () => {
+  const definition = {
+    funnel: { steps: [{ event: 'payment', filters: [{ field: { name: 'private-business-field', type: 'event_property' }, operator: 'eq', values: [true] }] }] },
+  };
+  for (const command of [adhocRun, adhocExport]) {
+    assert.throws(() => command.preflight!(ctx({ 'project-id': 1, 'model-type': 'funnel', definition })), (error: any) => {
+      assert.equal(error.code, 'INVALID_ANALYSIS_DEFINITION');
+      assert.match(error.message, /definition\.funnel\.steps\[0\]\.filters\[0\].*event_property_name/);
+      assert.match(error.message, /values.*string/);
+      assert.doesNotMatch(error.message, /private-business-field/);
+      assert.match(error.hint, /all.*together/i);
+      return true;
+    });
+  }
+});
+
 await test('adhoc run maps AI-facing SQL definition and model type to gateway input', async () => {
   const sql = 'SELECT "#user_id", "$part_event" FROM hive.ta.v_event_1 WHERE "$part_date" = \'2026-07-15\' LIMIT 10';
   const dryRun = await dryBody(adhocRun, {
@@ -519,6 +535,30 @@ await test('adhoc run maps AI-facing SQL definition and model type to gateway in
     request_id: 'cli_0123456789abcdef0123456789abcdef',
     timeout_seconds: 60,
   });
+});
+
+await test('adhoc forwards corrected ordered funnel filters unchanged and keeps existence filters valid', async () => {
+  const definition = {
+    time_range: { mode: 'custom', start_time: '2026-08-20 00:00:00', end_time: '2026-09-01 23:59:59' },
+    funnel: { steps: [
+      { event: 'register' },
+      { event: 'login', filters: [{ event_property_name: 'channel', operator: 'exists' }] },
+      { event: 'payment', filters: [{ event_property_name: 'is_first_pay', operator: 'eq', values: ['true'] }] },
+    ], window: { value: 7, unit: 'day' } },
+  };
+  const original = JSON.stringify(definition);
+  for (const command of [adhocRun, adhocExport]) {
+    const dryRun = await dryBody(command, { 'project-id': 1, 'model-type': 'funnel', definition, 'zone-offset': 99 });
+    assert.deepEqual(dryRun.body.input.definition, definition);
+    assert.equal(dryRun.body.input.zone_offset, 99);
+  }
+  assert.equal(JSON.stringify(definition), original);
+});
+
+await test('adhoc preserves event display_name for hosts that support it instead of silently stripping fields', async () => {
+  const definition = { metrics: [{ event: 'payment', aggregation: 'sum', property: 'pay_amount', display_name: 'Revenue' }] };
+  const dryRun = await dryBody(adhocRun, { 'project-id': 1, 'model-type': 'event', definition });
+  assert.deepEqual(dryRun.body.input.definition, definition);
 });
 
 await test('adhoc run forwards deterministic metadata resolutions', async () => {

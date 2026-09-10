@@ -1,6 +1,6 @@
 {
   "name": "@thinkingai/ae-cli",
-  "version": "6.1.19",
+  "version": "6.0.48",
   "description": "CLI tool for ThinkingAI (AE) analytics platform",
   "type": "module",
   "bin": {
@@ -28,6 +28,7 @@
     "verify:analysis-contract-regressions": "tsx test/analysis-contract-regressions.test.mjs && tsx tests/analysis-sql-special-identifiers.test.ts",
     "verify:analysis-agent-contract": "tsx tests/analysis-agent-skill-contract.test.ts",
     "verify:analysis-system": "tsx tests/analysis-system-capability-command.test.ts",
+    "verify:cross-source-config": "tsx tests/cross-source-config-command.test.ts",
     "verify:output-contract": "tsx tests/output-contract.test.ts",
     "verify:analysis-cluster-routing": "node scripts/verify-analysis-cluster-routing.mjs",
     "verify:metadata-capability": "npx tsx test/metadata-capability-commands.test.mjs",
@@ -37,14 +38,15 @@
     "verify:retired-analysis-commands": "node --test test/retired-analysis-commands.test.mjs",
     "verify:retired-api-command": "node --test test/retired-api-command.test.mjs",
     "verify:analysis-common-tools": "node scripts/verify-te-common-tools.mjs",
-    "verify:experiment-tools": "node scripts/verify-te-experiment-tools.mjs && node --import tsx test/experiment/experiment-capability-command.test.mjs",
     "verify:team-tools": "node scripts/verify-te-team-tools.mjs",
-    "verify:agent-tools": "node --test test/agent-command-registry.test.mjs && tsx tests/te-agent-credentials.test.ts && tsx tests/te-agent-unified-auth.test.ts && tsx tests/te-agent-conversations.test.ts && tsx scripts/verify-agent-tools.mjs && npm run verify:approval && npm run verify:sandbox-tools",
+    "verify:agent-tools": "node --test test/agent-command-registry.test.mjs && tsx tests/te-agent-credentials.test.ts && tsx tests/te-agent-unified-auth.test.ts && tsx tests/te-agent-conversations.test.ts && tsx tests/te-agent-automations.test.ts && tsx scripts/verify-agent-tools.mjs && npm run verify:approval && npm run verify:agent-distribution && npm run verify:agent-context && npm run verify:sandbox-tools",
+    "verify:agent-context": "tsx tests/agent-context-command.test.ts",
+    "verify:agent-distribution": "tsx tests/agent-distribution-command.test.ts && tsx tests/agent-distribution-skill.test.ts",
     "verify:approval": "tsx tests/approval-command.test.ts && tsx tests/approval-cli-client.test.ts && tsx tests/approval-skill.test.ts",
     "verify:memory": "tsx tests/memory-command.test.ts && tsx tests/memory-cli-client.test.ts && tsx tests/memory-skill.test.ts",
     "verify:system-tools": "node scripts/verify-system-tools.mjs && npx tsx tests/system-domain.test.ts && npx tsx tests/channel-cli-http.test.ts && npx tsx tests/te-agent-download.test.ts && npx tsx tests/sandbox-tool-package.test.ts",
     "verify:kb-skill": "node test/kb-skill-query-workflow.test.mjs",
-    "verify:kb-sources": "tsx test/kb-list-sources-command.test.mjs",
+    "verify:kb-sources": "tsx test/kb-list-sources-command.test.mjs && tsx test/kb-zip-directory-command.test.mjs",
     "verify:sandbox-tools": "tsx test/sandbox-tools.test.ts",
     "verify:skill-version-management": "tsx tests/skill-version-management.test.ts",
     "verify:skill-reference-files": "tsx tests/skill-reference-files.test.ts",
@@ -52,6 +54,8 @@
     "verify:self-check-overlay": "node test/self-check-overlay.test.mjs",
     "verify:update-check": "npx tsx test/update-check.test.mjs",
     "verify:version-sync": "npx tsx tests/version-sync.test.ts",
+    "verify:auth-credentials": "npx tsx tests/secure-store.test.ts && npx tsx tests/cli-token-validation.test.ts && npx tsx tests/auth-multi-account.test.ts && npx tsx tests/mcp-no-disk.test.ts",
+    "verify:readme": "node --test test/readme-command-surface.test.mjs",
     "verify:dependency-hygiene": "node --test test/dependency-hygiene.test.mjs",
     "qa-changed": "node scripts/qa-changed.mjs",
     "self-check": "node self-check/scan.mjs",
@@ -61,7 +65,8 @@
     "check:agents-docs": "node scripts/check-agents-docs-sync.mjs",
     "prepublishOnly": "npm run check:release && npm run build",
     "start": "node dist/index.js",
-    "test": "npx tsx src/index.ts --help && npm run verify:retired-api-command && npm run verify:sandbox-tools && npm run verify:dependency-hygiene"
+    "test": "npx tsx src/index.ts --help && npm run verify:retired-api-command && npm run verify:sandbox-tools && npm run verify:dependency-hygiene && npm run verify:readme",
+    "verify:kb-versions": "tsx test/kb-version-management-command.test.mjs"
   },
   "repository": {
     "type": "git",
@@ -79,7 +84,7 @@
   },
   "dependencies": {
     "@types/json-bigint": "^1.0.4",
-    "archiver": "^8.0.0",
+    "archiver": "^5.3.2",
     "cli-table3": "^0.6.5",
     "commander": "^12.1.0",
     "csv-parse": "^7.0.2",
@@ -92,16 +97,14 @@
     "turndown": "^7.2.4",
     "undici": "^6.19.0",
     "unzipper": "^0.12.5",
-    "ws": "^8.18.0",
     "xlsx": "^0.18.5"
   },
   "devDependencies": {
-    "@types/archiver": "^8.0.0",
+    "@types/archiver": "^5.3.4",
     "@types/node": "^22.0.0",
     "@types/stream-json": "^1.7.8",
     "@types/turndown": "^5.0.6",
     "@types/unzipper": "^0.10.11",
-    "@types/ws": "^8.5.0",
     "exceljs": "^4.4.0",
     "jszip": "^3.10.1",
     "tsup": "^8.0.0",
@@ -110,7 +113,6 @@
   },
   "overrides": {
     "exceljs": {
-      "archiver": "8.0.0",
       "fast-csv": "5.0.7",
       "unzipper": "0.12.5",
       "uuid": "11.1.1"

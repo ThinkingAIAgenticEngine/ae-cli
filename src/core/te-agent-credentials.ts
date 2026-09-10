@@ -135,7 +135,7 @@ export function loadTeAgentCredentials(): TeAgentCredentials {
  * Return value meanings:
  * - `{ url, sandboxId, sandboxSecretKey }` — Sandbox credentials are complete; the X-Sandbox path can be used.
  * - `{ url, sandboxId: null, sandboxSecretKey: null }` — Only URL is present (rare; for reference only).
- * - `null` — No sandbox credentials at all (TE_CLAUDE_BASE_URL is also missing); caller should use the user Bearer path instead.
+ * - `null` — No sandbox credentials at all (TE_CLAUDE_BASE_URL is also missing); caller should use the user CLI-token path instead.
  *
  * Note: file read errors (permission issues, corrupted JSON) still throw `TeAgentCredentialsError`,
  * as these require user intervention to fix and should not be silently swallowed.

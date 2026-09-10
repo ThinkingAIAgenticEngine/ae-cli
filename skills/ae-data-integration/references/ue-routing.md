@@ -20,7 +20,7 @@ Classification order:
 5. Rows that mix track and user-profile facts in one file use `mixed` with a `record_type_field`; require explicit review.
 6. Low-confidence output is a proposal, never silent approval.
 
-Aggregated metrics, pivot tables, cross-tabs, model outputs, free-form documents, and records without real identity/time should normally use local analysis.
+Aggregated metrics, pivot tables, cross-tabs, model outputs, and free-form documents should normally use local analysis. Records without real identity/time are checked against dimension routing next and fall to local analysis only if they are not a stable-entity lookup.
 
 ### Time coverage is not native granularity
 
@@ -43,6 +43,22 @@ point, and do not proceed until they answer:
 
 An unanswered question, a cumulative snapshot, or overlapping periods route to local analysis
 instead.
+
+## Route to dimension table
+
+A dimension / dictionary table describes stable entities (city, product, device): a lookup that maps an entity code to its attributes. It has no row-level identity or event time, so it fails the UE prerequisites above, but it is not local-analysis material either — it belongs in AE as a dimension table bound to a property.
+
+Classification order (UE first, dimension second, local analysis last):
+
+1. Satisfy the UE must-holds above → UE ingestion wins; never route an identity/time-bearing file here.
+2. Fail the UE prerequisites **and** match most of these dimension signals → dimension routing:
+   - No row-level identity: no `account_id` / `distinct_id` column. A `code` / `id` / `no` key is an entity code, not a user identity.
+   - No row-level event time: no `#time` column. If time exists, it is an effective / expiry interval, not an event occurrence.
+   - Finite enumeration: few rows, each describing one entity's attributes (code → name / level), not facts accumulating over time.
+   - A join key: a column shared with event data (`city_code`, `sku_id`, `device_id`) whose values are descriptive attributes, not measures.
+3. Otherwise → local analysis.
+
+See [references/dimension-routing.md](references/dimension-routing.md) for the handoff.
 
 ## Route to local analysis
 

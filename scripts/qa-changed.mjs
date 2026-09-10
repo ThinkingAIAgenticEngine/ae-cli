@@ -55,6 +55,17 @@ function tasksFor(files) {
     );
   }
 
+  if (needs(files, [
+    /^src\/commands\/capability\//,
+    /^tests\/cross-source-config-command\.test\.ts$/,
+    /^skills\/ae-analysis\/references\/cross_source_config\.md$/,
+    /^src\/core\/(capability-api|analysis-async-artifact)\.ts$/,
+    /^src\/commands\/te-analysis\/(input-file|run)\//,
+    /^src\/framework\/output\.ts$/,
+  ])) {
+    tasks.push(['npm', ['run', 'verify:cross-source-config']]);
+  }
+
   if (needs(files, [/^src\/commands\/te-community\//, /^skills\/ae-community\//, /^test\/community-capability-routing\.test\.mjs$/])) {
     tasks.push(['npm', ['run', 'verify:community-capability']]);
   }

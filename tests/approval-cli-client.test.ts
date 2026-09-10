@@ -11,6 +11,7 @@ import {
 import { CapabilityGatewayError } from '../src/core/capability-api.ts';
 import { clearCliToken } from '../src/core/cli-token.ts';
 import { PermissionError } from '../src/core/errors.ts';
+import { SecureStoreAuthError } from '../src/core/secure-store.ts';
 import type { RuntimeContext } from '../src/framework/types.ts';
 
 const originalFetch = globalThis.fetch;
@@ -169,15 +170,13 @@ try {
       body: { ok: true, data: { task: { id: 'task-1' } } },
     },
   ];
-  const refreshed = await postApprovalCli(context(), 'tasks/task-1/approve', {});
-  assert.equal((refreshed as { task: { id: string } }).task.id, 'task-1');
-  assert.equal(requestCount, 2, 'approval HTTP 401 responses may retry exactly once');
-  const refreshAuthRequests = authRequestUrls.slice(authRequestCountBeforeUnauthorized);
-  assert.ok(refreshAuthRequests.length <= 1, 'approval HTTP 401 may trigger at most one token renew');
-  assert.ok(
-    refreshAuthRequests.every((url) => new URL(url).pathname === '/v1/ta/cli/token/renew'),
-    'approval HTTP 401 must not trigger token generation or validation side effects',
+  await assert.rejects(
+    () => postApprovalCli(context(), 'tasks/task-1/approve', {}),
+    SecureStoreAuthError,
   );
+  assert.equal(requestCount, 1, 'approval HTTP 401 responses must not retry');
+  const refreshAuthRequests = authRequestUrls.slice(authRequestCountBeforeUnauthorized);
+  assert.equal(refreshAuthRequests.length, 0, 'approval HTTP 401 must not mutate auth state');
 
   process.env.TE_CLAUDE_BASE_PATH = '/custom-agent';
   assert.equal(resolveApprovalApiBaseUrl(host), `${host}/custom-agent`);

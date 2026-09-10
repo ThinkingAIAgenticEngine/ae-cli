@@ -1,7 +1,6 @@
 /**
  * Shared constants, types, and submit/poll helpers for `+ask` / `+ask-status`.
- * Completed CLI output keeps the previous synchronous field set so consumers
- * do not need to change parsers; `executionId` is additive.
+ * Completed CLI output exposes the current public Ask result fields.
  */
 
 import { PermissionError } from '../../core/errors.js';
@@ -26,7 +25,7 @@ export interface AskSourceRef {
 export type AskModelUsage = Record<string, unknown>;
 
 export interface AskExecutionError {
-  type: string;
+  code: string;
   message: string;
 }
 
@@ -38,7 +37,6 @@ export interface AskExecutionResponse {
   sources?: AskSourceRef[];
   modelUsage?: AskModelUsage;
   toolCallCount?: number;
-  maxTurns?: number;
   modelId?: string;
   error?: AskExecutionError;
 }
@@ -110,8 +108,8 @@ export async function pollUntilSettled(
 }
 
 /**
- * Map a completed poll payload to the previous synchronous `+ask` JSON.
- * Drops `status` / `elapsedMs` / `error`. Keeps `executionId` as an additive field.
+ * Map a completed poll payload to the public `+ask` JSON.
+ * Drops `status` / `elapsedMs` / `error`.
  */
 export function transformCompletedResponse(response: AskExecutionResponse): Record<string, unknown> {
   const result: Record<string, unknown> = {
@@ -122,16 +120,5 @@ export function transformCompletedResponse(response: AskExecutionResponse): Reco
   if (response.modelId !== undefined) result.modelId = response.modelId;
   if (response.modelUsage !== undefined) result.modelUsage = response.modelUsage;
   if (response.toolCallCount !== undefined) result.toolCallCount = response.toolCallCount;
-  if (response.maxTurns !== undefined) result.maxTurns = response.maxTurns;
   return result;
-}
-
-/**
- * Prefix the server error.type so the runner's generic Error path still prints a grep-able code.
- * Non-zero exit is guaranteed by the framework.
- */
-export function buildFailedMessage(response: AskExecutionResponse): string {
-  const type = response.error?.type || 'unknown';
-  const message = response.error?.message || 'Ask execution failed';
-  return `[${type}] ${message} (executionId: ${response.executionId})`;
 }

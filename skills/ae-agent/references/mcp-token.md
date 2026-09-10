@@ -38,7 +38,7 @@ ae-cli agent +mcp-token --dry-run
 ## Decision Rules
 - If the user needs the shared MCP token to call MCP-enabled APIs, use this command.
 - The token is shared across all `useMcpToken=true` system MCP servers — a single call returns it.
-- If `token` is `null`, no credential has been provisioned yet — run `+auto-provision-mcp-credentials` first.
+- If `token` is `null`, no shared MCP token is available on the current server.
 - Prefer `+list-mcp-credentials` to check credential status without exposing the plaintext token.
 
 ## Response Shape
@@ -57,7 +57,7 @@ When no token is provisioned:
 
 ## Next Steps on Failure
 - `401` / auth expired: run `ae-cli auth login`.
-- `token: null`: run `+auto-provision-mcp-credentials` to provision the token first.
+- `token: null`: ask the server administrator whether a shared MCP token is expected in this environment.
 
 ## Recommended Chaining
-- `+auto-provision-mcp-credentials` (provision) → `+mcp-token` (retrieve) → use as `Authorization: bearer <token>` for MCP API calls
+- `+mcp-token` (retrieve) → use as `Authorization: bearer <token>` for MCP API calls

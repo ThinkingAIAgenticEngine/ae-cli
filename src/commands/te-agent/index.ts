@@ -1,13 +1,15 @@
 /**
  * ae-cli agent command domain
  *
- * Unified export of 82 commands across Agent CRUD, conversations, automations, models,
+ * Unified export of 89 commands across Agent CRUD and distribution, conversations, automations, models,
  * MCP CRUD + market + OAuth + credentials, Skills CRUD + market + copy +
  * content + assets + approval + share, generic approvals, attachments, sandbox tools.
  */
 
 import type { Command } from '../../framework/types.js';
 import { listAgents, createAgent, updateAgent, delAgent, getAgent } from './agents.js';
+import { getAgentContext } from './agent-context.js';
+import { previewAgentBundle, createAgentShares, listAgentShares, acceptAgentShare, rejectAgentShare, previewAgentSubmission, listAgentShareRecipients } from './agent-distribution.js';
 import {
   listModels,
   addModel,
@@ -30,7 +32,6 @@ import {
   mcpAuthDisconnect,
   listMcpCredentials,
   setMcpCredential,
-  autoProvisionMcpCredentials,
   mcpToken,
   mcpStats,
 } from './mcps.js';
@@ -96,13 +97,16 @@ import {
 
 const commands: Command[] = [
   // Agent CRUD
-  listAgents, createAgent, updateAgent, delAgent, getAgent,
+  listAgents, createAgent, updateAgent, delAgent, getAgent, getAgentContext,
+  // Immutable Agent distribution and approval snapshot preview
+  previewAgentBundle, createAgentShares, listAgentShares, acceptAgentShare, rejectAgentShare, previewAgentSubmission,
+  listAgentShareRecipients,
   // Model management + test
   listModels, addModel, delModel, toggleModel, updateModel, testModel,
   // MCP server management + market + OAuth + credentials
   listMcps, addMcp, delMcp, toggleMcp, listMcpMarket, setMcpMeta,
   updateMcp, mcpTools, mcpAuthStart, mcpAuthStatus, mcpAuthDisconnect,
-  listMcpCredentials, setMcpCredential, autoProvisionMcpCredentials, mcpToken, mcpStats,
+  listMcpCredentials, setMcpCredential, mcpToken, mcpStats,
   // Skill management + market + copy
   listSkills, addSkill, delSkill, toggleSkill, listSkillMarket, setSkillMeta, copySkill,
   // Skill content + assets (references / assets / scripts)

@@ -4,6 +4,15 @@
 
 Domain: **Automations / write**
 
+```text
+Transition status: transitional
+Owning module: te-claude automation
+Current transport: POST /api/sandbox/agent/automations
+Gateway target: TBD (no equivalent Gateway capability is currently registered)
+Review after: 2026-10-07
+Exit condition: Migrate when the Gateway exposes equivalent workspace-scoped automation creation.
+```
+
 ## Use Cases
 - Create an Agent automation task that runs on a schedule (hourly / daily / weekly / monthly or cron).
 - Returns the newly created automation object including its `id` and initial `status`.
@@ -15,6 +24,10 @@ Domain: **Automations / write**
 - A schedule is required: provide either `--cron` or a `--schedule-kind` (with its time/day fields). `--cron` and `--schedule-kind` are mutually exclusive.
 - `--agent-id` and `--agent-name` are mutually exclusive. Obtain a real Agent ID via `+list-agents` — do not guess.
 - In a chat runtime, omitted `--conversation-id`, `--agent-id`, and `--model` values fall back to `TE_AGENT_CONVERSATION_ID`, `TE_AGENT_CURRENT_AGENT_ID`, and `TE_AGENT_CURRENT_MODEL_ID`. Explicit flags always take precedence; `--agent-name` intentionally suppresses the current Agent ID fallback.
+- Workspace selection is independent of Agent selection: `--agent-space-id` explicitly selects the workspace. If omitted, the server inherits the accessible conversation's workspace when available, otherwise the personal default workspace. The CLI intentionally omits `agentSpaceId` in this case to preserve inheritance and compatibility with earlier servers.
+- Workspace-aware servers return `automation.agentSpaceId`. Pass that ID to subsequent `+list-automations` and `+update-automation` calls; those commands otherwise use the personal default workspace, even when invoked from a conversation.
+- On servers without workspace support, omit `--agent-space-id` and keep the original creation flow. If the response lacks `agentSpaceId`, omit the flag in later calls rather than inventing an ID. Older servers may ignore the new parameter; it does not add workspace isolation to them.
+- This command creates Agent automations only. It does not create Agent Team scheduled tasks.
 - JSON flags must be valid JSON strings, usually wrapped in single quotes in shell.
 - This is an ordinary `write` operation and does not require CLI confirmation.
 - Do not surface raw automation IDs, raw JSON, or concrete detail paths in user-facing replies.
@@ -68,6 +81,10 @@ ae-cli agent +create-automation \
 
 # Dry-run to inspect the request before executing
 ae-cli agent +create-automation --dry-run --name "Test" --message "x" --schedule-kind daily --time 09:00
+
+# Select a workspace explicitly
+ae-cli agent +create-automation --name "Daily Report" --message "Prepare the report" \
+  --agent-id <agent-id> --agent-space-id <workspace-id> --schedule-kind daily --time 09:00
 ```
 
 ## Parameters
@@ -86,7 +103,8 @@ ae-cli agent +create-automation --dry-run --name "Test" --message "x" --schedule
 | `--model` | No | Model record ID; defaults to current selected model |
 | `--enabled` | No | `true` (default) \| `false` |
 | `--reuse-conversation` | No | `true` to continue in one conversation; `false` (default) to create one per run |
-| `--conversation-id` | No | Conversation ID fallback for resolving current Agent |
+| `--conversation-id` | No | Conversation ID fallback for resolving the Agent and workspace |
+| `--agent-space-id` | No | Explicit workspace ID; omit to inherit the conversation's workspace, otherwise use the personal default workspace |
 
 \* One of `--cron` or `--schedule-kind` is required.
 
@@ -101,7 +119,7 @@ ae-cli agent +create-automation --dry-run --name "Test" --message "x" --schedule
 - `必须提供 --cron 或 --schedule-kind`: provide one of the schedule flags.
 - `--time 格式必须是 HH:mm`: use 24-hour `HH:mm` (e.g. `09:00`).
 - `--agent-id 与 --agent-name 只能二选一`: pick one and remove the other.
-- After success, capture the returned `id` for subsequent `+update-automation` calls.
+- After success, capture the returned `automation.id` and, when present, `automation.agentSpaceId` for subsequent list/update calls. Omit the workspace flag when the ID is `null` or absent.
 
 ## Recommended Chaining
 - `+list-agents` → `+create-automation` → `+list-automations` (verify) → `+update-automation` (edit)

@@ -3,6 +3,7 @@ import {
   aiDefinitionFlag,
   aiModelTypeFlag,
   metadataResolutionsFlag,
+  validateFunnelStepFilters,
 } from '../ai-models.js';
 import {
   artifactFormatFlag,
@@ -36,10 +37,12 @@ export const zoneOffsetFlag: Flag = {
 };
 
 export function adhocRunInput(ctx: RuntimeContext): Record<string, unknown> {
+  const definition = ctx.json('definition');
+  validateFunnelStepFilters(ctx.str('model-type'), definition);
   return compactInput({
     project_id: ctx.num('project-id'),
     model_type: ctx.str('model-type'),
-    definition: ctx.json('definition'),
+    definition,
     resolutions: optionalJson(ctx, 'resolutions'),
     request_id: optionalString(ctx, 'request-id'),
     use_cache: optionalBoolean(ctx, 'use-cache'),
@@ -53,10 +56,12 @@ export function adhocRunInput(ctx: RuntimeContext): Record<string, unknown> {
 }
 
 export function adhocExportInput(ctx: RuntimeContext): Record<string, unknown> {
+  const definition = ctx.json('definition');
+  validateFunnelStepFilters(ctx.str('model-type'), definition);
   return compactInput({
     project_id: ctx.num('project-id'),
     model_type: ctx.str('model-type'),
-    definition: ctx.json('definition'),
+    definition,
     resolutions: optionalJson(ctx, 'resolutions'),
     request_id: optionalString(ctx, 'request-id'),
     use_cache: optionalBoolean(ctx, 'use-cache'),

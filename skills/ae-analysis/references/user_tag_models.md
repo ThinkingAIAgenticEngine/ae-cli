@@ -24,10 +24,18 @@ Top-level `type` is exactly one of `condition`, `metric`, `first_last`, or `sql`
 
 ## Metric tag
 
-Required: `event`, `aggregation`. `property`, `time_range`, and `filters` are optional. Filters support only event properties and user properties. A string `field` is an event property; use `{name,type:"user_property"}` for a user property.
+Required: `event`, `aggregation`. `property`, `percentile`, `time_range`, and `filters` are optional. Filters support only event properties and user properties. A string `field` is an event property; use `{name,type:"user_property"}` for a user property.
+
+Use `aggregation=percentile` with a numeric event `property` and pass `percentile`. Supported percentile values match the page controls: `5`, `10`, `20`, `25`, `30`, `40`, `60`, `70`, `75`, `80`, `90`, `95`, and `99`. The `percentile` field is required for percentile aggregation and is rejected for every other aggregation.
 
 ```json
 {"type":"metric","metric":{"event":"pay","aggregation":"sum","property":"amount","time_range":{"mode":"previous","unit":"day","value":30},"filters":{"relation":"and","items":[{"field":"channel","operator":"eq","values":["app"]},{"field":{"name":"country","type":"user_property"},"operator":"eq","values":["US"]}]}}}
+```
+
+Percentile example:
+
+```json
+{"type":"metric","metric":{"event":"pay","aggregation":"percentile","property":"amount","percentile":90}}
 ```
 
 ## First/last tag

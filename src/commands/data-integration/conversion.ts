@@ -18,7 +18,7 @@ import { createInterface } from 'node:readline';
 import { CliValidationError } from '../../core/errors.js';
 import { inspectLocalDataInput, selectDataSet, sha256File, streamLocalDataRows, cellIssueCounts, cellIssueWarnings, createXlsxStructureCollector, xlsxStructureReport, xlsxStructureWarnings } from './input.js';
 import type { LocalDataInput } from './input.js';
-import { isValidAeName } from './mapping.js';
+import { isValidAeName, isValidEventName } from './mapping.js';
 import { applyTypeResolutions, buildPerFileMapping, detectColumnTypeConflicts, validateTypeResolutions } from './multi.js';
 import type { MultiFileProfile } from './multi.js';
 import { IDENTITY_MAX_LENGTH, isMissing, isUserProfileType, normalizeRecordType, profileLocalData } from './profile.js';
@@ -374,7 +374,7 @@ export function convertRow(
     eventName = mapping.value_mapping?.event_name && mapping.value_mapping.event_name[rawEvent] !== undefined
       ? mapping.value_mapping.event_name[rawEvent]
       : rawEvent;
-    if (!isValidAeName(eventName)) {
+    if (!isValidEventName(eventName)) {
       errors.push({ code: 'INVALID_EVENT_NAME', field: mapping.event_name_field });
     }
   }

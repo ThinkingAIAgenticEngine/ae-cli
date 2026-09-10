@@ -42,7 +42,6 @@ ae-cli agent +set-mcp-credential --dry-run --mcp-server-id <mcp-cuid> --token "a
 - For OAuth-based servers, prefer `+mcp-auth-start` (full OAuth flow with auto-refresh). Use `+set-mcp-credential` only when you have a pre-obtained token.
 - For API-key-based servers (`--auth-type apikey`), this is the primary way to set the key.
 - The token is encrypted at rest; it is never returned in plaintext via `+list-mcp-credentials` (use `+mcp-token` for useMcpToken servers).
-- To bulk-provision credentials for all system MCP servers at once, use `+auto-provision-mcp-credentials`.
 
 ## Response Shape
 ```json

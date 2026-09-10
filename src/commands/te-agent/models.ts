@@ -51,7 +51,7 @@ export const listModels: Command = {
     const params = new URLSearchParams();
     if (scope) params.set("scope", scope);
     const qs = params.toString();
-    // /api/sandbox/agent/models 走 sandboxAgentAuth（Bearer/X-Sandbox 双通），
+    // /api/sandbox/agent/models 走统一认证（CLI Token / X-Sandbox），
     // 返回 { items: [...] } 且不支持 current 参数；本地用 TE_AGENT_CURRENT_MODEL_ID
     // 计算 isCurrent，并保持 { models: [...] } 输出契约不变（对消费者透明）。
     const current = process.env.TE_AGENT_CURRENT_MODEL_ID?.trim();

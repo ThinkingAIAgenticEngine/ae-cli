@@ -5,7 +5,7 @@
  *   1. Internal sandbox calls without a host override use X-Sandbox-Id / X-Sandbox-Secret-Key.
  *   2. Explicit-host CLI calls use the unified cli-token credential.
  *
- * Independent of src/core/client.ts (AE platform client). Supports ae-cli sync / model / agent commands.
+ * Supports ae-cli sync / model / agent commands.
  */
 
 import { open, unlink } from 'node:fs/promises';
@@ -14,10 +14,11 @@ import { Readable } from 'node:stream';
 import { pipeline } from 'node:stream/promises';
 
 import { tryLoadTeAgentSandboxCredentials, TeAgentCredentialsError } from './te-agent-credentials.js';
-import { clearCliToken, getCliToken } from './cli-token.js';
+import { getCliToken } from './cli-token.js';
 import { getActiveHost } from './config.js';
 import { PermissionError } from './errors.js';
 import { internalCallSourceHeaders } from './internal-call-source.js';
+import { resolveTeClaudeBaseUrl } from './te-claude-base-url.js';
 
 export class TeAgentApiError extends Error {
   constructor(
@@ -120,9 +121,7 @@ function teClaudeBaseFromActiveHost(hostOverride?: string): string | undefined {
   if (override) return override.replace(/\/+$/, '');
   const h = hostOverride || getActiveHost();
   if (!h) return undefined;
-  const base = h.replace(/\/+$/, '');
-  const bp = process.env.TE_CLAUDE_BASE_PATH || '/agent';
-  return base.endsWith(bp) ? base : base + bp;
+  return resolveTeClaudeBaseUrl(h);
 }
 
 /**
@@ -197,35 +196,22 @@ interface SignedFetchOptions {
   timeoutMs?: number;
 }
 
-async function fetchSignedWithRetry(options: SignedFetchOptions): Promise<Response> {
-  let signed = await signRequest(
+async function fetchSigned(options: SignedFetchOptions): Promise<Response> {
+  const signed = await signRequest(
     options.method,
     options.path,
     options.hostOverride,
     options.includeJsonContentType,
   );
-  const request = (requestToSend: SignedRequest) => fetchWithTimeout(
-    requestToSend.url,
+  return fetchWithTimeout(
+    signed.url,
     {
       method: options.method,
-      headers: requestToSend.headers,
+      headers: signed.headers,
       body: options.body,
     },
     options.timeoutMs,
   );
-
-  let response = await request(signed);
-  if (response.status === 401 && signed.authKind === 'cli-token' && signed.tokenHost) {
-    clearCliToken(signed.tokenHost);
-    signed = await signRequest(
-      options.method,
-      options.path,
-      options.hostOverride,
-      options.includeJsonContentType,
-    );
-    response = await request(signed);
-  }
-  return response;
 }
 
 function errorDetails(parsed: any, defaultErrorPrefix: string, status: number): {
@@ -300,7 +286,7 @@ export async function postToMainApp<T = unknown>(
   hostOverride?: string,
 ): Promise<T> {
   const rawBody = JSON.stringify(body);
-  const response = await fetchSignedWithRetry({
+  const response = await fetchSigned({
     method: 'POST',
     path,
     body: rawBody,
@@ -319,7 +305,7 @@ export async function getFromMainApp<T = unknown>(
   path: string,
   hostOverride?: string,
 ): Promise<T> {
-  const response = await fetchSignedWithRetry({
+  const response = await fetchSigned({
     method: 'GET',
     path,
     hostOverride,
@@ -445,7 +431,7 @@ export async function deleteFromMainApp<T = unknown>(
   path: string,
   hostOverride?: string,
 ): Promise<T> {
-  const response = await fetchSignedWithRetry({
+  const response = await fetchSigned({
     method: 'DELETE',
     path,
     hostOverride,
@@ -463,7 +449,7 @@ export async function patchToMainApp<T = unknown>(
   hostOverride?: string,
 ): Promise<T> {
   const rawBody = JSON.stringify(body);
-  const response = await fetchSignedWithRetry({
+  const response = await fetchSigned({
     method: 'PATCH',
     path,
     body: rawBody,
@@ -482,7 +468,7 @@ export async function putToMainApp<T = unknown>(
   hostOverride?: string,
 ): Promise<T> {
   const rawBody = JSON.stringify(body);
-  const response = await fetchSignedWithRetry({
+  const response = await fetchSigned({
     method: 'PUT',
     path,
     body: rawBody,
@@ -501,7 +487,7 @@ export async function getBufferFromMainApp(
   path: string,
   hostOverride?: string,
 ): Promise<{ buffer: Buffer; fileName: string | null; contentType: string | null }> {
-  const response = await fetchSignedWithRetry({
+  const response = await fetchSigned({
     method: 'GET',
     path,
     hostOverride,
@@ -587,7 +573,7 @@ export async function downloadFromMainApp(
       );
     }
 
-    let signed = await signRequest('GET', requestPath, hostOverride);
+    const signed = await signRequest('GET', requestPath, hostOverride);
     let response: Response;
     const request = async (requestToSend: SignedRequest): Promise<Response> => {
       try {
@@ -609,11 +595,6 @@ export async function downloadFromMainApp(
     };
 
     response = await request(signed);
-    if (response.status === 401 && signed.authKind === 'cli-token' && signed.tokenHost) {
-      clearCliToken(signed.tokenHost);
-      signed = await signRequest('GET', requestPath, hostOverride);
-      response = await request(signed);
-    }
 
     if (!response.ok) {
       await parseResponse<never>(response, 'Main app returned');
@@ -668,7 +649,7 @@ export async function uploadToMainApp<T = unknown>(
   formData: FormData,
   hostOverride?: string,
 ): Promise<T> {
-  const response = await fetchSignedWithRetry({
+  const response = await fetchSigned({
     method: 'POST',
     path,
     body: formData,

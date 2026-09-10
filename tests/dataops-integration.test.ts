@@ -18,7 +18,7 @@ import { getSqlQueryStatus } from '../src/commands/te-dataops/ide/get-sql-query-
 import { getTaskInstanceDetail } from '../src/commands/te-dataops/operations/get-task-instance-detail.js';
 import { clearCliToken, setCliTokenManual } from '../src/core/cli-token.js';
 import { PermissionError } from '../src/core/errors.js';
-import { clear as clearSecureToken, save as saveSecureToken } from '../src/core/secure-store.js';
+import { loadCliToken, SecureStoreAuthError } from '../src/core/secure-store.js';
 
 let pass = 0;
 let fail = 0;
@@ -298,43 +298,32 @@ await test('callDataopsApi treats 403 as PermissionError without retry', async (
   }
 });
 
-await test('callDataopsApi refreshes cli-token once on 401', async () => {
+await test('callDataopsApi preserves cli-token and does not retry on 401', async () => {
   const host = 'https://test-dataops-401.internal';
   clearCliToken(host);
-  clearSecureToken(host);
   setCliTokenManual('stale-dataops-token', host);
-  saveSecureToken(host, {
-    accessToken: 'fake-access-token-for-dataops-401-test',
-    refreshToken: '',
-    accessExpiresAt: new Date(Date.now() + 60_000).toISOString(),
-  });
 
   let apiCallCount = 0;
   const seenTokens: string[] = [];
   const prevFetch = globalThis.fetch;
   globalThis.fetch = withSuccessfulCliTokenRenew(async (url, init) => {
-    const urlStr = String(url);
-    if (urlStr.includes('/v1/ta/cli/token/generate')) {
-      return new Response(JSON.stringify({ return_code: 0, data: { userSecret: 'fresh-dataops-token' } }), { status: 200 });
-    }
+    assert.ok(!String(url).includes('/v1/ta/cli/token/generate'));
     apiCallCount++;
     seenTokens.push(((init?.headers as Record<string, string>) ?? {})['cli-token'] ?? '');
-    if (apiCallCount === 1) {
-      return new Response(JSON.stringify({ message: 'Unauthorized' }), { status: 401 });
-    }
-    return new Response(JSON.stringify({ returnCode: 0, data: { ok: true } }), { status: 200 });
+    return new Response(JSON.stringify({ message: 'Unauthorized' }), { status: 401 });
   });
 
   try {
-    const result = await callDataopsApi(ctx({}, host), 'repo_list_spaces');
-    assert.equal(apiCallCount, 2);
-    assert.equal(seenTokens[0], 'stale-dataops-token');
-    assert.equal(seenTokens[1], 'fresh-dataops-token');
-    assert.equal(JSON.stringify(result), JSON.stringify({ ok: true }));
+    await assert.rejects(
+      () => callDataopsApi(ctx({}, host), 'repo_list_spaces'),
+      SecureStoreAuthError,
+    );
+    assert.equal(apiCallCount, 1);
+    assert.deepEqual(seenTokens, ['stale-dataops-token']);
+    assert.equal(loadCliToken(host), 'stale-dataops-token');
   } finally {
     globalThis.fetch = prevFetch;
     clearCliToken(host);
-    clearSecureToken(host);
   }
 });
 
@@ -519,42 +508,35 @@ await test('get_sql_query_status keeps the existing target when the response has
   }
 });
 
-await test('downloadDataopsApi refreshes cli-token once on 401', async () => {
+await test('downloadDataopsApi preserves cli-token and target on 401 without retry', async () => {
   const host = 'https://test-dataops-download-401.internal';
   const targetDir = await mkdtemp(join(tmpdir(), 'ae-cli-dataops-download-401-'));
   const targetFile = join(targetDir, 'result.zip');
   clearCliToken(host);
-  clearSecureToken(host);
   setCliTokenManual('stale-download-token', host);
-  saveSecureToken(host, {
-    accessToken: 'fake-access-token-for-download-401-test',
-    refreshToken: '',
-    accessExpiresAt: new Date(Date.now() + 60_000).toISOString(),
-  });
 
   let downloadCalls = 0;
   const seenTokens: string[] = [];
   const previousFetch = globalThis.fetch;
   globalThis.fetch = withSuccessfulCliTokenRenew(async (url, init) => {
-    if (String(url).includes('/v1/ta/cli/token/generate')) {
-      return new Response(JSON.stringify({ return_code: 0, data: { userSecret: 'fresh-download-token' } }), { status: 200 });
-    }
+    assert.ok(!String(url).includes('/v1/ta/cli/token/generate'));
     downloadCalls++;
     seenTokens.push(((init?.headers as Record<string, string>) ?? {})['cli-token'] ?? '');
-    if (downloadCalls === 1) return new Response('Unauthorized', { status: 401 });
-    return new Response('zip-result', { status: 200 });
+    return new Response('Unauthorized', { status: 401 });
   });
 
   try {
-    const localFile = await downloadDataopsApi(ctx({}, host), '/download', {}, targetFile);
-    assert.equal(localFile, targetFile);
-    assert.equal(downloadCalls, 2);
-    assert.deepEqual(seenTokens, ['stale-download-token', 'fresh-download-token']);
-    assert.equal((await readFile(targetFile)).toString(), 'zip-result');
+    await assert.rejects(
+      () => downloadDataopsApi(ctx({}, host), '/download', {}, targetFile),
+      SecureStoreAuthError,
+    );
+    assert.equal(downloadCalls, 1);
+    assert.deepEqual(seenTokens, ['stale-download-token']);
+    await assert.rejects(() => readFile(targetFile), /ENOENT/);
+    assert.equal(loadCliToken(host), 'stale-download-token');
   } finally {
     globalThis.fetch = previousFetch;
     clearCliToken(host);
-    clearSecureToken(host);
     await rm(targetDir, { recursive: true, force: true });
   }
 });

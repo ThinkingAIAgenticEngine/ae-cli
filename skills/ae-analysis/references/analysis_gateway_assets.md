@@ -98,7 +98,7 @@ Prefer the run/artifact commands over hand-written HTTP, Python, or curl. Analys
 | `dashboard list` | `analysis.dashboard.list` | Find accessible dashboards | `--project-id`, optional `--queries`, `--fields`, `--limit`, `--offset` | Paginated dashboard summaries |
 | `dashboard create` | `analysis.dashboard.create` | Create a dashboard | `--project-id`, `--dashboard-name`, optional `--space-id`, `--folder-id` | Created dashboard |
 | `dashboard get` | `analysis.dashboard.get` | Inspect one dashboard location/definition/share/report structure, including notes, creator, and creation/update time | `--project-id`, `--dashboard-id` | Dashboard detail with location and normalized notes |
-| `dashboard update` | `analysis.dashboard.update` | Update settings, upsert a note, or replace the dashboard-level business filter | `--operation settings|note-upsert|business-filter`, IDs, optional `--filter`/`--payload` | Update result |
+| `dashboard update` | `analysis.dashboard.update` | Update settings, create or patch a note, or replace the dashboard-level business filter | `--operation settings|note-upsert|business-filter`; `--dashboard-id` is required for notes; omit `--note-id` to create | Update result |
 | `dashboard share-info` | `analysis.dashboard.share_info` | Read dashboard sharing info | `--project-id`, `--dashboard-id` | Share info |
 | `dashboard share` | `analysis.dashboard.share` | Modify dashboard sharing | `--project-id`, `--dashboard-id`, `--payload` or `--member-authorities` | Share update result |
 | `dashboard delete` | `analysis.dashboard.delete` | Delete dashboards | `--project-id`, `--dashboard-ids '[...]'` | Delete result |
@@ -155,7 +155,7 @@ Prefer the run/artifact commands over hand-written HTTP, Python, or curl. Analys
 | `user-tag get` | `analysis.user_tag.get` | Inspect exact tags | `--tag-names '[...]'` | Tag details |
 | `user-tag-member list` | `analysis.user_tag_member.list` | Bounded inline tag members | `--tag-name`, optional `--snapshot-date`, properties/fields/query/limit/offset | Member rows |
 | `user-tag-member export` | `analysis.user_tag_member.export` | Stream native full tag members as csv.gz | `--tag-name`, optional `--snapshot-date`, properties | Async artifact descriptor |
-| `user-tag create` | `analysis.user_tag.create` | Create tag directly from semantic intent | `--tag-name`, `--display-name`, `--definition-request` | Create result and canonical request |
+| `user-tag create` | `analysis.user_tag.create` | Create tag directly from semantic intent, optionally with periodic refresh | `--tag-name`, `--display-name`, `--definition-request`, optional `--auto-refresh-schedule` or `--auto-refresh-cron` | Create result and canonical request |
 | `user-tag update` | `analysis.user_tag.update` | Update tag | `--tag-name`, fields to change, optional `--definition-request` | Update result |
 | `user-tag refresh` | `analysis.user_tag.refresh` | Trigger tag recompute | `--tag-name` | Refresh result |
 | `user-tag create-id` | `analysis.user_tag.create_id` | Map imported values to an entity and create a tag | `--display-name`, `--entity-id`, exactly one input source, conditional `--association-property` | Processing state; poll get for final match summary |

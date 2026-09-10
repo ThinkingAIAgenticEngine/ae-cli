@@ -3,9 +3,11 @@ import * as path from 'path';
 import TurndownService from 'turndown';
 import type { Command, RuntimeContext } from '../../framework/types.js';
 import { kbUpload } from '../../core/mcp-access.js';
+import { getExternalKnowledgeBaseTargetScope } from './target-scope.js';
 
 const API_PATH = '/agent/api/external/knowledge-bases/sources/upload';
 const SUPPORTED_EXTENSIONS = new Set([
+  '.zip',
   '.md',
   '.markdown',
   '.txt',
@@ -65,6 +67,8 @@ function sanitizeFilename(name: string): string {
 function getMimeType(filename: string): string {
   const ext = path.extname(filename).toLowerCase();
   switch (ext) {
+    case '.zip':
+      return 'application/zip';
     case '.md':
     case '.markdown':
       return 'text/markdown';
@@ -210,9 +214,14 @@ function dedupeByFilename(files: SourceFile[]): SourceFile[] {
   });
 }
 
-function buildForm(name: string, files: SourceFile[]): FormData {
+function buildForm(
+  name: string,
+  scope: ReturnType<typeof getExternalKnowledgeBaseTargetScope>,
+  files: SourceFile[],
+): FormData {
   const form = new FormData();
   form.append('name', name);
+  if (scope) form.append('scope', scope);
   for (const f of files) {
     form.append('files', new Blob([f.content], { type: f.mimeType }), f.filename);
   }
@@ -227,6 +236,7 @@ export const add: Command = {
     '--files accepts a JSON array; each entry can be a supported file path, a directory path (supported files inside, non-recursive), or an http(s) URL (HTML auto-converted to markdown).',
   flags: [
     { name: 'name', type: 'string', required: true, desc: 'Knowledge base name' },
+    { name: 'scope', type: 'string', required: false, desc: 'Exact knowledge base scope: personal | company (omit for personal → company fallback)' },
     {
       name: 'files',
       type: 'json',
@@ -236,24 +246,29 @@ export const add: Command = {
   ],
   risk: 'write',
   validate: (ctx) => {
+    getExternalKnowledgeBaseTargetScope(ctx);
     normalizeFilesInput(ctx.json('files'));
   },
   dryRun: (ctx) => {
     const items = normalizeFilesInput(ctx.json('files'));
+    const body: Record<string, unknown> = {
+      name: ctx.str('name'),
+    };
+    const scope = getExternalKnowledgeBaseTargetScope(ctx);
+    if (scope) body.scope = scope;
+    body.files = items.map((item) => ({ value: item, type: classifyInput(item) }));
+    body.contentType = 'multipart/form-data';
     return {
       method: 'POST',
       url: `${ctx.host().replace(/\/$/, '')}${API_PATH}`,
-      body: {
-        name: ctx.str('name'),
-        files: items.map((item) => ({ value: item, type: classifyInput(item) })),
-        contentType: 'multipart/form-data',
-      },
+      body,
     };
   },
   execute: async (ctx) => {
     const name = ctx.str('name');
+    const scope = getExternalKnowledgeBaseTargetScope(ctx);
     const files = await collectFiles(ctx);
-    const form = buildForm(name, files);
+    const form = buildForm(name, scope, files);
     const result = await kbUpload(ctx, API_PATH, form);
     return {
       uploaded: files.map((f) => ({ filename: f.filename, origin: f.origin, source: f.source })),

@@ -5,10 +5,10 @@
  * backing service at `/api/cli/v1/...`. Auth uses the `cli-token` header (same as MCP transport).
  */
 
-import { getCliToken, clearCliToken } from './cli-token.js';
+import { getCliToken } from './cli-token.js';
 import { safeJsonParse } from './json-utils.js';
-import { logger } from './logger.js';
 import { PermissionError } from './errors.js';
+import { SecureStoreAuthError } from './secure-store.js';
 import { internalCallSourceHeaders } from './internal-call-source.js';
 import { readFile } from 'node:fs/promises';
 import { basename } from 'node:path';
@@ -18,9 +18,9 @@ export type CapabilityApiMethod = 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE';
 export type CapabilityApiRequestOptions = {
   /** Actual service base URL when it differs from the host used to obtain the CLI token. */
   apiBaseUrl?: string;
-  /** Retry once with a refreshed CLI token after HTTP 401. Defaults to true. */
+  /** @deprecated Retained for source compatibility. Unauthorized requests are never retried. */
   retryOnUnauthorized?: boolean;
-  /** Retry a legacy invalid-token HTTP 403 once. Defaults to true for existing callers. */
+  /** @deprecated Invalid CLI tokens are never retried; false preserves 403 permission classification. */
   retryOnInvalidTokenForbidden?: boolean;
 };
 
@@ -179,7 +179,13 @@ function buildCapabilityHttpError(resp: Response, body: any): CapabilityGatewayE
 
 async function throwCapabilityHttpError(resp: Response): Promise<never> {
   const body = parseCapabilityResponse(await resp.text());
-  throw buildCapabilityHttpError(resp, body);
+  const error = buildCapabilityHttpError(resp, body);
+  if (resp.status === 401) {
+    throw new SecureStoreAuthError(
+      `${error.message}. The stored CLI token is invalid or expired; run: ae-cli auth login`,
+    );
+  }
+  throw error;
 }
 
 async function requestOnce(
@@ -249,50 +255,17 @@ async function callGatewayWithEnvelope(
   const url = buildCapabilityGatewayUrl(options.apiBaseUrl ?? host, domain, pathAfterV1, queryParams);
   const token = await getCliToken(host);
 
-  let resp = await requestOnce(url, method, token, body);
-
-  let permissionMsg: string | undefined;
+  const resp = await requestOnce(url, method, token, body);
   if (resp.status === 403) {
     const error = await permissionError(resp);
-    permissionMsg = error.message;
-    if (
-      options.retryOnInvalidTokenForbidden === false
-      || !isInvalidCliTokenMessage(permissionMsg)
-    ) {
-      throw error;
+    if (options.retryOnInvalidTokenForbidden !== false && isInvalidCliTokenMessage(error.message)) {
+      throw new SecureStoreAuthError(
+        `${error.message} Run: ae-cli auth login`,
+      );
     }
+    throw error;
   }
-
-  if (resp.status === 401) {
-    if (options.retryOnUnauthorized === false) {
-      await throwCapabilityHttpError(resp);
-    }
-    logger.warn(`Capability gateway request failed (HTTP 401) for ${host}, refreshing CLI token`);
-    clearCliToken(host);
-    const newToken = await getCliToken(host);
-    process.stderr.write(`[ae-cli] CLI token refreshed for ${host}\n`);
-
-    resp = await requestOnce(url, method, newToken, body);
-    if (resp.status === 403) {
-      throw new PermissionError(await permissionMessage(resp));
-    }
-    if (!resp.ok) {
-      await throwCapabilityHttpError(resp);
-    }
-  } else if (resp.status === 403 && permissionMsg) {
-    logger.warn(`Capability gateway request failed (${permissionMsg}) for ${host}, refreshing CLI token`);
-    clearCliToken(host);
-    const newToken = await getCliToken(host);
-    process.stderr.write(`[ae-cli] CLI token refreshed for ${host}\n`);
-
-    resp = await requestOnce(url, method, newToken, body);
-    if (resp.status === 403) {
-      throw await permissionError(resp);
-    }
-    if (!resp.ok) {
-      await throwCapabilityHttpError(resp);
-    }
-  } else if (!resp.ok) {
+  if (!resp.ok) {
     await throwCapabilityHttpError(resp);
   }
 
@@ -310,26 +283,16 @@ export async function fetchCapabilityGateway(
   const url = buildCapabilityGatewayUrl(host, domain, pathAfterV1);
   const token = await getCliToken(host);
 
-  let resp = await requestOnce(url, method, token, body, accept);
+  const resp = await requestOnce(url, method, token, body, accept);
 
   if (resp.status === 403) {
-    throw await permissionError(resp);
+    const error = await permissionError(resp);
+    if (isInvalidCliTokenMessage(error.message)) {
+      throw new SecureStoreAuthError(`${error.message} Run: ae-cli auth login`);
+    }
+    throw error;
   }
-
-  if (resp.status === 401) {
-    logger.warn(`Capability gateway request failed (HTTP 401) for ${host}, refreshing CLI token`);
-    clearCliToken(host);
-    const newToken = await getCliToken(host);
-    process.stderr.write(`[ae-cli] CLI token refreshed for ${host}\n`);
-
-    resp = await requestOnce(url, method, newToken, body, accept);
-    if (resp.status === 403) {
-      throw await permissionError(resp);
-    }
-    if (!resp.ok) {
-      await throwCapabilityHttpError(resp);
-    }
-  } else if (!resp.ok) {
+  if (!resp.ok) {
     await throwCapabilityHttpError(resp);
   }
 
@@ -360,6 +323,19 @@ export async function requestCapabilityGatewayWithEnvelope(
 
 export async function listCapabilities(host: string, domain: string, projectId?: number): Promise<any> {
   return callGateway(host, domain, 'capabilities', 'GET', undefined, { project_id: projectId });
+}
+
+export async function listCapabilitiesWithEnvelope(host: string, domain: string, projectId?: number): Promise<CapabilityGatewaySuccess> {
+  return callGatewayWithEnvelope(host, domain, 'capabilities', 'GET', undefined, { project_id: projectId });
+}
+
+export async function inspectCapabilityWithEnvelope(
+  host: string,
+  domain: string,
+  capabilityId: string,
+  projectId?: number,
+): Promise<CapabilityGatewaySuccess> {
+  return callGatewayWithEnvelope(host, domain, `capabilities/${capabilityId}`, 'GET', undefined, { project_id: projectId });
 }
 
 export async function inspectCapability(
@@ -403,6 +379,24 @@ export async function dryRunCapability(
   input: Record<string, unknown> = {},
 ): Promise<any> {
   return callGateway(host, domain, `capabilities/${capabilityId}/dry-run`, 'POST', { input });
+}
+
+export async function dryRunCapabilityWithEnvelope(
+  host: string,
+  domain: string,
+  capabilityId: string,
+  input: Record<string, unknown> = {},
+): Promise<CapabilityGatewaySuccess> {
+  return callGatewayWithEnvelope(host, domain, `capabilities/${capabilityId}/dry-run`, 'POST', { input });
+}
+
+export async function validateCapabilityWithEnvelope(
+  host: string,
+  domain: string,
+  capabilityId: string,
+  input: Record<string, unknown> = {},
+): Promise<CapabilityGatewaySuccess> {
+  return callGatewayWithEnvelope(host, domain, `capabilities/${capabilityId}/validate`, 'POST', { input });
 }
 
 /**
@@ -464,25 +458,16 @@ export async function uploadInputFileBytes(
   form.append('file', new Blob([fileBuffer], { type: contentType }), filename);
 
   const token = await getCliToken(host);
-  let resp = await requestMultipartOnce(url, token, form);
+  const resp = await requestMultipartOnce(url, token, form);
 
   if (resp.status === 403) {
-    throw await permissionError(resp);
+    const error = await permissionError(resp);
+    if (isInvalidCliTokenMessage(error.message)) {
+      throw new SecureStoreAuthError(`${error.message} Run: ae-cli auth login`);
+    }
+    throw error;
   }
-
-  if (resp.status === 401) {
-    logger.warn(`Capability gateway request failed (HTTP 401) for ${host}, refreshing CLI token`);
-    clearCliToken(host);
-    const newToken = await getCliToken(host);
-    process.stderr.write(`[ae-cli] CLI token refreshed for ${host}\n`);
-    resp = await requestMultipartOnce(url, newToken, form);
-    if (resp.status === 403) {
-      throw await permissionError(resp);
-    }
-    if (!resp.ok) {
-      await throwCapabilityHttpError(resp);
-    }
-  } else if (!resp.ok) {
+  if (!resp.ok) {
     await throwCapabilityHttpError(resp);
   }
 
@@ -507,25 +492,16 @@ export async function downloadCapabilityArtifact(
     `runs/${encodeURIComponent(runId)}/artifacts/${encodeURIComponent(artifactId)}/download`,
   );
   const token = await getCliToken(host);
-  let resp = await requestDownloadOnce(url, token);
+  const resp = await requestDownloadOnce(url, token);
 
   if (resp.status === 403) {
-    throw await permissionError(resp);
+    const error = await permissionError(resp);
+    if (isInvalidCliTokenMessage(error.message)) {
+      throw new SecureStoreAuthError(`${error.message} Run: ae-cli auth login`);
+    }
+    throw error;
   }
-
-  if (resp.status === 401) {
-    logger.warn(`Capability gateway artifact download failed (HTTP 401) for ${host}, refreshing CLI token`);
-    clearCliToken(host);
-    const newToken = await getCliToken(host);
-    process.stderr.write(`[ae-cli] CLI token refreshed for ${host}\n`);
-    resp = await requestDownloadOnce(url, newToken);
-    if (resp.status === 403) {
-      throw await permissionError(resp);
-    }
-    if (!resp.ok) {
-      await throwCapabilityHttpError(resp);
-    }
-  } else if (!resp.ok) {
+  if (!resp.ok) {
     await throwCapabilityHttpError(resp);
   }
 

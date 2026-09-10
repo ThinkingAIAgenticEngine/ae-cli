@@ -4,7 +4,7 @@ import { mkdtempSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
 import http from 'node:http';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-import test from 'node:test';
+import test, { describe, it } from 'node:test';
 import { fileURLToPath } from 'node:url';
 
 import { listSources } from '../src/commands/te-kb/list-sources.ts';
@@ -56,6 +56,24 @@ function runCli(args, env, input) {
   });
 }
 
+describe('kb source discovery commands', () => {
+  it('lists sources and deletes by stable source ID', () => {
+    const ctx = context({
+      name: 'Engineering Handbook',
+      scope: 'company',
+      id: 'source-id-1',
+    });
+    const listPreview = listSources.dryRun(ctx);
+    assert.equal(listPreview.method, 'GET');
+    assert.equal(new URL(listPreview.url).searchParams.get('scope'), 'company');
+    assert.deepEqual(rmSource.dryRun(ctx).body, {
+      name: 'Engineering Handbook',
+      scope: 'company',
+      id: 'source-id-1',
+    });
+  });
+});
+
 test('kb +list-sources exposes a bounded read-only contract', () => {
   assert.equal(listSources.risk, 'read');
   assert.deepEqual(listSources.flags, [
@@ -67,6 +85,12 @@ test('kb +list-sources exposes a bounded read-only contract', () => {
       maxLength: 200,
       desc: 'Knowledge base name',
     },
+    {
+      name: 'scope',
+      type: 'string',
+      required: false,
+      desc: 'Exact knowledge base scope: personal | company (omit for personal → company fallback)',
+    },
   ]);
   assert.deepEqual(
     listSources.dryRun(context({ name: ' Engineering Handbook ' })),
@@ -74,6 +98,14 @@ test('kb +list-sources exposes a bounded read-only contract', () => {
       method: 'GET',
       url: 'https://ta.example/agent/api/external/knowledge-bases/sources?name=Engineering+Handbook',
     },
+  );
+  assert.equal(
+    new URL(
+      listSources.dryRun(
+        context({ name: 'Engineering Handbook', scope: 'company' }),
+      ).url,
+    ).searchParams.get('scope'),
+    'company',
   );
   assert.throws(
     () => listSources.validate(context({ name: '   ' })),
@@ -88,6 +120,10 @@ test('kb +list-sources exposes a bounded read-only contract', () => {
   );
   assert.doesNotThrow(() =>
     listSources.validate(context({ name: ` ${'k'.repeat(200)} ` })),
+  );
+  assert.throws(
+    () => listSources.validate(context({ name: 'Engineering Handbook', scope: 'system' })),
+    /Invalid --scope.*personal.*company/,
   );
 });
 
@@ -126,6 +162,9 @@ test('kb +list-sources sends name as a GET query using only cli-token auth', asy
   const temporaryRoot = mkdtempSync(path.join(tmpdir(), 'ae-cli-kb-list-sources-'));
   let received;
   const responseBody = {
+    deletionProjection: { state: 'review_required', baseline: null, reasonCode: 'KB_PUBLICATION_COMMIT_UNKNOWN' },
+    pendingDeletions: null,
+    deletionMaintenance: null,
     items: [
       {
         id: 'source-1',
@@ -161,7 +200,16 @@ test('kb +list-sources sends name as a GET query using only cli-token auth', asy
 
   try {
     const result = await runCli(
-      ['--host', host, 'kb', '+list-sources', '--name', 'Engineering Handbook'],
+      [
+        '--host',
+        host,
+        'kb',
+        '+list-sources',
+        '--name',
+        'Engineering Handbook',
+        '--scope',
+        'company',
+      ],
       {
         HOME: path.join(temporaryRoot, 'home'),
         SANDBOX_RUNTIME_ROOT: runtimeRoot,
@@ -177,6 +225,7 @@ test('kb +list-sources sends name as a GET query using only cli-token auth', asy
       '/agent/api/external/knowledge-bases/sources',
     );
     assert.equal(requestUrl.searchParams.get('name'), 'Engineering Handbook');
+    assert.equal(requestUrl.searchParams.get('scope'), 'company');
     assert.equal(received.headers['cli-token'], 'cli-kb-list-sources-test');
     assert.equal(received.headers.authorization, undefined);
     assert.equal(received.body, '');
@@ -194,10 +243,9 @@ test('kb +list-sources sends name as a GET query using only cli-token auth', asy
   }
 });
 
-test('kb +list-sources retries one HTTP 401 and then succeeds', async () => {
+test('kb +list-sources reports auth failure without retrying HTTP 401', async () => {
   const temporaryRoot = mkdtempSync(path.join(tmpdir(), 'ae-cli-kb-list-sources-401-'));
   let targetRequestCount = 0;
-  const responseBody = { items: [{ id: 'source-after-retry' }] };
   const server = http.createServer((request, response) => {
     const pathname = new URL(request.url, 'http://localhost').pathname;
     if (pathname !== '/agent/api/external/knowledge-bases/sources') {
@@ -207,16 +255,8 @@ test('kb +list-sources retries one HTTP 401 and then succeeds', async () => {
     }
 
     targetRequestCount += 1;
-    response.writeHead(targetRequestCount === 1 ? 401 : 200, {
-      'content-type': 'application/json',
-    });
-    response.end(
-      JSON.stringify(
-        targetRequestCount === 1
-          ? { error: 'Expired CLI token.' }
-          : responseBody,
-      ),
-    );
+    response.writeHead(401, { 'content-type': 'application/json' });
+    response.end(JSON.stringify({ error: 'Expired CLI token.' }));
   });
 
   await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
@@ -239,9 +279,12 @@ test('kb +list-sources retries one HTTP 401 and then succeeds', async () => {
       },
     );
 
-    assert.equal(result.status, 0, result.stderr);
-    assert.deepEqual(JSON.parse(result.stdout).data, responseBody);
-    assert.equal(targetRequestCount, 2);
+    assert.equal(result.status, 1);
+    assert.equal(result.stdout, '');
+    const envelope = JSON.parse(result.stderr);
+    assert.equal(envelope.error.type, 'auth');
+    assert.match(envelope.error.message, /invalid or expired/);
+    assert.equal(targetRequestCount, 1);
   } finally {
     await new Promise((resolve) => server.close(resolve));
     rmSync(temporaryRoot, { recursive: true, force: true });
@@ -456,6 +499,16 @@ test('kb +rm-source uses one stable selector with ID priority and display-name c
     rmSource.dryRun(
       context({
         name: 'Engineering Handbook',
+        scope: 'company',
+        id: 'source-id-1',
+      }),
+    ).body,
+    { name: 'Engineering Handbook', scope: 'company', id: 'source-id-1' },
+  );
+  assert.deepEqual(
+    rmSource.dryRun(
+      context({
+        name: 'Engineering Handbook',
         'display-name': 'legacy-guide.md',
       }),
     ).body,
@@ -477,7 +530,7 @@ test('kb +rm-source uses one stable selector with ID priority and display-name c
   );
 });
 
-test('kb +rm-source retries one HTTP 401 and preserves each selector body', async () => {
+test('kb +rm-source preserves each selector body but never retries HTTP 401', async () => {
   const temporaryRoot = mkdtempSync(path.join(tmpdir(), 'ae-cli-kb-rm-source-401-'));
   const targetRequests = [];
   const server = http.createServer((request, response) => {
@@ -495,13 +548,8 @@ test('kb +rm-source retries one HTTP 401 and preserves each selector body', asyn
         method: request.method,
         body: JSON.parse(Buffer.concat(chunks).toString('utf8')),
       });
-      const isRetry = targetRequests.length % 2 === 0;
-      response.writeHead(isRetry ? 200 : 401, {
-        'content-type': 'application/json',
-      });
-      response.end(
-        JSON.stringify(isRetry ? { deleted: true } : { error: 'Expired CLI token.' }),
-      );
+      response.writeHead(401, { 'content-type': 'application/json' });
+      response.end(JSON.stringify({ error: 'Expired CLI token.' }));
     });
   });
 
@@ -559,16 +607,17 @@ test('kb +rm-source retries one HTTP 401 and preserves each selector body', asyn
           SANDBOX_RUNTIME_ROOT: runtimeRoot,
         },
       );
-      assert.equal(result.status, 0, result.stderr);
+      assert.equal(result.status, 1);
+      const envelope = JSON.parse(result.stderr);
+      assert.equal(envelope.error.type, 'auth');
     }
 
-    assert.equal(targetRequests.length, commandCases.length * 2);
+    assert.equal(targetRequests.length, commandCases.length);
     for (const [index, commandCase] of commandCases.entries()) {
-      const attempts = targetRequests.slice(index * 2, index * 2 + 2);
-      assert.deepEqual(attempts, [
-        { method: 'DELETE', body: commandCase.expectedBody },
-        { method: 'DELETE', body: commandCase.expectedBody },
-      ]);
+      assert.deepEqual(targetRequests[index], {
+        method: 'DELETE',
+        body: commandCase.expectedBody,
+      });
     }
   } finally {
     await new Promise((resolve) => server.close(resolve));

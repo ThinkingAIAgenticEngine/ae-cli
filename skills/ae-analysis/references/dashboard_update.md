@@ -22,7 +22,7 @@ For `operation=settings`:
 - `zone_offset` is an integer hour offset from `-12` to `14`;
 - complex settings belong in snake_case `payload`: `reports_version` string, `dashboard_job_schedule` string, `time_config_open` boolean, and object fields `time_config`, `cache_config`, `schedule_ui_config`; `ui_config` may be a string or object.
 
-For `operation=note-upsert`, pass `dashboard_id`; omit `note_id` to create a note or pass it to update an existing note. Do not mix note fields with batch settings fields.
+For `operation=note-upsert`, `dashboard_id` is required. Omit `note_id` to create a note attached to that dashboard, or pass it to update an existing note. A created note defaults missing `note_title` and `description` to empty strings. An update preserves `note_title`, `description`, and `ui_config` when the corresponding field is omitted; pass an explicit empty string to clear text. Do not mix note fields with batch settings fields.
 
 For `operation=default-filter`, pass one `dashboard_id`, `filter_name`, and `filter`. This saves a favorite filter and enables it as the dashboard-wide default filter; it is distinct from the current caller's personal default filter.
 

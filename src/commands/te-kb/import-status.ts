@@ -1,5 +1,6 @@
 import { kbApi } from "../../core/mcp-access.js";
 import { CapabilityGatewayError } from "../../core/capability-api.js";
+import { PermissionError } from "../../core/errors.js";
 import type { Command } from "../../framework/types.js";
 
 const API_PATH = "/agent/api/external/knowledge-bases/import";
@@ -47,6 +48,8 @@ export const importStatus: Command = {
     url: `${ctx.host().replace(/\/$/, "")}${API_PATH}?requestId=${encodeURIComponent(requestIdFrom(ctx))}`,
   }),
   execute: async (ctx) => {
+    const hint =
+      "Verify the request ID and that the server supports kb +import-status. Do not retry the import until its status is known.";
     try {
       return (await kbApi(
         ctx,
@@ -54,17 +57,29 @@ export const importStatus: Command = {
         API_PATH,
         { requestId: requestIdFrom(ctx) },
         undefined,
-        { preserveErrorMetadata: true, retryUnauthorized: true },
+        { preserveErrorMetadata: true },
       )) as ImportTaskResponse;
     } catch (error) {
-      if (!(error instanceof CapabilityGatewayError) || error.hint) throw error;
-      throw new CapabilityGatewayError(
-        error.message,
-        error.code,
-        error.httpStatus,
-        "Verify the request ID and that the server supports kb +import-status. Do not retry the import until its status is known.",
-        error.meta,
-      );
+      if (error instanceof PermissionError) {
+        throw new PermissionError(error.message, error.code, error.hint ?? hint);
+      }
+      if (error instanceof CapabilityGatewayError) {
+        if (error.hint) throw error;
+        throw new CapabilityGatewayError(
+          error.message,
+          error.code,
+          error.httpStatus,
+          hint,
+          error.meta,
+        );
+      }
+      if (error instanceof Error) {
+        if (error.constructor === Error) {
+          throw new CapabilityGatewayError(error.message, undefined, undefined, hint);
+        }
+        throw error;
+      }
+      throw error;
     }
   },
 };

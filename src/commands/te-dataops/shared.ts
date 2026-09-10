@@ -5,11 +5,12 @@ import { basename, dirname, join, resolve } from 'node:path';
 import { Readable } from 'node:stream';
 import { pipeline } from 'node:stream/promises';
 import { resolveHost } from '../../core/auth.js';
-import { getCliToken, clearCliToken } from '../../core/cli-token.js';
+import { getCliToken } from '../../core/cli-token.js';
 import { PermissionError } from '../../core/errors.js';
 import { safeJsonParse } from '../../core/json-utils.js';
 import { logger } from '../../core/logger.js';
 import { internalCallSourceHeaders } from '../../core/internal-call-source.js';
+import { SecureStoreAuthError } from '../../core/secure-store.js';
 import type { DryRunResult, RuntimeContext } from '../../framework/types.js';
 
 type DataopsApiMethod = 'GET' | 'POST';
@@ -134,7 +135,6 @@ export async function downloadDataopsApi(
   path: string,
   params: Record<string, unknown>,
   targetPath: string,
-  retry = true,
 ): Promise<string> {
   const host = resolveHost(ctx.host());
   const token = await getCliToken(host);
@@ -152,9 +152,10 @@ export async function downloadDataopsApi(
     const data = parseResponseBody(await resp.text(), url, resp.status, true);
     throw new PermissionError(permissionMessage(data));
   }
-  if (resp.status === 401 && retry) {
-    clearCliToken(host);
-    return downloadDataopsApi(ctx, path, params, targetPath, false);
+  if (resp.status === 401) {
+    throw new SecureStoreAuthError(
+      `The stored CLI token for ${host} is invalid or expired. Run: ae-cli auth login --host ${host}`,
+    );
   }
   if (!resp.ok) {
     const data = parseResponseBody(await resp.text(), url, resp.status, true);
@@ -191,7 +192,6 @@ async function dataopsRequest(
   path: string,
   params: Record<string, unknown> = {},
   body?: Record<string, unknown>,
-  retry = true
 ): Promise<unknown> {
   const host = resolveHost(ctx.host());
   const token = await getCliToken(host);
@@ -216,10 +216,10 @@ async function dataopsRequest(
     throw new PermissionError(permissionMessage(data));
   }
 
-  if (resp.status === 401 && retry) {
-    logger.warn(`DataOps request failed (HTTP 401) for ${host}, refreshing CLI token`);
-    clearCliToken(host);
-    return dataopsRequest(ctx, method, path, params, body, false);
+  if (resp.status === 401) {
+    throw new SecureStoreAuthError(
+      `The stored CLI token for ${host} is invalid or expired. Run: ae-cli auth login --host ${host}`,
+    );
   }
 
   if (!resp.ok) {

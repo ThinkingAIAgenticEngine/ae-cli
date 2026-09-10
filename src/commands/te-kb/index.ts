@@ -16,8 +16,13 @@ import { askStatus } from './ask-status.js';
 import { url } from './url.js';
 import { importSnapshot } from './import.js';
 import { importStatus } from './import-status.js';
+import { sourceLs, sourceRead, sourcePut, sourceRm } from './source-directory.js';
+
+import { versions, versionShow, versionSources, versionDiff, versionTree, versionRead, versionDownload, rollback, rollbackStatus } from './version-management.js';
 
 const commands: Command[] = [
+  versions, versionShow, versionSources, versionDiff, versionTree, versionRead, versionDownload, rollback, rollbackStatus,
+  sourceLs, sourceRead, sourcePut, sourceRm,
   ask,
   askStatus,
   add,
@@ -38,4 +43,7 @@ const commands: Command[] = [
 ];
 
 export default commands;
+export { sourceLs, sourceRead, sourcePut, sourceRm };
 export { ask, askStatus, add, url, compile, remove, create, rmSource, schema, status, kbList, kbIndex, kbGrep, kbRead, importSnapshot, importStatus, listSources };
+
+export { versions, versionShow, versionSources, versionDiff, versionTree, versionRead, versionDownload, rollback, rollbackStatus };

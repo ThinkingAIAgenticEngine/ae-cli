@@ -1,11 +1,36 @@
 import type { Command, RuntimeContext } from '../../framework/types.js';
 import { kbApi } from '../../core/mcp-access.js';
+import { CliValidationError } from '../../core/errors.js';
 
 const API_PATH = '/agent/api/external/knowledge-bases/read';
+const VALID_EXPAND_MODES = new Set(['block', 'none']);
+const MAX_READ_LIMIT = 2000;
 
 interface KnowledgeBaseRef {
   scope: string;
   name: string;
+}
+
+function readExpand(ctx: RuntimeContext): string | undefined {
+  const expand = ctx.str('expand').trim();
+  if (!expand) return undefined;
+  if (!VALID_EXPAND_MODES.has(expand)) {
+    throw new CliValidationError(
+      `Invalid --expand: ${expand}. Must be one of: block | none`,
+    );
+  }
+  return expand;
+}
+
+function readLimit(ctx: RuntimeContext): number | undefined {
+  const limit = ctx.optionalNum('limit');
+  if (limit === undefined) return undefined;
+  if (!Number.isInteger(limit) || limit < 1 || limit > MAX_READ_LIMIT) {
+    throw new CliValidationError(
+      `Invalid --limit: ${limit}. Must be an integer from 1 to ${MAX_READ_LIMIT}`,
+    );
+  }
+  return limit;
 }
 
 function buildBody(ctx: RuntimeContext): Record<string, unknown> {
@@ -13,10 +38,12 @@ function buildBody(ctx: RuntimeContext): Record<string, unknown> {
     source: ctx.json('source') as KnowledgeBaseRef,
     path: ctx.str('path'),
   };
-  const offset = ctx.num('offset');
-  if (offset) body.offset = offset;
-  const limit = ctx.num('limit');
-  if (limit) body.limit = limit;
+  const offset = ctx.optionalNum('offset');
+  if (offset !== undefined) body.offset = offset;
+  const limit = ctx.optionalNum('limit');
+  if (limit !== undefined) body.limit = limit;
+  const expand = readExpand(ctx);
+  if (expand) body.expand = expand;
   if (ctx.bool('outline')) body.outline = true;
   const locale = ctx.str('locale');
   if (locale) body.locale = locale;
@@ -41,8 +68,9 @@ export const kbRead: Command = {
       required: true,
       desc: 'Page path relative to the knowledge base root, e.g. wiki/concepts/data-model.md or index.md',
     },
-    { name: 'offset', type: 'number', required: false, desc: 'Start line (1-based). Omit to read from the beginning.' },
-    { name: 'limit', type: 'number', required: false, desc: 'Max number of lines to return (1-10000).' },
+    { name: 'offset', type: 'number', required: false, min: 1, desc: 'Start line (1-based integer). Omit to read from the beginning.' },
+    { name: 'limit', type: 'number', required: false, min: 1, max: MAX_READ_LIMIT, desc: 'Max number of lines to return (1-2000).' },
+    { name: 'expand', type: 'string', required: false, desc: 'Read-window expansion mode: block | none (omit for the server default: block)' },
     {
       name: 'outline',
       type: 'boolean',
@@ -52,6 +80,14 @@ export const kbRead: Command = {
     { name: 'locale', type: 'string', required: false, desc: 'Optional locale: zh | en | ja | ko' },
   ],
   risk: 'read',
+  validate: (ctx) => {
+    const offset = ctx.optionalNum('offset');
+    if (offset !== undefined && !Number.isInteger(offset)) {
+      throw new CliValidationError('--offset must be an integer.');
+    }
+    readLimit(ctx);
+    readExpand(ctx);
+  },
   dryRun: (ctx) => ({
     method: 'POST',
     url: `${ctx.host().replace(/\/$/, '')}${API_PATH}`,

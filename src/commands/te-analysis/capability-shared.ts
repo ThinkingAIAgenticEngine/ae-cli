@@ -368,6 +368,10 @@ export function optionalString(ctx: RuntimeContext, name: string): string | unde
   return value === '' ? undefined : value;
 }
 
+export function optionalStringPreserveEmpty(ctx: RuntimeContext, name: string): string | undefined {
+  return ctx.has?.(name) ? ctx.str(name) : optionalString(ctx, name);
+}
+
 export function optionalNumber(ctx: RuntimeContext, name: string): number | undefined {
   const value = ctx.str(name);
   return value === '' ? undefined : Number(value);

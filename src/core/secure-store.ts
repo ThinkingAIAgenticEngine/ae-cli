@@ -1,34 +1,11 @@
 /**
- * secure-store.ts — AES-256-GCM encrypted token file storage
+ * AES-256-GCM credential storage for ae-cli.
  *
- * ## Encryption scheme
- * - Algorithm: AES-256-GCM (Node built-in `crypto`, no native dependencies)
- * - Key derivation: `crypto.scryptSync(machineId, salt, 32)`
- *   - machineId: machine-bound identifier (see `getMachineId()`, works cross-platform / in containers / sandboxes)
- *   - salt: fixed salt "ae-cli-secure-store-v1" (does not need to be secret; prevents rainbow table attacks)
- * - Each encryption generates a 12-byte random nonce/IV; GCM auth tag is 16 bytes
- * - On-disk format (JSON): `{ nonce: <hex>, tag: <hex>, data: <hex> }`
- * - Decryption validates the auth tag; tampering or wrong key both throw (fail closed)
- * - File permissions: `0o600` (current user read/write only)
- *
- * ## machineId strategy (cross-platform & container/sandbox friendly)
- * Priority (high -> low):
- *   1. macOS:  `ioreg -rd1 -c IOPlatformExpertDevice` -> IOPlatformUUID
- *   2. Linux:  `/etc/machine-id`
- *   3. Windows: `reg query HKLM\SOFTWARE\Microsoft\Cryptography /v MachineGuid`
- *   4. Fallback: `$HOME` + `os.hostname()` + `os.platform()` (usable in containers/CI)
- *
- * ## Threat model / security boundary (limitations)
- * Protection scope of the machineId-derived key (0o600 file permissions):
- *   - Protects: token file copied/backed up and decrypted on a **different machine**; also protects against **other users on the same machine (group/other)**
- *   - Does NOT protect: **co-resident processes running as the same user on the same machine** — such processes can read the 0o600 file and re-derive the key, enabling decryption
- *     (stronger protection requires a future enhancement: use the OS keychain to protect the key; see design doc section B)
- *   - CI/containers: the fallback machineId (`$HOME|hostname|platform`) may be approximate or guessable, reducing confidentiality to obfuscation level
- *
- * ## Consumers
- * - Task 4 (ae-cli auth login): calls `save()` to persist to disk; calls `getValidAccessToken()` to retrieve a valid token
- * - Task 5 (te-agent-client):   calls `load()` to retrieve the accessToken
- * - Task 6 (secure cleanup):    calls `clear()` to remove the persisted token
+ * New CLIs keep all CLI-token-only credentials in `<host>.accounts.v1.enc.json` and
+ * maintain the historical `<host>.enc.json` as a single-account projection. That
+ * projection deliberately preserves the legacy plaintext shape so an automatic
+ * downgrade can keep using `cliToken`; access/refresh values are never persisted by
+ * the new login flow.
  */
 
 import crypto from 'node:crypto';
@@ -39,94 +16,82 @@ import { execFileSync } from 'node:child_process';
 import { getConfigDir } from './config.js';
 import { logger } from './logger.js';
 import { safeJsonParse } from './json-utils.js';
-
-// ---------- Constants ----------
+import { normalizeUrl } from './url-utils.js';
 
 const STORE_DIR_SUFFIX = 'secure-tokens';
 const SCRYPT_SALT = Buffer.from('ae-cli-secure-store-v1');
-const SCRYPT_N = 16384; // CPU/memory cost (2^14)
+const SCRYPT_N = 16384;
 const SCRYPT_R = 8;
 const SCRYPT_P = 1;
-const KEY_LEN = 32; // AES-256
-const NONCE_LEN = 12; // GCM standard nonce
-const TAG_LEN = 16; // GCM auth tag
+const KEY_LEN = 32;
+const NONCE_LEN = 12;
 
-// Refresh token endpoint path
-const REFRESH_TOKEN_PATH = '/v1/oauth/refreshForToken';
-
-// ---------- Types ----------
-
+/** Historical plaintext contract. Old CLIs require these exact field names. */
 export interface TokenPayload {
   accessToken: string;
   refreshToken: string;
-  /** ISO 8601 string, e.g. "2026-06-20T12:00:00.000Z" */
   accessExpiresAt: string;
-  /**
-   * CLI token (long-lived; server expireTime is slid by explicit /renew from ae-cli).
-   * Minted by cli-token.ts immediately after device login
-   * (using the accessToken above) and persisted here
-   * so subsequent CLI invocations (new processes) reuse it instead of re-minting every time.
-   * Also cleared by `auth logout`.
-   */
   cliToken?: string;
 }
 
-/** Refresh response body (per backend contract) */
-interface RefreshResponse {
-  return_code: number;
-  return_message?: string;
-  data?: {
-    accessToken?: string;
-    access_token?: string;
-    refreshToken?: string;
-    refresh_token?: string;
-    expiresIn?: number;
-    expires_in?: number;
-  };
+export interface CredentialAccount {
+  openId: string;
+  loginName: string;
+  userName: string;
 }
 
-/** On-disk JSON structure */
+export interface StoredCredential {
+  id: string;
+  cliToken: string;
+  account?: CredentialAccount;
+  /** ISO-8601 when supplied by a new backend. */
+  cliTokenExpiresAt?: string;
+  /** Local calendar day, YYYY-MM-DD. */
+  lastRenewedOn?: string;
+}
+
+interface LegacyProjection {
+  credentialId: string;
+  tokenFingerprint: string;
+}
+
+export interface CredentialVault {
+  version: 1;
+  host: string;
+  activeCredentialId: string;
+  credentials: StoredCredential[];
+  legacyProjection?: LegacyProjection;
+}
+
+export interface SaveCredentialOptions {
+  /** Preserve other accounts. Requires account identity for a newly added token. */
+  add?: boolean;
+}
+
 interface EncryptedBlob {
-  nonce: string; // hex
-  tag: string;   // hex
-  data: string;  // hex
+  nonce: string;
+  tag: string;
+  data: string;
 }
 
-// ---------- Machine ID ----------
-
-/**
- * Retrieves the machine-bound ID used to derive the encryption key.
- * Cross-platform with fallback for containers / sandboxes / CI; pure Node with no native dependencies.
- */
 function getMachineId(): string {
-  // macOS
   if (process.platform === 'darwin') {
     try {
-      const out = execFileSync(
-        'ioreg',
-        ['-rd1', '-c', 'IOPlatformExpertDevice'],
-        { encoding: 'utf8', timeout: 3000 },
-      );
-      const m = out.match(/IOPlatformUUID.*?=.*?"([0-9A-F-]{36})"/i);
-      if (m?.[1]) return `darwin:${m[1]}`;
-    } catch {
-      // Continue to next option
-    }
+      const out = execFileSync('ioreg', ['-rd1', '-c', 'IOPlatformExpertDevice'], {
+        encoding: 'utf8', timeout: 3000,
+      });
+      const match = out.match(/IOPlatformUUID.*?=.*?"([0-9A-F-]{36})"/i);
+      if (match?.[1]) return `darwin:${match[1]}`;
+    } catch {}
   }
-
-  // Linux — machine-id
   if (process.platform === 'linux') {
-    for (const p of ['/etc/machine-id', '/var/lib/dbus/machine-id']) {
+    for (const candidate of ['/etc/machine-id', '/var/lib/dbus/machine-id']) {
       try {
-        const id = fs.readFileSync(p, 'utf8').trim();
+        const id = fs.readFileSync(candidate, 'utf8').trim();
         if (id) return `linux:${id}`;
-      } catch {
-        // Continue
-      }
+      } catch {}
     }
   }
-
-  // Windows — MachineGuid
   if (process.platform === 'win32') {
     try {
       const out = execFileSync(
@@ -134,265 +99,367 @@ function getMachineId(): string {
         ['query', 'HKLM\\SOFTWARE\\Microsoft\\Cryptography', '/v', 'MachineGuid'],
         { encoding: 'utf8', timeout: 3000 },
       );
-      const m = out.match(/MachineGuid\s+REG_SZ\s+([0-9a-f-]+)/i);
-      if (m?.[1]) return `win32:${m[1]}`;
-    } catch {
-      // Continue
-    }
+      const match = out.match(/MachineGuid\s+REG_SZ\s+([0-9a-f-]+)/i);
+      if (match?.[1]) return `win32:${match[1]}`;
+    } catch {}
   }
-
-  // Fallback (container/CI/sandbox): HOME + hostname + platform
-  // Stable within the same machine/container; different machines produce different IDs
-  const fallback = `${os.homedir()}|${os.hostname()}|${os.platform()}`;
   logger.warn('secure-store: using fallback machine-id (HOME+hostname+platform)');
-  return `fallback:${fallback}`;
+  return `fallback:${os.homedir()}|${os.hostname()}|${os.platform()}`;
 }
 
-/** Cached after first call to avoid repeated syscalls within the same process */
-let _cachedMachineId: string | undefined;
-function getCachedMachineId(): string {
-  if (!_cachedMachineId) _cachedMachineId = getMachineId();
-  return _cachedMachineId;
-}
+let cachedMachineId: string | undefined;
+let cachedKey: Buffer | undefined;
 
-// ---------- Key derivation ----------
-
-/**
- * Derives a 32-byte AES-256 key from machineId using scrypt.
- * The salt is fixed and non-secret; cost parameter N=16384 is acceptable for CLI usage (infrequent encrypt/decrypt).
- */
-function deriveKey(machineId: string): Buffer {
-  return crypto.scryptSync(machineId, SCRYPT_SALT, KEY_LEN, {
-    N: SCRYPT_N,
-    r: SCRYPT_R,
-    p: SCRYPT_P,
-  });
-}
-
-let _cachedKey: Buffer | undefined;
 function getKey(): Buffer {
-  if (!_cachedKey) _cachedKey = deriveKey(getCachedMachineId());
-  return _cachedKey;
+  if (!cachedMachineId) cachedMachineId = getMachineId();
+  if (!cachedKey) {
+    cachedKey = crypto.scryptSync(cachedMachineId, SCRYPT_SALT, KEY_LEN, {
+      N: SCRYPT_N, r: SCRYPT_R, p: SCRYPT_P,
+    });
+  }
+  return cachedKey;
 }
 
-// For test injection of a different key only; not part of the public API
 export function _resetKeyCache(): void {
-  _cachedKey = undefined;
-  _cachedMachineId = undefined;
+  cachedMachineId = undefined;
+  cachedKey = undefined;
 }
-
-// ---------- Encrypt / Decrypt ----------
 
 function encrypt(plaintext: string): EncryptedBlob {
-  const key = getKey();
   const nonce = crypto.randomBytes(NONCE_LEN);
-  const cipher = crypto.createCipheriv('aes-256-gcm', key, nonce);
-  const encrypted = Buffer.concat([cipher.update(plaintext, 'utf8'), cipher.final()]);
-  const tag = cipher.getAuthTag();
+  const cipher = crypto.createCipheriv('aes-256-gcm', getKey(), nonce);
+  const data = Buffer.concat([cipher.update(plaintext, 'utf8'), cipher.final()]);
   return {
     nonce: nonce.toString('hex'),
-    tag: tag.toString('hex'),
-    data: encrypted.toString('hex'),
+    tag: cipher.getAuthTag().toString('hex'),
+    data: data.toString('hex'),
   };
 }
 
 function decrypt(blob: EncryptedBlob): string {
-  const key = getKey();
-  const nonce = Buffer.from(blob.nonce, 'hex');
-  const tag = Buffer.from(blob.tag, 'hex');
-  const data = Buffer.from(blob.data, 'hex');
-  const decipher = crypto.createDecipheriv('aes-256-gcm', key, nonce);
-  decipher.setAuthTag(tag);
-  // If the tag does not match (tampered data or wrong key), this throws "Unsupported state or unable to authenticate data"
-  const decrypted = Buffer.concat([decipher.update(data), decipher.final()]);
-  return decrypted.toString('utf8');
+  const decipher = crypto.createDecipheriv('aes-256-gcm', getKey(), Buffer.from(blob.nonce, 'hex'));
+  decipher.setAuthTag(Buffer.from(blob.tag, 'hex'));
+  return Buffer.concat([
+    decipher.update(Buffer.from(blob.data, 'hex')),
+    decipher.final(),
+  ]).toString('utf8');
 }
-
-// ---------- File paths ----------
 
 function storeDir(): string {
   return path.join(getConfigDir(), STORE_DIR_SUFFIX);
 }
 
-function tokenFilePath(host: string): string {
-  // Convert host URL to a safe filename (strip protocol prefix, replace special characters)
-  const safe = host.replace(/^https?:\/\//, '').replace(/[^a-zA-Z0-9._-]/g, '_');
-  return path.join(storeDir(), `${safe}.enc.json`);
+function safeHost(host: string): string {
+  return normalizeUrl(host).replace(/^https?:\/\//, '').replace(/[^a-zA-Z0-9._-]/g, '_');
+}
+
+function legacyFilePath(host: string): string {
+  return path.join(storeDir(), `${safeHost(host)}.enc.json`);
+}
+
+function vaultFilePath(host: string): string {
+  return path.join(storeDir(), `${safeHost(host)}.accounts.v1.enc.json`);
 }
 
 function ensureStoreDir(): void {
   const dir = storeDir();
-  if (!fs.existsSync(dir)) {
-    fs.mkdirSync(dir, { recursive: true });
-    // Set the directory itself to 0700 as well
-    try { fs.chmodSync(dir, 0o700); } catch {}
-  }
+  if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true, mode: 0o700 });
+  try { fs.chmodSync(dir, 0o700); } catch {}
 }
 
-// ---------- Public API ----------
-
-/**
- * Encrypts the token and writes it to `~/.ae-cli/secure-tokens/<host>.enc.json` (permissions 0600).
- */
-export function save(host: string, payload: TokenPayload): void {
+function atomicWriteEncrypted(filePath: string, value: unknown): void {
   ensureStoreDir();
-  const plaintext = JSON.stringify(payload);
-  const blob = encrypt(plaintext);
-  const filePath = tokenFilePath(host);
-  fs.writeFileSync(filePath, JSON.stringify(blob, null, 2), { encoding: 'utf8' });
+  const tempPath = `${filePath}.${process.pid}.${crypto.randomBytes(6).toString('hex')}.tmp`;
+  const blob = encrypt(JSON.stringify(value));
   try {
-    fs.chmodSync(filePath, 0o600);
-  } catch {
-    // Windows does not support chmod; ignore
+    fs.writeFileSync(tempPath, JSON.stringify(blob, null, 2), { encoding: 'utf8', mode: 0o600 });
+    try { fs.chmodSync(tempPath, 0o600); } catch {}
+    fs.renameSync(tempPath, filePath);
+    try { fs.chmodSync(filePath, 0o600); } catch {}
+  } finally {
+    try { fs.rmSync(tempPath, { force: true }); } catch {}
   }
-  logger.info(`secure-store: token saved for ${host}`);
 }
 
-/**
- * Decrypts and returns the token for the specified host; returns null if the file does not exist or decryption fails.
- */
-export function load(host: string): TokenPayload | null {
-  const filePath = tokenFilePath(host);
+function readEncrypted<T>(filePath: string, label: string): T | null {
   if (!fs.existsSync(filePath)) return null;
   try {
-    const raw = fs.readFileSync(filePath, 'utf8');
-    const blob = safeJsonParse(raw) as EncryptedBlob;
+    const blob = safeJsonParse(fs.readFileSync(filePath, 'utf8')) as EncryptedBlob;
     if (!blob?.nonce || !blob?.tag || !blob?.data) {
-      logger.warn(`secure-store: malformed blob for ${host}`);
+      logger.warn(`secure-store: malformed ${label}`);
       return null;
     }
-    const plaintext = decrypt(blob);
-    return JSON.parse(plaintext) as TokenPayload;
-  } catch (e: any) {
-    logger.error(`secure-store: decrypt failed for ${host}: ${e.message}`);
+    return safeJsonParse(decrypt(blob)) as T;
+  } catch (error: any) {
+    logger.error(`secure-store: decrypt failed for ${label}: ${error.message}`);
     return null;
   }
 }
 
-/**
- * Deletes the encrypted token file for the specified host.
- */
-export function clear(host: string): void {
-  const filePath = tokenFilePath(host);
-  if (fs.existsSync(filePath)) {
-    fs.rmSync(filePath);
-    logger.info(`secure-store: token cleared for ${host}`);
-  }
+function tokenFingerprint(token: string): string {
+  return crypto.createHash('sha256').update(token).digest('hex').slice(0, 24);
 }
 
-/**
- * Returns a valid accessToken:
- * - Returns it immediately if not expired.
- * - If expired, refreshes via POST /v1/oauth/refreshForToken using the refreshToken and persists the result.
- * - Throws SecureStoreAuthError on refresh failure (caller should prompt the user to log in again).
- */
-export async function getValidAccessToken(host: string): Promise<string> {
-  const payload = load(host);
-  if (!payload) {
-    throw new SecureStoreAuthError(
-      `No stored token for ${host}. Please run: ae-cli auth login`,
-    );
-  }
-
-  const expiresAt = new Date(payload.accessExpiresAt).getTime();
-  const now = Date.now();
-  // Refresh 60 seconds early to avoid boundary race conditions
-  const needsRefresh = expiresAt - now < 60_000;
-
-  if (!needsRefresh) {
-    return payload.accessToken;
-  }
-
-  // If a refresh token exists, use the refresh path (kept for environments that issue one).
-  if (payload.refreshToken) {
-    logger.info(`secure-store: access token past local expiry for ${host}, refreshing…`);
-    const refreshed = await doRefresh(host, payload.refreshToken);
-    // Preserve the (non-expiring) cliToken across an access-token refresh — doRefresh only returns access/refresh.
-    save(host, { ...refreshed, cliToken: payload.cliToken });
-    logger.info(`secure-store: token refreshed for ${host}`);
-    return refreshed.accessToken;
-  }
-
-  // F-010: no refresh token. `accessExpiresAt` is a STATIC snapshot taken at login, but the server uses a
-  // sliding window (renewed on every authenticated request), so the local timestamp does NOT reflect real
-  // validity — proactively failing here would force a re-login even while the server keeps the token alive.
-  // Hand over the stored token and let the server be the judge (lazy discovery): an actively-used token
-  // stays valid via server-side sliding; a genuinely dead one surfaces as a 401 the caller maps to re-login.
-  logger.info(`secure-store: ${host} past static local expiry, no refresh token — returning stored token, server validates (lazy)`);
-  return payload.accessToken;
+function credentialId(token: string): string {
+  return `cred_${tokenFingerprint(token).slice(0, 12)}`;
 }
 
-/**
- * Returns the persisted long-lived CLI token for a host, or null if absent.
- * Used by cli-token.ts to stay authenticated without re-minting from an access token.
- */
-export function loadCliToken(host: string): string | null {
-  return load(host)?.cliToken ?? null;
-}
-
-/**
- * Calls POST /v1/oauth/refreshForToken to refresh the token; throws SecureStoreAuthError on failure.
- */
-async function doRefresh(host: string, refreshToken: string): Promise<TokenPayload> {
-  const base = host.replace(/\/+$/, '');
-  const url = `${base}${REFRESH_TOKEN_PATH}`;
-
-  let resp: Response;
-  try {
-    resp = await fetch(url, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ refreshToken }),
-    });
-  } catch (e: any) {
-    throw new SecureStoreAuthError(
-      `Token refresh network error for ${host}: ${e.message}. Please run: ae-cli auth login`,
-    );
-  }
-
-  if (!resp.ok) {
-    throw new SecureStoreAuthError(
-      `Token refresh failed (HTTP ${resp.status}) for ${host}. Please run: ae-cli auth login`,
-    );
-  }
-
-  let body: RefreshResponse;
-  try {
-    body = safeJsonParse(await resp.text()) as RefreshResponse;
-  } catch {
-    throw new SecureStoreAuthError(
-      `Token refresh returned invalid JSON for ${host}. Please run: ae-cli auth login`,
-    );
-  }
-
-  if (body.return_code !== 0) {
-    throw new SecureStoreAuthError(
-      `Token refresh error (${body.return_code}: ${body.return_message ?? 'unknown'}) for ${host}. Please run: ae-cli auth login`,
-    );
-  }
-
-  const d = body.data;
-  const newAccess = d?.accessToken ?? d?.access_token ?? '';
-  const newRefresh = d?.refreshToken ?? d?.refresh_token ?? refreshToken; // Reuse old refresh token if backend does not rotate it
-  const expiresIn = d?.expiresIn ?? d?.expires_in ?? 72000; // Default 20h
-
-  if (!newAccess) {
-    throw new SecureStoreAuthError(
-      `Token refresh returned empty accessToken for ${host}. Please run: ae-cli auth login`,
-    );
-  }
-
+function legacyProjectionPayload(cliToken: string): TokenPayload {
   return {
-    accessToken: newAccess,
-    refreshToken: newRefresh,
-    accessExpiresAt: new Date(Date.now() + expiresIn * 1000).toISOString(),
+    accessToken: '',
+    refreshToken: '',
+    accessExpiresAt: '1970-01-01T00:00:00.000Z',
+    cliToken,
   };
 }
 
+function writeLegacyProjection(host: string, credential: StoredCredential): LegacyProjection {
+  atomicWriteEncrypted(legacyFilePath(host), legacyProjectionPayload(credential.cliToken));
+  return {
+    credentialId: credential.id,
+    tokenFingerprint: tokenFingerprint(credential.cliToken),
+  };
+}
+
+function readVaultRaw(host: string): CredentialVault | null {
+  const normalizedHost = normalizeUrl(host);
+  const vault = readEncrypted<CredentialVault>(vaultFilePath(normalizedHost), `${normalizedHost} account vault`);
+  if (!vault || vault.version !== 1 || !Array.isArray(vault.credentials)) return null;
+  const credentials = vault.credentials.filter((entry) => entry?.id && entry?.cliToken);
+  if (credentials.length === 0 || !credentials.some((entry) => entry.id === vault.activeCredentialId)) return null;
+  return { ...vault, host: normalizedHost, credentials };
+}
+
+function writeVault(host: string, vault: CredentialVault): void {
+  atomicWriteEncrypted(vaultFilePath(host), vault);
+}
+
+function removeFile(filePath: string): void {
+  try { fs.rmSync(filePath, { force: true }); } catch {}
+}
+
+/** Legacy API retained for old-format migration tests and downgrade interoperability. */
+export function save(host: string, payload: TokenPayload): void {
+  atomicWriteEncrypted(legacyFilePath(host), payload);
+}
+
+/** Read the historical single-account file. */
+export function load(host: string): TokenPayload | null {
+  return readEncrypted<TokenPayload>(legacyFilePath(host), normalizeUrl(host));
+}
+
+/** Delete only the historical projection. Prefer clearAllCredentials for new auth flows. */
+export function clear(host: string): void {
+  removeFile(legacyFilePath(host));
+}
+
 /**
- * Authentication state error: prompts the user to log in again.
- * T4/T5 should print the hint and exit after catching this error.
+ * Merge changes made by an older auto-downgraded CLI into the V1 vault.
+ * A changed legacy token is imported; deletion means the projected account was logged out.
  */
+export function loadCredentialVault(host: string): CredentialVault | null {
+  const normalizedHost = normalizeUrl(host);
+  let vault = readVaultRaw(normalizedHost);
+  const legacyToken = load(normalizedHost)?.cliToken?.trim();
+
+  if (!vault) {
+    if (!legacyToken) return null;
+    const imported: StoredCredential = { id: credentialId(legacyToken), cliToken: legacyToken };
+    vault = {
+      version: 1,
+      host: normalizedHost,
+      activeCredentialId: imported.id,
+      credentials: [imported],
+      legacyProjection: {
+        credentialId: imported.id,
+        tokenFingerprint: tokenFingerprint(legacyToken),
+      },
+    };
+    writeVault(normalizedHost, vault);
+    logger.info(`secure-store: migrated legacy CLI token for ${normalizedHost}`);
+    return vault;
+  }
+
+  if (legacyToken) {
+    let credential = vault.credentials.find((entry) => entry.cliToken === legacyToken);
+    let changed = false;
+    if (!credential) {
+      credential = { id: credentialId(legacyToken), cliToken: legacyToken };
+      vault.credentials.push(credential);
+      changed = true;
+      logger.info(`secure-store: imported CLI token changed by an older CLI for ${normalizedHost}`);
+    }
+    const fingerprint = tokenFingerprint(legacyToken);
+    if (
+      vault.activeCredentialId !== credential.id
+      || vault.legacyProjection?.credentialId !== credential.id
+      || vault.legacyProjection?.tokenFingerprint !== fingerprint
+    ) {
+      vault.activeCredentialId = credential.id;
+      vault.legacyProjection = { credentialId: credential.id, tokenFingerprint: fingerprint };
+      changed = true;
+    }
+    if (changed) writeVault(normalizedHost, vault);
+    return vault;
+  }
+
+  if (vault.legacyProjection) {
+    const projection = vault.legacyProjection;
+    const projected = vault.credentials.find((entry) =>
+      entry.id === projection.credentialId
+      && tokenFingerprint(entry.cliToken) === projection.tokenFingerprint);
+    if (projected) {
+      vault.credentials = vault.credentials.filter((entry) => entry.id !== projected.id);
+      logger.info(`secure-store: honored legacy logout for ${normalizedHost}`);
+    }
+    vault.legacyProjection = undefined;
+    if (vault.credentials.length === 0) {
+      removeFile(vaultFilePath(normalizedHost));
+      return null;
+    }
+    if (!vault.credentials.some((entry) => entry.id === vault!.activeCredentialId)) {
+      vault.activeCredentialId = vault.credentials[0].id;
+    }
+  }
+
+  const active = vault.credentials.find((entry) => entry.id === vault!.activeCredentialId)!;
+  vault.legacyProjection = writeLegacyProjection(normalizedHost, active);
+  writeVault(normalizedHost, vault);
+  return vault;
+}
+
+export function getActiveCredential(host: string): StoredCredential | null {
+  const vault = loadCredentialVault(host);
+  return vault?.credentials.find((entry) => entry.id === vault.activeCredentialId) ?? null;
+}
+
+export function listCredentials(host: string): StoredCredential[] {
+  return loadCredentialVault(host)?.credentials ?? [];
+}
+
+/** Save a login result and make it the active legacy projection. */
+export function saveCredential(
+  host: string,
+  credential: Omit<StoredCredential, 'id'>,
+  options: SaveCredentialOptions = {},
+): StoredCredential {
+  const normalizedHost = normalizeUrl(host);
+  const existingVault = loadCredentialVault(normalizedHost);
+  if (options.add && !credential.account) {
+    throw new SecureStoreAuthError(
+      `This host does not return account identity from CLI token validation. `
+      + `Upgrade the server before using auth login --add for ${normalizedHost}.`,
+    );
+  }
+
+  const sameAccount = credential.account
+    ? existingVault?.credentials.find((entry) =>
+      entry.account?.openId === credential.account!.openId
+      || entry.account?.loginName === credential.account!.loginName)
+    : undefined;
+  const sameToken = existingVault?.credentials.find((entry) => entry.cliToken === credential.cliToken);
+  const saved: StoredCredential = {
+    ...(sameAccount ?? sameToken ?? { id: credentialId(credential.cliToken) }),
+    ...credential,
+  };
+
+  let credentials: StoredCredential[];
+  if (options.add) {
+    credentials = (existingVault?.credentials ?? []).filter((entry) => entry.id !== saved.id);
+    credentials.push(saved);
+  } else {
+    credentials = [saved];
+  }
+
+  const legacyProjection = writeLegacyProjection(normalizedHost, saved);
+  writeVault(normalizedHost, {
+    version: 1,
+    host: normalizedHost,
+    activeCredentialId: saved.id,
+    credentials,
+    legacyProjection,
+  });
+  logger.info(`secure-store: saved CLI credential for ${normalizedHost}`);
+  return saved;
+}
+
+/** Enrich the active entry after a successful optional /validate call. */
+export function updateCredentialMetadata(
+  host: string,
+  cliToken: string,
+  metadata: Pick<StoredCredential, 'account' | 'cliTokenExpiresAt'>,
+): void {
+  const normalizedHost = normalizeUrl(host);
+  const vault = loadCredentialVault(normalizedHost);
+  if (!vault) return;
+  const index = vault.credentials.findIndex((entry) => entry.cliToken === cliToken);
+  if (index < 0) return;
+  vault.credentials[index] = {
+    ...vault.credentials[index],
+    ...(metadata.account ? { account: metadata.account } : {}),
+    ...(metadata.cliTokenExpiresAt ? { cliTokenExpiresAt: metadata.cliTokenExpiresAt } : {}),
+  };
+  writeVault(normalizedHost, vault);
+}
+
+export function markCredentialRenewed(host: string, cliToken: string, date: string): void {
+  const normalizedHost = normalizeUrl(host);
+  const vault = loadCredentialVault(normalizedHost);
+  const credential = vault?.credentials.find((entry) => entry.cliToken === cliToken);
+  if (!vault || !credential) return;
+  credential.lastRenewedOn = date;
+  writeVault(normalizedHost, vault);
+}
+
+export function activateCredential(host: string, account: string): StoredCredential {
+  const normalizedHost = normalizeUrl(host);
+  const vault = loadCredentialVault(normalizedHost);
+  if (!vault) throw new SecureStoreAuthError(`No stored CLI credentials for ${normalizedHost}.`);
+  const matches = vault.credentials.filter((entry) =>
+    entry.account?.loginName === account || entry.account?.openId === account);
+  if (matches.length === 0) {
+    throw new SecureStoreAuthError(`No stored account '${account}' for ${normalizedHost}. Run: ae-cli auth list --host ${normalizedHost}`);
+  }
+  if (matches.length > 1) {
+    throw new SecureStoreAuthError(`Account '${account}' is ambiguous for ${normalizedHost}; use its open_id.`);
+  }
+  const selected = matches[0];
+  vault.activeCredentialId = selected.id;
+  vault.legacyProjection = writeLegacyProjection(normalizedHost, selected);
+  writeVault(normalizedHost, vault);
+  return selected;
+}
+
+/** Remove the active account; when others remain, project the first remaining account. */
+export function removeActiveCredential(host: string): { removed: StoredCredential | null; active: StoredCredential | null } {
+  const normalizedHost = normalizeUrl(host);
+  const vault = loadCredentialVault(normalizedHost);
+  if (!vault) return { removed: null, active: null };
+  const removed = vault.credentials.find((entry) => entry.id === vault.activeCredentialId) ?? null;
+  vault.credentials = vault.credentials.filter((entry) => entry.id !== vault.activeCredentialId);
+  if (vault.credentials.length === 0) {
+    removeFile(legacyFilePath(normalizedHost));
+    removeFile(vaultFilePath(normalizedHost));
+    return { removed, active: null };
+  }
+  const active = vault.credentials[0];
+  vault.activeCredentialId = active.id;
+  vault.legacyProjection = writeLegacyProjection(normalizedHost, active);
+  writeVault(normalizedHost, vault);
+  return { removed, active };
+}
+
+export function clearAllCredentials(host: string): void {
+  const normalizedHost = normalizeUrl(host);
+  removeFile(legacyFilePath(normalizedHost));
+  removeFile(vaultFilePath(normalizedHost));
+  logger.info(`secure-store: all CLI credentials cleared for ${normalizedHost}`);
+}
+
+export function loadCliToken(host: string): string | null {
+  return getActiveCredential(host)?.cliToken ?? null;
+}
+
 export class SecureStoreAuthError extends Error {
   constructor(message: string) {
     super(message);
@@ -400,5 +467,18 @@ export class SecureStoreAuthError extends Error {
   }
 }
 
-/** Namespace export (for use with import * as secureStore) */
-export const secureStore = { save, load, clear, getValidAccessToken, loadCliToken };
+export const secureStore = {
+  save,
+  load,
+  clear,
+  loadCliToken,
+  loadCredentialVault,
+  getActiveCredential,
+  listCredentials,
+  saveCredential,
+  updateCredentialMetadata,
+  markCredentialRenewed,
+  activateCredential,
+  removeActiveCredential,
+  clearAllCredentials,
+};

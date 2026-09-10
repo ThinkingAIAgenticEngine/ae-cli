@@ -2,11 +2,23 @@ import { promises as fs } from "node:fs";
 import path from "node:path";
 
 import { CapabilityGatewayError } from "../../core/capability-api.js";
+import { CliValidationError } from "../../core/errors.js";
 import { kbUpload } from "../../core/mcp-access.js";
 import type { Command, RuntimeContext } from "../../framework/types.js";
 
 const API_PATH = "/agent/api/external/knowledge-bases/import";
 const MAX_SNAPSHOT_ARCHIVE_BYTES = 50 * 1024 * 1024;
+const VALID_SCOPES = new Set(["personal", "company"]);
+
+function getScope(ctx: RuntimeContext): "personal" | "company" {
+  const scope = ctx.str("scope") || "personal";
+  if (!VALID_SCOPES.has(scope)) {
+    throw new CliValidationError("Invalid --scope. Must be one of: personal | company", {
+      location: { field: "scope" },
+    });
+  }
+  return scope as "personal" | "company";
+}
 
 function normalizeTags(raw: unknown): string[] {
   if (raw === undefined || raw === null) return [];
@@ -70,8 +82,15 @@ export const importSnapshot: Command = {
   service: "kb",
   command: "+import",
   description:
-    "Import a compiled Markdown ZIP snapshot as a personal read-only knowledge base.",
+    "Import a compiled Markdown ZIP snapshot as a personal or company read-only knowledge base.",
   flags: [
+    {
+      name: "scope",
+      type: "string",
+      required: false,
+      default: "personal",
+      desc: "Target scope: personal | company (default: personal)",
+    },
     {
       name: "file",
       type: "string",
@@ -83,7 +102,7 @@ export const importSnapshot: Command = {
       type: "string",
       required: true,
       maxLength: 30,
-      desc: "Personal knowledge base name (max 30 characters)",
+      desc: "Knowledge base name (max 30 characters)",
     },
     {
       name: "description",
@@ -108,6 +127,7 @@ export const importSnapshot: Command = {
   ],
   risk: "write",
   validate: (ctx) => {
+    getScope(ctx);
     validateArchivePath(ctx.str("file"));
     normalizeTags(ctx.json("tags"));
   },
@@ -120,13 +140,14 @@ export const importSnapshot: Command = {
       path.basename(archive.absolutePath),
     );
     form.append("name", ctx.str("name").trim());
+    form.append("scope", getScope(ctx));
     appendOptionalFields(ctx, form);
     try {
       return await kbUpload(
         ctx,
         API_PATH,
         form,
-        {},
+        { scope: getScope(ctx) },
         { preserveErrorMetadata: true, retryUnauthorized: true },
       );
     } catch (error) {
@@ -142,6 +163,9 @@ export const importSnapshot: Command = {
         );
       }
       if (error instanceof Error) {
+        if (error.constructor === Error) {
+          throw new CapabilityGatewayError(`${error.message} ${hint}`, undefined, undefined, hint);
+        }
         error.message = `${error.message} ${hint}`;
         throw error;
       }

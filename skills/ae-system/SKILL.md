@@ -17,7 +17,7 @@ ae-cli system <resource> <action> [options]
 
 - These commands are only for users whose Agent role is `root` or `agent_admin`.
 - The te-agent `/api/admin/**` and `/api/cli/channel/v1/**` endpoints are the final authorization boundaries. A member receives a permission error (HTTP 403). Do not retry login or attempt a different endpoint after a 403.
-- Run `ae-cli auth login --host <host>` before using this domain. System administration requires a user access-token session; sandbox identity headers are not an authorization substitute.
+- Run `ae-cli auth login --host <host>` before using this domain. System administration requires a valid user CLI-token session; sandbox identity headers are not an authorization substitute.
 - `+npm-install` is the exception that must also run inside a Linux te-agent sandbox because it packages the installed Linux files. It still requires the logged-in user to be `root` or `agent_admin`.
 - Discover real IDs with a list command before any update or delete. Never guess a user, sandbox, model, quota rule, or channel ID.
 - Before every write, run `--dry-run`, show the target and effect, and obtain explicit user confirmation. The CLI itself prompts only for `high-risk-write`; `--yes` can bypass that prompt and is not a security boundary.

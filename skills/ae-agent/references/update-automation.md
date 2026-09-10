@@ -4,6 +4,15 @@
 
 Domain: **Automations / write**
 
+```text
+Transition status: transitional
+Owning module: te-claude automation
+Current transport: PATCH /api/sandbox/agent/automations/:id
+Gateway target: TBD (no equivalent Gateway capability is currently registered)
+Review after: 2026-10-07
+Exit condition: Migrate when the Gateway exposes equivalent workspace-scoped automation updates.
+```
+
 ## Use Cases
 - Update an existing Agent automation task's name, instruction, schedule, enabled state, or conversation mode.
 - Used to pause (`--enabled false`) or resume (`--enabled true`) an automation, or to change its schedule/message.
@@ -11,6 +20,10 @@ Domain: **Automations / write**
 
 ## Mandatory Rules (MUST)
 - `--id` is required. Obtain the real ID via `+list-automations` — do not guess.
+- Pass the same `--agent-space-id` used to discover the task, or the `automation.agentSpaceId` returned by creation. Omitting it targets the personal default workspace, including legacy tasks with no workspace ID.
+- The workspace ID is sent as a query parameter to select the task's existing workspace. It is not an update field and cannot move an automation between workspaces; providing it alone is not a valid update.
+- On servers without workspace support, omit `--agent-space-id` and update by the original task ID. Missing workspace fields in older responses do not prevent updates; do not invent an ID or rely on older servers to enforce the new workspace query parameter.
+- Agent Team scheduled task IDs are not automation IDs and cannot be used with this command.
 - At least one update field must be provided (`--name`, `--message`, `--enabled`, `--reuse-conversation`, `--cron`, or a `--schedule-kind` with its time/day fields).
 - `--cron` and `--schedule-kind` are mutually exclusive.
 - This is an ordinary `write` operation and does not require CLI confirmation.
@@ -28,6 +41,9 @@ Domain: **Automations / write**
 ```bash
 # Pause an automation
 ae-cli agent +update-automation --id <automation-id> --enabled false
+
+# Pause an automation in a specific workspace
+ae-cli agent +update-automation --id <automation-id> --agent-space-id <workspace-id> --enabled false
 
 # Resume an automation
 ae-cli agent +update-automation --id <automation-id> --enabled true
@@ -62,6 +78,7 @@ ae-cli agent +update-automation --dry-run --id <automation-id> --enabled false
 | Parameter | Required | Description |
 |---|---|---|
 | `--id` | Yes | Automation task ID from `+list-automations` |
+| `--agent-space-id` | No | Existing workspace ID; omitted means the personal default workspace. Does not move the task |
 | `--name` | No | New automation task name |
 | `--message` | No | New instruction sent to the Agent |
 | `--enabled` | No | `true` to enable, `false` to pause |
@@ -81,6 +98,7 @@ ae-cli agent +update-automation --dry-run --id <automation-id> --enabled false
 - Use `--dry-run` first to verify the request shape before executing.
 
 ## Next Steps on Failure
+- `AUTOMATION_NOT_FOUND`: verify the task ID and workspace ID together. Do not retry across other workspaces automatically.
 - `至少提供一个更新字段`: add at least one of `--name` / `--message` / `--enabled` / `--reuse-conversation` / `--cron` / `--schedule-kind`.
 - `必须提供 --cron 或 --schedule-kind`: if schedule detail flags (`--time` / `--minute` / `--weekday` / `--day-of-month`) are present, a `--schedule-kind` (or `--cron`) must accompany them.
 - `--time 格式必须是 HH:mm`: use 24-hour `HH:mm` (e.g. `09:00`).

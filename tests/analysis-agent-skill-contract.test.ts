@@ -305,6 +305,9 @@ assert.match(audienceModels, /Do not pass backend `recent_day` encodings inside 
 assert.doesNotMatch(audienceModels, /\b(?:M0|W0|Q0|Y0|StartToNow|StartToYesterday)\b/);
 assert.match(userTagModels, /first_last[\s\S]*"mode":"recent","unit":"month","value":1/);
 assert.match(userTagModels, /first_last[\s\S]*"mode":"start_to_today","start_time":"2026-07-01"/);
+assert.match(userTagModels, /Supported percentile values match the page controls: `5`[\s\S]*`99`/);
+assert.match(userTagModels, /`percentile` field is required for percentile aggregation and is rejected for every other aggregation/);
+assert.match(userTagModels, /"aggregation":"percentile","property":"amount","percentile":90/);
 assert.match(userTagCreate, /First\/last tag for this month/);
 assert.match(userTagCreate, /"mode":"recent","unit":"month","value":1/);
 assert.match(aiModels, /`second`: `1\.\.999`/);
@@ -350,6 +353,24 @@ assert.match(commandIndex, /Never load or print this exhaustive file in full/);
 assert.match(adhocRun, /validate that exact definition once.*run the same definition once/is);
 assert.match(adhocRun, /Never execute a simplified variant that omits requested filters or groups/i);
 assert.match(adhocRun, /inspect this command's model contract or capability schema once/i);
+assert.match(aiModels, /Omit `display_name` by default/);
+assert.match(aiModels, /target host.*schema.*explicitly supports `display_name`/i);
+const eventExamples = aiModels.split('### `event`')[1].split('### `retention`')[0];
+for (const match of eventExamples.matchAll(/```json\n([\s\S]*?)\n```/g)) {
+  const definition = JSON.parse(match[1]);
+  assert.ok(definition.metrics.every((metric: Record<string, unknown>) => !('display_name' in metric)));
+}
+const funnelExampleMatch = aiModels.match(/Step-level event-property filters[\s\S]*?```json\n([\s\S]*?)\n```/);
+assert.ok(funnelExampleMatch, 'funnel must include a complete step-level filter example');
+const funnelExample = JSON.parse(funnelExampleMatch[1]);
+assert.deepEqual(funnelExample.funnel.steps.map((step: any) => step.event), ['register', 'login', 'payment']);
+assert.deepEqual(funnelExample.funnel.steps[2].filters, [{ event_property_name: 'is_first_pay', operator: 'eq', values: ['true'] }]);
+assert.deepEqual(funnelExample.funnel.window, { value: 7, unit: 'day' });
+assert.match(skill, /process exit code.*business success/i);
+assert.match(skill, /TE_TOOL_POLICY_DENIED.*authorization stage/i);
+assert.match(skill, /QUERY_FAILED.*does not establish.*root cause/i);
+assert.match(skill, /validation passed.*explicit successful validation response/i);
+assert.match(adhocRun, /oneOf.*selected `model_type`/i);
 assert.doesNotMatch(capabilitySkill, /sql-write .*--yes/);
 assert.doesNotMatch(capabilityCommandSource, /dashboard\.list .*--yes/);
 

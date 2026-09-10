@@ -1,6 +1,7 @@
 import fs from 'fs';
 import { getActiveHost } from './config.js';
-import { getCliToken, clearCliToken } from './cli-token.js';
+import { getCliToken } from './cli-token.js';
+import { SecureStoreAuthError } from './secure-store.js';
 import { safeJsonParse } from './json-utils.js';
 import { logger } from './logger.js';
 import { PermissionError } from './errors.js';
@@ -185,34 +186,12 @@ async function mcpRequest(
       // 403 一律是权限拒绝；不清理凭证、不重新签发、不重试。
       throw new PermissionError(permission.message, permission.code, permission.hint);
     }
-    // 仅 401 清理缓存并重新签发一次。
+    // CLI Token 是唯一持久凭据；401 后不能再依赖已废弃的 access token 自动重签。
     if (resp.status === 401) {
-      logger.warn(`MCP request failed (HTTP 401) for ${hostUrl}, refreshing CLI token`);
-      clearCliToken(hostUrl);
-      const newToken = await getCliToken(hostUrl);
-
-      logger.info(`CLI token refreshed for ${hostUrl}`);
-      process.stderr.write(`[ae-cli] CLI token refreshed for ${hostUrl}\n`);
-
-      Object.assign(headers, buildAuthHeaders(newToken));
-      const retryResp = await fetch(url, {
-        method: 'POST',
-        headers,
-        body: JSON.stringify(body),
-      });
-      // F-018: a 403 after re-mint is a genuine permission denial, not a token problem.
-      if (retryResp.status === 403) {
-        const permission = await permissionDetails(retryResp);
-        throw new PermissionError(permission.message, permission.code, permission.hint);
-      }
-      if (!retryResp.ok) {
-        throw new Error(`MCP HTTP error: ${retryResp.status} ${retryResp.statusText}`);
-      }
-      const retryData = safeJsonParse(await retryResp.text());
-      if (retryData.error) {
-        throw new Error(`MCP error: ${retryData.error.message || JSON.stringify(retryData.error)}`);
-      }
-      return retryData.result;
+      logger.warn(`MCP request failed (HTTP 401) for ${hostUrl}; CLI token must be replaced by login`);
+      throw new SecureStoreAuthError(
+        `CLI token is invalid or expired for ${hostUrl}. Run: ae-cli auth login --host ${hostUrl}`,
+      );
     }
     throw new Error(`MCP HTTP error: ${resp.status} ${resp.statusText}`);
   }

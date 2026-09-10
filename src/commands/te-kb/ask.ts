@@ -1,8 +1,8 @@
 import type { Command, RuntimeContext } from '../../framework/types.js';
 import { kbApi } from '../../core/mcp-access.js';
+import { TeAgentApiError } from '../../core/te-agent-client.js';
 import {
   ASK_API_PATH as API_PATH,
-  buildFailedMessage,
   pollUntilSettled,
   transformCompletedResponse,
   type AskExecutionResponse,
@@ -11,8 +11,6 @@ import {
 const VALID_LOCALES = new Set(['zh', 'en', 'ja', 'ko']);
 const MIN_QUESTION_LEN = 1;
 const MAX_QUESTION_LEN = 2000;
-const MIN_MAX_TURNS = 1;
-const MAX_MAX_TURNS = 100;
 
 interface KnowledgeBaseRef {
   scope: string;
@@ -34,14 +32,6 @@ function validateLocale(locale: string): void {
   }
 }
 
-function validateMaxTurns(maxTurns: number): void {
-  if (maxTurns !== 0 && (maxTurns < MIN_MAX_TURNS || maxTurns > MAX_MAX_TURNS)) {
-    throw new Error(
-      `Invalid --max-turns: ${maxTurns}. Must be between ${MIN_MAX_TURNS} and ${MAX_MAX_TURNS}.`,
-    );
-  }
-}
-
 function buildBody(ctx: RuntimeContext): Record<string, unknown> {
   const body: Record<string, unknown> = {
     question: ctx.str('question'),
@@ -50,8 +40,6 @@ function buildBody(ctx: RuntimeContext): Record<string, unknown> {
   if (sources) body.sources = sources;
   const modelId = ctx.str('model-id');
   if (modelId) body.modelId = modelId;
-  const maxTurns = ctx.num('max-turns');
-  if (maxTurns) body.maxTurns = maxTurns;
   const locale = ctx.str('locale');
   if (locale) body.locale = locale;
   return body;
@@ -82,12 +70,6 @@ export const ask: Command = {
       required: false,
       desc: 'Optional LLM model ID (e.g. claude-sonnet-4-6). Omit to use the platform default model.',
     },
-    {
-      name: 'max-turns',
-      type: 'number',
-      required: false,
-      desc: 'Optional agent turn limit (1-100, default 50 on server when omitted).',
-    },
     { name: 'locale', type: 'string', required: false, desc: 'Optional locale: zh | en | ja | ko' },
     {
       name: 'no-wait',
@@ -100,7 +82,6 @@ export const ask: Command = {
   validate: (ctx) => {
     validateQuestion(ctx.str('question'));
     validateLocale(ctx.str('locale'));
-    validateMaxTurns(ctx.num('max-turns'));
   },
   dryRun: (ctx) => ({
     method: 'POST',
@@ -138,7 +119,14 @@ export const ask: Command = {
     }
 
     if (finalResponse.status === 'failed') {
-      throw new Error(buildFailedMessage(finalResponse));
+      const code = finalResponse.error?.code || 'provider_failed';
+      const message = finalResponse.error?.message || 'Ask execution failed';
+      throw new TeAgentApiError(
+        `${message} (executionId: ${finalResponse.executionId})`,
+        200,
+        code,
+        finalResponse,
+      );
     }
 
     throw new Error(`Unexpected execution status: ${finalResponse.status}`);

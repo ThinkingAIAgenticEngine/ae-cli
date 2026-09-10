@@ -1,7 +1,8 @@
 import type { RuntimeContext } from "../framework/types.js";
 import { CapabilityGatewayError } from "./capability-api.js";
 import { PermissionError } from "./errors.js";
-import { clearCliToken, getCliToken } from "./cli-token.js";
+import { getCliToken } from "./cli-token.js";
+import { SecureStoreAuthError } from "./secure-store.js";
 import { safeJsonParse } from "./json-utils.js";
 
 function buildUrl(
@@ -23,7 +24,9 @@ function buildUrl(
 export type KbApiOptions = {
   preserveBusinessErrorCode?: boolean;
   preserveErrorMetadata?: boolean;
+  /** @deprecated Retained for source compatibility. Unauthorized requests are never retried. */
   retryUnauthorized?: boolean;
+  responseType?: "bytes";
 };
 
 class KbUnauthorizedError extends Error {}
@@ -110,7 +113,7 @@ function nonOkResponseError(
     ? `${businessCode}: ${serverMessage ?? fallbackMessage}`
     : (serverMessage ?? fallbackMessage);
 
-  if (metadata.code || metadata.hint) {
+  if (options.preserveErrorMetadata !== false && (metadata.code || metadata.hint)) {
     return new KbHttpError(message, metadata.code, resp.status, metadata.hint);
   }
   // A metadata-free 404 is an ordinary KB API miss, not a capability-route miss.
@@ -215,6 +218,16 @@ async function fetchWithCliToken(
   headers.set("cli-token", cliToken);
 
   const resp = await fetch(input, { ...init, headers });
+  if (options.responseType === "bytes" && resp.ok) {
+    if (resp.headers.get("content-type")?.includes("application/json")) {
+      parseKbResponse(resp, await resp.text(), options);
+      throw new Error("KB raw-file protocol error: unexpected JSON response");
+    }
+    return {
+      bytes: new Uint8Array(await resp.arrayBuffer()),
+      contentType: resp.headers.get("content-type") ?? "application/octet-stream",
+    };
+  }
   return parseKbResponse(resp, await resp.text(), options);
 }
 
@@ -224,17 +237,15 @@ async function requestWithCliToken(
   init: RequestInit,
   options: KbApiOptions,
 ): Promise<any> {
-  const request = async () =>
-    fetchWithCliToken(input, init, await getCliToken(host), options);
-
   try {
-    return await request();
+    return await fetchWithCliToken(input, init, await getCliToken(host), options);
   } catch (error) {
-    if (!(error instanceof KbUnauthorizedError) || !options.retryUnauthorized) {
-      throw error;
+    if (error instanceof KbUnauthorizedError) {
+      throw new SecureStoreAuthError(
+        `The stored CLI token for ${host} is invalid or expired. Run: ae-cli auth login --host ${host}`,
+      );
     }
-    clearCliToken(host);
-    return request();
+    throw error;
   }
 }
 
@@ -278,6 +289,7 @@ export async function kbUpload(
   options: KbApiOptions = {},
 ): Promise<any> {
   const host = ctx.host();
+  const uploadOptions = { preserveErrorMetadata: false, ...options };
 
   return requestWithCliToken(
     host,
@@ -286,6 +298,6 @@ export async function kbUpload(
       method: "POST",
       body: form,
     },
-    options,
+    uploadOptions,
   );
 }

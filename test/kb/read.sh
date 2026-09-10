@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# kb +read dry-run 合同测试：--outline 两态透传（Ticket 11）
+# kb +read dry-run contract: outline, expand, and the 1..2000 line window
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
@@ -38,6 +38,43 @@ echo "$out" | grep -q '"offset": *10' || { echo "  ERROR: expected offset passth
 echo "$out" | grep -q '"limit": *20' || { echo "  ERROR: expected limit passthrough" >&2; exit 1; }
 echo "  OK"
 
+echo "[contract] kb +read --expand block|none -> body carries the selected mode"
+for expand in block none; do
+  out="$(run --source "$SOURCE" --path "$PATH_ARG" --expand "$expand")"
+  echo "$out" | grep -q '"expand": *"'"$expand"'"' || {
+    echo "  ERROR: expected expand=$expand passthrough" >&2
+    exit 1
+  }
+done
+echo "  OK"
+
+echo "[contract] kb +read without --expand -> body has no expand field"
+out="$(run --source "$SOURCE" --path "$PATH_ARG")"
+if echo "$out" | grep -q '"expand"'; then
+  echo "  ERROR: expand must be absent when the flag is not supplied" >&2
+  exit 1
+fi
+echo "  OK"
+
+echo "[boundary] kb +read accepts --limit 1 and 2000"
+for limit in 1 2000; do
+  out="$(run --source "$SOURCE" --path "$PATH_ARG" --limit "$limit")"
+  echo "$out" | grep -q '"limit": *'"$limit" || {
+    echo "  ERROR: expected limit=$limit passthrough" >&2
+    exit 1
+  }
+done
+echo "  OK"
+
+echo "[validation] kb +read rejects invalid expand and limits locally"
+for args in "--expand full" "--limit 0" "--limit 1.5" "--limit 2001"; do
+  if run --source "$SOURCE" --path "$PATH_ARG" $args >/dev/null 2>&1; then
+    echo "  ERROR: expected rejection for $args" >&2
+    exit 1
+  fi
+done
+echo "  OK"
+
 echo "[validation] kb +read missing required --path (should fail)"
 if run --source "$SOURCE" >/dev/null 2>&1; then
   echo "  ERROR: expected failure, got success" >&2
@@ -46,4 +83,4 @@ else
   echo "  OK: command rejected as expected"
 fi
 
-echo "All kb +read dry-run contract checks passed."
+echo "kb +read expand and limit contract passed."

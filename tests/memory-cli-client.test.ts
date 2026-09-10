@@ -2,8 +2,8 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { CapabilityGatewayError } from '../src/core/capability-api.ts';
 import { clearCliToken } from '../src/core/cli-token.ts';
+import { SecureStoreAuthError } from '../src/core/secure-store.ts';
 import {
   getMemoryCli,
   postMemoryCli,
@@ -105,8 +105,7 @@ try {
   responseStatus = 401;
   await assert.rejects(
     () => markUsedMemory.execute(ctx({ agentId: 'agent-1', ids: ['memory-1'] })),
-    (error: unknown) =>
-      error instanceof CapabilityGatewayError && error.httpStatus === 401,
+    SecureStoreAuthError,
   );
   assert.equal(requestCount, 1);
 

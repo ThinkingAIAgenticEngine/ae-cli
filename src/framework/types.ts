@@ -57,6 +57,8 @@ export interface Command {
 }
 
 export interface RuntimeContext {
+  /** Whether the caller explicitly provided a flag, including an empty string value. */
+  has?(name: string): boolean;
   str(name: string): string;
   num(name: string): number;
   optionalNum(name: string): number | undefined;
@@ -65,13 +67,8 @@ export interface RuntimeContext {
   /** Repeated flag values in order. Empty array when absent. */
   list(name: string): string[];
 
-  api(method: string, path: string, params?: Record<string, any>, data?: any): Promise<any>;
   communityReport(endpoint: string, rawBody: string): Promise<any>;
   localDataUpload(endpoint: string, rawBody: string, options?: Record<string, any>): Promise<any>;
-  querySql(projectId: number, sql: string): Promise<any>;
-  queryReportData(projectId: number, reportId: number, qp: any, eventModel: number, options?: Record<string, any>): Promise<any>;
-
-  token(): Promise<string>;
   host(): string;
   mcpUrl(): string | undefined;
   service(): string;

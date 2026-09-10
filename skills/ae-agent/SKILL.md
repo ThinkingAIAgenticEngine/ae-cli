@@ -1,6 +1,6 @@
 ---
 name: ae-agent
-version: 1.5.3
+version: 1.5.6
 description: "AE Agent platform CLI for Agent, approval, archived conversation, automation, model, MCP, Skill, attachment, and user-memory work. Use when managing these resources, browsing Agent markets, handling approval requests and tasks, restoring archived conversations, creating scheduled automations, persisting user memory, or answering from user preferences, background, stable workflows, or historical conventions."
 ---
 
@@ -8,8 +8,9 @@ description: "AE Agent platform CLI for Agent, approval, archived conversation, 
 
 > **CRITICAL — Before running any `ae-cli agent +<command>` command, you MUST first read the corresponding `references/<command>.md`.** The reference filename equals the command name without the leading `+`, for example `+add-mcp` -> `references/add-mcp.md`.
 > **CRITICAL — Before running hierarchical approval commands, read the matching resource reference: `approval-type.md`, `approval-request.md`, `approval-task.md`, or `approval-effect.md`.**
+> **CRITICAL — Before running `agent bundle`, `agent share`, or `agent submission` commands, read `references/agent-distribution.md`.** Agent and Skill share IDs are not interchangeable.
 > **CRITICAL — Never guess record IDs (Agent / automation / model / MCP / Skill / submission / share / attachment).** Always use the appropriate `+list-*` command to discover real IDs first.
-> **CRITICAL — Agent platform resources are served under `/api/sandbox/agent/*`, but `ae-cli memory` is now served under `/api/cli/memory/v1/*` and uses the CLI token main chain.** Do not reference legacy memory paths.
+> **CRITICAL — Legacy Agent CRUD uses `/api/sandbox/agent/*`; Agent distribution and generic approvals use CLI-token-only `/api/cli/agent/v1/*` and `/api/cli/approval/v1/*`. `ae-cli memory` uses `/api/cli/memory/v1/*`.** Do not use Web session or sandbox credentials for CLI-token endpoints.
 
 AE CLI (`ae-cli`) agent platform resource commands are invoked through:
 
@@ -34,7 +35,7 @@ ae-cli memory +<command> [options]
 
 ## Global AE CLI Rules
 
-- Use this skill for Agent platform resource management: Agents, generic approvals, archived conversations, automations, models, MCP servers, Skills, attachments, the MCP/Skill market, Skill copy/approval/share flows, and user memories.
+- Use this skill for Agent platform resource management: Agents, generic approvals, archived conversations, automations, models, MCP servers, Skills, attachments, the MCP/Skill market, Agent and Skill approval/share flows, and user memories.
 - **Read operations** (`risk: read`) can run directly once required IDs are known.
 - **Write operations** (`risk: write`) can run directly once required IDs and references are verified.
 - **High-risk write operations** (`risk: high-risk-write`) require explicit user authorization. Pass `--yes` only after the user confirms.
@@ -64,7 +65,7 @@ ae-cli memory +<command> [options]
 
 Use `ae-agent` for all Agent platform resource work:
 
-- **Agents, conversations & automations**: list Agents, find/restore archived conversations, and create/list/update scheduled Agent automations.
+- **Agents, conversations & automations**: manage Agents, share immutable Agent snapshots, submit Agents for company publication, preview approval snapshots, find/restore archived conversations, and manage scheduled Agent automations.
 - **Models**: list, add, delete, toggle custom models.
 - **MCP servers**: list, add, delete, toggle MCP servers; browse the MCP market; set market meta.
 - **Approvals**: discover versioned approval types, submit/query/cancel approval requests, and query/approve/reject approval tasks.
@@ -74,15 +75,30 @@ Use `ae-agent` for all Agent platform resource work:
 
 If the user's intent is data analysis, audience management, metadata governance, TeamRuns, or knowledge bases, switch to `ae-analysis` / `ae-engage` / `ae-dataops` / `ae-team` / `ae-kb`.
 
-## Tool Groups (81 commands)
+## Tool Groups (89 commands)
 
-### Agents (5)
+### Agents (6)
 
 - `+list-agents` ([doc](references/list-agents.md)) — list Agents visible to current user (personal/company/system)
 - `+create-agent` ([doc](references/create-agent.md)) — create a new Agent (personal/company scope; company requires root/agent_admin; name/description/instructions/model/mcp-ids/skill-ids)
 - `+update-agent` ([doc](references/update-agent.md)) — update an Agent's name/description/instructions/model/mcp-ids/skill-ids/enabled
 - `+del-agent` ([doc](references/del-agent.md)) — soft-delete a personal/company Agent (company requires root/agent_admin; system Agents cannot be deleted)
 - `+get-agent` ([doc](references/get-agent.md)) — get a single Agent's detail
+- `+get-agent-context` ([doc](references/get-agent-context.md)) — resolve instructions and dependency discovery for local execution; use `ae-use-agent` for the workflow
+
+### Agent Distribution (7)
+
+Read [the complete share and company-publication workflow](references/agent-distribution.md) first.
+
+- `bundle preview` — check current dependencies without creating a share or submission
+- `share recipients` — find eligible same-company recipients, including as an ordinary member
+- `share create` — send an immutable personal Agent snapshot to selected recipients
+- `share list` — list received/sent shares, pagination, versions, and allowed actions
+- `share accept` — create or strictly reuse personal Agent and bundled Skill copies
+- `share reject` — reject a received share without creating assets
+- `submission preview` — read the authorized immutable approval snapshot, including after rejection
+
+Company submission, cancellation, approval, rejection, and execution retry reuse the Generic Approval Workflow below with `agent.publish@1`.
 
 ### Archived Conversations (2)
 
@@ -104,7 +120,7 @@ If the user's intent is data analysis, audience management, metadata governance,
 - `+toggle-model` ([doc](references/toggle-model.md)) — enable or disable a model
 - `+test-model` ([doc](references/test-model.md)) — test custom model connectivity (LLM only)
 
-### MCP Servers (14)
+### MCP Servers (13)
 
 - `+list-mcps` ([doc](references/list-mcps.md)) — list MCP servers visible to current user
 - `+add-mcp` ([doc](references/add-mcp.md)) — add an MCP server (personal/company scope; company requires root/agent_admin)
@@ -117,7 +133,6 @@ If the user's intent is data analysis, audience management, metadata governance,
 - `+mcp-auth-disconnect` ([doc](references/mcp-auth-disconnect.md)) — disconnect OAuth, clear token and disable
 - `+list-mcp-credentials` ([doc](references/list-mcp-credentials.md)) — list per-user credentials for system MCPs
 - `+set-mcp-credential` ([doc](references/set-mcp-credential.md)) — upsert a per-user MCP credential (oauth/apikey)
-- `+auto-provision-mcp-credentials` ([doc](references/auto-provision-mcp-credentials.md)) — auto-inject credentials for all system MCPs (uses session token by default)
 - `+mcp-token` ([doc](references/mcp-token.md)) — get the shared MCP token (useMcpToken=true; plaintext, mind shell history)
 - `+mcp-stats` ([doc](references/mcp-stats.md)) — MCP call stats for recent N days (`--days` 1-365 default 30; by server / by day)
 
@@ -197,7 +212,7 @@ If the user's intent is data analysis, audience management, metadata governance,
 
 Use the `memory` domain, not the `agent` domain. The memory domain uses te-claude CLI token APIs under `/api/cli/memory/v1/memories*`, like analysis-side CLI token transport. It must not call Web-only `/api/memories*`, `/api/agent-session-defaults*`, or legacy `/api/sandbox/agent/memories*`.
 
-> **CRITICAL — Memory commands marked `write` in the table below run without `--yes`. Within the memory domain, `high-risk-write` delete operations use `--yes` after explicit user confirmation. For local Agents, `+mark-used` is silent internal accounting and also runs without `--yes`. Web Agents never call it.**
+> **CRITICAL — Memory commands marked `write` in the table below run without `--yes`. Within the memory domain, only `high-risk-write` delete operations use `--yes` after explicit user confirmation. For local Agents, `+mark-used` is silent internal accounting and also runs without `--yes`. Web Agents never call it.**
 
 | Command              |  Risk | Purpose                                                                                        |
 | -------------------- | ----: | ---------------------------------------------------------------------------------------------- |
@@ -265,7 +280,7 @@ For a local Agent, a successful `+mark-used` response means only that the dedupl
 - **Market category keys**: `ae_preset | dev_tool | search_tool | data_query | content_gen | enterprise | life | automation | other`. Sort options: `newest | calls | likes` (`calls` sorts MCP by call count, Skill by download count). Market scope: `all | system | company | custom` (`custom` = personal).
 - **Meta on create/copy**: `+add-mcp` / `+add-skill` / `+copy-skill` accept optional `--category / --icon-emoji / --icon-color`; these are applied via a follow-up meta PATCH after creation. MCP creation still does NOT validate server connectivity.
 - **Copy vs toggle**: `+copy-skill` copies a system/company Skill to an independent personal copy. MCP has no copy (use `+toggle-mcp` to enable a system/company MCP per-user).
-- **Approval & share boundaries**: MCP has no approval or share flow. Generic approval commands currently expose `skill.publish@1` and future registered approval types; legacy `+approve-skill` / `+reject-skill` remain during the compatibility period and require root.
+- **Approval & share boundaries**: MCP has no standalone approval or share flow. Generic approvals support `skill.publish@1` and `agent.publish@1`; Agent submission reviews the immutable bundle as a whole. Legacy `+approve-skill` / `+reject-skill` remain Skill-only and require root. Company/system MCPs and models may be referenced by shared Agents; personal MCPs and fixed personal models block distribution.
 - **`--id` semantics differ by command**: `+submit-skill` / `+share-skill` / `+copy-skill` take a Skill ID; `+cancel-skill-submission` / `+approve-skill` / `+reject-skill` take a submission ID; `+accept-skill-share` / `+reject-skill-share` take a share ID.
 
 ## Typical Workflows
@@ -296,10 +311,12 @@ ae-cli agent +create-automation \
   --message "Summarize yesterday's AI news" \
   --agent-id <agent-id>
 
-# 3. (Optional) Pause or edit later
-ae-cli agent +list-automations --status active
-ae-cli agent +update-automation --id <automation-id> --enabled false
+# 3. Use automation.agentSpaceId when returned; otherwise omit --agent-space-id
+ae-cli agent +list-automations --status active --agent-space-id <workspace-id>
+ae-cli agent +update-automation --id <automation-id> --agent-space-id <workspace-id> --enabled false
 ```
+
+On workspace-aware servers, creation accepts `--agent-space-id`; when omitted, the server inherits the conversation's workspace or uses the personal default workspace. List/update commands do not infer the conversation's workspace: pass the returned workspace ID. Omit the flag when `agentSpaceId` is `null` or absent; never invent a workspace ID. Servers without workspace support retain their original behavior when the flag is omitted and do not enforce workspace isolation. These commands manage Agent automations only, not the separate Agent Team scheduled tasks shown in the workspace UI.
 
 ### Add an MCP server with market meta
 

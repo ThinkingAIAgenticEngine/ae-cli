@@ -11,6 +11,7 @@ const sink = readFileSync(join(root, 'skills/ae-data-integration/references/sink
 const upload = readFileSync(join(root, 'skills/ae-data-integration/references/sync-json-upload.md'), 'utf8');
 const routing = readFileSync(join(root, 'skills/ae-data-integration/references/ue-routing.md'), 'utf8');
 const analysis = readFileSync(join(root, 'skills/ae-data-integration/references/local-analysis.md'), 'utf8');
+const dimension = readFileSync(join(root, 'skills/ae-data-integration/references/dimension-routing.md'), 'utf8');
 const mapping = readFileSync(join(root, 'skills/ae-data-integration/references/ue-mapping.md'), 'utf8');
 const errors = readFileSync(join(root, 'skills/ae-data-integration/references/error-handling.md'), 'utf8');
 
@@ -215,6 +216,17 @@ assert.match(upload, /--resume-from <verified-offset>/);
 assert.match(routing, /Route to local analysis/);
 assert.match(analysis, /Observed facts/);
 assert.match(analysis, /never embed APPID, receiver, or tokens/);
+
+// Dimension routing: a third exit between UE ingestion and local analysis. UE keeps
+// priority, and the handoff to ae-metadata lives in its own reference.
+assert.match(routing, /Route to dimension table/);
+assert.match(routing, /UE first, dimension second, local analysis last/);
+assert.match(routing, /references\/dimension-routing\.md/);
+assert.match(dimension, /ae-metadata/);
+assert.match(dimension, /create-and-bind-csv-dimension-table/);
+assert.match(dimension, /incremental_update\|replace_update/);
+assert.match(dimension, /Never invent a property name/);
+assert.match(skill, /ae-metadata/);
 
 // Extended mapping contract: eight record types and overlay fields.
 assert.match(mapping, /user_setOnce/);

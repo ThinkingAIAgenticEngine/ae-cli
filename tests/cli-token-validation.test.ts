@@ -5,6 +5,7 @@ const {
   validateCliTokenOnServer,
 } = await import('../src/core/cli-token.ts');
 const { SecureStoreAuthError } = await import('../src/core/secure-store.ts');
+const { fetchCliConfig } = await import('../src/core/compat-check.ts');
 
 let passed = 0;
 let failed = 0;
@@ -39,8 +40,63 @@ await test('validates a CLI token without exposing it in the URL', async () => {
   }) as typeof fetch;
 
   try {
-    await validateCliTokenOnServer(host, 'cli_valid_token');
+    const result = await validateCliTokenOnServer(host, 'cli_valid_token');
+    assert.deepEqual(result, {});
     assert.equal(validationCalls, 1);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+await test('reads account and expiration from a new camelCase backend response', async () => {
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = (async () => new Response(JSON.stringify({
+    return_code: 0,
+    data: {
+      openId: 'open-1',
+      loginName: 'alice',
+      userName: 'Alice',
+      expiresAt: 1789776000000,
+    },
+  }), { status: 200 })) as typeof fetch;
+  try {
+    const result = await validateCliTokenOnServer('https://new-backend.internal', 'cli_valid_token');
+    assert.deepEqual(result.account, { openId: 'open-1', loginName: 'alice', userName: 'Alice' });
+    assert.equal(result.cliTokenExpiresAt, new Date(1789776000000).toISOString());
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+await test('also accepts snake_case account fields and ISO expiration', async () => {
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = (async () => new Response(JSON.stringify({
+    return_code: 0,
+    data: {
+      open_id: 'open-2',
+      login_name: 'bob',
+      user_name: 'Bob',
+      expires_at: '2026-09-20T00:00:00.000Z',
+    },
+  }), { status: 200 })) as typeof fetch;
+  try {
+    const result = await validateCliTokenOnServer('https://snake-backend.internal', 'cli_valid_token');
+    assert.equal(result.account?.loginName, 'bob');
+    assert.equal(result.cliTokenExpiresAt, '2026-09-20T00:00:00.000Z');
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+await test('omits account when identity fields are incomplete instead of exposing nulls', async () => {
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = (async () => new Response(JSON.stringify({
+    return_code: 0,
+    data: { openId: 'open-3', loginName: null, userName: null },
+  }), { status: 200 })) as typeof fetch;
+  try {
+    const result = await validateCliTokenOnServer('https://partial-backend.internal', 'cli_valid_token');
+    assert.equal(result.account, undefined);
   } finally {
     globalThis.fetch = originalFetch;
   }
@@ -126,6 +182,28 @@ await test('reports network validation failures as unavailable', async () => {
         && error.message.includes('Unable to validate CLI token')
         && error.message.includes('connection refused'),
     );
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+await test('compat-check authenticates with cli-token only and never sends Authorization', async () => {
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = (async (input, init) => {
+    const url = new URL(String(input));
+    assert.equal(url.pathname, '/v1/ta/cli/config');
+    assert.equal(url.searchParams.get('cli-token'), 'cli_compat');
+    assert.equal((init?.headers as Record<string, string>).Authorization, undefined);
+    return new Response(JSON.stringify({
+      return_code: 0,
+      data: { versions: { clusterVersion: '6.0.0', aeCliVersion: '6.0.47' } },
+    }), { status: 200 });
+  }) as typeof fetch;
+  try {
+    assert.deepEqual(await fetchCliConfig('https://compat.internal', 'cli_compat'), {
+      clusterVersion: '6.0.0',
+      aeCliVersion: '6.0.47',
+    });
   } finally {
     globalThis.fetch = originalFetch;
   }

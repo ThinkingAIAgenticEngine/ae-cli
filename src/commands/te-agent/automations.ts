@@ -144,6 +144,7 @@ function buildCreateBody(ctx: RuntimeContext) {
   const model =
     optional(ctx.str("model")) ?? envOptional("TE_AGENT_CURRENT_MODEL_ID");
   const enabled = readEnabled(ctx);
+  const agentSpaceId = optional(ctx.str("agentSpaceId"));
 
   return {
     name: ctx.str("name"),
@@ -151,6 +152,7 @@ function buildCreateBody(ctx: RuntimeContext) {
     agentId,
     agentName: explicitAgentName,
     conversationId,
+    ...(agentSpaceId ? { agentSpaceId } : {}),
     cronExpression: optional(ctx.str("cron")),
     schedule: buildSchedule(ctx),
     triggerType: "scheduled",
@@ -165,9 +167,11 @@ function buildListPath(ctx: RuntimeContext): string {
   const q = optional(ctx.str("q"));
   const status = optional(ctx.str("status"));
   const limit = optional(ctx.str("limit"));
+  const agentSpaceId = optional(ctx.str("agentSpaceId"));
   if (q) params.set("q", q);
   if (status) params.set("status", status);
   if (limit) params.set("limit", String(ctx.num("limit")));
+  if (agentSpaceId) params.set("agentSpaceId", agentSpaceId);
   const query = params.toString();
   return query ? `${BASE_PATH}?${query}` : BASE_PATH;
 }
@@ -212,6 +216,14 @@ function validateUpdate(ctx: RuntimeContext): void {
   }
 }
 
+function buildUpdatePath(ctx: RuntimeContext): string {
+  const path = `${BASE_PATH}/${encodeURIComponent(ctx.str("id"))}`;
+  const agentSpaceId = optional(ctx.str("agentSpaceId"));
+  const params = new URLSearchParams();
+  if (agentSpaceId) params.set("agentSpaceId", agentSpaceId);
+  return agentSpaceId ? `${path}?${params}` : path;
+}
+
 const scheduleFlags = [
   {
     name: "cron",
@@ -254,8 +266,15 @@ const scheduleFlags = [
 export const listAutomations: Command = {
   service: "agent",
   command: "+list-automations",
-  description: "List current user's Agent automation tasks",
+  description: "List current user's Agent automation tasks in a workspace",
   flags: [
+    {
+      name: "agent-space-id",
+      type: "string",
+      required: false,
+      maxLength: 191,
+      desc: "Workspace ID; omit for the personal default workspace",
+    },
     {
       name: "q",
       type: "string",
@@ -335,7 +354,14 @@ export const createAutomation: Command = {
       name: "conversation-id",
       type: "string",
       required: false,
-      desc: "Conversation ID fallback for resolving current Agent",
+      desc: "Conversation ID fallback for resolving the Agent and workspace",
+    },
+    {
+      name: "agent-space-id",
+      type: "string",
+      required: false,
+      maxLength: 191,
+      desc: "Workspace ID; omit to inherit the conversation workspace, then the personal default",
     },
     ...scheduleFlags,
   ],
@@ -364,6 +390,13 @@ export const updateAutomation: Command = {
       type: "string",
       required: true,
       desc: "Automation task ID from +list-automations",
+    },
+    {
+      name: "agent-space-id",
+      type: "string",
+      required: false,
+      maxLength: 191,
+      desc: "Task's workspace ID; omit for the personal default workspace. Does not move the task",
     },
     {
       name: "name",
@@ -395,13 +428,13 @@ export const updateAutomation: Command = {
   validate: validateUpdate,
   dryRun: (ctx) => ({
     method: "PATCH",
-    url: `${BASE_PATH}/${encodeURIComponent(ctx.str("id"))}`,
+    url: buildUpdatePath(ctx),
     body: buildUpdateBody(ctx),
   }),
   execute: async (ctx) =>
     patchAgentApi(
       ctx,
-      `${BASE_PATH}/${encodeURIComponent(ctx.str("id"))}`,
+      buildUpdatePath(ctx),
       buildUpdateBody(ctx),
     ),
 };

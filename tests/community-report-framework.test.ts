@@ -104,7 +104,7 @@ assert.match(
 );
 
 const communityReportMethod = runnerSource.match(
-  /async communityReport\(endpoint: string, rawBody: string\): Promise<any> \{([\s\S]*?)\n    \},\n\n    async querySql/,
+  /async communityReport\(endpoint: string, rawBody: string\): Promise<any> \{([\s\S]*?)\n    \},\n\n    async localDataUpload/,
 )?.[1];
 assert(communityReportMethod, 'RuntimeContext.communityReport implementation is missing');
 assert.match(communityReportMethod, /client\.communityReport\(endpoint, rawBody\)/);
