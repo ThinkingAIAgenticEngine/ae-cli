@@ -1,0 +1,4 @@
+interface:
+  display_name: "Experiment Insight & Diagnosis"
+  short_description: "Validate AE experiments and recommend the next decision"
+  default_prompt: "Use $ae-experiment-insight to diagnose an AE experiment and recommend the next decision."

@@ -47,6 +47,10 @@ async function loadCommands(): Promise<Command[]> {
     commands.push(...engage.default);
   } catch {}
   try {
+    const experiment = await import('./commands/te-experiment/index.js');
+    commands.push(...experiment.default);
+  } catch {}
+  try {
     const community = await import('./commands/te-community/index.js');
     commands.push(...community.default);
   } catch {}
@@ -77,6 +81,10 @@ async function loadCommands(): Promise<Command[]> {
   try {
     const metadata = await import('./commands/metadata/index.js');
     commands.push(...metadata.default);
+  } catch {}
+  try {
+    const projectSemantic = await import('./commands/project-semantic/index.js');
+    commands.push(...projectSemantic.default);
   } catch {}
   try {
     const personalSemanticPreference = await import('./commands/personal-semantic-preference/index.js');
