@@ -18,6 +18,7 @@ export interface CreateCapabilityCommandConfig {
   /** Gateway capability id, e.g. `metadata.event.get`. */
   capabilityId: string;
   description: string;
+  helpText?: string;
   flags: Flag[];
   risk: RiskLevel;
   /** Gateway routing segment; defaults to registerCapabilityGatewayRoute(cliService). */
@@ -40,6 +41,7 @@ export function createCapabilityCommand(config: CreateCapabilityCommandConfig): 
     command: config.command,
     capabilityId: config.capabilityId,
     description: config.description,
+    helpText: config.helpText,
     flags: config.flags,
     risk: config.risk,
     validate: config.validate,
