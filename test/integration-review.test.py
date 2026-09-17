@@ -27,7 +27,9 @@ class GitLabFixture:
     def __init__(self, head):
         self.head = head
         self.target = "integration/6.0-20260910"
+        self.state = "opened"
         self.notes = []
+        self.associated_mrs = []
         self.posts = []
         self.reads = []
         self.fail_post = False
@@ -42,8 +44,14 @@ class GitLabFixture:
         self.reads.append(path)
         if path == "/user":
             return {"id": 7}
+        if path.endswith("/merge_requests/9"):
+            return {"sha": self.head, "state": self.state, "target_branch": self.target,
+                    "author": {"username": "mr-author"}}
         if "/repository/branches/" in path:
             return {"commit": {"id": self.head}}
+        if "/repository/commits/" in path and "/merge_requests?" in path:
+            start = (int(path.rsplit("=", 1)[1]) - 1) * 100
+            return self.associated_mrs[start:start + 100]
         if "?per_page=100&page=" in path:
             start = (int(path.rsplit("=", 1)[1]) - 1) * 100
             return self.notes[start:start + 100]
@@ -67,9 +75,10 @@ class IntegrationReviewTests(unittest.TestCase):
         self.head = self.commit("first change")
         self.api = GitLabFixture(self.head)
         self.env = {
-            "CI_PIPELINE_SOURCE": "push", "CI_COMMIT_BRANCH": self.api.target,
-            "CI_COMMIT_SHA": self.head, "CI_COMMIT_BEFORE_SHA": self.base,
-            "GITLAB_USER_LOGIN": "push-user", "CI_PIPELINE_ID": "42",
+            "CI_PIPELINE_SOURCE": "merge_request_event", "CI_MERGE_REQUEST_IID": "9",
+            "CI_MERGE_REQUEST_TARGET_BRANCH_NAME": self.api.target,
+            "CI_MERGE_REQUEST_DIFF_BASE_SHA": self.base, "CI_COMMIT_SHA": self.head,
+            "CI_PIPELINE_ID": "42",
             "CI_PIPELINE_URL": "https://gitlab.example/project/-/pipelines/42",
         }
         self.rendered = []
@@ -91,12 +100,15 @@ class IntegrationReviewTests(unittest.TestCase):
         result = json.loads((self.root / ".review/result.json").read_text())
         return code, result
 
-    def mr(self):
-        self.env.update(CI_PIPELINE_SOURCE="merge_request_event", CI_MERGE_REQUEST_IID="9",
-                        CI_MERGE_REQUEST_TARGET_BRANCH_NAME=self.api.target,
-                        CI_MERGE_REQUEST_DIFF_BASE_SHA=self.base)
+    def push(self, branch=None, before=None):
+        self.env = {
+            "CI_PIPELINE_SOURCE": "push", "CI_COMMIT_BRANCH": branch or self.api.target,
+            "CI_COMMIT_SHA": self.head, "CI_COMMIT_BEFORE_SHA": before or self.base,
+            "GITLAB_USER_LOGIN": "push-user", "CI_PIPELINE_ID": "43",
+            "CI_PIPELINE_URL": "https://gitlab.example/project/-/pipelines/43",
+        }
 
-    def test_push_reviews_entire_push_and_posts_to_exact_commit(self):
+    def test_mr_uses_full_diff_base_and_mentions_mr_author(self):
         (self.root / "second.ts").write_text("export const second = true;\n")
         self.head = self.commit("second change")
         self.env["CI_COMMIT_SHA"] = self.api.head = self.head
@@ -104,48 +116,49 @@ class IntegrationReviewTests(unittest.TestCase):
         self.assertEqual((code, result["status"]), (0, "published"))
         self.assertEqual((self.rendered[0].base, self.rendered[0].head), (self.base, self.head))
         endpoint, payload = self.api.posts[0]
-        self.assertEqual(endpoint, f"/projects/123/repository/commits/{self.head}/comments")
-        self.assertIn("@push-user", payload["note"])
-        self.assertIn(self.base, payload["note"])
+        self.assertEqual(endpoint, "/projects/123/merge_requests/9/notes")
+        self.assertIn("@mr-author", payload["body"])
+        self.assertIn(self.base, payload["body"])
+        self.assertIn("合并请求（MR）", payload["body"])
         self.assertEqual(result["email_delivery"], "managed-by-gitlab-not-verified")
 
-    def test_merged_feature_reviews_integration_before_to_merge_commit(self):
-        feature_head = self.head
-        self.git("checkout", "--quiet", "-b", self.api.target, self.base)
-        (self.root / "already-integrated.ts").write_text("export const stable = true;\n")
-        before = self.commit("previous integration change")
-        self.git("merge", "--no-ff", "--no-edit", feature_head)
-        merged_head = self.git("rev-parse", "HEAD")
-        self.env.update(CI_COMMIT_BEFORE_SHA=before, CI_COMMIT_SHA=merged_head,
-                        GITLAB_USER_LOGIN="merge-user")
-        self.api.head = merged_head
+    def test_direct_integration_push_is_reviewed_and_published(self):
+        self.push()
         code, result = self.run_review()
         self.assertEqual((code, result["status"]), (0, "published"))
-        self.assertEqual((self.rendered[0].base, self.rendered[0].head), (before, merged_head))
-        self.assertEqual(self.git("diff", "--name-only", before, merged_head), "command.ts")
         endpoint, payload = self.api.posts[0]
-        self.assertEqual(endpoint, f"/projects/123/repository/commits/{merged_head}/comments")
-        self.assertIn("@merge-user", payload["note"])
-        self.assertIn("集成分支代码审核", payload["note"])
-        self.assertIn("集成分支推送", payload["note"])
-        self.assertIn(merged_head, payload["note"])
-        self.assertFalse(any("merge_requests" in path for path in self.api.reads))
-        self.assertEqual(result["model"]["model_seconds"], 120.5)
+        self.assertEqual(endpoint, f"/projects/123/repository/commits/{self.head}/comments")
+        self.assertIn("@push-user", payload["note"])
+        self.assertIn("集成分支直接推送", payload["note"])
 
-    def test_all_mr_pipeline_types_are_rejected_before_model_or_publication(self):
-        self.mr()
-        for event_type in ("detached", "merged_result", "merge_train"):
-            self.env["CI_MERGE_REQUEST_EVENT_TYPE"] = event_type
-            with self.subTest(event_type=event_type):
+    def test_push_created_by_merged_mr_skips_review_and_notification(self):
+        for field in ("merge_commit_sha", "squash_commit_sha", "sha"):
+            self.push()
+            self.api.associated_mrs = [{
+                "iid": 21, "state": "merged", "target_branch": self.api.target,
+                "merge_commit_sha": None, "squash_commit_sha": None, "sha": None,
+                field: self.head,
+            }]
+            with self.subTest(field=field):
                 code, result = self.run_review()
-                self.assertEqual((code, result["status"]), (1, "error"))
-                self.assertIn("Only integration branch push", result["error"])
+                self.assertEqual((code, result["status"]), (0, "merged-mr"))
+                self.assertEqual(result["stage"], "merge-origin")
+                self.assertEqual(result["merged_mr"], 21)
         self.assertFalse(self.rendered)
-        self.assertFalse(self.api.reads)
         self.assertFalse(self.api.posts)
 
-    def test_new_branch_uses_matching_release_without_master(self):
-        self.env["CI_COMMIT_BEFORE_SHA"] = "0" * 40
+    def test_unrelated_or_open_mr_associations_do_not_skip_direct_push(self):
+        self.push()
+        self.api.associated_mrs = [
+            {"iid": 22, "state": "opened", "target_branch": self.api.target, "sha": self.head},
+            {"iid": 23, "state": "merged", "target_branch": "integration/other", "sha": self.head},
+        ]
+        code, result = self.run_review()
+        self.assertEqual((code, result["status"]), (0, "published"))
+        self.assertEqual(len(self.rendered), 1)
+
+    def test_new_integration_branch_uses_matching_release_without_master(self):
+        self.push(before="0" * 40)
         with patch.object(review, "git", wraps=review.git) as calls:
             code, _ = self.run_review()
         self.assertEqual(code, 0)
@@ -153,8 +166,8 @@ class IntegrationReviewTests(unittest.TestCase):
         fetches = [call.args for call in calls.call_args_list if call.args[1] == "fetch"]
         self.assertEqual(fetches[0][-1], "refs/heads/release/6.0")
 
-    def test_new_unversioned_branch_requires_explicit_release_base(self):
-        self.env.update(CI_COMMIT_BEFORE_SHA="0" * 40, CI_COMMIT_BRANCH="integration/special")
+    def test_new_unversioned_integration_branch_requires_explicit_release_base(self):
+        self.push(branch="integration/special", before="0" * 40)
         code, result = self.run_review()
         self.assertEqual(code, 1)
         self.assertIn("REVIEW_BASE_REF", result["error"])
@@ -162,37 +175,66 @@ class IntegrationReviewTests(unittest.TestCase):
         self.env["REVIEW_BASE_REF"] = "release/6.0"
         self.assertEqual(self.run_review()[0], 0)
 
-    def test_rejects_release_feature_and_master_push(self):
-        for branch in ("release/6.0", "feat/new-command", "master"):
-            self.env["CI_COMMIT_BRANCH"] = branch
-            with self.subTest(branch=branch):
-                self.assertEqual(self.run_review()[0], 1)
+    def test_all_mr_pipeline_types_review_source_head(self):
+        for event_type in ("detached", "merged_result", "merge_train"):
+            self.env["CI_MERGE_REQUEST_EVENT_TYPE"] = event_type
+            self.env["CI_MERGE_REQUEST_SOURCE_BRANCH_SHA"] = self.head
+            self.env["CI_COMMIT_SHA"] = "a" * 40
+            with self.subTest(event_type=event_type):
+                code, result = self.run_review()
+                self.assertEqual((code, result["status"]), (0, "published"))
+                self.assertEqual(self.rendered[-1].head, self.head)
+                self.api.notes.clear()
+        self.assertEqual(len(self.api.posts), 3)
+
+    def test_rejects_non_integration_mr_and_other_pushes(self):
+        self.push(branch="feat/new-command")
+        self.assertEqual(self.run_review()[0], 1)
+        self.env.update(CI_PIPELINE_SOURCE="merge_request_event",
+                        CI_MERGE_REQUEST_TARGET_BRANCH_NAME="release/6.0")
+        self.assertEqual(self.run_review()[0], 1)
         self.assertFalse(self.rendered)
         self.assertFalse(self.api.posts)
 
-    def test_rejects_tags_schedules_and_missing_base(self):
-        for source, branch in (("schedule", self.api.target), ("web", self.api.target), ("push", "")):
-            self.env.update(CI_PIPELINE_SOURCE=source, CI_COMMIT_BRANCH=branch)
-            self.assertEqual(self.run_review()[0], 1)
-        self.env.update(CI_PIPELINE_SOURCE="push", CI_COMMIT_BRANCH=self.api.target)
-        del self.env["CI_COMMIT_BEFORE_SHA"]
+    def test_rejects_other_sources_invalid_iid_and_missing_base(self):
+        for source in ("schedule", "web", "api"):
+            self.env["CI_PIPELINE_SOURCE"] = source
+            with self.subTest(source=source):
+                self.assertEqual(self.run_review()[0], 1)
+        self.env.update(CI_PIPELINE_SOURCE="merge_request_event", CI_MERGE_REQUEST_IID="invalid")
+        self.assertEqual(self.run_review()[0], 1)
+        self.env["CI_MERGE_REQUEST_IID"] = "9"
+        del self.env["CI_MERGE_REQUEST_DIFF_BASE_SHA"]
         self.assertEqual(self.run_review()[0], 1)
         self.assertFalse(self.rendered)
 
+    def test_target_change_is_rejected(self):
+        self.api.target = "integration/6.1-20260910"
+        code, result = self.run_review()
+        self.assertEqual((code, result["status"]), (1, "error"))
+        self.assertIn("target changed", result["error"])
+
     def test_unchanged_tree_skips_model_and_publication(self):
-        self.env["CI_COMMIT_BEFORE_SHA"] = self.head
+        self.env["CI_MERGE_REQUEST_DIFF_BASE_SHA"] = self.head
         code, result = self.run_review()
         self.assertEqual((code, result["status"]), (0, "no-changes"))
         self.assertFalse(self.rendered)
         self.assertFalse(self.api.posts)
 
-    def test_stale_integration_push_is_skipped_before_model(self):
+    def test_stale_mr_is_skipped_before_model(self):
         self.api.head = "a" * 40
         code, result = self.run_review()
         self.assertEqual((code, result["status"]), (0, "stale"))
         self.assertFalse(self.rendered)
 
-    def test_new_push_during_review_prevents_stale_publication(self):
+    def test_stale_integration_push_is_skipped_before_model(self):
+        self.push()
+        self.api.head = "a" * 40
+        code, result = self.run_review()
+        self.assertEqual((code, result["status"]), (0, "stale"))
+        self.assertFalse(self.rendered)
+
+    def test_new_mr_commit_during_review_prevents_stale_publication(self):
         def advance(root, ctx, env):
             self.api.head = "b" * 40
             return {"report": "Completed report for the old commit"}
@@ -201,10 +243,20 @@ class IntegrationReviewTests(unittest.TestCase):
         self.assertFalse(self.api.posts)
         self.assertIn("Completed report", (self.root / ".review/report.md").read_text())
 
+    def test_new_push_during_review_prevents_stale_publication(self):
+        self.push()
+        def advance(root, ctx, env):
+            self.api.head = "b" * 40
+            return {"report": "Completed report for the old push"}
+        code, result = self.run_review(advance)
+        self.assertEqual((code, result["status"]), (0, "stale"))
+        self.assertFalse(self.api.posts)
+        self.assertIn("Completed report", (self.root / ".review/report.md").read_text())
+
     def test_retry_does_not_duplicate_comment_and_checks_author(self):
         self.assertEqual(self.run_review()[0], 0)
         first = self.api.notes[0]
-        self.api.notes = [{"author": {"id": 99}, "note": first["note"]}] * 100 + [first]
+        self.api.notes = [{"author": {"id": 99}, "body": first["body"]}] * 100 + [first]
         code, result = self.run_review()
         self.assertEqual((code, result["status"]), (0, "already-published"))
         self.assertEqual(len(self.api.posts), 1)
@@ -240,7 +292,7 @@ class IntegrationReviewTests(unittest.TestCase):
     def test_credentials_are_redacted_from_publication(self):
         self.env["OPENAI__KEY"] = "private-api-key-value"
         self.run_review(lambda *args: {"report": "Found private-api-key-value and glpat-testcredential"})
-        body = self.api.posts[0][1]["note"]
+        body = self.api.posts[0][1]["body"]
         self.assertNotIn("private-api-key-value", body)
         self.assertNotIn("glpat-testcredential", body)
 
@@ -251,7 +303,7 @@ class IntegrationReviewTests(unittest.TestCase):
         after = self.commit("divergent change")
         with tempfile.TemporaryDirectory() as folder:
             target = Path(folder) / "snapshot"
-            review.snapshot(self.root, target, review.Context("push", before, after, self.api.target))
+            review.snapshot(self.root, target, review.Context("mr", before, after, self.api.target, "9"))
             expected = self.git("diff", before, after)
             actual = review.git(target, "diff", "review-base...HEAD").stdout.strip()
             self.assertEqual(actual, expected)
@@ -276,9 +328,10 @@ class WorkflowTests(unittest.TestCase):
                     return True
             return False
         cases = [
-            ("merge_request_event", "integration/6.0-20260910", "", False),
-            ("merge_request_event", "integration/6.1-20260910", "", False),
-            ("merge_request_event", "integration/6.0-20260910", "integration/6.0-20260910", False),
+            ("merge_request_event", "integration/6.0-20260910", "", True),
+            ("merge_request_event", "integration/6.1-20260910", "", True),
+            ("merge_request_event", "integration/xxxxxxx", "", True),
+            ("merge_request_event", "integration/", "", False),
             ("merge_request_event", "release/6.0", "", False),
             ("merge_request_event", "feat/work", "", False),
             ("push", "", "integration/6.0-20260910", True),

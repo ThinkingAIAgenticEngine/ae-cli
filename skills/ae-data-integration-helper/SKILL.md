@@ -1,6 +1,6 @@
 ---
 name: ae-data-integration-helper
-description: "Answers questions about ThinkingData SDK integration and usage, including the LogBus2 data import tool. Trigger words: 怎么接入 / 如何集成 / SDK / 埋点 / 报错 / 使用方式 / API / LogBus / tracking / integration / how to integrate / data import / データ連携 / インテグレーション / 트래킹 / 연동."
+description: "Answers questions about ThinkingAI SDK integration and usage, including the LogBus2 data import tool. Trigger words: 怎么接入 / 如何集成 / SDK / 埋点 / 报错 / 使用方式 / API / LogBus / tracking / integration / how to integrate / data import / データ連携 / インテグレーション / 트래킹 / 연동."
 ---
 
 # ae-data-integration-helper
@@ -16,12 +16,12 @@ description: "Answers questions about ThinkingData SDK integration and usage, in
 
 | 中文 | English | Notes |
 |------|---------|-------|
-| 埋点 / 数据上报 | Tracking / Data Ingestion | Sending event data to TE |
+| 埋点 / 数据上报 | Tracking / Data Ingestion | Sending event data to AE |
 | 用户识别规则 | User Identification Rule | distinct_id / account_id mapping |
 | 访客 ID | Visitor ID / Guest ID | Anonymous user before login |
 | 登录 ID | Login ID / Account ID | Identified user after login |
 | 预置属性 | Preset Property | `#device_id`, `#time`, `#ip`, etc. |
-| 系统字段 | System Field | TE built-in fields prefixed with `#` |
+| 系统字段 | System Field | AE built-in fields prefixed with `#` |
 | 事件格式 | Event Format | Event name + properties structure |
 | 属性类型 | Property Type | String / Number / Boolean / Date / Array |
 | 数据校验 | Data Validation | Verify event format & property types |
@@ -37,7 +37,7 @@ description: "Answers questions about ThinkingData SDK integration and usage, in
 | 数据加密 | Data Encryption | Encrypt event data before upload |
 | 时间校准 | Time Calibration | Sync device time with server time |
 | 多端上报 | Multi-platform Tracking | Report events from multiple clients/services |
-| 用户割裂 | User Fragmentation | Same user split into multiple TE user profiles |
+| 用户割裂 | User Fragmentation | Same user split into multiple AE user profiles |
 | 上报模式 | Upload Mode | Normal / Debug / Debug_Only |
 | LoggerConsumer | LoggerConsumer | Server SDK consumer that writes events to local log files |
 | BatchConsumer | BatchConsumer | Server SDK consumer that uploads events in batches |
@@ -62,7 +62,7 @@ Trigger when a user asks about:
 - **Configuration**: Debug mode / data validation / retry strategy
 - **Troubleshooting**: Upload failures / missing data / format errors
 
-**Do NOT trigger**: Inline Q&A within `ae-generate-tracking-plan` or `ae-generate-tracking-code` sessions (those skills have their own workflows). Offline local-file import (CSV / Excel / JSONL → AE) is owned by the `ae-data-integration` skill — route those requests there instead of answering with LogBus / RESTful guidance.
+**Do NOT trigger**: Inline Q&A within `ae-generate-tracking-plan` or `ae-generate-tracking-code` sessions (those skills have their own workflows). Offline local-file import (CSV / Excel / JSONL → AE) and Feishu sheet URL import are owned by the `ae-data-integration` skill — route those requests there instead of answering with LogBus / RESTful guidance.
 
 ## Workflow
 

@@ -64,6 +64,10 @@ export const authenticationExportOutputFlag: Flag = {
   name: 'output', type: 'string', required: true,
   desc: 'Local .jsonl output path. Integrity metadata is written to <output>.meta.json.',
 };
+export const authenticationDashboardPackageOutputFlag: Flag = {
+  name: 'output', type: 'string', required: false,
+  desc: 'Optional local .json package path. Integrity metadata is written to <output>.meta.json.',
+};
 
 export const authenticationFilterFlags: Flag[] = [
   assetTypesFlag,
@@ -105,6 +109,102 @@ export function validateAuthenticationExport(ctx: RuntimeContext): void {
   if (extname(ctx.str('output').trim()).toLowerCase() !== '.jsonl') {
     throw new CliValidationError('--output must use the .jsonl extension');
   }
+}
+
+export function validateAuthenticationDashboardPackage(ctx: RuntimeContext): void {
+  const output = optionalString(ctx, 'output');
+  if (output !== undefined && extname(output.trim()).toLowerCase() !== '.json') {
+    throw new CliValidationError('--output must use the .json extension');
+  }
+}
+
+export function authenticationDashboardPackagePostProcess() {
+  return async (result: unknown, input: Record<string, unknown>, ctx: RuntimeContext): Promise<unknown> => {
+    const data = validateDashboardPackageResult(result);
+    const output = optionalString(ctx, 'output');
+    if (output === undefined) return data;
+
+    const outputPath = resolve(output.trim());
+    const metaPath = `${outputPath}.meta.json`;
+    await mkdir(dirname(outputPath), { recursive: true });
+    await assertRegularFileOrMissing(outputPath);
+    await assertRegularFileOrMissing(metaPath);
+    const suffix = `${process.pid}.${randomBytes(8).toString('hex')}`;
+    const partPath = `${outputPath}.part.${suffix}`;
+    const metaPartPath = `${metaPath}.part.${suffix}`;
+    let handle: FileHandle | undefined;
+    try {
+      const content = Buffer.from(`${JSON.stringify(data)}\n`, 'utf8');
+      const checksum = createHash('sha256').update(content).digest('hex');
+      handle = await open(partPath, 'w', 0o600);
+      await handle.write(content);
+      await handle.sync();
+      await handle.close();
+      handle = undefined;
+      const coverage = data.coverage as Record<string, unknown>;
+      const metadata = {
+        schema_version: data.schema_version,
+        project_id: input.project_id,
+        dashboard_limit: data.dashboard_limit,
+        coverage_scope: coverage.coverage_scope,
+        selected_scope_complete: coverage.selected_scope_complete,
+        full_project_coverage: coverage.full_project_coverage,
+        total_dashboards: coverage.total_dashboards,
+        selected_dashboards: coverage.selected_dashboards,
+        has_more: coverage.has_more,
+        stat_as_of: coverage.stat_as_of,
+        snapshot_hash: data.snapshot_hash,
+        checksum,
+      };
+      handle = await open(metaPartPath, 'w', 0o600);
+      await handle.write(`${JSON.stringify(metadata)}\n`, undefined, 'utf8');
+      await handle.sync();
+      await handle.close();
+      handle = undefined;
+      await publishCatalogPair(partPath, outputPath, metaPartPath, metaPath, suffix);
+      return {
+        output_path: outputPath,
+        metadata_path: metaPath,
+        format: 'json',
+        bytes: content.length,
+        checksum,
+        snapshot_hash: data.snapshot_hash,
+        coverage,
+      };
+    } catch (error) {
+      await handle?.close().catch(() => undefined);
+      await rm(partPath, { force: true }).catch(() => undefined);
+      await rm(metaPartPath, { force: true }).catch(() => undefined);
+      throw error;
+    }
+  };
+}
+
+function validateDashboardPackageResult(result: unknown): Record<string, unknown> {
+  if (typeof result !== 'object' || result === null) {
+    throw new Error('Asset-authentication dashboard package returned an invalid response');
+  }
+  const data = result as Record<string, unknown>;
+  const coverage = data.coverage;
+  if (data.schema_version !== '1.0'
+    || typeof data.snapshot_hash !== 'string'
+    || !Array.isArray(data.dashboards)
+    || !Array.isArray(data.reports)
+    || !Array.isArray(data.metadata)
+    || typeof coverage !== 'object' || coverage === null) {
+    throw new Error('Asset-authentication dashboard package failed schema validation');
+  }
+  const coverageData = coverage as Record<string, unknown>;
+  if (coverageData.coverage_scope !== 'popular_dashboard_reach'
+    || coverageData.selected_scope_complete !== true
+    || coverageData.full_project_coverage !== false
+    || typeof coverageData.total_dashboards !== 'number'
+    || typeof coverageData.selected_dashboards !== 'number'
+    || typeof coverageData.has_more !== 'boolean'
+    || typeof coverageData.stat_as_of !== 'string') {
+    throw new Error('Asset-authentication dashboard package failed coverage validation');
+  }
+  return data;
 }
 
 export function authenticationExportPostProcess() {

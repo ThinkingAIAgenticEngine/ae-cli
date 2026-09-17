@@ -1,0 +1,57 @@
+{
+  "provider": "firebase",
+  "variant": "web-v9",
+  "platforms": ["web"],
+  "call_sites": [
+    {
+      "id": "cs-1",
+      "file": "src/analytics.js",
+      "line": 8,
+      "kind": "event",
+      "source_call": "logEvent(analytics, 'userLogin', { login_method: 'phone' })",
+      "event_name": "userLogin",
+      "params": { "login_method": "phone" },
+      "resolved": true
+    },
+    {
+      "id": "cs-2",
+      "file": "src/analytics.js",
+      "line": 11,
+      "kind": "event",
+      "source_call": "logEvent(analytics, 'firebase_share', { content_id: 'post-1' })",
+      "event_name": "firebase_share",
+      "params": { "content_id": "post-1" },
+      "resolved": true
+    },
+    {
+      "id": "cs-3",
+      "file": "src/analytics.js",
+      "line": 14,
+      "kind": "user_property",
+      "source_call": "setUserProperties(analytics, { firebase_user_role: 'admin' })",
+      "op": "set",
+      "prop": "firebase_user_role",
+      "value": "admin"
+    },
+    {
+      "id": "cs-4",
+      "file": "src/analytics.js",
+      "line": 15,
+      "kind": "user_property",
+      "source_call": "setUserProperties(analytics, { ga_plan: 'pro' })",
+      "op": "set",
+      "prop": "ga_plan",
+      "value": "pro"
+    },
+    {
+      "id": "cs-5",
+      "file": "src/analytics.js",
+      "line": 16,
+      "kind": "user_property",
+      "source_call": "setUserProperties(analytics, { google_sign_in_method: 'email' })",
+      "op": "set",
+      "prop": "google_sign_in_method",
+      "value": "email"
+    }
+  ]
+}

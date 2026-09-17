@@ -1,0 +1,36 @@
+{
+  "provider": "mixpanel",
+  "variant": "javascript",
+  "mode": "switch",
+  "entries": [
+    {
+      "site_id": "cs-1",
+      "file": "src/analytics.js",
+      "line": 7,
+      "source_call": "mixpanel.register({ app_version: '1.2.3', channel: 'web' })",
+      "ae_call": "set_super_properties",
+      "ae_props": { "app_version": "string", "channel": "string" },
+      "action": "replace"
+    },
+    {
+      "site_id": "cs-2",
+      "file": "src/analytics.js",
+      "line": 10,
+      "source_call": "mixpanel.track('sign_up', { method: 'phone' })",
+      "ae_event": "sign_up",
+      "display_name": "注册",
+      "platform": "client",
+      "ae_props": { "method": "string" },
+      "action": "replace"
+    },
+    {
+      "site_id": "cs-3",
+      "file": "src/analytics.js",
+      "line": 13,
+      "source_call": "mixpanel.people.set({ plan: 'pro' })",
+      "ae_call": "user_set",
+      "ae_props": { "plan": "string" },
+      "action": "replace"
+    }
+  ]
+}

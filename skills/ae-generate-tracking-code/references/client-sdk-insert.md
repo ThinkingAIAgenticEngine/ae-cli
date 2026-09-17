@@ -111,7 +111,7 @@ Wait for user confirmation, then proceed to Stage 1.
 
 ## User Properties
 - File: <path>:<line>
-- user_set / user_setOnce / user_add
+- user_set / user_setOnce / user_add / user_append
 
 ## Event Group: <tag>
 - <event_name>: <file>:<line> [Business action: <business meaning>]

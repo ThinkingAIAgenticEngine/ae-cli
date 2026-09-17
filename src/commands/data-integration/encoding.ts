@@ -1,13 +1,13 @@
 import { createReadStream } from 'node:fs';
 import { createRequire } from 'node:module';
 import { openSync, readSync, closeSync } from 'node:fs';
-import type { Readable } from 'node:stream';
+import type { Readable, Transform } from 'node:stream';
 
 const require = createRequire(import.meta.url);
 const jschardet = require('jschardet') as { detect(buffer: Buffer): { encoding: string | null } };
 const iconv = require('iconv-lite') as {
   decode(buffer: Buffer, encoding: string): string;
-  decodeStream(encoding: string): Readable;
+  decodeStream(encoding: string): Transform;
   encodingExists(encoding: string): boolean;
 };
 

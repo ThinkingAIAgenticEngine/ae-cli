@@ -8,7 +8,6 @@ Command:
 
 ```bash
 ae-cli project mark-time create --project-id <project_id> --marked-at <marked_at> --zone-offset <zone_offset> --content <content> --is-visible <is_visible>
-ae-cli project mark-time create --dry-run --project-id <project_id> --marked-at <marked_at> --content <content>
 ```
 
 Capability id: `project.mark_time.create`.

@@ -1,0 +1,35 @@
+{
+  "provider": "sensors-data",
+  "variant": "android",
+  "platforms": ["android"],
+  "call_sites": [
+    {
+      "id": "cs-1",
+      "file": "src/AnalyticsHelper.kt",
+      "line": 10,
+      "kind": "identity",
+      "source_call": "sa.login(userId)",
+      "resolved": true
+    },
+    {
+      "id": "cs-2",
+      "file": "src/AnalyticsHelper.kt",
+      "line": 17,
+      "kind": "event",
+      "source_call": "sa.track(\"view_item\", props)",
+      "event_name": "view_item",
+      "params": { "item_id": "itemId", "price": "price" },
+      "resolved": true
+    },
+    {
+      "id": "cs-3",
+      "file": "src/AnalyticsHelper.kt",
+      "line": 23,
+      "kind": "user_property",
+      "source_call": "sa.profileSet(props)",
+      "op": "set",
+      "prop": "plan",
+      "value": "plan"
+    }
+  ]
+}

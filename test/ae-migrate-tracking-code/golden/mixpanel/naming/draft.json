@@ -1,0 +1,60 @@
+{
+  "meta": {
+    "app_type": "web",
+    "sdk_integration_mode": "client_only",
+    "client_platforms": ["javascript"],
+    "client_languages": ["javascript"],
+    "plan_name": "Mixpanel Naming migration (pilot)",
+    "user_identity": {
+      "account_id_source": "none",
+      "distinct_id_strategy": "auto"
+    },
+    "lang": "zh"
+  },
+  "events": [
+    {
+      "event_name": "user_login",
+      "display_name": "登录",
+      "platform": "client",
+      "source": "codebase",
+      "prop_names": ["user_id", "plan_type"]
+    },
+    {
+      "event_name": "select_content",
+      "display_name": "选择内容",
+      "platform": "client",
+      "source": "codebase",
+      "prop_names": ["content_id"]
+    },
+    {
+      "event_name": "product_view",
+      "display_name": "商品浏览",
+      "platform": "client",
+      "source": "codebase",
+      "prop_names": ["plan_type"]
+    },
+    {
+      "event_name": "e_2fa_completed",
+      "display_name": "两步验证完成",
+      "platform": "client",
+      "source": "codebase",
+      "prop_names": ["method"]
+    },
+    {
+      "event_name": "subscription",
+      "display_name": "订阅",
+      "platform": "client",
+      "source": "codebase",
+      "prop_names": ["tier"]
+    }
+  ],
+  "event_properties": [
+    { "name": "user_id", "display_name": "用户ID", "type": "string", "source": "codebase" },
+    { "name": "plan_type", "display_name": "套餐类型", "type": "string", "source": "codebase" },
+    { "name": "content_id", "display_name": "内容ID", "type": "string", "source": "codebase" },
+    { "name": "method", "display_name": "验证方式", "type": "string", "source": "codebase" },
+    { "name": "tier", "display_name": "订阅档位", "type": "string", "source": "codebase" }
+  ],
+  "common_event_properties": [],
+  "user_properties": []
+}

@@ -104,7 +104,7 @@ export type AsyncArtifactLifecycleOptions = {
     force: boolean;
     signal: AbortSignal;
     finalDescriptor: AsyncRunDescriptor;
-  }) => Promise<unknown>;
+  }) => Promise<Record<string, unknown>>;
 };
 
 export function withAsyncArtifactLifecycle(
@@ -322,7 +322,7 @@ export async function downloadAnalysisArtifact(
   runId: string,
   artifactId: string,
   output: string,
-  options: { force?: boolean; signal?: AbortSignal; ensureReady?: boolean } = {},
+  options: { force?: boolean; signal?: AbortSignal; ensureReady?: boolean; mode?: number } = {},
 ): Promise<ArtifactDownloadResult> {
   const outputPath = resolve(output);
   await assertOutputPathAvailable(outputPath, options.force, { run_id: runId, artifact_id: artifactId });
@@ -345,7 +345,7 @@ export async function downloadAnalysisArtifact(
     }
     tempPresent = true;
     const source = Readable.fromWeb(response.body as any);
-    await pipeline(source, createWriteStream(tempPath, { flags: 'wx' }), {
+    await pipeline(source, createWriteStream(tempPath, { flags: 'wx', mode: options.mode }), {
       signal: options.signal,
     });
     const file = await stat(tempPath);

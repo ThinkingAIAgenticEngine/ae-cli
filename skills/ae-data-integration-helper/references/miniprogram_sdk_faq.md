@@ -61,7 +61,7 @@ TDAnalytics.init(config);
 # Debug 模式
 ## debugMode 三种取值
 - none：Normal 模式
-- debug：数据在 TE Debug 模式中看到，参与分析
+- debug：数据在 AE Debug 模式中看到，参与分析
 - debugOnly：只校验，不入库
 
 # 自动采集事件

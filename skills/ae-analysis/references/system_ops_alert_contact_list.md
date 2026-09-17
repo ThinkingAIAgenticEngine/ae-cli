@@ -19,5 +19,5 @@ The response uses `ok`, `data`, and `meta`. Treat empty `data` as success when `
 | Parameter | Required | Description |
 |---|---|---|
 | `--company-id` | Yes | Company ID. |
-| `--limit` | No | Page size. Default: 50, max: 200. |
+| `--limit` | No | Page size. Default: 50, range: 1..100. |
 | `--offset` | No | Zero-based result offset. |

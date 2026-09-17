@@ -22,4 +22,4 @@ The response uses `ok`, `data`, and `meta`. Treat empty `data` as success when `
 | Parameter | Required | Description |
 |---|---|---|
 | `--company-id` | Yes | Company ID. |
-| `--login-type` | Yes | Third-party login type. |
+| `--login-type` | Yes | `wecom`, `dingtalk`, or `feishu`. |

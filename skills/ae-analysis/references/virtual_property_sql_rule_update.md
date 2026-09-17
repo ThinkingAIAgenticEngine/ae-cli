@@ -8,7 +8,6 @@ Command:
 
 ```bash
 ae-cli analysis-meta virtual-property sql-rule-update --project-id <project_id> --sql-expression '<sql>' --v-prop '{"prop_id":22990,"property":{"column_name":"#vp@demo","table_type":"event","select_type":"number"}}' --properties '[...]'
-ae-cli analysis-meta virtual-property sql-rule-update --project-id <project_id> --sql-expression '<sql>' --v-prop '{"prop_id":22990,"property":{"column_name":"#vp@demo","table_type":"event","select_type":"number"}}' --dry-run
 ```
 
 Capability id: `metadata.virtual_property.sql_rule_update`.

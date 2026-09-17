@@ -4,7 +4,7 @@ Run one unified ad-hoc analysis inline query from an AI-facing model definition.
 
 Use this command for AI-facing ad-hoc model analysis. Do not use removed ad-hoc QP builder or schema helper commands.
 
-Typical closed loop: express the business question as an AI-facing definition -> let the compiler resolve metadata -> use `analysis filter-value list` only when an exact stored value remains unknown -> optionally resolve a physical route -> run -> verify `resolved`, warnings, and actual scope -> drill down only through the returned query context.
+Submit the requested metrics, windows, filters and groups together in the selected model definition. Reuse verified canonical metadata; resolve unknown metadata with [`metadata_resolution.md`](metadata_resolution.md) before execution. Use `analysis filter-value list` only when a needed stored filter value remains unknown.
 
 Routing: read [`analysis_data_retrieval.md`](analysis_data_retrieval.md) before choosing this `run` command instead of `adhoc export`.
 
@@ -15,6 +15,7 @@ ae-cli analysis adhoc run \
   --project-id <project_id> \
   --model-type <model_type> \
   --definition '<json>' \
+  [--intent-snapshot '<snapshot_json>'] \
   [--resolutions '<confirmed_resolution_json>'] \
   [--request-id cli_<32 lowercase hex>] \
   [--use-cache true|false] \
@@ -28,16 +29,17 @@ ae-cli analysis adhoc run \
 
 ## AI models
 
-Read [`ai_models.md`](ai_models.md) for the single 12-model `model_type` registry, AI-facing `definition`, and SQL dynamic params contract.
+Read the shared registry and building blocks in [`ai_models.md`](ai_models.md), then open `ai_models/<model_type>.md` directly for the selected model. Do not search for section line numbers or load other model files. For event period totals plus daily trends, use the `day` + `comparison_time_ranges` example in [`ai_models/event.md`](ai_models/event.md). Read [`ai_models/sql.md`](ai_models/sql.md) and its dynamic params contract only for SQL.
 
-For SQL model definitions, do not invent table or column names. If the table reference is known, inspect columns with `analysis-meta datatable columns-get`; if the table is unknown, ask for it instead of guessing.
+For SQL model definitions, use [`sql_table_list.md`](sql_table_list.md) to discover an unknown table, then [`sql_table_columns.md`](sql_table_columns.md) with the exact returned `table_ref` and the same `usage=analysis`. A known authorized table can go directly to column inspection. Ask only when discovered candidates remain ambiguous or the required data source is unavailable; do not invent table or column names.
 
 ## Input
 
 - `--project-id`: target project ID.
 - `--model-type`: one of the 12 AI-facing model names from [`ai_models.md`](ai_models.md). Do not pass `scenario`, `history_tag`, or `cluster`; tags and cohorts/clusters are separate capabilities.
 - `--definition`: model-specific AI-facing definition JSON.
-- `--resolutions`: only after user confirmation, pass deterministic bindings keyed by compiler error path. Keep `--definition` unchanged; follow [`../metadata_resolution.md`](../metadata_resolution.md).
+- `--intent-snapshot`: use when the caller supplies an existing snapshot containing `schema_version: 1`, non-empty `requirement`, `definition`, and `model_type`. The CLI checks that its definition and model match the submitted values locally; the snapshot is never sent to Gateway.
+- `--resolutions`: only after user confirmation, pass deterministic bindings keyed by compiler error path. Keep each bound field's path and original wording; fill the other confirmed model parameters in `--definition`. Follow [`metadata_resolution.md`](metadata_resolution.md).
 
 Omit `--preview-rows` to use the current model and cluster synchronous row limit. An explicit value must be positive and cannot exceed that runtime limit; agents should normally pass 100 to bound context. `--timeout-seconds` defaults to 120 and has a maximum of 180. The routing rule lives in [`analysis_data_retrieval.md`](analysis_data_retrieval.md).
 
@@ -58,16 +60,22 @@ The response may include:
 - `query_context_id`: Redis-backed context for follow-ups from this bounded synchronous preview.
 - `sources[].drilldown`: compact allowed-action summary. Detailed coordinate options are read lazily with `analysis query-context get`; `preview_rows` remains the selection boundary.
 - `title` / `rows` / `returned_rows` / `has_more`: tabular preview fields. `total` appears only when the backend supplies an exact total. When `has_more` is true, use `adhoc export`; there is no next-page request.
+- `row_metadata` / `column_metadata`, when returned: align with row/column positions. Event `scope=total` identifies a total row; `period_values` specifies stage aggregates. Time comparisons repeat metric titles in separate column blocks, so preserve indexes. See [event result totals](ai_models/event.md#event-totals-and-comparison-columns).
 - `result`: direct result for non-tabular models. Path results also return top-level `returned_rows` and `has_more` using the per-level node contract above.
 - `request_id`: lifecycle request id.
+- `definition`: normalized AI-facing definition used for compilation. Tag/cluster filters expose the effective `cluster_date_policy`; `AUTO` means each analysis date uses its matching computed result, while an omitted policy defaults to `LATEST`.
 - `actual_cluster_query_scope`, optional `actual_slave_cluster_id`, and `cluster_query_scope_source`: actual physical data route. Verify these before comparing results or following the query context.
 
 Execution failures are returned as command failures with `request_id`; only the explicit project-no-data condition is a successful empty result. Do not interpret an empty object as evidence that a failed query succeeded.
 
-The execute, `--validate`, and `--dry-run` paths all compile the AI-facing definition. If metadata resolution needs clarification, the command fails with `AI_QP_COMPILE_FAILED`; inspect `meta.compile_status`, `meta.errors[]`, `meta.resolved`, and `meta.warnings`. Each metadata error retains `path`, `slot_kind`, `raw_value`, `allowed_resource_types`, `search_targets`, and `candidates`. Follow [`../metadata_resolution.md`](../metadata_resolution.md); do not guess from display text.
+Use the inline result directly. See [result handling](analysis_data_retrieval.md#preserve-and-interpret-results) when local processing or a requested file is needed.
 
-For a complex definition, finish the complete user-requested definition first, validate that exact definition once, and then run the same definition once. Never execute a simplified variant that omits requested filters or groups just to obtain a result. If validation rejects fields, inspect this command's model contract or capability schema once, correct all reported fields together, and revalidate the complete definition.
+The execute, `--validate`, and `--dry-run` paths all compile the AI-facing definition. If metadata resolution needs clarification, the command fails with `AI_QP_COMPILE_FAILED`; inspect `meta.compile_status`, `meta.errors[]`, `meta.resolved`, and `meta.warnings`. Each metadata error retains `path`, `slot_kind`, `raw_value`, `allowed_resource_types`, `search_targets`, and `candidates`. Follow [`metadata_resolution.md`](metadata_resolution.md); do not guess from display text.
+
+For `meta.compile_status=invalid_argument`, correct the reported parameter paths in the current definition and submit that corrected definition. For metadata `need_clarification`, use the returned candidates and [confirmation workflow](metadata_resolution.md). Once the requested meaning and required parameters are ready, execute directly.
+
+If a concrete field mismatch remains unexplained by the loaded reference, inspect this command's model contract or capability schema once. A preflight is conditional on that input problem: validate that exact definition once, then run the same definition once. Preserve all requested filters and groups through corrections.
 
 For a gateway `oneOf` error, focus on the selected `model_type` branch and shared input fields; other model branches are alternatives, not additional requirements. Apply every relevant correction together (for example, both `event_property_name` and string-valued `values` for funnel step filters). Local `INVALID_ANALYSIS_DEFINITION` is a pre-dispatch input failure, not a query failure. Passing this narrow local check is not proof that the full backend schema or query has passed. Follow the failure-evidence rules in `../SKILL.md` and honor the user's retry limit.
 
-Read [`analysis_drilldown_contract.md`](analysis_drilldown_contract.md). Use the context only with an action advertised by the selected source, call `analysis query-context get`, and assemble the coordinate only from its returned option fragments. Do not pass raw QP or infer a coordinate from display text.
+When the request needs a drilldown action advertised by the selected source, read [`analysis_drilldown_contract.md`](analysis_drilldown_contract.md), call `analysis query-context get`, and assemble the coordinate from its returned option fragments. Do not pass raw QP or infer a coordinate from display text.

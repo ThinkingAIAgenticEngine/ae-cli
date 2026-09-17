@@ -74,4 +74,37 @@ assert.deepEqual(
   },
 );
 
+
+assert.deepEqual(JSON.parse(await formatOutput(withOutputMetadata(traced, {
+  intent_consistency: { checked: true, matched: true },
+}), 'json')), {
+  ok: true,
+  data: { items: [{ id: 4 }] },
+  meta: {
+    request_id: 'cli_0123456789abcdef0123456789abcdef', invocation_id: 'inv_4',
+    intent_consistency: { checked: true, matched: true },
+  },
+});
+
+// Projection errors must preserve a completed command's result for local recovery.
+const { spawnSync } = await import('node:child_process');
+for (const format of ['json', 'table']) {
+  const child = spawnSync(process.execPath, ['--import', 'tsx', '--input-type=module', '-e', `
+    import { runCommand } from './src/framework/runner.ts';
+    import { withOutputMetadata } from './src/framework/output.ts';
+    await runCommand({
+      service: 'fixture', command: 'read', flags: [], risk: 'read',
+      execute: async () => withOutputMetadata({ title: ['count'], rows: [[7]], raw: 'x'.repeat(2 * 1024 * 1024) }, { request_id: 'fixture-one' }),
+    }, {}, { format: '${format}', jq: '.rows | invalid_function' });
+  `], { cwd: process.cwd(), encoding: 'utf8', maxBuffer: 8 * 1024 * 1024, env: { ...process.env, AE_CLI_NO_COMPAT_CHECK: '1' } });
+  assert.equal(child.status, 1);
+  const recovered = JSON.parse(child.stdout);
+  assert.equal(recovered.ok, false);
+  assert.equal(recovered.error.code, 'OUTPUT_PROJECTION_FAILED');
+  assert.deepEqual(recovered.data, { title: ['count'], rows: [[7]], raw: 'x'.repeat(2 * 1024 * 1024) });
+  assert.equal(recovered.meta.request_id, 'fixture-one');
+  assert.equal(JSON.parse(child.stderr).error.code, 'OUTPUT_PROJECTION_FAILED');
+  assert.match(recovered.error.hint, /without executing the command again/);
+}
+
 process.stdout.write('output contract tests passed\n');

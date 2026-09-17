@@ -1,0 +1,47 @@
+{
+  "provider": "sensors-data",
+  "variant": "web",
+  "mode": "switch",
+  "entries": [
+    {
+      "site_id": "cs-1",
+      "file": "src/analytics.js",
+      "line": 7,
+      "source_call": "sensors.login(user.id)",
+      "ae_call": "login(accountId)",
+      "account_id_source": "user_account",
+      "action": "replace"
+    },
+    {
+      "site_id": "cs-2",
+      "file": "src/analytics.js",
+      "line": 10,
+      "source_call": "sensors.track('user_login', { method: 'phone' })",
+      "ae_event": "user_login",
+      "display_name": "用户登录",
+      "platform": "client",
+      "ae_props": { "method": "string" },
+      "action": "replace"
+    },
+    {
+      "site_id": "cs-3",
+      "file": "src/analytics.js",
+      "line": 13,
+      "source_call": "sensors.track('view_item', { item_id: 'sku-123', price: 9.99 })",
+      "ae_event": "view_item",
+      "display_name": "浏览商品",
+      "platform": "client",
+      "ae_props": { "item_id": "string", "price": "number" },
+      "action": "replace"
+    },
+    {
+      "site_id": "cs-4",
+      "file": "src/analytics.js",
+      "line": 16,
+      "source_call": "sensors.profileSet({ plan: 'pro' })",
+      "ae_call": "user_set",
+      "ae_props": { "plan": "string" },
+      "action": "replace"
+    }
+  ]
+}

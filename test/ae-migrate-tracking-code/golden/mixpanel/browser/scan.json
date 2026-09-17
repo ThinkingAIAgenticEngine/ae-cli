@@ -1,0 +1,45 @@
+{
+  "provider": "mixpanel",
+  "variant": "javascript",
+  "platforms": ["web"],
+  "call_sites": [
+    {
+      "id": "cs-1",
+      "file": "src/analytics.js",
+      "line": 7,
+      "kind": "identity",
+      "source_call": "mixpanel.identify(user.id)",
+      "resolved": true
+    },
+    {
+      "id": "cs-2",
+      "file": "src/analytics.js",
+      "line": 10,
+      "kind": "event",
+      "source_call": "mixpanel.track('sign_up', { method: 'phone' })",
+      "event_name": "sign_up",
+      "params": { "method": "phone" },
+      "resolved": true
+    },
+    {
+      "id": "cs-3",
+      "file": "src/analytics.js",
+      "line": 13,
+      "kind": "event",
+      "source_call": "mixpanel.track('purchase', { order_id: 'ord-1', amount: 99.0, currency: 'USD' })",
+      "event_name": "purchase",
+      "params": { "order_id": "ord-1", "amount": 99.0, "currency": "USD" },
+      "resolved": true
+    },
+    {
+      "id": "cs-4",
+      "file": "src/analytics.js",
+      "line": 16,
+      "kind": "user_property",
+      "source_call": "mixpanel.people.set({ plan: 'pro' })",
+      "op": "set",
+      "prop": "plan",
+      "value": "pro"
+    }
+  ]
+}

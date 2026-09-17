@@ -1,6 +1,6 @@
 # analysis user-tag list
 
-List accessible user tags for discovery. Use this before get/update/delete/member/history-tag commands; do not invent `tag_name`.
+List accessible user tags for discovery. Use this when the target `tag_name` is unknown; reuse a verified name from the current task and do not invent `tag_name`.
 
 Flags: `--project-id` required. Optional: `--queries`, `--fields`, `--limit`, `--offset`, `--authenticated-only`.
 

@@ -8,7 +8,6 @@ Command:
 
 ```bash
 ae-cli analysis-meta asset recent-list --project-id <project_id> --payload '[{"res_id":<resource_id>,"res_cat":"<resource_category>"}]'
-ae-cli analysis-meta asset recent-list --dry-run
 ```
 
 Capability id: `metadata.asset.recent_list`.

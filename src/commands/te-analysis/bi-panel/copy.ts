@@ -16,8 +16,8 @@ export const biPanelCopy = createAnalysisCapabilityCommand({
   description: 'Copy a BI panel.',
   flags: [
     projectIdFlag,
-    { name: 'panel-name', type: 'string', required: false, desc: 'New BI panel name.' },
-    { name: 'panel-uuid', type: 'string', required: false, desc: 'Source BI panel UUID.' },
+    { name: 'panel-name', type: 'string', required: true, desc: 'New BI panel name.' },
+    { name: 'panel-uuid', type: 'string', required: true, desc: 'Source BI panel UUID.' },
     { name: 'space-id', type: 'number', required: false, desc: 'Target project space ID.' },
     { name: 'folder-id', type: 'number', required: false, desc: 'Target folder ID.' },
     payloadFlag,

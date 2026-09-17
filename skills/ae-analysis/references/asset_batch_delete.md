@@ -7,20 +7,20 @@ Do not use it for a single unverified name or as cleanup after a failed test; re
 Command:
 
 ```bash
-ae-cli analysis-governance asset batch-delete --project-id <project_id> --payload '{}' --dry-run
+ae-cli analysis-governance asset batch-delete --project-id <project_id> --node-ids '["<node_id>"]' --dry-run
 # Summarize the target and impact, then wait for explicit user confirmation.
-ae-cli analysis-governance asset batch-delete --project-id <project_id> --payload '{}' --yes
+ae-cli analysis-governance asset batch-delete --project-id <project_id> --node-ids '["<node_id>"]' --yes
 ```
 
-Capability id: analysis_meta.asset_batch.delete.
+Capability id: governance.asset.batch_delete.
 
-Input sends project_id, payload, node_ids. Payload keys must follow the common-service snake_case input schema; do not send camelCase aliases.
+Input sends project_id, node_ids. The CLI merges the snake_case object from `--payload` into these top-level Gateway fields; explicit flags override matching payload fields. `--project-id` owns the project identity and cannot be supplied or overridden by payload. Required business fields must exist in the final merged input.
 
-Output `data` is the batch-operation submission result. Preserve any returned record identity/status and use `operation-record-list` to verify completion.
+Output `data` is the batch-operation submission result. Preserve any returned record identity/status and use `operation-record list` to verify completion.
 
 ## Parameters
 | Parameter | Required | Description |
 |---|---|---|
 | --project-id | Yes | Numeric project ID. |
 | --node-ids | No | Asset node ID JSON array; required unless provided inside payload. |
-| --payload | No | Optional snake_case object carrying the same fields. Use this for complex governance filters or backend-shaped payloads. |
+| --payload | No | Optional JSON object merged into top-level input. Use schema-declared snake_case fields; explicit flags take precedence. `node_ids`, `searchs`, and `status` are arrays; `rule` is an object when supplied. |

@@ -1,5 +1,5 @@
 export type PropType = 'string' | 'number' | 'bool' | 'datetime' | 'object' | 'array_row' | 'array_string';
-export type UpdateType = 'user_set' | 'user_setOnce' | 'user_add';
+export type UpdateType = 'user_set' | 'user_setOnce' | 'user_add' | 'user_append';
 export type Source = 'template' | 'prd' | 'chat' | 'codebase' | 'website' | 'autotrack' | 'business_dimension' | 'data';
 
 // SDK 集成模式

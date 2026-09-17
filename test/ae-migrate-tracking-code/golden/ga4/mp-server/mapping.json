@@ -1,0 +1,31 @@
+{
+  "provider": "ga4",
+  "variant": "mp-server",
+  "mode": "add",
+  "entries": [
+    {
+      "site_id": "cs-1",
+      "file": "src/server.js",
+      "line": 14,
+      "source_call": "mpSend({ client_id: 'anon-1', user_id: user.id, name: 'user_signup', plan: 'pro' })",
+      "ae_event": "user_signup",
+      "display_name": "用户注册",
+      "platform": "server",
+      "ae_props": { "plan": "string" },
+      "account_id_source": "user_account",
+      "action": "add_after"
+    },
+    {
+      "site_id": "cs-2",
+      "file": "src/server.js",
+      "line": 19,
+      "source_call": "mpSend({ client_id: 'anon-1', user_id: user.id, name: 'purchase', order_id: order.id, amount: order.amount })",
+      "ae_event": "purchase",
+      "display_name": "购买",
+      "platform": "server",
+      "ae_props": { "order_id": "string", "amount": "number" },
+      "account_id_source": "user_account",
+      "action": "add_after"
+    }
+  ]
+}

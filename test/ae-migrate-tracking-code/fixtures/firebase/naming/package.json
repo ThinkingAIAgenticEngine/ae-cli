@@ -1,0 +1,8 @@
+{
+  "name": "firebase-web-v9-naming-fixture",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "firebase": "^10.0.0"
+  }
+}

@@ -62,7 +62,7 @@ export const listSources: Command = {
     if (scope) params.scope = scope;
     return kbApi(ctx, 'GET', API_PATH, params, undefined, {
       preserveErrorMetadata: true,
-      retryUnauthorized: true,
+      retryUnauthorized: false,
     });
   },
 };

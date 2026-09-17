@@ -140,7 +140,7 @@ export const systemConfigurationCommands: Command[] = [
     command: 'get',
     capabilityId: 'system.receiver_detection.get',
     description: 'Get receiver-address detection configuration.',
-    risk: 'read',
+    risk: 'write',
     fields: [addressUrl],
   }),
   defineSystemCommand({

@@ -159,7 +159,7 @@ public class DebugExample {
 
 > 开启 Debug 模式需要两步：
 > 1. 在代码中使用 `TDDebugConsumer` 并传入 `DEBUG_DEVICE_ID`。
-> 2. 在 TE 后台"数据 > 埋点管理 > Debug 数据"中配置同一个 Debug 设备 ID。只有已配置的设备才能真正开启 Debug 模式。
+> 2. 在 AE 后台"数据 > 埋点管理 > Debug 数据"中配置同一个 Debug 设备 ID。只有已配置的设备才能真正开启 Debug 模式。
 
 # 二、工作原理
 
@@ -221,7 +221,7 @@ v3.x 对应实现为 `TDBatchConsumer`。事件先写入内存队列，满足批
 |------|------|--------|----------|------|
 | `serverUrl` | 数据接入地址 | 无 | 字符串 | 需要与项目配置匹配 |
 | `appId` | 项目 APP_ID | 无 | 字符串 | 可在项目配置页获取 |
-| `deviceId` | Debug 设备 ID | 无 | 字符串 | 需在 TE 后台配置为 Debug 设备 |
+| `deviceId` | Debug 设备 ID | 无 | 字符串 | 需在 AE 后台配置为 Debug 设备 |
 
 调试时建议同时打开 SDK 日志：
 
@@ -287,7 +287,7 @@ TDAnalytics.enableLog(true);
 
 在应用准备正常退出时调用。`close()` 会尝试将缓存中的数据继续刷盘或发送，是避免尾部数据丢失的必要步骤。建议在应用生命周期的关闭钩子中统一执行。
 
-#### **在程序中调用了 `track()` 或者 `userSet()` 方法， 为什么在 TE 后台没有看到数据？**
+#### **在程序中调用了 `track()` 或者 `userSet()` 方法， 为什么在 AE 后台没有看到数据？**
 
 请依次检查以下情况：
 

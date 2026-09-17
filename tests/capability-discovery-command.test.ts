@@ -15,6 +15,7 @@ import { registerCapability } from '../src/commands/capability/index.ts';
 import '../src/commands/te-analysis/index.ts';
 import {
   CapabilityCommandValidationError,
+  assertCapabilityIsNotRetired,
   emptyCapabilityCatalogWarning,
   filterCapabilities,
   normalizeCapabilityList,
@@ -139,6 +140,60 @@ await test('filterCapabilities limits results to the namespace and all search te
     filterCapabilities(catalog, 'analysis', 'report list').map((item) => item.id),
     ['analysis.report.list'],
   );
+});
+
+await test('filterCapabilities hides retired split recommendation capabilities', () => {
+  const catalog = normalizeCapabilityList([
+    { id: 'metadata.governance_recommendation.export', description: 'Combined recommendation packet' },
+    { id: 'metadata.metric.recommended_scan', description: 'Retired split metric recommendation' },
+    { id: 'metadata.metric.recommended_create', description: 'Retired split metric creation' },
+  ]);
+
+  assert.deepEqual(
+    filterCapabilities(catalog, 'metadata').map((item) => item.id),
+    ['metadata.governance_recommendation.export'],
+  );
+  assert.deepEqual(
+    filterCapabilities(catalog, 'metadata', 'recommendation').map((item) => item.id),
+    ['metadata.governance_recommendation.export'],
+  );
+});
+
+await test('filterCapabilities supports CLI domains backed by a narrower capability prefix', () => {
+  clearCapabilityGatewayRoutesForTest();
+  registerCapabilityGatewayRoute('project-semantic', {
+    gatewayDomain: 'analysis',
+    capabilityPrefixes: ['business_semantics.asset_package'],
+  });
+  const catalog = normalizeCapabilityList([
+    { id: 'business_semantics.asset_package.export', description: 'Export governed asset package' },
+    { id: 'business_semantics.catalog.get', description: 'Old project semantic catalog read' },
+  ]);
+
+  assert.deepEqual(
+    filterCapabilities(catalog, 'project-semantic').map((item) => item.id),
+    ['business_semantics.asset_package.export'],
+  );
+  assert.deepEqual(
+    filterCapabilities(catalog, 'project-semantic', 'asset_package').map((item) => item.id),
+    ['business_semantics.asset_package.export'],
+  );
+});
+
+await test('direct generic invocation rejects retired split recommendation capabilities', () => {
+  for (const capabilityId of [
+    'governance.asset_authentication.dashboard_package',
+    'metadata.metric.recommended_scan',
+    'metadata.metric.recommended_create',
+  ]) {
+    assert.throws(
+      () => assertCapabilityIsNotRetired(capabilityId),
+      (error: unknown) => error instanceof CapabilityCommandValidationError
+        && error.code === 'CAPABILITY_RETIRED'
+        && /governance-recommendation/.test(error.hint ?? ''),
+    );
+  }
+  assert.doesNotThrow(() => assertCapabilityIsNotRetired('metadata.governance_recommendation.export'));
 });
 
 await test('parseCapabilityInput accepts inline JSON and JSON files', () => {

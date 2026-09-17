@@ -1,4 +1,4 @@
-import type { Command } from '../../../framework/types.js';
+import type { Command } from '../../../../framework/types.js';
 import { projectEntityCreate } from './create.js';
 import { projectEntityDelete } from './delete.js';
 import { projectEntityGet } from './get.js';

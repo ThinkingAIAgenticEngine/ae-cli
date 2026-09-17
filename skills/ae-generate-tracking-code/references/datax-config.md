@@ -1,6 +1,6 @@
 # Mode D — DataX job.json
 
-> **Terminology**: 数据源类型 = data source type | 连接信息 = connection info | 库表名 = database/table name | 查询条件 = query condition | reader 插件 = reader plugin | columnMapping = column-to-property mapping | push_url = TE receiver URL
+> **Terminology**: 数据源类型 = data source type | 连接信息 = connection info | 库表名 = database/table name | 查询条件 = query condition | reader 插件 = reader plugin | columnMapping = column-to-property mapping | push_url = AE receiver URL
 
 ## Ask User
 1. Data source type (MySQL / Oracle / PostgreSQL / OSS / HDFS / Other)

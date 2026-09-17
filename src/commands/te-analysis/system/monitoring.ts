@@ -102,7 +102,7 @@ export const systemMonitoringCommands: Command[] = [
     risk: 'read',
     fields: [
       { flag: 'task-id', type: 'string', required: true, desc: 'Query-monitor task ID.' },
-      { flag: 'sql-max-chars', type: 'number', min: 0, max: 100000, desc: 'Maximum returned SQL characters.' },
+      { flag: 'sql-max-chars', type: 'number', min: 0, max: 20000, desc: 'Maximum returned SQL characters. Max: 20000.' },
     ],
   }),
   defineSystemCommand({
@@ -208,7 +208,7 @@ export const systemMonitoringCommands: Command[] = [
     description: 'List sanitized operations-alert contacts.',
     risk: 'read',
     fields: [
-      { flag: 'limit', type: 'number', min: 1, max: 200, desc: 'Page size. Default: 50, max: 200.' },
+      { flag: 'limit', type: 'number', min: 1, max: 100, desc: 'Page size. Default: 50, max: 100.' },
       offsetField,
     ],
   }),

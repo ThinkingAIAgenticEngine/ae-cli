@@ -12,7 +12,7 @@ command with that version substituted; do not install automatically:
 ```bash
 # Customer/public distribution
 npm install -g @thinkingai/ae-cli@<supported-version>
-# Internal ThinkingData distribution
+# Internal ThinkingAI distribution
 npm install -g @tant/ae-cli@<supported-version> --registry=https://npm.thinkingdata.cn:3443
 ```
 

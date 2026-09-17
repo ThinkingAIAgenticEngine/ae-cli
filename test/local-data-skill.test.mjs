@@ -14,6 +14,7 @@ const analysis = readFileSync(join(root, 'skills/ae-data-integration/references/
 const dimension = readFileSync(join(root, 'skills/ae-data-integration/references/dimension-routing.md'), 'utf8');
 const mapping = readFileSync(join(root, 'skills/ae-data-integration/references/ue-mapping.md'), 'utf8');
 const errors = readFileSync(join(root, 'skills/ae-data-integration/references/error-handling.md'), 'utf8');
+const larkBitableSource = readFileSync(join(root, 'skills/ae-data-integration/references/lark-bitable-source.md'), 'utf8');
 
 // Renamed master skill: ae-data-integration with a four-submodule pipeline
 // (Source → Tracking plan → Transform → Sink).
@@ -163,6 +164,19 @@ assert.match(source, /manifest\.output\.duplicate_keys/);
 // table instead — the list is a promise about what the tool does not look at.
 assert.match(errors, /`duplicate_keys` names rows the source repeated/);
 assert.doesNotMatch(errors, /detector yet[\s\S]{0,200}duplicate/i);
+
+// The Bitable API record id must survive flattening even when the source has a business field
+// named record_id. The reserved key is checked before any row is written, so a table that uses
+// the reserved name fails explicitly instead of silently replacing either value.
+assert.match(larkBitableSource, /const RECORD_ID_KEY = "__record_id"/);
+assert.match(larkBitableSource, /fields\.includes\(RECORD_ID_KEY\)/);
+assert.match(larkBitableSource, /const rec = \{ \[RECORD_ID_KEY\]: ids\[i\] \}/);
+assert.doesNotMatch(larkBitableSource, /const rec = \{ record_id: ids\[i\] \}/);
+assert.ok(
+  larkBitableSource.indexOf('fields.includes(RECORD_ID_KEY)')
+    < larkBitableSource.indexOf('const rec = { [RECORD_ID_KEY]: ids[i] }'),
+  'Bitable reserved-key collision must be checked before snapshot rows are created',
+);
 
 // Tracking plan: plan-before-ingest, single confirmation gate, delegated to
 // ae-generate-tracking-plan with a dry-run / data-sample path.

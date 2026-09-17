@@ -1,0 +1,45 @@
+{
+  "provider": "sensors-data",
+  "variant": "web",
+  "platforms": ["web"],
+  "call_sites": [
+    {
+      "id": "cs-1",
+      "file": "src/analytics.js",
+      "line": 7,
+      "kind": "identity",
+      "source_call": "sensors.login(user.id)",
+      "resolved": true
+    },
+    {
+      "id": "cs-2",
+      "file": "src/analytics.js",
+      "line": 10,
+      "kind": "event",
+      "source_call": "sensors.track('user_login', { method: 'phone' })",
+      "event_name": "user_login",
+      "params": { "method": "phone" },
+      "resolved": true
+    },
+    {
+      "id": "cs-3",
+      "file": "src/analytics.js",
+      "line": 13,
+      "kind": "event",
+      "source_call": "sensors.track('view_item', { item_id: 'sku-123', price: 9.99 })",
+      "event_name": "view_item",
+      "params": { "item_id": "sku-123", "price": 9.99 },
+      "resolved": true
+    },
+    {
+      "id": "cs-4",
+      "file": "src/analytics.js",
+      "line": 16,
+      "kind": "user_property",
+      "source_call": "sensors.profileSet({ plan: 'pro' })",
+      "op": "set",
+      "prop": "plan",
+      "value": "pro"
+    }
+  ]
+}

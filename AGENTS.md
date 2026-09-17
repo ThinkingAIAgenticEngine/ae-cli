@@ -165,3 +165,7 @@ KB 的"生成编译准则（schema）→ 编译（compile）"是异步流程，�
   - 相关 `npm run verify:*` 通过
   - `--dry-run` 预览的请求符合预期
   - （改过本文件）`npm run check:agents-docs` 通过
+
+## Agent skills
+
+This feature uses the branch-local Markdown tracker described in [docs/agents/issue-tracker.md](docs/agents/issue-tracker.md). Read [CONTEXT.md](CONTEXT.md) and the spec before editing; domain documentation rules are in [docs/agents/domain.md](docs/agents/domain.md).

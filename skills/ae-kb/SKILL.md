@@ -1,7 +1,7 @@
 ---
 name: ae-kb
 version: 1.0.0
-description: 'AE/TE knowledge base CLI manual for creating, importing read-only compiled snapshots, querying, LLM-powered ask, listing accessible knowledge bases and their sources, deterministic index/grep/read retrieval, checking status, ZIP source upload and directory management, raw child-file reading, revision-checked child updates and deletion, compiling, schema generation, URL sources, source deletion, and knowledge base deletion. Use when the user asks to manage TE/AE/ThinkingEngine knowledge bases, import a compiled Markdown ZIP snapshot, upload documents or URLs to a knowledge base, query knowledge, ask knowledge bases with an LLM, list accessible knowledge bases or source metadata, inspect knowledge base indexes, search knowledge base pages, read a specific knowledge base page, check knowledge base status, generate schemas, compile knowledge, remove sources, or delete a knowledge base. To choose which knowledge base is worth searching, use the ae-kb-discovery skill first; this skill runs the retrieval once a target is chosen. Must use ae-cli kb commands and must not guess knowledge base names, scopes, page paths, source IDs, source display names, JSON payload shapes, or URL formats.'
+description: 'AE knowledge base CLI manual for creating, importing read-only compiled snapshots, querying, LLM-powered ask, listing accessible knowledge bases and their sources, deterministic index/grep/read retrieval, checking status, ZIP source upload and directory management, raw child-file reading, revision-checked child updates and deletion, compiling, schema generation, URL sources, source deletion, file/ZIP source draft replacement and restoration, and knowledge base deletion. Use when the user asks to manage AE (Agentic Engine) knowledge bases, import a compiled Markdown ZIP snapshot, upload documents or URLs to a knowledge base, query knowledge, ask knowledge bases with an LLM, list accessible knowledge bases or source metadata, inspect knowledge base indexes, search knowledge base pages, read a specific knowledge base page, check knowledge base status, generate schemas, compile knowledge, remove sources, or delete a knowledge base. To choose which knowledge base is worth searching, use the ae-kb-discovery skill first; this skill runs the retrieval once a target is chosen. Must use ae-cli kb commands and must not guess knowledge base names, scopes, page paths, source IDs, source display names, JSON payload shapes, or URL formats.'
 ---
 
 # ae-kb
@@ -10,12 +10,14 @@ AE CLI (`ae-cli`) knowledge base commands are invoked through:
 
 ```bash
 ae-cli kb +<command> [options]
+ae-cli kb source <replace|restore|preview|commit|cancel|check-updates> [options]
 ```
 
 ## Global Rules
 
-- Use this skill for TE/AE knowledge base tasks: create, import a compiled snapshot, query, ask with LLM, list accessible knowledge bases and their sources, inspect indexes, grep pages, read pages, check status, upload sources, add URL sources, generate schema, compile, remove source files, and delete knowledge bases.
+- Use this skill for AE knowledge base tasks: create, import a compiled snapshot, query, ask with LLM, list accessible knowledge bases and their sources, inspect indexes, grep pages, read pages, check status, upload sources, add URL sources, generate schema, compile, remove source files, and delete knowledge bases.
 - **Searching a knowledge base for an answer is the most common task. If that is what you are doing, go straight to [Explore Knowledge Base Pages](#explore-knowledge-base-pages) and read [`references/query-workflow.md`](references/query-workflow.md) first — it is the retrieval procedure. The other commands below are for managing knowledge bases, not answering from them.**
+- **When retrieved pages will guide project-scoped business data analysis, read and follow [`references/analysis-workflow.md`](references/analysis-workflow.md) before running any data query. This is mandatory after a KB hit identifies a saved asset, definition, parameter, time rule, conflict, or decision boundary; do not jump directly to ad-hoc analysis or SQL.**
 - Read operations can run directly after required inputs are known. Write operations require explicit user intent and normally keep the confirmation prompt unless the user asks to bypass it.
 - Prefer `--dry-run` before destructive or broad writes when the user has not already validated the target.
 - Do not invent knowledge base names, scopes, source IDs, source display names, or JSON payloads. Ask the user or query known context when values are missing.
@@ -30,6 +32,7 @@ ae-cli kb +<command> [options]
 
 | Command | Risk | Purpose |
 |---|---:|---|
+| `source check-updates` | write | Check one compiled Feishu source with the scheduled detector; mark changes without compiling. |
 | `+ask` | read | LLM-powered Q&A over knowledge bases; for multi-page synthesis or multi-hop questions. |
 | `+ask-status` | read | Query the current status of an ask execution by `--execution-id` without polling. |
 | `+list` | read | List accessible knowledge bases filtered by buildStatus (default: compiled). |
@@ -63,6 +66,20 @@ Use the nine version commands described in [`references/versions.md`](references
 | `+version-download` | read | Save one ordinary historical file source; no directory download. |
 | `+rollback` | high-risk-write | Restore an earlier version and create a new version. |
 | `+rollback-status` | read | Query a persisted rollback Operation without polling. |
+
+## Source Draft Replacement and Restoration
+
+Use [`references/source-mutations.md`](references/source-mutations.md) for file/ZIP source replacement and restoration. These new commands use `kb source <action>`; `+rollback` remains a whole-KB publication operation.
+
+| Command | Risk | Purpose |
+|---|---|---|
+| `source replace` | write | Replace an ordinary file draft, or prepare a ZIP archive replacement preview. |
+| `source restore` | write | Restore a file draft from a published version, or prepare a ZIP source/child restore preview. |
+| `source preview` | read | Read a page of ZIP candidate changes before confirmation. |
+| `source commit` | high-risk-write | Confirm a reviewed ZIP candidate, including any deletions. |
+| `source cancel` | high-risk-write | Discard an uncommitted ZIP candidate. |
+
+Require exact `--name`, `--scope`, current `--id`, and a current `--expected-revision` for mutations. File replacements keep the original format but allow different filenames. ZIP requires `.zip`. URL/Feishu and deleted parent sources are not supported. Updates affect the draft only; publication still requires compilation. ZIP previews must not be auto-committed. Do not retry uncertain writes.
 
 ## ZIP Directory Sources
 
@@ -533,3 +550,25 @@ ae-cli kb +rm-source --name "<name>" --id "<source-id>" [--scope personal|compan
 ```bash
 ae-cli kb +remove --name "<name>" [--scope personal|company]
 ```
+
+## Check a Feishu source for updates
+
+```bash
+ae-cli kb source check-updates --name "Engineering Handbook" --id "<source-id>" --scope company --dry-run
+ae-cli kb source check-updates --name "Engineering Handbook" --id "<source-id>" --scope company
+```
+
+Copy the ID from `kb +list-sources`. Requires source write permission. Only compiled, non-deleted Feishu URL sources are eligible. The API uses the same detector as the scheduled task, including existing pending-change skips and source-owner sandbox credentials. It never starts compilation or clears pending changes.
+
+The synchronous response contains `sourceId`, `scanned`, `updated`, `failed`, `urlChangeState`, and `updateStatus`. `scanned` counts candidates, not completed content comparisons; `updated` counts newly marked sources. Zero updates can mean unchanged content, an already pending change, unavailable old raw, or a concurrent state change. It must not be reported as proof that all content is identical. Failed checks return a non-2xx response and a CLI error. A timeout does not prove completion or cancellation; read `kb +list-sources` before deciding whether to retry.
+
+Transport: `POST /agent/api/external/knowledge-bases/sources/check-updates`, body `{name, sourceId, scope?}`. `--dry-run` only previews the request and does not authenticate or check remote permissions.
+
+### Admission record: source check-updates
+
+- Classification: Transitional (no Gateway equivalent for this new detector trigger).
+- Owning module: te-claude knowledge-base source management.
+- Current transport: KB external REST through `kbApi` and CLI token.
+- Gateway target: TBD; reuse an equivalent source update-check capability when available.
+- Review after: 2026-10-16.
+- Exit condition: once the Gateway exposes equivalent authorization and detector semantics, migrate the typed command to L2 or use L3 if it adds no value.

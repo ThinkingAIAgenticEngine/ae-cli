@@ -12,7 +12,7 @@ ae-cli analysis drilldown-user-events export \
   [--properties '[{"columnName":"<event_property_name>","tableType":"event"}]'] \
   [--sort-order desc] \
   [--artifact-format csv] \
-  [--timeout-seconds 21600]
+  [--timeout-seconds 21600] --output <file>
 ```
 
 `--project-id` must match the project stored by `drilldown_context_id`; a mismatch is rejected before export execution.
@@ -26,6 +26,6 @@ preserves the machine date coordinates returned by the source query together
 with that query's time granularity, such as daily, weekly, or monthly. Do not
 construct dates outside that context or force a daily granularity.
 
-Inspect the returned `run_id` with `analysis run inspect`, then download the completed artifact with `analysis artifact download`.
+Use `--output` to wait and download the completed artifact. To resume an interrupted export, use [`analysis run wait`](run_wait.md) with the returned `run_id` and `--output <file>`.
 
 Output is an async run/artifact descriptor. The complete event rows exist only in the downloaded artifact; they cannot be used as new analysis coordinates.

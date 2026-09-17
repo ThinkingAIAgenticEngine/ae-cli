@@ -30,6 +30,9 @@ You still organize user requirements into an intermediate intent first, then map
 
 ---
 
+The current `build` / `preview` / `commit` API does not expose `completionIndicators`.
+Completion-goal editing requires the web editor; CLI JSON passthrough does not add support.
+
 ## 2. Workflow
 
 1. Identify the flow intent from the user input and produce a unified intent JSON.

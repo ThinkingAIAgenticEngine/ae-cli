@@ -12,7 +12,8 @@ ae-cli analysis drilldown-events export \
   --coordinate '<same returned coordinate>' \
   [--properties '[{"columnName":"<event_property_name>","tableType":"event"}]'] \
   [--artifact-format csv] \
-  [--timeout-seconds 21600]
+  [--timeout-seconds 21600] \
+  --output <file>
 ```
 
 `--project-id` must match the project stored by `query_context_id`; a mismatch is rejected before export execution.
@@ -21,4 +22,4 @@ This command does not accept `--limit`, `--offset`, `--page-num`, or `--page-siz
 
 When `--properties` is present, the artifact contains required system event columns plus exactly the requested event properties. The export and synchronous preview use the same projection contract.
 
-Inspect `run_id`, wait for completion, then download the bound artifact. The downloaded rows are durable event detail only; they do not create or enlarge the interactive drilldown coordinate set.
+Use `--output` to wait and download the completed artifact. If interrupted, resume with [`analysis run wait`](run_wait.md) using the returned `run_id` and `--output <file>`. The downloaded rows are durable event detail only; they do not create or enlarge the interactive drilldown coordinate set.

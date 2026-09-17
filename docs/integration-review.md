@@ -2,9 +2,9 @@
 
 本指南说明如何为 te-cli 接入 PR-Agent、验证审核结果，以及排查没有评论或没有邮件的问题。
 
-当前实现位于基于 `release/6.0` 创建的 `feat/integration-ai-review` 分支，接入 MR 为 [!126](https://gitlab.thinkingdata.cn/te-ai/te-cli/-/merge_requests/126)，目标是 `integration/6.0-20260910`。本期仅审核集成分支的 push，包括 MR 合并后产生的集成分支更新；创建或更新 MR 不触发审核。工作流和运行脚本均拒绝 MR 事件。集成分支 push 的真实验证待按正常流程合并后进行。
+当前实现审核目标为 `integration/*` 的 MR 和直接向 `integration/*` 的 push。创建 MR 或更新其源分支时运行审核；MR 合并后产生的 integration push 只做来源识别，识别为已合并 MR 后立即结束，不调用模型、不发布评论或邮件，从而避免同一变更重复审核。
 
-历史验证：此前通过 MR 流水线验证过模型调用、中文评论、文件定位和通知链路，收件人于 2026-09-07 确认收到邮件；[演示 MR !129 的中文结果](https://gitlab.thinkingdata.cn/te-ai/te-cli/-/merge_requests/129#note_81381) 成功指出 jq 多结果截断，耗时 1 分 47 秒。演示分支含故意缺陷，禁止合并。这些历史记录用于说明审核能力，不代表当前仍开启 MR 审核。
+历史验证：此前通过 MR 流水线验证过模型调用、中文评论、文件定位和通知链路，收件人于 2026-09-07 确认收到邮件；[演示 MR !129 的中文结果](https://gitlab.thinkingdata.cn/te-ai/te-cli/-/merge_requests/129#note_81381) 成功指出 jq 多结果截断，耗时 1 分 47 秒。演示分支含故意缺陷，禁止合并。
 
 首次成功记录：[Job #30101](https://gitlab.thinkingdata.cn/te-ai/te-cli/-/jobs/30101)，流水线 `#17581`，审核提交 `edca713a94b498b418f324b285824e923c74f3f7`。北京时间 2026-09-07 00:31:07 开始，00:40:01 完成，GitLab 显示总耗时 **8 分 55 秒**，排队 **3 秒**。从读取 MR 到开始发布前的审核与报告生成约 **8 分 48 秒**，评论发布约 **2 秒**。这是本次变更的实测数据，不代表所有 MR 的固定耗时。
 
@@ -18,18 +18,18 @@
 
 | 触发事件 | 审核内容 | 结果位置与提醒对象 |
 | --- | --- | --- |
-| MR 合并到 `integration/*` | 从合并前的集成分支 SHA 到合并后 HEAD 的全部差异，包括最终合并结果 | 本次 HEAD 提交的评论，@流水线对应的合并用户 |
-| 直接向 `integration/*` push | 从 `CI_COMMIT_BEFORE_SHA` 到 `CI_COMMIT_SHA` 的全部差异，包含本次 push 中的所有提交 | 本次 HEAD 提交的评论，@流水线对应的推送用户 |
-| 首次 push 创建带版本号的集成分支 | 从拉取到的 `release/<主版本.次版本>` 提交到本次 HEAD 的差异 | 同上 |
-| 创建或更新 MR、推送功能分支 | 不触发 | 无审核评论 |
+| 创建或更新目标为 `integration/*` 的 MR | 从 MR 差异基线到当前源分支 HEAD 的完整差异 | MR 评论，@MR 作者 |
+| 直接向 `integration/*` push | 从 `CI_COMMIT_BEFORE_SHA` 到 `CI_COMMIT_SHA` 的完整差异 | HEAD 提交评论，@推送用户 |
+| MR 合并产生的 `integration/*` push | 创建短流水线并识别为 `merged-mr` 后结束 | 不调用模型、不评论、不发邮件 |
+| 无 MR 的功能分支 push | 不触发 | 无审核评论 |
 
-例如，创建 `feat/new-command → integration/6.0-20260910` 的 MR、向该功能分支追加提交，都不会触发；实际合并完成、集成分支 HEAD 更新后才审核。直接 push 集成分支同样触发。`integration/6.0-20260910 → release/6.0` 的合并只更新 release，不触发本期审核。本期也不审核 tag、定时流水线和手动 Run pipeline。
+例如，创建 `feat/new-command → integration/6.0-20260910` 的 MR 会触发，向该源分支追加提交会再次触发并审核更新后的完整 MR 差异。MR 合并后产生的 push 流水线会快速结束；开发者直接 push 到 `integration/6.0-20260910` 则正常审核。`integration/6.0-20260910 → release/6.0` 的 MR 目标不是 integration，也不触发。本期同样不审核 tag、定时流水线和手动 Run pipeline。
 
-这两类有效操作统一使用 `CI_PIPELINE_SOURCE=push` 且 `CI_COMMIT_BRANCH` 匹配 `integration/*` 的规则，不会为同一次合并再运行一份 MR 审核。参考 [GitLab workflow 规则](https://docs.gitlab.com/ci/yaml/workflow/)。
+流水线入口允许两类事件：`CI_PIPELINE_SOURCE=merge_request_event` 且目标分支匹配 `integration/*`，或 `CI_PIPELINE_SOURCE=push` 且当前分支匹配 `integration/*`。GitLab 在创建 push pipeline 时没有提供“本次 push 是否由 MR 合并产生”的可靠预定义变量，因此合并来源只能在 Job 内通过 Commit API 查询。参考 [GitLab workflow 规则](https://docs.gitlab.com/ci/yaml/workflow/)和[预定义变量](https://docs.gitlab.com/ci/variables/predefined_variables/)。
 
-规则适用于所有集成版本线。首次创建 `integration/6.1-20260910` 时使用 `release/6.1`。对于 `integration/special` 这类不含版本号的分支，需要设置 `REVIEW_BASE_REF=release/6.0`；该设置只影响首次 push。普通 push 始终使用实际 before SHA，基线缺失时报错，不会退化为只审最近一次提交。
+规则适用于所有集成版本线。MR 审核基线使用 `CI_MERGE_REQUEST_DIFF_BASE_SHA`；merged-result 或 merge-train 流水线存在合成提交时，审核 HEAD 使用真实源分支 SHA。直接 push 使用实际 before..head；首次创建带版本号的 integration 分支时从对应 `release/x.y` 取基线，无版本号时需要 `REVIEW_BASE_REF`。
 
-`master` 不参与审核基线、配置加载或上线流程。配置需要存在于被更新的集成分支；后续版本线通过正常合并或 cherry-pick 保留配置。旧功能分支不需要先同步配置，正常合并后只要集成分支保留这些文件就会触发。开发者在本地执行 `git pull` 本身不会触发审核。
+`master` 不参与审核基线、配置加载或上线流程。MR pipeline 使用源分支中的 CI 配置，因此旧功能分支若尚未包含本实现，需要先 rebase、merge 或 cherry-pick 相应配置。push 审核则要求被推送的 integration 分支本身保留 CI 和 `.ci/` 文件。
 
 ## 二、接入前准备
 
@@ -41,7 +41,7 @@
 | 首次接入目标 | 团队当前使用的一个 `integration/*` 分支 |
 | Runner | 已确认 `#596 lab-docker`，使用 Docker executor，标签包含 `docker` |
 | 容器镜像 | `docker-ta.thinkingdata.cn/te/pr-agent`，使用 `.gitlab-ci.yml` 中固定的 SHA-256 digest |
-| GitLab 机器人凭证 | 能读取本项目及分支、查询自身身份、创建提交评论的 API Token |
+| GitLab 机器人凭证 | 能读取项目、MR、分支和提交关联，查询自身身份并创建 MR/提交评论的 API Token |
 | 模型网关 | OpenAI 兼容的 API Base、API Key，以及获准使用的模型 |
 
 如果由助手代配置，可以提供下面的信息；不知道的项目填“待检查”。密钥直接填入 GitLab Variables，或提供专门存放本次接入凭证的本机文件路径，不需要在聊天中粘贴密钥值。
@@ -74,7 +74,7 @@ GitLab 机器人变量：已有变量名 / 待创建
 1. 在 **Settings → CI/CD → Runners** 中查找本项目可用的在线 Runner。
 2. 确认标签包含 `docker`，与当前 Job 一致。Job 按标签匹配，名称相似不代表可匹配。
 3. 确认执行器是 Docker，能拉取内部镜像、访问 GitLab 和模型网关。私有镜像仓库认证及内部 CA 信任由 Runner 环境配置。
-4. 确认 Runner 能承接目标集成分支的 push；只允许受保护分支的 Runner 要与集成分支的保护设置一致。
+4. 确认 Runner 能承接功能分支指向集成分支的 MR 和 integration push；只允许受保护分支的 Runner 可能无法承接普通功能分支的 MR。
 
 没有可用 Runner 时，为 te-cli 启用现有合适的 Runner，或由 Runner 管理员配置。不要只改标签就把 Shell Runner 当作 Docker Runner 使用。参考 [GitLab Runner 配置](https://docs.gitlab.com/ci/runners/configure_runners/)。
 
@@ -82,7 +82,7 @@ GitLab 机器人变量：已有变量名 / 待创建
 
 当前固定镜像 digest 为 `sha256:63009bc872a06bc9f485c5d905d02e570e67aa1ae010d00af3f600b0b8a4b2c2`。升级镜像后需要重新验证配置加载、完整差异检查和报告输出接口。审核容器不需要安装 te-cli 的 npm 依赖。
 
-完成标志：Runner 在线、可用于本项目的目标集成分支，镜像及网络条件具备。Job 一直 Pending 时优先检查这一步。
+完成标志：Runner 在线、可用于本项目和预期 MR，镜像及网络条件具备。Job 一直 Pending 时优先检查这一步。
 
 ### 第 3 步：配置 CI/CD 变量
 
@@ -90,17 +90,19 @@ GitLab 机器人变量：已有变量名 / 待创建
 
 | 变量名 | 必填 | 填写内容 |
 | --- | --- | --- |
-| `GITLAB__PERSONAL_ACCESS_TOKEN` | 是 | 本项目审核机器人的 API Token，需要 `api` 范围及读取项目/分支、查询 `/user`、发布提交评论的权限 |
+| `GITLAB__PERSONAL_ACCESS_TOKEN` | 是 | 本项目审核机器人的 API Token，需要 `api` 范围及读取项目/MR/提交关联、查询 `/user`、发布 MR/提交评论的权限 |
 | `OPENAI__KEY` | 是 | 模型网关 API Key |
 | `OPENAI__API_BASE` | 是 | OpenAI 兼容 API Base，按网关要求包含版本前缀，例如 `/v1`；不是网页地址，也不是完整的 `/chat/completions` 地址 |
-| `REVIEW_BASE_REF` | 否 | 无版本号的集成分支首次 push 时使用的 release 分支，例如 `release/6.0` |
+| `REVIEW_BASE_REF` | 否 | 无版本号的 integration 分支首次 push 时使用的 release 分支，例如 `release/6.0` |
 | `REVIEW_GITLAB_API_URL` | 否 | Runner 使用的内网 GitLab API 入口；默认使用 `CI_API_V4_URL`。当前沿用系统 Skill 项目的 `http://10.206.35.91:8889/api/v4` |
 
 已有 `GITLAB_PERSONAL_ACCESS_TOKEN` 时脚本也能识别；同时存在时优先使用双下划线的规范变量名。
 
 变量类型选择 **Variable**，环境范围设为 `*`；密钥开启 **Masked**，界面支持时可选 **Masked and hidden**，关闭变量引用展开。当前 Job 没有声明部署环境，不能把变量限定到某个部署环境。不要手动设置 `CI_COMMIT_SHA` 等 GitLab 预定义变量。参考 [GitLab CI/CD 变量](https://docs.gitlab.com/ci/variables/)。
 
-**Protected 需结合实际集成分支规则设置。** 当前只在集成分支 push 上使用凭证；如果所有目标集成分支均受保护，可以按团队规则把专用审核变量设为 Protected。若仍需覆盖未受保护的集成分支，受保护变量在这些分支不可用。已有变量保持当前设置，改变触发范围不会自动修改 GitLab 的变量或分支保护配置。Masked 只隐藏日志中的原值，不能阻止流水线脚本读取密钥。
+**Protected 需结合 MR 和 push 两类规则设置。** integration push 可以使用该受保护分支可见的变量；普通 `feat/*` 通常不是受保护分支，仅保护 MR 目标集成分支，并不保证 MR 能拿到受保护变量。GitLab 新版本允许 MR 使用受保护变量和 Runner，但要求源、目标分支均受保护、同属一个项目、触发用户有目标分支权限，并启用对应设置；旧版本能力以实际实例为准。[官方说明](https://docs.gitlab.com/ci/pipelines/merge_request_pipelines/#control-access-to-protected-variables-and-runners)
+
+要覆盖未受保护功能分支的 MR，需要为这类流水线提供获准使用的专用审核凭证；不要直接取消现有共享凭证的保护。如果团队要求密钥只用于受保护流水线，则需先调整分支或执行方案。Masked 只隐藏日志中的原值，不能阻止流水线脚本读取密钥。
 
 模型名称在 `.pr_agent.toml` 的 `[config] model` 中，直接填写 `deepseek-v4-pro`，与发给网关的模型 ID 一致。适配器也兼容 `openai/` 前缀，会在发送请求时去掉该前缀。PR-Agent 负责差异处理、审核提示和报告生成，模型请求由 OpenAI 客户端直接发送，避免内部镜像的 LiteLLM 对自定义模型参数进行错误拦截。
 
@@ -108,15 +110,15 @@ GitLab 机器人变量：已有变量名 / 待创建
 
 请求采用 OpenAI 兼容调用方式：发送模型名称、system/user 消息、`temperature=0.1` 和 `reasoning_effort=low`，不关闭思考模式。PR-Agent 需要 YAML 格式的审核结果，因此不使用系统 Skill 的 JSON 输出格式参数。
 
-DeepSeek 官方默认开启思考模式，强度为 `high`，实际行为还取决于内部网关配置；[官方说明](https://api-docs.deepseek.com/zh-cn/guides/thinking_mode/)。每次集成分支更新会审核本次完整 before..head 差异，而不是只审核最后一次提交。历史上首次成功的 MR 验证包含 11 个变更文件、1266 行新增内容，因此即使最终没有发现问题，仍需处理完整审核输入。
+DeepSeek 官方默认开启思考模式，强度为 `high`，实际行为还取决于内部网关配置；[官方说明](https://api-docs.deepseek.com/zh-cn/guides/thinking_mode/)。每次 MR 更新会审核当前完整 base..head 差异，直接 push 会审核完整 before..head 差异，而不是只审核最后一次提交。历史上首次成功的 MR 验证包含 11 个变更文件、1266 行新增内容，因此即使最终没有发现问题，仍需处理完整审核输入。
 
 耗时排查：[Job #30104](https://gitlab.thinkingdata.cn/te-ai/te-cli/-/jobs/30104) 的输入为 37,432 token，模型请求耗时 548.37 秒，32,768 个输出 token 全部属于推理，正文字符数为 0，最终以 `finish_reason=length` 结束且未发布。这确认该次失败由推理用尽输出预算造成。当前将思考强度改为 `low`，以保留思考并降低耗尽预算的概率；具体耗时与效果仍以真实请求指标为准。网关排队时间没有单独指标，不能由这些数据直接推算。
 
 输出上限 `review_max_output_tokens=32768`，单次调用超时 600 秒，渲染总时限 720 秒，Job 超时 15 分钟，不自动重试模型请求。模型返回 `finish_reason=length` 或正文为空时拒绝发布，避免将截断结果当作完整报告。更换模型或网关时，需重新验证参数支持、输入/输出预算与耗时；增加输出预算时还需协调模型、渲染和 Job 三层超时。
 
-完成标志：三个必填变量对目标集成分支 push 可用，机器人有提交评论权限，模型与网关匹配。
+完成标志：三个必填变量对预期 MR 和 integration push 可用，机器人有查询提交关联及发布评论的权限，模型与网关匹配。
 
-### 第 4 步：提交接入 MR，核对合并前行为
+### 第 4 步：推送接入分支，验证 MR 审核
 
 配置就绪后，在本次独立 worktree 中推送：
 
@@ -125,30 +127,30 @@ git push -u origin feat/integration-ai-review
 ```
 
 1. 在 GitLab 创建 MR，源为 `feat/integration-ai-review`，目标为第 1 步选定的 `integration/*`。
-2. MR 创建或源分支更新后，不应出现新的 `integration-review` Job；这是当前范围的预期行为，历史流水线记录仍会保留。
-3. 本地运行本指南末尾的离线测试、构建和默认测试，按正常流程做人工代码评审。
-4. 2026-09-08 已只读核对 te-cli 的 **Pipelines must succeed** 未勾选，无需为本次调整修改合并设置。以后若开启此项，需要同时设计合并前的确定性检查，避免 MR 因无流水线而无法合并。
+2. MR 创建后进入 **Pipelines**，应出现 `integration-review` Job。单独 push 功能分支但尚未创建 MR 时，不产生流水线是预期行为。
+3. 查看 MR 评论，核对机器人作者、被 @ 的 MR 作者、审核 SHA、差异基线和报告内容。
+4. 下载 Job artifacts，检查 `.review/result.json` 的 `status=published`，并核对 `.review/report.md`。
+5. 重试同一个 Job，应得到 `status=already-published`，评论不重复。重试可能再次调用模型，但不会重复发布相同范围。
 
 不要用 **Run pipeline** 按钮代替这一步，它创建的 `web` 类型流水线不在本期范围内。`allow_failure: true` 使审核异常不阻断整条流水线，因此要查看具体 Job 和产物，不能只看 Pipeline 绿色。
 
-完成标志：合并前不产生审核任务，代码和本地验证结果可供人工评审。
+完成标志：MR 有绑定正确 SHA 的真实审核报告，重试不会重复评论。
 
-### 第 5 步：合入集成分支，验证 push 审核
+### 第 5 步：验证合并跳过与直接 push 审核
 
 1. 按团队正常流程审核并合入接入 MR。
-2. 合并产生的集成分支 push 应触发独立审核 Job。
-3. 在本次 HEAD 提交页面查看评论，确认范围是实际 before SHA 到 head SHA，且 @ 对应合并或推送用户；结果不会发回 MR 评论区。
-4. 下载产物，确认 `status=published`。后续多提交 push 也应覆盖整个推送范围。
-5. 重试同一个 Job，应得到 `status=already-published`，评论不重复。重试可能再次调用模型，但不会重复发布相同范围。
-6. 按正常版本同步流程将配置保留在 `release/6.0`，并按需同步到其他维护中的 `release/6.x` 和集成分支。
+2. 合并产生的集成分支 push 会创建一个短 Pipeline，`.review/result.json` 应为 `status=merged-mr`，且没有模型调用、评论或邮件。
+3. 直接向 `integration/*` push 应正常生成报告，并在本次 HEAD 提交下评论、@推送用户。
+4. 对 merge commit、squash commit 和 fast-forward 后的源 HEAD，脚本分别用 `merge_commit_sha`、`squash_commit_sha` 和 MR `sha` 判断是否来自已合并 MR。
+5. 按正常版本同步流程将配置保留在后续功能分支的共同基线和 integration 分支中。
 
-集成分支拿到配置后，旧功能分支即使没有同步这套配置，正常合入后仍会使用集成分支上的配置进行审核。合并时应保留 `.gitlab-ci.yml`、`.pr_agent.toml` 和 `.ci/` 文件。新建其他集成分支时也需确保其包含这些文件；`master` 无需接入。
+GitLab 在 `workflow:rules` 阶段无法调用 API，因此无法可靠做到“合并 push 连 Pipeline 记录都不创建”并同时保留普通 integration push。当前方案把合并 push 的成本限制为启动容器和查询 GitLab，不调用模型。旧功能分支如果没有 CI 文件，需要先同步配置再更新 MR。
 
-完成标志：MR 合并后的集成 push、直接集成 push 均产生正确报告，合并前和功能分支 push 不触发。
+完成标志：MR 创建与更新会审核；合并后的 integration push 快速跳过；直接 integration push 正常审核。
 
 ### 第 6 步：验证邮件
 
-脚本通过 **GitLab 提交评论 + @用户** 触发通知，不直接连接 SMTP。提醒 `GITLAB_USER_LOGIN` 对应的流水线用户：合并 MR 时通常是执行合并的人，直接 push 时是推送人；不保证是 MR 作者，也不会逐个提醒本次 push 中的所有 Git 提交作者，人工重试时用户也可能变化。
+脚本通过 **GitLab 评论 + @用户** 触发通知，不直接连接 SMTP。MR 审核提醒 MR 作者，直接 push 审核提醒 `GITLAB_USER_LOGIN` 对应的推送用户；识别为 `merged-mr` 的 push 不发布评论，因此不产生审核邮件。
 
 审核正文使用仓库内的中文模板，包括标题、范围、结论、测试提示和文件定位；在实际模型请求的 system 消息中要求问题标题、问题描述和安全问题说明使用简体中文，代码标识符和 YAML 字段名保持原样。该要求优先于模板的英文示例和仓库源码语言约定。发布前还会检查这些说明是否包含中文；纯英文说明会让任务失败，不会作为审核评论发出。仅设置 PR-Agent 的 `response_language=zh-CN` 不足以翻译其内置英文标题，因此本实现从结构化审核结果生成中文正文，不额外调用模型翻译。GitLab 邮件中引用的审核评论随之变为中文；GitLab 自带的邮件页脚或操作链接文案由 GitLab 控制。
 
@@ -170,7 +172,7 @@ git push -u origin feat/integration-ai-review
 
 | 现象或状态 | 含义与下一步 |
 | --- | --- |
-| 没有 Pipeline | MR 创建/更新和功能分支 push 属于预期；集成 push 则检查集成分支是否保留 CI 文件、项目是否使用自定义 CI 路径，以及是否显式跳过了 CI |
+| 没有 Pipeline | 普通功能分支 push 属于预期；目标为 `integration/*` 的 MR 或 integration push 则检查相应分支是否包含 CI 文件、项目是否使用自定义 CI 路径，以及是否显式跳过了 CI |
 | Job 一直 Pending | 检查 Runner 在线状态、项目可用性、标签和受保护资源限制 |
 | 镜像拉取失败 | 检查内部仓库认证、网络、CA 和镜像是否存在 |
 | 缺少变量或 Token | 检查变量名、类型、继承关系、环境范围和 Protected 限制 |
@@ -179,7 +181,8 @@ git push -u origin feat/integration-ai-review
 | `GitLab ... failed (401/403)` | 检查 Token 是否有效及机器人对本项目的 API/评论权限 |
 | `published` | 已发布报告，仍需单独验证邮件送达 |
 | `already-published` | 同一机器人已发布相同范围，跳过重复评论 |
-| `stale` | 集成分支 HEAD 已更新；查看最新流水线 |
+| `merged-mr` | integration push 来自已合并 MR；跳过模型、评论和通知 |
+| `stale` | MR 已关闭、改了目标分支、源分支 HEAD 或 integration 分支 HEAD 已更新；查看最新流水线 |
 | `no-changes` | 基线与 HEAD 的文件树相同，无需调用模型 |
 | `error` | 查看产物中的错误；已生成但发布失败的报告仍保留 |
 
@@ -199,15 +202,15 @@ AI 发现的问题仅供参考，不自动 approve、merge，也不构成强制�
 
 发现问题时，报告中的定位链接指向实际审核提交的文件及行号，不指向临时合成提交。
 
-脚本先确认集成分支仍指向待审 HEAD，再创建临时克隆。PR-Agent 本地 provider 用 merge-base 计算差异，因此临时克隆中会构造一个以 base 为父提交、以实际 head 文件树为内容的合成提交，确保强制 push 后的差异仍等于准确的 base..head 比较。合成提交不会推送，也不会写入用户原工作区。
+脚本先确认 MR 或 integration 分支仍指向待审 HEAD。对于 push，再查询 Commit API 关联的已合并 MR；当前 HEAD 等于匹配目标分支的 `merge_commit_sha`、`squash_commit_sha` 或 MR `sha` 时返回 `merged-mr`。其余情况才创建临时克隆。PR-Agent 本地 provider 用 merge-base 计算差异，因此临时克隆中会构造一个以 base 为父提交、以实际 head 文件树为内容的合成提交，确保强制 push 后的差异仍等于准确的 base..head 比较。合成提交不会推送，也不会写入用户原工作区。
 
 PR-Agent 仅生成报告，关闭其 GitLab 发布功能；模型子进程不接收 GitLab Token 或 CI Job Token。空输出、格式错误、明确报告漏审文件、模型失败和超时均按错误处理。生成后，脚本通过机器人身份及事件/分支/base/head 标记去重，再校验 HEAD 并发布。发布失败时保留已生成的报告。
 
-最后一次查询 HEAD 与发表评论之间仍存在非原子时间窗口，所以每条评论明确标注所审 SHA。审核针对集成分支本次更新的实际差异，不代表全仓库已通过测试。PR-Agent 自身文件过滤与模型预算也限制了覆盖范围。
+最后一次查询 HEAD 与发表评论之间仍存在非原子时间窗口，所以每条评论明确标注所审 SHA。MR 关联判断依赖 GitLab Commit API 返回的 MR 字段；如果实例对某种自定义合并方式不返回对应关联，该 push 会按普通直接 push 审核，安全侧表现是多审一次而不是漏审。仅更新 MR 目标分支 HEAD 不一定触发源分支 MR pipeline，本审核也不能证明全仓库已通过测试。
 
 ### 本地验证
 
-当前 25 项离线测试使用真实临时 Git 历史和模拟 GitLab API，覆盖所有 MR 事件拒绝、不同 integration 分支命名、合并提交和多提交 push 的完整范围、首次分支基线、强制 push、过期结果、评论分页去重及模型异常；渲染测试模拟 PR-Agent 输出，不调用模型。
+离线测试使用真实临时 Git 历史和模拟 GitLab API，覆盖 MR 与 integration push 事件选择、完整差异、merged-result/merge-train 源 SHA、merge/squash/fast-forward 合并跳过、直接 push 评论、过期结果、评论分页去重及模型异常；渲染测试模拟 PR-Agent 输出，不调用模型。
 
 ```sh
 python3 -m venv /tmp/te-cli-review-tests
@@ -224,4 +227,4 @@ npm test
 - te-claude `release/6.0`、`ef70eef5`：参考机器人身份、固定提交证据和过期保护。te-cli 对新范围发新评论，避免仅编辑旧评论导致缺少新评论通知。
 - [te-system-skills `release/6.0`、`f9f40175`](https://gitlab.thinkingdata.cn/te-ai/te-system-skills/-/blob/f9f401757448ec2a53a48899f6ea510141dfbf4d/curator-skill/scripts/review.mjs)：参考 Curator 将审核/批准绑定到预期 SHA 并区分通知结果。其产品 MR 自动化包含批准/安排合并，场景流程通知 Skill Hub；这些动作不属于本次接入。已检查的 `release/6.0` 和 `release/6.1` CI 文件没有通用 PR-Agent 审核 Job。
 - PR-Agent 官方：[本地 provider](https://github.com/The-PR-Agent/pr-agent/blob/main/pr_agent/git_providers/local_git_provider.py)、[配置加载](https://github.com/The-PR-Agent/pr-agent/blob/main/pr_agent/config_loader.py)。
-- GitLab 官方：[提交评论 API](https://docs.gitlab.com/api/commits/#post-comment-to-commit)。
+- GitLab 官方：[Merge request notes API](https://docs.gitlab.com/api/notes/#create-new-merge-request-note)、[Commit API 的关联 MR 查询](https://docs.gitlab.com/api/commits/#list-merge-requests-associated-with-a-commit)和[提交评论 API](https://docs.gitlab.com/api/commits/#post-comment-to-commit)。

@@ -1,4 +1,4 @@
-import type { Command } from '../../../framework/types.js';
+import type { Command } from '../../../../framework/types.js';
 import { projectMemberHandoverExport } from './export.js';
 import { projectMemberHandoverRun } from './run.js';
 

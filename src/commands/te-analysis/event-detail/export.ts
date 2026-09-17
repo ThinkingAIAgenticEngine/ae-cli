@@ -16,5 +16,6 @@ export const eventDetailExport = createAnalysisCapabilityCommand({
     ...eventDetailExportFlags,
   ],
   risk: 'read',
+  intentConsistency: { definitionFlag: 'definition' },
   buildInput: eventDetailExportInput,
 });

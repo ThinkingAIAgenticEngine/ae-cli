@@ -7,7 +7,7 @@ Do not use it for ordinary event/property CRUD, metadata import from XLSX, or as
 Command:
 
 ```bash
-ae-cli analysis-meta super-metadata batch-create --project-id <project_id> --events '[{"event_name":"purchase","event_desc":"Purchase"}]' --event-properties '[{"prop_name":"amount","select_type":"number","super_event_names":["purchase"]}]' --dry-run
+ae-cli analysis-meta super-metadata batch-create --project-id <project_id> --events '[{"event_name":"purchase","event_desc":"Purchase"}]' --event-properties '[{"prop_name":"amount","select_type":"number","super_event_names":["purchase"]}]'
 ```
 
 Capability id: `metadata.super_metadata.batch_create`.

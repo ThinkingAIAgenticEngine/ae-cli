@@ -1,0 +1,40 @@
+{
+  "meta": {
+    "app_type": "web",
+    "sdk_integration_mode": "client_only",
+    "client_platforms": ["javascript"],
+    "client_languages": ["javascript"],
+    "plan_name": "Firebase Naming migration (pilot)",
+    "user_identity": {
+      "account_id_source": "none",
+      "distinct_id_strategy": "auto"
+    },
+    "lang": "zh"
+  },
+  "events": [
+    {
+      "event_name": "user_login",
+      "display_name": "登录",
+      "platform": "client",
+      "source": "codebase",
+      "prop_names": ["login_method"]
+    },
+    {
+      "event_name": "share",
+      "display_name": "分享",
+      "platform": "client",
+      "source": "codebase",
+      "prop_names": ["content_id"]
+    }
+  ],
+  "event_properties": [
+    { "name": "login_method", "display_name": "登录方式", "type": "string", "source": "codebase" },
+    { "name": "content_id", "display_name": "内容ID", "type": "string", "source": "codebase" }
+  ],
+  "common_event_properties": [],
+  "user_properties": [
+    { "name": "user_role", "display_name": "用户角色", "type": "string", "source": "codebase", "update_type": "user_set" },
+    { "name": "plan", "display_name": "套餐", "type": "string", "source": "codebase", "update_type": "user_set" },
+    { "name": "sign_in_method", "display_name": "登录渠道", "type": "string", "source": "codebase", "update_type": "user_set" }
+  ]
+}

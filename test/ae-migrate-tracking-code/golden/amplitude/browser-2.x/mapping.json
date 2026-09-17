@@ -1,0 +1,87 @@
+{
+  "provider": "amplitude",
+  "variant": "browser-2.x",
+  "mode": "switch",
+  "entries": [
+    {
+      "site_id": "cs-1",
+      "file": "src/analytics.js",
+      "line": 7,
+      "source_call": "amplitude.setUserId(user.id)",
+      "ae_call": "login(accountId)",
+      "account_id_source": "user_account",
+      "action": "replace"
+    },
+    {
+      "site_id": "cs-2",
+      "file": "src/analytics.js",
+      "line": 10,
+      "source_call": "amplitude.track('user_login', { method: 'phone' })",
+      "ae_event": "user_login",
+      "display_name": "用户登录",
+      "platform": "client",
+      "ae_props": { "method": "string" },
+      "action": "replace"
+    },
+    {
+      "site_id": "cs-3",
+      "file": "src/analytics.js",
+      "line": 13,
+      "source_call": "amplitude.track('view_item', { item_id: 'sku-123', price: 9.99, in_stock: true })",
+      "ae_event": "view_item",
+      "display_name": "浏览商品",
+      "platform": "client",
+      "ae_props": { "item_id": "string", "price": "number", "in_stock": "bool" },
+      "action": "replace"
+    },
+    {
+      "site_id": "cs-4",
+      "file": "src/analytics.js",
+      "line": 16,
+      "source_call": "amplitude.track('add_to_cart', { item_id: 'sku-123', quantity: 1 })",
+      "ae_event": "add_to_cart",
+      "display_name": "加入购物车",
+      "platform": "client",
+      "ae_props": { "item_id": "string", "quantity": "number" },
+      "action": "replace"
+    },
+    {
+      "site_id": "cs-5",
+      "file": "src/analytics.js",
+      "line": 19,
+      "source_call": "amplitude.track('purchase', { item_id: 'sku-123', price: 9.99, quantity: 2, currency: 'USD' })",
+      "ae_event": "purchase",
+      "display_name": "购买",
+      "platform": "client",
+      "ae_props": { "item_id": "string", "price": "number", "quantity": "number", "currency": "string" },
+      "action": "replace"
+    },
+    {
+      "site_id": "cs-6",
+      "file": "src/analytics.js",
+      "line": 23,
+      "source_call": "identify.set('plan', 'pro')",
+      "ae_call": "user_set",
+      "ae_props": { "plan": "string" },
+      "action": "replace"
+    },
+    {
+      "site_id": "cs-7",
+      "file": "src/analytics.js",
+      "line": 24,
+      "source_call": "identify.setOnce('signup_source', 'organic')",
+      "ae_call": "user_setOnce",
+      "ae_props": { "signup_source": "string" },
+      "action": "replace"
+    },
+    {
+      "site_id": "cs-8",
+      "file": "src/analytics.js",
+      "line": 25,
+      "source_call": "identify.add('logins', 1)",
+      "ae_call": "user_add",
+      "ae_props": { "logins": "number" },
+      "action": "replace"
+    }
+  ]
+}

@@ -119,7 +119,7 @@ ae-cli capability list --domain analysis --jq '.data.capabilities[] | .id'
 | 分析与项目 | `project` | 项目信息、成员、角色、权限、实体、时区和交接配置 |
 | 分析与项目 | `metadata` | 基于 Capability Gateway 的数据表、属性及维度表绑定 |
 | 分析与项目 | `personal-semantic-preference` | 当前用户按项目维护轻量个人语义偏好 |
-| 分析与项目 | `project-semantic` | 项目语义治理、资产包、候选校验、审核和发布 |
+| 分析与项目 | `project-semantic` | 项目语义治理、知识库资产包、候选校验、审核和发布 |
 | 数据与埋点 | `tracking` | 埋点方案、SDK 示例、检查、采集诊断、代码生成和内置 Wiki |
 | 数据与埋点 | `data-integration` | 检查、规划、转换、上传、交接和复用本地 CSV/JSON/Excel 数据 |
 | 社区洞察 | `community` | 社区帖子、评论、话题、情感、直播和报告工作流 |
@@ -138,6 +138,7 @@ ae-cli capability list --domain analysis --jq '.data.capabilities[] | .id'
 | DataOps | `dataops_operations` | 运维、监控和告警工作流 |
 | Agent 平台 | `kb` | 知识库生命周期、LLM 问答及确定性的 index/grep/read 检索 |
 | Agent 平台 | `agent` | Agent、审批、自动化、模型、MCP、Skills、附件、凭证和沙盒工具 |
+| Agent 平台 | `context` | 读取当前 Agent Run 已授权的产品页面上下文 |
 | Agent 平台 | `memory` | 用户记忆、Top-K 上下文写入和实际采用计数 |
 | Agent 平台 | `team` | Agent Team 和 TeamRun 的执行、对话、结果及产物 |
 | Agent 平台 | `system` | root/admin 的成员、沙盒、工具、模型、用量、配额和渠道管理 |

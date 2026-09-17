@@ -12,8 +12,18 @@ export const projectMemberCandidateList = createAnalysisCapabilityCommand({
   description: 'List candidate users and role/data-power options for adding project members.',
   flags: [
     projectIdFlag,
-    { name: 'type', type: 'string', required: true, desc: 'Add type accepted by ProjMemberAddTypeEnum.' },
-    { name: 'login-names', type: 'string', required: false, desc: 'Comma-separated login names when checking new users.' },
+    {
+      name: 'type',
+      type: 'string',
+      required: true,
+      desc: 'Member add type: 0 checks new company members from project management; 1 lists existing company members. Type 0 may be disabled by company configuration.',
+    },
+    {
+      name: 'login-names',
+      type: 'string',
+      required: false,
+      desc: 'Comma-separated login names when checking new users.',
+    },
   ],
   risk: 'read',
   buildInput: (ctx) => compactInput({

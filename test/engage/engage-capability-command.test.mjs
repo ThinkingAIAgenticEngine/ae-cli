@@ -1021,4 +1021,30 @@ assert.deepEqual(workbenchAddDryRun.body, {
   input: { project_id: 1, metric_type: 5, date_type: 8, order_id: 1 },
 });
 
+// Goal calendar fields must survive the CLI capability boundary unchanged.
+const { taskSave } = await import('../../src/commands/te-engage/engage-task/task/save.ts');
+let goalReq;
+for (const [unit, cycle] of [
+  ['day', { startTime: '06:30' }],
+  ['week', { startDay: 3, startTime: '06:30' }],
+  ['month', { startDay: 15 }],
+]) {
+  const goal = { completionIndicatorType: 0, touch_cycle_num: 1,
+    touch_cycle_num_unit: unit, timeCycleDef: cycle };
+  goalReq = { controlConfig: { completionIndicatorDef: { completionIndicators: [goal] } } };
+  assert.doesNotThrow(() => taskSave.validate(makeCtx({ projectId: 1, req: goalReq })));
+  const captured = await captureCapabilityDryRun(taskSave, { projectId: 1, req: goalReq });
+  assert.equal(captured.url,
+    `${HOST}/api/cli/engage/v1/capabilities/engage-task.task.save/dry-run`);
+  assert.deepEqual(captured.body.input.req, goalReq);
+}
+// Switch the last calendar goal back to a rolling window once.
+const relativeGoal = goalReq.controlConfig.completionIndicatorDef.completionIndicators[0];
+delete relativeGoal.timeCycleDef;
+relativeGoal.touch_cycle_num_unit = 'day';
+const relative = await captureCapabilityDryRun(taskSave, { projectId: 1, req: goalReq });
+assert.deepEqual(relative.body.input.req, goalReq);
+assert.equal('timeCycleDef' in relative.body.input.req.controlConfig
+  .completionIndicatorDef.completionIndicators[0], false);
+
 process.stdout.write('engage capability command contract: OK\n');

@@ -70,7 +70,7 @@ ta.identify("your_distinct_id");
 # Debug 模式
 ## mode 三种取值
 - normal：Normal 模式
-- debug：数据在 TE Debug 模式中看到
+- debug：数据在 AE Debug 模式中看到
 - debug_only：只校验，不入库
 
 # 自动采集

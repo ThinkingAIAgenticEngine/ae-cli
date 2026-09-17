@@ -13,7 +13,7 @@ const revisionFlag: Flag = {
   name: 'expected-revision', type: 'number', required: true, min: 1,
   desc: 'Revision returned by +source-ls; a conflict requires a fresh read and explicit retry',
 };
-const apiOptions = { preserveErrorMetadata: true, retryUnauthorized: true };
+const apiOptions = { preserveErrorMetadata: true, retryUnauthorized: false };
 const maxFileBytes = 50 * 1024 * 1024;
 
 function validateIdentity(ctx: RuntimeContext): void {

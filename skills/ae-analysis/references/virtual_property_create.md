@@ -12,7 +12,6 @@ Command:
 ae-cli analysis-meta virtual-property create --project-id <project_id> --property-name '#vp@demo' --table-type event --select-type string --sql-expression 'event_name' --sql-event-relation-type relation_default
 ae-cli analysis-meta virtual-property create --project-id <project_id> --property-name '#vp@demo' --property-desc demo --table-type event --select-type string --sql-expression "CASE WHEN status = 1 THEN 'active' ELSE 'inactive' END" --sql-event-relation-type relation_by_setting --related-events '[{"eventName":"purchase"}]' --property-remark demo
 ae-cli analysis-meta virtual-property create --project-id <project_id> --sql-expression '<sql>' --v-prop '{"property":{"column_name":"#vp@demo","table_type":"event","select_type":"string"}}' --properties '[...]'
-ae-cli analysis-meta virtual-property create --project-id <project_id> --sql-expression '<sql>' --v-prop '{...}' --dry-run
 ```
 
 Capability id: `metadata.virtual_property.create`.

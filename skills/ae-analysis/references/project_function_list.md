@@ -8,7 +8,6 @@ Command:
 
 ```bash
 ae-cli project function list --company-id <company_id> --project-id <project_id>
-ae-cli project function list --dry-run
 ```
 
 Capability id: `project.function.list`.

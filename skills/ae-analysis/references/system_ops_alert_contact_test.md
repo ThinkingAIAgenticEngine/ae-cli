@@ -7,7 +7,6 @@ Do not use it for bulk delivery, repeated probing, or an unconstrained HTTP dest
 Command:
 
 ```bash
-ae-cli system ops-alert-contact test --dry-run --company-id <company_id> --channel <channel> --target-file <chmod_600_file>
 ae-cli system ops-alert-contact test --company-id <company_id> --channel <channel> --target-file <chmod_600_file>
 ```
 

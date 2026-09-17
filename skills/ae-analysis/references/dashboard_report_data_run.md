@@ -37,4 +37,4 @@ Output is the gateway envelope. Verify `data.actual_cluster_query_scope`, option
 
 An empty dashboard batch or report result with no rows is a successful query: it means the requested time range has no data. The command fails only when every returned report entry contains an explicit execution error. Mixed dashboard batches keep successful data and return `meta.partial`, counts, and per-report `meta.failures`.
 
-Read [`analysis_drilldown_contract.md`](analysis_drilldown_contract.md). Fetch the selected report source with `analysis query-context get` and merge only its returned coordinate fragments for the advertised action. Do not pass raw QP.
+Only when the user requests a supported follow-up action, read [`analysis_drilldown_contract.md`](analysis_drilldown_contract.md). Fetch the selected report source with `analysis query-context get` and merge only its returned coordinate fragments for the advertised action. Do not pass raw QP.

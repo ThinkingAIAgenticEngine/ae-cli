@@ -379,11 +379,19 @@ await test('analysis-meta catalog full export fetches all analysis metadata in o
       (await readFile(output, 'utf8')).trim().split('\n').map((line) => JSON.parse(line).resource_type),
       ['event', 'metric', 'event_property', 'user_property', 'cluster', 'tag'],
     );
-    const sidecar = JSON.parse(await readFile(path.join(dir, 'catalog.meta.json'), 'utf8'));
-    assert.equal(sidecar.complete, true);
-    assert.equal(sidecar.row_count, 6);
-    assert.equal(sidecar.run_id, 'run_catalog');
-    assert.equal(sidecar.artifact_id, 'artifact_catalog');
+    assert.equal(result.output_path, output);
+    assert.equal(result.bytes, Buffer.byteLength(artifact));
+    assert.equal(result.run_id, 'run_catalog');
+    assert.equal(result.artifact_id, 'artifact_catalog');
+    assert.equal(result.metadata_path, undefined);
+    assert.equal(result.content_sha256, undefined);
+    assert.equal((await stat(output)).mode & 0o777, 0o600);
+    assert.deepEqual(await readdir(dir), ['catalog.jsonl']);
+
+    await writeFile(output, 'previous catalog');
+    await cmd.execute(makeCtx({ projectId: 1, output, force: true }));
+    assert.equal(await readFile(output, 'utf8'), artifact);
+    assert.deepEqual(await readdir(dir), ['catalog.jsonl']);
   } finally {
     globalThis.fetch = previousFetch;
     clearCliToken(HOST);
@@ -391,14 +399,13 @@ await test('analysis-meta catalog full export fetches all analysis metadata in o
   }
 });
 
-await test('analysis-meta catalog export refuses an existing sidecar before remote submission', async () => {
+await test('analysis-meta catalog export refuses an existing output before remote submission', async () => {
   const cmd = await importCmd('src/commands/te-analysis/meta/catalog/export.ts', 'metadataCatalogExport');
   const dir = await mkdtemp(path.join(tmpdir(), 'ae-cli-analysis-catalog-preflight-'));
   const output = path.join(dir, 'catalog.jsonl');
-  const sidecar = path.join(dir, 'catalog.meta.json');
   const previousFetch = globalThis.fetch;
   try {
-    await writeFile(sidecar, '{}\n');
+    await writeFile(output, 'previous catalog');
     let submitted = false;
     globalThis.fetch = (async () => {
       submitted = true;
@@ -410,8 +417,46 @@ await test('analysis-meta catalog export refuses an existing sidecar before remo
       /Catalog output path already exists/,
     );
     assert.equal(submitted, false);
+    assert.equal(await readFile(output, 'utf8'), 'previous catalog');
   } finally {
     globalThis.fetch = previousFetch;
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
+await test('analysis-meta catalog export leaves no partial file and preserves existing output when download fails', async () => {
+  const cmd = await importCmd('src/commands/te-analysis/meta/catalog/export.ts', 'metadataCatalogExport');
+  const { setCliTokenManual, clearCliToken } = await import(
+    pathToFileURL(path.join(ROOT, 'src/core/cli-token.ts')).href
+  );
+  const dir = await mkdtemp(path.join(tmpdir(), 'ae-cli-analysis-catalog-failed-'));
+  const output = path.join(dir, 'catalog.jsonl');
+  const previousFetch = globalThis.fetch;
+  setCliTokenManual('cli-test-token', HOST);
+  globalThis.fetch = (async (url) => {
+    if (String(url).endsWith('/execute')) {
+      return new Response(JSON.stringify({ ok: true, data: {
+        run_id: 'run_catalog', artifact_id: 'artifact_catalog',
+        status: 'SUCCEEDED', artifact_status: 'COMPLETED',
+      } }), { status: 200 });
+    }
+    return new Response(new ReadableStream({
+      start(controller) {
+        controller.enqueue(new TextEncoder().encode('{"partial":'));
+        controller.error(new Error('connection dropped'));
+      },
+    }), { status: 200 });
+  });
+  try {
+    await assert.rejects(() => cmd.execute(makeCtx({ projectId: 1, output })), /connection dropped/);
+    assert.deepEqual(await readdir(dir), []);
+    await writeFile(output, 'previous catalog');
+    await assert.rejects(() => cmd.execute(makeCtx({ projectId: 1, output, force: true })), /connection dropped/);
+    assert.equal(await readFile(output, 'utf8'), 'previous catalog');
+    assert.deepEqual(await readdir(dir), ['catalog.jsonl']);
+  } finally {
+    globalThis.fetch = previousFetch;
+    clearCliToken(HOST);
     await rm(dir, { recursive: true, force: true });
   }
 });
@@ -934,7 +979,15 @@ await test('analysis-meta virtual-event create builds payload from typed fields'
     eventDesc: 'Pay Or Cart',
     remark: 'Demo virtual event',
     events: [{ event_name: 'purchase' }, { event_name: 'add_to_cart' }],
-    filter: { relation: 'and', items: [] },
+    filter: {
+      relation: 'and',
+      items: [{
+        field: { name: 'vip_users', type: 'tag' },
+        operator: 'is_true',
+        cluster_date_policy: 'SPECIFIED',
+        specified_cluster_date: '2026-09-15',
+      }],
+    },
     override: true,
   });
   assert.equal(url, `${HOST}/api/cli/analysis/v1/capabilities/metadata.virtual_event.create/dry-run`);
@@ -946,7 +999,15 @@ await test('analysis-meta virtual-event create builds payload from typed fields'
       remark: 'Demo virtual event',
       rule: {
         events: [{ event_name: 'purchase' }, { event_name: 'add_to_cart' }],
-        filter: { relation: 'and', items: [] },
+        filter: {
+          relation: 'and',
+          items: [{
+            field: { name: 'vip_users', type: 'tag' },
+            operator: 'is_true',
+            cluster_date_policy: 'SPECIFIED',
+            specified_cluster_date: '2026-09-15',
+          }],
+        },
       },
     },
     override: true,
@@ -1124,11 +1185,252 @@ await test('analysis-meta asset-authentication list uses standalone metadata res
   assert.deepEqual(body.input, { project_id: 1, limit: 100, offset: 100 });
 });
 
+await test('analysis-meta governance-recommendation export uses the recommendation packet capability', async () => {
+  const cmd = await importCmd(
+    'src/commands/te-analysis/meta/governance-recommendation/export.ts',
+    'metadataGovernanceRecommendationExport',
+  );
+  assert.equal(cmd.flags.some((flag) => flag.name === 'presentation'), false);
+  const { url, body, result } = await captureCapabilityExecute(cmd, {
+    projectId: 5,
+    windowDays: 90,
+    limit: 20,
+    includeCompleted: true,
+  }, {
+    schema_version: 'governance_recommendation_v1',
+    run_id: 'recommendation-run-1',
+    work_units: [{
+      source_reports: [{
+        display_name: '支付分析',
+        raw_url: '/#/tga/event/5_101',
+        markdown_link: '[支付分析](/#/tga/event/5_101)',
+      }],
+      asset_candidates: [{
+        display_name: '核心看板',
+        raw_url: '/#/panel/panel/5_10',
+        markdown_link: '[核心看板](/#/panel/panel/5_10)',
+      }],
+      metric_candidates: [{
+        source_report: {
+          report_name: '支付分析',
+          raw_url: '/#/tga/event/5_101',
+          markdown_link: '[支付分析](/#/tga/event/5_101)',
+        },
+      }],
+    }],
+  });
+  assert.equal(url, `${HOST}/api/cli/analysis/v1/capabilities/metadata.governance_recommendation.export/execute`);
+  assert.deepEqual(body.input, {
+    project_id: 5,
+    window_days: 90,
+    limit: 20,
+    include_completed: true,
+  });
+  assert.equal(
+    result.work_units[0].asset_candidates[0].markdown_link,
+    '[核心看板](http://localhost/#/panel/panel/5_10)',
+  );
+  assert.equal(
+    result.work_units[0].source_reports[0].markdown_link,
+    '[支付分析](http://localhost/#/tga/event/5_101)',
+  );
+  assert.equal(
+    result.work_units[0].metric_candidates[0].source_report.markdown_link,
+    '[支付分析](http://localhost/#/tga/event/5_101)',
+  );
+});
+
+await test('split recommendation commands are not exposed to Agents', async () => {
+  const analysisCommands = await importCmd(
+    'src/commands/te-analysis/index.ts',
+    'default',
+  );
+  const commandKeys = analysisCommands.map((cmd) => `${cmd.service} ${cmd.resource ?? ''} ${cmd.command}`);
+  assert.equal(commandKeys.includes('analysis-governance asset-authentication dashboard-package'), false);
+  assert.equal(commandKeys.includes('analysis-meta metric recommended-scan'), false);
+  assert.equal(commandKeys.includes('analysis-meta metric recommended-create'), false);
+});
+
+await test('analysis-meta governance-recommendation export keeps approval presentation in the Skill contract', async () => {
+  const reference = await readFile(
+    path.join(ROOT, 'skills/ae-analysis/references/governance_recommendation_export.md'),
+    'utf8',
+  );
+  assert.doesNotMatch(reference, /--presentation/);
+  assert.match(reference, /Agent owns business-domain grouping/);
+  assert.match(reference, /Agent display is mandatory/);
+  assert.match(reference, /Do not call project-semantic, project-KB, or personal-semantic-preference commands as prerequisite context/);
+  assert.match(reference, /业务主题域/);
+  assert.match(reference, /completed\/authenticated context included by default/);
+  assert.match(reference, /Do not split the final answer into separate top-level sections/);
+  assert.match(reference, /Asset rows and metric rows must appear in the same table for that domain/);
+  assert.match(reference, /Show asset names, not raw IDs/);
+  assert.match(reference, /`markdown_link`/);
+  assert.match(reference, /first use each asset row's `source_evidence\[\]\.markdown_link`\/`raw_url`/);
+  assert.match(reference, /for metric rows, use `source_report\.markdown_link`\/`raw_url`/);
+  assert.match(reference, /`heat_count90d`/);
+  assert.match(reference, /`user_count90d`/);
+  assert.match(reference, /`impact_degree`/);
+  assert.match(reference, /`热度\/影响`/);
+  assert.match(reference, /\[已认证\]/);
+  assert.match(reference, /\[未认证\]/);
+  assert.match(reference, /\[已有指标资产\]/);
+  assert.match(reference, /\[推荐指标候选\]/);
+  assert.match(reference, /\[认证资产候选\]/);
+  assert.match(reference, /\[风险\/冲突\]/);
+  assert.doesNotMatch(reference, /<font color=/);
+});
+
+await test('analysis-meta governance-recommendation submit sends topic decisions to the approval capability', async () => {
+  const cmd = await importCmd(
+    'src/commands/te-analysis/meta/governance-recommendation/submit.ts',
+    'metadataGovernanceRecommendationSubmit',
+  );
+  assert.match(
+    cmd.flags.find((flag) => flag.name === 'topic-name')?.desc ?? '',
+    /business-domain display name/,
+  );
+  const decisions = [
+    {
+      item_type: 'asset',
+      decision: 'APPROVE',
+      resource_type: 'dashboard',
+      resource_key: '903',
+      evidence_hash: 'a'.repeat(64),
+    },
+    {
+      item_type: 'metric_candidate',
+      decision: 'SKIP',
+      candidate_key: 'recommended_metric:abc123',
+      definition_signature: 'b'.repeat(64),
+      reason: 'Need metric name.',
+    },
+  ];
+  const { url, body } = await captureCapabilityExecute(cmd, {
+    projectId: 5,
+    runId: 'recommendation-run-1',
+    snapshotHash: 'c'.repeat(64),
+    topicName: 'Payment',
+    decisions,
+  }, {
+    run_id: 'recommendation-run-1',
+    total: 2,
+    applied: 1,
+    recorded: 1,
+    failed: 0,
+    items: [],
+  });
+  assert.equal(url, `${HOST}/api/cli/analysis/v1/capabilities/metadata.governance_recommendation.submit/execute`);
+  assert.deepEqual(body.input, {
+    project_id: 5,
+    run_id: 'recommendation-run-1',
+    snapshot_hash: 'c'.repeat(64),
+    topic_name: 'Payment',
+    decisions,
+  });
+});
+
+await test('analysis-meta governance-recommendation decisions lists recommendation approval history', async () => {
+  const cmd = await importCmd(
+    'src/commands/te-analysis/meta/governance-recommendation/decisions.ts',
+    'metadataGovernanceRecommendationDecisions',
+  );
+  const { url, body } = await captureCapabilityExecute(cmd, {
+    projectId: 5,
+    runId: 'recommendation-run-1',
+    limit: 100,
+  }, {
+    decisions: [],
+    total: 0,
+  });
+  assert.equal(url, `${HOST}/api/cli/analysis/v1/capabilities/metadata.governance_recommendation.decisions/execute`);
+  assert.deepEqual(body.input, {
+    project_id: 5,
+    run_id: 'recommendation-run-1',
+    limit: 100,
+  });
+});
+
+
+await test('analysis-meta agent-review submit-to-page accepts business-readable report analysis', async () => {
+  const cmd = await importCmd(
+    'src/commands/te-analysis/meta/agent-review/submit-to-page.ts',
+    'agentReviewSubmitToPage',
+  );
+  const draft = {
+    review_type: 'ASSET_GOVERNANCE',
+    schema_version: '1.0',
+    title: '产品雷达项目认证资产推荐审核',
+    source_run_id: 'recommendation-run-1',
+    ai_summary: { summary: '本批次推荐高热度且未认证的经营分析资产进入人工审核。' },
+    presentation_snapshot: {
+      project: { id: 5, name: 'Product Radar' },
+      evidenceDate: '2026-09-15',
+      topics: [{ id: 'operation', name: '经营分析', groups: [{ id: 'g1', name: '日报看板', items: [{ id: 'report_1' }] }] }],
+      relations: [],
+      analysisByItem: {},
+    },
+    items: [{
+      client_item_id: 'report_1',
+      target_ref: { type: 'report', key: '8929571' },
+      action_type: 'CERTIFY',
+      proposal_payload: { authentication_status: 1 },
+      source_link: 'https://example.com/report/8929571',
+      evidence_snapshot: {
+        target_revision: 'report-revision-1',
+        analysis: {
+          measures: [{ name: '日接入量', aggregation: 'count' }],
+          sql: { select_columns: [{ alias: '日接入量', aggregation: 'count' }] },
+        },
+      },
+      ai_summary: {
+        summary: '该报表按天统计客户数据接入量，近期使用热度较高，建议人工确认后认证。',
+        analysis_explanation: {
+          business_purpose: '用于监控客户每天的数据接入量波动，辅助发现数据接入异常。',
+          calculations: [{
+            statement: '按日期聚合接入事件数量，输出每日接入量。',
+            evidence_refs: ['evidence_snapshot.analysis.measures[0]'],
+            inferred: false,
+          }],
+          measures: [],
+          filters: [],
+          time_scope: [{ statement: '日期范围使用报表保存的默认设置。' }],
+          dimensions: [],
+          query_columns: [{
+            statement: '输出列包含日期和日接入量，供审核人确认是否符合认证口径。',
+            evidence_refs: ['evidence_snapshot.analysis.sql.select_columns[0]'],
+            inferred: false,
+          }],
+          limitations: [],
+          open_questions: [],
+        },
+      },
+    }],
+  };
+  const dir = await mkdtemp(path.join(tmpdir(), 'ae-cli-agent-review-'));
+  const inputFile = path.join(dir, 'draft.json');
+  try {
+    await writeFile(inputFile, JSON.stringify(draft));
+    const { url, body } = await captureCapabilityDryRun(cmd, {
+      projectId: 5,
+      clientRequestId: 'review_task_proposal_001',
+      inputFile,
+    });
+    assert.equal(url, HOST + '/api/cli/analysis/v1/capabilities/metadata.agent_review.create/dry-run');
+    assert.equal(body.input.items[0].ai_summary.analysis_explanation.calculations[0].statement,
+      '按日期聚合接入事件数量，输出每日接入量。');
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
 await test('analysis-governance asset-authentication list sends typed server-side filters', async () => {
   const cmd = await importCmd(
     'src/commands/te-analysis/governance/asset-authentication-list.ts',
     'analysisGovernanceAssetAuthenticationList',
   );
+  assert.match(cmd.description, /authentication/i);
+  assert.doesNotMatch(cmd.description, /recommend/i);
   const { url, body } = await captureCapabilityDryRun(cmd, {
     projectId: 3,
     assetTypes: ['dashboard', 'report'],
@@ -1152,6 +1454,34 @@ await test('analysis-governance asset-authentication list sends typed server-sid
     match: 'any',
     fields: ['resource_type', 'resource_key', 'heat_count90d'],
     limit: 100,
+    offset: 0,
+  });
+});
+
+await test('analysis asset search sends typed saved-asset discovery filters', async () => {
+  const cmd = await importCmd(
+    'src/commands/te-analysis/meta/asset/search.ts',
+    'analysisAssetSearch',
+  );
+  assert.equal(cmd.service, 'analysis');
+  assert.equal(cmd.capabilityId, 'analysis.asset.search');
+  assert.equal(cmd.flags.some((flag) => flag.name === 'payload'), false);
+  assert.equal(cmd.flags.some((flag) => flag.name === 'queries'), true);
+  const { url, body } = await captureCapabilityDryRun(cmd, {
+    projectId: 3,
+    queries: ['gateway', 'revenue'],
+    assetTypes: ['dashboard', 'report'],
+    ownTypes: ['CREATED', 'SHARED'],
+    limit: 50,
+    offset: 0,
+  });
+  assert.equal(url, `${HOST}/api/cli/analysis/v1/capabilities/analysis.asset.search/dry-run`);
+  assert.deepEqual(body.input, {
+    project_id: 3,
+    queries: ['gateway', 'revenue'],
+    asset_types: ['dashboard', 'report'],
+    own_types: ['CREATED', 'SHARED'],
+    limit: 50,
     offset: 0,
   });
 });

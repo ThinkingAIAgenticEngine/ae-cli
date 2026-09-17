@@ -1,7 +1,7 @@
 ---
 name: ae-capability
 version: 1.3.1
-description: "AE/TE capability gateway discovery and generic invocation with ae-cli. Use when the user needs to list or search available capabilities, inspect an unknown capability schema/risk/auth contract, optionally validate complex input or dry-run before execute, or invoke a long-tail capability that has no curated ae-cli command. Always discover and inspect before composing input; never guess capability IDs or input fields. Prefer on-demand validate OR dry-run — do not stack both by default."
+description: "AE capability gateway discovery and generic invocation with ae-cli. Use when the user needs to list or search available capabilities, inspect an unknown capability schema/risk/auth contract, optionally validate complex input or dry-run before execute, or invoke a long-tail capability that has no curated ae-cli command. Always discover and inspect before composing input; never guess capability IDs or input fields. Prefer on-demand validate OR dry-run — do not stack both by default."
 ---
 
 # ae-capability

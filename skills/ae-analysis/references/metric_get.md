@@ -9,7 +9,6 @@ Command:
 
 ```bash
 ae-cli analysis-meta metric get --project-id <project_id> --metric-id <metric_id>
-ae-cli analysis-meta metric get --dry-run
 ```
 
 Capability id: `metadata.metric.get`.

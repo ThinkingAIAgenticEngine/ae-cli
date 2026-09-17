@@ -11,8 +11,7 @@ ae-cli tracking debug-device add --project-id <project_id> --device-id <device_i
 
 Capability id: `tracking.debug_device.add`.
 
-Input sends `project_id`, `device_id`, and `device_name`. Prefer a stable device ID that the validation script can reuse. After creation, select the same device with `tracking debug-device select`.
-The result confirms that the device was created or updated; use `debug-device list` to verify the saved device before selecting it.
+Input sends `project_id`, `device_id`, and `device_name`. Prefer a stable device ID that the validation script can reuse. The response confirms creation or update; reuse that result. Select the device with `tracking debug-device select` only when the task needs it as the active Debug device.
 
 ## Parameters
 

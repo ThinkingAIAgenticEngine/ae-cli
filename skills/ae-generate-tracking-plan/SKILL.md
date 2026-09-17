@@ -640,7 +640,7 @@ Draft
 }
 ```
 
-> `update_type` is one of: `user_set` (overwrite), `user_setOnce` (first-set-only), `user_add` (numeric accumulate).
+> `update_type` is one of: `user_set` (overwrite), `user_setOnce` (first-set-only), `user_add` (numeric accumulate), `user_append` (array append).
 
 **User identity fields (`meta.user_identity`)**:
 
@@ -1359,7 +1359,7 @@ AE_LANG=<user_lang> ae-cli tracking plan upload --project <projectId> --xlsx .ae
 #### Auto-fix Flow
 
 CLI auto-executes:
-1. Upload xlsx to TE
+1. Upload xlsx to AE
 2. Check if `eventErrorMap` has errors
 3. Fixable errors → auto-fix draft.json → regenerate xlsx → re-upload
 4. Loop up to 3 times; prompt user for manual intervention if exceeded

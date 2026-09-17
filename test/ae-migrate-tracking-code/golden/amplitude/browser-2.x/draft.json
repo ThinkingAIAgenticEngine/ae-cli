@@ -1,0 +1,60 @@
+{
+  "meta": {
+    "app_type": "web",
+    "sdk_integration_mode": "client_only",
+    "client_platforms": ["javascript"],
+    "client_languages": ["javascript"],
+    "plan_name": "Amplitude Browser 2.x migration (pilot)",
+    "user_identity": {
+      "account_id_source": "user_account",
+      "account_id_field": "user_id",
+      "distinct_id_strategy": "auto"
+    },
+    "lang": "zh"
+  },
+  "events": [
+    {
+      "event_name": "user_login",
+      "display_name": "用户登录",
+      "platform": "client",
+      "source": "codebase",
+      "prop_names": ["method"]
+    },
+    {
+      "event_name": "view_item",
+      "display_name": "浏览商品",
+      "platform": "client",
+      "source": "codebase",
+      "prop_names": ["price", "in_stock"]
+    },
+    {
+      "event_name": "add_to_cart",
+      "display_name": "加入购物车",
+      "platform": "client",
+      "source": "codebase",
+      "prop_names": ["quantity"]
+    },
+    {
+      "event_name": "purchase",
+      "display_name": "购买",
+      "platform": "client",
+      "source": "codebase",
+      "prop_names": ["price", "quantity", "currency"]
+    }
+  ],
+  "event_properties": [
+    { "name": "method", "display_name": "登录方式", "type": "string", "source": "codebase" },
+    { "name": "price", "display_name": "价格", "type": "number", "source": "codebase" },
+    { "name": "in_stock", "display_name": "是否有库存", "type": "bool", "source": "codebase" },
+    { "name": "quantity", "display_name": "数量", "type": "number", "source": "codebase" },
+    { "name": "currency", "display_name": "币种", "type": "string", "source": "codebase" }
+  ],
+  "common_event_properties": [
+    { "name": "item_id", "display_name": "商品ID", "type": "string", "source": "codebase" }
+  ],
+  "user_properties": [
+    { "name": "plan", "display_name": "套餐", "type": "string", "source": "codebase", "update_type": "user_set" },
+    { "name": "signup_source", "display_name": "注册来源", "type": "string", "source": "codebase", "update_type": "user_setOnce" },
+    { "name": "logins", "display_name": "登录次数", "type": "number", "source": "codebase", "update_type": "user_add" }
+  ]
+}

@@ -69,7 +69,7 @@ You must call the corresponding API to **enable** them after or during initializ
 
 ```<lang>
 // Call after user login
-<user_set / user_setOnce code>
+<user_set / user_setOnce / user_add / user_append code>
 ```
 ```
 
@@ -161,7 +161,7 @@ Show each event individually, each as its own block for easy copying.
 <setSuperProperties code>
 
 // ==================== User Properties ====================
-<user_set code>
+<user_set / user_setOnce / user_add / user_append code>
 
 // ==================== Event Group: <tag> ====================
 // <event_name> - <event_desc>
@@ -280,7 +280,7 @@ If upload succeeds, report that the files are available from the file/attachment
    - **Integrate SDK** section (npm package name / CDN URL / integration methods)
    - **Initialization** section (init API signature and example code)
    - **Track** section (event upload API and examples)
-   - **User Properties** section (user_set / user_setOnce / user_add API)
+   - **User Properties** section (user_set / user_setOnce / user_add / user_append API)
 
 3. **⚠️ Do not skip Step 0** — even if you've generated code for the same platform before, must re-read latest docs every time
 

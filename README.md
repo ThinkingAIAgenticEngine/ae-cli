@@ -115,7 +115,7 @@ The table covers every current root command individually. Use `ae-cli --help` fo
 | Analysis and projects | `project` | Project information, members, roles, permissions, entities, time zones, and handover settings |
 | Analysis and projects | `metadata` | Capability-backed data-table, property, and dimension-table binding operations |
 | Analysis and projects | `personal-semantic-preference` | Project-scoped lightweight semantic preferences for the current user |
-| Analysis and projects | `project-semantic` | Governed project semantics, asset packages, candidate validation, review, and publishing |
+| Analysis and projects | `project-semantic` | Governed project semantics, knowledge-base asset packages, candidate validation, review, and publishing |
 | Data and tracking | `tracking` | Tracking plans, SDK samples, checks, ingestion diagnostics, code generation, and bundled wiki |
 | Data and tracking | `data-integration` | Inspect, plan, convert, upload, hand off, and reuse local CSV/JSON/Excel data |
 | Community insights | `community` | Community posts, comments, topics, sentiment, livestream, and report workflows |
@@ -134,6 +134,7 @@ The table covers every current root command individually. Use `ae-cli --help` fo
 | DataOps | `dataops_operations` | Operations, monitoring, and alert workflows |
 | Agent platform | `kb` | Knowledge-base lifecycle, LLM Q&A, and deterministic index/grep/read retrieval |
 | Agent platform | `agent` | Agents, approvals, automations, models, MCP servers, Skills, attachments, credentials, and sandbox tools |
+| Agent platform | `context` | Read the current product-page context authorized for the active Agent Run |
 | Agent platform | `memory` | User memory, Top-K context writing, and actual-usage accounting |
 | Agent platform | `team` | Agent Team and TeamRun execution, chat, results, and artifacts |
 | Agent platform | `system` | Root/admin management of members, sandboxes, tools, models, usage, quotas, and channels |

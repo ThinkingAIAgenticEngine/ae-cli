@@ -248,7 +248,7 @@ export const dataIntegrationHandoff: Command = {
       index_file: join(outDir, 'index.json'),
       pipeline_file: join(outDir, 'pipeline.json'),
       shape_file: join(outDir, 'shape.json'),
-      zip_path: zipPathFor(outDir, fingerprints[0]),
+      zip_path: fingerprints[0] ? zipPathFor(outDir, fingerprints[0]) : undefined,
     };
   },
   execute: async (ctx) => {
@@ -309,8 +309,7 @@ export const dataIntegrationHandoff: Command = {
   },
 };
 
-function zipPathFor(outDir: string, fingerprint: string | undefined): string | undefined {
-  if (!fingerprint) return undefined;
+function zipPathFor(outDir: string, fingerprint: string): string {
   return join(dirname(resolve(outDir)), `ae-data-integration-handoff-${fingerprint.slice(0, 8)}.zip`);
 }
 

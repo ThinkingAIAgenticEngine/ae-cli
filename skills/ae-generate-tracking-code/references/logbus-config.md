@@ -1,6 +1,6 @@
 # LogBus2 Configuration Generation
 
-> **Terminology**: LogBus2 = log sync tool (Go-based, v2) | LoggerConsumer = writes events to local log files | 日志同步工具 = log sync tool | daemon.json = LogBus2 config file | push_url = TE receiver/data ingestion URL | app_id = AE project APP_ID | file_patterns = glob patterns for log files | unit_remove = file deletion unit (day/hour) | offset_remove = file deletion offset | 重命名 = rename (causes re-upload) | runtime 目录 = runtime directory (stores progress snapshots) | JSON line = JSONL format (one JSON per line)
+> **Terminology**: LogBus2 = log sync tool (Go-based, v2) | LoggerConsumer = writes events to local log files | 日志同步工具 = log sync tool | daemon.json = LogBus2 config file | push_url = AE receiver/data ingestion URL | app_id = AE project APP_ID | file_patterns = glob patterns for log files | unit_remove = file deletion unit (day/hour) | offset_remove = file deletion offset | 重命名 = rename (causes re-upload) | runtime 目录 = runtime directory (stores progress snapshots) | JSON line = JSONL format (one JSON per line)
 
 LogBus2 is AE's official log sync tool, used together with LoggerConsumer (server-side SDK).
 

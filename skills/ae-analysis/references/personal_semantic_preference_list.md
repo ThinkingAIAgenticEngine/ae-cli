@@ -2,7 +2,7 @@
 
 List the authenticated user's active personal semantic preference catalog for one project.
 
-Use this command once per host, authenticated user, project, and conversation after resolving the project. Keep the returned directory in conversation context for later questions where user-specific wording or preferences may change interpretation.
+When the request involves personal business wording, asset preferences, or explicit personalization, use this command once per host, authenticated user, project, and conversation after resolving the project. Keep the returned directory in conversation context for later questions where user-specific wording or preferences may change interpretation.
 
 Command:
 
@@ -19,3 +19,20 @@ Output is the gateway envelope. `data.items[]` contains only `id`, `context_type
 If one returned item is actually adopted to interpret the user's request, call `ae-cli personal-semantic-preference get --project-id <project_id> --id <preference_id> --mark-used` before using its full content. Do not mark an item used when it was only inspected or rejected.
 
 Compare a likely match with the published project semantic catalog. Published project semantics remain the formal project-wide authority; personal items provide current-user defaults and working interpretations. If they conflict, use the project semantic for the formal result, explicitly disclose the personal difference, and do not mark the personal item used unless the user explicitly adopts it as a labeled alternative.
+
+## Capture a durable preference
+
+The Agent owns the personal preference capture trigger. Choose `context_type` by meaning:
+
+- `preference`: durable interpretation or output preference without an exact asset binding.
+- `asset_context`: durable user wording or intent bound to one or more exact project assets. Send the complete ordered `resource_refs` array; each item has `resource_type`, string `resource_key`, and `display_name`. This identity is generic across reports, dashboards, events, properties, metrics, tags, clusters, data tables, and future asset types.
+- `experience`: a confirmed reusable work method without an exact asset binding.
+- `background`: stable personal context without an exact asset binding.
+
+Any stable choice of a concrete asset, including an event-selection scenario, must use `asset_context`; do not encode asset IDs only in prose. A current-user working definition remains eligible for personal storage even when it would also benefit other users. Store it only as the current user's preference; do not copy the bound asset definition into its content or imply that it is shared authority. Keep future governance or lifecycle instructions out of the stored content. Do not save transient task details, one-off analysis results, company knowledge, or standalone metadata facts.
+
+An explicit stable statement, correction, or confirmation that passes that evidence gate authorizes `personal-semantic-preference add` or `update` without a second "save" confirmation. Compare against the already loaded catalog first; when one existing preference matches, fetch it with `--mark-used`, update that existing preference, and avoid creating a duplicate. Otherwise add a new one. An explicit instruction not to retain it always wins. Delete remains high risk and requires explicit user confirmation.
+
+After a successful add, update, or delete, merge that response into the conversation's cached directory locally. Do not call list again merely to observe the write.
+
+Stale or expired preferences are automatically hidden by list filtering and backend maintenance. Do not look for or invent a separate command for that behavior.

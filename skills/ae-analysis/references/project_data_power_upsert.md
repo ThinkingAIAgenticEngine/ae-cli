@@ -8,7 +8,6 @@ Command:
 
 ```bash
 ae-cli project data-power upsert --project-id <project_id> --payload <payload>
-ae-cli project data-power upsert --dry-run --project-id <project_id> --payload <payload>
 ```
 
 Capability id: `project.data_power.upsert`.

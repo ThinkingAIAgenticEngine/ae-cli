@@ -1,4 +1,4 @@
-import type { Command } from '../../../framework/types.js';
+import type { Command } from '../../../../framework/types.js';
 import { projectMemberAdd } from './add.js';
 import { projectMemberBatchUpdate } from './batch-update.js';
 import { projectMemberImport } from './import.js';

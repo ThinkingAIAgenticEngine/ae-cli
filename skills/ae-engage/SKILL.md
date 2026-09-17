@@ -6,11 +6,11 @@ description: "AE Engage capability gateway: config center, flows, push/config ch
 
 # ae-engage
 
-AE CLI (`ae-cli`) is the command-line tool for the ThinkingEngine data analysis platform, used by AI Agents and human users.
+AE CLI (`ae-cli`) is the command-line tool for the Agentic Engine data analysis platform, used by AI Agents and human users.
 
 ## Global AE CLI Rules
 
-AE CLI (`ae-cli`) is the command-line tool for the AE / TE / ThinkingEngine analysis platform. For AE analysis-side requests, prefer `ae-cli` and this skill's reference docs over model memory.
+AE CLI (`ae-cli`) is the command-line tool for the AE (Agentic Engine) analysis platform. For AE analysis-side requests, prefer `ae-cli` and this skill's reference docs over model memory.
 
 Global parameters:
 
@@ -55,7 +55,7 @@ When the user mentions a product term below (including common Chinese UI labels)
 | **Push channel** | Project-level message push channels (Webhook, FCM, APNS, etc.) | `engage-setting` | `references/channel-list.md` | `channel-detail.md`, `add-channel.md` (**Webhook vs Client differ**: `url` = HTTP vs scene key; custom params `user:` vs `user:`/`client:`), `update-channel-status.md`, `delete-channel.md`, `channel-update-config.md`, `channel-test-send.md`, `channel_touch_limits_list.md` |
 | **Config channel** | Config-center Webhook/client config channels (not the same as push channels) | `engage-scene` | `references/scene-config-channel.md` | `channel-mgmt.md` (create/enable-disable/copy/delete workflows). User params in `config.customsParamList` require `columnName` with `user:` prefix (e.g. `user:#account_id`); preflight names with ae-analysis `analysis-meta property list/get`. |
 | **Operation strategy** | Ops/delivery strategies under a config item | `engage-scene` | `references/scene-strategy.md` | Custom audience: [`scene-strategy-audience.md`](references/scene-strategy-audience.md) — semantic `definitionRequest` (Analysis condition shape); do not pass `targetClusterQp`/`qp`; preflight props (stop + list if missing); template: `scene-template.md` |
-| **Operation task** | Hermes push/engagement tasks (list, save, lifecycle, reports) | `engage-task` | `references/task-list.md` | `task-detail.md` (get), `save-task.md`, `build-task-save-guide.md`, `task-stats.md`, `task-delete.md`, `push-record-query.md`, `task-user-detail-export.md`, `task-indicator-user.md`, `task-data-overview.md`, `task-data-detail.md`, `task-metric-detail.md`, `task-experiment-report.md` |
+| **Operation task** | Hermes push/engagement tasks (list, save, lifecycle, reports) | `engage-task` | `references/task-list.md` | `task-detail.md` (get), `save-task.md`, `build-task-save-guide.md`, `task-stats.md`, `task-delete.md`, `push-record-query.md`, `task-user-detail-export.md`, `task-indicator-user.md`, `task-data-overview.md`, `task-data-detail.md`, `task-metric-detail.md`, `task-metric-update.md`, `task-experiment-report.md` |
 | **Operation activity** | Campaign activity management and delivery trends by activity, topic, or standalone task | `engage-activity` | `references/activity-activity.md` | `activity-data-detail.md`, `activity-topic.md`, `activity-task.md`, `activity-approval.md` |
 | **Template** | Strategy templates under a config item | `engage-scene` | `references/scene-template.md` | `scene-config-param.md` (template fields reference `paramId`); enable via `template update` then `template update-status` before strategy create |
 
@@ -518,6 +518,7 @@ More detailed single-command guidance is available in the business-oriented `ref
 - `references/task-submit-approval.md` (`engage-task.task.submit-approval`)
 - `references/task-data-detail.md` (`engage-task data-detail query`; capability `engage-task.task-data.detail`)
 - `references/task-metric-detail.md` (`engage-task effect query`; capability `engage-task.task-data.metric-detail`)
+- `references/task-metric-update.md` (`engage-task metric update`; capability `engage-task.metric.update`)
 - `references/flow-metric-update.md` (`engage-flow metric update`; capability `engage-flow.metric.update`)
 
 This split documentation structure is easier to extend later, because commands with more complex object inputs can stay centralized in the `references/` root directory.

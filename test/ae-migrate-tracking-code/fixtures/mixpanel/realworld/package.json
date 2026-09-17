@@ -1,0 +1,8 @@
+{
+  "name": "mixpanel-browser-realworld-fixture",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "mixpanel-browser": "^2.0.0"
+  }
+}

@@ -2,18 +2,17 @@
 
 Use when the user needs to get an asset lineage tree through the capability gateway.
 
-Do not use it for a flat upstream or downstream page; use `dependency-list` or `impact-list` when pagination and filtering are required.
+Do not use it for a flat upstream or downstream page; use `asset-dependency list` or `asset-impact list` when pagination and filtering are required.
 
 Command:
 
 ```bash
-ae-cli analysis-governance asset-lineage get --project-id <project_id> --payload '{}'
-ae-cli analysis-governance asset-lineage get --dry-run --project-id <project_id>
+ae-cli analysis-governance asset-lineage get --project-id <project_id> --node-id <node_id>
 ```
 
-Capability id: analysis_meta.asset_lineage.get.
+Capability id: governance.asset_lineage.get.
 
-Input sends project_id, payload, node_id. Payload keys must follow the common-service snake_case input schema; do not send camelCase aliases.
+Input sends project_id, node_id. The CLI merges the snake_case object from `--payload` into these top-level Gateway fields; explicit flags override matching payload fields. `--project-id` owns the project identity and cannot be supplied or overridden by payload. Required business fields must exist in the final merged input.
 
 Output `data` is the lineage tree rooted at the requested `node_id`; an absent node is an asset-resolution failure, not an empty lineage result.
 
@@ -22,4 +21,4 @@ Output `data` is the lineage tree rooted at the requested `node_id`; an absent n
 |---|---|---|
 | --project-id | Yes | Numeric project ID. |
 | --node-id | No | Poseidon asset node ID; required unless provided inside payload. |
-| --payload | No | Optional snake_case object carrying the same fields. Use this for complex governance filters or backend-shaped payloads. |
+| --payload | No | Optional JSON object merged into top-level input. Use schema-declared snake_case fields; explicit flags take precedence. `node_ids`, `searchs`, and `status` are arrays; `rule` is an object when supplied. |

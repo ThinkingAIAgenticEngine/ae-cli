@@ -1,0 +1,45 @@
+{
+  "provider": "firebase",
+  "variant": "web-v9",
+  "platforms": ["web"],
+  "call_sites": [
+    {
+      "id": "cs-1",
+      "file": "src/analytics.js",
+      "line": 8,
+      "kind": "identity",
+      "source_call": "setUserId(analytics, user.id)",
+      "resolved": true
+    },
+    {
+      "id": "cs-2",
+      "file": "src/analytics.js",
+      "line": 11,
+      "kind": "user_property",
+      "source_call": "setUserProperties(analytics, { plan: 'pro' })",
+      "op": "set",
+      "prop": "plan",
+      "value": "pro"
+    },
+    {
+      "id": "cs-3",
+      "file": "src/events.js",
+      "line": 6,
+      "kind": "event",
+      "source_call": "logEvent(analytics, EVENT_SIGN_UP, { method: 'phone' })",
+      "event_name": "sign_up",
+      "params": { "method": "phone" },
+      "resolved": true
+    },
+    {
+      "id": "cs-4",
+      "file": "src/cart.js",
+      "line": 7,
+      "kind": "event",
+      "source_call": "logEvent(analytics, EVENT_ADD_TO_CART, { item_id: item.id, price: item.price, quantity: item.qty })",
+      "event_name": "add_to_cart",
+      "params": { "item_id": "item.id", "price": "item.price", "quantity": "item.qty" },
+      "resolved": true
+    }
+  ]
+}

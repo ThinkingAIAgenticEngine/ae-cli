@@ -8,7 +8,6 @@ Command:
 
 ```bash
 ae-cli analysis-meta asset-abnormal list --project-id <project_id> --resource-types <resource_types> --limit 50 --offset 0
-ae-cli analysis-meta asset-abnormal list --dry-run
 ```
 
 Capability id: `metadata.asset_abnormal.list`.

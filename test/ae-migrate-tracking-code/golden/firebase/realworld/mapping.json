@@ -1,0 +1,47 @@
+{
+  "provider": "firebase",
+  "variant": "web-v9",
+  "mode": "switch",
+  "entries": [
+    {
+      "site_id": "cs-1",
+      "file": "src/analytics.js",
+      "line": 8,
+      "source_call": "setUserId(analytics, user.id)",
+      "ae_call": "login(accountId)",
+      "account_id_source": "user_account",
+      "action": "replace"
+    },
+    {
+      "site_id": "cs-2",
+      "file": "src/analytics.js",
+      "line": 11,
+      "source_call": "setUserProperties(analytics, { plan: 'pro' })",
+      "ae_call": "user_set",
+      "ae_props": { "plan": "string" },
+      "action": "replace"
+    },
+    {
+      "site_id": "cs-3",
+      "file": "src/events.js",
+      "line": 6,
+      "source_call": "logEvent(analytics, EVENT_SIGN_UP, { method: 'phone' })",
+      "ae_event": "sign_up",
+      "display_name": "注册",
+      "platform": "client",
+      "ae_props": { "method": "string" },
+      "action": "replace"
+    },
+    {
+      "site_id": "cs-4",
+      "file": "src/cart.js",
+      "line": 7,
+      "source_call": "logEvent(analytics, EVENT_ADD_TO_CART, { item_id: item.id, price: item.price, quantity: item.qty })",
+      "ae_event": "add_to_cart",
+      "display_name": "加入购物车",
+      "platform": "client",
+      "ae_props": { "item_id": "string", "price": "number", "quantity": "number" },
+      "action": "replace"
+    }
+  ]
+}

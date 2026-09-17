@@ -1,24 +1,24 @@
 # analysis alert create
 
-Use when create an alert.
-
-Do not use for commands listed under the sheet's non-CLI section or for unrelated metadata/report operations. If the command needs a complex JSON object, read the backend schema or existing asset first and send snake_case fields only.
+Use only when the user asks to create an alert.
 
 Command:
 
 ```bash
-ae-cli analysis alert create [options]
+ae-cli analysis alert create --project-id <project_id> --definition-request '<definition_request>'
 ```
 
 Capability id: `analysis.alert.create`
 
 Input sends `project_id` and `definition_request`. Do not send camelCase aliases.
 
-Output is the capability gateway envelope: success is `ok=true,data,meta`; failure is `ok=false,error`. Export commands return lifecycle data such as `run_id` and `artifact_id` for inspect/download.
+Output is the capability gateway envelope: success is `ok=true,data,meta`; failure is `ok=false,error`.
+
+If the alert definition fields are not known from the current task, inspect `ae-cli capability inspect analysis.alert.create` once and use its snake_case input schema.
 
 Parameters:
 
 | Parameter | Description | Required |
 | --- | --- | --- |
-| `--project-id` | See command help | Yes |
-| `--definition-request` | See command help | Yes |
+| `--project-id` | Numeric project ID. | Yes |
+| `--definition-request` | Structured alert definition request JSON object using snake_case field names. | Yes |

@@ -1,4 +1,5 @@
 import type { RuntimeContext } from '../../../framework/types.js';
+import { modelDefinitionIntentSnapshotFlag } from '../../../core/definition-intent.js';
 import {
   reportWriteDefinitionFlag,
   reportWriteModelTypeFlag,
@@ -44,12 +45,14 @@ export const reportUpdate = createAnalysisCapabilityCommand({
     { name: 'report-desc', type: 'string', required: false, desc: 'New report description.' },
     reportWriteModelTypeFlag(false),
     reportWriteDefinitionFlag(false),
+    modelDefinitionIntentSnapshotFlag,
     reportMetadataResolutionsFlag,
     { name: 'cache-seconds', type: 'number', required: false, desc: 'Optional cache duration in seconds.' },
     { name: 'query-duration-ms', type: 'number', required: false, desc: 'Optional last query duration in milliseconds.' },
   ],
   risk: 'write',
   validate: validateReportUpdate,
+  intentConsistency: { definitionFlag: 'definition', modelTypeFlag: 'model-type' },
   buildInput: (ctx) => compactInput({
     ...projectInput(ctx),
     report_id: ctx.num('report-id'),

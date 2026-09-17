@@ -6,7 +6,7 @@ import { kbApi } from '../../core/mcp-access.js';
 import { getExternalKnowledgeBaseTargetScope } from './target-scope.js';
 
 const API = '/agent/api/external/knowledge-bases/versions';
-const apiOptions = { preserveErrorMetadata: true, retryUnauthorized: true };
+const apiOptions = { preserveErrorMetadata: true, retryUnauthorized: false };
 const targetFlags: Flag[] = [
   { name: 'name', type: 'string', required: true, minLength: 1, maxLength: 200, desc: 'Exact knowledge base name copied from +list' },
   { name: 'scope', type: 'string', desc: 'Exact personal or company scope; omit for personal then company lookup' },

@@ -2,7 +2,7 @@
 
 Submit a bounded entity detail query as an async gzip artifact.
 
-Read `analysis_data_retrieval.md` first. The submit response returns `run_id` and `artifact_id`; poll with `analysis run inspect`, then download with `analysis artifact download`.
+Read `analysis_data_retrieval.md` for the run/export choice. Use `--output` to wait and download the completed artifact. To resume an interrupted export, use [`analysis run wait`](run_wait.md) with the returned `run_id` and `--output <file>`.
 
 Use this command for full or unknown-size entity detail data. Common reads backend batches internally and writes one artifact.
 
@@ -10,12 +10,13 @@ Use this command for full or unknown-size entity detail data. Common reads backe
 ae-cli analysis entity-detail export \
   --project-id <project_id> \
   --definition '{"entity":"user","cohort":{"relation":"and","items":[{"field":{"name":"level","type":"user_property"},"operator":"gte","values":[1]}]}}' \
-  --artifact-format jsonl
+  --artifact-format jsonl --output <file>
 ```
 
 Input:
 - `--project-id` numeric project ID.
 - `--definition` same bounded entity detail shape as `entity-detail run`.
+- `--intent-snapshot` optional local snapshot containing `schema_version: 1`, non-empty `requirement`, and the exact final `definition`; omit `model_type` for detail commands. It checks JSON drift locally and is never sent to Gateway. A passing check does not establish user confirmation or correct business semantics.
 - `--request-id` optional `cli_<32 lowercase hex>` lifecycle ID.
 - `--use-cache` optional boolean.
 - `--zone-offset` optional number.

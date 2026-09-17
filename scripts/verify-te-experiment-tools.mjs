@@ -16,6 +16,7 @@ const EXPECTED_L2 = [
   ['experiment', 'manage', 'experiment.experiment.manage'],
   ['experiment', 'update-group', 'experiment.experiment.update-group'],
   ['experiment', 'update-metrics', 'experiment.experiment.save'],
+  ['external-experiment', 'save-submit', 'experiment.experiment.save-submit'],
   ['experiment', 'batch-delete', 'experiment.experiment.batch-delete'],
   ['operation-log', 'query', 'experiment.operation-log.query'],
   ['save', 'build-guide', 'experiment.save.build-guide'],

@@ -1,8 +1,8 @@
 # analysis-meta catalog list
 
-Use only for a structured AI-QP metadata compile failure that requires one aggregate online search across selected resource types.
+Use for a metadata lookup across selected resource types when their definitions or identities are still missing.
 
-Do not use it for ordinary asset discovery or when the compiler already returned candidates. Follow [`../metadata_resolution.md`](../metadata_resolution.md).
+Reuse known candidates or search an existing project catalog locally. Do not use it to search saved reports; use `analysis report list`. Follow [`metadata_resolution.md`](metadata_resolution.md).
 
 Online search:
 
@@ -22,7 +22,7 @@ Sends `project_id`, `queries`, `resource_types`, and optional `limit_per_type`. 
 
 ## Output
 
-Both modes return unified rows with:
+The response returns unified rows with:
 
 - `resource_type`: `event`, `metric`, `event_property`, `user_property`, `cluster`, or `tag`
 - `resource_key`: canonical server-defined identifier
@@ -41,4 +41,4 @@ Online rows also contain `matched_query`, `matched_field`, and `match_type`. Res
 | `--queries` | Online mode | JSON array of 1–20 deduplicated keywords, OR matched. |
 | `--resource-types` | Online mode | JSON array containing only `event`, `metric`, `event_property`, `user_property`, `cluster`, or `tag`. |
 | `--limit-per-type` | No | Online result limit per selected resource type; default 20, maximum 200. |
-Use at most one online search for the complete compiler error array. If every path gets candidates, ask for confirmation. If any path remains empty, use [`catalog_export.md`](catalog_export.md) once.
+Use the task's terms and relevant English words in the same batch, deduplicated; split only when more than 20 are needed. Match applies literally to `resource_key`, `display_name` and `remark`, without automatic translation. Suitable candidates advance to definition inspection or confirmation. A missing match does not imply metadata is absent; choose the next lookup for the specific missing information. [Catalog export](catalog_export.md) is for complete-directory requests.

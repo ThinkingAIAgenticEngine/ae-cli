@@ -8,7 +8,6 @@ Command:
 
 ```bash
 ae-cli project role-function list --company-id <company_id> --project-id <project_id> --role-name <role_name> --role-names <role_names> --show-system-func <show_system_func>
-ae-cli project role-function list --dry-run
 ```
 
 Capability id: `project.role_function.list`.

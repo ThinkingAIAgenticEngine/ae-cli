@@ -12,7 +12,6 @@ Command:
 ae-cli analysis-meta metric update --project-id <project_id> --metric-id <metric_id> --metric-desc 'New display name' --metric-remark 'New remark'
 ae-cli analysis-meta metric update --project-id <project_id> --metric-id <metric_id> --metric-name demo --metric-desc demo --model-type event --metric-events '[]'
 ae-cli analysis-meta metric update --project-id <project_id> --metric-id <metric_id> --metric-name demo --metric-desc demo --metric-remark demo --model-type retention --metric-events '[]' --metric-params '{}'
-ae-cli analysis-meta metric update --project-id <project_id> --metric-id <metric_id> --metric-desc 'New display name' --dry-run
 ```
 
 Capability id: `metadata.metric.update`.

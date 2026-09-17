@@ -1,0 +1,29 @@
+{
+  "provider": "amplitude",
+  "variant": "node",
+  "platforms": ["node"],
+  "call_sites": [
+    {
+      "id": "cs-1",
+      "file": "src/server.js",
+      "line": 8,
+      "kind": "event",
+      "source_call": "amplitude.track('user_signup', { plan: 'pro' }, { user_id: user.id })",
+      "event_name": "user_signup",
+      "params": { "plan": "pro" },
+      "user_id": "user.id",
+      "resolved": true
+    },
+    {
+      "id": "cs-2",
+      "file": "src/server.js",
+      "line": 13,
+      "kind": "event",
+      "source_call": "amplitude.track('purchase', { order_id: order.id, amount: order.amount }, { user_id: user.id })",
+      "event_name": "purchase",
+      "params": { "order_id": "order.id", "amount": "order.amount" },
+      "user_id": "user.id",
+      "resolved": true
+    }
+  ]
+}

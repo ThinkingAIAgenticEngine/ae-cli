@@ -1,0 +1,31 @@
+{
+  "meta": {
+    "app_type": "android",
+    "sdk_integration_mode": "client_only",
+    "client_platforms": ["android"],
+    "client_languages": ["kotlin"],
+    "plan_name": "Firebase Android migration (pilot)",
+    "user_identity": {
+      "account_id_source": "user_account",
+      "account_id_field": "user_id",
+      "distinct_id_strategy": "auto"
+    },
+    "lang": "zh"
+  },
+  "events": [
+    {
+      "event_name": "select_content",
+      "display_name": "选择内容",
+      "platform": "client",
+      "source": "codebase",
+      "prop_names": ["method"]
+    }
+  ],
+  "event_properties": [
+    { "name": "method", "display_name": "触发方式", "type": "string", "source": "codebase" }
+  ],
+  "common_event_properties": [],
+  "user_properties": [
+    { "name": "plan", "display_name": "套餐", "type": "string", "source": "codebase", "update_type": "user_set" }
+  ]
+}

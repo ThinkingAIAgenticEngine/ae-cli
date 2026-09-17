@@ -21,7 +21,7 @@ The AE Community domain provides social and chat data analysis plus validated co
 
 ## Global AE CLI Rules
 
-AE CLI (`ae-cli`) is the command-line tool for the AE / TE / ThinkingEngine analysis platform. For AE analysis-side requests, prefer `ae-cli` and this skill's reference docs over model memory.
+AE CLI (`ae-cli`) is the command-line tool for the AE (Agentic Engine) analysis platform. For AE analysis-side requests, prefer `ae-cli` and this skill's reference docs over model memory.
 
 Global parameters:
 

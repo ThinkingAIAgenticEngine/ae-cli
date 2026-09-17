@@ -36,64 +36,109 @@ program
   .option('--no-update-check', 'Skip host compatibility checks', false);
 
 // Import domain commands
+
+/**
+ * Log a failed lazy import to stderr (stdout stays reserved for the JSON
+ * envelope) so a domain or registrar that fails to load is visible instead of
+ * surfacing as a bare "unknown command".
+ */
+function warnLoadFailure(label: string, err: unknown): void {
+  const reason = err instanceof Error ? err.message : String(err);
+  process.stderr.write(`warning: failed to load ${label}: ${reason}\n`);
+}
+
 async function loadCommands(): Promise<Command[]> {
   const commands: Command[] = [];
   try {
     const teAnalysis = await import('./commands/te-analysis/index.js');
     commands.push(...teAnalysis.default);
-  } catch {}
+  } catch (err) {
+    warnLoadFailure('domain te-analysis', err);
+  }
   try {
     const engage = await import('./commands/te-engage/index.js');
     commands.push(...engage.default);
-  } catch {}
+  } catch (err) {
+    warnLoadFailure('domain te-engage', err);
+  }
   try {
     const experiment = await import('./commands/te-experiment/index.js');
     commands.push(...experiment.default);
-  } catch {}
+  } catch (err) {
+    warnLoadFailure('domain te-experiment', err);
+  }
   try {
     const community = await import('./commands/te-community/index.js');
     commands.push(...community.default);
-  } catch {}
+  } catch (err) {
+    warnLoadFailure('domain te-community', err);
+  }
   try {
     const dataops = await import('./commands/te-dataops/index.js');
     commands.push(...dataops.default);
-  } catch {}
+  } catch (err) {
+    warnLoadFailure('domain te-dataops', err);
+  }
   try {
     const teKb = await import('./commands/te-kb/index.js');
     commands.push(...teKb.default);
-  } catch {}
+  } catch (err) {
+    warnLoadFailure('domain te-kb', err);
+  }
   try {
     const teTeam = await import('./commands/te-team/index.js');
     commands.push(...teTeam.default);
-  } catch {}
+  } catch (err) {
+    warnLoadFailure('domain te-team', err);
+  }
   try {
     const teAgent = await import('./commands/te-agent/index.js');
     commands.push(...teAgent.default);
-  } catch {}
+  } catch (err) {
+    warnLoadFailure('domain te-agent', err);
+  }
   try {
     const memory = await import('./commands/memory/index.js');
     commands.push(...memory.default);
-  } catch {}
+  } catch (err) {
+    warnLoadFailure('domain memory', err);
+  }
   try {
     const teSystem = await import('./commands/te-system/index.js');
     commands.push(...teSystem.default);
-  } catch {}
+  } catch (err) {
+    warnLoadFailure('domain te-system', err);
+  }
   try {
     const metadata = await import('./commands/metadata/index.js');
     commands.push(...metadata.default);
-  } catch {}
-  try {
-    const projectSemantic = await import('./commands/project-semantic/index.js');
-    commands.push(...projectSemantic.default);
-  } catch {}
+  } catch (err) {
+    warnLoadFailure('domain metadata', err);
+  }
   try {
     const personalSemanticPreference = await import('./commands/personal-semantic-preference/index.js');
     commands.push(...personalSemanticPreference.default);
-  } catch {}
+  } catch (err) {
+    warnLoadFailure('domain personal-semantic-preference', err);
+  }
+  try {
+    const projectSemantic = await import('./commands/project-semantic/index.js');
+    commands.push(...projectSemantic.default);
+  } catch (err) {
+    warnLoadFailure('domain project-semantic', err);
+  }
   try {
     const dataIntegration = await import('./commands/data-integration/index.js');
     commands.push(...dataIntegration.default);
-  } catch {}
+  } catch (err) {
+    warnLoadFailure('domain data-integration', err);
+  }
+  try {
+    const context = await import('./commands/context/index.js');
+    commands.push(...context.default);
+  } catch (err) {
+    warnLoadFailure('domain context', err);
+  }
   return commands;
 }
 
@@ -102,7 +147,9 @@ async function registerAuthCommands(): Promise<void> {
   try {
     const { registerAuth } = await import('./commands/auth.js');
     registerAuth(program);
-  } catch {}
+  } catch (err) {
+    warnLoadFailure('auth commands', err);
+  }
 }
 
 // Register config commands
@@ -110,14 +157,18 @@ async function registerConfigCommands(): Promise<void> {
   try {
     const { registerConfig } = await import('./commands/config.js');
     registerConfig(program);
-  } catch {}
+  } catch (err) {
+    warnLoadFailure('config commands', err);
+  }
 }
 
 async function registerCapabilityCommands(): Promise<void> {
   try {
     const { registerCapability } = await import('./commands/capability/index.js');
     registerCapability(program);
-  } catch {}
+  } catch (err) {
+    warnLoadFailure('capability commands', err);
+  }
 }
 
 // Register sync command (te-agent Skill / MCP push)
@@ -125,7 +176,9 @@ async function registerSyncCommand(): Promise<void> {
   try {
     const { registerSync } = await import('./commands/sync/index.js');
     registerSync(program);
-  } catch {}
+  } catch (err) {
+    warnLoadFailure('sync commands', err);
+  }
 }
 
 // Register model command (te-agent settings.json model switch)
@@ -133,14 +186,18 @@ async function registerModelCommand(): Promise<void> {
   try {
     const { registerModel } = await import('./commands/model/index.js');
     registerModel(program);
-  } catch {}
+  } catch (err) {
+    warnLoadFailure('model commands', err);
+  }
 }
 
 async function registerUpdateCommand(): Promise<void> {
   try {
     const { registerUpdate } = await import('./commands/update.js');
     registerUpdate(program);
-  } catch {}
+  } catch (err) {
+    warnLoadFailure('update commands', err);
+  }
 }
 
 async function main() {

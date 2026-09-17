@@ -8,7 +8,6 @@ Command:
 
 ```bash
 ae-cli analysis-meta event hide-update --project-id <project_id> --event-names '["purchase"]' --is-hide true
-ae-cli analysis-meta event hide-update --dry-run
 ```
 
 Capability id: `metadata.event.hide_update`.

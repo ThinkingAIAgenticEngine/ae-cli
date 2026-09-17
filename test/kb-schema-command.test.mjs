@@ -1,4 +1,7 @@
 import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
 import test from 'node:test';
 
 import { executeSchema, schema } from '../src/commands/te-kb/schema.ts';
@@ -21,6 +24,16 @@ assert.deepEqual(customInstructionsFlag, {
   required: false,
   sensitive: true,
   desc: 'Optional per-run instructions for generating this knowledge base schema',
+});
+const customInstructionsFileFlag = schema.flags.find(
+  (flag) => flag.name === 'custom-instructions-file',
+);
+assert.deepEqual(customInstructionsFileFlag, {
+  name: 'custom-instructions-file',
+  type: 'string',
+  required: false,
+  sensitive: true,
+  desc: 'Read optional per-run schema generation instructions from a UTF-8 text file',
 });
 
 const scopeFlag = schema.flags.find((flag) => flag.name === 'scope');
@@ -59,6 +72,32 @@ assert.deepEqual(withCustomInstructions, {
     customInstructions: 'Prioritize troubleshooting workflows.',
   },
 });
+
+const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'kb-schema-command-'));
+const instructionsFile = path.join(tempDir, 'compile-rules.md');
+fs.writeFileSync(instructionsFile, 'Use the source tree root only.');
+const withCustomInstructionsFile = schema.dryRun(
+  makeContext({
+    name: 'engineering-handbook',
+    scope: 'personal',
+    model: 'system-model-glm-5.2',
+    'custom-instructions-file': instructionsFile,
+  }),
+);
+assert.deepEqual(withCustomInstructionsFile.body, {
+  name: 'engineering-handbook',
+  scope: 'personal',
+  model: 'system-model-glm-5.2',
+  customInstructions: 'Use the source tree root only.',
+});
+assert.throws(
+  () => schema.validate(makeContext({
+    name: 'engineering-handbook',
+    'custom-instructions': 'inline',
+    'custom-instructions-file': instructionsFile,
+  })),
+  /Use either --custom-instructions or --custom-instructions-file/,
+);
 
 const withoutCustomInstructions = schema.dryRun(
   makeContext({ name: 'engineering-handbook' }),

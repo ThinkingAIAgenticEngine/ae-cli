@@ -1,4 +1,4 @@
-import type { Command } from '../../../framework/types.js';
+import type { Command } from '../../../../framework/types.js';
 import { projectRoleDelete } from './delete.js';
 import { projectRoleGet } from './get.js';
 import { projectRoleList } from './list.js';

@@ -1,0 +1,31 @@
+{
+  "provider": "sensors-data",
+  "variant": "java",
+  "mode": "add",
+  "entries": [
+    {
+      "site_id": "cs-1",
+      "file": "src/AnalyticsService.java",
+      "line": 13,
+      "source_call": "sa.track(userId, true, \"user_signup\", props)",
+      "ae_event": "user_signup",
+      "display_name": "用户注册",
+      "platform": "server",
+      "ae_props": { "plan": "string" },
+      "account_id_source": "user_account",
+      "action": "add_after"
+    },
+    {
+      "site_id": "cs-2",
+      "file": "src/AnalyticsService.java",
+      "line": 20,
+      "source_call": "sa.track(userId, true, \"purchase\", props)",
+      "ae_event": "purchase",
+      "display_name": "购买",
+      "platform": "server",
+      "ae_props": { "order_id": "string", "amount": "number" },
+      "account_id_source": "user_account",
+      "action": "add_after"
+    }
+  ]
+}

@@ -1,4 +1,4 @@
-import type { Command } from '../../../framework/types.js';
+import type { Command } from '../../../../framework/types.js';
 import { projectRoleFunctionList } from './list.js';
 
 const commands: Command[] = [

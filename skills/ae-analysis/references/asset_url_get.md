@@ -7,14 +7,13 @@ Do not use it to discover assets or query asset data; resolve a real asset first
 Command:
 
 ```bash
-ae-cli analysis-meta asset url-get --project-id <project_id> --payload '{}'
+ae-cli analysis-meta asset url-get --project-id <project_id> --node-id <node_id>
 ae-cli analysis-meta asset url-get --project-id <project_id> --resource-type dashboard --resource-id 1
-ae-cli analysis-meta asset url-get --dry-run --project-id <project_id>
 ```
 
 Capability id: analysis_meta.asset_url.get.
 
-Input sends project_id, payload, node_id, resource_id, resource_type, link_info. Payload keys must follow the common-service snake_case input schema; do not send camelCase aliases.
+Input sends project_id, node_id, resource_id, resource_type, link_info. The CLI merges the snake_case object from `--payload` into these top-level Gateway fields; explicit flags override matching payload fields. `--project-id` owns the project identity and cannot be supplied or overridden by payload. Required business fields must exist in the final merged input.
 
 Output `data` identifies the normalized asset and returns `raw_url` plus `markdown_link` when the resource type supports a link. ae-cli rewrites relative URL/link fields into absolute URLs using the current host. `status=ok` without a URL means no URL mapping was available.
 
@@ -26,4 +25,4 @@ Output `data` identifies the normalized asset and returns `raw_url` plus `markdo
 | --resource-id | No | Asset business resource ID. |
 | --resource-type | No | Asset resource type. |
 | --link-info | No | link_info JSON from asset governance results. |
-| --payload | No | Optional snake_case object carrying the same fields. Use this for complex governance filters or backend-shaped payloads. |
+| --payload | No | Optional JSON object merged into top-level input. Use schema-declared snake_case fields; explicit flags take precedence. `node_ids`, `searchs`, and `status` are arrays; `rule` is an object when supplied. |

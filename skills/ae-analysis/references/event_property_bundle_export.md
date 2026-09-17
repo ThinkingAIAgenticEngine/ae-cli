@@ -7,26 +7,16 @@ Do not use it for result data, a partial metadata subset, or import. The artifac
 Command:
 
 ```bash
-ae-cli analysis-meta event-property-bundle export --project-id <project_id>
-ae-cli analysis-meta event-property-bundle export --project-id <project_id> --request-id cli_0123456789abcdef0123456789abcdef --timeout-seconds 21600
-ae-cli analysis-meta event-property-bundle export --dry-run
+ae-cli analysis-meta event-property-bundle export --project-id <project_id> --output <file>
 ```
 
-Capability id: `metadata.super_metadata.export`.
+Capability id: `metadata.event_property_bundle.export`.
 
 Input sends `project_id`, and optional `request_id`, `timeout_seconds`.
 
-Output is the gateway envelope. `data` contains an async export descriptor with `run_id`, `artifact_id`, status fields, and expiration fields. It does not expose inspect/download API paths; use the CLI commands below.
+Output is the gateway envelope. `data` contains an async export descriptor with `run_id`, `artifact_id`, status fields, and expiration fields. The CLI handles waiting and download with `--output`.
 
-Follow-up workflow:
-
-1. Save `data.run_id` and `data.artifact_id` from the export response.
-2. Poll status with `ae-cli analysis run inspect --run-id <run_id>`.
-3. Continue polling while status is running or pending. Treat `COMPLETED` or `SUCCEEDED` as success, and `FAILED`, `CANCELED`, or `CANCELLED` as terminal failure.
-4. On success, download with `ae-cli analysis artifact download --run-id <run_id> --artifact-id <artifact_id> --output <file>.xlsx`.
-5. If the export is no longer needed, cancel with `ae-cli analysis query cancel --run-id <run_id>`.
-
-Do not write custom Python/curl for polling or download unless the CLI command itself is unavailable.
+Use `--output` to wait and download the completed artifact. If interrupted, resume with `ae-cli analysis run wait --run-id <run_id> --output <file>` using the same export response. See [`run_wait.md`](run_wait.md).
 
 ## Parameters
 | Parameter | Required | Description |
@@ -34,3 +24,4 @@ Do not write custom Python/curl for polling or download unless the CLI command i
 | `--project-id` | Yes | Numeric project ID. |
 | `--request-id` | No | Optional `cli_<32 lowercase hex>` request ID. |
 | `--timeout-seconds` | No | Timeout in seconds, 1 to 21600. Default 21600 (6 hours). |
+| `--output` | No | Wait and download to this local file. |

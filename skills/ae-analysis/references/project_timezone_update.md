@@ -8,7 +8,6 @@ Command:
 
 ```bash
 ae-cli project timezone update --project-id <project_id> --item timezone_toggle --payload '{"toggle":true}'
-ae-cli project timezone update --project-id <project_id> --item timezone_toggle --payload '{"toggle":true}' --dry-run
 ```
 
 Capability id: `project.timezone.update`.

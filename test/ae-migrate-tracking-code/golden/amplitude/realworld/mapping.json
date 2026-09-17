@@ -1,0 +1,31 @@
+{
+  "provider": "amplitude",
+  "variant": "node",
+  "mode": "add",
+  "entries": [
+    {
+      "site_id": "cs-1",
+      "file": "src/server.js",
+      "line": 9,
+      "source_call": "amplitude.track(EVENT_USER_SIGNUP, { plan: 'pro' }, { user_id: user.id })",
+      "ae_event": "user_signup",
+      "display_name": "用户注册",
+      "platform": "server",
+      "ae_props": { "plan": "string" },
+      "account_id_source": "user_account",
+      "action": "add_after"
+    },
+    {
+      "site_id": "cs-2",
+      "file": "src/payment.js",
+      "line": 5,
+      "source_call": "amplitude.track(EVENT_PURCHASE, { order_id: order.id, amount: order.amount }, { user_id: user.id })",
+      "ae_event": "purchase",
+      "display_name": "购买",
+      "platform": "server",
+      "ae_props": { "order_id": "string", "amount": "number" },
+      "account_id_source": "user_account",
+      "action": "add_after"
+    }
+  ]
+}

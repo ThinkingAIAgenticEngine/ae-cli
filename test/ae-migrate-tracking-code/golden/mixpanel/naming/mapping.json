@@ -1,0 +1,62 @@
+{
+  "provider": "mixpanel",
+  "variant": "javascript",
+  "mode": "switch",
+  "entries": [
+    {
+      "site_id": "cs-1",
+      "file": "src/analytics.js",
+      "line": 7,
+      "source_call": "mixpanel.track('userLogin', { userId: 'u-1', planType: 'pro' })",
+      "ae_event": "user_login",
+      "display_name": "登录",
+      "platform": "client",
+      "ae_props": { "user_id": "string", "plan_type": "string" },
+      "action": "replace"
+    },
+    {
+      "site_id": "cs-2",
+      "file": "src/analytics.js",
+      "line": 8,
+      "source_call": "mixpanel.track('SelectContent', { contentId: 'c-1' })",
+      "ae_event": "select_content",
+      "display_name": "选择内容",
+      "platform": "client",
+      "ae_props": { "content_id": "string" },
+      "action": "replace"
+    },
+    {
+      "site_id": "cs-3",
+      "file": "src/analytics.js",
+      "line": 9,
+      "source_call": "mixpanel.track('product-view', { planType: 'pro' })",
+      "ae_event": "product_view",
+      "display_name": "商品浏览",
+      "platform": "client",
+      "ae_props": { "plan_type": "string" },
+      "action": "replace"
+    },
+    {
+      "site_id": "cs-4",
+      "file": "src/analytics.js",
+      "line": 10,
+      "source_call": "mixpanel.track('2fa_completed', { method: 'totp' })",
+      "ae_event": "e_2fa_completed",
+      "display_name": "两步验证完成",
+      "platform": "client",
+      "ae_props": { "method": "string" },
+      "action": "replace"
+    },
+    {
+      "site_id": "cs-5",
+      "file": "src/analytics.js",
+      "line": 11,
+      "source_call": "mixpanel.track('mp_subscription', { tier: 'pro' })",
+      "ae_event": "subscription",
+      "display_name": "订阅",
+      "platform": "client",
+      "ae_props": { "tier": "string" },
+      "action": "replace"
+    }
+  ]
+}

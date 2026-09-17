@@ -1,0 +1,36 @@
+{
+  "provider": "firebase",
+  "variant": "android",
+  "mode": "switch",
+  "entries": [
+    {
+      "site_id": "cs-1",
+      "file": "src/AnalyticsTracker.kt",
+      "line": 11,
+      "source_call": "firebaseAnalytics.setUserId(userId)",
+      "ae_call": "login(accountId)",
+      "account_id_source": "user_account",
+      "action": "replace"
+    },
+    {
+      "site_id": "cs-2",
+      "file": "src/AnalyticsTracker.kt",
+      "line": 15,
+      "source_call": "firebaseAnalytics.logEvent(FirebaseAnalytics.Event.SELECT_CONTENT, bundle)",
+      "ae_event": "select_content",
+      "display_name": "选择内容",
+      "platform": "client",
+      "ae_props": { "method": "string" },
+      "action": "replace"
+    },
+    {
+      "site_id": "cs-3",
+      "file": "src/AnalyticsTracker.kt",
+      "line": 19,
+      "source_call": "firebaseAnalytics.setUserProperty(\"plan\", plan)",
+      "ae_call": "user_set",
+      "ae_props": { "plan": "string" },
+      "action": "replace"
+    }
+  ]
+}

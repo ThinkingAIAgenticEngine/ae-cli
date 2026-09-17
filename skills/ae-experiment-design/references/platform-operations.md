@@ -1,6 +1,6 @@
 # Platform Operations
 
-Read this reference before any AE/TE platform interaction.
+Read this reference before any AE platform interaction.
 
 ## Hard boundary
 

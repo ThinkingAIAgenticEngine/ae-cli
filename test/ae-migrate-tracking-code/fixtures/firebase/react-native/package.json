@@ -1,0 +1,8 @@
+{
+  "name": "firebase-rn-fixture",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "@react-native-firebase/analytics": "^18.0.0"
+  }
+}

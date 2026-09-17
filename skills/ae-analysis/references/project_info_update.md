@@ -8,7 +8,6 @@ Command:
 
 ```bash
 ae-cli project info update --project-id <project_id> --project-name <project_name> --project-remark <project_remark>
-ae-cli project info update --dry-run --project-id <project_id> --project-name <project_name>
 ```
 
 Capability id: `project.info.update`.

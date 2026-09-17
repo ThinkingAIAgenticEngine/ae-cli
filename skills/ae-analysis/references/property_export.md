@@ -9,7 +9,6 @@ Command:
 ```bash
 ae-cli analysis-meta property export --project-id <project_id> --scope event --output <temporary_path>/properties.json
 ae-cli analysis-meta property export --project-id <project_id> --scope event --event-name purchase --queries '["amount"]' --fields '["prop_name","prop_desc"]' --output <temporary_path>/properties.json
-ae-cli analysis-meta property export --dry-run
 ```
 
 Capability id: `metadata.property.export`.

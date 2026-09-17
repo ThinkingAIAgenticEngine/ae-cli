@@ -15,6 +15,7 @@ import { CliValidationError } from '../src/core/errors.ts';
 import { projectPermissionBindingList } from '../src/commands/te-analysis/project/permission-binding/list.ts';
 import { projectRoleDelete } from '../src/commands/te-analysis/project/role/delete.ts';
 import { projectRoleGet } from '../src/commands/te-analysis/project/role/get.ts';
+import { projectRoleUpsert } from '../src/commands/te-analysis/project/role/upsert.ts';
 import { projectRoleUserList } from '../src/commands/te-analysis/project/role-user/list.ts';
 import { projectTimezoneUpdate } from '../src/commands/te-analysis/project/timezone/update.ts';
 import projectCommands from '../src/commands/te-analysis/project/index.ts';
@@ -103,6 +104,21 @@ await test('project role get forwards project_id', async () => {
     project_id: 1,
     role_name: 'custom_role',
   });
+});
+
+await test('project role upsert preserves the structured role function payload', async () => {
+  const payload = {
+    role_desc: 'Data analyst',
+    role_func_list: [{ function_name: 'viewReport', has_power: 1 }],
+  };
+  assert.deepEqual(await dryInput(projectRoleUpsert, {
+    'project-id': 196,
+    payload,
+  }), {
+    project_id: 196,
+    payload,
+  });
+  assert.match(projectRoleUpsert.helpText ?? '', /role_func_list is a non-empty array of objects/);
 });
 
 await test('project role delete forwards project_id', async () => {

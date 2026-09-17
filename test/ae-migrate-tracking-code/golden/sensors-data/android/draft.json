@@ -1,0 +1,32 @@
+{
+  "meta": {
+    "app_type": "android",
+    "sdk_integration_mode": "client_only",
+    "client_platforms": ["android"],
+    "client_languages": ["kotlin"],
+    "plan_name": "Sensors Data Android migration (pilot)",
+    "user_identity": {
+      "account_id_source": "user_account",
+      "account_id_field": "user_id",
+      "distinct_id_strategy": "auto"
+    },
+    "lang": "zh"
+  },
+  "events": [
+    {
+      "event_name": "view_item",
+      "display_name": "浏览商品",
+      "platform": "client",
+      "source": "codebase",
+      "prop_names": ["item_id", "price"]
+    }
+  ],
+  "event_properties": [
+    { "name": "item_id", "display_name": "商品ID", "type": "string", "source": "codebase" },
+    { "name": "price", "display_name": "价格", "type": "number", "source": "codebase" }
+  ],
+  "common_event_properties": [],
+  "user_properties": [
+    { "name": "plan", "display_name": "套餐", "type": "string", "source": "codebase", "update_type": "user_set" }
+  ]
+}

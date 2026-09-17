@@ -8,7 +8,6 @@ Command:
 
 ```bash
 ae-cli project member batch-update --project-id <project_id> --payload <payload>
-ae-cli project member batch-update --dry-run --project-id <project_id> --payload <payload>
 ```
 
 Capability id: `project.member.batch_update`.

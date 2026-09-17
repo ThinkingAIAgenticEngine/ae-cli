@@ -8,7 +8,6 @@ Command:
 
 ```bash
 ae-cli project entity update --project-id <project_id> --entity-id <entity_id> --entity-name <entity_name> --column-name <column_name> --table-type <table_type> --order <order>
-ae-cli project entity update --dry-run --project-id <project_id> --entity-id <entity_id> --entity-name <entity_name> --column-name <column_name> --table-type <table_type>
 ```
 
 Capability id: `project.entity.update`.

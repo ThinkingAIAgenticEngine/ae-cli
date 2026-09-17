@@ -9,9 +9,14 @@ import {
   slaveClusterIdFlag,
   validateClusterQueryRouting,
 } from '../capability-shared.js';
-import { reportDataInput, reportDataZoneOffsetDescription } from './shared.js';
+import {
+  reportDataInput,
+  reportDataZoneOffsetDescription,
+  sqlReportParamsDescription,
+  withSqlSelectorRuntimeDiagnostics,
+} from './shared.js';
 
-export const reportDataRun = createAnalysisCapabilityCommand({
+export const reportDataRun = withSqlSelectorRuntimeDiagnostics(createAnalysisCapabilityCommand({
   resource: 'report-data',
   command: 'run',
   capabilityId: 'analysis.report_data.run',
@@ -22,7 +27,7 @@ export const reportDataRun = createAnalysisCapabilityCommand({
     requestIdFlag,
     { name: 'filters', type: 'json', required: false, desc: 'Non-SQL analysis models only. SQL-only requests reject this field; mixed batches warn for SQL report_ids that ignore it. AI-facing shape: {"relation":"and","items":[{"field":{"name":"country","type":"user_property"},"operator":"eq","values":["US"]}]}. Never pass QP taFilters.' },
     { name: 'group-by', type: 'json', required: false, desc: 'Non-SQL analysis models only. SQL-only requests reject this field; mixed batches warn. AI-facing shape: [{"field":{"name":"country","type":"user_property"}}]. Time granularity uses --time-granularity.' },
-    { name: 'sql-params', type: 'json', required: false, desc: 'SQL reports only. First run analysis report get for every target SQL report; each name must exist in every definition.params. Send value overrides only, for example [{"name":"platform","value":"ios"}] or saved part_date/time parameters with start_time/end_time. Do not send definition fields such as paramType, selectorItems, or use_timezone.' },
+    { name: 'sql-params', type: 'json', required: false, desc: sqlReportParamsDescription },
     { name: 'start-time', type: 'string', required: false, desc: 'Non-SQL analysis-model date override start, yyyy-MM-dd. SQL dates must be saved parameters overridden through --sql-params.' },
     { name: 'end-time', type: 'string', required: false, desc: 'Non-SQL analysis-model date override end, yyyy-MM-dd. SQL dates must be saved parameters overridden through --sql-params.' },
     { name: 'time-granularity', type: 'string', required: false, desc: 'Non-SQL analysis-model time granularity override. SQL accepts only --sql-params.' },
@@ -36,4 +41,4 @@ export const reportDataRun = createAnalysisCapabilityCommand({
   risk: 'read',
   validate: validateClusterQueryRouting,
   buildInput: reportDataInput,
-});
+}));

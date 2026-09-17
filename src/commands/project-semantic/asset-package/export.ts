@@ -1,5 +1,9 @@
 import type { Command, RuntimeContext } from '../../../framework/types.js';
-import { buildCapabilityGatewayUrl, executeCapabilityWithEnvelope } from '../../../core/capability-api.js';
+import {
+  dryRunCapability,
+  executeCapabilityWithEnvelope,
+  validateCapability,
+} from '../../../core/capability-api.js';
 import { resolveGatewayDomain } from '../../../core/capability-routing.js';
 import { withAsyncArtifactLifecycle } from '../../../core/analysis-async-artifact.js';
 import {
@@ -9,6 +13,7 @@ import {
 
 const ASSET_PACKAGE_EXPORT_CAPABILITY = 'business_semantics.asset_package.export';
 const ASSET_SCOPES = new Set(['governed', 'collaborative', 'all_visible']);
+const GATEWAY_DOMAIN = 'analysis';
 
 function assetScope(ctx: RuntimeContext): string {
   const value = ctx.str('asset-scope') || 'governed';
@@ -22,7 +27,8 @@ const assetPackageExportCommand: Command = {
   service: 'project-semantic',
   resource: 'asset-package',
   command: 'export',
-  description: 'Export and materialize a project asset package for CLI Agent semantic recommendation.',
+  description: 'Export and materialize a knowledge-ready project asset package for CLI Agent consumption.',
+  helpText: 'Requires project_semantic_enable=on. A disabled project returns PROJECT_SEMANTIC_DISABLED before creating an export package.',
   flags: [
     { name: 'project-id', type: 'number', required: true, desc: 'Numeric project ID.', alias: 'p', min: 1 },
     {
@@ -33,21 +39,24 @@ const assetPackageExportCommand: Command = {
     },
   ],
   risk: 'read',
-  dryRun: (ctx) => ({
-    method: 'POST',
-    url: buildCapabilityGatewayUrl(
-      ctx.host(),
-      resolveGatewayDomain('analysis', 'analysis'),
-      `capabilities/${ASSET_PACKAGE_EXPORT_CAPABILITY}/execute`,
-    ),
-    body: { input: { project_id: ctx.num('project-id'), asset_scope: assetScope(ctx) } },
-  }),
+  validateInput: (ctx) => validateCapability(
+    ctx.host(),
+    resolveGatewayDomain(GATEWAY_DOMAIN, GATEWAY_DOMAIN),
+    ASSET_PACKAGE_EXPORT_CAPABILITY,
+    { project_id: ctx.num('project-id'), asset_scope: assetScope(ctx) },
+  ),
+  dryRun: (ctx) => dryRunCapability(
+    ctx.host(),
+    resolveGatewayDomain(GATEWAY_DOMAIN, GATEWAY_DOMAIN),
+    ASSET_PACKAGE_EXPORT_CAPABILITY,
+    { project_id: ctx.num('project-id'), asset_scope: assetScope(ctx) },
+  ),
   execute: async (ctx) => {
     const projectId = ctx.num('project-id');
     const scope = assetScope(ctx);
     const response = await executeCapabilityWithEnvelope(
       ctx.host(),
-      resolveGatewayDomain('analysis', 'analysis'),
+      resolveGatewayDomain(GATEWAY_DOMAIN, GATEWAY_DOMAIN),
       ASSET_PACKAGE_EXPORT_CAPABILITY,
       { project_id: projectId, asset_scope: scope },
     );

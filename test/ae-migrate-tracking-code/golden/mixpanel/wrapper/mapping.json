@@ -1,0 +1,29 @@
+{
+  "provider": "mixpanel",
+  "variant": "javascript",
+  "mode": "switch",
+  "entries": [
+    {
+      "site_id": "cs-1",
+      "file": "src/app.js",
+      "line": 4,
+      "source_call": "trackEvent('sign_up', { method: user.method })",
+      "ae_event": "sign_up",
+      "display_name": "注册",
+      "platform": "client",
+      "ae_props": { "method": "string" },
+      "action": "replace"
+    },
+    {
+      "site_id": "cs-2",
+      "file": "src/checkout.js",
+      "line": 4,
+      "source_call": "trackEvent('purchase', { order_id: order.id, amount: order.total })",
+      "ae_event": "purchase",
+      "display_name": "购买",
+      "platform": "client",
+      "ae_props": { "order_id": "string", "amount": "number" },
+      "action": "replace"
+    }
+  ]
+}

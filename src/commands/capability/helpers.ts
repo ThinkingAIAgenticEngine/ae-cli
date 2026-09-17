@@ -2,6 +2,7 @@ import { readFileSync } from 'node:fs';
 import { safeJsonParse } from '../../core/json-utils.js';
 import {
   findGatewayDomain,
+  listCapabilityDiscoveryPrefixes,
   listRegisteredCapabilityDomains,
   resolveGatewayDomain,
 } from '../../core/capability-routing.js';
@@ -21,8 +22,27 @@ export class CapabilityCommandValidationError extends Error {
   }
 }
 
+const RETIRED_CAPABILITY_REPLACEMENTS: Record<string, string> = {
+  'governance.asset_authentication.dashboard_package':
+    'ae-cli analysis-meta governance-recommendation export --project-id <project_id> --limit 20',
+  'metadata.metric.recommended_scan':
+    'ae-cli analysis-meta governance-recommendation export --project-id <project_id> --limit 20',
+  'metadata.metric.recommended_create':
+    'ae-cli analysis-meta governance-recommendation submit --project-id <project_id> --run-id <run_id> --topic-name <topic_name> --decisions <json>',
+};
+
 export function capabilityNamespace(capabilityId: string): string {
   return capabilityId.split('.')[0] ?? '';
+}
+
+export function assertCapabilityIsNotRetired(capabilityId: string): void {
+  const replacement = RETIRED_CAPABILITY_REPLACEMENTS[capabilityId.trim().toLowerCase()];
+  if (!replacement) return;
+  throw new CapabilityCommandValidationError(
+    `Capability '${capabilityId}' is retired for direct ae-cli capability invocation.`,
+    `Use the current recommendation workflow instead: ${replacement}`,
+    'CAPABILITY_RETIRED',
+  );
 }
 
 export function resolveCapabilityGatewayDomain(capabilityId: string, domainOverride?: string): string {
@@ -104,11 +124,15 @@ export function filterCapabilities(
   domain: string,
   query?: string,
 ): CapabilitySummary[] {
-  const prefix = `${domain.toLowerCase()}.`;
+  const prefixes = listCapabilityDiscoveryPrefixes(domain);
   const terms = query?.trim().toLowerCase().split(/\s+/).filter(Boolean) ?? [];
 
   return capabilities.filter((capability) => {
-    if (!capability.id.toLowerCase().startsWith(prefix)) {
+    if (RETIRED_CAPABILITY_REPLACEMENTS[capability.id.toLowerCase()]) {
+      return false;
+    }
+    const normalizedId = capability.id.toLowerCase();
+    if (!prefixes.some((prefix) => normalizedId.startsWith(prefix))) {
       return false;
     }
     if (terms.length === 0) {

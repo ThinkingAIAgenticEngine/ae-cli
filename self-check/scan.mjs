@@ -49,11 +49,17 @@ const DOMAIN_TO_SKILL = {
   'te-agent': 'ae-agent',
   'memory': 'ae-agent',
   'te-system': 'ae-system',
+  'context': 'ae-current-context',
 };
 // Tool command directories (should not have a skill; used for interactive/ops purposes).
 const TOOL_DIRS = new Set(['sync', 'model']);
 // Skills that use a "grouped/inline doc" strategy rather than per-command references: do not report per-command missing docs for these.
-const GROUPED_DOC_SKILLS = new Set(['ae-dataops', 'ae-kb', 'ae-system']);
+const GROUPED_DOC_SKILLS = new Set([
+  'ae-current-context',
+  'ae-dataops',
+  'ae-kb',
+  'ae-system',
+]);
 // These command domains reuse target skill inline sections and do not need per-command reference files.
 const INLINE_DOC_DOMAINS = new Set(['memory']);
 const COMMAND_SKILL_OVERRIDES = [

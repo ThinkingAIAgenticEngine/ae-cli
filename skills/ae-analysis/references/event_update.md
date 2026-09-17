@@ -8,7 +8,6 @@ Command:
 
 ```bash
 ae-cli analysis-meta event update --project-id <project_id> --event-name <event_name> --event-desc <event_desc> --remark <remark>
-ae-cli analysis-meta event update --dry-run
 ```
 
 Capability id: `metadata.event.update`.

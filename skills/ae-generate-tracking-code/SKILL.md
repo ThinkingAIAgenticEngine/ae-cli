@@ -299,6 +299,7 @@ From the plan file, read:
 - `meta.client_sdk_type` — client SDK type (if `client_only` or `both`)
 - `meta.server_language` — server language (if `server_only` or `both`)
 - `meta.user_identity` — user identity config (used to generate `login()` / `identify()` calls)
+- `user_properties` — user property pool (each entry's `name` + `update_type`, used to generate `user_set` / `user_setOnce` / `user_add` calls)
 
 **Determine list of platforms to generate code for**:
 ```
@@ -639,7 +640,7 @@ Validation steps:
 ### After validation passes
 
 - Remind user to commit changes (if any `insert` was used)
-- Remind user to call `login()` / `identify()` in code to associate user IDs
+- Remind user to call `login()` / `identify()` (associate user IDs) and `user_set` / `user_setOnce` / `user_add` (set user properties) at the right business moments
 - Remind user to copy daemon.json to LogBus2 conf/ directory
 
 ### Validation failure

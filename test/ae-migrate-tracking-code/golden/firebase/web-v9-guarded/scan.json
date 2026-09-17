@@ -1,0 +1,45 @@
+{
+  "provider": "firebase",
+  "variant": "web-v9",
+  "platforms": ["web"],
+  "call_sites": [
+    {
+      "id": "cs-1",
+      "file": "src/analytics.js",
+      "line": 17,
+      "kind": "identity",
+      "source_call": "setUserId(analytics, userId)",
+      "resolved": true
+    },
+    {
+      "id": "cs-2",
+      "file": "src/analytics.js",
+      "line": 24,
+      "kind": "event",
+      "source_call": "logEvent(analytics, 'sign_up', { method: user.method })",
+      "event_name": "sign_up",
+      "params": { "method": "user.method" },
+      "resolved": true
+    },
+    {
+      "id": "cs-3",
+      "file": "src/analytics.js",
+      "line": 31,
+      "kind": "event",
+      "source_call": "logEvent(analytics, 'view_item', { item_id: item.id })",
+      "event_name": "view_item",
+      "params": { "item_id": "item.id" },
+      "resolved": true
+    },
+    {
+      "id": "cs-4",
+      "file": "src/analytics.js",
+      "line": 38,
+      "kind": "user_property",
+      "source_call": "setUserProperties(analytics, { plan: 'pro' })",
+      "op": "set",
+      "prop": "plan",
+      "value": "pro"
+    }
+  ]
+}

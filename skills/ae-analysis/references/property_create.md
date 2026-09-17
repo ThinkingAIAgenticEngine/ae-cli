@@ -8,7 +8,6 @@ Command:
 
 ```bash
 ae-cli analysis-meta property create --project-id <project_id> --table-type event --payload '{"prop_name":"amount","prop_desc":"Amount","select_type":"number","common_prop":false,"super_event_ids":[<event_id>]}'
-ae-cli analysis-meta property create --dry-run
 ```
 
 Capability id: `metadata.property.create`.

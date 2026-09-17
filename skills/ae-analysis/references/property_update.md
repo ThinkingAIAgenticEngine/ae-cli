@@ -8,7 +8,6 @@ Command:
 
 ```bash
 ae-cli analysis-meta property update --project-id <project_id> --table-type <table_type> --prop-name <prop_name> --prop-desc <prop_desc> --prop-remark <prop_remark>
-ae-cli analysis-meta property update --dry-run
 ```
 
 Capability id: `metadata.property.update`.

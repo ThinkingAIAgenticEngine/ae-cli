@@ -8,7 +8,6 @@ Command:
 
 ```bash
 ae-cli project role get --project-id <project_id> --role-name <role_name>
-ae-cli project role get --dry-run --project-id <project_id> --role-name <role_name>
 ```
 
 Capability id: `project.role.get`.

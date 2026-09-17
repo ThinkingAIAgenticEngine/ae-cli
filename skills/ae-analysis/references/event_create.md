@@ -8,7 +8,6 @@ Command:
 
 ```bash
 ae-cli analysis-meta event create --project-id <project_id> --payload '{"event_name":"purchase","event_desc":"Purchase","source_type":"<source_type>","source_event_name":"<source_event>"}'
-ae-cli analysis-meta event create --dry-run
 ```
 
 Capability id: `metadata.event.create`.

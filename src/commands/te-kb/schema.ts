@@ -1,8 +1,27 @@
+import fs from 'node:fs';
+import path from 'node:path';
 import type { Command, RuntimeContext } from '../../framework/types.js';
 import { kbApi } from '../../core/mcp-access.js';
 import { getExternalKnowledgeBaseTargetScope } from './target-scope.js';
 
 const API_PATH = '/agent/api/external/knowledge-bases/schema';
+const MAX_CUSTOM_INSTRUCTIONS_CHARS = 10000;
+
+function getCustomInstructions(ctx: RuntimeContext): string {
+  const inline = ctx.str('custom-instructions');
+  const file = ctx.str('custom-instructions-file');
+  if (inline && file) {
+    throw new Error('Use either --custom-instructions or --custom-instructions-file, not both.');
+  }
+  const content = file ? fs.readFileSync(path.resolve(file), 'utf8') : inline;
+  if (file && !content.trim()) {
+    throw new Error('--custom-instructions-file is empty.');
+  }
+  if ([...content].length > MAX_CUSTOM_INSTRUCTIONS_CHARS) {
+    throw new Error('Custom instructions exceed 10000 characters.');
+  }
+  return content;
+}
 
 function buildBody(ctx: RuntimeContext): Record<string, unknown> {
   const body: Record<string, unknown> = {
@@ -17,7 +36,7 @@ function buildBody(ctx: RuntimeContext): Record<string, unknown> {
   const model = ctx.str('model');
   if (model) body.model = model;
 
-  const customInstructions = ctx.str('custom-instructions');
+  const customInstructions = getCustomInstructions(ctx);
   if (customInstructions) body.customInstructions = customInstructions;
 
   return body;
@@ -48,10 +67,18 @@ export const schema: Command = {
       sensitive: true,
       desc: 'Optional per-run instructions for generating this knowledge base schema',
     },
+    {
+      name: 'custom-instructions-file',
+      type: 'string',
+      required: false,
+      sensitive: true,
+      desc: 'Read optional per-run schema generation instructions from a UTF-8 text file',
+    },
   ],
   risk: 'write',
   validate: (ctx) => {
     getExternalKnowledgeBaseTargetScope(ctx);
+    getCustomInstructions(ctx);
   },
   dryRun: (ctx) => ({
     method: 'POST',

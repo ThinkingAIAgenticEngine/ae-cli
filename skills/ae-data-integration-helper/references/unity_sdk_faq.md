@@ -101,7 +101,7 @@ TDAnalytics.Login("TA");
 
 # 预置属性
 ## #ip
-- TE 服务器获取 http 请求 header 中的 ip
+- AE 服务器获取 http 请求 header 中的 ip
 
 ## #os
 - Unity WebGL 转的微信小游戏 #os 为 "other"

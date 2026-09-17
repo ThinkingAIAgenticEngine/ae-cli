@@ -4,6 +4,8 @@ Create or update a Hermes task draft.
 
 Mapped command: `ae-cli engage-task task save`
 
+To configure custom effect metrics after saving (including rolling or current calendar day/week/month windows), use [Task metric update](task-metric-update.md). Do not embed the global metric map in this save request.
+
 This command is the final write step. Do not use it as the first step in task construction.
 
 Recommended workflow:
@@ -436,6 +438,25 @@ For a main goal (`completionIndicatorType=0`), always include `touch_cycle_num` 
 `touch_cycle_num_unit`. If the user does not request another completion window, use
 `touch_cycle_num=1` and `touch_cycle_num_unit="day"`. Static Capability validation may accept a
 main goal without these fields, but the Hermes save service rejects it.
+
+### Natural completion-goal windows
+
+Set these fields on `req.controlConfig.completionIndicatorDef.completionIndicators[]`,
+alongside `completionIndicatorType` and the semantic `eventDefinition`:
+
+| Window | `touch_cycle_num` | `touch_cycle_num_unit` | `timeCycleDef` |
+| --- | --- | --- | --- |
+| Current day | 1 | `day` | `{"startTime":"00:00"}` |
+| Current week | 1 | `week` | `{"startDay":1,"startTime":"00:00"}` |
+| Current month | 1 | `month` | `{"startDay":1}` |
+
+Custom day/week times use `HH:mm`. Week `startDay` is 1 (Monday) through 7 (Sunday);
+month `startDay` is 1 through 28. Day windows omit `startDay`; month windows omit
+`startTime` or use `00:00`. Natural windows require count 1 and a nonempty `timeCycleDef`.
+Boundaries use the task timezone; conversions must follow attribution and precede the next boundary.
+
+To return to a rolling window, remove `timeCycleDef` and set a valid `minute`, `hour`,
+or `day` count/unit. Without `timeCycleDef`, `1` + `day` remains a rolling one-day window.
 
 Important constraints that still apply:
 

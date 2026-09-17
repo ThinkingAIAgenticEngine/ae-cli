@@ -20,6 +20,13 @@ interface OutputWithMetadata {
 
 export function withOutputMetadata(data: any, meta?: Record<string, unknown>): any {
   if (!meta || Object.keys(meta).length === 0) return data;
+  if (isOutputWithMetadata(data)) {
+    return {
+      [OUTPUT_METADATA]: true,
+      data: data.data,
+      meta: { ...data.meta, ...meta },
+    } satisfies OutputWithMetadata;
+  }
   return {
     [OUTPUT_METADATA]: true,
     data,
@@ -59,7 +66,7 @@ function formatTable(data: any): string {
     const table = new Table({ head: headers, wordWrap: true });
     for (const row of data.rows) {
       const values = Array.isArray(row) ? row : [row];
-      table.push(headers.map((_, index) => {
+      table.push(headers.map((_header: string, index: number) => {
         const value = values[index];
         if (value === undefined || value === null) return '';
         if (typeof value === 'object') return JSON.stringify(value);
@@ -110,7 +117,8 @@ export async function applyJq(data: any, expr: string): Promise<any> {
       : (err?.message || String(err));
     const error = new Error(`Invalid --jq expression: ${message}`);
     (error as any).type = 'validation';
-    (error as any).hint = 'Use standard jq syntax, e.g. .status or {status,pendingQuestion}';
+    (error as any).code = 'OUTPUT_PROJECTION_FAILED';
+    (error as any).hint = 'The command completed. Original data and metadata are preserved in stdout; fix the jq expression locally without executing the command again. --jq applies to the command data before envelope wrapping.';
     throw error;
   }
 
@@ -176,5 +184,16 @@ export function printError(
 }
 
 export async function printOutput(data: any, format: OutputFormat, jqExpr?: string): Promise<void> {
-  process.stdout.write(await formatOutput(data, format, jqExpr) + '\n');
+  try {
+    process.stdout.write(await formatOutput(data, format, jqExpr) + '\n');
+  } catch (error: any) {
+    if (error?.code === 'OUTPUT_PROJECTION_FAILED') {
+      const recovery = JSON.parse(formatError('validation', error.message, error.hint, error.code, readOutputMetadata(data)));
+      await new Promise<void>((resolve, reject) => {
+        process.stdout.write(JSON.stringify({ ...recovery, data: unwrapOutputData(data) }, null, 2) + '\n',
+          (error) => error ? reject(error) : resolve());
+      });
+    }
+    throw error;
+  }
 }

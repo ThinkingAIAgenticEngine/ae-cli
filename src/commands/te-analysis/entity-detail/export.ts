@@ -16,5 +16,6 @@ export const entityDetailExport = createAnalysisCapabilityCommand({
     ...entityDetailExportFlags,
   ],
   risk: 'read',
+  intentConsistency: { definitionFlag: 'definition' },
   buildInput: entityDetailExportInput,
 });

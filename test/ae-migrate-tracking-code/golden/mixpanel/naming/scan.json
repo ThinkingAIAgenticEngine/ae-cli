@@ -1,0 +1,57 @@
+{
+  "provider": "mixpanel",
+  "variant": "javascript",
+  "platforms": ["web"],
+  "call_sites": [
+    {
+      "id": "cs-1",
+      "file": "src/analytics.js",
+      "line": 7,
+      "kind": "event",
+      "source_call": "mixpanel.track('userLogin', { userId: 'u-1', planType: 'pro' })",
+      "event_name": "userLogin",
+      "params": { "userId": "u-1", "planType": "pro" },
+      "resolved": true
+    },
+    {
+      "id": "cs-2",
+      "file": "src/analytics.js",
+      "line": 8,
+      "kind": "event",
+      "source_call": "mixpanel.track('SelectContent', { contentId: 'c-1' })",
+      "event_name": "SelectContent",
+      "params": { "contentId": "c-1" },
+      "resolved": true
+    },
+    {
+      "id": "cs-3",
+      "file": "src/analytics.js",
+      "line": 9,
+      "kind": "event",
+      "source_call": "mixpanel.track('product-view', { planType: 'pro' })",
+      "event_name": "product-view",
+      "params": { "planType": "pro" },
+      "resolved": true
+    },
+    {
+      "id": "cs-4",
+      "file": "src/analytics.js",
+      "line": 10,
+      "kind": "event",
+      "source_call": "mixpanel.track('2fa_completed', { method: 'totp' })",
+      "event_name": "2fa_completed",
+      "params": { "method": "totp" },
+      "resolved": true
+    },
+    {
+      "id": "cs-5",
+      "file": "src/analytics.js",
+      "line": 11,
+      "kind": "event",
+      "source_call": "mixpanel.track('mp_subscription', { tier: 'pro' })",
+      "event_name": "mp_subscription",
+      "params": { "tier": "pro" },
+      "resolved": true
+    }
+  ]
+}

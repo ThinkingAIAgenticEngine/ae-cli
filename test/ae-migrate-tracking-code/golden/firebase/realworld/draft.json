@@ -1,0 +1,41 @@
+{
+  "meta": {
+    "app_type": "web",
+    "sdk_integration_mode": "client_only",
+    "client_platforms": ["javascript"],
+    "client_languages": ["javascript"],
+    "plan_name": "Firebase Web v9 real-world migration (pilot)",
+    "user_identity": {
+      "account_id_source": "user_account",
+      "account_id_field": "user_id",
+      "distinct_id_strategy": "auto"
+    },
+    "lang": "zh"
+  },
+  "events": [
+    {
+      "event_name": "sign_up",
+      "display_name": "注册",
+      "platform": "client",
+      "source": "codebase",
+      "prop_names": ["method"]
+    },
+    {
+      "event_name": "add_to_cart",
+      "display_name": "加入购物车",
+      "platform": "client",
+      "source": "codebase",
+      "prop_names": ["item_id", "price", "quantity"]
+    }
+  ],
+  "event_properties": [
+    { "name": "method", "display_name": "注册方式", "type": "string", "source": "codebase" },
+    { "name": "item_id", "display_name": "商品ID", "type": "string", "source": "codebase" },
+    { "name": "price", "display_name": "价格", "type": "number", "source": "codebase" },
+    { "name": "quantity", "display_name": "数量", "type": "number", "source": "codebase" }
+  ],
+  "common_event_properties": [],
+  "user_properties": [
+    { "name": "plan", "display_name": "套餐", "type": "string", "source": "codebase", "update_type": "user_set" }
+  ]
+}

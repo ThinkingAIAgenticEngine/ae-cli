@@ -1,0 +1,7 @@
+{
+  "name": "amplitude-node-realworld-fixture",
+  "private": true,
+  "dependencies": {
+    "@amplitude/analytics-node": "^1.0.0"
+  }
+}

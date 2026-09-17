@@ -31,9 +31,41 @@ ae-cli data-integration upload \
   --dry-run
 ```
 
+Before the confirmation gate, re-check the project's **runtime-locked** property types. A `reuse` match skips the tracking-plan step, so this check is the one that must not be bypassed on any path — repeat it for every upload:
+
+```bash
+ae-cli analysis-meta property list -p <project-id> --table-type user
+ae-cli analysis-meta property list -p <project-id> --table-type event
+```
+
+Diff each target property name against `select_type` (the locked type). A same-name property whose locked type disagrees with the mapping's type drops those values silently at ingest, even when the plan layer agrees — surface any such conflict in the confirmation gate (rename the target, or change the mapped type to match the locked one) before asking the user to confirm. This is a read-only check; do not run `ae-cli tracking plan sync-from-meta` here, which writes the plan.
+
 Show the masked target, project, file fingerprint, record count, quarantined count, batch count, and persistence limitation. Re-state the system-field mapping first (`#type`/mode, `#account_id`, `#distinct_id`, `#time` + source timezone, `#event_name`), then re-list the final property mapping for every file or sheet being uploaded — source column → target AE name → type (+ `display_name`/`desc` when set), grouped into event properties (`track`) and user properties (profile modes), with each event's attached properties listed — never a counts-only summary. For a multi-sheet workbook, group by sheet. Wait for explicit confirmation. Execute the same command without `--dry-run` only after confirmation. For a blocked manifest, first show the quarantine statistics and separately ask whether the user accepts uploading only valid rows; add `--allow-clean-subset` only after a clear yes.
 
 `status=receiver_accepted` means receiver acceptance only, not durable storage. Say that persistence remains unverified. Never report success on this status alone.
+
+`upload` is **not idempotent** — every execution submits to the receiver again. Never re-run the
+command to inspect a response: read the first run's saved JSON output instead. `--dry-run` only
+previews the request it would send; it neither executes nor previews the receiver's real response.
+
+The execute success response reports the receiver outcome under **different field names than the
+dry-run preview** — do not reuse the dry-run names (`record_count` / `batch_count`) when reading
+it:
+
+| field | meaning |
+| --- | --- |
+| `status` | `receiver_accepted` (or `partially_delivered` when `--retry` salvaged some records) |
+| `delivery_state` | `receiver_accepted` / `partially_delivered` |
+| `submitted_records` | records submitted this run (equals `record_count - resume_from` on a clean run) |
+| `submitted_batches` | batches sent this run |
+| `resume_from` | zero-based offset this run started at |
+| `request_bytes` / `response_bytes` | transport byte counts |
+| `persistence_verified` | always `false` — receiver acceptance is not durable storage |
+| `next_step` | the verification guidance |
+
+`--retry` salvage additionally reports `failed_records` / `failed_count`. A lost batch is reported
+as `delivery_state=unknown` in the error's `meta`, not in the success fields — see
+[sync-json-upload.md](sync-json-upload.md) "Interrupted delivery".
 
 ## Verify the data landed
 

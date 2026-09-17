@@ -9,7 +9,6 @@ Command:
 ```bash
 ae-cli analysis-meta event list --project-id <project_id>
 ae-cli analysis-meta event list --project-id <project_id> --queries '["login","sign in"]' --fields '["event_name","event_desc","authentication_status"]' --limit 50 --offset 0 --authenticated-only
-ae-cli analysis-meta event list --dry-run
 ```
 
 Capability id: `metadata.event.list`.

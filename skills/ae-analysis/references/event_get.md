@@ -8,7 +8,6 @@ Command:
 
 ```bash
 ae-cli analysis-meta event get --project-id <project_id> --event-name <event_name>
-ae-cli analysis-meta event get --dry-run
 ```
 
 Capability id: `metadata.event.get`.

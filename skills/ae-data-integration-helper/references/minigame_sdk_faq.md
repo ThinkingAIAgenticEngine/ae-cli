@@ -62,12 +62,12 @@ TDAnalytics.init(config);
 # Debug 模式
 ## debugMode 三种取值
 - none：Normal 模式
-- debug：数据在 TE Debug 模式中看到，参与分析
+- debug：数据在 AE Debug 模式中看到，参与分析
 - debugOnly：只校验，不入库
 
 ## 开启 Debug 模式看不到数据原因
 - 确认模式正确打开
-- 确认设备 ID 已在 TE 后台配置
+- 确认设备 ID 已在 AE 后台配置
 - 确认 appId、serverUrl 正确
 
 # 自动采集

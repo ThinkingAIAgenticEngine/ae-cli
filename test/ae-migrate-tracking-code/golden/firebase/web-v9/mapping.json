@@ -1,0 +1,47 @@
+{
+  "provider": "firebase",
+  "variant": "web-v9",
+  "mode": "switch",
+  "entries": [
+    {
+      "site_id": "cs-1",
+      "file": "src/analytics.js",
+      "line": 8,
+      "source_call": "setUserId(analytics, user.id)",
+      "ae_call": "login(accountId)",
+      "account_id_source": "user_account",
+      "action": "replace"
+    },
+    {
+      "site_id": "cs-2",
+      "file": "src/analytics.js",
+      "line": 11,
+      "source_call": "logEvent(analytics, 'sign_up', { method: 'phone' })",
+      "ae_event": "sign_up",
+      "display_name": "注册",
+      "platform": "client",
+      "ae_props": { "method": "string" },
+      "action": "replace"
+    },
+    {
+      "site_id": "cs-3",
+      "file": "src/analytics.js",
+      "line": 14,
+      "source_call": "logEvent(analytics, 'view_item', { item_id: 'sku-123', value: 9.99 })",
+      "ae_event": "view_item",
+      "display_name": "浏览商品",
+      "platform": "client",
+      "ae_props": { "item_id": "string", "value": "number" },
+      "action": "replace"
+    },
+    {
+      "site_id": "cs-4",
+      "file": "src/analytics.js",
+      "line": 17,
+      "source_call": "setUserProperties(analytics, { plan: 'pro' })",
+      "ae_call": "user_set",
+      "ae_props": { "plan": "string" },
+      "action": "replace"
+    }
+  ]
+}

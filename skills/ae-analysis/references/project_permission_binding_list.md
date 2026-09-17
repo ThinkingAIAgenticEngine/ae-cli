@@ -8,7 +8,6 @@ Command:
 
 ```bash
 ae-cli project permission-binding list --company-id <company_id> --project-ids <project_ids>
-ae-cli project permission-binding list --dry-run --company-id <company_id> --project-ids <project_ids>
 ```
 
 Capability id: `project.permission_binding.list`.

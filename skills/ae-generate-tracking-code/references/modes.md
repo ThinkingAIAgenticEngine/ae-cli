@@ -18,7 +18,7 @@ Server-side always gets the following regardless of `insert` or `snippet`:
 | Deliverable | Description |
 |---|---|
 | LoggerConsumer code | Server SDK writes to local log files |
-| `.ae-cli/output/daemon.json` | LogBus2 config (reads logs and uploads to TE) |
+| `.ae-cli/output/daemon.json` | LogBus2 config (reads logs and uploads to AE) |
 
 **Note: LogBus v1 is deprecated. Use LogBus2 for all scenarios.**
 

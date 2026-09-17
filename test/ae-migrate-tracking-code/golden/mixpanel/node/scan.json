@@ -1,0 +1,29 @@
+{
+  "provider": "mixpanel",
+  "variant": "node",
+  "platforms": ["node"],
+  "call_sites": [
+    {
+      "id": "cs-1",
+      "file": "src/server.js",
+      "line": 6,
+      "kind": "event",
+      "source_call": "mixpanel.track('user_signup', { distinct_id: user.id, plan: 'pro' })",
+      "event_name": "user_signup",
+      "params": { "plan": "pro" },
+      "distinct_id": "user.id",
+      "resolved": true
+    },
+    {
+      "id": "cs-2",
+      "file": "src/server.js",
+      "line": 11,
+      "kind": "event",
+      "source_call": "mixpanel.track('purchase', { distinct_id: user.id, order_id: order.id, amount: order.amount })",
+      "event_name": "purchase",
+      "params": { "order_id": "order.id", "amount": "order.amount" },
+      "distinct_id": "user.id",
+      "resolved": true
+    }
+  ]
+}

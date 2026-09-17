@@ -1,6 +1,6 @@
 ---
 name: ae-experiment-insight
-description: "Diagnose and interpret AE/TE A/B experiments from configuration and report evidence through a defensible decision. Use when the user asks what an experiment means, whether it can roll out, why a result is not significant, why group sizes or exposure are wrong, why treatment results conflict, whether the report is trustworthy, or what to do next. Covers SRM, duration sufficiency, novelty effects, metric conflicts, missing or anomalous data, design reasonableness, data reliability, metric interpretation, trend and segment analysis, root-cause hypotheses, and rollout recommendations. All platform discovery and reads must use ae-cli."
+description: "Diagnose and interpret AE A/B experiments from configuration and report evidence through a defensible decision. Use when the user asks what an experiment means, whether it can roll out, why a result is not significant, why group sizes or exposure are wrong, why treatment results conflict, whether the report is trustworthy, or what to do next. Covers SRM, duration sufficiency, novelty effects, metric conflicts, missing or anomalous data, design reasonableness, data reliability, metric interpretation, trend and segment analysis, root-cause hypotheses, and rollout recommendations. All platform discovery and reads must use ae-cli."
 ---
 
 # AE Experiment Insight and Diagnosis
@@ -9,7 +9,7 @@ Validate the evidence before interpreting the effect. Produce a decision only wh
 
 ## Platform and reference routing
 
-Use `ae-cli` for every AE/TE platform interaction and follow
+Use `ae-cli` for every AE platform interaction and follow
 [`references/platform-operations.md`](references/platform-operations.md);
 never substitute another platform access path.
 

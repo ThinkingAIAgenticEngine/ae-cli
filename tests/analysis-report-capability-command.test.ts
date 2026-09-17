@@ -11,6 +11,8 @@ import {
   registerCapabilityGatewayRoute,
 } from '../src/core/capability-routing.ts';
 import { clearCliToken, setCliTokenManual } from '../src/core/cli-token.ts';
+import { formatOutput } from '../src/framework/output.ts';
+import { CapabilityGatewayError } from '../src/core/capability-api.ts';
 import { reportCreate } from '../src/commands/te-analysis/report/create.ts';
 import { reportUpdate } from '../src/commands/te-analysis/report/update.ts';
 import { reportList } from '../src/commands/te-analysis/report/list.ts';
@@ -93,7 +95,7 @@ function ctx(values: Record<string, unknown>): RuntimeContext {
 async function dryBody(
   command: { dryRun?: (ctx: RuntimeContext) => unknown; flags?: Array<{ name: string }> },
   input: Record<string, unknown>,
-): Promise<{ url: string; body: any }> {
+): Promise<{ url: string; body: any; result: unknown }> {
   clearCapabilityGatewayRoutesForTest();
   registerCapabilityGatewayRoute('analysis', { gatewayDomain: 'analysis' });
   const host = 'https://ta.example.com';
@@ -107,12 +109,12 @@ async function dryBody(
     return new Response(JSON.stringify({ ok: true, data: { dry_run: true } }), { status: 200 });
   }) as typeof fetch;
   try {
-    await command.dryRun!(ctx(input));
+    const result = await command.dryRun!(ctx(input));
     if (command.flags?.some((flag) => flag.name === 'request-id') && input['request-id'] === undefined) {
       assert.match(body.input.request_id, /^cli_[0-9a-f]{32}$/);
       delete body.input.request_id;
     }
-    return { url, body };
+    return { url, body, result };
   } finally {
     globalThis.fetch = originalFetch;
     clearCliToken(host);
@@ -210,6 +212,128 @@ await test('report create forwards user-confirmed metadata resolutions without c
 
   assert.deepEqual(dryRun.body.input.definition, { metrics: [{ event: '付费事件' }] });
   assert.deepEqual(dryRun.body.input.resolutions, resolutions);
+});
+
+await test('report create rejects drift from a user-confirmed intent snapshot', () => {
+  const snapshotFlag = reportCreate.flags.find((flag) => flag.name === 'intent-snapshot');
+  assert.match(snapshotFlag?.desc ?? '', /user-confirmed/i);
+
+  assert.throws(
+    () => reportCreate.validate!(ctx({
+      'project-id': 1,
+      'report-name': 'Demo',
+      'model-type': 'event',
+      definition: '{"metrics":[{"event":"refund"}]}',
+      'intent-snapshot': JSON.stringify({
+        schema_version: 1,
+        requirement: 'Count payment events.',
+        model_type: 'event',
+        definition: { metrics: [{ event: 'payment' }] },
+      }),
+    })),
+    (error: any) => {
+      assert.equal(error.code, 'DEFINITION_INTENT_MISMATCH');
+      assert.match(error.message, /definition/i);
+      return true;
+    },
+  );
+});
+
+await test('matching intent snapshot is not sent to Gateway and emits audit evidence', async () => {
+  const definition = { metrics: [{ event: 'payment' }] };
+  const dryRun = await dryBody(reportCreate, {
+    'project-id': 1,
+    'report-name': 'Demo',
+    'model-type': 'event',
+    definition: JSON.stringify(definition),
+    'intent-snapshot': JSON.stringify({
+      schema_version: 1,
+      requirement: 'Count payment events.',
+      model_type: 'event',
+      definition,
+    }),
+  });
+
+  assert.equal(Object.prototype.hasOwnProperty.call(dryRun.body.input, 'intent_snapshot'), false);
+  const envelope = JSON.parse(await formatOutput(dryRun.result, 'json'));
+  assert.deepEqual(envelope.meta.intent_consistency, {
+    checked: true,
+    matched: true,
+    schema_version: 1,
+    snapshot_sha256: envelope.meta.intent_consistency.snapshot_sha256,
+  });
+  assert.match(envelope.meta.intent_consistency.snapshot_sha256, /^[0-9a-f]{64}$/);
+});
+
+await test('every AI-facing definition command exposes the same intent snapshot guard', () => {
+  const modelCommands = [reportCreate, reportUpdate, adhocRun, adhocExport];
+  for (const command of modelCommands) {
+    const snapshotFlag = command.flags.find((flag) => flag.name === 'intent-snapshot');
+    assert.ok(snapshotFlag);
+    assert.match(snapshotFlag.desc, /model_type/);
+    assert.throws(
+      () => command.validate!(ctx({
+        'report-name': 'Demo',
+        'model-type': 'event',
+        definition: '{"metrics":[{"event":"refund"}]}',
+        'intent-snapshot': JSON.stringify({
+          schema_version: 1,
+          requirement: 'Count payment events.',
+          model_type: 'event',
+          definition: { metrics: [{ event: 'payment' }] },
+        }),
+      })),
+      (error: any) => error.code === 'DEFINITION_INTENT_MISMATCH',
+      `${command.resource} ${command.command} must reject definition drift`,
+    );
+  }
+
+  const detailCommands = [eventDetailRun, eventDetailExport, entityDetailRun, entityDetailExport];
+  for (const command of detailCommands) {
+    const snapshotFlag = command.flags.find((flag) => flag.name === 'intent-snapshot');
+    assert.ok(snapshotFlag);
+    assert.doesNotMatch(snapshotFlag.desc, /model_type/);
+    assert.doesNotMatch(snapshotFlag.desc, /model-type/);
+    assert.match(snapshotFlag.desc, /final definition/);
+    assert.throws(
+      () => command.validate!(ctx({
+        definition: '{"event":"refund"}',
+        'intent-snapshot': JSON.stringify({
+          schema_version: 1,
+          requirement: 'Return payment event detail.',
+          definition: { event: 'payment' },
+        }),
+      })),
+      (error: any) => error.code === 'DEFINITION_INTENT_MISMATCH',
+      `${command.resource} ${command.command} must reject definition drift`,
+    );
+  }
+});
+
+await test('intent drift fails before every gateway lifecycle request and absent snapshots add no evidence', async () => {
+  const originalFetch = globalThis.fetch;
+  let requests = 0;
+  globalThis.fetch = (async () => { requests++; throw new Error('unexpected dispatch'); }) as typeof fetch;
+  try {
+    for (const operation of ['validateInput', 'dryRun', 'execute'] as const) {
+      await assert.rejects(adhocRun[operation]!(ctx({
+        'project-id': 1,
+        'model-type': 'event',
+        definition: '{"metrics":[{"event":"refund"}]}',
+        'intent-snapshot': JSON.stringify({
+          schema_version: 1, requirement: 'Count payment events.', model_type: 'event',
+          definition: { metrics: [{ event: 'payment' }] },
+        }),
+      })), (error: any) => error.code === 'DEFINITION_INTENT_MISMATCH');
+    }
+    assert.equal(requests, 0);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+  const noSnapshot = await dryBody(adhocRun, {
+    'project-id': 1, 'model-type': 'event', definition: '{"metrics":[{"event":"payment"}]}',
+  });
+  assert.equal(JSON.parse(await formatOutput(noSnapshot.result, 'json')).meta?.intent_consistency, undefined);
 });
 
 await test('report create rejects metadata resolutions for tag reports before dispatch', () => {
@@ -451,9 +575,54 @@ await test('report-data command help describes AI-facing overrides and SQL value
   assert.match(flagDesc('sql-params'), /SQL reports only/);
   assert.match(flagDesc('sql-params'), /analysis report get/);
   assert.match(flagDesc('sql-params'), /every definition.params/);
+  assert.match(flagDesc('sql-params'), /options\[\]\.name/);
+  assert.match(flagDesc('sql-params'), /never send options\[\]\.value/i);
   assert.match(flagDesc('sql-params'), /Do not send definition fields/);
   assert.match(flagDesc('sql-params'), /paramType/);
   assert.match(reportDataRun.description, /Mixed-model batches continue/);
+});
+
+await test('report-data selector runtime error explains the option-name contract without retrying', async () => {
+  clearCapabilityGatewayRoutesForTest();
+  registerCapabilityGatewayRoute('analysis', { gatewayDomain: 'analysis' });
+  const host = 'https://ta.example.com';
+  setCliTokenManual('analysis-contract-test-token', host);
+  const requestedUrls: string[] = [];
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = (async (request: any) => {
+    requestedUrls.push(String(request));
+    return new Response(JSON.stringify({
+      ok: false,
+      error: {
+        code: 'INVALID_REPORT_DEFINITION',
+        message: 'checkSqlViewParam [Selector:selector3] error: selectorName invalid',
+      },
+    }), { status: 200 });
+  }) as typeof fetch;
+  try {
+    await assert.rejects(
+      () => reportDataRun.execute(ctx({
+        'project-id': 196,
+        'report-ids': '[13270558]',
+        'sql-params': '[{"name":"selector3","value":" "}]',
+      })),
+      (error: unknown) => {
+        assert.ok(error instanceof CapabilityGatewayError);
+        assert.equal(error.code, 'INVALID_REPORT_DEFINITION');
+        assert.match(error.hint ?? '', /options\[\]\.name/);
+        assert.match(error.hint ?? '', /Do not pass options\[\]\.value/i);
+        assert.match(error.hint ?? '', /do not guess or automatically rewrite/i);
+        return true;
+      },
+    );
+    assert.equal(
+      requestedUrls.filter((url) => url.includes('/capabilities/analysis.report_data.run/execute')).length,
+      1,
+    );
+  } finally {
+    globalThis.fetch = originalFetch;
+    clearCliToken(host);
+  }
 });
 
 await test('preview rows help publishes the path per-level node exception', () => {
@@ -785,6 +954,8 @@ await test('adhoc exposes 12 AI models and report write exposes 12 plus tag', ()
   assert.match(definitionDesc, /\{"sql":"select/);
   assert.match(definitionDesc, /params/);
   assert.match(definitionDesc, /Text:name/);
+  assert.match(definitionDesc, /cluster_date_policy accepts LATEST \(default\), AUTO/);
+  assert.match(definitionDesc, /each analysis date/);
   assert.match(definitionDesc, /global filters support user_property, cluster, and tag only/);
   assert.match(definitionDesc, /event_property is not supported/);
   assert.match(definitionDesc, /session_unit accepts second \(1\.\.999\), minute \(1\.\.999\), or hour \(1\.\.24\)/);

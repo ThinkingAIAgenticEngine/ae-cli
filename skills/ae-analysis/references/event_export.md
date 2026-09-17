@@ -9,7 +9,6 @@ Command:
 ```bash
 ae-cli analysis-meta event export --project-id <project_id> --output <temporary_path>/events.json
 ae-cli analysis-meta event export --project-id <project_id> --queries '["login","sign in"]' --fields '["event_name","event_desc"]' --output <temporary_path>/events.json
-ae-cli analysis-meta event export --dry-run
 ```
 
 Capability id: `metadata.event.export`.

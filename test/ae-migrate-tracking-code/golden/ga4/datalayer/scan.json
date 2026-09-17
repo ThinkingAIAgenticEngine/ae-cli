@@ -1,0 +1,35 @@
+{
+  "provider": "ga4",
+  "variant": "datalayer",
+  "platforms": ["web"],
+  "call_sites": [
+    {
+      "id": "cs-1",
+      "file": "src/analytics.js",
+      "line": 5,
+      "kind": "identity",
+      "source_call": "window.dataLayer.push({ user_id: user.id })",
+      "resolved": true
+    },
+    {
+      "id": "cs-2",
+      "file": "src/analytics.js",
+      "line": 8,
+      "kind": "event",
+      "source_call": "window.dataLayer.push({ event: 'sign_up', method: 'phone' })",
+      "event_name": "sign_up",
+      "params": { "method": "phone" },
+      "resolved": true
+    },
+    {
+      "id": "cs-3",
+      "file": "src/analytics.js",
+      "line": 11,
+      "kind": "event",
+      "source_call": "window.dataLayer.push({ event: 'purchase', order_id: order.id, amount: order.amount, currency: 'USD' })",
+      "event_name": "purchase",
+      "params": { "order_id": "order.id", "amount": "order.amount", "currency": "USD" },
+      "resolved": true
+    }
+  ]
+}

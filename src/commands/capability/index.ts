@@ -1,3 +1,4 @@
+import { CliValidationError } from '../../core/errors.js';
 import * as readline from 'node:readline';
 import { Command } from 'commander';
 import { resolveHost } from '../../core/auth.js';
@@ -17,6 +18,7 @@ import { printError, printOutput, withOutputMetadata } from '../../framework/out
 import type { OutputFormat } from '../../framework/types.js';
 import {
   CapabilityCommandValidationError,
+  assertCapabilityIsNotRetired,
   emptyCapabilityCatalogWarning,
   filterCapabilities,
   normalizeCapabilityList,
@@ -132,6 +134,7 @@ export function registerCapability(program: Command): void {
     .option('--project-id <project-id>', 'Check availability in a project before returning metadata')
     .action(async (capabilityId: string, opts: { domain?: string; projectId?: string }) => {
       await executeAndPrint(program, async (host) => {
+        assertCapabilityIsNotRetired(capabilityId);
         const gatewayDomain = resolveCapabilityGatewayDomain(capabilityId, opts.domain);
         return gatewayOutput(await inspectCapabilityWithEnvelope(host, gatewayDomain, capabilityId, parseOptionalProjectId(opts.projectId)), host);
       });
@@ -156,6 +159,7 @@ export function registerCapability(program: Command): void {
     .option('--input <json-or-path>', 'Input JSON object, file path, @<path>, or - for stdin')
     .action(async (capabilityId: string, opts: { domain?: string; input?: string }) => {
       await executeAndPrint(program, async (host) => {
+        assertCapabilityIsNotRetired(capabilityId);
         const gatewayDomain = resolveCapabilityGatewayDomain(capabilityId, opts.domain);
         return gatewayOutput(await validateCapabilityWithEnvelope(host, gatewayDomain, capabilityId, parseCapabilityInput(opts.input)), host);
       });
@@ -187,6 +191,7 @@ export function registerCapability(program: Command): void {
     .option('--input <json-or-path>', 'Input JSON object, file path, @<path>, or - for stdin')
     .action(async (capabilityId: string, opts: { domain?: string; input?: string }) => {
       await executeAndPrint(program, async (host) => {
+        assertCapabilityIsNotRetired(capabilityId);
         const gatewayDomain = resolveCapabilityGatewayDomain(capabilityId, opts.domain);
         return gatewayOutput(await dryRunCapabilityWithEnvelope(host, gatewayDomain, capabilityId, parseCapabilityInput(opts.input)), host);
       });
@@ -206,6 +211,7 @@ export function registerCapability(program: Command): void {
     .option('--input <json-or-path>', 'Input JSON object, file path, @<path>, or - for stdin')
     .action(async (capabilityId: string, opts: { domain?: string; input?: string }) => {
       await executeAndPrint(program, async (host, globalOpts) => {
+        assertCapabilityIsNotRetired(capabilityId);
         const gatewayDomain = resolveCapabilityGatewayDomain(capabilityId, opts.domain);
         const input = parseCapabilityInput(opts.input);
 
@@ -287,8 +293,9 @@ async function executeAndPrint(
 }
 
 function printCapabilityError(error: unknown, host: string): void {
-  if (error instanceof CapabilityCommandValidationError) {
-    printError('validation', error.message, error.hint, error.code);
+  if (error instanceof CapabilityCommandValidationError || error instanceof CliValidationError) {
+    printError('validation', error.message, error.hint, error.code,
+      error instanceof CliValidationError && error.location ? { location: error.location } : undefined);
     return;
   }
   if (error instanceof SecureStoreAuthError) {
@@ -300,7 +307,7 @@ function printCapabilityError(error: unknown, host: string): void {
     return;
   }
   if (error instanceof CapabilityGatewayError) {
-    printError('api', error.message, error.hint, error.code, withPageUrl(error.meta, host) as Record<string, unknown> | undefined);
+    printError(error.type, error.message, error.hint, error.code, withPageUrl(error.meta, host) as Record<string, unknown> | undefined);
     return;
   }
   const message = error instanceof Error ? error.message : String(error);

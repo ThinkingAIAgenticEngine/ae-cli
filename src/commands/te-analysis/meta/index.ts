@@ -9,6 +9,8 @@ import exchange from './exchange/index.js';
 import superMetadata from './super-metadata/index.js';
 import datatable from './datatable/index.js';
 import catalog from './catalog/index.js';
+import governanceRecommendation from './governance-recommendation/index.js';
+import agentReview from './agent-review/index.js';
 
 const commands: Command[] = [
   ...event,
@@ -21,6 +23,8 @@ const commands: Command[] = [
   ...superMetadata,
   ...datatable,
   ...catalog,
+  ...governanceRecommendation,
+  ...agentReview,
 ];
 
 export default commands;

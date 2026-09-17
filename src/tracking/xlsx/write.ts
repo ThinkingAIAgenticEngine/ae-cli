@@ -12,7 +12,7 @@ const PLATFORM_TO_XLSX: Record<EventPlatform, string> = {
 };
 
 const VALID_PROP_TYPES = new Set<PropType>(['string', 'number', 'bool', 'datetime', 'object', 'array_row', 'array_string']);
-const VALID_UPDATE_TYPES = new Set<UpdateType>(['user_set', 'user_setOnce', 'user_add']);
+const VALID_UPDATE_TYPES = new Set<UpdateType>(['user_set', 'user_setOnce', 'user_add', 'user_append']);
 const PROP_NAME_RE = /^[a-zA-Z#][a-zA-Z0-9_.]*$/;
 const EVENT_NAME_RE = /^[A-Za-z][A-Za-z0-9_]*$/;
 

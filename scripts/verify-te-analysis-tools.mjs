@@ -161,14 +161,14 @@ if (gatewayLifecycleCommands.length !== EXPECTED_GATEWAY_LIFECYCLE_COUNT) {
   fail(`analysis gateway lifecycle command count mismatch: expected ${EXPECTED_GATEWAY_LIFECYCLE_COUNT}, got ${gatewayLifecycleCommands.length}`);
 }
 
-const EXPECTED_CAPABILITY_COUNT = 324;
+const EXPECTED_CAPABILITY_COUNT = 334;
 if (capabilityCommands.length !== EXPECTED_CAPABILITY_COUNT) {
   fail(`analysis capability command count mismatch: expected ${EXPECTED_CAPABILITY_COUNT}, got ${capabilityCommands.length}`);
 }
 
 const EXPECTED_CAPABILITY_COUNTS_BY_SERVICE = {
   analysis: 115,
-  'analysis-meta': 55,
+  'analysis-meta': 65,
   'analysis-governance': 23,
   project: 44,
   system: 60,
@@ -306,11 +306,12 @@ const criticalReferenceTokens = {
   'skills/ae-analysis/references/drilldown_entities_export.md': ['does not accept `--limit`', 'never creates a query context', '`--project-id`'],
   'skills/ae-analysis/references/drilldown_user_events_export.md': ['does not accept `--limit`, `--offset`, `--page-num`, or `--page-size`', 'without the synchronous preview boundary', '`csv.gz`', '`--project-id`'],
   'skills/ae-analysis/references/query_create_result_cluster.md': ['custom-entity', 'query_context_id', 'coordinate', '`--project-id`'],
-  'skills/ae-analysis/references/analysis_data_retrieval.md': ['Default and maximum runtime is 21600 seconds (6 hours)', 'sources', 'synchronous'],
-  'skills/ae-analysis/references/report_create.md': ['SQL dynamic parameter', '"use_timezone":true', 'boolean definition field', 'query the saved default first', '`report_id` returned by this exact create response'],
-  'skills/ae-analysis/references/report_update.md': ['read the current `version` exactly once', 'query the saved default before applying an override'],
+  'skills/ae-analysis/references/analysis_data_retrieval.md': ['read_results.py', 'sources', 'synchronous'],
+  'skills/ae-analysis/references/analysis_data_export.md': ['Default and maximum runtime is 21600 seconds (6 hours)', 'resume_command'],
+  'skills/ae-analysis/references/report_create.md': ['SQL dynamic parameter', '"use_timezone":true', 'boolean definition field', 'If the user also requests report data', '`report_id` returned by this exact create response'],
+  'skills/ae-analysis/references/report_update.md': ['read the current `version` exactly once', 'query directly with the requested'],
   'skills/ae-analysis/references/report_list.md': ['group known names into one `--queries` call or narrow with `--model-types`', 'do not issue one list call per name'],
-  'skills/ae-analysis/references/report_data_run.md': ['omit `--sql-params` to execute the saved default', 'then make one second call with `--sql-params`', '"recent_day":"1-7"', '`effective_zone_offset`'],
+  'skills/ae-analysis/references/report_data_run.md': ['omit it when the saved defaults are requested', 'pass the requested value overrides directly through `--sql-params`', '"recent_day":"1-7"', '`effective_zone_offset`'],
   'skills/ae-analysis/references/report_data_export.md': ['same export response'],
   'skills/ae-analysis/references/adhoc_run.md': ['current runtime synchronous maximum', 'go directly to `analysis adhoc export`', 'Do not lower the requested row count'],
   'skills/ae-analysis/references/adhoc_export.md': ['Preserve the `run_id` and `artifact_id` from this exact submit response'],
@@ -318,10 +319,12 @@ const criticalReferenceTokens = {
   'skills/ae-analysis/references/artifact_download.md': ['same export response'],
   'skills/ae-analysis/references/asset_url_get.md': ['post-write resource link completion', 'raw_url', 'markdown_link'],
   'skills/ae-analysis/references/report_get.md': ['agent-facing `time_particle_size`', 'internal `T0` through `T9` codes must never leak', 'Do not infer a granularity'],
-  'skills/ae-analysis/references/ai_models.md': [
-    '`tag_name` is the only tag-report name field',
+  'skills/ae-analysis/references/ai_models/tag.md': ['`tag_name` is the only tag-report name field'],
+  'skills/ae-analysis/references/ai_models/sql.md': [
     '`use_timezone` is an optional boolean definition field',
     'only valid for `part_date`',
+  ],
+  'skills/ae-analysis/references/ai_models/path.md': [
     '`second`: `1..999`',
     '`minute`: `1..999`',
     '`hour`: `1..24`',

@@ -53,7 +53,7 @@ function makeCtx(values: Record<string, any>) {
     num: (name: string) => Number(values[name]),
     optionalNum: (name: string) => values[name] === undefined ? undefined : Number(values[name]),
     bool: (name: string) => Boolean(values[name]),
-    json: (name: string) => JSON.parse(String(values[name])),
+    json: (name: string) => values[name] === undefined ? undefined : JSON.parse(String(values[name])),
   } as any;
 }
 

@@ -1,8 +1,7 @@
 import type { Flag, RuntimeContext } from '../../../../framework/types.js';
+import { CliValidationError } from '../../../../core/errors.js';
 import {
-  compactInput,
   optionalJson,
-  optionalJsonArray,
   optionalNumber,
   optionalString,
   projectInput,
@@ -25,7 +24,7 @@ export const scheduleUiConfigFlag: Flag = { name: 'schedule-ui-config', type: 'j
 export const dashboardStatusFlag: Flag = { name: 'dashboard-status', type: 'string', required: false, desc: 'Dashboard status.' };
 export const refreshTypeFlag: Flag = { name: 'refresh-type', type: 'number', required: false, desc: 'Dashboard refresh type: 1 enabled, 0 disabled.' };
 export const cacheConfigFlag: Flag = { name: 'cache-config', type: 'json', required: false, desc: 'Dashboard cache config JSON.' };
-export const toUserIdFlag: Flag = { name: 'to-user-id', type: 'number', required: true, desc: 'Target user ID for handover.' };
+export const toUserIdFlag: Flag = { name: 'to-user-id', type: 'number', required: false, desc: 'Target user ID for handover; required here or as payload.to_user_id.' };
 export const clearHistoryTagFlag: Flag = { name: 'clear-history-tag', type: 'number', required: false, desc: 'Whether to clear tag history: 1 yes, 0 no.' };
 export const typeFlag: Flag = { name: 'type', type: 'string', required: false, desc: 'Batch operation type.' };
 export const statusFlag: Flag = { name: 'status', type: 'json', required: false, desc: 'Operation status JSON array.' };
@@ -45,7 +44,7 @@ const readers: Record<string, (ctx: RuntimeContext) => unknown> = {
   rule_id: (ctx) => optionalNumber(ctx, 'rule-id'),
   rule_name: (ctx) => optionalString(ctx, 'rule-name'),
   comment: (ctx) => optionalString(ctx, 'comment'),
-  node_ids: (ctx) => optionalJsonArray(ctx, 'node-ids'),
+  node_ids: (ctx) => optionalJson(ctx, 'node-ids'),
   reports_version: (ctx) => optionalNumber(ctx, 'reports-version'),
   zone_offset: (ctx) => optionalNumber(ctx, 'zone-offset'),
   schedule_ui_config: (ctx) => optionalJson(ctx, 'schedule-ui-config'),
@@ -64,12 +63,31 @@ const readers: Record<string, (ctx: RuntimeContext) => unknown> = {
 };
 
 export function assetGovernanceInput(ctx: RuntimeContext, fields: string[]): Record<string, unknown> {
+  const payload = optionalJson(ctx, 'payload');
+  if (payload !== undefined && (!payload || typeof payload !== 'object' || Array.isArray(payload))) {
+    throw new CliValidationError('--payload must be a JSON object.');
+  }
+  if (payload && Object.hasOwn(payload, 'payload')) {
+    throw new CliValidationError('--payload must not contain a nested payload field.');
+  }
   const input: Record<string, unknown> = {
+    ...payload as Record<string, unknown> | undefined,
     ...projectInput(ctx),
-    payload: optionalJson(ctx, 'payload'),
   };
   for (const field of fields) {
-    input[field] = readers[field]?.(ctx);
+    const value = readers[field]?.(ctx);
+    if (value !== undefined) input[field] = value;
   }
-  return compactInput(input);
+  for (const field of ['node_ids', 'searchs', 'status']) {
+    if (input[field] !== undefined && !Array.isArray(input[field])) {
+      throw new CliValidationError(`${field} must be a JSON array.`);
+    }
+  }
+  if (input.rule !== undefined && (!input.rule || typeof input.rule !== 'object' || Array.isArray(input.rule))) {
+    throw new CliValidationError('rule must be a JSON object.');
+  }
+  if (fields.includes('to_user_id') && (!Number.isInteger(input.to_user_id) || Number(input.to_user_id) <= 0)) {
+    throw new CliValidationError('to_user_id must be a positive integer; provide --to-user-id or payload.to_user_id.');
+  }
+  return input;
 }

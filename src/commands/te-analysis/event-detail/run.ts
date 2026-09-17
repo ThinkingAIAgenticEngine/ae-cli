@@ -20,5 +20,6 @@ export const eventDetailRun = createAnalysisCapabilityCommand({
     syncTimeoutSecondsFlag,
   ],
   risk: 'read',
+  intentConsistency: { definitionFlag: 'definition' },
   buildInput: eventDetailRunInput,
 });

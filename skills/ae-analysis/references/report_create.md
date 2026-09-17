@@ -12,11 +12,13 @@ Command:
 ae-cli analysis report create --project-id <project_id> --report-name "Demo" --model-type event --definition '{...}' [--resolutions '<confirmed_resolution_json>'] [--report-desc "..."] [--dashboard-ids "[1001]"]
 ```
 
+When the caller supplies an existing snapshot, optional `--intent-snapshot` accepts `schema_version: 1`, non-empty `requirement`, `definition` and `model_type`. The CLI checks that its definition and model match the submitted values locally; the snapshot is never sent to Gateway.
+
 Input sends `project_id`, `report_name`, `model_type`, `definition`, optional user-confirmed `resolutions`, `report_desc`, `cache_seconds`, `query_duration_ms`, and `dashboard_ids`. `--resolutions` is not supported with `--model-type tag`.
 
 Output is the gateway envelope. `data` contains the created `report_id`, creation status, normalized `model_type`, AI QP `definition`, and optional resolution warnings.
 
-Report creation and its `--validate` / `--dry-run` paths use the same compiler contract. `AI_QP_COMPILE_FAILED` preserves the full structured error array. No report is created on this failure; follow [`../metadata_resolution.md`](../metadata_resolution.md), keep the definition unchanged, and pass `--resolutions` only after user confirmation.
+Report creation and its `--validate` / `--dry-run` paths use the same compiler contract. `AI_QP_COMPILE_FAILED` preserves the full structured error array. No report is created on this failure; follow [`metadata_resolution.md`](metadata_resolution.md), keep each bound field's path and original wording, fill confirmed model parameters, and pass `--resolutions` only after user confirmation.
 
 ## SQL dynamic parameter shortest path
 
@@ -28,6 +30,6 @@ ae-cli analysis report create --project-id <project_id> --report-name "Recent SQ
 
 `use_timezone` is an optional boolean definition field only for `part_date`; it defaults to `false`. `true` makes that parameter use the query's effective timezone. It is a saved definition field, so change it through report create/update `--definition`, never through report-data `--sql-params`.
 
-After creation, keep the `report_id` returned by this exact create response. To verify the report, query the saved default first with `analysis report-data run` and omit `--sql-params`; then make one second query with a value-only `--sql-params` override. Do not rebuild internal `sqlViewParams` or guess an ID.
+After creation, keep the `report_id` returned by this exact create response. If the user also requests report data, call `analysis report-data run` directly with the requested value-only `--sql-params` overrides, or omit that flag to use saved defaults. Do not rebuild internal `sqlViewParams` or guess an ID.
 
 After any successful report create, call `analysis-meta asset url-get` with that returned `report_id` and output its `markdown_link`.

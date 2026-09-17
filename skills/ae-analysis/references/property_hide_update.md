@@ -8,7 +8,6 @@ Command:
 
 ```bash
 ae-cli analysis-meta property hide-update --project-id <project_id> --table-type event --prop-names '["amount"]' --is-hide true
-ae-cli analysis-meta property hide-update --dry-run
 ```
 
 Capability id: `metadata.property.hide_update`.

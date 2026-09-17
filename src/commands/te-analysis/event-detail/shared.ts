@@ -1,4 +1,5 @@
 import type { Flag, RuntimeContext } from '../../../framework/types.js';
+import { definitionIntentSnapshotFlag } from '../../../core/definition-intent.js';
 import {
   asyncTimeoutSecondsFlag,
   compactInput,
@@ -58,6 +59,7 @@ export function eventDetailExportInput(ctx: RuntimeContext): Record<string, unkn
 export const eventDetailBaseFlags = [
   projectIdFlag,
   eventDetailDefinitionFlag,
+  definitionIntentSnapshotFlag,
   requestIdFlag,
   useCacheFlag,
   zoneOffsetFlag,

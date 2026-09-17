@@ -37,6 +37,8 @@ node .ae-cli/data-integration/<fingerprint[:16]>/transform.mjs <new-input-file> 
 
 Do **not** run the returned command on your own. Show the user the proposed package — the frozen event name, the property mapping it implies, and the fact that the confirmed business logic (event name, `value_mapping`, flatten rules) is reused unchanged — and wait for one explicit confirmation. Before confirming, diff the new file's flattened properties against the package's `plan.json`: if the package has no `plan_file`, or the new file produces properties the plan does not cover, run the Tracking plan step to add them (merge into the existing project plan) first. Only then run `transform.mjs` on the new file and continue to Sink.
 
+The frozen mapping's `#type`/`mode` (e.g. `track`) is authoritative after a match — ignore `inspect`'s auto recommendation, which may re-infer `user_set` for a package whose confirmed mapping is `track`. A reuse match must not re-do Source identification or event-model inference.
+
 ## Safety rules
 
 - Reuse only for a file of the **same shape** (same header/schema and format). The `transform.mjs` wrapper re-binds the content fingerprint to the new file, so the content guard still applies per run.

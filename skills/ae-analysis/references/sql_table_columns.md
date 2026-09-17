@@ -2,7 +2,7 @@
 
 List queryable columns for one server-authorized SQL table.
 
-First call `analysis sql-table list --project-id <project_id>`, then copy an exact returned `table_ref`. Do not guess table or column names.
+For an unknown table, first call `analysis sql-table list --project-id <project_id>`, then copy an exact returned `table_ref`. Reuse an already verified authorized table reference in the same scope. Do not guess table or column names.
 
 ```bash
 ae-cli analysis sql-table columns \

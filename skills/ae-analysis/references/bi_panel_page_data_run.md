@@ -17,3 +17,5 @@ Input sends `project_id`, `panel_id`, `page_key`, `result_type`, and optional co
 Output is the gateway envelope. `data` contains bounded inline page data.
 
 BI page/chart sources are SQL and do not support analysis drilldown or result-cluster creation. Do not call model drilldown commands from this result.
+
+For `--result-type charts`, `--preview-rows` applies per chart; configured chart top-N remains part of its semantics. Summary is presentation data, available only from `run`, and rejects `--preview-rows`. BI SQL results do not support analysis drilldown.

@@ -311,6 +311,9 @@ For `completionIndicatorType=0`, also read and preserve `requiredMainGoalFields`
 and `day` when no custom completion window is requested. Do not rely on static `--validate` alone
 because the save service performs this additional business validation.
 
+For natural goal windows, read `naturalWindowRule` in the same rule object.
+See [save-task.md](save-task.md#natural-completion-goal-windows) for the field contract.
+
 ### 4.9 `handoff`
 
 This is the final section before `save_task`.

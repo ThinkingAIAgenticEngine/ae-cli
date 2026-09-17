@@ -1,6 +1,6 @@
 # analysis user-cluster list
 
-List accessible user clusters for discovery. Use this before any get/update/delete/member command; do not invent `cluster_name`.
+List accessible user clusters for discovery. Use this when the target `cluster_name` is unknown; reuse a verified name from the current task and do not invent `cluster_name`.
 
 Flags: `--project-id` required. Optional: `--queries`, `--fields`, `--limit`, `--offset`, `--authenticated-only`.
 

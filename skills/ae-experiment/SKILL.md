@@ -1,7 +1,7 @@
 ---
 name: ae-experiment
-version: 1.0.1
-description: "Use when managing Atlas AB experiments, traffic layers, Features, metrics, buckets, and experiment reports through ae-cli"
+version: 1.0.2
+description: "Use when managing Atlas AB or external experiments, traffic layers, Features, metrics, buckets, and experiment reports through ae-cli"
 ---
 
 # ae-experiment
@@ -61,10 +61,11 @@ Naming and response boundary:
    - `experiment metric save`
 3. Create or patch the experiment draft with `experiment experiment save`.
    Use `experiment experiment update-metrics` when replacing metric bindings or assigning guardrail roles.
-4. Check readiness with `experiment experiment ready-check`.
-5. For a non-mutex traffic layer, run `experiment experiment conflict-check` before submit (needs `feature_key_list` from context or `experiment get`).
-6. Move status with `experiment experiment manage`.
-7. Query reports with `experiment report summary`, `experiment report sample-size`, and `experiment report metric-trend`.
+4. For an external experiment, use `experiment external-experiment save-submit` instead. It submits directly and does not use Features, traffic layers, allocation, targeting, or experiment cycles.
+5. Check readiness with `experiment experiment ready-check`.
+6. For a non-mutex traffic layer, run `experiment experiment conflict-check` before submit (needs `feature_key_list` from context or `experiment get`).
+7. Move status with `experiment experiment manage`.
+8. Query reports with `experiment report summary`, `experiment report sample-size`, and `experiment report metric-trend`.
 
 If an experiment save returns `error_code: METRIC_NOT_FOUND`, list metrics for the same project. Create and verify the metric before retrying; never retry with another invented ID. Metric deletion returns `error_code: METRIC_IN_USE` while an active experiment binding exists.
 
@@ -98,9 +99,15 @@ Read [`save_build_guide.md`](references/save_build_guide.md) and
 
 ### Experiment
 
-`experiment experiment save`, `experiment experiment update-metrics`, `capability run experiment.experiment.save-submit`, `experiment experiment list`, `experiment experiment list-archived`, `experiment experiment get`, `experiment experiment ready-check`, `experiment experiment conflict-check`, `experiment experiment manage`, `experiment experiment update-group`, `experiment experiment batch-delete`, `experiment operation-log query`
+`experiment experiment save`, `experiment experiment update-metrics`, `experiment external-experiment save-submit`, `capability run experiment.experiment.save-submit`, `experiment experiment list`, `experiment experiment list-archived`, `experiment experiment get`, `experiment experiment ready-check`, `experiment experiment conflict-check`, `experiment experiment manage`, `experiment experiment update-group`, `experiment experiment batch-delete`, `experiment operation-log query`
 
 Read [`manage_guardrail_metrics.md`](references/manage_guardrail_metrics.md) before assigning or replacing metric roles.
+
+### External Experiment
+
+`experiment external-experiment save-submit`
+
+Read [`save_submit_external_experiment.md`](references/save_submit_external_experiment.md) before creating or updating an external experiment.
 
 ### Traffic Layer and Buckets
 

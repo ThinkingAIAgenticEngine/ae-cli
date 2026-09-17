@@ -119,10 +119,11 @@ A-E 在 writer 里用 `mergeCells` 合并。
 | `user_set` | 覆盖赋值（默认） |
 | `user_setOnce` | 仅首次赋值 |
 | `user_add` | 数值累加 |
+| `user_append` | 列表追加 |
 
 xlsx 里填写英文 canonical 值本身，不翻译。
 
-官方文档提及 `user_append`（字符串数组追加），样本中无实例，暂不实现。
+官方模板 `#用户数据` 隐藏说明行「更新方式：取值user_set、user_setOnce、user_add、user_append」已确认 `user_append` 在方案枚举内。`user_unset`（删除属性）不在方案枚举内——它是数据接入层 `#type` 的操作（见 data-rules.md），不是方案声明。
 
 ---
 
@@ -150,5 +151,5 @@ xlsx 里填写英文 canonical 值本身，不翻译。
 ## 开放问题（记一下，不影响 v1）
 
 1. ~~AE 后端是否区分 `object`（单对象）与 `array_row`（对象数组）~~ —— 已确认：AE 支持，wiki/te-docs/raw/preparations-before-data-ingestion.md 明确区分两种类型
-2. `user_append` updateType 是否真的可用 —— 待构造测试
+2. ~~`user_append` updateType 是否真的可用~~ —— 已确认：官方模板 `#用户数据` 隐藏说明行「更新方式：取值user_set、user_setOnce、user_add、user_append」，枚举含 `user_append`（`user_unset` 不在方案枚举内）
 3. 严格错误码 —— 所有校验失败目前都是 `return_code=0 success` + 静默丢弃，无法从响应区分成功/失败；UI 上传才显示错误文案

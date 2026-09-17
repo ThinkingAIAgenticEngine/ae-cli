@@ -1,0 +1,39 @@
+{
+  "meta": {
+    "app_type": "web",
+    "sdk_integration_mode": "client_only",
+    "client_platforms": ["javascript"],
+    "client_languages": ["javascript"],
+    "plan_name": "GA4 gtag.js migration (pilot)",
+    "user_identity": {
+      "account_id_source": "user_account",
+      "account_id_field": "user_id",
+      "distinct_id_strategy": "auto"
+    },
+    "lang": "zh"
+  },
+  "events": [
+    {
+      "event_name": "sign_up",
+      "display_name": "注册",
+      "platform": "client",
+      "source": "codebase",
+      "prop_names": ["method"]
+    },
+    {
+      "event_name": "purchase",
+      "display_name": "购买",
+      "platform": "client",
+      "source": "codebase",
+      "prop_names": ["order_id", "amount", "currency"]
+    }
+  ],
+  "event_properties": [
+    { "name": "method", "display_name": "注册方式", "type": "string", "source": "codebase" },
+    { "name": "order_id", "display_name": "订单ID", "type": "string", "source": "codebase" },
+    { "name": "amount", "display_name": "金额", "type": "number", "source": "codebase" },
+    { "name": "currency", "display_name": "币种", "type": "string", "source": "codebase" }
+  ],
+  "common_event_properties": [],
+  "user_properties": []
+}

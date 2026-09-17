@@ -8,7 +8,6 @@ Command:
 
 ```bash
 ae-cli analysis-meta property relation-update --project-id <project_id> --table-type event --payload '{"prop_name":"amount","select_type":"number","super_event_ids":[<event_id>]}'
-ae-cli analysis-meta property relation-update --dry-run
 ```
 
 Capability id: `metadata.property.relation_update`.

@@ -8,7 +8,6 @@ Command:
 
 ```bash
 ae-cli project mark-time update --project-id <project_id> --mark-time-id <mark_time_id> --marked-at <marked_at> --zone-offset <zone_offset> --content <content> --is-visible <is_visible>
-ae-cli project mark-time update --dry-run --project-id <project_id> --mark-time-id <mark_time_id> --marked-at <marked_at> --content <content>
 ```
 
 Capability id: `project.mark_time.update`.

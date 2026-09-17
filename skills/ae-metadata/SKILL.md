@@ -1,7 +1,7 @@
 ---
 name: ae-metadata
 version: 1.0.1
-description: "AE/TE metadata capability-gateway CLI: metadata data-table management and property dimension-table binding. Metadata CLI routes through the analysis gateway. Input-file upload and event/property detail belong to ae-analysis."
+description: "AE metadata capability-gateway CLI: metadata data-table management and property dimension-table binding. Metadata CLI routes through the analysis gateway. Input-file upload and event/property detail belong to ae-analysis."
 ---
 
 # ae-metadata

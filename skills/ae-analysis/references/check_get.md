@@ -1,27 +1,25 @@
 # tracking check get
 
-Use when get one tracking validation result.
-
-Do not use for commands listed under the sheet's non-CLI section or for unrelated metadata/report operations. If the command needs a complex JSON object, read the backend schema or existing asset first and send snake_case fields only.
+Use only when the user asks to get one tracking validation result.
 
 Command:
 
 ```bash
-ae-cli tracking check get [options]
+ae-cli tracking check get --project-id <project_id> --uuid <uuid>
 ```
 
 Capability id: `tracking.check.get`
 
-Input sends `project_id`, `uuid`, and lifecycle fields when exposed. Delete also sends `yes` from `--confirm`. Do not send camelCase aliases.
+Input sends `project_id`, `uuid`, and lifecycle fields when exposed. Do not send camelCase aliases.
 
-Output is the capability gateway envelope: success is `ok=true,data,meta`; failure is `ok=false,error`. Export commands return lifecycle data such as `run_id` and `artifact_id` for inspect/download.
+Output is the capability gateway envelope: success is `ok=true,data,meta`; failure is `ok=false,error`.
 
 Parameters:
 
 | Parameter | Description | Required |
 | --- | --- | --- |
-| `--project-id` | See command help | Yes |
-| `--uuid` | See command help | Yes |
-| `--request-id` | See command help | No |
-| `--timeout-seconds` | See command help | No |
+| `--project-id` | Numeric project ID. | Yes |
+| `--uuid` | Tracking check task UUID. | Yes |
+| `--request-id` | Optional caller-supplied cli_<32 lowercase hex> lifecycle ID. ae-cli generates and prints one before dispatch when omitted. | No |
+| `--timeout-seconds` | Optional capability execution timeout in seconds. | No |
 

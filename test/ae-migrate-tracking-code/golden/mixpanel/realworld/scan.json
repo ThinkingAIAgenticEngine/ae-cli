@@ -1,0 +1,37 @@
+{
+  "provider": "mixpanel",
+  "variant": "javascript",
+  "platforms": ["web"],
+  "call_sites": [
+    {
+      "id": "cs-1",
+      "file": "src/app.js",
+      "line": 8,
+      "kind": "event",
+      "source_call": "mixpanel.track(EVENT_SIGNUP, { signup_method: user.signupMethod })",
+      "event_name": "sign_up",
+      "params": { "signup_method": "user.signupMethod" },
+      "resolved": true
+    },
+    {
+      "id": "cs-2",
+      "file": "src/payment.js",
+      "line": 6,
+      "kind": "event",
+      "source_call": "mixpanel.track(EVENT_PURCHASE, { order_id: order.id, amount: order.total })",
+      "event_name": "purchase",
+      "params": { "order_id": "order.id", "amount": "order.total" },
+      "resolved": true
+    },
+    {
+      "id": "cs-3",
+      "file": "src/app.js",
+      "line": 11,
+      "kind": "user_property",
+      "source_call": "mixpanel.people.set({ plan: account.plan })",
+      "op": "set",
+      "prop": "plan",
+      "value": "account.plan"
+    }
+  ]
+}

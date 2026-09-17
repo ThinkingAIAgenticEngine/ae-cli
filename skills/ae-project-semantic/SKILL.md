@@ -1,6 +1,6 @@
 ---
 name: ae-project-semantic
-description: "Use when generating, testing, submitting, reviewing, or publishing governed project semantic candidates from AE/TE project asset packages. This skill owns progressive asset-scope consent, recommendation quality gates, evidence authority, topic-domain grouping, candidate JSON generation, CLI closed-loop validation, and frontend review acceptance. Do not use it for ordinary analysis questions that only consume already published semantics."
+description: "Use when generating, testing, submitting, reviewing, or publishing governed project semantic candidates from AE project asset packages. This skill owns progressive asset-scope consent, recommendation quality gates, evidence authority, topic-domain grouping, candidate JSON generation, CLI closed-loop validation, and frontend review acceptance. Do not use it for ordinary analysis questions that only consume already published semantics."
 ---
 
 # ae-project-semantic

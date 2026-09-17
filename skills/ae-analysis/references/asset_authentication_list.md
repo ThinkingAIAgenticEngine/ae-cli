@@ -2,9 +2,11 @@
 
 Use for bounded online preview, search, and filtering of project asset-authentication rows.
 
+This is a certification-state management command, not the CLI Agent recommendation workflow. For asset-authentication and metric-recommendation review, use `analysis-meta governance-recommendation export` first.
+
 This command filters on the server before sorting and pagination. Use `export` for a complete offline dataset and `update` for an explicit typed asset set.
 
-Do not use it to synthesize a complete catalog by paging or to change authentication state.
+Do not use it to synthesize a complete catalog by paging, to change authentication state, or to generate recommendations.
 
 Command:
 
@@ -14,11 +16,15 @@ ae-cli analysis-governance asset-authentication list --project-id <project_id> -
 
 Capability id: `governance.asset_authentication.list`.
 
+This is the canonical typed management route from the asset-governance branch. The older `analysis-meta asset-authentication list` route remains a compatibility view with only project and pagination fields.
+
 `match=any|all` combines only the supplied numeric thresholds. Asset types, authentication status, and keyword queries are always AND filters. `queries` matches any supplied keyword.
 
 Output uses `data.items[]`, `total`, `limit`, `offset`, `has_more`, and `next_offset`. Row identity is always `resource_type + resource_key`; dashboard and report keys are numeric IDs encoded as strings, while metadata assets use business names.
 
 ## analysis-meta asset-authentication list
+
+Capability id: `metadata.asset_authentication.list`.
 
 The legacy command remains available for one release cycle and returns the old row shape.
 

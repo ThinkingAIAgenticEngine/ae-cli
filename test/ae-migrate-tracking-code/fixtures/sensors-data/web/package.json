@@ -1,0 +1,8 @@
+{
+  "name": "sensors-data-web-fixture",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "sensorsdata": "^1.0.0"
+  }
+}

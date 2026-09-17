@@ -7,8 +7,7 @@ Do not use it for unrelated project-management actions or for fields not present
 Command:
 
 ```bash
-ae-cli project member-handover run --project-id <project_id> --payload <payload>
-ae-cli project member-handover run --dry-run --project-id <project_id> --payload <payload>
+ae-cli project member-handover run --project-id <project_id> --payload '{"to_user_id":<user_id>,"single_submit":true,"asset_list":[{"asset_id":<asset_id>,"asset_type":"report","asset_name":"<asset_name>"}]}'
 ```
 
 Capability id: `project.member_handover.run`.
@@ -21,4 +20,4 @@ Output uses the gateway envelope: success is `ok=true,data,meta`; failure is `ok
 | Parameter | Required | Description |
 |---|---|---|
 | `--project-id` | Yes | Numeric project ID. |
-| `--payload` | Yes | Asset handover payload matching AssetBatchHandoverReq in snake_case. |
+| `--payload` | Yes | JSON object with `to_user_id`, `single_submit`, and `asset_list`. `single_submit=true` requires exactly one asset; false allows a non-empty batch. Each asset uses `asset_id`, `asset_type`, and `asset_name` from the selected asset. Types: `report`, `dashboard`, `space`, `folder`, `bi_panel`, `thirdparty`. |

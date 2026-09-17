@@ -8,7 +8,6 @@ Command:
 
 ```bash
 ae-cli project timezone overview --project-id <project_id>
-ae-cli project timezone overview --dry-run --project-id <project_id>
 ```
 
 Capability id: `project.timezone.overview`.

@@ -40,93 +40,41 @@ export function validateCatalogExportFlags(ctx: RuntimeContext): void {
   }
 }
 
-export function catalogArtifactMaterializer(resourceType: string) {
-  return async ({
-    ctx,
-    runId,
-    artifactId,
-    output,
-    force,
-    signal,
-    finalDescriptor,
-  }: {
-    ctx: RuntimeContext;
-    runId: string;
-    artifactId: string;
-    output: string;
-    force: boolean;
-    signal: AbortSignal;
-    finalDescriptor: AsyncRunDescriptor;
-  }): Promise<unknown> => {
-    const outputPath = resolve(output);
-    const metaPath = join(
-      dirname(outputPath),
-      `${basename(outputPath, extname(outputPath))}.meta.json`,
-    );
-    await mkdir(dirname(outputPath), { recursive: true });
-    await assertRegularFileOrMissing(outputPath, force);
-    await assertRegularFileOrMissing(metaPath, force);
-    const suffix = `${process.pid}.${randomBytes(8).toString('hex')}`;
-    const partPath = `${outputPath}.part.${suffix}`;
-    const metaPartPath = `${metaPath}.part.${suffix}`;
-    let handle: FileHandle | undefined;
-    try {
-      const download = await downloadAnalysisArtifact(
-        ctx.host(),
-        runId,
-        artifactId,
-        partPath,
-        { force: true, signal, ensureReady: false },
-      );
-      const hash = createHash('sha256');
-      let bytes = 0;
-      let rows = 0;
-      for await (const chunk of createReadStream(partPath)) {
-        const buffer = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk);
-        hash.update(buffer);
-        bytes += buffer.length;
-        for (const value of buffer) {
-          if (value === 0x0a) rows++;
-        }
-      }
-      const contentSha256 = hash.digest('hex');
-      const token = await getCliToken(ctx.host());
-      const metadata = {
-        schema_version: 1,
-        resource_type: resourceType,
-        host: ctx.host(),
-        project_id: ctx.num('project-id'),
-        principal_fingerprint: `sha256:${createHash('sha256').update(token).digest('hex')}`,
-        generated_at: new Date().toISOString(),
-        row_count: rows,
-        complete: true,
-        content_sha256: contentSha256,
-        run_id: runId,
-        artifact_id: artifactId,
-      };
-      handle = await open(metaPartPath, 'w', 0o600);
-      await handle.write(`${JSON.stringify(metadata)}\n`, undefined, 'utf8');
-      await handle.sync();
-      await handle.close();
-      handle = undefined;
-      await publishCatalogPair(partPath, outputPath, metaPartPath, metaPath, suffix);
-      return {
-        ...finalDescriptor,
-        ...download,
-        output_path: outputPath,
-        metadata_path: metaPath,
-        format: 'jsonl',
-        row_count: rows,
-        bytes,
-        content_sha256: contentSha256,
-        complete: true,
-      };
-    } catch (error) {
-      await handle?.close().catch(() => undefined);
-      await rm(partPath, { force: true }).catch(() => undefined);
-      await rm(metaPartPath, { force: true }).catch(() => undefined);
-      throw error;
+export async function catalogArtifactMaterializer({
+  ctx,
+  runId,
+  artifactId,
+  output,
+  force,
+  signal,
+  finalDescriptor,
+}: {
+  ctx: RuntimeContext;
+  runId: string;
+  artifactId: string;
+  output: string;
+  force: boolean;
+  signal: AbortSignal;
+  finalDescriptor: AsyncRunDescriptor;
+}): Promise<Record<string, unknown>> {
+  await assertRegularFileOrMissing(resolve(output), force);
+  const download = await downloadAnalysisArtifact(
+    ctx.host(), runId, artifactId, output,
+    { force, signal, ensureReady: false, mode: 0o600 },
+  );
+  let rows = 0;
+  for await (const chunk of createReadStream(download.output_path)) {
+    const buffer = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk);
+    for (const value of buffer) {
+      if (value === 0x0a) rows++;
     }
+  }
+  return {
+    ...finalDescriptor,
+    ...download,
+    format: 'jsonl',
+    row_count: rows,
+    complete: true,
   };
 }
 
@@ -138,13 +86,7 @@ export async function preflightCatalogArtifactOutput({
   output: string;
   force: boolean;
 }): Promise<void> {
-  const outputPath = resolve(output);
-  const metaPath = join(
-    dirname(outputPath),
-    `${basename(outputPath, extname(outputPath))}.meta.json`,
-  );
-  await assertRegularFileOrMissing(outputPath, force);
-  await assertRegularFileOrMissing(metaPath, force);
+  await assertRegularFileOrMissing(resolve(output), force);
 }
 
 export function validateQueriesFlag(ctx: RuntimeContext): void {

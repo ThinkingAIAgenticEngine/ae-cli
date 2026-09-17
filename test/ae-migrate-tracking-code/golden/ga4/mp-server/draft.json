@@ -1,0 +1,36 @@
+{
+  "meta": {
+    "app_type": "server",
+    "sdk_integration_mode": "server_only",
+    "server_language": "nodejs",
+    "plan_name": "GA4 Measurement Protocol migration (pilot)",
+    "user_identity": {
+      "account_id_source": "user_account",
+      "distinct_id_strategy": "auto"
+    },
+    "lang": "zh"
+  },
+  "events": [
+    {
+      "event_name": "user_signup",
+      "display_name": "用户注册",
+      "platform": "server",
+      "source": "codebase",
+      "prop_names": ["plan"]
+    },
+    {
+      "event_name": "purchase",
+      "display_name": "购买",
+      "platform": "server",
+      "source": "codebase",
+      "prop_names": ["order_id", "amount"]
+    }
+  ],
+  "event_properties": [
+    { "name": "plan", "display_name": "套餐", "type": "string", "source": "codebase" },
+    { "name": "order_id", "display_name": "订单ID", "type": "string", "source": "codebase" },
+    { "name": "amount", "display_name": "金额", "type": "number", "source": "codebase" }
+  ],
+  "common_event_properties": [],
+  "user_properties": []
+}

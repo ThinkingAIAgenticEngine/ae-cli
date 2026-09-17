@@ -1,0 +1,45 @@
+{
+  "provider": "firebase",
+  "variant": "react-native",
+  "platforms": ["react_native"],
+  "call_sites": [
+    {
+      "id": "cs-1",
+      "file": "src/analytics.js",
+      "line": 4,
+      "kind": "identity",
+      "source_call": "await analytics().setUserId(user.id)",
+      "resolved": true
+    },
+    {
+      "id": "cs-2",
+      "file": "src/analytics.js",
+      "line": 5,
+      "kind": "user_property",
+      "source_call": "await analytics().setUserProperties({ plan: 'pro' })",
+      "op": "set",
+      "prop": "plan",
+      "value": "pro"
+    },
+    {
+      "id": "cs-3",
+      "file": "src/analytics.js",
+      "line": 9,
+      "kind": "event",
+      "source_call": "await analytics().logEvent('sign_up', { method: 'phone' })",
+      "event_name": "sign_up",
+      "params": { "method": "phone" },
+      "resolved": true
+    },
+    {
+      "id": "cs-4",
+      "file": "src/analytics.js",
+      "line": 13,
+      "kind": "event",
+      "source_call": "await analytics().logEvent('purchase', { order_id: order.id, amount: order.amount, currency: 'USD' })",
+      "event_name": "purchase",
+      "params": { "order_id": "order.id", "amount": "order.amount", "currency": "USD" },
+      "resolved": true
+    }
+  ]
+}

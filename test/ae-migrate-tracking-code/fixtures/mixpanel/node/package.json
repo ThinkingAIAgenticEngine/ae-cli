@@ -1,0 +1,7 @@
+{
+  "name": "mixpanel-node-fixture",
+  "private": true,
+  "dependencies": {
+    "mixpanel": "^0.18.0"
+  }
+}

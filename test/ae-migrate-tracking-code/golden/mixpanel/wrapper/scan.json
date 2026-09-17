@@ -1,0 +1,38 @@
+{
+  "provider": "mixpanel",
+  "variant": "javascript",
+  "platforms": ["web"],
+  "wrappers": [
+    {
+      "name": "trackEvent",
+      "file": "src/analytics.js",
+      "line": 5,
+      "source_call": "mixpanel.track(name, props)",
+      "delegates_to": "event"
+    }
+  ],
+  "call_sites": [
+    {
+      "id": "cs-1",
+      "file": "src/app.js",
+      "line": 4,
+      "kind": "event",
+      "source_call": "trackEvent('sign_up', { method: user.method })",
+      "event_name": "sign_up",
+      "params": { "method": "user.method" },
+      "resolved": true,
+      "via_wrapper": "trackEvent"
+    },
+    {
+      "id": "cs-2",
+      "file": "src/checkout.js",
+      "line": 4,
+      "kind": "event",
+      "source_call": "trackEvent('purchase', { order_id: order.id, amount: order.total })",
+      "event_name": "purchase",
+      "params": { "order_id": "order.id", "amount": "order.total" },
+      "resolved": true,
+      "via_wrapper": "trackEvent"
+    }
+  ]
+}

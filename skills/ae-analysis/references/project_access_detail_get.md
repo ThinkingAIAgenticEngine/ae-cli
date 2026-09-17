@@ -8,7 +8,6 @@ Command:
 
 ```bash
 ae-cli project access-detail get --company-id <company_id>
-ae-cli project access-detail get --dry-run --company-id <company_id>
 ```
 
 Capability id: `project.access_detail.get`.

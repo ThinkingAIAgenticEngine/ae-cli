@@ -1,6 +1,6 @@
 # Platform Operations
 
-Read this reference before retrieving any AE/TE experiment evidence.
+Read this reference before retrieving any AE experiment evidence.
 
 ## Hard boundary
 

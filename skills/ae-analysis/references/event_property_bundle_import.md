@@ -4,13 +4,9 @@ Use this reference only to identify the reserved future import contract; the cur
 
 Do not use it for a real import. It always returns `CAPABILITY_REQUIRES_FILE_ADAPTER` until CLI input-file handling is wired to the server import service.
 
-Command:
+Reserved command: `ae-cli analysis-meta event-property-bundle import`. Do not invoke it while the backend is blocked.
 
-```bash
-ae-cli analysis-meta event-property-bundle import --project-id <project_id> --operation pre_import --input-file-id <input_file_id> --dry-run
-```
-
-Capability id: `metadata.super_metadata.import`.
+Capability id: `metadata.event_property_bundle.import`.
 
 Input sends `project_id`, `operation`, and the operation-specific file or pre-import identifier.
 

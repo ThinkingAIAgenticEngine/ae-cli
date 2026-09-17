@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { experimentGet } from '../../src/commands/te-experiment/experiment/get.ts';
 import { experimentSave } from '../../src/commands/te-experiment/experiment/save.ts';
 import { experimentUpdateMetrics } from '../../src/commands/te-experiment/experiment/update-metrics.ts';
+import { externalExperimentSaveSubmit } from '../../src/commands/te-experiment/external-experiment/save-submit.ts';
 import { featureGet } from '../../src/commands/te-experiment/feature/get.ts';
 import { featureWhitelistBatchDelete } from '../../src/commands/te-experiment/feature-whitelist/batch-delete.ts';
 import { featureWhitelistList } from '../../src/commands/te-experiment/feature-whitelist/list.ts';
@@ -167,6 +168,53 @@ assert.deepEqual(updateMetricsRequest.body, {
 assert.throws(() => experimentUpdateMetrics.validate(makeCtx({
   metrics: [{ metricId: 'watch_metric', metricRole: 'observation' }],
 })), /metricRole must be one of primary, secondary, guardrail/);
+
+const externalExperimentRequest = await captureDryRun(externalExperimentSaveSubmit, {
+  projectId: 1,
+  expName: 'Partner onboarding test',
+  bucketId: '#user_id',
+  startTime: '2026-09-01T00:00:00+08:00',
+  endTime: '2026-09-15T00:00:00+08:00',
+  supposition: 'The new onboarding improves activation.',
+  groups: [
+    { expGroupName: 'control', isControl: 1 },
+    { expGroupName: 'variant', isControl: 0 },
+  ],
+  metrics: [{ metricId: 'activation_rate', metricRole: 'primary' }],
+});
+assert.equal(externalExperimentRequest.url,
+  `${HOST}/api/cli/engage/v1/capabilities/experiment.experiment.save-submit/dry-run`);
+assert.deepEqual(externalExperimentRequest.body, {
+  input: {
+    project_id: 1,
+    req: {
+      expType: 'external',
+      expName: 'Partner onboarding test',
+      bucketId: '#user_id',
+      startTime: '2026-09-01T00:00:00+08:00',
+      endTime: '2026-09-15T00:00:00+08:00',
+      expSupposition: 'The new onboarding improves activation.',
+      groups: [
+        { expGroupName: 'control', isControl: 1 },
+        { expGroupName: 'variant', isControl: 0 },
+      ],
+      metrics: [{ metricId: 'activation_rate', metricRole: 'primary' }],
+    },
+  },
+});
+assert.throws(() => externalExperimentSaveSubmit.validate(makeCtx({
+  groups: [{ expGroupName: 'control', isControl: 1 }, { expGroupName: 'variant', isControl: 1 }],
+  metrics: [{ metricId: 'activation_rate', metricRole: 'primary' }],
+})), /exactly one group with isControl=1/);
+assert.throws(() => externalExperimentSaveSubmit.validate(makeCtx({
+  groups: [{ expGroupName: 'control', isControl: 1 }, { expGroupName: 'variant', isControl: 0 }],
+  metrics: [{ metricId: 'activation_rate', metricRole: 'secondary' }],
+})), /at least one primary metric binding/);
+assert.throws(() => externalExperimentSaveSubmit.validate(makeCtx({
+  expId: 'ext_1',
+  groups: [{ expGroupName: 'control', isControl: 1 }, { expGroupName: 'variant', isControl: 0 }],
+  metrics: [{ metricId: 'activation_rate', metricRole: 'primary' }],
+})), /expGroupId is required when --exp-id is provided/);
 
 const whitelistSavePreview = await captureDryRun(featureWhitelistSave, {
   projectId: 1,

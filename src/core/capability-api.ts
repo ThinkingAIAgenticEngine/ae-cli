@@ -37,6 +37,7 @@ export class CapabilityGatewayError extends Error {
     readonly httpStatus?: number,
     readonly hint?: string,
     readonly meta?: Record<string, unknown>,
+    readonly type: 'api' | 'validation' = 'api',
   ) {
     super(message);
     this.name = 'CapabilityGatewayError';
@@ -132,6 +133,7 @@ function parseCapabilityEnvelope(body: any): CapabilityGatewaySuccess {
       err.http_status ?? err.httpStatus,
       hint,
       isRecord(body.meta) ? body.meta : undefined,
+      err.type === 'validation' ? 'validation' : 'api',
     );
   }
   return { ok: true, data: body };
@@ -166,6 +168,7 @@ function buildCapabilityHttpError(resp: Response, body: any): CapabilityGatewayE
         resp.status,
         hint,
         isRecord(body.meta) ? body.meta : undefined,
+        err.type === 'validation' ? 'validation' : 'api',
       );
     }
   }

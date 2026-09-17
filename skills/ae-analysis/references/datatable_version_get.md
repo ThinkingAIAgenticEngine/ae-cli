@@ -8,7 +8,6 @@ Command:
 
 ```bash
 ae-cli analysis-meta datatable version-get --project-id <project_id> --version-id <version_id>
-ae-cli analysis-meta datatable version-get --dry-run
 ```
 
 Capability id: `metadata.data_table_version.get`.

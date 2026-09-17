@@ -2,7 +2,7 @@
 
 Stream the complete users or custom entities behind one selected synchronous-preview coordinate as a `csv.gz` artifact.
 
-Read [`analysis_drilldown_contract.md`](analysis_drilldown_contract.md) and first validate the coordinate with the corresponding synchronous preview/`drilldown-entities run` path. The export consumes an existing sync-preview context; it never creates a query context or additional drilldown choices.
+Read [`analysis_drilldown_contract.md`](analysis_drilldown_contract.md) and select the coordinate from the existing synchronous query context. The export consumes an existing sync-preview context; it never creates a query context or additional drilldown choices.
 
 ```bash
 ae-cli analysis drilldown-entities export \
@@ -12,7 +12,7 @@ ae-cli analysis drilldown-entities export \
   --coordinate '<same returned coordinate>' \
   [--properties '[{...}]'] \
   [--artifact-format csv] \
-  [--timeout-seconds 21600]
+  [--timeout-seconds 21600] --output <file>
 ```
 
 `--project-id` must match the project stored by `query_context_id`; a mismatch is rejected before export execution.
@@ -24,6 +24,6 @@ Property support matches the synchronous preview exactly:
 
 `#user_id` is an internal association key. When presenting downloaded user rows to a customer, Agents should display account ID and visitor ID by default rather than using `#user_id` as the only visible identity.
 
-This command does not accept `--limit`, `--offset`, `--page-num`, or `--page-size`. Common executes one full-download query and streams it directly into the artifact; it does not repeatedly call the synchronous preview. “Complete” follows the platform full-download ceiling (`model_full_download_limit`). Inspect `run_id`, then download only after completion.
+This command does not accept `--limit`, `--offset`, `--page-num`, or `--page-size`. Common executes one full-download query and streams it directly into the artifact; it does not repeatedly call the synchronous preview. “Complete” follows the platform full-download ceiling (`model_full_download_limit`). Use `--output` to wait and download the completed artifact. To resume an interrupted export, use [`analysis run wait`](run_wait.md) with the returned `run_id` and `--output <file>`.
 
 The file is durable member data, not a new interactive result. Do not use rows in the downloaded artifact to construct another analysis coordinate. User event continuation requires the `drilldown_context_id` and canonical `user_id` returned by a user-subject `drilldown-entities run`, not this export.

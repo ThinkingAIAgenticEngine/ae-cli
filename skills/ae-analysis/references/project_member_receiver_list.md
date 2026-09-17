@@ -8,7 +8,6 @@ Command:
 
 ```bash
 ae-cli project member-receiver list --project-id <project_id>
-ae-cli project member-receiver list --dry-run --project-id <project_id>
 ```
 
 Capability id: `project.member_receiver.list`.

@@ -6,7 +6,8 @@ import { t } from '../../tracking/i18n/translate.js';
 const HOST_OPTION_DESC = 'Override active AE host URL';
 
 export function resolveTrackingHost(program: Command, opts: { host?: string }): string {
-  const root = program.root ?? program;
+  let root = program;
+  while (root.parent) root = root.parent;
   const globalHost = root.opts()?.host as string | undefined;
   const explicitHost = opts.host || globalHost;
   const host = resolveHost(explicitHost);

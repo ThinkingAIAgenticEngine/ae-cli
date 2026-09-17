@@ -9,7 +9,6 @@ Command:
 ```bash
 ae-cli analysis-meta metric export --project-id <project_id> --output <temporary_path>/metrics.json
 ae-cli analysis-meta metric export --project-id <project_id> --queries '["pay","revenue"]' --fields '["metric_name","metric_desc"]' --output <temporary_path>/metrics.json
-ae-cli analysis-meta metric export --dry-run
 ```
 
 Capability id: `metadata.metric.export`.

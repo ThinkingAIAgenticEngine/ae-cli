@@ -2,6 +2,8 @@
 
 Use for complete offline processing of project asset-authentication rows.
 
+This is a certification-state management export, not the CLI Agent recommendation workflow. For review recommendations that combine asset authentication and metric candidates from hot dashboard/report evidence, use `analysis-meta governance-recommendation export`.
+
 Do not use it for interactive preview or let the CLI loop over `list`; this command invokes the complete export capability once.
 
 Command:
@@ -20,3 +22,5 @@ The command does not accept `limit` or `offset` and performs exactly one complet
 Export projection always retains `resource_type`, `resource_key`, `display_name`, `authentication_status`, `heat_count90d`, `user_count90d`, and `impact_degree`; `--fields` can add or remove only optional descriptive and owner fields.
 
 Use the sidecar `snapshot_hash` with `update --expected-snapshot-hash` when the selected asset set was derived from this export.
+
+Do not use this export to rank assets locally and present those rows as recommendations.

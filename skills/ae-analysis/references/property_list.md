@@ -2,7 +2,7 @@
 
 Use when the user needs to browse or search event/user property metadata, including dimension-table and complex child properties.
 
-Do not use it for property values. Use this command only when the user explicitly wants to inspect metadata or when a prior compiler error asks for disambiguation.
+Do not use it for property values. Use it when the task needs property metadata that is not already available from a verified definition or prior response.
 
 Command:
 
@@ -10,14 +10,13 @@ Command:
 ae-cli analysis-meta property list --project-id <project_id>
 ae-cli analysis-meta property list --project-id <project_id> --scope event --event-name purchase --queries '["demo","sample"]'
 ae-cli analysis-meta property list --project-id <project_id> --queries '["demo","sample"]' --fields '["prop_id","prop_name","prop_desc","prop_remark","select_type","table_type","authentication_status"]' --limit 50 --offset 0
-ae-cli analysis-meta property list --dry-run
 ```
 
 Capability id: `metadata.property.list`.
 
 Input sends `project_id` and optional `table_type`, `scope`, `event_name`, `queries`, `fields`, `limit`, `offset`, and `authenticated_only`.
 
-Output always uses the directory envelope: `data.items[]`, `total`, `limit`, `offset`, `has_more`, and `next_offset`. Dimension-table and complex child properties are returned as independent flat rows, so keyword search, field projection, and pagination apply to them in the same way as top-level properties.
+Output always uses the directory envelope: `data.properties[]`, `total`, `limit`, `offset`, `has_more`, and `next_offset`. Dimension-table and complex child properties are returned as independent flat rows, so keyword search, field projection, and pagination apply to them in the same way as top-level properties.
 
 ## Parameters
 | Parameter | Required | Description |
@@ -36,5 +35,5 @@ Output always uses the directory envelope: `data.items[]`, `total`, `limit`, `of
 
 - Prefer `--scope event` or `--scope user` when the user needs a specific table type.
 - Use `--authenticated-only true` only when the user explicitly asks for authenticated assets.
-- For ad-hoc analysis, pass the user's property wording in the AI-facing `definition` instead of pre-querying property metadata.
+- For a missing event property, use `--scope event --event-name <verified_event_name>`; reuse properties already known from selected definitions.
 - For a complete result, use `analysis-meta property export`; do not page repeatedly to synthesize an export.

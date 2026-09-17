@@ -1,6 +1,6 @@
 ---
 name: ae-experiment-design
-description: "Design AE/TE A/B experiments from a business goal through a reviewable draft. Use when the user asks to form an experiment hypothesis, assess metric readiness, choose or create metrics and Features, design groups or traffic, estimate sample size or duration, create an experiment draft, or run readiness and conflict checks. SDK guidance is a conditional branch: enter it only when the user explicitly asks about an A/B experiment SDK, client SDK integration, experiment SDK code generation, or SDK troubleshooting; do not include SDK work in an ordinary experiment-design or draft-creation request."
+description: "Design AE A/B experiments from a business goal through a reviewable draft. Use when the user asks to form an experiment hypothesis, assess metric readiness, choose or create metrics and Features, design groups or traffic, estimate sample size or duration, create an experiment draft, or run readiness and conflict checks. SDK guidance is a conditional branch: enter it only when the user explicitly asks about an A/B experiment SDK, client SDK integration, experiment SDK code generation, or SDK troubleshooting; do not include SDK work in an ordinary experiment-design or draft-creation request."
 ---
 
 # AE Experiment Design and Integration
@@ -9,7 +9,7 @@ Turn a business objective into an evidence-backed experiment design, an implemen
 
 ## Hard boundaries
 
-- Use `ae-cli` for every AE/TE platform interaction. Do not substitute raw HTTP, browser automation, direct database queries, or application SDKs.
+- Use `ae-cli` for every AE platform interaction. Do not substitute raw HTTP, browser automation, direct database queries, or application SDKs.
 - Do not infer an SDK request from the fact that an experiment needs implementation. Load SDK references only when the user explicitly asks about an A/B experiment SDK or client SDK integration.
 - Do not copy general tracking SDK documentation into this Skill. Route generic initialization, event reporting, `track`, user identity, user properties, data upload, LogBus, and REST questions to `ae-data-integration-helper` when that Skill is available.
 - Use only the event-metric calculation contracts defined in
@@ -24,7 +24,7 @@ Read only the references needed for the current request:
 
 | Request | Required references |
 |---|---|
-| Any AE/TE platform read or write | [`references/platform-operations.md`](references/platform-operations.md) |
+| Any AE platform read or write | [`references/platform-operations.md`](references/platform-operations.md) |
 | Create or reuse an experiment draft | [`references/experiment-creation.md`](references/experiment-creation.md) and [`references/platform-operations.md`](references/platform-operations.md) |
 | Metric selection, feasibility, or creation | [`references/metric-readiness.md`](references/metric-readiness.md) |
 | Explicit A/B experiment SDK or client SDK integration request | [`references/sdk-integration.md`](references/sdk-integration.md) |

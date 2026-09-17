@@ -88,6 +88,13 @@ function tasksFor(files) {
   if (needs(files, [/^src\/commands\/agent\//, /^scripts\/verify-agent-tools\.mjs$/])) {
     tasks.push(['npm', ['run', 'verify:agent-tools']]);
   }
+  if (needs(files, [
+    /^src\/commands\/context\//,
+    /^skills\/ae-current-context\//,
+    /^tests\/current-page-context-command\.test\.ts$/,
+  ])) {
+    tasks.push(['npm', ['run', 'verify:current-context']]);
+  }
   if (needs(files, [/tracking/i, /^test\/tracking-/])) {
     tasks.push(['npm', ['run', 'verify:tracking-tools']]);
   }

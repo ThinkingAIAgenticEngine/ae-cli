@@ -8,7 +8,6 @@ Command:
 
 ```bash
 ae-cli analysis-meta exchange rule-validate --project-id <project_id> --payload '{"target_currency":"USD","exchange_rules":[{"source_currency":"EUR","source_currency_column":"currency","target_column_desc":"amount_usd"}]}'
-ae-cli analysis-meta exchange rule-validate --dry-run
 ```
 
 Capability id: `metadata.exchange_rule.validate`.

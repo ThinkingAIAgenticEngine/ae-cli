@@ -1,6 +1,6 @@
 # Server-side Code Insertion (LoggerConsumer + LogBus2)
 
-> **Terminology**: 服务端 SDK = server-side SDK | 代码插入 = code insertion/injection | LoggerConsumer = writes events to local log files (recommended for production) | LogBus2 = log sync tool that reads local logs and uploads to TE | 架构 = architecture | 异步上报 = async upload | 批量上传 = batch upload | 重试策略 = retry strategy | 公共属性 = super property (公共事件属性; never "超级属性") | 用户属性 = user property | 依赖管理 = dependency management
+> **Terminology**: 服务端 SDK = server-side SDK | 代码插入 = code insertion/injection | LoggerConsumer = writes events to local log files (recommended for production) | LogBus2 = log sync tool that reads local logs and uploads to AE | 架构 = architecture | 异步上报 = async upload | 批量上传 = batch upload | 重试策略 = retry strategy | 公共属性 = super property (公共事件属性; never "超级属性") | 用户属性 = user property | 依赖管理 = dependency management
 
 ## Architecture
 
@@ -91,7 +91,7 @@ Wait for user confirmation, then proceed to Stage 1.
 
 ## User Properties
 - File: <path>:<line>
-- user_set / user_setOnce / user_add
+- user_set / user_setOnce / user_add / user_append
 
 ## Event Group: <tag>
 - <event_name>: <file>:<symbol> or SKIP (already present)
@@ -120,9 +120,9 @@ Insertion point: entry file static block / start of main function
 
 ### Batch 2: Super Properties + User Properties
 
-Generate based on `meta.user_identity`:
-- `user_set` / `user_setOnce`: user property upload
-- `login()` call: on user login
+Generate:
+- `user_set` / `user_setOnce` / `user_add` / `user_append`: user property upload, based on `draft.user_properties[]` (each entry's `name` + `update_type`)
+- `login()` call: on user login, based on `meta.user_identity`
 
 ### Batch 3..N: Events grouped by event_tag
 

@@ -11,14 +11,13 @@ ae-cli analysis-meta metric list --project-id <project_id>
 ae-cli analysis-meta metric list --project-id <project_id> --ignore-authentication true
 ae-cli analysis-meta metric list --project-id <project_id> --queries '["pay","revenue"]'
 ae-cli analysis-meta metric list --project-id <project_id> --queries '["pay","revenue"]' --fields '["metric_name","authentication_status"]' --limit 50 --offset 0 --authenticated-only true
-ae-cli analysis-meta metric list --dry-run
 ```
 
 Capability id: `metadata.metric.list`.
 
 Input sends `project_id`, `ignore_authentication`, `queries`, `fields`, `limit`, `offset`, and `authenticated_only`.
 
-Output always uses the directory envelope: `data.items[]`, `total`, `limit`, `offset`, `has_more`, and `next_offset`.
+Output always uses the directory envelope: `data.metrics[]`, `total`, `limit`, `offset`, `has_more`, and `next_offset`.
 
 ## Parameters
 | Parameter | Required | Description |
@@ -32,7 +31,7 @@ Output always uses the directory envelope: `data.items[]`, `total`, `limit`, `of
 | `--authenticated-only` | No | When true, return only authenticated metrics. |
 
 ## Decision Rules
-- Do not call this just to prepare normal ad-hoc analysis. Pass saved metric wording directly in `analysis adhoc run/export --definition`; the backend compiler resolves saved metric names internally.
-- Use `--fields` to keep discovery responses compact.
-- Use `analysis-meta metric get` after this command when a full metric definition is needed.
+- For an unknown business measure, use this with relevant `report list` search as the saved-definition discovery path in [`metadata_resolution.md`](metadata_resolution.md). Reuse a verified saved metric name directly.
+- Use `--fields` when its projected fields are sufficient. When searching with `--queries`, omit `--fields` to keep `metric_events` and `metric_params` as JSON strings. Read their content in this response; these two fields are not in the projection whitelist.
+- Use `analysis-meta metric get` only when a required definition detail is absent from the returned row.
 - For a complete result, use `analysis-meta metric export`; do not page repeatedly to synthesize an export.

@@ -8,7 +8,6 @@ Command:
 
 ```bash
 ae-cli project info list --query <query> --fields <fields> --limit <limit> --offset <offset>
-ae-cli project info list --dry-run
 ```
 
 Capability id: `project.info.list`.

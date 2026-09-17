@@ -7,13 +7,12 @@ Do not use it for non-dashboard assets or ordinary dashboard content edits; it c
 Command:
 
 ```bash
-ae-cli analysis-governance asset batch-dashboard-schedule-freeze --project-id <project_id> --payload '{}'
-ae-cli analysis-governance asset batch-dashboard-schedule-freeze --dry-run --project-id <project_id>
+ae-cli analysis-governance asset batch-dashboard-schedule-freeze --project-id <project_id> --node-ids '["<node_id>"]'
 ```
 
-Capability id: analysis_meta.asset_batch.dashboard_schedule_freeze.
+Capability id: governance.asset.batch_dashboard_schedule_freeze.
 
-Input sends project_id, payload, node_ids, reports_version, zone_offset, schedule_ui_config, dashboard_status, refresh_type, cache_config. Payload keys must follow the common-service snake_case input schema; do not send camelCase aliases.
+Input sends `project_id`, `node_ids`, and optional `schedule_ui_config`, `dashboard_status`, `refresh_type`, and `cache_config`. The CLI merges the snake_case object from `--payload` into these top-level Gateway fields; explicit flags override matching payload fields. `--project-id` owns the project identity and cannot be supplied or overridden by payload. Required business fields must exist in the final merged input.
 
 Output `data` is the dashboard batch-operation submission result. Verify its returned operation record before reporting the schedules as frozen.
 
@@ -22,5 +21,8 @@ Output `data` is the dashboard batch-operation submission result. Verify its ret
 |---|---|---|
 | --project-id | Yes | Numeric project ID. |
 | --node-ids | No | Asset node ID JSON array; required unless provided inside payload. |
-| --dashboard-status | No | Dashboard status, such as freeze or normal. |
-| --payload | No | Optional snake_case object carrying the same fields. Use this for complex governance filters or backend-shaped payloads. |
+| --dashboard-status | No | Dashboard status: `freeze` or `normal`. |
+| --schedule-ui-config | No | Dashboard schedule configuration as a JSON object or string. |
+| --refresh-type | No | Dashboard refresh type: 1 enabled, 0 disabled. |
+| --cache-config | No | Dashboard cache configuration as a JSON object or string. |
+| --payload | No | Optional JSON object merged into top-level input. Use schema-declared snake_case fields; explicit flags take precedence. `node_ids` is a non-empty string array; configuration fields accept objects or strings. |

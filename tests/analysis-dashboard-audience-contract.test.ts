@@ -206,6 +206,20 @@ await test('dashboard update forwards dashboard-level business filter unchanged'
   assert.deepEqual(result.body.input.filter, filter);
 });
 
+await test('dashboard update forwards personal default filter operation', async () => {
+  const filter = { junction_kind: 'and', ta_filters: [] };
+  const result = await dryBody(dashboardUpdate, {
+    'project-id': 1,
+    operation: 'personal-default-filter',
+    'dashboard-id': 1001,
+    'filter-name': 'My default',
+    filter: JSON.stringify(filter),
+  });
+  assert.equal(result.body.input.operation, 'personal-default-filter');
+  assert.equal(result.body.input.filter_name, 'My default');
+  assert.deepEqual(result.body.input.filter, filter);
+});
+
 await test('project space business filter upsert forwards the space-level filter', async () => {
   const filter = { junction_kind: 'and', ta_filters: [] };
   const result = await dryBody(projectSpaceBusinessFilterUpsert, {

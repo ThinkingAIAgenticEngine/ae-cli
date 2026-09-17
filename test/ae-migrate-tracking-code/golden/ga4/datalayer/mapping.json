@@ -1,0 +1,38 @@
+{
+  "provider": "ga4",
+  "variant": "datalayer",
+  "mode": "add",
+  "entries": [
+    {
+      "site_id": "cs-1",
+      "file": "src/analytics.js",
+      "line": 5,
+      "source_call": "window.dataLayer.push({ user_id: user.id })",
+      "ae_call": "login(accountId)",
+      "account_id_source": "user_account",
+      "action": "add_after"
+    },
+    {
+      "site_id": "cs-2",
+      "file": "src/analytics.js",
+      "line": 8,
+      "source_call": "window.dataLayer.push({ event: 'sign_up', method: 'phone' })",
+      "ae_event": "sign_up",
+      "display_name": "注册",
+      "platform": "client",
+      "ae_props": { "method": "string" },
+      "action": "add_after"
+    },
+    {
+      "site_id": "cs-3",
+      "file": "src/analytics.js",
+      "line": 11,
+      "source_call": "window.dataLayer.push({ event: 'purchase', order_id: order.id, amount: order.amount, currency: 'USD' })",
+      "ae_event": "purchase",
+      "display_name": "购买",
+      "platform": "client",
+      "ae_props": { "order_id": "string", "amount": "number", "currency": "string" },
+      "action": "add_after"
+    }
+  ]
+}

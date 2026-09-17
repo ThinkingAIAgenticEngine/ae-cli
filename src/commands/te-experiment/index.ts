@@ -11,6 +11,7 @@ import { experimentReadyCheck } from './experiment/ready-check.js';
 import { experimentSave } from './experiment/save.js';
 import { experimentUpdateGroup } from './experiment/update-group.js';
 import { experimentUpdateMetrics } from './experiment/update-metrics.js';
+import { externalExperimentSaveSubmit } from './external-experiment/save-submit.js';
 import { featureBatchDelete } from './feature/batch-delete.js';
 import { featureGet } from './feature/get.js';
 import { featureList } from './feature/list.js';
@@ -49,6 +50,7 @@ const commands: Command[] = [
   experimentManage,
   experimentUpdateGroup,
   experimentUpdateMetrics,
+  externalExperimentSaveSubmit,
   experimentBatchDelete,
   operationLogQuery,
   saveBuildGuide,
@@ -90,6 +92,7 @@ export {
   experimentSave,
   experimentUpdateGroup,
   experimentUpdateMetrics,
+  externalExperimentSaveSubmit,
   featureBatchDelete,
   featureWhitelistBatchDelete,
   featureWhitelistList,

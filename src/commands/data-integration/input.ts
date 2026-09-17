@@ -1,4 +1,5 @@
 import { createHash } from 'node:crypto';
+import * as nodeFs from 'node:fs';
 import { createReadStream, statSync } from 'node:fs';
 import { extname, basename } from 'node:path';
 import { createInterface } from 'node:readline';
@@ -7,13 +8,13 @@ import { pipeline } from 'node:stream/promises';
 import ExcelJS from 'exceljs';
 import ExcelWorksheetReader from 'exceljs/lib/stream/xlsx/worksheet-reader.js';
 import ExcelStylesXform from 'exceljs/lib/xlsx/xform/style/styles-xform.js';
-import XLSXMod from 'xlsx';
+import * as XLSX from 'xlsx';
 import { parse as parseCsv } from 'csv-parse';
 import { parse as parseCsvSync } from 'csv-parse/sync';
 import createJsonParser from 'stream-json';
-import Pick from 'stream-json/filters/Pick.js';
-import StreamArray from 'stream-json/streamers/StreamArray.js';
-import StreamValues from 'stream-json/streamers/StreamValues.js';
+import pick from 'stream-json/filters/pick.js';
+import streamArray from 'stream-json/streamers/stream-array.js';
+import streamValues from 'stream-json/streamers/stream-values.js';
 import * as unzipper from 'unzipper';
 import { SaxesParser } from 'saxes';
 import { CliValidationError } from '../../core/errors.js';
@@ -29,7 +30,7 @@ import type {
   LocalDataXlsxStructure,
 } from './types.js';
 
-const XLSX = (XLSXMod as any).default ?? XLSXMod;
+XLSX.set_fs(nodeFs);
 
 export interface LocalDataInput {
   filePath: string;
@@ -651,12 +652,12 @@ async function streamJson(
   let count = 0;
   const parser = createJsonParser();
   const streamer = selector === '$object'
-    ? StreamValues.streamValues()
-    : StreamArray.streamArray();
+    ? streamValues.asStream()
+    : streamArray.asStream();
   const source = decodeTextStream(filePath, options.encoding ?? 'utf-8');
   const chain = selector === '$' || selector === '$object'
     ? source.pipe(parser).pipe(streamer)
-    : source.pipe(parser).pipe(Pick.pick({ filter: selector })).pipe(streamer);
+    : source.pipe(parser).pipe(pick.asStream({ filter: selector })).pipe(streamer);
   for await (const item of chain as AsyncIterable<{ value: unknown }>) {
     count += 1;
     await onRow(flattenLocalDataRow(item.value, options.flattenRules, options.flattenMisses), count);
@@ -879,7 +880,7 @@ export async function readExcelSheetHeaders(filePath: string, format: 'xls' | 'x
 
 function readXlsSheetHeaders(filePath: string): ExcelSheetHeaders[] {
   const workbook = XLSX.readFile(filePath, { dense: true });
-  return workbook.SheetNames.map((name) => {
+  return workbook.SheetNames.map((name: string) => {
     const sheet = workbook.Sheets[name];
     const rows = sheet
       ? (XLSX.utils.sheet_to_json(sheet, { header: 1, raw: true, defval: null }) as unknown[][])

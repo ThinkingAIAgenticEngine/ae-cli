@@ -1,0 +1,56 @@
+{
+  "provider": "firebase",
+  "variant": "web-v9",
+  "mode": "switch",
+  "entries": [
+    {
+      "site_id": "cs-1",
+      "file": "src/analytics.js",
+      "line": 8,
+      "source_call": "logEvent(analytics, 'userLogin', { login_method: 'phone' })",
+      "ae_event": "user_login",
+      "display_name": "登录",
+      "platform": "client",
+      "ae_props": { "login_method": "string" },
+      "action": "replace"
+    },
+    {
+      "site_id": "cs-2",
+      "file": "src/analytics.js",
+      "line": 11,
+      "source_call": "logEvent(analytics, 'firebase_share', { content_id: 'post-1' })",
+      "ae_event": "share",
+      "display_name": "分享",
+      "platform": "client",
+      "ae_props": { "content_id": "string" },
+      "action": "replace"
+    },
+    {
+      "site_id": "cs-3",
+      "file": "src/analytics.js",
+      "line": 14,
+      "source_call": "setUserProperties(analytics, { firebase_user_role: 'admin' })",
+      "ae_call": "user_set",
+      "ae_props": { "user_role": "string" },
+      "action": "replace"
+    },
+    {
+      "site_id": "cs-4",
+      "file": "src/analytics.js",
+      "line": 15,
+      "source_call": "setUserProperties(analytics, { ga_plan: 'pro' })",
+      "ae_call": "user_set",
+      "ae_props": { "plan": "string" },
+      "action": "replace"
+    },
+    {
+      "site_id": "cs-5",
+      "file": "src/analytics.js",
+      "line": 16,
+      "source_call": "setUserProperties(analytics, { google_sign_in_method: 'email' })",
+      "ae_call": "user_set",
+      "ae_props": { "sign_in_method": "string" },
+      "action": "replace"
+    }
+  ]
+}

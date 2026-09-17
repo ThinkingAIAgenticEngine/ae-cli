@@ -29,6 +29,7 @@ export const REPORT_WRITE_MODEL_DESCRIPTION =
 
 export const AI_DEFINITION_DESCRIPTION =
   'Event metrics: omit optional display_name unless the target command schema explicitly supports it. Funnel step filters use event_property_name (not field) and string-array values, including "true"/"false" for boolean properties. ' +
+  'For tag/cluster filters, cluster_date_policy accepts LATEST (default), AUTO (match the computed result for each analysis date), or SPECIFIED (requires specified_cluster_date in yyyy-MM-dd format). ' +
   'AI-facing model definition JSON. Do not pass raw QP, events, event_view, visual_view, or analysis_query. Distribution filters must be attached to the corresponding distribution_metrics[].filters; do not use top-level filters or relation. For path definitions, global filters support user_property, cluster, and tag only; event_property is not supported. session_unit accepts second (1..999), minute (1..999), or hour (1..24). Do not use day; express one day as session_interval=24 and session_unit=hour. For SQL, a simple query is {"sql":"select ..."}; raw variables use ${name}, while typed params use ${Text:name}, ${Selector:name}, or ${PartDate:name}. PartDate expands to a complete predicate, so write WHERE ${PartDate:d}, not a column followed by the placeholder. A part_date parameter may set boolean use_timezone; it defaults to false and controls whether that parameter uses the query effective timezone. Selector value must match one options[].value. Trino identifiers containing #, $, @, spaces, punctuation, or a reserved word must be delimited with double quotes, for example SELECT "#user_id", "$part_event", "end" FROM ...; single quotes are string literals. For multiline SQL JSON, the decoded sql value must contain a real line break; do not submit a literal \\n sequence outside quoted SQL text. Queries against an event table must include a date-partition predicate on the quoted "$part_date" column, for example WHERE "$part_date" BETWEEN \'2026-07-01\' AND \'2026-07-07\'; the backend rejects event-table SQL without it. The CLI preserves SQL text and never auto-quotes identifiers.';
 
 export const REPORT_WRITE_DEFINITION_DESCRIPTION =
@@ -105,7 +106,7 @@ export const metadataResolutionsFlag: Flag = {
   name: 'resolutions',
   type: 'json',
   required: false,
-  desc: 'Optional user-confirmed metadata bindings keyed by compiler error path. Each value requires raw_value, resource_type, and resource_key. Reuse the unchanged definition and only pass values explicitly confirmed by the user.',
+  desc: 'Optional user-confirmed metadata bindings keyed by compiler error path. Each value requires raw_value, resource_type, and resource_key. Keep each bound field\'s path and raw_value; fill the confirmed aggregation and other model parameters in the definition.',
 };
 
 export const reportMetadataResolutionsFlag: Flag = {

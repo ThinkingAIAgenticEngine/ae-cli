@@ -7,7 +7,7 @@ Do not use it to create metadata, delete metadata, hide metadata, update event/p
 Command:
 
 ```bash
-ae-cli analysis-meta super-metadata batch-edit --project-id <project_id> --type event_property --items '[{"prop_name":"amount","prop_desc":"Amount","prop_remark":"Revenue amount"}]' --dry-run
+ae-cli analysis-meta super-metadata batch-edit --project-id <project_id> --type event_property --items '[{"prop_name":"amount","prop_desc":"Amount","prop_remark":"Revenue amount"}]'
 ```
 
 Capability id: `metadata.super_metadata.batch_edit`.

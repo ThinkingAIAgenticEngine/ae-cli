@@ -1,0 +1,35 @@
+{
+  "provider": "mixpanel",
+  "variant": "ios",
+  "platforms": ["ios"],
+  "call_sites": [
+    {
+      "id": "cs-1",
+      "file": "src/AnalyticsManager.swift",
+      "line": 4,
+      "kind": "identity",
+      "source_call": "Mixpanel.mainInstance().identify(distinctId: userId)",
+      "resolved": true
+    },
+    {
+      "id": "cs-2",
+      "file": "src/AnalyticsManager.swift",
+      "line": 9,
+      "kind": "event",
+      "source_call": "Mixpanel.mainInstance().track(event: \"view_item\", properties: props)",
+      "event_name": "view_item",
+      "params": { "item_id": "itemId", "price": "price" },
+      "resolved": true
+    },
+    {
+      "id": "cs-3",
+      "file": "src/AnalyticsManager.swift",
+      "line": 13,
+      "kind": "user_property",
+      "source_call": "Mixpanel.mainInstance().people.set(properties: [\"plan\": plan])",
+      "op": "set",
+      "prop": "plan",
+      "value": "plan"
+    }
+  ]
+}

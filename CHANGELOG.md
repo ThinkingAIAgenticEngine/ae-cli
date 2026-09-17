@@ -1,3 +1,28 @@
+### 6.1.21
+**Date:** 2026-09-17
+
+**Changes:**
+
+#### Analysis & Governance
+* Rework `ae-analysis` execution and result recovery to consume valid results directly while preserving exit status, streamline command indexes and model references, strengthen metadata, saved-definition, and result-file reuse, and document natural day/week/month windows and formula-report writeback constraints.
+* Add an Agent review and governance-recommendation CLI lifecycle covering batch lists, details, evidence, review, retry, recommendation export, and submission to pages, with recommendation batching, dashboard-space preservation, and project-semantic asset-package export.
+* Support personal default dashboard filters and fix SQL report Selector runtime parameters, unified asset search, virtual-event snapshot dates, project member creation, and role-update contracts.
+
+#### Tracking Migration & Data Integration
+* Add the `ae-migrate-tracking-code` Skill for migrating Amplitude, Firebase/GA4, Mixpanel, and Sensors Data integrations to AE across Web, server, Android, iOS, React Native, `dataLayer`, and wrapper-based code, with dual-write isolation, common-property and identity mappings, consent switches, and confirmation before removing legacy code.
+* Unify user-property code generation, add `user_append`, and preserve the correct direct handling of `user_append` and `user_unset` operations during generation and migration.
+* Add ingestion workflows for Lark Base, Lark Sheets, and manually exported files, including snapshot, reuse, UE mapping, and upload guidance; Lark Base snapshots keep stable IDs in reserved `__record_id` and stop on business-field collisions instead of silently replacing the deduplication key.
+
+#### Knowledge Base
+* Support replacing and restoring knowledge-base file and ZIP sources while preserving directory structure and revision checks, and add Lark-source update detection for identifying remote document changes.
+
+#### Page Context & Compatibility
+* Add `context +current`, `ae-current-context`, and the page-context business Skill so Agents can read the current product-page context on demand, with release gates that keep internal page dictionaries out of public packages.
+* Fix CLI ESM compatibility and dependency warnings to improve runtime stability for data-integration and XLSX processing paths.
+
+#### 6.1-only
+* Add `experiment external-experiment save-submit` for creating or updating and submitting an external experiment in one operation, with validation for experiment groups, exactly one control group, primary metrics, analysis bucket, and experiment times; updates to submitted experiments must preserve stable group IDs.
+
 ### 6.1.20
 **Date:** 2026-09-10
 
@@ -80,6 +105,7 @@
 #### Agent & CLI
 * Harden Skill editing and version synchronization with actionable version-conflict recovery, customer-safe history-conflict errors, internal-only rescan guidance, and explicit public npm registry selection during version installation
 * Preserve Host configuration on `auth logout`, and stop capability discovery from guessing unregistered domains or retrying empty catalogs without deployment or permission evidence
+* Add `context +current` and the `ae-current-context` Skill for Run-bound, sandbox-authenticated, on-demand reading of generic product-page context without exposing context locators to the model
 
 #### 6.1-only: Project Semantics & Atlas Experiment
 * Add the `project-semantic` domain and `ae-project-semantic` Skill for governed asset-package export, evidence-scoped recommendation generation, deterministic candidate validation and submission, candidate activation, semantic lifecycle management, and release publishing

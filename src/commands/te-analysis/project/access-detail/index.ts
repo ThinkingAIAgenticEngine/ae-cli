@@ -1,4 +1,4 @@
-import type { Command } from '../../../framework/types.js';
+import type { Command } from '../../../../framework/types.js';
 import { projectAccessDetailGet } from './get.js';
 
 const commands: Command[] = [

@@ -8,7 +8,6 @@ Command:
 
 ```bash
 ae-cli project role list --company-id <company_id> --project-id <project_id> --visible-only <visible_only>
-ae-cli project role list --dry-run
 ```
 
 Capability id: `project.role.list`.

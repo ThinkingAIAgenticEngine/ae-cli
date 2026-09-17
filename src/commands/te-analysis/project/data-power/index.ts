@@ -1,4 +1,4 @@
-import type { Command } from '../../../framework/types.js';
+import type { Command } from '../../../../framework/types.js';
 import { projectDataPowerDelete } from './delete.js';
 import { projectDataPowerGet } from './get.js';
 import { projectDataPowerList } from './list.js';

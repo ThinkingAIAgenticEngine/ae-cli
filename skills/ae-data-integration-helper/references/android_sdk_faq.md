@@ -36,7 +36,7 @@ dependencies {
 
 # 初始化
 ## 推荐初始化位置
-- 建议在用户同意隐私协议后再进行 SDK 初始化，详见 ThinkingData 官方文档中的《合规指南》部分。
+- 建议在用户同意隐私协议后再进行 SDK 初始化，详见 ThinkingAI 官方文档中的《合规指南》部分。
 ```json
 // 根据隐私协议判断是否开启数据采集
 if (授权隐私政策) {
@@ -81,11 +81,11 @@ TDAnalytics.init(config);
 
 > 注意：
 > - 在正式上线时，建议避免使用 debug 或 debug_only 模式
-> - debug 模式下如果没有 TE 后台配置白名单会切换成 NORMAL 模式
+> - debug 模式下如果没有 AE 后台配置白名单会切换成 NORMAL 模式
 > - debug_only 不会自动切换成 NORMAL 模式
 
 # 上报策略
-- normal 模式默认 30 秒或者 30 条满足上报一次，TE 项目管理可以设置修改
+- normal 模式默认 30 秒或者 30 条满足上报一次，AE 项目管理可以设置修改
 - debug / debug_only 模式事件会立即上报
 - 手动调用 flush() 接口，会立即上报缓存数据
 - 自动采集事件会立刻上报

@@ -8,7 +8,6 @@ Command:
 
 ```bash
 ae-cli project entity list --project-id <project_id> --query <query> --fields <fields> --limit <limit> --offset <offset> --event-name <event_name>
-ae-cli project entity list --dry-run --project-id <project_id>
 ```
 
 Capability id: `project.entity.list`.

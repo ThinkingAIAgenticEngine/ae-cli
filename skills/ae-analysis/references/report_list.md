@@ -15,3 +15,5 @@ Input sends `project_id`, optional `queries`, `model_types`, `fields`, `limit`, 
 Output is the gateway envelope. `data` contains report summaries, `total`, effective `limit`, `offset`, `has_more`, and nullable `next_offset`. When `has_more` is true, use exactly `next_offset` for the next call; stop when it is false. Include `version` in `--fields` when the next step is `analysis report update`.
 
 When locating reports, group known names into one `--queries` call or narrow with `--model-types` before paging. Stop when the required reports are found; do not issue one list call per name.
+
+Search matches report names and descriptions, not events inside definitions. Inspect a suitable candidate with `report get` when its definition is not already available; use [metadata resolution](metadata_resolution.md) for a business-measure lookup.

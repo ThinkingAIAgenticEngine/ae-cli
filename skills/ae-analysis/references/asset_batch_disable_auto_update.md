@@ -7,15 +7,14 @@ Do not use it to disable backups or freeze dashboard schedules; this operation o
 Command:
 
 ```bash
-ae-cli analysis-governance asset batch-disable-auto-update --project-id <project_id> --payload '{}'
-ae-cli analysis-governance asset batch-disable-auto-update --dry-run --project-id <project_id>
+ae-cli analysis-governance asset batch-disable-auto-update --project-id <project_id> --node-ids '["<node_id>"]'
 ```
 
-Capability id: analysis_meta.asset_batch.disable_auto_update.
+Capability id: governance.asset.batch_disable_auto_update.
 
-Input sends project_id, payload, node_ids, refresh_type. Payload keys must follow the common-service snake_case input schema; do not send camelCase aliases.
+Input sends project_id, node_ids, refresh_type. The CLI merges the snake_case object from `--payload` into these top-level Gateway fields; explicit flags override matching payload fields. `--project-id` owns the project identity and cannot be supplied or overridden by payload. Required business fields must exist in the final merged input.
 
-Output `data` is the batch-operation submission result. Follow the returned record/status through `operation-record-list` instead of repeating the command.
+Output `data` is the batch-operation submission result. Follow the returned record/status through `operation-record list` instead of repeating the command.
 
 ## Parameters
 | Parameter | Required | Description |
@@ -23,4 +22,4 @@ Output `data` is the batch-operation submission result. Follow the returned reco
 | --project-id | Yes | Numeric project ID. |
 | --node-ids | No | Asset node ID JSON array; required unless provided inside payload. |
 | --refresh-type | No | Dashboard refresh type: 1 enabled, 0 disabled. |
-| --payload | No | Optional snake_case object carrying the same fields. Use this for complex governance filters or backend-shaped payloads. |
+| --payload | No | Optional JSON object merged into top-level input. Use schema-declared snake_case fields; explicit flags take precedence. `node_ids`, `searchs`, and `status` are arrays; `rule` is an object when supplied. |

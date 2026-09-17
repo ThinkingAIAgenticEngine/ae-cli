@@ -1,0 +1,29 @@
+{
+  "provider": "sensors-data",
+  "variant": "java",
+  "platforms": ["java"],
+  "call_sites": [
+    {
+      "id": "cs-1",
+      "file": "src/AnalyticsService.java",
+      "line": 13,
+      "kind": "event",
+      "source_call": "sa.track(userId, true, \"user_signup\", props)",
+      "event_name": "user_signup",
+      "params": { "plan": "plan" },
+      "distinct_id": "userId",
+      "resolved": true
+    },
+    {
+      "id": "cs-2",
+      "file": "src/AnalyticsService.java",
+      "line": 20,
+      "kind": "event",
+      "source_call": "sa.track(userId, true, \"purchase\", props)",
+      "event_name": "purchase",
+      "params": { "order_id": "orderId", "amount": "amount" },
+      "distinct_id": "userId",
+      "resolved": true
+    }
+  ]
+}

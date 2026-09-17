@@ -13,10 +13,12 @@ ae-cli analysis-governance asset-authentication update --project-id <project_id>
 Large file command:
 
 ```bash
-ae-cli analysis-governance asset-authentication update --project-id <project_id> --authentication-status 1 --asset-file /tmp/selected-assets.jsonl --expected-snapshot-hash <snapshot_hash> --dry-run
+ae-cli analysis-governance asset-authentication update --project-id <project_id> --authentication-status 1 --asset-file /tmp/selected-assets.jsonl --expected-snapshot-hash <snapshot_hash>
 ```
 
 Capability id: `governance.asset_authentication.update`.
+
+This is the canonical typed management route from the asset-governance branch. The older `analysis-meta asset-authentication update` route remains a compatibility payload wrapper.
 
 Choose exactly one identity input:
 
@@ -29,6 +31,8 @@ The CLI always normalizes the request to `asset_refs[]`. A bare `asset_ids[]` ar
 The response includes requested, resolved, changed, unchanged, and failed counts; retry only the returned failures.
 
 ## analysis-meta asset-authentication update
+
+Capability id: `metadata.asset_authentication.update`.
 
 The legacy `--payload` entry remains available for one release cycle.
 

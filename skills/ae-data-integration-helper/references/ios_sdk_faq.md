@@ -111,7 +111,7 @@ if (授权隐私政策) {
 - Keychain 持久化存储，卸载重装后不会改变
 
 ## #ip
-- TE 服务器获取 http 请求 header 中的 ip 信息
+- AE 服务器获取 http 请求 header 中的 ip 信息
 - 使用第三方 IP 库解析地理位置
 
 # 已知问题

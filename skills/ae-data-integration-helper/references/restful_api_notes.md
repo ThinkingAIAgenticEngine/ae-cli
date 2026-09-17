@@ -1,8 +1,8 @@
 # RESTful API Usage Notes
 
-> **Terminology**: 数据上报 = data ingestion / tracking | 集群 = TE cluster | 请求方式 = request method | 数据压缩 = data compression | 异常处理 = error handling | 数据格式校验 = data format validation | 重试 = retry | 并发 = concurrency | 请求超时 = request timeout | 兜底策略 = fallback strategy
+> **Terminology**: 数据上报 = data ingestion / tracking | 集群 = AE cluster | 请求方式 = request method | 数据压缩 = data compression | 异常处理 = error handling | 数据格式校验 = data format validation | 重试 = retry | 并发 = concurrency | 请求超时 = request timeout | 兜底策略 = fallback strategy
 
-ThinkingData provides a RESTful API for uploading data to the TE cluster via HTTP POST. See the official guide: [RESTful API User Guide](https://docs-v2.thinkingdata.cn/?version=latest&lan=en-US&code=restful_api). This document covers RESTful API usage notes and best practices.
+ThinkingAI provides a RESTful API for uploading data to the AE cluster via HTTP POST. See the official guide: [RESTful API User Guide](https://docs-v2.thinkingdata.cn/?version=latest&lan=en-US&code=restful_api). This document covers RESTful API usage notes and best practices.
 
 #### 使用场景
 

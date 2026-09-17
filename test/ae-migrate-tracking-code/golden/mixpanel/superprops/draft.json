@@ -1,0 +1,33 @@
+{
+  "meta": {
+    "app_type": "web",
+    "sdk_integration_mode": "client_only",
+    "client_platforms": ["javascript"],
+    "client_languages": ["javascript"],
+    "plan_name": "Mixpanel super properties migration (pilot)",
+    "user_identity": {
+      "account_id_source": "none",
+      "distinct_id_strategy": "auto"
+    },
+    "lang": "zh"
+  },
+  "events": [
+    {
+      "event_name": "sign_up",
+      "display_name": "注册",
+      "platform": "client",
+      "source": "codebase",
+      "prop_names": ["method"]
+    }
+  ],
+  "event_properties": [
+    { "name": "method", "display_name": "注册方式", "type": "string", "source": "codebase" }
+  ],
+  "common_event_properties": [
+    { "name": "app_version", "display_name": "应用版本", "type": "string", "source": "codebase" },
+    { "name": "channel", "display_name": "渠道", "type": "string", "source": "codebase" }
+  ],
+  "user_properties": [
+    { "name": "plan", "display_name": "套餐", "type": "string", "source": "codebase", "update_type": "user_set" }
+  ]
+}

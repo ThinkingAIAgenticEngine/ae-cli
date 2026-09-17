@@ -8,7 +8,6 @@ Command:
 
 ```bash
 ae-cli project data-power list --project-id <project_id>
-ae-cli project data-power list --dry-run --project-id <project_id>
 ```
 
 Capability id: `project.data_power.list`.

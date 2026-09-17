@@ -20,4 +20,4 @@ The response uses `ok`, `data`, and `meta`. Treat empty `data` as success when `
 |---|---|---|
 | `--company-id` | Yes | Company ID. |
 | `--task-id` | Yes | Query-monitor task ID. |
-| `--sql-max-chars` | No | Maximum returned SQL characters. |
+| `--sql-max-chars` | No | Maximum returned SQL characters, range: 0..20000. |

@@ -1,4 +1,5 @@
 import { randomBytes } from 'node:crypto';
+import { verifyDefinitionIntent, type DefinitionIntentConfig } from './definition-intent.js';
 import type { Command, Flag, RiskLevel, RuntimeContext } from '../framework/types.js';
 import {
   dryRunCapability,
@@ -18,6 +19,7 @@ export interface CreateCapabilityCommandConfig {
   /** Gateway capability id, e.g. `metadata.event.get`. */
   capabilityId: string;
   description: string;
+  helpText?: string;
   flags: Flag[];
   risk: RiskLevel;
   /** Gateway routing segment; defaults to registerCapabilityGatewayRoute(cliService). */
@@ -25,6 +27,7 @@ export interface CreateCapabilityCommandConfig {
   /** Override request host for direct local service calls. */
   requestHost?: string;
   validate?: (ctx: RuntimeContext) => void;
+  intentConsistency?: DefinitionIntentConfig;
   buildInput: (ctx: RuntimeContext) => Record<string, unknown>;
   postProcess?: (
     result: unknown,
@@ -40,9 +43,15 @@ export function createCapabilityCommand(config: CreateCapabilityCommandConfig): 
     command: config.command,
     capabilityId: config.capabilityId,
     description: config.description,
+    helpText: config.helpText,
     flags: config.flags,
     risk: config.risk,
-    validate: config.validate,
+    validate: config.validate || config.intentConsistency
+      ? (ctx) => {
+          config.validate?.(ctx);
+          if (config.intentConsistency) verifyDefinitionIntent(ctx, config.intentConsistency);
+        }
+      : undefined,
     preflight: (ctx) => {
       // Force parsing of all flags (e.g. JSON arrays) so invalid input surfaces as a clean
       // validation error before the high-risk-write confirmation gate.
@@ -52,24 +61,30 @@ export function createCapabilityCommand(config: CreateCapabilityCommandConfig): 
       const gatewayDomain = resolveGatewayDomain(config.cliService, config.gatewayDomain);
       const requestHost = config.requestHost ?? ctx.host();
       const input = withLifecycleRequestId(config, config.buildInput(ctx));
-      return validateCapability(requestHost, gatewayDomain, config.capabilityId, input);
+      const evidence = config.intentConsistency ? verifyDefinitionIntent(ctx, config.intentConsistency) : undefined;
+      const intentMeta = evidence ? { intent_consistency: evidence } : undefined;
+      return withOutputMetadata(await validateCapability(requestHost, gatewayDomain, config.capabilityId, input), intentMeta);
     },
     dryRun: async (ctx) => {
       const gatewayDomain = resolveGatewayDomain(config.cliService, config.gatewayDomain);
       const requestHost = config.requestHost ?? ctx.host();
       const input = withLifecycleRequestId(config, config.buildInput(ctx));
-      return dryRunCapability(requestHost, gatewayDomain, config.capabilityId, input);
+      const evidence = config.intentConsistency ? verifyDefinitionIntent(ctx, config.intentConsistency) : undefined;
+      const intentMeta = evidence ? { intent_consistency: evidence } : undefined;
+      return withOutputMetadata(await dryRunCapability(requestHost, gatewayDomain, config.capabilityId, input), intentMeta);
     },
     execute: async (ctx) => {
       const gatewayDomain = resolveGatewayDomain(config.cliService, config.gatewayDomain);
       const requestHost = config.requestHost ?? ctx.host();
       const input = withLifecycleRequestId(config, config.buildInput(ctx));
+      const evidence = config.intentConsistency ? verifyDefinitionIntent(ctx, config.intentConsistency) : undefined;
+      const intentMeta = evidence ? { intent_consistency: evidence } : undefined;
       announceDispatch(config.capabilityId, input);
       const result = await executeCapabilityWithEnvelope(requestHost, gatewayDomain, config.capabilityId, input);
       const data = config.postProcess
         ? await config.postProcess(result.data, input, ctx)
         : result.data;
-      return withOutputMetadata(data, result.meta);
+      return withOutputMetadata(data, { ...result.meta, ...intentMeta });
     },
   };
 }

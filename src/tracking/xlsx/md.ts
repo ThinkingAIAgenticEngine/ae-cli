@@ -37,7 +37,7 @@ function findCol(colIndex: Record<string, number>, candidates: string[], fallbac
   return fallback;
 }
 
-const VALID_UPDATE_TYPES = new Set<UpdateType>(['user_set', 'user_setOnce', 'user_add']);
+const VALID_UPDATE_TYPES = new Set<UpdateType>(['user_set', 'user_setOnce', 'user_add', 'user_append']);
 
 function parseType(raw: string): PropType {
   const canonical = displayToType(raw);

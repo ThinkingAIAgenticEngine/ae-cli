@@ -8,7 +8,6 @@ Command:
 
 ```bash
 ae-cli project entity-event list --project-id <project_id> --event-names <event_names>
-ae-cli project entity-event list --dry-run --project-id <project_id>
 ```
 
 Capability id: `project.entity_event.list`.

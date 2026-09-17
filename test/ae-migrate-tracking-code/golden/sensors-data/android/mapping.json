@@ -1,0 +1,36 @@
+{
+  "provider": "sensors-data",
+  "variant": "android",
+  "mode": "switch",
+  "entries": [
+    {
+      "site_id": "cs-1",
+      "file": "src/AnalyticsHelper.kt",
+      "line": 10,
+      "source_call": "sa.login(userId)",
+      "ae_call": "login(accountId)",
+      "account_id_source": "user_account",
+      "action": "replace"
+    },
+    {
+      "site_id": "cs-2",
+      "file": "src/AnalyticsHelper.kt",
+      "line": 17,
+      "source_call": "sa.track(\"view_item\", props)",
+      "ae_event": "view_item",
+      "display_name": "浏览商品",
+      "platform": "client",
+      "ae_props": { "item_id": "string", "price": "number" },
+      "action": "replace"
+    },
+    {
+      "site_id": "cs-3",
+      "file": "src/AnalyticsHelper.kt",
+      "line": 23,
+      "source_call": "sa.profileSet(props)",
+      "ae_call": "user_set",
+      "ae_props": { "plan": "string" },
+      "action": "replace"
+    }
+  ]
+}

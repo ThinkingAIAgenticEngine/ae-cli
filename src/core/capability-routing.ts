@@ -9,6 +9,8 @@
 export interface CapabilityGatewayRoute {
   /** nginx /api/cli/<gatewayDomain>/v1/... 路由段；空字符串表示 /api/cli/v1/... */
   gatewayDomain: string;
+  /** Capability ID prefixes discoverable through this CLI service. Defaults to `<cliService>.`. */
+  capabilityPrefixes?: string[];
 }
 
 const cliServiceRoutes = new Map<string, CapabilityGatewayRoute>();
@@ -38,6 +40,15 @@ export function findGatewayDomain(cliService: string): string | undefined {
 
 export function listRegisteredCapabilityDomains(): string[] {
   return [...cliServiceRoutes.keys()].sort();
+}
+
+export function listCapabilityDiscoveryPrefixes(cliService: string): string[] {
+  const route = cliServiceRoutes.get(cliService);
+  const rawPrefixes = route?.capabilityPrefixes?.length ? route.capabilityPrefixes : [cliService];
+  return [...new Set(rawPrefixes
+    .map((prefix) => prefix.trim().toLowerCase())
+    .filter(Boolean)
+    .map((prefix) => (prefix.endsWith('.') ? prefix : `${prefix}.`)))];
 }
 
 /**

@@ -1,0 +1,8 @@
+{
+  "name": "firebase-web-v8-fixture",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "firebase": "^8.10.0"
+  }
+}

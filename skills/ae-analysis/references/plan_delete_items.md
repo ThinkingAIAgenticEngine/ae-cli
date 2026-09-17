@@ -1,8 +1,6 @@
 # tracking plan delete-items
 
-Use when delete tracking plan items.
-
-Do not use for commands listed under the sheet's non-CLI section or for unrelated metadata/report operations. If the command needs a complex JSON object, read the backend schema or existing asset first and send snake_case fields only.
+Use only when the user asks to delete tracking plan items.
 
 Command:
 
@@ -16,7 +14,7 @@ Capability id: `tracking.plan.delete_items`
 
 Input sends `project_id`, the provided name arrays, and `yes` mapped from `--confirm`. At least one name array must be non-empty. Do not send camelCase aliases.
 
-Output is the capability gateway envelope: success is `ok=true,data,meta`; failure is `ok=false,error`. Export commands return lifecycle data such as `run_id` and `artifact_id` for inspect/download.
+Output is the capability gateway envelope: success is `ok=true,data,meta`; failure is `ok=false,error`.
 
 Parameters:
 

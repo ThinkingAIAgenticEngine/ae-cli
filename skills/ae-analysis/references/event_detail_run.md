@@ -16,6 +16,7 @@ ae-cli analysis event-detail run \
 Input:
 - `--project-id` numeric project ID.
 - `--definition` AI-facing JSON object. Required keys: `event`, `time_range`. Optional keys: `filters`, `properties`, `sort`.
+- `--intent-snapshot` optional local snapshot containing `schema_version: 1`, non-empty `requirement`, and the exact final `definition`; omit `model_type` for detail commands. It checks JSON drift locally and is never sent to Gateway. A passing check does not establish user confirmation or correct business semantics.
 - `--request-id` optional `cli_<32 lowercase hex>` lifecycle ID.
 - `--use-cache` optional boolean.
 - `--zone-offset` optional number, for example `8` for UTC+8.

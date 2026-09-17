@@ -1,5 +1,5 @@
 import type { Command } from '../../../../framework/types.js';
-import { metadataAssetSearch } from './search.js';
+import { analysisAssetSearch } from './search.js';
 import { metadataAssetRecentList } from './recent-list.js';
 import { metadataAssetAuthenticationList } from './authentication-list.js';
 import { metadataAssetAuthenticationUpdate } from './authentication-update.js';
@@ -8,7 +8,7 @@ import { metadataAssetAbnormalGet } from './abnormal-get.js';
 import { analysisMetaAssetUrlGet } from './url-get.js';
 
 const commands: Command[] = [
-  metadataAssetSearch,
+  analysisAssetSearch,
   metadataAssetRecentList,
   metadataAssetAuthenticationList,
   metadataAssetAuthenticationUpdate,
@@ -18,7 +18,7 @@ const commands: Command[] = [
 ];
 
 export default commands;
-export { metadataAssetSearch };
+export { analysisAssetSearch };
 export { metadataAssetRecentList };
 export { metadataAssetAuthenticationList };
 export { metadataAssetAuthenticationUpdate };

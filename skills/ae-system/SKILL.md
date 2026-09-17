@@ -34,9 +34,9 @@ ae-cli system <resource> <action> [options]
 
 | Command | Risk | Purpose |
 | --- | --- | --- |
-| `+list-member-candidates` | read | List TE company users that can be added. |
+| `+list-member-candidates` | read | List AE company users that can be added. |
 | `+list-members` | read | List Agent members in the current company. |
-| `+add-members` | write | Add one or more TE users, optionally binding a quota rule or creating sandboxes. |
+| `+add-members` | write | Add one or more AE users, optionally binding a quota rule or creating sandboxes. |
 | `+set-member-status` | write | Enable or disable a member. |
 | `+set-member-role` | write | Change a non-root member between `agent_admin` and `member`. |
 | `+remove-member` | high-risk-write | Remove a non-root member. |
@@ -103,7 +103,7 @@ ae-cli system +set-sandbox-enabled --id <sandbox-id> --enabled true
 ae-cli system +bind-sandbox-user --id <sandbox-id> --user-id <user-id>
 ```
 
-Use Agent database user IDs from `+list-members`, not TE openIds, for sandbox commands.
+Use Agent database user IDs from `+list-members`, not AE openIds, for sandbox commands.
 
 ### Shared Sandbox Tools
 
@@ -312,7 +312,7 @@ CSV exports require an explicit `--output`. The target is created exclusively: a
 | `+create-quota-rule` | write | Create a company or user quota rule. |
 | `+update-quota-rule` | write | Update a quota rule. |
 | `+remove-quota-rule` | high-risk-write | Delete a quota rule. |
-| `+bind-quota-rule-user` | write | Bind a quota rule to a TE user openId. |
+| `+bind-quota-rule-user` | write | Bind a quota rule to a AE user openId. |
 
 Examples:
 

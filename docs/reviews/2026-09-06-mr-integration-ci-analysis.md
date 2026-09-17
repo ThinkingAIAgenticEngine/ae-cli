@@ -2,7 +2,7 @@
 
 分析日期：2026-09-06。范围为四个仓库已 fetch 的 `origin/release/6.0`；读取指定提交的文件，没有切换当前工作分支或修改实现。
 
-实施范围更新（2026-09-08）：用户明确本期只审核 `integration/*` 的 push，包括 MR 合并后的集成分支更新；创建或更新 MR 不触发。实现位于基于 release/6.0 的独立 worktree 和新分支，`master` 不参与配置加载。本文保留原始调研及历史候选建议，实际接入以 [integration-review.md](../integration-review.md) 为准；两份调研已迁入 `feat/integration-ai-review`。
+实施范围更新（2026-09-17）：当前实现审核目标为 `integration/*` 的 MR 和直接 integration push；MR 合并产生的 push 由 Job 查询 GitLab Commit API 识别后快速跳过，不调用模型或发通知，避免同一变更重复审核。本文保留原始调研及历史候选建议，实际接入以 [integration-review.md](../integration-review.md) 为准。
 
 ## 结论
 

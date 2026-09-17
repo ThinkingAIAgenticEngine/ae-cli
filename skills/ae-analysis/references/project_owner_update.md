@@ -8,7 +8,6 @@ Command:
 
 ```bash
 ae-cli project owner update --project-id <project_id> --company-id <company_id> --owner-user-id <owner_user_id> --project-name <project_name> --project-remark <project_remark>
-ae-cli project owner update --dry-run --project-id <project_id> --company-id <company_id>
 ```
 
 Capability id: `project.owner.update`.

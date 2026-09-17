@@ -20,5 +20,6 @@ export const entityDetailRun = createAnalysisCapabilityCommand({
     syncTimeoutSecondsFlag,
   ],
   risk: 'read',
+  intentConsistency: { definitionFlag: 'definition' },
   buildInput: entityDetailRunInput,
 });

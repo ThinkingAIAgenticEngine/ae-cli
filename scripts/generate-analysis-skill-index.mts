@@ -10,13 +10,17 @@ const outputPath = path.join(referencesDir, 'command_index.md');
 const checkOnly = process.argv.includes('--check');
 
 const sharedReferences = new Set([
+  'agent_review_preflight.md',
+  'agent_review_priorities_comparisons.md',
   'ai_models.md',
   'analysis_data_retrieval.md',
+  'analysis_data_export.md',
   'analysis_drilldown_contract.md',
   'analysis_gateway_assets.md',
   'analysis_interpretation.md',
   'audience_models.md',
   'command_index.md',
+  'metadata_resolution.md',
   'cross_source_config.md',
   'folder_create.md',
   'folder_delete.md',
@@ -24,9 +28,18 @@ const sharedReferences = new Set([
   'project_space_create.md',
   'project_space_delete.md',
   'project_space_share.md',
+  'project_semantic_knowledge_wiki_plan_schema.md',
   'user_cluster_models.md',
   'user_tag_models.md',
 ]);
+
+const workflowReferences = [
+  {
+    name: 'Project semantic knowledge-base build/update/refresh/sync',
+    searchTerms: 'project semantic knowledge base; governed asset package; project-semantic asset-package export; KB source upload; schema; compile; readback; retrieval smoke test',
+    reference: 'project_semantic_knowledge_wiki.md',
+  },
+];
 
 const commands = deduplicate([
   ...analysisCommands,
@@ -41,7 +54,9 @@ const missingReferences = [...expectedCommandReferences]
 const actualReferences = fs.readdirSync(referencesDir)
   .filter((name) => name.endsWith('.md'));
 const orphanReferences = actualReferences
-  .filter((name) => !expectedCommandReferences.has(name) && !sharedReferences.has(name))
+  .filter((name) => !expectedCommandReferences.has(name)
+    && !sharedReferences.has(name)
+    && !workflowReferences.some((workflow) => workflow.reference === name))
   .sort();
 
 if (missingReferences.length > 0 || orphanReferences.length > 0) {
@@ -157,6 +172,18 @@ function render(items: Command[]): string {
     '**Search-only fallback:** search this file for matching command rows. When the command family is already known, open its dedicated reference directly. Never load or print this exhaustive file in full.',
     '',
     'This is the exhaustive command and flag inventory for the analysis skill. Read the linked command reference for routing, semantic input contracts, output interpretation, and cases where the command must not be used.',
+    '',
+    '## Workflow References',
+    '',
+    '| Workflow | Search terms | Reference |',
+    '|---|---|---|',
+    ...workflowReferences.map((workflow) => [
+      `| ${escapeCell(workflow.name)}`,
+      escapeCell(workflow.searchTerms),
+      `[${workflow.reference}](${workflow.reference}) |`,
+    ].join(' | ')),
+    '',
+    '## Commands',
     '',
     '| Command | Capability ID | Risk | Flags | Reference |',
     '|---|---|---|---|---|',

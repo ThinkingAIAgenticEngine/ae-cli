@@ -1,0 +1,47 @@
+{
+  "provider": "mixpanel",
+  "variant": "javascript",
+  "mode": "switch",
+  "entries": [
+    {
+      "site_id": "cs-1",
+      "file": "src/analytics.js",
+      "line": 7,
+      "source_call": "mixpanel.identify(user.id)",
+      "ae_call": "login(accountId)",
+      "account_id_source": "user_account",
+      "action": "replace"
+    },
+    {
+      "site_id": "cs-2",
+      "file": "src/analytics.js",
+      "line": 10,
+      "source_call": "mixpanel.track('sign_up', { method: 'phone' })",
+      "ae_event": "sign_up",
+      "display_name": "注册",
+      "platform": "client",
+      "ae_props": { "method": "string" },
+      "action": "replace"
+    },
+    {
+      "site_id": "cs-3",
+      "file": "src/analytics.js",
+      "line": 13,
+      "source_call": "mixpanel.track('purchase', { order_id: 'ord-1', amount: 99.0, currency: 'USD' })",
+      "ae_event": "purchase",
+      "display_name": "购买",
+      "platform": "client",
+      "ae_props": { "order_id": "string", "amount": "number", "currency": "string" },
+      "action": "replace"
+    },
+    {
+      "site_id": "cs-4",
+      "file": "src/analytics.js",
+      "line": 16,
+      "source_call": "mixpanel.people.set({ plan: 'pro' })",
+      "ae_call": "user_set",
+      "ae_props": { "plan": "string" },
+      "action": "replace"
+    }
+  ]
+}

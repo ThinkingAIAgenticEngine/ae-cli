@@ -22,6 +22,7 @@ const RELEASE_CHECKS = [
   'skill-frontmatter',
   'skill-risk-examples',
   'skill-preset-mcp',
+  'skill-internal-distribution',
   // 'command-format', // future
 ];
 

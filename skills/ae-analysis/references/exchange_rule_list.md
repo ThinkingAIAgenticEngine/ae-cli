@@ -8,7 +8,6 @@ Command:
 
 ```bash
 ae-cli analysis-meta exchange rule-list --project-id <project_id> --limit 50 --offset 0
-ae-cli analysis-meta exchange rule-list --dry-run
 ```
 
 Capability id: `metadata.exchange_rule.list`.

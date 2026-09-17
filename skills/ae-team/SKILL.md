@@ -1,7 +1,7 @@
 ---
 name: ae-team
 version: 1.0.0
-description: "AE/TE/ThinkingEngine/ThinkingAI ae-cli manual for AI Agent Team tasks: managing teams (list, create, update, delete, AI-generate, templates) and executing TeamRuns (start, chat, cancel, reply, result, artifacts). Use when the user asks to find a team, run a team task, check run status, retrieve results or artifacts, or set up multi-agent workflows. Must use ae-cli, read the matching references/<command>.md before composing commands, and never guess team IDs, run IDs, config structures, or parameter formats."
+description: "ThinkingAI AE (Agentic Engine) ae-cli manual for AI Agent Team tasks: managing teams (list, create, update, delete, AI-generate, templates) and executing TeamRuns (start, chat, cancel, reply, result, artifacts). Use when the user asks to find a team, run a team task, check run status, retrieve results or artifacts, or set up multi-agent workflows. Must use ae-cli, read the matching references/<command>.md before composing commands, and never guess team IDs, run IDs, config structures, or parameter formats."
 ---
 
 # ae-team
@@ -12,7 +12,7 @@ description: "AE/TE/ThinkingEngine/ThinkingAI ae-cli manual for AI Agent Team ta
 
 ## Global AE CLI Rules
 
-AE CLI (`ae-cli`) is the command-line tool for the AE / TE / ThinkingEngine analysis platform.
+AE CLI (`ae-cli`) is the command-line tool for the AE (Agentic Engine) analysis platform.
 
 Global parameters:
 

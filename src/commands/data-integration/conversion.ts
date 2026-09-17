@@ -518,15 +518,16 @@ function readSalvageRowNumbers(path: string): Set<number> {
         location: { field: 'salvage-from', record: lineNumber },
       });
     }
-    if (typeof value !== 'object' || value === null || Array.isArray(value)
-      || !Number.isInteger((value as Record<string, unknown>).row_number)
-      || (value as Record<string, unknown>).row_number! <= 0) {
+    const rowNumber = typeof value === 'object' && value !== null && !Array.isArray(value)
+      ? (value as Record<string, unknown>).row_number
+      : undefined;
+    if (typeof rowNumber !== 'number' || !Number.isInteger(rowNumber) || rowNumber <= 0) {
       throw new CliValidationError('The salvage file is not an invalid.rows.jsonl quarantine file.', {
         code: 'LOCAL_DATA_SALVAGE_INVALID',
         location: { field: 'salvage-from', record: lineNumber },
       });
     }
-    rows.add((value as Record<string, unknown>).row_number as number);
+    rows.add(rowNumber);
   }
   if (rows.size === 0) {
     throw new CliValidationError('The salvage file contains no rows.', {

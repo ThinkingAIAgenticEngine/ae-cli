@@ -8,7 +8,6 @@ Command:
 
 ```bash
 ae-cli analysis-meta datatable columns-get --project-id <project_id> --table-ref <table_ref>
-ae-cli analysis-meta datatable columns-get --dry-run
 ```
 
 Capability id: `metadata.data_table.columns_get`.

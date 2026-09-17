@@ -1,6 +1,6 @@
 # system receiver-detection get
 
-Use when the user needs to get receiver-address detection configuration.
+Use when the user authorizes retrieving receiver-address detection configuration, including initialization. This capability has `risk=write` and requires `system:write`: it may initialize a default task and trigger detection. Keep it out of read-only discovery and audit paths.
 
 Do not use it outside the system receiver-detection operation or with fields absent from the inspected capability schema.
 

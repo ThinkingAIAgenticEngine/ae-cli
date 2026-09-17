@@ -7,13 +7,12 @@ Do not use it for downstream impact or a full lineage tree; this command pages d
 Command:
 
 ```bash
-ae-cli analysis-governance asset-dependency list --project-id <project_id> --payload '{}'
-ae-cli analysis-governance asset-dependency list --dry-run --project-id <project_id>
+ae-cli analysis-governance asset-dependency list --project-id <project_id> --node-id <node_id>
 ```
 
-Capability id: analysis_meta.asset_dependency.list.
+Capability id: governance.asset_dependency.list.
 
-Input sends project_id, payload, node_id, query, searchs, rule, limit, offset. Payload keys must follow the common-service snake_case input schema; do not send camelCase aliases.
+Input sends project_id, node_id, query, searchs, rule, limit, offset. The CLI merges the snake_case object from `--payload` into these top-level Gateway fields; explicit flags override matching payload fields. `--project-id` owns the project identity and cannot be supplied or overridden by payload. Required business fields must exist in the final merged input.
 
 Output `data` contains dependency `items`, `total`, `operation_types`, `limit`, and `offset`; continue paging only while the observed total exceeds the current page.
 
@@ -27,4 +26,4 @@ Output `data` contains dependency `items`, `total`, `operation_types`, `limit`, 
 | --rule | No | Advanced governance Filter JSON. |
 | --limit | No | Inline page size. |
 | --offset | No | Zero-based page offset. |
-| --payload | No | Optional snake_case object carrying the same fields. Use this for complex governance filters or backend-shaped payloads. |
+| --payload | No | Optional JSON object merged into top-level input. Use schema-declared snake_case fields; explicit flags take precedence. `node_ids`, `searchs`, and `status` are arrays; `rule` is an object when supplied. |

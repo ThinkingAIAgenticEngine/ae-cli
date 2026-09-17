@@ -191,7 +191,9 @@ function buildObjectChildren(objects: Record<string, unknown>[], parentPath: str
 
 function buildNode(path: string, name: string, values: unknown[], nonEmpty: boolean): NestedNode {
   const arrays = values.filter(Array.isArray);
-  const objects = values.filter((value) => value !== null && typeof value === 'object' && !Array.isArray(value));
+  const objects = values.filter(
+    (value): value is Record<string, unknown> => value !== null && typeof value === 'object' && !Array.isArray(value),
+  );
   const structural = arrays.length + objects.length;
   if (structural > 0 && structural >= values.length - structural) {
     if (arrays.length > objects.length) {

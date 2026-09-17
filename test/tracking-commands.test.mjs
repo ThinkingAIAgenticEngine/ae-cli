@@ -150,6 +150,47 @@ test('tracking plan validate accepts uppercase event names', () => {
   }
 });
 
+test('tracking plan validate accepts user_append update_type', () => {
+  const dir = mkdtempSync(path.join(tmpdir(), 'ae-cli-append-draft-'));
+  const input = path.join(dir, 'draft.json');
+  try {
+    writeFileSync(input, JSON.stringify({
+      meta: { app_type: 'app', sdk_integration_mode: 'client_only', plan_name: 'append' },
+      events: [],
+      event_properties: [],
+      common_event_properties: [],
+      user_properties: [
+        { name: 'tags', type: 'array_string', update_type: 'user_append', source: 'chat' },
+      ],
+    }));
+    const r = runCli(['tracking', 'plan', 'validate', '--in', input]);
+    assert.equal(r.status, 0, r.stderr + r.stdout);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('tracking plan validate still rejects user_unset update_type', () => {
+  const dir = mkdtempSync(path.join(tmpdir(), 'ae-cli-unset-draft-'));
+  const input = path.join(dir, 'draft.json');
+  try {
+    writeFileSync(input, JSON.stringify({
+      meta: { app_type: 'app', sdk_integration_mode: 'client_only', plan_name: 'unset' },
+      events: [],
+      event_properties: [],
+      common_event_properties: [],
+      user_properties: [
+        { name: 'tags', type: 'array_string', update_type: 'user_unset', source: 'chat' },
+      ],
+    }));
+    const r = runCli(['tracking', 'plan', 'validate', '--in', input]);
+    assert.notEqual(r.status, 0);
+    assert.match(r.stderr + r.stdout, /update_type|validation failed|校验失败/i);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
 test('tracking wiki query runs locally', () => {
   const r = runCli(['tracking', 'wiki', 'query', '--keyword', 'sdk']);
   assert.equal(r.status, 0, r.stderr);

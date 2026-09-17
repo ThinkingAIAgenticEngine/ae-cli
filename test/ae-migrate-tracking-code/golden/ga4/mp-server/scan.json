@@ -1,0 +1,29 @@
+{
+  "provider": "ga4",
+  "variant": "mp-server",
+  "platforms": ["node"],
+  "call_sites": [
+    {
+      "id": "cs-1",
+      "file": "src/server.js",
+      "line": 14,
+      "kind": "event",
+      "source_call": "mpSend({ client_id: 'anon-1', user_id: user.id, name: 'user_signup', plan: 'pro' })",
+      "event_name": "user_signup",
+      "params": { "plan": "pro" },
+      "user_id": "user.id",
+      "resolved": true
+    },
+    {
+      "id": "cs-2",
+      "file": "src/server.js",
+      "line": 19,
+      "kind": "event",
+      "source_call": "mpSend({ client_id: 'anon-1', user_id: user.id, name: 'purchase', order_id: order.id, amount: order.amount })",
+      "event_name": "purchase",
+      "params": { "order_id": "order.id", "amount": "order.amount" },
+      "user_id": "user.id",
+      "resolved": true
+    }
+  ]
+}

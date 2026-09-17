@@ -7,7 +7,7 @@ Do not use it outside the system query-monitor operation or with fields absent f
 Command:
 
 ```bash
-ae-cli system query-monitor overview --company-id <company-id> --cluster-names <cluster-names_json>
+ae-cli system query-monitor overview --company-id <company-id> --cluster-names '["<cluster_name>"]' --project-ids '[<project_id>]'
 ```
 
 Capability id: `system.query_monitor.overview`.
@@ -20,7 +20,7 @@ The response uses `ok`, `data`, and `meta`. Treat empty `data` as success when `
 |---|---|---|
 | `--company-id` | Yes | Company ID. |
 | `--duration-minutes` | No | Monitoring duration in minutes. Default: 60. |
-| `--project-ids` | No | Project ID JSON array. |
-| `--space-codes` | No | Project space-code JSON array. |
+| `--project-ids` | Conditional | Non-empty project IDs or space codes are required. |
+| `--space-codes` | Conditional | Non-empty space codes or project IDs are required. |
 | `--cluster-names` | Yes | Query cluster-name JSON array. |
 | `--point-interval-seconds` | No | Chart sample interval seconds. Default: 5. |

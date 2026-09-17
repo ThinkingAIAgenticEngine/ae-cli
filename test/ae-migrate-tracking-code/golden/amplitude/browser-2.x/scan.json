@@ -1,0 +1,85 @@
+{
+  "provider": "amplitude",
+  "variant": "browser-2.x",
+  "platforms": ["web"],
+  "call_sites": [
+    {
+      "id": "cs-1",
+      "file": "src/analytics.js",
+      "line": 7,
+      "kind": "identity",
+      "source_call": "amplitude.setUserId(user.id)",
+      "resolved": true
+    },
+    {
+      "id": "cs-2",
+      "file": "src/analytics.js",
+      "line": 10,
+      "kind": "event",
+      "source_call": "amplitude.track('user_login', { method: 'phone' })",
+      "event_name": "user_login",
+      "params": { "method": "phone" },
+      "resolved": true
+    },
+    {
+      "id": "cs-3",
+      "file": "src/analytics.js",
+      "line": 13,
+      "kind": "event",
+      "source_call": "amplitude.track('view_item', { item_id: 'sku-123', price: 9.99, in_stock: true })",
+      "event_name": "view_item",
+      "params": { "item_id": "sku-123", "price": 9.99, "in_stock": true },
+      "resolved": true
+    },
+    {
+      "id": "cs-4",
+      "file": "src/analytics.js",
+      "line": 16,
+      "kind": "event",
+      "source_call": "amplitude.track('add_to_cart', { item_id: 'sku-123', quantity: 1 })",
+      "event_name": "add_to_cart",
+      "params": { "item_id": "sku-123", "quantity": 1 },
+      "resolved": true
+    },
+    {
+      "id": "cs-5",
+      "file": "src/analytics.js",
+      "line": 19,
+      "kind": "event",
+      "source_call": "amplitude.track('purchase', { item_id: 'sku-123', price: 9.99, quantity: 2, currency: 'USD' })",
+      "event_name": "purchase",
+      "params": { "item_id": "sku-123", "price": 9.99, "quantity": 2, "currency": "USD" },
+      "resolved": true
+    },
+    {
+      "id": "cs-6",
+      "file": "src/analytics.js",
+      "line": 23,
+      "kind": "user_property",
+      "source_call": "identify.set('plan', 'pro')",
+      "op": "set",
+      "prop": "plan",
+      "value": "pro"
+    },
+    {
+      "id": "cs-7",
+      "file": "src/analytics.js",
+      "line": 24,
+      "kind": "user_property",
+      "source_call": "identify.setOnce('signup_source', 'organic')",
+      "op": "setOnce",
+      "prop": "signup_source",
+      "value": "organic"
+    },
+    {
+      "id": "cs-8",
+      "file": "src/analytics.js",
+      "line": 25,
+      "kind": "user_property",
+      "source_call": "identify.add('logins', 1)",
+      "op": "add",
+      "prop": "logins",
+      "value": 1
+    }
+  ]
+}

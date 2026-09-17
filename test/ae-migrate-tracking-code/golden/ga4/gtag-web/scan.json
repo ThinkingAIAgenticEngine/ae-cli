@@ -1,0 +1,35 @@
+{
+  "provider": "ga4",
+  "variant": "gtag-web",
+  "platforms": ["web"],
+  "call_sites": [
+    {
+      "id": "cs-1",
+      "file": "src/analytics.js",
+      "line": 6,
+      "kind": "identity",
+      "source_call": "gtag('set', 'user_id', user.id)",
+      "resolved": true
+    },
+    {
+      "id": "cs-2",
+      "file": "src/analytics.js",
+      "line": 9,
+      "kind": "event",
+      "source_call": "gtag('event', 'sign_up', { method: 'phone' })",
+      "event_name": "sign_up",
+      "params": { "method": "phone" },
+      "resolved": true
+    },
+    {
+      "id": "cs-3",
+      "file": "src/analytics.js",
+      "line": 12,
+      "kind": "event",
+      "source_call": "gtag('event', 'purchase', { order_id: 'ord-1', amount: 99.0, currency: 'USD' })",
+      "event_name": "purchase",
+      "params": { "order_id": "ord-1", "amount": 99.0, "currency": "USD" },
+      "resolved": true
+    }
+  ]
+}
