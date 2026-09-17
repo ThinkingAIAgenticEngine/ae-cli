@@ -1,6 +1,6 @@
 {
   "name": "@thinkingai/ae-cli",
-  "version": "6.1.21",
+  "version": "6.0.49",
   "description": "CLI tool for ThinkingAI (AE) analytics platform",
   "type": "module",
   "bin": {
@@ -39,7 +39,6 @@
     "verify:retired-analysis-commands": "node --test test/retired-analysis-commands.test.mjs",
     "verify:retired-api-command": "node --test test/retired-api-command.test.mjs",
     "verify:analysis-common-tools": "node scripts/verify-te-common-tools.mjs",
-    "verify:experiment-tools": "node scripts/verify-te-experiment-tools.mjs && node --import tsx test/experiment/experiment-capability-command.test.mjs",
     "verify:team-tools": "node scripts/verify-te-team-tools.mjs",
     "verify:agent-tools": "node --test test/agent-command-registry.test.mjs && tsx tests/te-agent-credentials.test.ts && tsx tests/te-agent-unified-auth.test.ts && tsx tests/te-agent-conversations.test.ts && tsx tests/te-agent-automations.test.ts && tsx scripts/verify-agent-tools.mjs && npm run verify:approval && npm run verify:agent-distribution && npm run verify:agent-context && npm run verify:sandbox-tools",
     "verify:agent-context": "tsx tests/agent-context-command.test.ts",
