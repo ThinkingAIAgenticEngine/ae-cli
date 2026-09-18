@@ -54,13 +54,13 @@ fs.mkdirSync(path.join(assetPackage, 'metadata'), { recursive: true });
 
 const snapshotHash = 'a'.repeat(64);
 writeJson(path.join(assetPackage, '.asset-package.json'), {
-  schema_version: '3.0', project_id: 196, project_name: 'Product Radar',
+  schema_version: '3.0', project_id: 196, project_name: 'Example project',
   snapshot_id: 'snapshot-test', snapshot_hash: snapshotHash, generated_at: '2026-09-02T00:00:00Z',
   asset_scope: 'governed', authenticated_asset_count: 9, unauthenticated_asset_count: 1, truncated: false,
   filter_policy: { authenticated_entry_assets_only: true, dependency_closure: true },
 });
 writeJson(path.join(assetPackage, 'manifest.json'), {
-  schema_version: '3.0', project_id: 196, project_name: 'Product Radar',
+  schema_version: '3.0', project_id: 196, project_name: 'Example project',
   asset_scope: 'governed', truncated: false, generated_at: '2026-09-02T00:00:00Z',
   filter_policy: { authenticated_entry_assets_only: true, dependency_closure: true },
 });
@@ -426,7 +426,7 @@ for (const output of [wikiA, wikiB]) {
     '--asset-package', assetPackage,
     '--semantic-plan', domainPlanPath,
     '--output', output,
-    '--project-name', 'Product Radar',
+    '--project-name', 'Example project',
   ], { stdio: 'pipe' });
 }
 
@@ -574,7 +574,7 @@ execFileSync(process.execPath, [builder,
   '--asset-package', allVisiblePackage,
   '--semantic-plan', domainPlanPath,
   '--output', wikiAllVisible,
-  '--project-name', 'Product Radar',
+  '--project-name', 'Example project',
   '--allow-all-visible',
 ], { stdio: 'pipe' });
 assert.match(fs.readFileSync(path.join(wikiAllVisible, 'wiki', 'project-overview.md'), 'utf8'), /Asset scope: all_visible/);
@@ -725,7 +725,7 @@ execFileSync(process.execPath, [builder,
   '--asset-package', dateOnlyPackage,
   '--semantic-plan', domainPlanPath,
   '--output', wikiDateOnly,
-  '--project-name', 'Product Radar',
+  '--project-name', 'Example project',
 ], { stdio: 'pipe' });
 const dateOnlyManifest = JSON.parse(fs.readFileSync(path.join(`${wikiDateOnly}-kb-upload-sources`, 'kb-upload-manifest.json'), 'utf8'));
 assert.deepEqual(sourceHashByDisplayName(dateOnlyManifest), sourceHashByDisplayName(uploadManifest));
@@ -751,7 +751,7 @@ execFileSync(process.execPath, [builder,
   '--asset-package', changedPackage,
   '--semantic-plan', changedPlanPath,
   '--output', wikiChanged,
-  '--project-name', 'Product Radar',
+  '--project-name', 'Example project',
 ], { stdio: 'pipe' });
 const sourceTreeSyncPlan = JSON.parse(execFileSync(process.execPath, [packager,
   '--source-dir', `${wikiChanged}-kb-upload-sources`,
@@ -772,7 +772,7 @@ const compileRulesPath = path.join(temp, 'compile-rules.md');
 fs.writeFileSync(compileRulesPath, 'Keep README files as filing guides only.');
 const capturedCompanyCalls = [];
 await runCompanyKb('+schema', [
-  '--name', 'Product Radar Project KB',
+  '--name', 'Example Project KB',
   '--model', 'system-model-glm-5.2',
   '--custom-instructions-file', compileRulesPath,
   '--host', 'https://example.test',

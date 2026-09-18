@@ -15,7 +15,7 @@ These rules guide Schema generation for project semantic knowledge bases built f
 
 The generated top-level `index.md` must be a decision-oriented navigation page. It may contain only module navigation, common-entry guidance, and a compact category/count overview. Do not append a complete page list, sitemap, individual asset files, metadata property pages, numeric report IDs, numeric dashboard IDs, source container IDs, or raw source filenames to the top-level page. Top-level navigation should link to project overview, business domains, recall cards, asset category indexes, decisions, and review pages. List individual assets only inside the matching asset index page, domain page, dashboard page, source-container page, or search result context. If the compiler wants to expose a full sitemap, put it under `wiki/index.md` or category index pages, never in root `index.md`.
 
-When linking to an individual asset, use its business title as the visible link text and keep the numeric ID only as supporting identity beside the title, for example `近期客户成员聊天数量（report 13270719）`. Do not render bare numeric links such as `13270719` as navigation items.
+When linking to an individual asset, use its business title as the visible link text and keep the numeric ID only as supporting identity beside the title, for example `示例报表（report 1001）`. Do not render bare numeric links such as `1001` as navigation items.
 
 ## Precompiled source contract
 

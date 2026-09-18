@@ -51,13 +51,13 @@ Object-group filter example:
 ```json
 {
   "type": "object_group",
-  "field": "equipment_list",
+  "field": "items",
   "operator": "any_satisfy",
   "conditions": {
     "relation": "and",
     "items": [
       {
-        "field": "equipment_list.item_level",
+        "field": "items.quantity",
         "operator": "gte",
         "values": [10]
       }

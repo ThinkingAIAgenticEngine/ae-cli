@@ -52,7 +52,7 @@ mode：表示SDK使用的模式
   "#type" : "track",
   "#uuid" : "DB2B97A5-183A-439E-B8B2-FE9AF77D7421",
   "#distinct_id" : "E5ABB02F-EA10-47AC-AB6C-A8E47E55B4E9",
-  "#event_name" : "testA",
+  "#event_name" : "example_event",
   "#time" : "2022-10-25 14:30:29.256"
 }
 ```
@@ -108,7 +108,7 @@ code为0代表上传成功
   "#type" : "track",
   "#uuid" : "0ECCD33B-8076-42A5-BA2B-89DE0773B84B",
   "#distinct_id" : "51C6265F-8F03-461E-91D3-D0FFB11DFCFD_2",
-  "#event_name" : "iOS_001",
+  "#event_name" : "example_event",
   "#time" : "2023-09-05 14:27:44.719"
 }
 ```
@@ -156,7 +156,7 @@ mode：表示SDK使用的模式
         "#type": "track",
         "#time": "2022-10-26 10:56:54.285",
         "#distinct_id": "04af1a3d-56b2-4c8f-a54a-2b6f655b8286",
-        "#event_name": "testA",
+        "#event_name": "example_event",
         ...
     }
 ```
@@ -193,7 +193,7 @@ TDAnalytics.enableLog(true);
         "#type": "track",
         "#time": "2023-09-14 10:09:52.445",
         "#distinct_id": "b86de4eb-12b8-4ce4-924a-54cd12b5fa25",
-        "#event_name": "android_001",
+        "#event_name": "example_event",
         ...
     }
 ```

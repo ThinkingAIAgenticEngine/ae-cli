@@ -72,7 +72,7 @@ unique_ptr<TAConsumer> getDebugConsumer() {
 ```cpp
 //上传事件
 TaSDK::PropertiesNode event_properties;
-event_properties.SetString("name1", "XZ_debug");//上报字符串类型属性
+event_properties.SetString("name1", "example");//上报字符串类型属性
 event_properties.SetNumber("test_number_int", 3);//上报数值类型属性
 event_properties.SetBool("test_bool", true);//上报布尔类型属性
 //上报列表型属性SetList
@@ -82,7 +82,7 @@ list.emplace_back("item21");
 event_properties.SetList("test_list1", list);
 //上报对象类型属性SetObject
 PropertiesNode properties;
-properties.SetString("name2", "logBugs");
+properties.SetString("name2", "example");
 properties.SetString("#uuid", "1234567890");
 properties.SetNumber("test_number_int", 3);
 properties.SetNumber("test_number_double", 3.14);

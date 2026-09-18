@@ -23,8 +23,8 @@ Create a new Engage **运营设置** push channel (not config-center channels; t
 | `pushIdType` | string | Yes | prefixed property code — **rules differ by channel kind** |
 | `config` | string | Yes | channel config JSON **string** — **shape differs by channel kind** |
 | `enableTouchEvent` | number | Yes | reach funnel: `0` off · `1` on |
-| `eventClickName` | string | Yes when funnel on | click event (e.g. `ops_click`) |
-| `eventDeliveryName` | string | Yes when funnel on | delivery event (e.g. `ops_view`) |
+| `eventClickName` | string | Yes when funnel on | click event (e.g. `click`) |
+| `eventDeliveryName` | string | Yes when funnel on | delivery event (e.g. `delivery`) |
 | `touchEventSource` | string | Yes | usually `custom` for custom event names |
 
 The outer Capability input uses `project_id` and `req`; fields inside `req` keep the native camelCase DTO shape. The Hermes Capability handler assigns the outer `--project-id` to `req.projectId`.
@@ -110,7 +110,7 @@ Do **not** put `client:…` in webhook `userParamsList` unless you have confirme
 
 ```bash
 ae-cli engage-setting channel create --project-id 1 \
-  --req '{"channelType":1,"channelSubBizType":"webhook","channelName":"demo_webhook","pushIdType":"user:#account_id","config":"{\"url\":\"https://example.com/hook\",\"paramsList\":[{\"key\":\"title\",\"keyName\":\"标题\",\"type\":\"STRING\",\"required\":0}],\"userParamsList\":[{\"key\":\"city\",\"columnName\":\"user:city\",\"defaultValue\":\"-\"}],\"authConfig\":{\"enable\":false}}","enableTouchEvent":1,"eventDeliveryName":"ops_view","eventClickName":"ops_click","touchEventSource":"custom"}'
+  --req '{"channelType":1,"channelSubBizType":"webhook","channelName":"demo_webhook","pushIdType":"user:#account_id","config":"{\"url\":\"https://example.com/hook\",\"paramsList\":[{\"key\":\"title\",\"keyName\":\"标题\",\"type\":\"STRING\",\"required\":0}],\"userParamsList\":[{\"key\":\"city\",\"columnName\":\"user:city\",\"defaultValue\":\"-\"}],\"authConfig\":{\"enable\":false}}","enableTouchEvent":1,"eventDeliveryName":"delivery","eventClickName":"click","touchEventSource":"custom"}'
 ```
 
 ---

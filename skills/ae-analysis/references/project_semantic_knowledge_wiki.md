@@ -31,10 +31,10 @@ The KB description is part of Agent auto-loading and source selection, not a cas
 <project_name><asset_scope_label>项目语义知识库，用于辅助 Agent 在分析前召回业务域、资产口径、SQL 报表语义和治理边界。
 ```
 
-For example:
+For example, using a fictional project name:
 
 ```text
-产品雷达已认证资产项目语义知识库，用于辅助 Agent 在分析前召回业务域、资产口径、SQL 报表语义和治理边界。
+示例项目的已认证资产语义知识库，帮助 Agent 在分析前查阅业务域、资产口径、SQL 报表含义和治理边界。
 ```
 
 ```bash

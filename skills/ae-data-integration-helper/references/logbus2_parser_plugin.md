@@ -201,13 +201,13 @@ class ParserServicer(parser_pb2_grpc.ParserServicer):
                 parse_data = json.loads(raw_data_list[1])
                 new_parse_data = {}
                 new_parse_data["properties"] = parse_data.copy()
-                new_parse_data["#account_id"] = parse_data["ACCOUNTID"]
-                new_parse_data["#distinct_id"] = parse_data["OSTYPE"]
+                new_parse_data["#account_id"] = parse_data["user_id"]
+                new_parse_data["#distinct_id"] = parse_data["distinct_id"]
                 new_parse_data["#type"] = "track"
-                new_parse_data["#ip"] = parse_data["IP"]
-                new_parse_data["#uuid"] = parse_data["UID"]
-                new_parse_data["#time"] = parse_data["LOGTM"]
-                new_parse_data["#event_name"] = "event_" + str(parse_data["CODE"])
+                new_parse_data["#ip"] = parse_data["ip"]
+                new_parse_data["#uuid"] = parse_data["event_id"]
+                new_parse_data["#time"] = parse_data["event_time"]
+                new_parse_data["#event_name"] = "event_" + str(parse_data["event_code"])
                 return_data_list.append(json.dumps(new_parse_data))
             except Exception as ve:
                 return_data_list.append('{}')

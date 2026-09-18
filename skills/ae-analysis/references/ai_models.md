@@ -86,13 +86,13 @@ Tag and cluster result-date policy:
 - `AUTO` dynamically matches the computed result for each analysis date. Use it for historical daily analysis that must evaluate each day against that day's tag or cluster state.
 - `SPECIFIED` uses one fixed result date and requires `specified_cluster_date` in `yyyy-MM-dd` format. Do not send `specified_cluster_date` with `LATEST` or `AUTO`.
 
-For example, the following filter evaluates `tag_pay_level != 非R` against each analysis day's tag result:
+For example, the following filter evaluates `<verified_tag_name> != <excluded_tag_value>` against each analysis day's tag result:
 
 ```json
 {
-  "field": {"name": "tag_pay_level", "type": "tag"},
+  "field": {"name": "<verified_tag_name>", "type": "tag"},
   "operator": "neq",
-  "values": ["非R"],
+  "values": ["<excluded_tag_value>"],
   "cluster_date_policy": "AUTO"
 }
 ```

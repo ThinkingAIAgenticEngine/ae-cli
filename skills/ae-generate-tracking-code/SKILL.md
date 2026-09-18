@@ -117,7 +117,7 @@ First, check if both `.ae-cli/draft.json` and `.ae-cli/draft.xlsx` exist:
 
 1. **Do you need to generate a tracking plan first?**
    - Yes → suggest using `ae-generate-tracking-plan` skill
-   - Reference: tracking plan document (Feishu: https://www.feishu.cn/docx/Jt0VdhNB6oSJ4TxISs1cq2Ebnmg)
+   - Reference: use a tracking plan document supplied by the user as source material.
 
 2. **If you already have a tracking plan**
    - Provide the xlsx file path and use `ae-cli tracking code import-template --template` to import

@@ -1,3 +1,11 @@
+### 6.1.24
+**Date:** 2026-09-18
+
+**Changes:**
+
+* Generalize project names, events, properties, and business examples in analysis, data integration, and Engage Skills using generic examples or placeholders, and clarify that review explanations should reference actual events and properties from the current asset definition.
+* Remove the fixed Feishu tracking-plan link from the tracking-code generation Skill and use a user-provided tracking-plan document as input instead.
+
 ### 6.1.23
 **Date:** 2026-09-18
 
