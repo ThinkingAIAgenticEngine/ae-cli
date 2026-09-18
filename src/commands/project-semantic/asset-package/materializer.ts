@@ -31,10 +31,6 @@ const REQUIRED_FILES = [
   'indexes/coverage-batches.jsonl',
   'indexes/definition-families.jsonl',
   'indexes/governance-coverage.jsonl',
-  'indexes/asset-containers.jsonl',
-  'indexes/dashboard-catalog.jsonl',
-  'indexes/report-catalog.jsonl',
-  'indexes/metric-catalog.jsonl',
   'catalog/published.jsonl',
   'catalog/active-candidates.jsonl',
   'catalog/rejected-candidates.jsonl',
@@ -97,7 +93,7 @@ export async function materializeProjectSemanticAssetPackage(
       ...args.finalDescriptor,
       output_path: output,
       archive_bytes: download.bytes,
-      package_record_count: materialized.recordCount,
+      record_count: materialized.recordCount,
       uncompressed_bytes: materialized.uncompressedBytes,
     };
   } catch (error) {
@@ -169,8 +165,8 @@ async function materializeArchive(
   if (!manifest || !Number.isInteger(Number(manifest.project_id))) {
     throw packageError('Asset package manifest is missing project identity.', 'ASSET_PACKAGE_MANIFEST_INVALID');
   }
-  if (manifest.schema_version !== '3.0') {
-    throw packageError('Project semantic asset package schema 3.0 is required.', 'ASSET_PACKAGE_VERSION_MISMATCH');
+  if (manifest.schema_version !== '1.0') {
+    throw packageError('Project semantic asset package schema 1.0 is required.', 'ASSET_PACKAGE_VERSION_MISMATCH');
   }
   for (const required of REQUIRED_FILES) {
     if (!await exists(resolve(staging, required))) {
@@ -181,10 +177,9 @@ async function materializeArchive(
   await writeFile(resolve(staging, '.asset-package.json'), JSON.stringify({
     snapshot_id: descriptor.snapshotId,
     snapshot_hash: descriptor.snapshotHash,
-    schema_version: '3.0',
+    schema_version: '1.0',
     company_id: Number(manifest.company_id),
     project_id: Number(manifest.project_id),
-    project_name: typeof manifest.project_name === 'string' ? manifest.project_name : undefined,
     record_count: recordCount,
     asset_scope: typeof manifest.asset_scope === 'string' ? manifest.asset_scope : 'governed',
     exported_asset_count: Number(manifest.exported_asset_count ?? manifest.authenticated_asset_count),
@@ -204,8 +199,7 @@ async function verifyDetailLocators(root: string): Promise<void> {
     const row = asObject(JSON.parse(line));
     if (!row || row.record_type === 'header') continue;
     const detail = await verifyContentLocator(root, row.detail_locator, 'Detail');
-    const raw = await verifyContentLocator(root, detail.raw_locator, 'Raw detail', true);
-    assertRawDetailConsistency(detail, raw);
+    await verifyContentLocator(root, detail.raw_locator, 'Raw detail');
   }
 }
 
@@ -213,7 +207,6 @@ async function verifyContentLocator(
   root: string,
   value: unknown,
   label: string,
-  allowSerializerHashMismatch = false,
 ): Promise<Record<string, unknown>> {
   const locator = asObject(value);
   if (!locator || typeof locator.path !== 'string'
@@ -233,37 +226,10 @@ async function verifyContentLocator(
     throw packageError(`${label} file is not a JSON object: ${locator.path}.`, 'ASSET_PACKAGE_MANIFEST_INVALID');
   }
   const actualHash = createHash('sha256').update(JSON.stringify(content), 'utf8').digest('hex');
-  if (actualHash !== locator.content_hash && !allowSerializerHashMismatch) {
+  if (actualHash !== locator.content_hash) {
     throw packageError(`${label} content hash mismatch for ${locator.path}.`, 'ASSET_PACKAGE_HASH_MISMATCH');
   }
   return content;
-}
-
-export function assertRawDetailConsistency(
-  detail: Record<string, unknown>,
-  raw: Record<string, unknown>,
-): void {
-  const identityFields = ['evidence_id', 'resource_type', 'resource_key'] as const;
-  for (const field of identityFields) {
-    if (detail[field] !== raw[field]) {
-      throw packageError(
-        `Raw detail ${field} does not match its normalized detail.`,
-        'ASSET_PACKAGE_HASH_MISMATCH',
-      );
-    }
-  }
-  const detailDefinitionHash = detail.raw_definition_hash;
-  const rawDefinitionHash = raw.raw_definition_hash;
-  if (typeof detailDefinitionHash !== 'string'
-    || typeof rawDefinitionHash !== 'string'
-    || !SHA256_PATTERN.test(detailDefinitionHash)
-    || detailDefinitionHash !== rawDefinitionHash
-    || !Object.prototype.hasOwnProperty.call(raw, 'raw_definition')) {
-    throw packageError(
-      'Raw detail definition identity does not match its normalized detail.',
-      'ASSET_PACKAGE_HASH_MISMATCH',
-    );
-  }
 }
 
 function parseRecord(line: string): PackageRecord {
