@@ -36,6 +36,10 @@ function addPrivatePackage(root) {
   write(root, 'skills/ae-page-context/references/nested/context.md', '# Internal dictionary\n');
 }
 
+function addReleaseMaintainerSkill(root) {
+  write(root, '.agents/skills/ae-cli-release/SKILL.md', '---\nname: ae-cli-release\ndescription: "Internal release workflow"\n---\n# Internal\n');
+}
+
 function prepareConversion(root) {
   write(root, 'src/core/internal-call-source.ts', "export function internalCallSourceHeaders() { return { 'X-Source': 'internal' }; }\n");
   for (const relative of ['src/core/mcp.ts', 'src/core/capability-api.ts', 'src/commands/te-dataops/shared.ts']) {
@@ -53,18 +57,23 @@ function convert(root) {
   });
 }
 
-test('internal packages may retain the complete page-context Skill', (t) => {
+test('internal packages may retain complete internal Skills', (t) => {
   const root = fixture(t);
   addPrivatePackage(root);
+  addReleaseMaintainerSkill(root);
   assert.deepEqual(checkSkillInternalDistribution(root), { ok: true, findings: [] });
 });
 
 test('the public npm identity rejects residual references even without SKILL.md', (t) => {
   const root = fixture(t, { ...INTERNAL_PACKAGE, name: '@thinkingai/ae-cli' });
   write(root, 'skills/ae-page-context/references/context.md', '# Internal dictionary\n');
+  addReleaseMaintainerSkill(root);
   const result = checkSkillInternalDistribution(root);
   assert.equal(result.ok, false);
-  assert.equal(result.findings[0].level, 'P1');
+  assert.deepEqual(result.findings.map(({ level, file }) => ({ level, file })), [
+    { level: 'P1', file: 'skills/ae-page-context' },
+    { level: 'P1', file: '.agents/skills/ae-cli-release' },
+  ]);
 });
 
 test('the public Git identity rejects the internal package before npm renaming', (t) => {
@@ -74,6 +83,7 @@ test('the public Git identity rejects the internal package before npm renaming',
   ]) {
     const root = fixture(t, { ...INTERNAL_PACKAGE, repository });
     addPrivatePackage(root);
+    addReleaseMaintainerSkill(root);
     assert.equal(checkSkillInternalDistribution(root).ok, false);
   }
 });
@@ -86,16 +96,20 @@ test('public packages without this Skill pass, but dangling entries fail', (t) =
   assert.equal(checkSkillInternalDistribution(root).ok, false);
 });
 
-test('public conversion removes the entire internal package and preserves sibling Skills', (t) => {
+test('public conversion removes internal product and maintainer Skills and preserves siblings', (t) => {
   const root = fixture(t);
   prepareConversion(root);
   addPrivatePackage(root);
+  addReleaseMaintainerSkill(root);
   const sibling = '---\nname: ae-capability\ndescription: "Public capabilities"\n---\n# Capabilities\n';
   write(root, 'skills/ae-capability/SKILL.md', sibling);
+  write(root, '.agents/skills/repository-helper/SKILL.md', sibling);
   const result = convert(root);
   assert.equal(result.status, 0, result.stderr);
   assert.equal(fs.existsSync(path.join(root, 'skills/ae-page-context')), false);
+  assert.equal(fs.existsSync(path.join(root, '.agents/skills/ae-cli-release')), false);
   assert.equal(fs.readFileSync(path.join(root, 'skills/ae-capability/SKILL.md'), 'utf8'), sibling);
+  assert.equal(fs.readFileSync(path.join(root, '.agents/skills/repository-helper/SKILL.md'), 'utf8'), sibling);
   assert.equal(JSON.parse(fs.readFileSync(path.join(root, 'package.json'), 'utf8')).name, '@thinkingai/ae-cli');
   assert.equal(checkSkillInternalDistribution(root).ok, true);
 });
@@ -111,9 +125,22 @@ test('public conversion refuses a symlinked skills parent without deleting its t
   assert.equal(fs.readFileSync(path.join(root, 'linked-skills/ae-page-context/keep.md'), 'utf8'), 'Keep this file.');
 });
 
+test('public conversion refuses a symlinked maintainer-Skills parent without deleting its target', (t) => {
+  const root = fixture(t);
+  prepareConversion(root);
+  write(root, 'linked-agent-skills/ae-cli-release/keep.md', 'Keep this file.');
+  fs.mkdirSync(path.join(root, '.agents'), { recursive: true });
+  fs.symlinkSync(path.join(root, 'linked-agent-skills'), path.join(root, '.agents/skills'));
+  const result = convert(root);
+  assert.notEqual(result.status, 0);
+  assert.match(result.stderr, /regular \.agents\/skills\/ directory/u);
+  assert.equal(fs.readFileSync(path.join(root, 'linked-agent-skills/ae-cli-release/keep.md'), 'utf8'), 'Keep this file.');
+});
+
 test('check:release runs the internal-distribution gate in the public source copy', (t) => {
   const root = fixture(t, { ...INTERNAL_PACKAGE, name: '@thinkingai/ae-cli' });
   addPrivatePackage(root);
+  addReleaseMaintainerSkill(root);
   fs.cpSync(path.join(ROOT, 'self-check'), path.join(root, 'self-check'), { recursive: true });
   const result = spawnSync(process.execPath, [path.join(root, 'self-check/release-gate.mjs')], { encoding: 'utf8' });
   assert.equal(result.status, 1, result.stderr);

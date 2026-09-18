@@ -1,4 +1,4 @@
-/** Reject the internal page-context Skill in public CLI source packages. */
+/** Reject internal-only Skills in public CLI source packages. */
 
 import fs from 'node:fs';
 import path from 'node:path';
@@ -21,17 +21,22 @@ export function checkSkillInternalDistribution(root) {
   const findings = [];
   if (!isPublicPackage(pkg)) return { ok: true, findings };
 
-  const relative = 'skills/ae-page-context';
-  try {
-    // lstat also detects a dangling symlink or a leftover file at this path.
-    fs.lstatSync(path.join(root, relative));
-    findings.push({
-      level: 'P1',
-      msg: `${relative} is internal-only and must be removed from the public export before publishing`,
-      file: relative,
-    });
-  } catch (error) {
-    if (error?.code !== 'ENOENT') throw error;
+  const internalPaths = [
+    'skills/ae-page-context',
+    '.agents/skills/ae-cli-release',
+  ];
+  for (const relative of internalPaths) {
+    try {
+      // lstat also detects a dangling symlink or a leftover file at this path.
+      fs.lstatSync(path.join(root, relative));
+      findings.push({
+        level: 'P1',
+        msg: `${relative} is internal-only and must be removed from the public export before publishing`,
+        file: relative,
+      });
+    } catch (error) {
+      if (error?.code !== 'ENOENT') throw error;
+    }
   }
   return { ok: findings.length === 0, findings };
 }

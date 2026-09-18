@@ -4,6 +4,8 @@ Shared input: [common building blocks](../ai_models.md#common-building-blocks).
 
 Use for behavior paths before or after a source event.
 
+`path.included_events` is required and must be non-empty. Include `path.source_event` and choose the remaining events from the user's requested path scope and confirmed event names.
+
 ```json
 {
   "time_range": {"mode": "previous", "unit": "day", "value": 7},
@@ -23,8 +25,6 @@ Use for behavior paths before or after a source event.
 
 `direction=forward` asks what users do after `source_event`; `direction=backward` asks what users did before it. Do not send original-QP fields such as `source_type` or `event_names`.
 
-For path analysis, `preview_rows` is a graph-display boundary aligned with the analysis UI: it keeps up to that many real nodes per path level, then combines overflow nodes into `more`. `result.nodes` retains the synthesized `more` node for graph structure and drilldown coordinates. The top-level `returned_rows` counts real business nodes actually returned across all levels; it excludes synthesized `more` nodes and the real nodes folded into them. The count may still exceed `preview_rows` because the boundary applies independently to each level. `has_more=true` means at least one level contains real nodes folded into `more`; a linear multi-level path can return more real nodes than `preview_rows` with `has_more=false`.
-
 Path `filters` are global member filters compiled to the original QP `user_filter`. They support `user_property`, `cluster`, and `tag`, but not `event_property`. Do not move a user filter into the source event's event-property filter.
 
 Path session timeout accepts only these unit/value ranges:
@@ -36,3 +36,20 @@ Path session timeout accepts only these unit/value ranges:
 Do not use `day`. Express one day as `session_interval=24` with `session_unit=hour`.
 
 Property types come from project metadata. If resolution says a field is an `event_property`, never relabel it as `user_property` just to satisfy the path schema. Remove the unsupported global filter, choose a model that supports event-property filtering, or ask the user to clarify the intended constraint. A familiar name such as `channel` is not universally an event or user property across projects.
+
+## Result
+
+`data.result.nodes` and `data.result.links` are two-dimensional arrays grouped by path level. Each outer item is a list; iterate the level first, then its node or link objects:
+
+```python
+# response is the parsed CLI JSON envelope.
+result = response["data"]["result"]
+for level in result["nodes"]:
+    for node in level:
+        print(node["id"], node["event_name"], node["times"])
+for level in result["links"]:
+    for link in level:
+        print(link["source"], link["target"], link["times"])
+```
+
+For path analysis, `preview_rows` is a graph-display boundary aligned with the analysis UI: it keeps up to that many real nodes per path level, then combines overflow nodes into `more`. `result.nodes` retains the synthesized `more` node for graph structure and drilldown coordinates. The top-level `returned_rows` counts real business nodes actually returned across all levels; it excludes synthesized `more` nodes and the real nodes folded into them. The count may still exceed `preview_rows` because the boundary applies independently to each level. `has_more=true` means at least one level contains real nodes folded into `more`; a linear multi-level path can return more real nodes than `preview_rows` with `has_more=false`.

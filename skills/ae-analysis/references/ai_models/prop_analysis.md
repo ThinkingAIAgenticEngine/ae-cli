@@ -1,10 +1,14 @@
 # `prop_analysis` AI-facing definition
 
-Shared input: [common building blocks](../ai_models.md#common-building-blocks).
+Shared field references and filters: [common building blocks](../ai_models.md#common-building-blocks).
 
 `prop_analysis` dimensions and filters support `user_property`, `cluster`, and `tag`; they do not support `event_property`.
 
 Use for user-property metrics, grouping, filters, and user-crowd comparison.
+
+The definition accepts only the top-level `prop_analysis` object. Place `metric`, `groups`, `filters`, and `user_crowds` inside it; top-level `time_range` and `time_particle_size` are unsupported.
+
+For a historical-date request, preserve the requested date constraint and use a query model that can express it, or explain the capability gap. Removing that constraint and returning current property statistics does not answer the historical question.
 
 ```json
 {

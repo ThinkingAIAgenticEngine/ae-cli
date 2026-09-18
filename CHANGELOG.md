@@ -1,3 +1,12 @@
+### 6.0.51
+**Date:** 2026-09-18
+
+**Changes:**
+
+* Clarify analysis-model Skill input constraints: construct parameters for the selected model and include time ranges and time granularity only when supported.
+* Clarify the parameter nesting and historical-date query limitations of user-property analysis to avoid answering historical questions with current property statistics.
+* Document the required event scope for path analysis, including the source event, and explain how to traverse nodes and links as two-dimensional arrays grouped by path level.
+
 ### 6.0.49
 **Date:** 2026-09-17
 

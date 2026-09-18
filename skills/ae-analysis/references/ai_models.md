@@ -2,7 +2,7 @@
 
 This file defines `model_type` spelling and shared AI-facing building blocks. Each model's definition contract has its own file below.
 
-Read the needed common building blocks and open the selected model file directly from the registry. Reuse unchanged content already read; other model files do not add requirements to the selected model.
+Open the selected model file directly from the registry and construct `definition` from its example and field rules. Use common building blocks only for fields supported by that model; add `time_range` or `time_particle_size` only when its contract supports them. Reuse unchanged content already read; other model files do not add requirements to the selected model.
 
 ## Capability coverage
 
