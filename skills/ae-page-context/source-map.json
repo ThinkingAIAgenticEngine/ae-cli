@@ -1,0 +1,525 @@
+{
+  "format_version": 1,
+  "source_repository": "ta-multiverse",
+  "source_commit": "6f3c497e2b25a63689de280da9ecdef829c45ad2",
+  "generator": "scripts/generate-page-context-references.mjs",
+  "maintenance": "Generate from committed source with --source <local-repository> --patch; apply the patch, then run --check. No source working-tree reads, network access, or runtime source lookup.",
+  "sources": [
+    {
+      "path": "apps/ta/docs/domains/dashboard-operation-dictionary.md",
+      "sha256": "e859881e7d6ee803c283db6cd160638d7592d358cbf7654ecbbd4661a75101e0",
+      "generation": "entire document generated upstream"
+    },
+    {
+      "path": "apps/ta/docs/domains/asset-governance-operation-dictionary.md",
+      "sha256": "5e7ebe08e1aa6335498911b05b97a71998ed6e8815520f63e61d9a4dc8dbcf98",
+      "generation": "entire document generated upstream"
+    },
+    {
+      "path": "apps/ta/docs/domains/asset-governance-log-operation-dictionary.md",
+      "sha256": "d4ad2921cc5c0027877aee30308e4f8bd9621e1ffebf0884aa697c9e748768ec",
+      "generation": "operation table generated upstream; surrounding consumer prose maintained manually"
+    },
+    {
+      "path": "apps/ta/src/pages/panel/components/agent-context-bridge/recorder.ts",
+      "sha256": "af2ad8bcb2c5ca5d6efbdb16841c6fb16101c1103367560e42168ea877ef5618",
+      "generation": "committed TypeScript source"
+    },
+    {
+      "path": "apps/ta/src/pages/panel/components/agent-context-bridge/operations.ts",
+      "sha256": "a13150550791591ae00f97ebcb50b0544e425b431aa0cd5b29471ca4f10bb557",
+      "generation": "committed TypeScript source"
+    },
+    {
+      "path": "apps/ta/src/pages/panel/components/agent-context-bridge/explore.ts",
+      "sha256": "2208d4f0b1c885c039af91fe91a81a7760142c372c74aaa8a171d5c098db7369",
+      "generation": "committed TypeScript source"
+    },
+    {
+      "path": "apps/ta/src/pages/data/assetGovernance/components/agent-context-bridge/types.ts",
+      "sha256": "d2b26de764b02911abb22b8044b2f71e74d1ba88d4fc419b694150d3156ea6a2",
+      "generation": "committed TypeScript source"
+    },
+    {
+      "path": "apps/ta/src/pages/data/assetGovernance/log/components/agent-context-bridge/types.ts",
+      "sha256": "fba3cee8bbc8e3be2afe5d735be6df0580e24c6d32574f7b41720e54cdad9d0e",
+      "generation": "committed TypeScript source"
+    },
+    {
+      "path": "apps/ta/src/pages/data/assetGovernance/constants/batch.ts",
+      "sha256": "fa600bccbcb02ffd7bfad466c6bd5a9fecfae12044fbd9f6c02e16f4073f1675",
+      "generation": "committed TypeScript source"
+    }
+  ],
+  "coverage": [
+    {
+      "source": "apps/ta/docs/domains/dashboard-operation-dictionary.md",
+      "section": "0",
+      "heading": "## 0. 使用速查",
+      "sha256": "bade63b53b97c3f069c8e14d179551ab47eee1b02a1f5eb6fee57e719e3b0d83",
+      "targets": [
+        "references/dashboard-context.md"
+      ],
+      "disposition": "navigation replaced by local routing"
+    },
+    {
+      "source": "apps/ta/docs/domains/dashboard-operation-dictionary.md",
+      "section": "1",
+      "heading": "## 1. 阅读顺序与解释边界",
+      "sha256": "2c85cc496e576198a14dd76342bbd52247f466c8390ec7a6b976ec11528c5fbd",
+      "targets": [
+        "references/dashboard-context.md"
+      ],
+      "disposition": "included"
+    },
+    {
+      "source": "apps/ta/docs/domains/dashboard-operation-dictionary.md",
+      "section": "2",
+      "heading": "## 2. lastOperation 字段",
+      "sha256": "da2ad2f6ad08a4bcb1ba78430daedc93280de0a8ffd0c51ec07acfc52a232216",
+      "targets": [
+        "references/dashboard-context.md"
+      ],
+      "disposition": "included"
+    },
+    {
+      "source": "apps/ta/docs/domains/dashboard-operation-dictionary.md",
+      "section": "3",
+      "heading": "## 3. surface、reportKey 与覆盖程度",
+      "sha256": "5c8b659d11dd2a5d8da4c24e957fa074640dcaee0ef9bb21d42c9fb4bd21fbe4",
+      "targets": [
+        "references/dashboard-context.md"
+      ],
+      "disposition": "included"
+    },
+    {
+      "source": "apps/ta/docs/domains/dashboard-operation-dictionary.md",
+      "section": "4",
+      "heading": "## 4. action 的含义",
+      "sha256": "d269d82d76bdf5b889ed95c246f29cc15713b94940f41b7e90c1f398c73df884",
+      "targets": [
+        "references/dashboard-context.md"
+      ],
+      "disposition": "included"
+    },
+    {
+      "source": "apps/ta/docs/domains/dashboard-operation-dictionary.md",
+      "section": "5",
+      "heading": "## 5. dashboard 合法组合与状态索引",
+      "sha256": "69af45da24e67928226f29c0e3f76478921d9a89cb8b60c0fabb882460795ab5",
+      "targets": [
+        "references/dashboard-operations.md"
+      ],
+      "disposition": "included"
+    },
+    {
+      "source": "apps/ta/docs/domains/dashboard-operation-dictionary.md",
+      "section": "6",
+      "heading": "## 6. explore 合法组合与状态索引",
+      "sha256": "a4172ccd0d11b2ac7016506e81a5ac56876ba438330088af4cb2de290c2c3ad1",
+      "targets": [
+        "references/explore-operations.md"
+      ],
+      "disposition": "included"
+    },
+    {
+      "source": "apps/ta/docs/domains/dashboard-operation-dictionary.md",
+      "section": "7",
+      "heading": "## 7. 划词来源 `source.componentId`",
+      "sha256": "d13f8387bc62325508a082ef99e4ea094c1fd7e03ab5246d34328f71126f52ab",
+      "targets": [
+        "references/dashboard-context.md"
+      ],
+      "disposition": "consumer projection"
+    },
+    {
+      "source": "apps/ta/docs/domains/dashboard-operation-dictionary.md",
+      "section": "8",
+      "heading": "## 8. 解释示例",
+      "sha256": "1282174af43b03d4acb8e07f572a323eac80b98a38ae9adc31ba429906c0c3c4",
+      "targets": [
+        "references/dashboard-operations.md",
+        "references/explore-operations.md"
+      ],
+      "disposition": "examples routed by surface"
+    },
+    {
+      "source": "apps/ta/docs/domains/dashboard-operation-dictionary.md",
+      "section": "9",
+      "heading": "## 9. 业务枚举值的含义（F02/F03）",
+      "sha256": "1583bbee5a8c78d621d3f202bd9e81ec117883cdd4b955e1cd5c03b837d4c877",
+      "targets": [
+        "references/dashboard-business-values.md"
+      ],
+      "disposition": "consumer projection"
+    },
+    {
+      "source": "apps/ta/docs/domains/dashboard-operation-dictionary.md",
+      "section": "10",
+      "heading": "## 10. 探索继承规则与实际生效范围（R01）",
+      "sha256": "d991ac5d39aa0645649616b68625a00de42fcccbb888198b85c4664e8704aff9",
+      "targets": [
+        "references/explore-query-inheritance.md"
+      ],
+      "disposition": "consumer projection"
+    },
+    {
+      "source": "apps/ta/docs/domains/asset-governance-operation-dictionary.md",
+      "section": "1",
+      "heading": "## 1. 模式与操作速查",
+      "sha256": "e303dcd22831495d8bf3201a148105ed87a55db8f9e858b8d62e42f235fa48fe",
+      "targets": [
+        "references/asset-governance.md"
+      ],
+      "disposition": "included"
+    },
+    {
+      "source": "apps/ta/docs/domains/asset-governance-operation-dictionary.md",
+      "section": "2",
+      "heading": "## 2. 字段与解释边界",
+      "sha256": "a4152b0cd38dacb884fcdd131197ef833d45d7922f2a2a8e6a6188252624e16d",
+      "targets": [
+        "references/asset-governance.md"
+      ],
+      "disposition": "included"
+    },
+    {
+      "source": "apps/ta/docs/domains/asset-governance-operation-dictionary.md",
+      "section": "3",
+      "heading": "## 3. 关注、勾选和划词分别读取",
+      "sha256": "6dc1017559d3c40e9b8758757cba0087a9cf60680d11992c639c4cc85f175a3a",
+      "targets": [
+        "references/asset-governance.md"
+      ],
+      "disposition": "included"
+    },
+    {
+      "source": "apps/ta/docs/domains/asset-governance-operation-dictionary.md",
+      "section": "4",
+      "heading": "## 4. 最近操作示例",
+      "sha256": "03b34a1e2a9790ea17b4ba17897aadfbff8e16e993fbd8f130e7b95d97b7ece7",
+      "targets": [
+        "references/asset-governance.md"
+      ],
+      "disposition": "included"
+    },
+    {
+      "source": "apps/ta/docs/domains/asset-governance-log-operation-dictionary.md",
+      "section": "1",
+      "heading": "## 1. 场景与当前状态",
+      "sha256": "3895d061b60f130f87a17e11c2bb5f7b4dd963e2cd58b465025e9f4fb4127e9e",
+      "targets": [
+        "references/asset-governance-log.md"
+      ],
+      "disposition": "included"
+    },
+    {
+      "source": "apps/ta/docs/domains/asset-governance-log-operation-dictionary.md",
+      "section": "2",
+      "heading": "## 2. 合法操作",
+      "sha256": "a93ae2cc2641b8f6dd07006c90581e7e3f635d989ea37315cd4bedc3b23ae2b6",
+      "targets": [
+        "references/asset-governance-log.md"
+      ],
+      "disposition": "included"
+    },
+    {
+      "source": "apps/ta/docs/domains/asset-governance-log-operation-dictionary.md",
+      "section": "3",
+      "heading": "## 3. 一秒合并与结果解释",
+      "sha256": "28d2241043ddfb164540fb68b0e22bced2c5b8a0fd65200e7aab423ed1a96828",
+      "targets": [
+        "references/asset-governance-log.md"
+      ],
+      "disposition": "included"
+    },
+    {
+      "source": "apps/ta/docs/domains/asset-governance-log-operation-dictionary.md",
+      "section": "4",
+      "heading": "## 4. 划词来源与标识",
+      "sha256": "1e0659fb9de01bb6b67ee0850a7874814a72d8be1f82f47ed02e2074a0eafd78",
+      "targets": [
+        "references/asset-governance-log.md"
+      ],
+      "disposition": "included"
+    }
+  ],
+  "references": [
+    {
+      "target": "references/dashboard-context.md",
+      "sha256": "0ae1c872b537b5a60fabb33dc5fc2bcbfe2e70330d04c2dfbf08e36fa3db89a9",
+      "sources": [
+        {
+          "source": "apps/ta/docs/domains/dashboard-operation-dictionary.md",
+          "selector": "section 1",
+          "sha256": "2c85cc496e576198a14dd76342bbd52247f466c8390ec7a6b976ec11528c5fbd",
+          "transformation": "verbatim"
+        },
+        {
+          "source": "apps/ta/docs/domains/dashboard-operation-dictionary.md",
+          "selector": "section 2",
+          "sha256": "da2ad2f6ad08a4bcb1ba78430daedc93280de0a8ffd0c51ec07acfc52a232216",
+          "transformation": "verbatim"
+        },
+        {
+          "source": "apps/ta/docs/domains/dashboard-operation-dictionary.md",
+          "selector": "section 3",
+          "sha256": "5c8b659d11dd2a5d8da4c24e957fa074640dcaee0ef9bb21d42c9fb4bd21fbe4",
+          "transformation": "verbatim"
+        },
+        {
+          "source": "apps/ta/docs/domains/dashboard-operation-dictionary.md",
+          "selector": "section 4",
+          "sha256": "d269d82d76bdf5b889ed95c246f29cc15713b94940f41b7e90c1f398c73df884",
+          "transformation": "verbatim"
+        },
+        {
+          "source": "apps/ta/docs/domains/dashboard-operation-dictionary.md",
+          "selector": "section 7",
+          "sha256": "d13f8387bc62325508a082ef99e4ea094c1fd7e03ab5246d34328f71126f52ab",
+          "transformation": "omit DOM algorithm, console instructions, and transport implementation; retain attribution, frozen-source, and payload distinctions"
+        },
+        {
+          "source": "apps/ta/src/pages/panel/components/agent-context-bridge/recorder.ts",
+          "selector": "type Json",
+          "sha256": "1233fce449f2c2023e199b247066565c9ccb6d90163bf5ed91193c5364f641b8",
+          "transformation": "verbatim"
+        },
+        {
+          "source": "apps/ta/src/pages/panel/components/agent-context-bridge/recorder.ts",
+          "selector": "type Conditions",
+          "sha256": "83260869766d4dc906f7e228852d82fac1b3b4e2508ca025526eb7e0ed98ed26",
+          "transformation": "verbatim"
+        },
+        {
+          "source": "apps/ta/src/pages/panel/components/agent-context-bridge/recorder.ts",
+          "selector": "type ReportIdentity",
+          "sha256": "0062a098d5bba7b991b5b26fbabd5eaa0cde22ac424f75ec8e8625b78f3a43d2",
+          "transformation": "verbatim"
+        },
+        {
+          "source": "apps/ta/src/pages/panel/components/agent-context-bridge/recorder.ts",
+          "selector": "type Query",
+          "sha256": "307be805f1dd359e3dcb9492635e1eaf116098866017de3e75c3781e3862f117",
+          "transformation": "verbatim"
+        },
+        {
+          "source": "apps/ta/src/pages/panel/components/agent-context-bridge/recorder.ts",
+          "selector": "type ReportState",
+          "sha256": "e6bf30a501b8dcef4470a852c26c2ffeb0e108b3214902d585c8bc2d537da0bc",
+          "transformation": "verbatim"
+        },
+        {
+          "source": "apps/ta/src/pages/panel/components/agent-context-bridge/recorder.ts",
+          "selector": "type DashboardContextPayload",
+          "sha256": "75ee365ef39eda642d0d890468088fcec3e33eadcc36f0cb753ec0ebb0239a20",
+          "transformation": "verbatim"
+        },
+        {
+          "source": "apps/ta/src/pages/panel/components/agent-context-bridge/operations.ts",
+          "selector": "type LastOperation",
+          "sha256": "65b2da09259d03ce38122336f87b592dcb09f1b5a940e0475f300d19427c6206",
+          "transformation": "verbatim"
+        }
+      ]
+    },
+    {
+      "target": "references/dashboard-operations.md",
+      "sha256": "a979cd8d2806b9f04b2f919f165cf5baf2b67668ff19f9c5c3c2d465673e6923",
+      "sources": [
+        {
+          "source": "apps/ta/docs/domains/dashboard-operation-dictionary.md",
+          "selector": "section 5",
+          "sha256": "69af45da24e67928226f29c0e3f76478921d9a89cb8b60c0fabb882460795ab5",
+          "transformation": "verbatim"
+        },
+        {
+          "source": "apps/ta/docs/domains/dashboard-operation-dictionary.md",
+          "selector": "section 8",
+          "sha256": "1282174af43b03d4acb8e07f572a323eac80b98a38ae9adc31ba429906c0c3c4",
+          "transformation": "route dashboard examples without changing their operation objects"
+        }
+      ]
+    },
+    {
+      "target": "references/explore-operations.md",
+      "sha256": "c7889c3906cdd4d5bd74c340f7834b903708dcf6f2dd923126d6160ee2e324ee",
+      "sources": [
+        {
+          "source": "apps/ta/docs/domains/dashboard-operation-dictionary.md",
+          "selector": "section 6",
+          "sha256": "a4172ccd0d11b2ac7016506e81a5ac56876ba438330088af4cb2de290c2c3ad1",
+          "transformation": "verbatim"
+        },
+        {
+          "source": "apps/ta/docs/domains/dashboard-operation-dictionary.md",
+          "selector": "section 8",
+          "sha256": "1282174af43b03d4acb8e07f572a323eac80b98a38ae9adc31ba429906c0c3c4",
+          "transformation": "route explore examples without changing their operation objects"
+        }
+      ]
+    },
+    {
+      "target": "references/explore-query-inheritance.md",
+      "sha256": "564a1cafbc7b3c99218a3c0e57eabd123ac40a1f18155f333e80c88a3490ec29",
+      "sources": [
+        {
+          "source": "apps/ta/docs/domains/dashboard-operation-dictionary.md",
+          "selector": "section 10",
+          "sha256": "d991ac5d39aa0645649616b68625a00de42fcccbb888198b85c4664e8704aff9",
+          "transformation": "omit maintenance-only subsection 10.3 and development case identifier"
+        },
+        {
+          "source": "apps/ta/src/pages/panel/components/agent-context-bridge/explore.ts",
+          "selector": "type ExploreTicket",
+          "sha256": "5a4f7796b7934c918ab3d7b028c24f30cb09ad37b2cccaafdf340b8cf7b16d1c",
+          "transformation": "verbatim"
+        },
+        {
+          "source": "apps/ta/src/pages/panel/components/agent-context-bridge/explore.ts",
+          "selector": "type ExploreQuery",
+          "sha256": "d15503d6cf1c0644fdd62695d7086b5e1a1cdf16a738671cfd440a21c774b8d2",
+          "transformation": "verbatim"
+        },
+        {
+          "source": "apps/ta/src/pages/panel/components/agent-context-bridge/explore.ts",
+          "selector": "type ExploreState",
+          "sha256": "c274a14a42b8e1da42c4fca04cf09cab0cb36bd12884b09495ba34d46f68da1d",
+          "transformation": "verbatim"
+        }
+      ]
+    },
+    {
+      "target": "references/dashboard-business-values.md",
+      "sha256": "3c8c8e8429fd2ab055dcc9cb9a219f6eb55810e7d17e1cf7336ad8c16b3510cb",
+      "sources": [
+        {
+          "source": "apps/ta/docs/domains/dashboard-operation-dictionary.md",
+          "selector": "section 9",
+          "sha256": "1583bbee5a8c78d621d3f202bd9e81ec117883cdd4b955e1cd5c03b837d4c877",
+          "transformation": "omit source-code maintenance links in subsection 9.6 and development case identifier"
+        }
+      ]
+    },
+    {
+      "target": "references/asset-governance.md",
+      "sha256": "972fc5bb074f7936034afee78ec30113e37432b79cad9bb0ea30215f119b3aab",
+      "sources": [
+        {
+          "source": "apps/ta/docs/domains/asset-governance-operation-dictionary.md",
+          "selector": "section 1",
+          "sha256": "e303dcd22831495d8bf3201a148105ed87a55db8f9e858b8d62e42f235fa48fe",
+          "transformation": "use payload selectedAssetIds instead of the internal selectedNodeIds name in source prose"
+        },
+        {
+          "source": "apps/ta/docs/domains/asset-governance-operation-dictionary.md",
+          "selector": "section 2",
+          "sha256": "a4152b0cd38dacb884fcdd131197ef833d45d7922f2a2a8e6a6188252624e16d",
+          "transformation": "replace React/console/DOM/event-handler mechanics with observation limits"
+        },
+        {
+          "source": "apps/ta/docs/domains/asset-governance-operation-dictionary.md",
+          "selector": "section 3",
+          "sha256": "6dc1017559d3c40e9b8758757cba0087a9cf60680d11992c639c4cc85f175a3a",
+          "transformation": "retain business content"
+        },
+        {
+          "source": "apps/ta/docs/domains/asset-governance-operation-dictionary.md",
+          "selector": "section 4",
+          "sha256": "03b34a1e2a9790ea17b4ba17897aadfbff8e16e993fbd8f130e7b95d97b7ece7",
+          "transformation": "retain business content"
+        },
+        {
+          "source": "apps/ta/src/pages/data/assetGovernance/constants/batch.ts",
+          "selector": "enum BatchOpTypeEnum",
+          "sha256": "aaf089dead4e1c8eecc11ee37d1561dc5ab3d4cb4a2e788ac48f82d54714ae21",
+          "transformation": "render every source enum member and its actual value"
+        },
+        {
+          "source": "apps/ta/src/pages/data/assetGovernance/components/agent-context-bridge/types.ts",
+          "selector": "type Mode",
+          "sha256": "82baf1bb2664fc924367df27ef57f341faa7ec63370822f9ed2ed1fb7e65a6cb",
+          "transformation": "verbatim"
+        },
+        {
+          "source": "apps/ta/src/pages/data/assetGovernance/components/agent-context-bridge/types.ts",
+          "selector": "type Detail",
+          "sha256": "bba698757da5021701ab82c511052b2d8cc4ef7616eee705dfebf39cc524f92c",
+          "transformation": "verbatim"
+        },
+        {
+          "source": "apps/ta/src/pages/data/assetGovernance/components/agent-context-bridge/types.ts",
+          "selector": "type FilterValues",
+          "sha256": "1b50a834a635e7099841521216e7f5fb67c33fef45510abacfe39099d6f2adbd",
+          "transformation": "verbatim"
+        },
+        {
+          "source": "apps/ta/src/pages/data/assetGovernance/components/agent-context-bridge/types.ts",
+          "selector": "type Focus",
+          "sha256": "ce1e594be34c9936dbf8d912ce21889fb145f5e7ea2720d3d6c0641ac246cc70",
+          "transformation": "verbatim"
+        },
+        {
+          "source": "apps/ta/src/pages/data/assetGovernance/components/agent-context-bridge/types.ts",
+          "selector": "type LastOperation",
+          "sha256": "ddb06a4c969081ae2eb376de984513c17a8e4ac4e52ad074d443a85c2762f5ad",
+          "transformation": "verbatim"
+        },
+        {
+          "source": "apps/ta/src/pages/data/assetGovernance/components/agent-context-bridge/types.ts",
+          "selector": "type AssetGovernanceContext",
+          "sha256": "d7a0911dfaec27971416bbcd7ecb0206ed7702844394d721e6455f4f81dee5f3",
+          "transformation": "verbatim"
+        }
+      ]
+    },
+    {
+      "target": "references/asset-governance-log.md",
+      "sha256": "d65c8a0b533d3ae30700f6c8c8f3a430e189df49893d759baaf61e43611fc547",
+      "sources": [
+        {
+          "source": "apps/ta/docs/domains/asset-governance-log-operation-dictionary.md",
+          "selector": "section 1",
+          "sha256": "3895d061b60f130f87a17e11c2bb5f7b4dd963e2cd58b465025e9f4fb4127e9e",
+          "transformation": "retain business content"
+        },
+        {
+          "source": "apps/ta/docs/domains/asset-governance-log-operation-dictionary.md",
+          "selector": "section 2",
+          "sha256": "a93ae2cc2641b8f6dd07006c90581e7e3f635d989ea37315cd4bedc3b23ae2b6",
+          "transformation": "remove generated-region markers only"
+        },
+        {
+          "source": "apps/ta/docs/domains/asset-governance-log-operation-dictionary.md",
+          "selector": "section 3",
+          "sha256": "28d2241043ddfb164540fb68b0e22bced2c5b8a0fd65200e7aab423ed1a96828",
+          "transformation": "omit timer implementation while retaining independent query and observation timing"
+        },
+        {
+          "source": "apps/ta/docs/domains/asset-governance-log-operation-dictionary.md",
+          "selector": "section 4",
+          "sha256": "1e0659fb9de01bb6b67ee0850a7874814a72d8be1f82f47ed02e2074a0eafd78",
+          "transformation": "retain business content"
+        },
+        {
+          "source": "apps/ta/src/pages/data/assetGovernance/log/components/agent-context-bridge/types.ts",
+          "selector": "type LogQuery",
+          "sha256": "19c3e057e56c31606bc26cb30c7230e87e18fc73c0733c546147a1894ed6aa0d",
+          "transformation": "verbatim"
+        },
+        {
+          "source": "apps/ta/src/pages/data/assetGovernance/log/components/agent-context-bridge/types.ts",
+          "selector": "type LogOperation",
+          "sha256": "26020c1fcdf6d1436b3e387ceeb123e12b68e77dde1cd0b8ad0260d49db6c81b",
+          "transformation": "verbatim"
+        },
+        {
+          "source": "apps/ta/src/pages/data/assetGovernance/log/components/agent-context-bridge/types.ts",
+          "selector": "type AssetGovernanceLogContext",
+          "sha256": "49c5593f710c4d89fde8e2a3c5c420d35173b6d938d4526e12b4f33968884b4b",
+          "transformation": "verbatim"
+        }
+      ]
+    }
+  ]
+}

@@ -49,7 +49,7 @@ Use this skill for these CLI services:
 - `analysis-governance`: gateway asset governance operations, including governed asset lists/exports, lineage, dependency, impact, query history, rule schema/list/create/update/delete, batch asset actions, and operation records. Use this service for asset governance workflows, not for metadata event/property/metric CRUD.
 - `tracking`: gateway tracking plan, checking, ingest, live-data, and event blacklist operations.
 - `personal-semantic-preference`: current user's project-scoped personal semantic preferences. Use it as agent context before resolving ambiguous business wording, asset choices, or recurring user preferences.
-- `project-semantic`: published project semantics, candidate/release governance, and knowledge-base asset-package export. `kb` is used only inside the explicit project semantic knowledge-base command-reference workflow. Neither service is a prerequisite for asset-authentication and metric-recommendation review.
+- `project-semantic` and `kb` only inside the explicit project semantic knowledge-base command-reference workflow. They are not prerequisites for asset-authentication and metric-recommendation review.
 
 For metadata gateway detail outside the commands in the generated index, use the metadata skill. For Engage, DataOps, or Community work, use the corresponding skill.
 
@@ -144,45 +144,16 @@ For every gateway command that exposes `--request-id`, ae-cli generates a `reque
 
 Use the current turn's project ID supplied by the Agent host. When no project is supplied, resolve the user's ID or name with `project info list`. Ask only when the returned candidates leave a real ambiguity. A new user selection replaces the previous project for subsequent commands.
 
-### Project Semantic Knowledge Base
+### Project Semantic Knowledge
 
-When the user explicitly asks to build, update, refresh, rebuild, or sync a project semantic knowledge base, open `references/project_semantic_knowledge_wiki.md`. That command-reference workflow starts from `ae-cli project-semantic asset-package export` and then uploads/compiles KB sources. Do not load a standalone project semantic Skill for this workflow. The governed project-semantic catalog and candidate/release lifecycle remain separate from this knowledge-base build path, and neither path is prerequisite context for CLI Agent asset-authentication or metric-recommendation review.
+Do not call project-semantic catalog, entry, candidate, release, or publish commands as prerequisite context for ordinary analysis or asset-governance requests. The retired governed-project-semantic lifecycle is not part of this CLI Agent flow.
 
-### Project Semantics
-
-Before answering project-scoped analysis or asset-governance requests, call `ae-cli project-semantic list --project-id <project_id>` once after the project is resolved. This is the governed project semantic catalog. The list is already filtered to active, fresh project semantics and sorted by heat, so do not page or search the database yourself.
-
-If one project semantic is actually adopted to interpret the user's wording, asset selection, metric definition, calculation convention, or project-wide business rule, fetch it with `ae-cli project-semantic get --project-id <project_id> --id <semantic_id> --mark-used`. Do not pass `--mark-used` for project semantics that were only inspected or rejected.
-
-For project semantic recommendation, switch to the `ae-project-semantic` skill. This skill only consumes published project semantics during analysis tasks.
-
-Published project semantics are the formal project-wide authority. A current-turn user instruction may request a different analysis, but the result must be labeled as an explicit non-formal deviation rather than silently replacing the published definition.
+When the user explicitly asks to build, update, refresh, rebuild, or sync a project semantic knowledge base, open `references/project_semantic_knowledge_wiki.md`. That command-reference workflow starts from `ae-cli project-semantic asset-package export` and then uploads/compiles KB sources. Do not load a standalone project semantic Skill for this workflow.
 
 ### Personal Semantic Preferences
 
 When the request involves personal business wording, asset preferences, or explicit personalization, call `ae-cli personal-semantic-preference list --project-id <project_id>` once per host, authenticated user, project, and conversation; reuse the result within that scope. Use the current project supplied by the Agent host. If an entry is adopted, read [`references/personal_semantic_preference_list.md`](references/personal_semantic_preference_list.md) and fetch that entry with `--mark-used`. Read the same reference before recording a durable user preference; a one-time analysis confirmation is task context.
 This rule does not apply to CLI Agent asset-authentication and metric-recommendation review through `analysis-meta governance-recommendation export|submit|decisions`; that workflow must not load personal semantic preferences as prerequisite context.
-
-Apply the two catalogs by authority and purpose, not as one flat ranking. Published project semantics define the formal business meaning. Personal semantics supply the current user's defaults, interpretation corrections, asset choices, and output preferences where they do not conflict. If a personal semantic conflicts with a published project semantic, use the project semantic for the formal result and explicitly disclose the difference; never silently overwrite the personal record. If the user explicitly requests the personal alternative for the current task, execute it as a labeled non-formal variation.
-
-The Agent owns the personal preference capture trigger. Choose `context_type` by meaning:
-
-- `preference`: durable interpretation or output preference without an exact asset binding.
-- `asset_context`: durable user wording or intent bound to one or more exact project assets. Send the complete ordered `resource_refs` array; each item has `resource_type`, string `resource_key`, and `display_name`.
-- `experience`: a confirmed reusable work method without an exact asset binding.
-- `background`: stable personal context without an exact asset binding.
-
-Any stable choice of a concrete asset, including an event-selection scenario, must use `asset_context`; do not encode asset IDs only in prose. During a project task, collect durable current-user preferences, stable interpretation corrections, reusable asset-selection choices, recurring output preferences, and current-user working definitions that have not become approved project semantics. A working definition remains eligible for personal storage even when it would also benefit other project users. Store it only as the current user's preference; never describe it as approved project authority or copy a bound asset definition into its content. Keep future governance or lifecycle instructions out of the stored content. Do not save transient task details, one-off analysis results, company knowledge, standalone metadata facts, reports, or dashboards as personal preferences.
-
-An explicit stable statement, correction, or confirmation that passes that evidence gate authorizes `personal-semantic-preference add` or `update` without a second "save" confirmation. Compare against the already loaded catalog first; when one existing preference matches, fetch it with `--mark-used`, update that existing preference, and avoid creating a duplicate. Otherwise add a new one. An explicit instruction not to retain it always wins. Delete remains high risk and requires explicit user confirmation.
-
-Personal capture and project recommendation are independent. Save or update the personal semantic first when its evidence gate is met. If the same content looks reusable as a formal project-wide definition, finish the current task and then ask whether the user wants to recommend it as a project semantic candidate. Do not make project recommendation a prerequisite for personal capture, do not submit a candidate without that user choice, and never approve or publish on behalf of an ordinary user.
-
-After a successful add, update, or delete, merge that response into the conversation's cached directory locally. Do not call list again merely to observe the write.
-
-When a later published project semantic matches a personal semantic, treat the project semantic as formal and allow the personal record to become redundant, expire, or merge through the supported lifecycle. When they conflict, keep the project semantic formal, disclose the conflict, and preserve the personal record unless the user explicitly changes or deletes it. These are consumption and lifecycle rules; do not append them to the stored personal semantic content.
-
-Stale or expired preferences are automatically hidden by list filtering and backend maintenance. Do not look for or invent a separate command for that behavior.
 
 ### Metadata discovery
 

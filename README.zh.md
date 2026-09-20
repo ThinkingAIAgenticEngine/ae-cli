@@ -2,7 +2,7 @@
 
 # ae-cli
 
-`ae-cli` 是 ThinkingAI AgenticEngine（AE）平台的命令行客户端，为 AI Agent 和人工操作提供稳定、结构化的接口，覆盖分析、实验、项目配置、元数据、埋点、本地数据接入、运营、DataOps、知识库、Agent 资源、用户记忆及系统管理。
+`ae-cli` 是 ThinkingAI AgenticEngine（AE）平台的命令行客户端，为 AI Agent 和人工操作提供稳定、结构化的接口，覆盖分析与项目配置、元数据、埋点、本地数据接入、运营、DataOps、知识库、Agent 资源、用户记忆及系统管理。
 
 CLI 的核心设计包括：
 
@@ -15,22 +15,16 @@ CLI 的核心设计包括：
 ## 环境要求
 
 - Node.js 20 或更高版本。
-- 安装 CLI 时能够访问 npm 仓库。
-- 首次安装 Skills，或本地 Skills 来源不可用时，能够访问 GitHub。
+- 能够访问 ThinkingData 内部 npm 仓库。
+- 安装 Skills 和开发源码时能够访问内部 `te-ai/te-cli` Git 仓库。
 
 ## 安装
 
-如果你希望由 Codex、Claude Code、Cursor 等 AI Agent 自动检查 Node.js、安装 CLI、完成登录并同步匹配版本，请让 Agent 阅读并执行 [AE CLI Installation and Upgrade](./cli-installation-guide.md)。
-
-可直接复制给 Agent，并把 `<AE_HOST>` 替换为你的 AE 地址：
-
-> 请阅读 https://raw.githubusercontent.com/ThinkingAIAgenticEngine/ae-cli/main/cli-installation-guide.md 并按说明帮我安装或升级 AE CLI。我的 AE 地址是 `<AE_HOST>`。只安装 AE CLI 和配套 Skills，不要修改当前项目；遇到登录授权或需要管理员权限时请暂停并提示我。
-
-安装公开版 CLI 和 Agent Skills：
+安装内部版 CLI 和 Agent Skills：
 
 ```bash
-npm install -g @thinkingai/ae-cli
-npx -y skills add ThinkingAIAgenticEngine/ae-cli -g -y
+npm install -g @tant/ae-cli --registry=https://npm.thinkingdata.cn:3443
+npx -y skills add http://10.27.249.150:8888/te-ai/te-cli.git#release/6.0 te-ai/ae-cli -g -y
 ```
 
 Skills 会帮助 Claude Code、Codex、Cursor 等编码 Agent 理解、发现并调用 `ae-cli`。
@@ -52,18 +46,20 @@ ae-cli auth status
 
 请使用 AgenticEngine 管理员提供的 AE 地址。未配置 Host 时，`ae-cli` 会先引导已有客户向管理员获取地址；只有确认尚无 AgenticEngine 环境的用户，才会看到[申请试用](https://thinkingai.cn/request-demo)入口。
 
-## 环境版本同步
+## 公网版环境同步
 
-每个 AE 环境都会返回其要求的精确 `aeCliVersion`。使用统一更新命令安装对应版本的 CLI 和 Skills：
+客户 AE 环境会返回其要求的精确 `aeCliVersion`。公网 `@thinkingai/ae-cli` 使用统一更新命令安装对应版本的 CLI 和 Skills：
 
 ```bash
 ae-cli update
 ae-cli update --dry-run
 ```
 
-`ae-cli update` 安装当前 Host 要求的精确版本，不依赖 npm `latest`。更新时优先从已安装的 npm 包同步 Skills，本地来源失败后才回退到对应的 GitHub tag。
+`ae-cli update` 安装当前 Host 要求的精确公网版本，不依赖 npm `latest`。更新时优先从已安装的 npm 包同步 Skills，本地来源失败后才回退到对应的 GitHub tag。
 
-从 `6.0.37` 和 `6.1.9` 维护线开始，普通业务命令可以自动升级或降级到环境要求的版本。同步成功后，旧进程会返回 `AE_CLI_VERSION_SYNCED`；重新执行原命令，即可使用新的 CLI 和 Skills。安装失败会给出提示，但不会用安装输出污染业务命令的 JSON 结果。
+从 `6.0.37` 和 `6.1.9` 维护线开始，公网包的普通业务命令可以自动升级或降级到环境要求的版本。同步成功后，旧进程会返回 `AE_CLI_VERSION_SYNCED`；重新执行原命令，即可使用新的 CLI 和 Skills。安装失败会给出提示，但不会用安装输出污染业务命令的 JSON 结果。
+
+内部 `@tant/ae-cli` 包不会触发全局自动替换。内部开发构建应通过[安装](#安装)章节中的内网 npm 和内部 Skills 地址更新。
 
 常用控制方式：
 
@@ -113,13 +109,12 @@ ae-cli capability list --domain analysis --jq '.data.capabilities[] | .id'
 | 类别 | 根命令 | 用途 |
 |---|---|---|
 | 分析与项目 | `analysis` | 报告、看板、即席分析、下钻、详情、告警、标签和分群 |
-| 分析与项目 | `experiment` | Atlas 实验、报表、流量层、分桶、Feature、指标和操作日志 |
 | 分析与项目 | `analysis-meta` | 事件/属性目录、指标、虚拟元数据、埋点治理和项目分析配置 |
 | 分析与项目 | `analysis-governance` | 数据资产搜索、血缘、影响分析、认证和治理 |
 | 分析与项目 | `project` | 项目信息、成员、角色、权限、实体、时区和交接配置 |
 | 分析与项目 | `metadata` | 基于 Capability Gateway 的数据表、属性及维度表绑定 |
 | 分析与项目 | `personal-semantic-preference` | 当前用户按项目维护轻量个人语义偏好 |
-| 分析与项目 | `project-semantic` | 项目语义治理、知识库资产包、候选校验、审核和发布 |
+| 分析与项目 | `project-semantic` | 导出用于知识库构建的项目资产包 |
 | 数据与埋点 | `tracking` | 埋点方案、SDK 示例、检查、采集诊断、代码生成和内置 Wiki |
 | 数据与埋点 | `data-integration` | 检查、规划、转换、上传、交接和复用本地 CSV/JSON/Excel 数据 |
 | 社区洞察 | `community` | 社区帖子、评论、话题、情感、直播和报告工作流 |
@@ -149,6 +144,23 @@ ae-cli capability list --domain analysis --jq '.data.capabilities[] | .id'
 | 通用工具 | `model` | 在 Agent 沙盒中查看并切换当前工作区模型 |
 | 通用工具 | `update` | 将 CLI 和 Skills 同步到当前 Host 要求的版本 |
 <!-- root-command-surface:end -->
+
+### 跨源资产配置
+
+跨源资产配置采用收敛后的 **L3 动态流程**：后端只提供 Excel 配置上传、配置列表、触发校验和读取校验结果，不开放逐项新增、编辑、删除或模板/导出能力。
+
+```bash
+ae-cli capability search "cross_source_config" --domain metadata --project-id 1
+ae-cli capability inspect metadata.cross_source_config.upload --project-id 1
+ae-cli analysis input-file purpose list --project-id 1
+ae-cli analysis input-file upload --project-id 1 --purpose cross_source_config.workbook --file ./configured.xlsx
+ae-cli capability run metadata.cross_source_config.upload --input '{"project_id":1,"input_file_id":"<input_file_id>","lang":"zh"}' --yes
+ae-cli capability run metadata.cross_source_config.list --input '{"project_id":1}'
+ae-cli capability run metadata.cross_source_config.check --input '{"project_id":1,"ids":[101]}'
+ae-cli capability run metadata.cross_source_config.check_status --input '{"project_id":1,"ids":[101]}'
+```
+
+上传直接复用资产中心页面的同步 Excel 导入服务，并可能更新工作簿中同 route code 的已有配置，因此执行时需要 `--yes`。结果包含 `page_path`，ae-cli 会补充当前 Host 下可直接打开的 `page_url`。详见[跨源配置流程指引](skills/ae-analysis/references/cross_source_config.md)。
 
 ## Capability Gateway
 
@@ -233,8 +245,6 @@ JSON 参数通常支持内联 JSON、`@file`、文件路径或通过 `-` 从 std
 
 ```bash
 ae-cli kb +new --scope company --name engineering-handbook --description "Team docs"
-ae-cli kb +import --file ./knowledge-base.zip --name "Imported handbook"
-ae-cli kb +import-status --request-id <requestId>
 ae-cli kb +add --name engineering-handbook --scope company --files '["./docs/guide.md","https://example.com/page"]'
 ae-cli kb +list-sources --name engineering-handbook --scope company
 ae-cli kb +rm-source --name engineering-handbook --scope company --id <source-id>
@@ -249,11 +259,10 @@ ae-cli kb +ask -q "另一个问题" --no-wait
 ae-cli kb +ask-status --execution-id <id>
 ```
 
-`kb +list-sources` 返回稳定的来源 `id`。请把精确的 `id` 复制到 `kb +rm-source`，不要根据文件名或 URL 猜测。`--display-name` 仅用于无法取得 ID 时的旧版兼容。
-
+`kb +list-sources` 返回稳定的来源 `id`。请把精确的 `id` 复制到
+`kb +rm-source`，不要根据文件名或 URL 猜测。`--display-name` 仅用于
+无法取得 ID 时的旧版兼容。
 按名称管理知识库的命令都支持可选 `--scope personal|company`；省略时保留 personal 到 company 的旧查找顺序。Schema 与 Compile 优先使用 `ae-cli agent +list-models` 返回的模型记录 `id`；历史 `modelId` 和 `modelId::scope` 仍兼容，`displayName` 不是稳定引用。
-
-`kb +import` 接受最大 50 MB 的编译后 Markdown ZIP，根目录必须包含 `index.md`，页面放在 `wiki/**/*.md`。命令立即返回 `{requestId, status: "queued"}`；通过 `ae-cli kb +import-status --request-id <requestId>` 查询 `queued`、`running`、`succeeded` 或 `failed`。导入成功后可执行列表、Index/Wiki、grep/read、Ask 和删除；个人只读快照不支持来源、Schema、用量、编译、成员/设置、所有权转移和公司发布。
 
 外部 Agent 可以使用不依赖服务端 LLM 的确定性检索：
 
@@ -282,6 +291,21 @@ ae-cli agent approval-effect list --status manual_required
 ```
 
 通用审批命令使用 Agent 应用 `/agent` base path 下的版本化 CLI-token REST。提交类型专属的 snake_case payload 前，先用 `approval-type get` 获取契约。Effect 人工重试属于 `high-risk-write`，必须提供可审计理由并显式传入 `--yes`。写命令的 `--dry-run` 仅在本地预览请求，不验证服务端权限、实时状态或未来条件流转。
+
+自定义 Agent 分享与提交公司：
+
+```bash
+ae-cli agent share recipients --query Alice
+ae-cli agent bundle preview --agent-id <agent-id>
+ae-cli agent share create --agent-id <agent-id> --to-user-ids '["<user-id>"]' --client-request-id <unique-id>
+ae-cli agent share list --direction received --status pending
+ae-cli agent share accept --share-id <share-id> --expected-version <version> --client-request-id <unique-id>
+ae-cli agent approval-type get --approval-type-id agent.publish@1
+ae-cli agent approval-request submit --approval-type-id agent.publish@1 --resource-id <agent-id> --reason "Publish this Agent" --payload '{"description":"Company assistant"}' --client-request-id <unique-id>
+ae-cli agent submission preview --approval-request-id <request-id>
+```
+
+需要先部署 Agent 分发 CLI 后端接口。发送结果按接收人分别返回，批量请求成功不代表全部分享成功。Agent 及个人 Skill 使用不可变快照；提交公司复用通用审批流程。拒绝、撤回、依赖限制、分页和错误处理见 [Agent 分发流程](skills/ae-agent/references/agent-distribution.md)。
 
 `system` 域调用管理接口 `/api/admin/**` 和版本化渠道接口 `/api/cli/channel/v1/**`，要求当前用户拥有 `root` 或 `agent_admin` 角色：
 
@@ -315,22 +339,23 @@ npm 包内包含与公开仓库一致的 `skills/` 目录：
 | `ae-dataops` | 数仓、任务流、IDE、数据集成和运维 |
 | `ae-community` | 社区分析和报告 |
 | `ae-data-integration` | 本地 CSV/JSON/Excel 数据的检查、映射、转换、上传和可复用交接 |
-| `ae-kb`、`ae-kb-discovery` | 知识库生命周期、问答、确定性检索及只读知识库发现 |
+| `ae-kb`、`ae-kb-discovery` | 知识库生命周期、候选发现和检索，以及受知识库资产、口径、参数、时间和决策边界约束的业务分析 |
 | `ae-agent`、`ae-system`、`ae-team` | Agent 资源与用户记忆（含 `memory +write-context`）、系统管理和 TeamRun 工作流 |
+| `ae-current-context` | 按需读取当前 Run 绑定的页面上下文，并按 `kind` / `schemaVersion` 解释业务载荷 |
 | `ae-generate-tracking-plan`、`ae-generate-tracking-code` | 埋点方案和埋点代码生成 |
 | `ae-data-integration-helper` | SDK 和 LogBus2 集成指南 |
 
-重新安装全部公开 Skills：
+重新安装内部 Skills：
 
 ```bash
-npx -y skills add ThinkingAIAgenticEngine/ae-cli -g -y
+npx -y skills add http://10.27.249.150:8888/te-ai/te-cli.git#release/6.0 te-ai/ae-cli -g -y
 ```
 
 ## 开发
 
 ```bash
-git clone https://github.com/ThinkingAIAgenticEngine/ae-cli.git
-cd ae-cli
+git clone ssh://git@gitlab.thinkingdata.cn:2222/te-ai/te-cli.git
+cd te-cli
 npm install
 npm run build
 node dist/index.js --help
@@ -362,7 +387,6 @@ npm test
 npm run qa-changed
 npm run self-check
 npm run check:release
-npm run verify:experiment-tools
 npm run verify:readme
 npm run verify:auth-credentials
 npm run verify:update-check
@@ -377,3 +401,10 @@ npm run verify:version-sync
 ## 许可证
 
 MIT
+
+
+## Source draft replacement and restoration
+
+Use `kb source replace` / `kb source restore` for file and ZIP drafts; ZIP candidates require
+`kb source preview` followed by `kb source commit` or `kb source cancel`. These commands do not publish
+and are separate from whole-KB `+rollback`. See [the workflow](skills/ae-kb/references/source-mutations.md).
