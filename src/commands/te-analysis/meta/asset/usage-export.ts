@@ -8,7 +8,10 @@ import {
 } from '../../capability-shared.js';
 import {
   assetGovernanceInput,
+  governanceExportFlags,
+  governanceExportFields,
   operationTypeFlag,
+  nodeIdFlag,
   ruleFlag,
   searchsFlag,
 } from './shared.js';
@@ -17,8 +20,9 @@ export const analysisMetaAssetUsageExport = createAnalysisGovernanceCapabilityCo
   resource: 'asset',
   command: 'export',
   capabilityId: 'governance.asset.export',
-  description: 'Export asset usage governance rows as an inline gateway result.',
-  flags: [projectIdFlag, queryFlag, searchsFlag, ruleFlag, operationTypeFlag, limitFlag, offsetFlag, payloadFlag],
+  description: 'Export asset usage governance rows as an asynchronous artifact; optionally wait and download.',
+  flags: [projectIdFlag, nodeIdFlag, queryFlag, searchsFlag, ruleFlag, operationTypeFlag, limitFlag, offsetFlag, payloadFlag, ...governanceExportFlags('jsonl')],
   risk: 'read',
-  buildInput: (ctx) => assetGovernanceInput(ctx, ["query","searchs","rule","operation_type","limit","offset"]),
+  asyncArtifact: true,
+  buildInput: (ctx) => assetGovernanceInput(ctx, [...governanceExportFields, "node_id","query","searchs","rule","operation_type","limit","offset"]),
 });

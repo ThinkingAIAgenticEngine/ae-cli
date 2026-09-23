@@ -8,6 +8,8 @@ Use `run` for bounded results. For full, unknown-size, over-limit, long-running 
 
 Normally pass `--preview-rows 100`; omit it to use the model's configured synchronous limit. An explicit value must fit that runtime limit. Member list commands are the exception: omission returns at most 1000 rows. Summary rows do not consume business-row slots. Detail, drilldown and member previews have no row pagination; `has_more=true` requires export when complete data is needed. Use returned `has_more`, not the number of rows alone, to decide completeness.
 
+Saved history-tag reports allow at most 1000 tag-value groups per preview. Their native result keeps `x`, `y`, and `union_groups`; `returned_rows` counts the returned tag-value groups, excluding the total-user record, and `has_more` compares that count with the exact total `group_num`.
+
 ## Preserve and interpret results
 
 Use the tool response directly for bounded query data and small metadata search results. Save original JSON only when the user requests a file or necessary local processing requires one.
@@ -46,6 +48,8 @@ value = Decimal(str(data["rows"][row_index][column_index]))
 Convert selected cells before summing or dividing; handle missing values and a zero denominator. The reader displays decimal numbers as strings; calculate from the original JSON. Print Decimal output with `json.dumps(..., default=str)`. Correct a local calculation using the same data and reuse completed values.
 
 ## Cache policy for report and ad-hoc data
+
+Apply this policy only to commands that expose `--use-cache`. `dashboard-report-data export` uses native full download and has no cache-selection flag.
 
 For an ordinary query, omit `--use-cache`; the default permits cache reads but does not prove a cache hit. Use `--use-cache false` for an explicit request for fresh data, refresh or recomputation, bypass/disable cache, newly updated data, or comparison with a freshly refreshed analysis UI. “Latest” or “current” only implies this when it means data freshness, not a time window.
 

@@ -253,6 +253,24 @@ await test('analysis-meta event list normalizes backend events to the directory 
   assert.equal('events' in result, false);
 });
 
+for (const [resource, exportName] of [
+  ['event', 'metadataEventExport'], ['property', 'metadataPropertyExport'], ['metric', 'metadataMetricExport'],
+]) {
+  await test(`analysis-meta ${resource} export preserves certification scope like list`, async () => {
+    const cmd = await importCmd(`src/commands/te-analysis/meta/${resource}/export.ts`, exportName);
+    assert.equal(cmd.flags.find((flag) => flag.name === 'certification-scope')?.default, 'project');
+    for (const certificationScope of ['project', 'certified', 'all']) {
+      const { body } = await captureCapabilityDryRun(cmd, {
+        projectId: 1, output: '/tmp/export.json', certificationScope,
+      });
+      assert.equal(body.input.certification_scope, certificationScope);
+    }
+    assert.throws(() => cmd.preflight(makeCtx({
+      projectId: 1, output: '/tmp/export.json', certificationScope: 'invalid',
+    })), /--certification-scope must be project, certified, or all/);
+  });
+}
+
 await test('analysis-meta event export writes one complete private JSON file without leaking output path', async () => {
   const cmd = await importCmd('src/commands/te-analysis/meta/event/export.ts', 'metadataEventExport');
   assert.equal(cmd.flags.find((flag) => flag.name === 'output')?.required, true);
@@ -1465,6 +1483,7 @@ await test('analysis asset search sends typed saved-asset discovery filters', as
   );
   assert.equal(cmd.service, 'analysis');
   assert.equal(cmd.capabilityId, 'analysis.asset.search');
+  assert.match(cmd.description, /shared read-only and editable/);
   assert.equal(cmd.flags.some((flag) => flag.name === 'payload'), false);
   assert.equal(cmd.flags.some((flag) => flag.name === 'queries'), true);
   const { url, body } = await captureCapabilityDryRun(cmd, {

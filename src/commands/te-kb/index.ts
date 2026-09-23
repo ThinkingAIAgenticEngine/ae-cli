@@ -1,3 +1,5 @@
+import { schemaImportCommands } from "./schema-import.js";
+export * from "./schema-import.js";
 import { sourceCheckUpdates } from './source-check-updates.js';
 import { sourceReplace, sourceRestore, sourcePreview, sourceCommit, sourceCancel } from './source-mutation.js';
 import type { Command } from '../../framework/types.js';
@@ -23,6 +25,7 @@ import { sourceLs, sourceRead, sourcePut, sourceRm } from './source-directory.js
 import { versions, versionShow, versionSources, versionDiff, versionTree, versionRead, versionDownload, rollback, rollbackStatus } from './version-management.js';
 
 const commands: Command[] = [
+  ...schemaImportCommands,
   sourceCheckUpdates,
   sourceReplace, sourceRestore, sourcePreview, sourceCommit, sourceCancel,
   versions, versionShow, versionSources, versionDiff, versionTree, versionRead, versionDownload, rollback, rollbackStatus,

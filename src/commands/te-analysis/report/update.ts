@@ -12,6 +12,7 @@ import {
   optionalJson,
   optionalNumber,
   optionalString,
+  optionalStringPreserveEmpty,
   projectIdFlag,
   projectInput,
 } from '../capability-shared.js';
@@ -19,7 +20,7 @@ import {
 function validateReportUpdate(ctx: RuntimeContext): void {
   const hasDefinition = ctx.str('definition') !== '';
   const hasResolutions = ctx.json('resolutions') !== undefined;
-  const hasMetadataUpdate = ctx.str('report-name') !== '' || ctx.str('report-desc') !== '';
+  const hasMetadataUpdate = ctx.str('report-name') !== '' || optionalStringPreserveEmpty(ctx, 'report-desc') !== undefined;
   if (!hasDefinition && !hasMetadataUpdate) {
     throw new Error('At least one of --report-name, --report-desc, or --definition is required.');
   }
@@ -42,7 +43,7 @@ export const reportUpdate = createAnalysisCapabilityCommand({
     { name: 'report-id', type: 'number', required: true, desc: 'Report ID to update.' },
     { name: 'report-version', type: 'number', required: true, desc: 'Current report version from report get.' },
     { name: 'report-name', type: 'string', required: false, desc: 'New report display name.' },
-    { name: 'report-desc', type: 'string', required: false, desc: 'New report description.' },
+    { name: 'report-desc', type: 'string', required: false, desc: 'New report description. Pass an empty string to clear it; omit to preserve it.' },
     reportWriteModelTypeFlag(false),
     reportWriteDefinitionFlag(false),
     modelDefinitionIntentSnapshotFlag,
@@ -58,7 +59,7 @@ export const reportUpdate = createAnalysisCapabilityCommand({
     report_id: ctx.num('report-id'),
     version: ctx.num('report-version'),
     report_name: optionalString(ctx, 'report-name'),
-    report_desc: optionalString(ctx, 'report-desc'),
+    report_desc: optionalStringPreserveEmpty(ctx, 'report-desc'),
     model_type: optionalString(ctx, 'model-type'),
     definition: optionalJson(ctx, 'definition'),
     resolutions: optionalJson(ctx, 'resolutions'),

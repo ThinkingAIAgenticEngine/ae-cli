@@ -22,7 +22,7 @@ function buildArgs(ctx: RuntimeContext): Record<string, unknown> {
 export const getTaskInstanceDetail: Command = {
   service: 'dataops_operations',
   command: '+get_task_instance_detail',
-  description: 'Get one task instance detail. Requires spaceCode, flowCode, flowInstanceId, and one selector: taskInstanceId, taskCode, or exact taskName. taskInstanceId is the precise selector for retried tasks and wins when passed. includeLog defaults to false.',
+  description: 'Get one task instance detail. Requires spaceCode, flowCode, flowInstanceId, and one selector: taskInstanceId, taskCode, or exact taskName. taskInstanceId is the precise selector for retried tasks and wins when passed. Requires dwOMInstanceView. includeLog defaults to false; use true to include historical execution values in log.params, independently of current definitions.',
   flags: [
     { name: 'spaceCode', type: 'string', required: true, desc: 'Space code' },
     { name: 'flowCode', type: 'number', required: true, desc: 'Task flow code from +search_flow_instances' },

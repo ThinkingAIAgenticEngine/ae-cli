@@ -27,14 +27,14 @@ const ownTypesFlag = {
 const requiredQueriesFlag = {
   ...queriesFlag,
   required: true,
-  desc: 'Required JSON array of 1 to 20 keyword filters. For first-pass asset discovery, use one broad search without --asset-types so results can include both dashboards and reports.',
+  desc: 'Required JSON array of 1 to 20 keyword filters. For first-pass asset discovery, use one broad search without --asset-types and request a large page; when has_more is true and no strong candidate is present, continue with next_offset before narrowing or rewriting keywords.',
 };
 
 export const analysisAssetSearch = createAnalysisCapabilityCommand({
   resource: 'asset',
   command: 'search',
   capabilityId: 'analysis.asset.search',
-  description: 'Search visible saved analysis assets by keyword. Default first-pass search should omit --asset-types to cover both dashboards and reports.',
+  description: 'Search readable saved analysis assets by keyword, including shared read-only and editable dashboards and reports. Results are ranked before pagination by match quality, certification, recent heat/users, and governance impact. Omit --asset-types for first-pass discovery.',
   flags: [
     projectIdFlag,
     requiredQueriesFlag,

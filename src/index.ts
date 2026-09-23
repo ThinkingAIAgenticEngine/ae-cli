@@ -1,8 +1,9 @@
-import { Command as CommanderCommand } from 'commander';
+import { Command as CommanderCommand, Option } from 'commander';
 import { createRequire } from 'module';
 import { registerCommands } from './framework/register.js';
 import type { Command } from './framework/types.js';
 import { runHostCompatCheck } from './core/compat-check.js';
+import { runFeatureConfigCheck } from './core/feature-config-check.js';
 import { getLocalCliPackageInfo } from './core/package-info.js';
 import { registerTracking } from './commands/tracking/index.js';
 import { parseProgram } from './framework/program-lifecycle.js';
@@ -35,6 +36,11 @@ program
   .option('--yes', 'Skip confirmation for high-risk write operations', false)
   .option('--no-update-check', 'Skip host compatibility checks', false);
 
+program.addOption(
+  new Option('--agent-context <base64url-json>', 'Internal agent context payload for gateway telemetry')
+    .hideHelp(),
+);
+
 // Import domain commands
 
 /**
@@ -60,6 +66,12 @@ async function loadCommands(): Promise<Command[]> {
     commands.push(...engage.default);
   } catch (err) {
     warnLoadFailure('domain te-engage', err);
+  }
+  try {
+    const experiment = await import('./commands/te-experiment/index.js');
+    commands.push(...experiment.default);
+  } catch (err) {
+    warnLoadFailure('domain te-experiment', err);
   }
   try {
     const community = await import('./commands/te-community/index.js');
@@ -224,6 +236,7 @@ async function main() {
       return;
     }
   }
+  await runFeatureConfigCheck(globalOptionValue(process.argv.slice(2), '--host'));
 
   const commands = await loadCommands();
   registerCommands(program, commands);
@@ -278,7 +291,8 @@ function optionConsumesValue(token: string): boolean {
   return token === '--host'
     || token === '--mcp-url'
     || token === '--format'
-    || token === '--jq';
+    || token === '--jq'
+    || token === '--agent-context';
 }
 
 function globalOptionValue(args: string[], option: string): string | undefined {

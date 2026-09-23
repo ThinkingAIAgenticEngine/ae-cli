@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { sqlTableList } from '../src/commands/te-analysis/sql-table/list.ts';
 import { sqlTableColumns } from '../src/commands/te-analysis/sql-table/columns.ts';
 import { registerCapabilityGatewayRoute } from '../src/core/capability-routing.ts';
 import { clearCliToken, setCliTokenManual } from '../src/core/cli-token.ts';
@@ -39,6 +40,18 @@ try {
     project_id: 1,
     table_ref: 'hive.ta.v_event_1',
   });
+  for (const usage of ['analysis', 'tag_cluster', 'sql_datatable']) {
+    const tableRef = '"iceberg"."space.name"."order"" details"';
+    const scoped = {
+      ...ctx,
+      str: (name) => name === 'table-ref' ? tableRef : name === 'usage' ? usage : '',
+    };
+    await sqlTableColumns.dryRun(scoped);
+    assert.deepEqual(body.input, { project_id: 1, table_ref: tableRef, usage });
+    await sqlTableList.dryRun(scoped);
+    assert.equal(url, `${host}/api/cli/analysis/v1/capabilities/analysis.sql_table.list/dry-run`);
+    assert.deepEqual(body.input, { project_id: 1, usage });
+  }
 } finally {
   globalThis.fetch = previousFetch;
   clearCliToken(host);

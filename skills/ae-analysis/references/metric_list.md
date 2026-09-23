@@ -31,7 +31,7 @@ Output always uses the directory envelope: `data.metrics[]`, `total`, `limit`, `
 | `--authenticated-only` | No | When true, return only authenticated metrics. |
 
 ## Decision Rules
-- For an unknown business measure, use this with relevant `report list` search as the saved-definition discovery path in [`metadata_resolution.md`](metadata_resolution.md). Reuse a verified saved metric name directly.
+- For an unknown business measure, use this with `analysis asset search` as the saved-definition discovery path in [`metadata_resolution.md`](metadata_resolution.md). Reuse a verified saved metric name directly.
 - Use `--fields` when its projected fields are sufficient. When searching with `--queries`, omit `--fields` to keep `metric_events` and `metric_params` as JSON strings. Read their content in this response; these two fields are not in the projection whitelist.
 - Use `analysis-meta metric get` only when a required definition detail is absent from the returned row.
 - For a complete result, use `analysis-meta metric export`; do not page repeatedly to synthesize an export.

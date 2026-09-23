@@ -11,6 +11,16 @@ Do not load project semantics, project KB, or personal semantic preferences befo
 
 Hard output gate: a final answer is invalid if it is grouped by asset type, backend array order, raw `work_units`, source dashboard, source report, or separate top-level asset and metric sections. The final answer must follow the fixed business-domain review display below.
 
+## Intent Routing
+
+There are three separate user intents. Do not merge them.
+
+- Recommendation only: call `analysis-meta governance-recommendation export`, present the evidence-backed recommendations, and stop. Do not check the automatic certification project config, do not submit to the review page, and do not certify assets.
+- Recommendation plus page submission: call `analysis-meta governance-recommendation export`, build the review material, then call `analysis-meta agent-review submit-to-page` only after that submission intent is explicit. Do not check the automatic certification project config and do not certify assets.
+- Automatic review or automatic certification: call `analysis-meta governance-recommendation auto-review`. This command validates both `agent_auto_asset_certification_enabled` and `project_semantic_enable` before collecting recommendations. If it returns `PROJECT_AUTO_CERTIFICATION_DISABLED` or `PROJECT_SEMANTIC_DISABLED`, tell the user which project config is disabled and stop. Do not fall back to page submission or ordinary approval commands.
+
+`analysis-meta governance-recommendation auto-review` only certifies eligible asset candidates from its current recommendation batch. When `--limit` is omitted, the CLI mirrors the recurring page-review bounded expansion flow by read-only probing top-20/top-50/top-100 pending material, then the CLI Agent builds one automatic decision set from the final selected material and submits it for execution/audit. It does not create recommended metrics. Assets that return `decision:"SKIP"` remain for manual review and must not be described as certified. Automatic decision rows must provide reviewer-readable reasons; semantic-duplicate skips must name concrete conflicting asset targets. Keep raw source/rule traces only in debug output, and preserve the returned `auto_review_expansion` when reporting or auditing the result. If the user later asks to submit the remaining uncertified assets to the page, use `manual_review_handoff` from the auto-review result rather than drafting a fresh all-candidate page batch.
+
 Command:
 
 ```bash
@@ -103,6 +113,7 @@ Use this fixed review skeleton:
 ## Related Commands
 
 - `analysis-meta agent-review submit-to-page` submits existing-asset proposals for review after user choice or preauthorized submission-only task intent; it does not approve or certify. Read `agent_review_submit_to_page.md` for deduplication and unattended-task rules.
+- `analysis-meta governance-recommendation auto-review` automatically certifies only eligible recommended asset candidates when the user explicitly asks for automatic review/certification and the project switches are enabled. Without an explicit `--limit`, it performs CLI-side bounded expansion and writes only once. Read `governance_recommendation_auto_review.md`.
 - `analysis-meta governance-recommendation submit`
 - `analysis-meta governance-recommendation decisions`
 - `analysis-meta asset-authentication list` only inspects certification state and is not the recommendation workflow.

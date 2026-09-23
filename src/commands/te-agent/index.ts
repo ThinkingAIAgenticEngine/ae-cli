@@ -1,11 +1,13 @@
 /**
  * ae-cli agent command domain
  *
- * Unified export of 89 commands across Agent CRUD and distribution, conversations, automations, models,
+ * Unified export of 95 commands across Agent CRUD and distribution, conversations, automations, models,
  * MCP CRUD + market + OAuth + credentials, Skills CRUD + market + copy +
  * content + assets + approval + share, generic approvals, attachments, sandbox tools.
  */
 
+import { notificationCommands } from './notifications.js';
+export { notificationRecipients, notificationSend, notificationList, notificationGet, notificationUnreadCount, notificationMarkRead } from './notifications.js';
 import type { Command } from '../../framework/types.js';
 import { listAgents, createAgent, updateAgent, delAgent, getAgent } from './agents.js';
 import { getAgentContext } from './agent-context.js';
@@ -96,6 +98,7 @@ import {
 } from './approval-commands.js';
 
 const commands: Command[] = [
+  ...notificationCommands,
   // Agent CRUD
   listAgents, createAgent, updateAgent, delAgent, getAgent, getAgentContext,
   // Immutable Agent distribution and approval snapshot preview

@@ -16,6 +16,8 @@ This command reads saved definition metadata and deliberately has no `--use-cach
 
 Output is the gateway envelope. `data` contains `version`, `model_type`, `definition`, report metadata, and dashboard membership in snake_case. Use `data.version` as `--report-version` when updating the same report. Raw frontend `events`, `event_view`, `visual_view`, and raw QP are not returned.
 
+Reads preserve historical filter trees without flattening, including definitions deeper than the current analysis page can author. Follow the read/write boundary in [`ai_models.md`](ai_models.md): omit `definition` for metadata-only changes, and never feed an unsupported historical tree back as a definition update.
+
 For saved tag/cluster filters, `data.definition` preserves `field.type` and the persisted `cluster_date_policy`: `AUTO` means dynamic matching by analysis date, `LATEST` means the latest computed result, and `SPECIFIED` requires `specified_cluster_date`. Do not infer dynamic matching from the tag name or `field.type` alone; if a legacy report has no readable policy, state that the saved date semantics are unknown rather than claiming `AUTO`.
 
 For a saved non-SQL report with a time granularity, `data.definition` returns the agent-facing `time_particle_size` spelling, such as `day`, `hour`, or `total`; internal `T0` through `T9` codes must never leak. If `time_particle_size` is absent, the saved definition has no readable granularity. Do not infer a granularity from the number of result rows; execute the saved report as-is or use an explicit ad-hoc definition when the user requires a specific granularity.

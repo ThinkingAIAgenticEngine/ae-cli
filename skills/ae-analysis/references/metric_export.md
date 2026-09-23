@@ -13,7 +13,9 @@ ae-cli analysis-meta metric export --project-id <project_id> --queries '["pay","
 
 Capability id: `metadata.metric.export`.
 
-Input: the gateway receives `project_id` plus optional `ignore_authentication`, `queries`, `fields`, and `authenticated_only`; `output` is local-only.
+Input: the gateway receives `project_id` plus optional `ignore_authentication`, `queries`, `fields`, `authenticated_only`, and `certification_scope`; `output` is local-only.
+
+Use `--certification-scope project|certified|all` consistently with the corresponding list command. The default `project` follows the project switch; `certified` exports only certified assets; `all` exports every accessible asset. This scope never bypasses access permissions.
 
 Output: a successful response must prove `complete=true` and `total` equal to the row count before the CLI atomically publishes a private-mode `.json` array.
 

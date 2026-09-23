@@ -63,6 +63,27 @@ export class CliValidationError extends Error {
   }
 }
 
+export interface CliApiErrorOptions {
+  code?: string | number;
+  hint?: string;
+  meta?: Record<string, unknown>;
+}
+
+/** A structured business failure returned by a non-capability CLI API. */
+export class CliApiError extends Error {
+  readonly code?: string | number;
+  readonly hint?: string;
+  readonly meta?: Record<string, unknown>;
+
+  constructor(message: string, options: CliApiErrorOptions = {}) {
+    super(message);
+    this.name = 'CliApiError';
+    this.code = options.code;
+    this.hint = options.hint;
+    this.meta = options.meta;
+  }
+}
+
 export interface CommunityReportErrorOptions {
   code?: string | number;
   httpStatus?: number;

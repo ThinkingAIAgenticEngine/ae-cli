@@ -36,6 +36,7 @@ import { drilldownEntitiesRun } from '../src/commands/te-analysis/drilldown-enti
 import { drilldownEntitiesExport } from '../src/commands/te-analysis/drilldown-entities/export.ts';
 import { drilldownUserEventsRun } from '../src/commands/te-analysis/drilldown-user-events/run.ts';
 import { drilldownUserEventsExport } from '../src/commands/te-analysis/drilldown-user-events/export.ts';
+import { drilldownSessionDetailsRun } from '../src/commands/te-analysis/drilldown-session-details/run.ts';
 import { queryCreateResultCluster } from '../src/commands/te-analysis/query/create-result-cluster.ts';
 import { queryContextGet } from '../src/commands/te-analysis/query-context/get.ts';
 import { filterValueList } from '../src/commands/te-analysis/filter-value/list.ts';
@@ -64,6 +65,7 @@ async function test(name: string, fn: () => void | Promise<void>) {
 
 function ctx(values: Record<string, unknown>): RuntimeContext {
   return {
+    has: (name: string) => Object.hasOwn(values, name),
     str(name: string): string {
       const value = values[name];
       return value === undefined || value === null ? '' : String(value);
@@ -122,6 +124,12 @@ async function dryBody(
 }
 
 process.stdout.write('\nanalysis report capability command tests\n');
+
+await test('report list is documented as a manageable-asset directory', () => {
+  assert.match(reportList.description, /edit or manage/);
+  assert.match(reportList.description, /Read-only reports are excluded/);
+  assert.match(reportList.description, /analysis asset search/);
+});
 
 await test('BI panel v1 create and update expose only the supported shell contract', async () => {
   assert.equal(biPanelCreate.description, 'Create an empty BI dashboard shell without draft or release content.');
@@ -388,6 +396,15 @@ await test('report update rejects metadata resolutions for tag reports before di
     })),
     /--resolutions is not supported with --model-type tag/,
   );
+});
+
+await test('report update distinguishes clearing a description from leaving it unchanged', async () => {
+  const base = { 'project-id': 1, 'report-id': 1001, 'report-version': 2 };
+  const cleared = await dryBody(reportUpdate, { ...base, 'report-desc': '' });
+  assert.equal(cleared.body.input.report_desc, '');
+  assert.equal('definition' in cleared.body.input, false);
+  const renamed = await dryBody(reportUpdate, { ...base, 'report-name': 'Renamed' });
+  assert.equal('report_desc' in renamed.body.input, false);
 });
 
 await test('report update rejects empty update payload', () => {
@@ -724,6 +741,25 @@ await test('adhoc forwards corrected ordered funnel filters unchanged and keeps 
   assert.equal(JSON.stringify(definition), original);
 });
 
+await test('funnel compound filters preserve nested event-only leaves in run and export', async () => {
+  const leaf = { event_property_name: 'channel', operator: 'eq', values: ['app'] };
+  const definition = {
+    time_range: { mode: 'previous', unit: 'day', value: 7 },
+    funnel: { steps: [{ event: 'login' }, { event: 'pay', filters: [{ relation: 'or', items: [leaf, { relation: 'and', items: [leaf] }] }] }] },
+  };
+  for (const command of [adhocRun, adhocExport]) {
+    command.preflight!(ctx({ 'project-id': 1, 'model-type': 'funnel', definition }));
+    assert.deepEqual((await dryBody(command, { 'project-id': 1, 'model-type': 'funnel', definition })).body.input.definition, definition);
+    const invalid = { funnel: { steps: [{ event: 'pay', filters: [{ items: [{ items: [leaf], values: ['private-value'] }, { items: [] }] }] }] } };
+    assert.throws(() => command.preflight!(ctx({ 'project-id': 1, 'model-type': 'funnel', definition: invalid })), (error: any) => {
+      assert.match(error.message, /filters\[0\]\.items\[0\].*compound/);
+      assert.match(error.message, /filters\[0\]\.items\[1\]\.items.*non-empty/);
+      assert.doesNotMatch(error.message, /private-value/);
+      return true;
+    });
+  }
+});
+
 await test('adhoc preserves event display_name for hosts that support it instead of silently stripping fields', async () => {
   const definition = { metrics: [{ event: 'payment', aggregation: 'sum', property: 'pay_amount', display_name: 'Revenue' }] };
   const dryRun = await dryBody(adhocRun, { 'project-id': 1, 'model-type': 'event', definition });
@@ -921,14 +957,14 @@ await test('run inspect and artifact download use the configured analysis gatewa
   );
 });
 
-await test('adhoc exposes 12 AI models and report write exposes 12 plus tag', () => {
+await test('adhoc exposes 13 AI models and report write exposes 13 plus tag', () => {
   const modelTypeDesc = adhocRun.flags.find((flag) => flag.name === 'model-type')?.desc ?? '';
   const definitionDesc = adhocRun.flags.find((flag) => flag.name === 'definition')?.desc ?? '';
   const reportCreateModelTypeDesc = reportCreate.flags.find((flag) => flag.name === 'model-type')?.desc ?? '';
   const reportUpdateDefinitionDesc = reportUpdate.flags.find((flag) => flag.name === 'definition')?.desc ?? '';
 
-  assert.equal(AI_MODEL_TYPE_VALUES.length, 12);
-  assert.equal(new Set(AI_MODEL_TYPE_VALUES).size, 12);
+  assert.equal(AI_MODEL_TYPE_VALUES.length, 13);
+  assert.equal(new Set(AI_MODEL_TYPE_VALUES).size, 13);
   assert.deepEqual([...AI_MODEL_TYPE_VALUES], [
     'event',
     'retention',
@@ -939,14 +975,16 @@ await test('adhoc exposes 12 AI models and report write exposes 12 plus tag', ()
     'path',
     'prop_analysis',
     'sql',
+    'session',
     'heat_map',
     'rank_list',
     'revenue',
   ]);
   assert.match(modelTypeDesc, /event/);
   assert.match(modelTypeDesc, /revenue/);
-  assert.match(modelTypeDesc, /12 total/);
-  assert.match(modelTypeDesc, /9 common/);
+  assert.match(modelTypeDesc, /13 total/);
+  assert.match(modelTypeDesc, /10 common/);
+  assert.match(modelTypeDesc, /session \(session analysis\)/);
   assert.match(modelTypeDesc, /3 scenario models/);
   assert.match(modelTypeDesc, /not ad-hoc model_type values/);
   assert.doesNotMatch(modelTypeDesc, /generic schema-defined scenario/);
@@ -960,16 +998,18 @@ await test('adhoc exposes 12 AI models and report write exposes 12 plus tag', ()
   assert.match(definitionDesc, /event_property is not supported/);
   assert.match(definitionDesc, /session_unit accepts second \(1\.\.999\), minute \(1\.\.999\), or hour \(1\.\.24\)/);
   assert.match(definitionDesc, /express one day as session_interval=24 and session_unit=hour/);
-  assert.equal(REPORT_WRITE_MODEL_TYPE_VALUES.length, 13);
+  assert.equal(REPORT_WRITE_MODEL_TYPE_VALUES.length, 14);
   assert.deepEqual([...REPORT_WRITE_MODEL_TYPE_VALUES], [
     ...AI_MODEL_TYPE_VALUES,
     'tag',
   ]);
-  assert.match(reportCreateModelTypeDesc, /12 total/);
+  assert.match(reportCreateModelTypeDesc, /13 total/);
   assert.match(reportCreateModelTypeDesc, /tag for saved tag report data/);
   assert.doesNotMatch(reportCreateModelTypeDesc, /history_tag/);
   assert.doesNotMatch(reportCreateModelTypeDesc, /generic schema-defined scenario/);
   assert.match(reportUpdateDefinitionDesc, /Text:name/);
+  assert.match(reportUpdateDefinitionDesc, /one compound group level only/);
+  assert.match(reportUpdateDefinitionDesc, /Historical deeper trees remain readable/);
   assert.match(reportUpdateDefinitionDesc, /model_type=tag/);
   assert.match(reportUpdateDefinitionDesc, /tag_name/);
 });
@@ -1027,6 +1067,20 @@ await test('query follow-up commands use context ids instead of raw QP', async (
       project_id: 1,
       query_context_id: 'ctx_0123456789abcdef0123456789abcdef',
       coordinate: { cohort_date: '2026-07-01', group_values: [], period_index: 1, population: 'retained' },
+    },
+  );
+  assert.deepEqual(
+    (await dryBody(drilldownSessionDetailsRun, {
+      'project-id': 1,
+      'query-context-id': 'ctx_0123456789abcdef0123456789abcdef',
+      coordinate: '{"date":"2026-08-30","group_values":["add_to_cart"]}',
+      'preview-rows': 100,
+    })).body.input,
+    {
+      project_id: 1,
+      query_context_id: 'ctx_0123456789abcdef0123456789abcdef',
+      coordinate: { date: '2026-08-30', group_values: ['add_to_cart'] },
+      preview_rows: 100,
     },
   );
   assert.deepEqual(

@@ -28,7 +28,7 @@ const assetPackageExportCommand: Command = {
   resource: 'asset-package',
   command: 'export',
   description: 'Export and materialize a knowledge-ready project asset package for CLI Agent consumption.',
-  helpText: 'Requires project_semantic_enable=on. A disabled project returns PROJECT_SEMANTIC_DISABLED before creating an export package.',
+  helpText: 'Requires access to the target project. Explicit asset-package export is independent of automatic knowledge-base discovery.',
   flags: [
     { name: 'project-id', type: 'number', required: true, desc: 'Numeric project ID.', alias: 'p', min: 1 },
     {

@@ -13,7 +13,7 @@ Use for AE Engage **config center channel management**: Webhook (`channel_type=0
 5. Writes require explicit user intent; `delete` is high-risk — confirm, then `--yes`.
 6. Before changing Webhook URL, auth, or parameter definitions on an enabled channel, disable it first.
 7. In `config.customsParamList` (**user params**), every `columnName` must be prefixed with `user:` and point to a real user property, e.g. `user:#account_id`. `envParamList` entries do not use this prefix.
-8. Before create/update, use the **ae-analysis** skill to verify each intended user property exists (`analysis-meta property list --scope user`, then `property get` for exact match). Never invent `columnName` values.
+8. Before create/update, verify that each intended user property exists in the same project. Reuse sufficiently fresh, verified metadata; otherwise follow the [collaboration protocol](collaboration.md) to discover a property lookup capability. Never invent `columnName` values.
 
 ## Permissions
 
@@ -46,7 +46,7 @@ Parse `data.channel.config` for URL, auth, user params, and env params.
 
 Webhook requires `channel_name` and `config.url`. Optional: `testUrl`, auth, user params, env params.
 
-**Preflight (user params):** for each intended `customsParamList[].columnName`, discover and verify the user property via ae-analysis first:
+**Preflight (user params):** for each intended `customsParamList[].columnName`, reuse verified metadata or obtain the missing property evidence through a discovered capability. The CLI property lookup commands are:
 
 ```bash
 ae-cli analysis-meta property list --project-id <pid> --scope user --query <keyword> \
@@ -69,7 +69,7 @@ Returns `data.channel_id`. Created channels start **enabled**.
 
 ### 4. Update
 
-Re-verify any new or changed `customsParamList[].columnName` with `analysis-meta property list/get` (ae-analysis skill) before building `--config`.
+Verify any new or changed `customsParamList[].columnName` before building `--config`; reuse valid property evidence or discover the missing lookup capability.
 
 ```bash
 ae-cli engage-scene config-channel get --project-id <pid> --channel-id <id>

@@ -5,6 +5,7 @@ const {
   validateCliTokenOnServer,
 } = await import('../src/core/cli-token.ts');
 const { SecureStoreAuthError } = await import('../src/core/secure-store.ts');
+const { PermissionError } = await import('../src/core/errors.ts');
 const { fetchCliConfig } = await import('../src/core/compat-check.ts');
 
 let passed = 0;
@@ -117,10 +118,30 @@ await test('rejects an invalid or expired CLI token', async () => {
       () => validateCliTokenOnServer(host, 'cli_expired_token'),
       (error: unknown) => error instanceof SecureStoreAuthError
         && error.message.includes('invalid or expired')
-        && error.message.includes('auth logout')
-        && error.message.includes('auth login'),
+        && !error.message.includes('auth login'),
     );
     assert.equal(calls, 1, 'validation failure must not trigger an automatic mint');
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+await test('reports disabled CLI access as a permission error', async () => {
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = (async () => new Response(JSON.stringify({
+    return_code: -2005,
+    code: 'CLI_ACCESS_DISABLED',
+    return_message: 'CLI_ACCESS_DISABLED: CLI access is disabled for your account.',
+    hint: 'Ask an administrator to enable CLI access.',
+  }), { status: 403 })) as typeof fetch;
+
+  try {
+    await assert.rejects(
+      () => validateCliTokenOnServer('https://disabled.internal', 'cli_disabled'),
+      (error: unknown) => error instanceof PermissionError
+        && error.code === 'CLI_ACCESS_DISABLED'
+        && error.hint === 'Ask an administrator to enable CLI access.',
+    );
   } finally {
     globalThis.fetch = originalFetch;
   }
@@ -196,13 +217,17 @@ await test('compat-check authenticates with cli-token only and never sends Autho
     assert.equal((init?.headers as Record<string, string>).Authorization, undefined);
     return new Response(JSON.stringify({
       return_code: 0,
-      data: { versions: { clusterVersion: '6.0.0', aeCliVersion: '6.0.47' } },
+      data: {
+        versions: { clusterVersion: '6.0.0', aeCliVersion: '6.0.47' },
+        features: { projectSemanticKbAutoDiscovery: true },
+      },
     }), { status: 200 });
   }) as typeof fetch;
   try {
     assert.deepEqual(await fetchCliConfig('https://compat.internal', 'cli_compat'), {
       clusterVersion: '6.0.0',
       aeCliVersion: '6.0.47',
+      projectSemanticKbAutoDiscovery: true,
     });
   } finally {
     globalThis.fetch = originalFetch;

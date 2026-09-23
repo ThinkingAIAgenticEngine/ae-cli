@@ -5,6 +5,10 @@ description: "Interactive generation of an AE tracking plan and upload. Trigger 
 
 # ae-generate-tracking-plan
 
+## Cross-skill collaboration
+
+When remaining work is outside this skill's scope, or a necessary prerequisite needs another capability, follow [the collaboration protocol](references/collaboration.md). Choose from the skills available in this run by capability, preserve verified context, and continue the remaining task. Reuse this protocol if already loaded.
+
 > **Conversation language**: This skill document is in English, but **all output to the user MUST be in the user's input language**.
 > English input → English reply; Chinese input → Chinese reply; Japanese input → Japanese reply.
 > If uncertain, default to English.

@@ -4,14 +4,14 @@ Reuse verified assets, canonical names and business meanings in the current proj
 
 ## Find a reusable definition
 
-For an unknown business measure, search relevant saved metrics and reports. A named asset needs only its own family; already known definitions go directly to execution. Read the selected [metric](metric_list.md) and [report](report_list.md) command references together, then issue independent searches in the same model turn:
+For an unknown business measure, search relevant saved metrics and readable analysis assets. A named asset needs only its own family; already known definitions go directly to execution. Read the selected [metric](metric_list.md) and [asset search](asset_search.md) command references together, then issue independent searches in the same model turn:
 
 ```bash
 ae-cli analysis-meta metric list \
   --project-id <project_id> \
   --queries '["<user phrase>","<related English term>"]'
 
-ae-cli analysis report list \
+ae-cli analysis asset search \
   --project-id <project_id> \
   --queries '["<user phrase>","<related English term>"]'
 ```
@@ -20,7 +20,7 @@ Use the user's business terms and a few relevant English terms in the same `--qu
 
 Read metrics from `data.metrics`. With `--queries` and no `--fields`, the response includes `metric_events` and `metric_params` as JSON strings. Inspect those returned definitions directly; use `metric get` only for missing details. Field projection cannot select these two definition fields. A verified saved metric is referenced by `metric_name` in `metrics[].event` and supplies its own aggregation and property.
 
-Read report summaries from `data.items`. Report search matches names and descriptions. For a suitable candidate, use `analysis report get --project-id <project_id> --report-id <report_id>` to read `data.model_type` and `data.definition`; reuse a definition already read.
+Read saved-asset summaries from `data.items`; report and dashboard search matches names and descriptions. For a suitable report candidate, pass its `asset_numeric_id` to `analysis report get --project-id <project_id> --report-id <report_id>` to read `data.model_type` and `data.definition`; reuse a definition already read.
 
 Compare the candidate's events, aggregation, filters, groups and time semantics with the request. An applicable report goes directly to [report-data run](report_data_run.md) with the supported requested overrides. A custom combination reuses suitable definitions in an AI-facing model. Saved metric JSON describes its measure; it is not itself a complete ad-hoc definition. Discover only the pieces still missing below.
 

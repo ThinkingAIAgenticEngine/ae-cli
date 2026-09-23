@@ -53,3 +53,23 @@ for level in result["links"]:
 ```
 
 For path analysis, `preview_rows` is a graph-display boundary aligned with the analysis UI: it keeps up to that many real nodes per path level, then combines overflow nodes into `more`. `result.nodes` retains the synthesized `more` node for graph structure and drilldown coordinates. The top-level `returned_rows` counts real business nodes actually returned across all levels; it excludes synthesized `more` nodes and the real nodes folded into them. The count may still exceed `preview_rows` because the boundary applies independently to each level. `has_more=true` means at least one level contains real nodes folded into `more`; a linear multi-level path can return more real nodes than `preview_rows` with `has_more=false`.
+
+## Source filters, event splits, and limits
+
+`path.source_filters` selects source-event occurrences using event-property leaves (`event_property_name`, `operator`, and string `values`) or recursive `items`/`relation` groups. `path.source_filter_relation` combines the top-level source filters. Global `filters` still accept only user properties, tags, and clusters; nested groups and supported relative-time conditions are preserved.
+
+`path.event_splits` splits individual included events into property-value nodes:
+
+```json
+{
+  "source_filters": [{"event_property_name": "amount", "operator": "gt", "values": ["10"]}],
+  "event_splits": [{
+    "event": "purchase", "event_property_name": "amount",
+    "bucket_mode": "custom", "bucket_boundaries": [10, 100]
+  }],
+  "max_steps": 4,
+  "max_nodes_per_step": 12
+}
+```
+
+Each split event must occur in `included_events` and can appear only once in `event_splits`. Numeric bucket, array grouping, and time granularity options follow the shared dimension contract. `max_steps` is 1–30 (default 10); `max_nodes_per_step` is 7–30 (default 7). Retention-only filter phase and dimension options are invalid for path analysis. Report reads preserve these settings for subsequent updates.

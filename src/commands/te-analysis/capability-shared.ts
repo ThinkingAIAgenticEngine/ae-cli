@@ -156,7 +156,7 @@ export const sqlTableUsageFlag: Flag = {
   name: 'usage',
   type: 'string',
   required: false,
-  desc: 'Authorized table set: analysis (default) or tag_cluster. Use tag_cluster before creating SQL tags or clusters.',
+  desc: 'Authorized table set: analysis (default), tag_cluster for SQL tags/clusters, or sql_datatable for SQL-built data tables. Use the same usage for list and columns.',
 };
 
 export const reportListLimitFlag: Flag = {
@@ -317,7 +317,7 @@ export function certificationScopeInput(ctx: RuntimeContext): string | undefined
   return value;
 }
 
-export function dashboardReportDataInput(ctx: RuntimeContext): Record<string, unknown> {
+export function dashboardReportDataInput(ctx: RuntimeContext, includeCache = true): Record<string, unknown> {
   return compactInput({
     ...projectInput(ctx),
     dashboard_id: ctx.num('dashboard-id'),
@@ -328,7 +328,7 @@ export function dashboardReportDataInput(ctx: RuntimeContext): Record<string, un
     cluster_query_scope: optionalString(ctx, 'cluster-query-scope'),
     slave_cluster_id: optionalString(ctx, 'slave-cluster-id'),
     zone_offset: optionalNumber(ctx, 'zone-offset'),
-    use_cache: optionalBoolean(ctx, 'use-cache'),
+    ...(includeCache ? { use_cache: optionalBoolean(ctx, 'use-cache') } : {}),
     request_id: optionalString(ctx, 'request-id'),
     preview_rows: optionalNumber(ctx, 'preview-rows'),
     timeout_seconds: optionalNumber(ctx, 'timeout-seconds'),

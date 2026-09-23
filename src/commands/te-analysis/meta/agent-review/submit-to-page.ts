@@ -34,6 +34,7 @@ const SUBMIT_TO_PAGE_HELP = [
   '- relations should let the page render dashboard -> report -> metadata with contains/uses edges. Use an empty relations array only when the package truly has no known parent-child evidence.',
   '- Each submitted item must keep source_link or evidence_links[].url so reviewers can jump to source evidence.',
   '- item.ai_summary.summary is the per-item recommendation reason. It must cite concrete item evidence, not generic review boilerplate. batch ai_summary.summary is only the batch overview.',
+  '- When submitting manual_review_handoff leftovers, copy manual_review_handoff.auto_review_trace into source_metadata.auto_review_trace so page audit records include the assets already certified automatically.',
   '- For reports and SQL reports, item.ai_summary.analysis_explanation must explain reviewer-readable calculations or measures from packaged evidence_snapshot.analysis. A purpose-only summary is incomplete and is rejected locally before dispatch.',
   '- Reviewer-visible text should follow the project-KB source style: one business Chinese Agent summary that explains purpose, calculation caliber, filters, time scope, boundaries, and concrete reviewer questions. Keep raw SQL, parser labels, temporary aliases, parameter placeholders, hashes, and evidence paths in evidence_snapshot only; independent Agent preflight flags visible implementation terms as quality findings.',
   '- The command output includes review_page_url when review_url is present. Return review_page_url to the user; do not prepend the Common/API host to review_url yourself.',
@@ -45,6 +46,7 @@ const SUBMIT_TO_PAGE_HELP = [
   '  "title": "<review batch title>",',
   '  "source_run_id": "<export.run_id>",',
   '  "source_task_id": "<optional preauthorized task id>",',
+  '  "source_metadata": { "auto_review_trace": "<optional trace from manual_review_handoff.auto_review_trace>" },',
   '  "ai_summary": { "summary": "<batch overview>" },',
   '  "presentation_snapshot": {',
   '    "project": { "id": 1, "name": "<project name>" },',
@@ -160,7 +162,7 @@ function validateInput(input: Record<string, unknown>): Record<string, unknown> 
   });
   unique(items.map((item) => item.client_item_id), 'client_item_id');
   fields(input, ['project_id', 'review_type', 'schema_version', 'client_request_id', 'title',
-    'source_run_id', 'source_task_id', 'ai_summary', 'presentation_snapshot', 'items'], 'submit-to-page input');
+    'source_run_id', 'source_task_id', 'source_metadata', 'ai_summary', 'presentation_snapshot', 'items'], 'submit-to-page input');
   object(input.ai_summary, 'ai_summary');
   validatePresentation(object(input.presentation_snapshot, 'presentation_snapshot'), new Set(items.map((item) => item.client_item_id)));
   if (input.review_type !== 'ASSET_GOVERNANCE' || input.schema_version !== '1.0') {

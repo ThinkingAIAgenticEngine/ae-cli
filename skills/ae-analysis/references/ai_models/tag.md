@@ -17,3 +17,5 @@ Use only with `analysis report create/update`; do not use with `analysis adhoc r
 ```
 
 Prefer `time_range` for new tag reports. `recent_day`, `start_time`, and `end_time` are only for report readback or precise round-trip updates.
+
+Historical tag report `time_particle_size` accepts only `day` or omission. Other grains, including `total`, `week`, and `month`, are rejected instead of being silently converted to day. Date-tag value grouping uses the separate `time_particle` field; it does not change the historical snapshot grain. Root `first_day_of_week` applies to calendar grouping and accepts 1 through 7.

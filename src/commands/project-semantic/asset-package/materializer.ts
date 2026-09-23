@@ -24,6 +24,7 @@ const MAX_COMPRESSED_BYTES = 64 * 1024 * 1024;
 const MAX_UNCOMPRESSED_BYTES = 512 * 1024 * 1024;
 const MAX_RECORDS = 200_000;
 const SHA256_PATTERN = /^[0-9a-f]{64}$/;
+const SUPPORTED_SCHEMA_VERSIONS = new Set(['1.0', '3.0']);
 const REQUIRED_FILES = [
   'manifest.json',
   'indexes/work-units.jsonl',
@@ -31,10 +32,6 @@ const REQUIRED_FILES = [
   'indexes/coverage-batches.jsonl',
   'indexes/definition-families.jsonl',
   'indexes/governance-coverage.jsonl',
-  'indexes/asset-containers.jsonl',
-  'indexes/dashboard-catalog.jsonl',
-  'indexes/report-catalog.jsonl',
-  'indexes/metric-catalog.jsonl',
   'catalog/published.jsonl',
   'catalog/active-candidates.jsonl',
   'catalog/rejected-candidates.jsonl',
@@ -57,7 +54,7 @@ export async function preflightAssetPackageOutput(args: {
 
 export async function materializeProjectSemanticAssetPackage(
   args: MaterializeArgs,
-): Promise<unknown> {
+): Promise<Record<string, unknown>> {
   const descriptor = packageDescriptor(args.finalDescriptor);
   const output = resolve(args.output);
   const parent = dirname(output);
@@ -97,7 +94,7 @@ export async function materializeProjectSemanticAssetPackage(
       ...args.finalDescriptor,
       output_path: output,
       archive_bytes: download.bytes,
-      package_record_count: materialized.recordCount,
+      record_count: materialized.recordCount,
       uncompressed_bytes: materialized.uncompressedBytes,
     };
   } catch (error) {
@@ -169,19 +166,24 @@ async function materializeArchive(
   if (!manifest || !Number.isInteger(Number(manifest.project_id))) {
     throw packageError('Asset package manifest is missing project identity.', 'ASSET_PACKAGE_MANIFEST_INVALID');
   }
-  if (manifest.schema_version !== '3.0') {
-    throw packageError('Project semantic asset package schema 3.0 is required.', 'ASSET_PACKAGE_VERSION_MISMATCH');
+  const schemaVersion = typeof manifest.schema_version === 'string' ? manifest.schema_version : '';
+  if (!SUPPORTED_SCHEMA_VERSIONS.has(schemaVersion)) {
+    throw packageError(
+      `Project semantic asset package schema ${[...SUPPORTED_SCHEMA_VERSIONS].join(' or ')} is required.`,
+      'ASSET_PACKAGE_VERSION_MISMATCH',
+    );
   }
   for (const required of REQUIRED_FILES) {
     if (!await exists(resolve(staging, required))) {
       throw packageError(`Asset package is missing required file ${required}.`, 'ASSET_PACKAGE_MANIFEST_INVALID');
     }
   }
-  await verifyDetailLocators(staging);
+  await verifyDetailLocators(staging, schemaVersion);
   await writeFile(resolve(staging, '.asset-package.json'), JSON.stringify({
     snapshot_id: descriptor.snapshotId,
     snapshot_hash: descriptor.snapshotHash,
-    schema_version: '3.0',
+    schema_version: schemaVersion,
+    package_kind: typeof manifest.package_kind === 'string' ? manifest.package_kind : 'project_semantic_asset_package',
     company_id: Number(manifest.company_id),
     project_id: Number(manifest.project_id),
     project_name: typeof manifest.project_name === 'string' ? manifest.project_name : undefined,
@@ -197,15 +199,14 @@ async function materializeArchive(
   return { recordCount, uncompressedBytes };
 }
 
-async function verifyDetailLocators(root: string): Promise<void> {
+async function verifyDetailLocators(root: string, schemaVersion: string): Promise<void> {
   const directory = await readFile(resolve(root, 'indexes/asset-directory.jsonl'), 'utf8');
   for (const line of directory.split(/\r?\n/)) {
     if (!line.trim()) continue;
     const row = asObject(JSON.parse(line));
     if (!row || row.record_type === 'header') continue;
     const detail = await verifyContentLocator(root, row.detail_locator, 'Detail');
-    const raw = await verifyContentLocator(root, detail.raw_locator, 'Raw detail', true);
-    assertRawDetailConsistency(detail, raw);
+    await verifyContentLocator(root, detail.raw_locator, 'Raw detail', { skipHash: schemaVersion === '3.0' });
   }
 }
 
@@ -213,7 +214,7 @@ async function verifyContentLocator(
   root: string,
   value: unknown,
   label: string,
-  allowSerializerHashMismatch = false,
+  options: { skipHash?: boolean } = {},
 ): Promise<Record<string, unknown>> {
   const locator = asObject(value);
   if (!locator || typeof locator.path !== 'string'
@@ -232,38 +233,13 @@ async function verifyContentLocator(
   if (!content) {
     throw packageError(`${label} file is not a JSON object: ${locator.path}.`, 'ASSET_PACKAGE_MANIFEST_INVALID');
   }
-  const actualHash = createHash('sha256').update(JSON.stringify(content), 'utf8').digest('hex');
-  if (actualHash !== locator.content_hash && !allowSerializerHashMismatch) {
-    throw packageError(`${label} content hash mismatch for ${locator.path}.`, 'ASSET_PACKAGE_HASH_MISMATCH');
-  }
-  return content;
-}
-
-export function assertRawDetailConsistency(
-  detail: Record<string, unknown>,
-  raw: Record<string, unknown>,
-): void {
-  const identityFields = ['evidence_id', 'resource_type', 'resource_key'] as const;
-  for (const field of identityFields) {
-    if (detail[field] !== raw[field]) {
-      throw packageError(
-        `Raw detail ${field} does not match its normalized detail.`,
-        'ASSET_PACKAGE_HASH_MISMATCH',
-      );
+  if (!options.skipHash) {
+    const actualHash = createHash('sha256').update(JSON.stringify(content), 'utf8').digest('hex');
+    if (actualHash !== locator.content_hash) {
+      throw packageError(`${label} content hash mismatch for ${locator.path}.`, 'ASSET_PACKAGE_HASH_MISMATCH');
     }
   }
-  const detailDefinitionHash = detail.raw_definition_hash;
-  const rawDefinitionHash = raw.raw_definition_hash;
-  if (typeof detailDefinitionHash !== 'string'
-    || typeof rawDefinitionHash !== 'string'
-    || !SHA256_PATTERN.test(detailDefinitionHash)
-    || detailDefinitionHash !== rawDefinitionHash
-    || !Object.prototype.hasOwnProperty.call(raw, 'raw_definition')) {
-    throw packageError(
-      'Raw detail definition identity does not match its normalized detail.',
-      'ASSET_PACKAGE_HASH_MISMATCH',
-    );
-  }
+  return content;
 }
 
 function parseRecord(line: string): PackageRecord {

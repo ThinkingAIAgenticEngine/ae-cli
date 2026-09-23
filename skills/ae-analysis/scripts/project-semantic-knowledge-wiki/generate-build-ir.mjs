@@ -11,6 +11,7 @@ const outputRoot = path.resolve(requiredArg(args, 'output'));
 const force = Boolean(args.force);
 const allowTruncated = Boolean(args['allow-truncated']);
 const allowAllVisible = Boolean(args['allow-all-visible']);
+const allowSemanticPlanSnapshotDrift = Boolean(args['allow-semantic-plan-snapshot-drift']);
 
 assertSafePaths(packageRoot, outputRoot);
 
@@ -74,6 +75,7 @@ const domainPlan = readObject(domainPlanPath, 'business domain plan');
 const classifications = validateAndEnrichDomainPlan(domainPlan);
 const domains = classifications.domains;
 const appendices = classifications.appendices;
+const projectBusinessModel = classifications.project_business_model;
 const domainByDashboardId = new Map();
 for (const domain of domains) {
   for (const id of domain.dashboard_ids) domainByDashboardId.set(id, domain);
@@ -132,6 +134,7 @@ const corpus = {
   truncated: Boolean(descriptor.truncated ?? manifest.truncated),
   business_domain_source: 'agent-authored semantic plan validated against every dashboard in the asset package',
   business_domain_plan_hash: domainPlanHash,
+  project_business_model: projectBusinessModel,
   counts: {
     business_domains: domains.length,
     technical_appendices: appendices.length,
@@ -244,7 +247,7 @@ function validateAndEnrichDomainPlan(plan) {
   if (!['1.0', '2.0'].includes(text(plan.schema_version))) {
     fail('Business domain plan schema 1.0 or project semantic Wiki plan schema 2.0 is required.');
   }
-  if (text(plan.source_snapshot_hash) !== snapshotHash) {
+  if (text(plan.source_snapshot_hash) !== snapshotHash && !allowSemanticPlanSnapshotDrift) {
     fail(`Business domain plan snapshot mismatch: expected ${snapshotHash}.`);
   }
   if (text(plan.generation_method) !== 'agent_semantic_synthesis') {
@@ -296,6 +299,10 @@ function validateAndEnrichDomainPlan(plan) {
     const dashboardRows = dashboardIds.map((dashboardId) => dashboardById.get(dashboardId));
     const sourceContainerRefs = uniqueObjects(dashboardRows.map((row) => object(row.source_container_ref)), 'container_key');
     const reportRefs = uniqueObjects(dashboardRows.flatMap((row) => array(row.report_refs)), 'report_id');
+    const reportIds = new Set(reportRefs.map((ref) => text(ref.report_id)).filter(Boolean));
+    const metricIds = new Set(reports
+      .filter((report) => reportIds.has(text(report.resource_key)))
+      .flatMap((report) => array(report.metric_occurrences).map((item) => text(item.metric_key)).filter(Boolean)));
     return {
       domain_id: id,
       title,
@@ -303,6 +310,8 @@ function validateAndEnrichDomainPlan(plan) {
       primary_questions: questions,
       primary_metrics: primaryMetrics,
       drilldown_dimensions: drilldownDimensions,
+      domain_judgment_model: normalizeDomainJudgmentModel(domain.domain_judgment_model, id,
+        new Set(dashboardIds), reportIds, metricIds),
       merge_rationale: rationale,
       dashboard_ids: dashboardIds,
       dashboard_refs: dashboardRows.map((row) => ({
@@ -356,15 +365,158 @@ function validateAndEnrichDomainPlan(plan) {
       report_refs: uniqueObjects(dashboardRows.flatMap((row) => array(row.report_refs)), 'report_id'),
     };
   });
+  const projectBusinessModel = normalizeProjectBusinessModel(plan.project_business_model, domainIds);
   validateSqlSemanticPlan(plan);
   const missing = dashboards.map((row) => text(row.resource_key)).filter((id) => !assigned.has(id));
   if (missing.length) {
     fail(`Business domain plan does not classify ${missing.length} dashboard(s): ${missing.slice(0, 20).join(', ')}${missing.length > 20 ? ', ...' : ''}.`);
   }
   return {
+    project_business_model: projectBusinessModel,
     domains: enrichedDomains.sort((a, b) => a.domain_id.localeCompare(b.domain_id, 'en')),
     appendices: enrichedAppendices.sort((a, b) => a.appendix_id.localeCompare(b.appendix_id, 'en')),
   };
+}
+
+function normalizeProjectBusinessModel(value, domainIds) {
+  const model = object(value);
+  const businessPositioning = text(model.business_positioning);
+  const audienceRoles = array(model.audience_roles).map(text).filter(Boolean);
+  const businessObjects = array(model.business_objects).map((item, index) => {
+    const row = object(item);
+    const objectId = text(row.object_id);
+    const name = text(row.name);
+    const meaning = text(row.meaning);
+    if (!/^[a-z0-9][a-z0-9_-]{1,79}$/.test(objectId)) fail(`project_business_model.business_objects[${index}] has invalid object_id.`);
+    if (!name || !meaning) fail(`project_business_model.business_objects[${index}] requires name and meaning.`);
+    const evidenceRefs = normalizePlanAssetRefs(row.evidence_refs, `business object ${objectId}`);
+    if (!evidenceRefs.length) fail(`business object ${objectId} requires evidence_refs.`);
+    return { object_id: objectId, name, meaning, evidence_refs: evidenceRefs };
+  });
+  const objectNames = new Set(businessObjects.map((item) => item.name));
+  const objectRelationships = array(model.object_relationships).map((item, index) => {
+    const row = object(item);
+    const fromObject = text(row.from_object);
+    const toObject = text(row.to_object);
+    const relationship = text(row.relationship);
+    if (!fromObject || !toObject || !relationship) {
+      fail(`project_business_model.object_relationships[${index}] requires from_object, to_object and relationship.`);
+    }
+    if (!objectNames.has(fromObject) || !objectNames.has(toObject)) {
+      fail(`object relationship ${fromObject || '<empty>'}->${toObject || '<empty>'} must reference declared business object names.`);
+    }
+    const evidenceRefs = normalizePlanAssetRefs(row.evidence_refs, `object relationship ${fromObject}->${toObject}`);
+    if (!evidenceRefs.length) fail(`object relationship ${fromObject}->${toObject} requires evidence_refs.`);
+    return { from_object: fromObject, to_object: toObject, relationship, evidence_refs: evidenceRefs };
+  });
+  const decisionChains = array(model.decision_chains).map((item, index) => {
+    const row = object(item);
+    const chainId = text(row.chain_id);
+    const title = text(row.title);
+    const decisionQuestion = text(row.decision_question);
+    const signals = array(row.signals).map(text).filter(Boolean);
+    const decisionSteps = array(row.decision_steps).map(text).filter(Boolean);
+    const preferredDomainIds = array(row.preferred_domain_ids).map(text).filter(Boolean);
+    const assetRefs = normalizePlanAssetRefs(row.asset_refs, `decision chain ${chainId || index + 1}`);
+    const boundaries = array(row.boundaries).map(text).filter(Boolean);
+    if (!/^[a-z0-9][a-z0-9_-]{1,79}$/.test(chainId)) fail(`project_business_model.decision_chains[${index}] has invalid chain_id.`);
+    if (!title || !decisionQuestion) fail(`decision chain ${chainId} requires title and decision_question.`);
+    if (signals.length < 2) fail(`decision chain ${chainId} requires at least two signals.`);
+    if (decisionSteps.length < 2) fail(`decision chain ${chainId} requires at least two decision_steps.`);
+    if (!preferredDomainIds.length || preferredDomainIds.some((id) => !domainIds.has(id))) {
+      fail(`decision chain ${chainId} must reference existing preferred_domain_ids.`);
+    }
+    if (!assetRefs.length) fail(`decision chain ${chainId} requires asset_refs.`);
+    if (!boundaries.length) fail(`decision chain ${chainId} requires boundaries.`);
+    return {
+      chain_id: chainId,
+      title,
+      decision_question: decisionQuestion,
+      signals,
+      decision_steps: decisionSteps,
+      preferred_domain_ids: preferredDomainIds,
+      asset_refs: assetRefs,
+      requires_live_execution: Boolean(row.requires_live_execution),
+      boundaries,
+    };
+  });
+  const nonGoals = array(model.non_goals).map(text).filter(Boolean);
+  if (!businessPositioning) fail('project_business_model requires business_positioning.');
+  if (!audienceRoles.length) fail('project_business_model requires audience_roles.');
+  if (!businessObjects.length) fail('project_business_model requires business_objects.');
+  if (!objectRelationships.length) fail('project_business_model requires object_relationships.');
+  if (!decisionChains.length) fail('project_business_model requires decision_chains.');
+  if (!nonGoals.length) fail('project_business_model requires non_goals.');
+  const combined = [
+    businessPositioning, ...audienceRoles, ...businessObjects.flatMap((item) => [item.name, item.meaning]),
+    ...objectRelationships.map((item) => item.relationship),
+    ...decisionChains.flatMap((item) => [item.title, item.decision_question, ...item.signals, ...item.decision_steps, ...item.boundaries]),
+    ...nonGoals,
+  ].join('\n');
+  if (isMechanicalPlanText(combined)) fail('project_business_model looks mechanically generated; Agent must author project-level business semantics from current asset evidence.');
+  return {
+    business_positioning: businessPositioning,
+    audience_roles: audienceRoles,
+    business_objects: businessObjects,
+    object_relationships: objectRelationships,
+    decision_chains: decisionChains,
+    non_goals: nonGoals,
+  };
+}
+
+function normalizeDomainJudgmentModel(value, domainId, domainDashboardIds, domainReportIds, domainMetricIds) {
+  const model = object(value);
+  const businessStateJudged = text(model.business_state_judged);
+  const mainObjects = array(model.main_objects).map(text).filter(Boolean);
+  const signals = array(model.signals).map(text).filter(Boolean);
+  const decisionPath = array(model.decision_path).map(text).filter(Boolean);
+  const boundaries = array(model.boundaries).map(text).filter(Boolean);
+  const attachmentLogic = array(model.asset_attachment_logic).map((item, index) => {
+    const row = object(item);
+    const assetRef = normalizePlanAssetRef(row.asset_ref, `domain ${domainId} asset_attachment_logic[${index}]`);
+    const role = text(row.role);
+    const reason = text(row.reason);
+    if (!['primary_entry', 'supporting_evidence', 'drilldown', 'exclusion'].includes(role)) {
+      fail(`domain ${domainId} asset_attachment_logic[${index}] has invalid role.`);
+    }
+    if (!reason || reason.length < 10) fail(`domain ${domainId} asset_attachment_logic[${index}] requires concrete reason.`);
+    const inDomain = assetRef.resource_type === 'dashboard' ? domainDashboardIds.has(assetRef.resource_key)
+      : assetRef.resource_type === 'report' ? domainReportIds.has(assetRef.resource_key)
+        : assetRef.resource_type === 'metric' ? domainMetricIds.has(assetRef.resource_key) : false;
+    if (!inDomain) fail(`domain ${domainId} asset_attachment_logic references ${assetRef.resource_type}:${assetRef.resource_key} outside domain closure.`);
+    return { asset_ref: assetRef, role, reason };
+  });
+  if (!businessStateJudged) fail(`Domain ${domainId} is missing domain_judgment_model.business_state_judged.`);
+  if (!mainObjects.length) fail(`Domain ${domainId} is missing domain_judgment_model.main_objects.`);
+  if (signals.length < 2) fail(`Domain ${domainId} domain_judgment_model requires at least two signals.`);
+  if (decisionPath.length < 2) fail(`Domain ${domainId} domain_judgment_model requires at least two decision_path steps.`);
+  if (!attachmentLogic.length) fail(`Domain ${domainId} domain_judgment_model requires asset_attachment_logic.`);
+  if (!boundaries.length) fail(`Domain ${domainId} domain_judgment_model requires boundaries.`);
+  const combined = [businessStateJudged, ...mainObjects, ...signals, ...decisionPath, ...attachmentLogic.map((item) => item.reason), ...boundaries].join('\n');
+  if (isMechanicalPlanText(combined)) fail(`Domain ${domainId} judgment model looks mechanically generated.`);
+  return {
+    business_state_judged: businessStateJudged,
+    main_objects: mainObjects,
+    signals,
+    decision_path: decisionPath,
+    asset_attachment_logic: attachmentLogic,
+    boundaries,
+  };
+}
+
+function normalizePlanAssetRefs(values, label) {
+  return array(values).map((value, index) => normalizePlanAssetRef(value, `${label} evidence_refs[${index}]`));
+}
+
+function normalizePlanAssetRef(value, label) {
+  const ref = object(value);
+  const type = text(ref.resource_type);
+  const key = text(ref.resource_key);
+  const exists = type === 'dashboard' ? dashboardById.has(key)
+    : type === 'report' ? reportById.has(key)
+      : type === 'metric' ? metrics.some((metric) => text(metric.resource_key) === key) : false;
+  if (!exists) fail(`${label} references unknown asset ${type || '<type>'}:${key || '<key>'}.`);
+  return { resource_type: type, resource_key: key };
 }
 
 
@@ -464,7 +616,48 @@ function renderBriefIndex() {
 
 function renderDomainSource(domain) {
   const key = text(domain.domain_id);
-  return `---\ntype: project-business-domain-source\nproject_id: ${projectId}\ndomain_id: ${yaml(key)}\ntitle: ${yaml(domain.title)}\nclassification_method: agent_semantic_synthesis\nsnapshot_hash: ${yaml(snapshotHash)}\n---\n\n# ${heading(domain.title)}\n\n${text(domain.summary)}\n\n## 主要业务问题\n\n${array(domain.primary_questions).map((question) => `- ${question}`).join('\n')}\n\n## 归类依据\n\n${text(domain.merge_rationale)}\n\n${renderDomainAgentUsageSummary(domain)}\n## 看板（${array(domain.dashboard_refs).length}）\n\n${refLinks(array(domain.dashboard_refs), 'dashboard_id', 'dashboard_name', dashboardFiles, '../dashboards')}\n\n## 涉及报表（${array(domain.report_refs).length}）\n\n${refLinks(array(domain.report_refs), 'report_id', 'report_name', reportFiles, '../reports')}\n\n## 物理来源容器\n\n${containerLinks(domain.source_container_refs, '../source-containers')}\n\n## 规划依据摘要\n\n- Domain ID: \`${key}\`\n- 归类方法: agent_semantic_synthesis\n- 快照: \`${snapshotHash}\`\n- 纳入看板: ${array(domain.dashboard_refs).length}\n- 涉及报表: ${array(domain.report_refs).length}\n- 物理来源容器: ${array(domain.source_container_refs).length}\n`;
+  return `---\ntype: project-business-domain-source\nproject_id: ${projectId}\ndomain_id: ${yaml(key)}\ntitle: ${yaml(domain.title)}\nclassification_method: agent_semantic_synthesis\nsnapshot_hash: ${yaml(snapshotHash)}\n---\n\n# ${heading(domain.title)}\n\n${text(domain.summary)}\n\n## 这个域判断什么\n\n${renderDomainJudgmentModel(domain)}\n\n## 主要业务问题\n\n${array(domain.primary_questions).map((question) => `- ${question}`).join('\n')}\n\n## 归类依据\n\n${text(domain.merge_rationale)}\n\n${renderDomainAgentUsageSummary(domain)}\n## 看板（${array(domain.dashboard_refs).length}）\n\n${refLinks(array(domain.dashboard_refs), 'dashboard_id', 'dashboard_name', dashboardFiles, '../dashboards')}\n\n## 涉及报表（${array(domain.report_refs).length}）\n\n${refLinks(array(domain.report_refs), 'report_id', 'report_name', reportFiles, '../reports')}\n\n## 物理来源容器\n\n${containerLinks(domain.source_container_refs, '../source-containers')}\n\n## 规划依据摘要\n\n- Domain ID: \`${key}\`\n- 归类方法: agent_semantic_synthesis\n- 快照: \`${snapshotHash}\`\n- 纳入看板: ${array(domain.dashboard_refs).length}\n- 涉及报表: ${array(domain.report_refs).length}\n- 物理来源容器: ${array(domain.source_container_refs).length}\n`;
+}
+
+function renderDomainJudgmentModel(domain) {
+  const model = object(domain.domain_judgment_model);
+  const attachmentLines = array(model.asset_attachment_logic).map((item) => {
+    const row = object(item);
+    const ref = object(row.asset_ref);
+    const label = domainAssetLabel(ref);
+    return `- ${domainAttachmentRoleLabel(row.role)}：${label}。${stripClausePunctuation(row.reason)}`;
+  });
+  return `- 判断状态：${stripClausePunctuation(model.business_state_judged)}\n- 主要对象：${array(model.main_objects).map(text).filter(Boolean).join('、')}\n- 判断信号：${joinChineseClauses(model.signals)}\n- 判断路径：\n${renderNumberedSteps(model.decision_path, '  ')}\n- 资产挂载：\n${attachmentLines.join('\n') || '  - 无'}\n- 边界：${joinChineseClauses(model.boundaries)}`;
+}
+
+function domainAssetLabel(ref) {
+  const type = text(ref.resource_type);
+  const key = text(ref.resource_key);
+  if (type === 'dashboard') {
+    const dashboard = dashboardById.get(key);
+    const title = text(dashboard?.title) || key;
+    return `[${link(title)}](../dashboards/${dashboardFiles.get(key)})（dashboard:${key}）`;
+  }
+  if (type === 'report') {
+    const report = reportById.get(key);
+    const title = text(report?.title) || key;
+    return `[${link(title)}](../reports/${reportFiles.get(key)})（report:${key}）`;
+  }
+  if (type === 'metric') {
+    const metric = metrics.find((row) => text(row.resource_key) === key);
+    const title = text(metric?.title) || key;
+    return `[${link(title)}](../metrics/${metricFiles.get(key)})（metric:${key}）`;
+  }
+  return `${type}:${key}`;
+}
+
+function domainAttachmentRoleLabel(value) {
+  return ({
+    primary_entry: '首选入口',
+    supporting_evidence: '辅助证据',
+    drilldown: '下钻资产',
+    exclusion: '排除资产',
+  })[text(value)] ?? text(value);
 }
 
 function renderDomainAgentUsageSummary(domain) {
@@ -838,7 +1031,7 @@ function renderDashboardAgentUsageSummary(dashboard, reportRows, notes, domain, 
   const purposes = reportRows.slice(0, 8).map((row) => reportPurpose(row));
   const metrics = topDomainFacts(reportRows.flatMap((row) => reportMetricSummaryItems(row)), 10);
   const dimensions = topDomainFacts(reportRows.flatMap((row) => reportDimensionSummaryItems(row)), 10);
-  return `- 用途：${classification}${reportRows.length ? `这张看板承载 ${reportRows.length} 张报表，用于从看板层进入相关分析。` : '当前没有关联报表。'}\n- 适合回答：\n${purposes.map((item) => `  - ${item}`).join('\n') || '  - 当前看板没有足够报表证据概括适用问题。'}\n- 主要指标：${metrics.join('、') || '未从关联报表识别到稳定指标。'}\n- 常用下钻维度：${dimensions.join('、') || '未从关联报表识别到稳定下钻维度。'}\n- 便签规则：${notes.length ? '看板便签可用于理解业务目的、注意事项和共享边界；精确口径仍以下属报表为准。' : '没有看板便签。'}\n- 使用边界：当前数值、客户名单和趋势结果需要实时执行看板或下属报表；知识库只提供路由、口径和边界。`;
+  return `- 用途：${classification}${reportRows.length ? `这张看板承载 ${reportRows.length} 张报表，用于从看板层进入相关分析。` : '当前没有关联报表。'}\n- 适合回答：\n${purposes.map((item) => `  - ${item}`).join('\n') || '  - 当前看板没有足够报表证据概括适用问题。'}\n- 主要指标：${metrics.join('、') || '关联报表没有暴露可稳定概括的指标，使用时需要先进入下属报表核验。'}\n- 常用下钻维度：${dimensions.join('、') || '关联报表没有暴露稳定拆分维度，执行前需要按报表页面设置确认。'}\n- 便签规则：${notes.length ? '看板便签可用于理解业务目的、注意事项和共享边界；精确口径仍以下属报表为准。' : '没有看板便签。'}\n- 使用边界：当前数值、客户名单和趋势结果需要实时执行看板或下属报表；知识库只提供路由、口径和边界。`;
 }
 
 function renderReportAgentUsageSummary(report, metadataRefs, calculationContext, sqlSummary) {
@@ -847,8 +1040,8 @@ function renderReportAgentUsageSummary(report, metadataRefs, calculationContext,
   const purpose = usefulSemanticText(sqlSummary?.business_purpose) || reportPurpose(report);
   const questions = usefulSemanticList(sqlSummary?.applicable_questions)
     ? array(sqlSummary.applicable_questions).map(renderPlainSemanticItem)
-    : [reportPurpose(report)];
-  const metrics = array(report.metric_occurrences).map(occurrenceSentence);
+    : reportApplicableQuestions(report);
+  const metrics = topDomainFacts(array(report.metric_occurrences).map(occurrenceSentence), 12);
   const parameters = reportParameterSummaryItems(calculationContext);
   const dimensions = reportDimensionSummaryItems(report, sqlSummary, calculationContext, metadataRefs);
   const filters = reportFilterSummaryItems(report, calculationContext);
@@ -856,7 +1049,21 @@ function renderReportAgentUsageSummary(report, metadataRefs, calculationContext,
   const boundaries = usefulSemanticList(sqlSummary?.non_applicable_questions)
     ? array(sqlSummary.non_applicable_questions).map(renderPlainSemanticItem)
     : ['不能替代实时执行结果；当前知识库只说明报表语义和使用边界。'];
-  return `- 用途：${purpose}\n- 适合回答：\n${questions.map((item) => `  - ${item}`).join('\n') || '  - 暂无明确适用问题。'}\n- 主要指标/输出：\n${metrics.map((item) => `  - ${item}`).join('\n') || '  - 未识别到稳定指标或输出字段。'}\n- 输入参数：\n${parameters.map((item) => `  - ${item}`).join('\n') || '  - 未发现需要 Agent 解释的输入参数。'}\n- 常用下钻维度：${dimensions.join('、') || '未识别到稳定下钻维度。'}\n- 关键过滤与限制：\n${[...filters, ...limits].map((item) => `  - ${item}`).join('\n') || '  - 未发现明确过滤、排序或行数限制。'}\n- 使用边界：\n${boundaries.map((item) => `  - ${item}`).join('\n')}`;
+  return `- 用途：${purpose}\n- 适合回答：\n${questions.map((item) => `  - ${item}`).join('\n') || '  - 适合在进入报表后核验该资产标题对应的业务问题。'}\n- 主要指标/输出：\n${metrics.map((item) => `  - ${item}`).join('\n') || '  - 资产包没有暴露稳定指标或输出字段，使用时需要回到源报表核验。'}\n- 输入参数：\n${parameters.map((item) => `  - ${item}`).join('\n') || '  - 本报表没有需要 Agent 预先解释的运行参数。'}\n- 常用下钻维度：${dimensions.join('、') || '资产包没有暴露稳定拆分维度；如需分组比较，应先打开报表确认可用维度。'}\n- 关键过滤与限制：\n${[...filters, ...limits].map((item) => `  - ${item}`).join('\n') || '  - 资产包没有暴露固定过滤、排序或行数限制；执行前按报表页面设置确认。'}\n- 使用边界：\n${boundaries.map((item) => `  - ${item}`).join('\n')}`;
+}
+
+function reportApplicableQuestions(report) {
+  const title = text(report.title || report.resource_key);
+  const metricNames = topDomainFacts(array(report.metric_occurrences).map(occurrenceLabel).filter(Boolean), 4);
+  const dimensions = reportDimensionSummaryItems(report, null, calculationContextForKb(report), metadataRefsForReport(report)).slice(0, 4);
+  const filters = reportFilterSummaryItems(report, object(report.calculation_context)).slice(0, 2);
+  const subject = metricNames.length ? metricNames.join('、') : title;
+  const result = [
+    `查看“${title}”对应的${subject}。`,
+    dimensions.length ? `按${dimensions.join('、')}拆分比较${subject}。` : '',
+    filters.length ? `在${filters.join('；')}条件下解释${subject}。` : '',
+  ].filter(Boolean);
+  return [...new Set(result)];
 }
 
 function renderReportMetricOccurrencesSection(report) {
@@ -871,11 +1078,15 @@ function renderSqlReportAgentUsageSummary(report, summary) {
     return '_当前 SQL 报表没有可用的 Agent 语义摘要。该报表只能作为待核验线索，不能直接回答确定口径。_';
   }
   const purpose = usefulSemanticText(summary.business_purpose) || reportPurpose(report);
-  return `该摘要由 CLI Agent 基于同一资产快照生成，作为 SQL 报表的源文件级业务语义输入；KB 可以直接消费这段摘要并结合项目其他资料组织 Wiki，不需要重新从长 SQL 中完整推导业务含义。\n\n- 摘要来源: ${text(summary.summary_source) || 'semantic_plan'}\n- 定义状态: ${text(summary.definition_state) || 'unknown'}\n- 用途：${purpose}\n- 统计粒度: ${text(summary.statistical_grain) || 'unknown'}\n- 证据定位: \`${text(summary.evidence_locator) || 'unknown'}\`\n\n### 输入参数\n\n${renderSemanticList(summary.input_parameters, renderSemanticItem)}\n\n### 输出字段\n\n${renderSemanticList(summary.output_fields, (item) => renderSqlSemanticItem(item, summary))}\n\n### 关键过滤与排除\n\n${renderSemanticList(summary.key_filters, (item) => renderSqlSemanticItem(item, summary))}\n\n### 默认限制与排序\n\n${renderSemanticList(summary.default_limits, (item) => renderSqlSemanticItem(item, summary))}\n\n### 可回答的问题\n\n${renderSemanticList(summary.applicable_questions, (item) => renderSqlSemanticItem(item, summary))}\n\n### 不可安全回答的问题\n\n${renderSemanticList(summary.non_applicable_questions, (item) => renderSqlSemanticItem(item, summary))}`;
+  return `- 定义状态: ${text(summary.definition_state) || 'unknown'}\n- 用途：${purpose}\n- 统计粒度: ${text(summary.statistical_grain) || 'unknown'}\n- 证据定位: \`${text(summary.evidence_locator) || 'unknown'}\`\n\n### 输入参数\n\n${renderSemanticList(summary.input_parameters, renderSqlInputParameterItem)}\n\n### 输出字段\n\n${renderSemanticList(summary.output_fields, (item) => renderSqlSemanticItem(item, summary))}\n\n### 关键过滤与排除\n\n${renderSemanticList(summary.key_filters, (item) => renderSqlSemanticItem(item, summary))}\n\n### 默认限制与排序\n\n${renderSemanticList(summary.default_limits, (item) => renderSqlSemanticItem(item, summary))}\n\n### 可回答的问题\n\n${renderSemanticList(summary.applicable_questions, (item) => renderSqlSemanticItem(item, summary))}\n\n### 不可安全回答的问题\n\n${renderSemanticList(summary.non_applicable_questions, (item) => renderSqlSemanticItem(item, summary))}`;
 }
 
 function renderSqlSemanticItem(value, summary) {
   return replaceSqlParameterMentions(renderSemanticItem(value), summary);
+}
+
+function renderSqlInputParameterItem(value) {
+  return sanitizeVisibleSqlSemanticText(renderSemanticItem(value));
 }
 
 function replaceSqlParameterMentions(value, summary) {
@@ -923,6 +1134,11 @@ function genericSqlParameterMeaning(name) {
   return normalized;
 }
 
+function isGeneratedSqlParameterName(name) {
+  return /^(?:selector|variable|text|number|partdate)\d*$/i.test(text(name))
+    || /^date\d+$/i.test(text(name));
+}
+
 function escapeRegExp(value) {
   return text(value).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
@@ -944,8 +1160,11 @@ function renderPlainSemanticItem(value) {
   if (item.default_value != null && text(item.default_value)) extras.push(`default=${text(item.default_value)}`);
   const expressionKind = text(item.expression_kind);
   if (expressionKind) extras.push(expressionKind);
-  if (isInputParameterSemanticItem(item) && meaning && name) {
+  if (isInputParameterSemanticItem(item) && meaning && name && !isGeneratedSqlParameterName(name)) {
     return [`${meaning}（\`${name}\`）`, extras.join('，')].filter(Boolean).join('：');
+  }
+  if (isInputParameterSemanticItem(item) && meaning) {
+    return [meaning, extras.join('，')].filter(Boolean).join('：');
   }
   return [name ? `\`${name}\`` : '', meaning, extras.join('，')].filter(Boolean).join('：') || jsonInline(item);
 }
@@ -981,7 +1200,7 @@ function reportDimensionSummaryItems(report, summary = null, calculationContext 
     ...array(object(context.event_view).groups).map(text),
     ...array(refs).map((ref) => namedCodeFact(ref.title || ref.display_name, ref.resource_key)),
   ];
-  return topDomainFacts(candidates.filter((item) => isLikelyDrilldownDimensionText(item) && !isExcludedDrilldownDimensionText(item)), 12);
+  return topDomainFacts(candidates.filter(isUsefulDomainDimensionFact), 12);
 }
 
 function reportParameterSummaryItems(calculationContext) {
@@ -1096,6 +1315,8 @@ function sanitizeKeyFilters(values) {
 
 function sanitizeVisibleSqlSemanticText(value) {
   let normalized = text(value)
+    .replace(/SQL\s*使用\s*select\s+\*\s*[，,]\s*输出字段需以源表\s*([^，。]+?)\s*当前结构为准/gi, '源表全字段输出，字段清单需回源表 $1 当前结构确认')
+    .replace(/\bselect\s+\*/gi, '源表全字段输出')
     .replace(/\$\{(?:(?:Text|Selector|PartDate|Number|Date|DateTime|MultiSelector)\s*:)?\s*([A-Za-z_][\w.-]*)\s*\}/g, '$1')
     .replace(/SQL\s*输出字段[:：]?/gi, '')
     .replace(/来源表达式[:：]?/g, '')
@@ -1127,6 +1348,21 @@ function dedupeSemicolonSegments(value) {
   return result.join('；');
 }
 
+function stripClausePunctuation(value) {
+  return text(value).replace(/[。；;，,\s]+$/u, '');
+}
+
+function joinChineseClauses(value) {
+  const values = array(value).map(stripClausePunctuation).filter(Boolean);
+  return values.join('；') || '无';
+}
+
+function renderNumberedSteps(value, indent = '') {
+  const values = array(value).map(stripClausePunctuation).filter(Boolean);
+  if (!values.length) return `${indent}- 无`;
+  return values.map((item, index) => `${indent}${index + 1}. ${item}`).join('\n');
+}
+
 function renderSemanticList(value, renderer) {
   const values = array(value);
   if (!values.length) return '- 无';
@@ -1143,8 +1379,11 @@ function renderSemanticItem(value) {
     .filter(([key]) => !['name', 'field', 'key', 'column', 'title', 'meaning', 'description', 'remark', 'purpose'].includes(key))
     .map(([key, itemValue]) => `${key}=${inlineSemanticValue(itemValue)}`)
     .join(', ');
-  if (isInputParameterSemanticItem(item) && meaning && name) {
+  if (isInputParameterSemanticItem(item) && meaning && name && !isGeneratedSqlParameterName(name)) {
     return [`${meaning}（\`${name}\`）`, details].filter(Boolean).join('：') || jsonInline(item);
+  }
+  if (isInputParameterSemanticItem(item) && meaning) {
+    return [meaning, details].filter(Boolean).join('：') || jsonInline(item);
   }
   return [name ? `\`${name}\`` : '', meaning, details].filter(Boolean).join('：') || jsonInline(item);
 }
@@ -1817,8 +2056,18 @@ function appendConflict(target, id, message) {
 }
 
 function semanticConflictSummary(kind, key, values, signatureLabelFn) {
-  const rows = values.map((row) => `${assetDisplayName(row)}（${assetIdentity(row)}，${signatureLabelFn(row)}）`);
+  const rows = [...values]
+    .sort((left, right) => semanticConflictAssetSortKey(left).localeCompare(semanticConflictAssetSortKey(right), 'en'))
+    .map((row) => `${assetDisplayName(row)}（${assetIdentity(row)}，${signatureLabelFn(row)}）`);
   return `语义“${key}”存在 ${values.length} 个${kind}候选，但口径不同：${rows.join('；')}。Agent 不应仅凭名称选择，需要优先使用业务域/召回卡或让用户确认。`;
+}
+
+function semanticConflictAssetSortKey(row) {
+  return [
+    assetIdentity(row),
+    text(row.resource_type),
+    text(row.evidence_id),
+  ].join('\u0000');
 }
 
 function reportSemanticKey(report) {
@@ -1929,7 +2178,7 @@ function renderOccurrence(item, index) {
 
 - 事件: ${event}
 - 复用指标 key: ${text(item.metric_key) ? `\`${text(item.metric_key)}\`` : '无'}
-- 聚合方式: ${aggregationLabel(item) || '未说明'}
+- 聚合方式: ${aggregationLabel(item) || '资产包未暴露聚合方式'}
 - 度量字段: ${readableMetricText(item.measure_title || item.measure_key) || '无'}
 - 公式表达式: ${expression ? `\`${expression}\`` : '无'}
 - 公式依赖: ${formulaSummary || '无'}
@@ -1945,9 +2194,10 @@ function occurrenceSentence(item) {
     return `${label}：公式指标${expression ? `，表达式为 \`${expression}\`` : ''}${dependencies.length ? `，依赖${dependencies.join('、')}` : ''}。`;
   }
   const event = metricEventLabel(item) || '未知事件';
-  const aggregation = aggregationLabel(item) || '未说明聚合';
+  const aggregation = aggregationLabel(item);
   const measure = readableMetricText(item.measure_title || item.measure_key);
-  return `${label}：基于“${event}”按“${aggregation}”计算${measure ? `，度量字段为“${measure}”` : ''}${text(item.metric_key) ? `，复用指标 key 为 \`${text(item.metric_key)}\`` : ''}。`;
+  const aggregationPart = aggregation ? `按“${aggregation}”计算` : '计算，资产包未暴露聚合方式';
+  return `${label}：基于“${event}”${aggregationPart}${measure ? `，度量字段为“${measure}”` : ''}${text(item.metric_key) ? `，复用指标 key 为 \`${text(item.metric_key)}\`` : ''}。`;
 }
 
 function formulaExpression(item) {
@@ -1972,7 +2222,7 @@ function formulaDependencies(item) {
     const event = object(object(dependency).event);
     const quota = object(object(dependency).quota);
     const eventName = text(event.eventDesc || event.eventName) || '未知事件';
-    const aggregation = text(quota.quotaDesc || quota.quotaName) || '未说明聚合';
+    const aggregation = text(quota.quotaDesc || quota.quotaName) || '资产包未暴露聚合方式';
     const filters = array(object(event.filter).filts)
       .map((filter) => text(object(filter).columnDesc || object(filter).quotDesc || object(filter).prop))
       .filter(Boolean);
@@ -2163,9 +2413,13 @@ function readableMetricText(value) {
 function groupLabel(group) { return text(object(group).columnDesc || object(group).columnName || group); }
 
 function renderSemanticConflictList() {
-  const reportLines = [...reportConflicts.entries()].map(([id, conflicts]) =>
-    `- [${link(reportById.get(id)?.title || id)}](../briefs/reports/${reportFiles.get(id)})：${conflicts.join('；')}`);
-  const metadataLines = [...metadataSemanticConflicts.entries()].map(([id, conflicts]) => {
+  const reportLines = [...reportConflicts.entries()]
+    .sort(([left], [right]) => left.localeCompare(right, 'en'))
+    .map(([id, conflicts]) =>
+      `- [${link(reportById.get(id)?.title || id)}](../briefs/reports/${reportFiles.get(id)})：${conflicts.join('；')}`);
+  const metadataLines = [...metadataSemanticConflicts.entries()]
+    .sort(([left], [right]) => left.localeCompare(right, 'en'))
+    .map(([id, conflicts]) => {
     const item = metadata.find((row) => text(row.evidence_id) === id);
     if (!item) return `- \`${id}\`：${conflicts.join('；')}`;
     return `- [${link(metadataDisplayTitle(item))}](../briefs/metadata/${metadataDirectory(item.resource_type)}/${metadataFiles.get(id)})：${conflicts.join('；')}`;
@@ -2202,7 +2456,7 @@ function renderCoverage() {
 
 ## 技术附录
 
-${appendices.map((row) => `- [${link(row.title)}](../appendices/${appendixFiles.get(text(row.appendix_id))})`).join('\n') || '- 无'}
+${sort(appendices, 'appendix_id').map((row) => `- [${link(row.title)}](../appendices/${appendixFiles.get(text(row.appendix_id))})`).join('\n') || '- 无'}
 
 ## 技术来源容器
 
@@ -2210,13 +2464,13 @@ ${containerAssetLinks(technicalContainers)}
 
 ## 无物理空间看板
 
-${assetLinks(unassignedDashboards, dashboardFiles, '../dashboards')}
+${assetLinks(sort(unassignedDashboards, 'resource_key'), dashboardFiles, '../dashboards')}
 
 ## 独立报表
 
 这些报表没有看板承载，保留为可检索资产，但不根据名称强行推断业务域。
 
-${assetLinks(standaloneReports, reportFiles, '../reports')}
+${assetLinks(sort(standaloneReports, 'resource_key'), reportFiles, '../reports')}
 
 ## 语义冲突
 
@@ -2224,7 +2478,7 @@ ${renderSemanticConflictList()}
 
 ## 缺少源标题的元数据
 
-${metadataMissingTitles.map((item) => `- [\`${link(item.resource_key)}\`](../metadata/${metadataDirectory(item.resource_type)}/${metadataFiles.get(text(item.evidence_id))})`).join('\n') || '- 无'}
+${sort(metadataMissingTitles, 'evidence_id').map((item) => `- [\`${link(item.resource_key)}\`](../metadata/${metadataDirectory(item.resource_type)}/${metadataFiles.get(text(item.evidence_id))})`).join('\n') || '- 无'}
 `;
 }
 
@@ -2347,7 +2601,7 @@ function assetLinks(values, files, prefix) {
 }
 
 function containerAssetLinks(values) {
-  return values.map((row) => `- [${link(row.container_title || row.container_key)}](../source-containers/${containerFiles.get(text(row.container_key))})（${text(row.container_kind)}）`).join('\n') || '- 无';
+  return sort(values, 'container_key').map((row) => `- [${link(row.container_title || row.container_key)}](../source-containers/${containerFiles.get(text(row.container_key))})（${text(row.container_kind)}）`).join('\n') || '- 无';
 }
 
 function topNames(values, limit = 5) {
@@ -2524,6 +2778,9 @@ function metadataUsage() {
       result.get(id).push({ report_id: text(report.resource_key), report_name: text(report.title) });
     }
   }
+  for (const [id, values] of result.entries()) {
+    result.set(id, values.sort((left, right) => text(left.report_id).localeCompare(text(right.report_id), 'en')));
+  }
   return result;
 }
 
@@ -2535,6 +2792,9 @@ function metadataMetricUsage() {
       if (!result.has(id)) result.set(id, []);
       result.get(id).push({ metric_id: text(metric.resource_key), metric_name: text(metric.title) });
     }
+  }
+  for (const [id, values] of result.entries()) {
+    result.set(id, values.sort((left, right) => text(left.metric_id).localeCompare(text(right.metric_id), 'en')));
   }
   return result;
 }
@@ -2622,7 +2882,7 @@ function parseArgs(values) {
     const token = values[index];
     if (!token.startsWith('--')) fail(`Unexpected argument: ${token}`);
     const name = token.slice(2);
-    if (['force', 'allow-truncated', 'allow-all-visible'].includes(name)) result[name] = true;
+    if (['force', 'allow-truncated', 'allow-all-visible', 'allow-semantic-plan-snapshot-drift'].includes(name)) result[name] = true;
     else {
       const value = values[index + 1];
       if (!value || value.startsWith('--')) fail(`Missing value for --${name}.`);

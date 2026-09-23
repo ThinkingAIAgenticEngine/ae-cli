@@ -16,6 +16,12 @@ If a SQL cluster reads an event table, include a predicate on the quoted `"$part
 SQL clusters support only `${PartDate:name}` dynamic placeholders. Each placeholder requires a matching `params` item with `type=part_date` and either `recent_day` or `start_time` plus `end_time`. General SQL parameter types (`text`, `number`, `variable`, `time`, and `selector`) are rejected for SQL clusters.
 For `recent_day`, `0-7` means 最近7天 and includes today; `1-7` means 过去7天 and excludes today.
 
+`${base_date}` is a separate built-in computation-date macro, not a user-configurable dynamic placeholder. SQL clusters may use `${base_date}`, a formatted value such as `${base_date:yyyy-MM-dd}`, or a server-supported offset such as `${base_date:yyyy-MM-dd-1*day}`. Keep the macro in `sql` and do not add it to `params`; it is expanded when the cluster is calculated. Expansion produces plain text, so quote the macro when the SQL expression expects a string or date literal:
+
+```json
+{"type":"sql","sql":"SELECT \"#user_id\" FROM v_event_1 WHERE \"$part_date\"='${base_date:yyyy-MM-dd}'"}
+```
+
 Discover tables with `analysis sql-table list --project-id <project_id> --usage tag_cluster`, then inspect columns with the same `--usage tag_cluster`. This table set is server-authorized specifically for SQL tags/clusters and differs from the default analysis SQL set.
 
 Optional `include_filter` and `exclude_filter` use the shared filter-group shape.
@@ -87,3 +93,5 @@ Required: `type=behavior_sequence`, `completed`, `steps`. Each step requires `ev
   ]}
 }
 ```
+
+For space tables, use the returned `sql_reference` when writing SQL and loading columns. `source_type=gaia` identifies a space table; keep `--usage tag_cluster` for both discovery commands.

@@ -5,11 +5,16 @@
  * backing service at `/api/cli/v1/...`. Auth uses the `cli-token` header (same as MCP transport).
  */
 
-import { getCliToken } from './cli-token.js';
+import { clearCliTokenCache, getCliToken } from './cli-token.js';
 import { safeJsonParse } from './json-utils.js';
 import { PermissionError } from './errors.js';
 import { SecureStoreAuthError } from './secure-store.js';
 import { internalCallSourceHeaders } from './internal-call-source.js';
+import {
+  cliAgentContextHeaders,
+  readCliAgentContext,
+  withCliAgentContextBody,
+} from './cli-agent-context.js';
 import { readFile } from 'node:fs/promises';
 import { basename } from 'node:path';
 
@@ -198,15 +203,17 @@ async function requestOnce(
   body: any,
   accept = 'application/json',
 ): Promise<Response> {
+  const agentContext = readCliAgentContext();
   const headers: Record<string, string> = {
     'cli-token': token,
     'Accept': accept,
     ...internalCallSourceHeaders(),
+    ...cliAgentContextHeaders(agentContext),
   };
   const init: RequestInit = { method, headers };
   if (body !== undefined && method !== 'GET') {
     headers['Content-Type'] = 'application/json';
-    init.body = JSON.stringify(body);
+    init.body = JSON.stringify(withCliAgentContextBody(body, agentContext));
   }
   return fetch(url, init);
 }
@@ -258,7 +265,13 @@ async function callGatewayWithEnvelope(
   const url = buildCapabilityGatewayUrl(options.apiBaseUrl ?? host, domain, pathAfterV1, queryParams);
   const token = await getCliToken(host);
 
-  const resp = await requestOnce(url, method, token, body);
+  let resp = await requestOnce(url, method, token, body);
+  // Explicit opt-in only: reread host-scoped credentials once without minting or deleting them.
+  if (resp.status === 401 && options.retryOnUnauthorized === true) {
+    await resp.body?.cancel();
+    clearCliTokenCache(host);
+    resp = await requestOnce(url, method, await getCliToken(host), body);
+  }
   if (resp.status === 403) {
     const error = await permissionError(resp);
     if (options.retryOnInvalidTokenForbidden !== false && isInvalidCliTokenMessage(error.message)) {

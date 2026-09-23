@@ -2,7 +2,7 @@
 
 # ae-cli
 
-`ae-cli` is the command-line client for the ThinkingAI AgenticEngine (AE) platform. It provides stable, structured interfaces for both AI Agents and human operators across analytics and project configuration, metadata, tracking, local-data ingestion, Engage, DataOps, knowledge bases, Agent resources, user memory, and system administration.
+`ae-cli` is the command-line client for the ThinkingAI AgenticEngine (AE) platform. It provides stable, structured interfaces for both AI Agents and human operators across analytics, experimentation, project configuration, metadata, tracking, local-data ingestion, Engage, DataOps, knowledge bases, Agent resources, user memory, and system administration.
 
 The CLI is designed around:
 
@@ -109,12 +109,13 @@ The table covers every current root command individually. Use `ae-cli --help` fo
 | Category | Root command | Purpose |
 |---|---|---|
 | Analysis and projects | `analysis` | Reports, dashboards, ad-hoc analysis, drilldowns, details, alerts, tags, and cohorts |
+| Analysis and projects | `experiment` | Atlas experiments, reports, traffic layers, buckets, Features, metrics, and operation logs |
 | Analysis and projects | `analysis-meta` | Event/property catalogs, metrics, virtual metadata, tracking governance, and project analysis settings |
 | Analysis and projects | `analysis-governance` | Data-asset search, lineage, impact analysis, certification, and governance |
 | Analysis and projects | `project` | Project information, members, roles, permissions, entities, time zones, and handover settings |
 | Analysis and projects | `metadata` | Capability-backed data-table, property, and dimension-table binding operations |
 | Analysis and projects | `personal-semantic-preference` | Project-scoped lightweight semantic preferences for the current user |
-| Analysis and projects | `project-semantic` | Export project asset packages for knowledge-base builds |
+| Analysis and projects | `project-semantic` | Governed project semantics, knowledge-base asset packages, candidate validation, review, and publishing |
 | Data and tracking | `tracking` | Tracking plans, SDK samples, checks, ingestion diagnostics, code generation, and bundled wiki |
 | Data and tracking | `data-integration` | Inspect, plan, convert, upload, hand off, and reuse local CSV/JSON/Excel data |
 | Community insights | `community` | Community posts, comments, topics, sentiment, livestream, and report workflows |
@@ -126,7 +127,7 @@ The table covers every current root command individually. Use `ae-cli --help` fo
 | Engage | `engage-workbench` | Engage workbench and to-do management |
 | Engage | `engage-query` | Engage queries, asynchronous exports, and artifact management |
 | DataOps | `dataops_repo` | Data-warehouse and data-source management |
-| DataOps | `dataops_datatable` | Data-table lifecycle management |
+| DataOps | `dataops_datatable` | Table/view lifecycle management, including recycling, recycle-bin discovery, and permanent deletion |
 | DataOps | `dataops_flow` | Development flows, scheduling, and backfill-job management |
 | DataOps | `dataops_ide` | IDE queries and result downloads |
 | DataOps | `dataops_integration` | Data-integration task management |
@@ -176,6 +177,10 @@ For scripts and agents, use the non-interactive subcommands:
 ```bash
 ae-cli auth login --host https://host-a.example.com
 ae-cli auth status --host https://host-a.example.com
+# Import a CLI token copied from External Access Management (hidden prompt)
+ae-cli auth set-token --host https://host-a.example.com
+# Non-interactive input for local scripts or tests
+printf '%s' "$AE_CLI_TOKEN" | ae-cli auth set-token --host https://host-a.example.com --token-stdin
 # For the uncommon case where one Host needs multiple accounts
 ae-cli auth login --host https://host-a.example.com --add
 ae-cli auth list --host https://host-a.example.com
@@ -194,6 +199,8 @@ ae-cli config remove pre-production --yes
 `<env>` accepts either an exact URL or a unique label. The active environment is clearly marked in the interactive manager and in `config list`. Removing an active environment is rejected while other environments remain; switch first so replacement is explicit. `config set-host` remains available as a compatibility command that adds or updates a host and activates it.
 
 A regular `auth login` keeps the simple one-Host/one-account behavior and replaces credentials for that Host; use `--add` only when other accounts must be retained. `auth status` reports CLI-token state only. A new backend can also provide account identity and expiration; when an older backend does not support `/validate`, the CLI preserves the historical behavior of trusting the stored CLI token and omits `account` instead of returning null fields.
+
+`auth set-token` is for local use with a `cli_` token copied from External Access Management. It prompts without echo by default; `--token-stdin` supports non-interactive local testing. The CLI validates the token against the target Host before replacing the stored credential, encrypts it in the existing per-Host vault, and never includes the value in command output. Add `--add` to retain other accounts for the same Host.
 
 The new CLI persists only CLI tokens, never access or refresh tokens. Multiple accounts live in an encrypted V1 vault while the active account is projected into the historical file shape for automatic downgrades. When the CLI upgrades again, it reconciles login, switch, or logout changes made by the old CLI.
 
@@ -357,6 +364,7 @@ npm test
 npm run qa-changed
 npm run self-check
 npm run check:release
+npm run verify:experiment-tools
 npm run verify:readme
 npm run verify:auth-credentials
 npm run verify:update-check

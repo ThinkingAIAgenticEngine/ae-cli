@@ -23,6 +23,7 @@ const RELEASE_CHECKS = [
   'skill-risk-examples',
   'skill-preset-mcp',
   'skill-internal-distribution',
+  'skill-collaboration',
   // 'command-format', // future
 ];
 

@@ -5,6 +5,8 @@ import {
 } from '../../capability-shared.js';
 import {
   assetGovernanceInput,
+  governanceExportFlags,
+  governanceExportFields,
   nodeIdsFlag,
 } from './shared.js';
 
@@ -13,7 +15,8 @@ export const analysisMetaAssetBatchSqlExport = createAnalysisGovernanceCapabilit
   command: 'batch-sql-export',
   capabilityId: 'governance.asset.batch_export_sql',
   description: 'Batch export asset SQL definitions.',
-  flags: [projectIdFlag, nodeIdsFlag, payloadFlag],
+  flags: [projectIdFlag, nodeIdsFlag, payloadFlag, ...governanceExportFlags('xlsx')],
   risk: 'read',
-  buildInput: (ctx) => assetGovernanceInput(ctx, ["node_ids"]),
+  asyncArtifact: true,
+  buildInput: (ctx) => assetGovernanceInput(ctx, [...governanceExportFields, "node_ids"]),
 });

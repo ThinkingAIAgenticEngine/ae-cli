@@ -5,6 +5,8 @@ import {
 } from '../../capability-shared.js';
 import {
   assetGovernanceInput,
+  governanceExportFlags,
+  governanceExportFields,
   recordIdFlag,
 } from './shared.js';
 
@@ -13,7 +15,8 @@ export const analysisMetaAssetOperationRecordExport = createAnalysisGovernanceCa
   command: 'export',
   capabilityId: 'governance.operation_record.export',
   description: 'Export one asset batch operation record result.',
-  flags: [projectIdFlag, recordIdFlag, payloadFlag],
+  flags: [projectIdFlag, recordIdFlag, payloadFlag, ...governanceExportFlags('xlsx')],
   risk: 'read',
-  buildInput: (ctx) => assetGovernanceInput(ctx, ["record_id"]),
+  asyncArtifact: true,
+  buildInput: (ctx) => assetGovernanceInput(ctx, [...governanceExportFields, "record_id"]),
 });

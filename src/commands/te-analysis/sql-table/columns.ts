@@ -18,7 +18,7 @@ export const sqlTableColumns = createAnalysisCapabilityCommand({
       name: 'table-ref',
       type: 'string',
       required: true,
-      desc: 'Exact table_ref returned by analysis sql-table list; a unique table-only reference is also accepted.',
+      desc: 'Exact table_ref or quoted sql_reference returned by analysis sql-table list; a unique table-only reference is also accepted.',
     },
     sqlTableUsageFlag,
   ],

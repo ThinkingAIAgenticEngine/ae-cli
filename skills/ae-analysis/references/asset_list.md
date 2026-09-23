@@ -20,6 +20,7 @@ Output `data` contains `items`, `total`, `operation_types`, `limit`, and `offset
 | Parameter | Required | Description |
 |---|---|---|
 | --project-id | Yes | Numeric project ID. |
+| --node-id | No | Restrict to a selected asset node. |
 | --query | No | Keyword filter. |
 | --searchs | No | Quick filter JSON array. |
 | --rule | No | Advanced governance Filter JSON. |

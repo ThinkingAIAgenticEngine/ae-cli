@@ -1,4 +1,5 @@
 import { randomBytes } from 'node:crypto';
+import { once } from 'node:events';
 import { createWriteStream } from 'node:fs';
 import { access, link, mkdir, rename, stat, unlink } from 'node:fs/promises';
 import { Readable } from 'node:stream';
@@ -343,9 +344,11 @@ export async function downloadAnalysisArtifact(
     if (!response.body) {
       throw protocolError('Artifact download response has no body.', runId);
     }
+    const destination = createWriteStream(tempPath, { flags: 'wx', mode: options.mode });
+    await once(destination, 'open');
     tempPresent = true;
     const source = Readable.fromWeb(response.body as any);
-    await pipeline(source, createWriteStream(tempPath, { flags: 'wx', mode: options.mode }), {
+    await pipeline(source, destination, {
       signal: options.signal,
     });
     const file = await stat(tempPath);

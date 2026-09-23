@@ -5,7 +5,11 @@ description: "AE community analysis and data reporting for posts, comments, topi
 
 # ae-community
 
-Skill revision: 2.4.1.
+## Cross-skill collaboration
+
+When remaining work is outside this skill's scope, or a necessary prerequisite needs another capability, follow [the collaboration protocol](references/collaboration.md). Choose from the skills available in this run by capability, preserve verified context, and continue the remaining task. Reuse this protocol if already loaded.
+
+Skill revision: 2.4.2.
 
 The AE Community domain provides social and chat data analysis plus validated community data reporting. Curated analysis commands run as **`ae-cli community +<subcommand>`**; chat analysis uses dynamic Capability Gateway commands; reporting uses the direct **`ae-cli community data report`** ingestion command.
 

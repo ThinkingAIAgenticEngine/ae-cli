@@ -9,6 +9,7 @@ import {
 import {
   assetGovernanceInput,
   operationTypeFlag,
+  nodeIdFlag,
   ruleFlag,
   searchsFlag,
 } from './shared.js';
@@ -18,7 +19,7 @@ export const analysisMetaAssetUsageList = createAnalysisGovernanceCapabilityComm
   command: 'list',
   capabilityId: 'governance.asset.list',
   description: 'List assets for usage governance.',
-  flags: [projectIdFlag, queryFlag, searchsFlag, ruleFlag, operationTypeFlag, directoryLimitFlag, directoryOffsetFlag, payloadFlag],
+  flags: [projectIdFlag, nodeIdFlag, queryFlag, searchsFlag, ruleFlag, operationTypeFlag, directoryLimitFlag, directoryOffsetFlag, payloadFlag],
   risk: 'read',
-  buildInput: (ctx) => assetGovernanceInput(ctx, ["query","searchs","rule","operation_type","limit","offset"]),
+  buildInput: (ctx) => assetGovernanceInput(ctx, ["node_id","query","searchs","rule","operation_type","limit","offset"]),
 });

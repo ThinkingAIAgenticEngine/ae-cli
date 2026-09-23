@@ -5,8 +5,8 @@ import { getActiveHost } from '../core/config.js';
 import { safeJsonParse } from '../core/json-utils.js';
 import { logger } from '../core/logger.js';
 import { TeAgentCredentialsError } from '../core/te-agent-credentials.js';
-import { SecureStoreAuthError } from '../core/secure-store.js';
-import { CliValidationError, CommunityReportError, LocalDataUploadError, PermissionError } from '../core/errors.js';
+import { CredentialStoreUnreadableError, SecureStoreAuthError } from '../core/secure-store.js';
+import { CliApiError, CliValidationError, CommunityReportError, LocalDataUploadError, PermissionError } from '../core/errors.js';
 import { TeAgentApiError } from '../core/te-agent-client.js';
 import { CapabilityGatewayError } from '../core/capability-api.js';
 import { requiresConfirmation } from '../core/capability-risk.js';
@@ -240,6 +240,8 @@ export async function runCommand(cmd: Command, opts: Record<string, any>, global
     } else if (err instanceof PermissionError) {
       // authenticated-but-forbidden — surface the server's reason; re-login won't help
       printError('permission', message, err.hint, err.code);
+    } else if (err instanceof CliApiError) {
+      printError('api', message, err.hint, err.code, err.meta);
     } else if (err instanceof CapabilityGatewayError) {
       printError(err.type, message, err.hint ?? capabilityGatewayHint(err), err.code, err.meta);
     } else if (err instanceof CommunityReportError) {
@@ -248,6 +250,8 @@ export async function runCommand(cmd: Command, opts: Record<string, any>, global
       printError('api', message, err.hint, err.code, err.meta, { log: false });
     } else if (err instanceof LocalDataUploadError) {
       printError('api', message, err.hint, err.code, err.meta, { log: false });
+    } else if (err instanceof CredentialStoreUnreadableError) {
+      printError('config', message, err.hint, err.code);
     } else if (err instanceof SecureStoreAuthError) {
       printError('auth', message, 'Run: ae-cli auth login');
     } else if (err instanceof TeAgentApiError) {
@@ -311,7 +315,7 @@ export function capabilityGatewayHint(err: CapabilityGatewayError): string | und
   }
   if (err.httpStatus === 404 && !err.code) {
     const base =
-      'The current host returned 404 for this capability route. Do not keep retrying the same command; verify the backend route/capability deployment.';
+      'The current host returned 404 for this capability route. Do not keep retrying the same command; verify the backend route/capability deployment. If --host points directly to a local Common service instead of the deployed gateway, scope AE_CLI_CAPABILITY_GATEWAY_DOMAIN= to this command so it uses /api/cli/v1.';
     return compatExtra ? `${base}\n${compatExtra}` : base;
   }
   return undefined;
@@ -382,7 +386,7 @@ function createRuntimeContext(cmd: Command, opts: Record<string, any>, globalOpt
     list(name: string): string[] {
       const val = opts[camelCase(name)];
       if (Array.isArray(val)) return val.map(String);
-      if (val === undefined || val === null || val === '') return [];
+      if (val === undefined || val === null) return [];
       return [String(val)];
     },
 

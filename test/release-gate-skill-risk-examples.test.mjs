@@ -94,4 +94,68 @@ ae-cli --yes example list
   },
 );
 
+await withTempSkills(
+  {
+    'example/references/table.md': `# Tables
+
+| CLI command | Purpose | Risk | Flags |
+|---|---|---|---|
+| \`ae-cli dataops_datatable +entity_recycle\` | Recycle one entity | high-risk-write | |
+| \`ae-cli dataops_datatable +recycle_bin_list\` | List recycled entities | read | |
+
+\`\`\`bash
+ae-cli dataops_datatable +entity_recycle --spaceCode demo --entityId e1 --name orders --yes
+\`\`\`
+`,
+  },
+  async (root) => {
+    const result = await run({ root });
+    assert.equal(result.ok, true, JSON.stringify(result.findings));
+    console.log('  ✓ workflow references provide high-risk metadata without a separate index');
+  },
+);
+
+await withTempSkills(
+  {
+    'example/references/table.md': `# Tables
+
+| CLI command | Purpose | Risk | Flags |
+|---|---|---|---|
+| \`ae-cli dataops_datatable +recycle_bin_list\` | List recycled entities | read | |
+| \`ae-cli dataops_datatable +create_table\` | Create a table | write | |
+
+\`\`\`bash
+ae-cli dataops_datatable +recycle_bin_list --spaceCode demo --yes
+ae-cli dataops_datatable +create_table --spaceCode demo --yes
+\`\`\`
+`,
+  },
+  async (root) => {
+    const result = await run({ root });
+    assert.equal(result.ok, false);
+    assert.equal(result.findings.length, 2, JSON.stringify(result.findings));
+    assert.match(result.findings[0].msg, /uses --yes for a read command example/);
+    assert.match(result.findings[1].msg, /uses --yes for a write command example/);
+    console.log('  ✓ workflow metadata still rejects --yes for read and ordinary write examples');
+  },
+);
+
+await withTempSkills(
+  {
+    'example/references/table.md': `# Tables
+
+\`\`\`bash
+ae-cli dataops_datatable +entity_recycle --spaceCode demo --entityId e1 --name orders --yes
+\`\`\`
+`,
+  },
+  async (root) => {
+    const result = await run({ root });
+    assert.equal(result.ok, false);
+    assert.equal(result.findings.length, 1, JSON.stringify(result.findings));
+    assert.match(result.findings[0].msg, /uses --yes without high-risk-write metadata/);
+    console.log('  ✓ recycling is not implicitly allowed without explicit risk metadata');
+  },
+);
+
 console.log('\nrelease-gate skill-risk-examples tests passed\n');

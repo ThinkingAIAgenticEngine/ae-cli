@@ -41,3 +41,5 @@ For property aggregations, pass the user property:
 ## Aggregation
 
 - `prop_analysis`: use `user_count` without property; numeric properties support `sum`, `avg`, `avg_per_user`, `max`, `min`, `distinct_count`, `median`, `variance`, and `stddev`; string/date/datetime properties support `distinct_count`; boolean properties support `true_count`, `false_count`, `not_empty_count`, `empty_count`, and `distinct_count`. `percentile` is not supported.
+
+Global `filters` and `user_crowds[].filters` both support recursive `items`/`relation` groups. Date/time leaves preserve the shared relative-time options, and tag/cluster leaves preserve `cluster_date_policy` plus `specified_cluster_date`. A saved report read retains crowd names, crowd filter trees, and each crowd's relation. Keep these when updating the report; do not replace a selected crowd with all users.

@@ -6,7 +6,7 @@
  * Verify all commands registered under src/commands/te-agent/:
  * 1. Load registered command metadata
  * 2. Duplicate check
- * 3. Count check (EXPECTED_COUNT = 89)
+ * 3. Count check (EXPECTED_COUNT = 95)
  * 4. Verify every flat or hierarchical command appears in the Commander tree
  */
 
@@ -27,7 +27,7 @@ import {
 } from "./agent-command-registry.mjs";
 
 const AGENT_DIR = "src/commands/te-agent";
-const EXPECTED_COUNT = 89;
+const EXPECTED_COUNT = 95;
 const SERVICE = "agent";
 
 let failed = false;

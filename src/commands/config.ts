@@ -2,6 +2,7 @@ import { Command } from 'commander';
 import * as readline from 'node:readline';
 import {
   addHost,
+  getActiveHost,
   loadConfig,
   removeHost,
   resolveHostSelector,
@@ -10,6 +11,9 @@ import {
   type ConfiguredHost,
   type HostSelectorResult,
 } from '../core/config.js';
+import { peekCliToken } from '../core/cli-token.js';
+import { fetchCliConfig } from '../core/compat-check.js';
+import { resolveKbAutoDiscoveryFeature } from '../core/feature-config.js';
 import { normalizeUrl } from '../core/url-utils.js';
 import { missingAeHostHint } from '../core/host-guidance.js';
 import { printError, printOutput } from '../framework/output.js';
@@ -20,7 +24,7 @@ type HostView = ConfiguredHost;
 export function registerConfig(program: Command): void {
   const configCmd = program
     .command('config')
-    .description('Manage AE host environments interactively or with subcommands')
+    .description('Manage AE host environments and read configuration values')
     .action(async () => {
       if (!process.stdin.isTTY || !process.stderr.isTTY) {
         failConfig(
@@ -44,6 +48,26 @@ export function registerConfig(program: Command): void {
     .description('Show the active AE environment')
     .action(async () => {
       await printCurrentConfig(program);
+    });
+
+  configCmd
+    .command('show')
+    .description('Show effective configuration for the selected AE host and account')
+    .action(async () => {
+      const host = program.opts().host || getActiveHost();
+      const token = host ? peekCliToken(host) : null;
+      const feature = host && token
+        ? await resolveKbAutoDiscoveryFeature(host, token, () => fetchCliConfig(host, token))
+        : { enabled: false, source: 'unavailable' as const };
+      await printOutput(
+        {
+          host: host || null,
+          routing: { knowledge_base: feature.enabled ? 'auto' : 'explicit' },
+          source: feature.source,
+        },
+        program.opts().format || 'json',
+        program.opts().jq,
+      );
     });
 
   configCmd
@@ -97,7 +121,6 @@ export function registerConfig(program: Command): void {
         failConfig(err.message, 'Run: ae-cli config list');
       }
     });
-
 }
 
 function readHostViews(): { activeHost: string; hosts: HostView[] } {

@@ -1,6 +1,9 @@
 import type { Flag, RuntimeContext } from '../../../../framework/types.js';
 import { CliValidationError } from '../../../../core/errors.js';
 import {
+  artifactFormatFlag,
+  requestIdFlag,
+  asyncTimeoutSecondsFlag,
   optionalJson,
   optionalNumber,
   optionalString,
@@ -32,7 +35,17 @@ export const sortFieldFlag: Flag = { name: 'sort-field', type: 'string', require
 export const sortOrderFlag: Flag = { name: 'sort-order', type: 'string', required: false, desc: 'Sort order: asc or desc.' };
 export const recordIdFlag: Flag = { name: 'record-id', type: 'number', required: false, desc: 'Operation record ID.' };
 
+export const governanceExportFlags = (format: 'jsonl' | 'xlsx'): Flag[] => [
+  requestIdFlag,
+  { ...artifactFormatFlag, desc: `Artifact format: ${format}. This capability supports only ${format}.` },
+  { ...asyncTimeoutSecondsFlag, max: 7200, desc: 'Async export runtime in seconds. Default: 3600, max: 7200.' },
+];
+export const governanceExportFields = ['request_id', 'format', 'timeout_seconds'];
+
 const readers: Record<string, (ctx: RuntimeContext) => unknown> = {
+  request_id: (ctx) => optionalString(ctx, 'request-id'),
+  format: (ctx) => optionalString(ctx, 'artifact-format'),
+  timeout_seconds: (ctx) => optionalNumber(ctx, 'timeout-seconds'),
   node_id: (ctx) => optionalString(ctx, 'node-id'),
   resource_id: (ctx) => optionalString(ctx, 'resource-id'),
   resource_type: (ctx) => optionalString(ctx, 'resource-type'),

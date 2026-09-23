@@ -61,23 +61,40 @@ ae-cli dataops_ide +search_tables --spaceCode "${spaceCode}" --searchKey "user"
 
 ## Workflow C: Execute SQL Query (Download-Centered Async Flow)
 
-Use this flow for exactly one read-only SQL query. Result rows are not returned through MCP/CLI; submit creates a Gaia download-center task directly. The query semantics are preserved, but the result remains platform-bounded; when present, `downloadRowLimit` reports that cap. This is not an unlimited or full export.
+Use this flow for exactly one read-only SQL query. Result rows are not returned through MCP/CLI; submit creates a Gaia download-center task directly. The result remains platform-bounded; when present, `downloadRowLimit` reports that cap. This is not an unlimited or full export.
+
+For a question such as "how many orders yesterday?", first discover the table and date/count columns, establish DEV/PROD and the business date/time zone, and use an aggregate query when appropriate. Ask only about unresolved choices that change the answer. The existing query endpoint performs platform parameter replacement; single-quote any literal `${...}` intended for the platform so the shell does not expand it first.
 
 ```bash
 # Step 1: Submit SQL and create a download task. Defaults: repoCode=te_etl, engineType=TASK_ENGINE_TRINO.
 ae-cli dataops_ide +submit_sql_query --spaceCode "${spaceCode}" --repoCode "te_etl" \
-  --sql "SELECT * FROM hive.ws_default_dev.dwd_user LIMIT 10" \
+  --sql "${verifiedReadOnlySql}" \
   --engineType "TASK_ENGINE_TRINO"
 
-# Step 2: Poll the download task status by spaceCode/downloadTaskId. Rows are not returned through MCP/CLI.
+# Step 2: Continue only when submission returned data.downloadTaskId, not data.status=REJECTED.
+# Poll the same download task. Rows are not returned through MCP/CLI.
 ae-cli dataops_ide +get_sql_query_status --spaceCode "${spaceCode}" --downloadTaskId ${downloadTaskId}
 
 # Step 3: CLI-only streaming save after downloadStatus=SUCCESS. The target is replaced only after the stream completes.
 ae-cli dataops_ide +get_sql_query_status --spaceCode "${spaceCode}" --downloadTaskId ${downloadTaskId} --downloadTo "./result.zip"
 
-# (Optional) Cancel the download task.
+# Optional: cancel only when requested, not automatically when the local wait budget expires.
 ae-cli dataops_ide +cancel_sql_query --spaceCode "${spaceCode}" --downloadTaskId ${downloadTaskId}
 ```
+
+Read the actual business state even when outer `ok:true` is present:
+
+| Response | Next action |
+|---|---|
+| Submit `data.status=REJECTED` or no `data.downloadTaskId` | Report the returned reason/requestId; do not invent an ID or start polling |
+| Status `data.downloadStatus=WAITING/RUNNING/FAILED_RETRY` | Continue bounded polling of the same ID; do not resubmit SQL |
+| Status `UNKNOWN` | Recheck the same task within the wait budget; unresolved is not success or proof that it never ran |
+| Status `FAILED/CANCELLED` | Stop and report the message and task ID; do not silently resubmit |
+| Status `SUCCESS` | Download if the user needs the result; status alone is not the result data |
+
+After `--downloadTo`, require a returned `data.localFile` and inspect the actual ZIP contents. Use a fresh local target; do not assume the internal filename, encoding, delimiter, or headers. For a data question, read the result and answer using its real values and agreed scope; do not end by giving only a download task ID or asking the user to read the file. For an export request, provide the saved file and disclose any result limit. If downloading or reading fails, report that boundary without inventing rows.
+
+When the wait budget expires, return the original `downloadTaskId` and latest observed status with the status command needed to continue. Do not equate a locally timed-out wait with a cancelled or failed server task.
 
 ---
 

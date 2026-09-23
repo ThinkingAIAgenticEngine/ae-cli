@@ -8,6 +8,8 @@ For full data, read [export handling](analysis_data_export.md) and use this `exp
 
 Do not use this command for bounded inline previews; use `dashboard-report-data run` when the requested result fits the sync data retrieval rule.
 
+Export uses the native full-download path and does not accept `--use-cache`; cache selection only applies to bounded `dashboard-report-data run` queries.
+
 Command:
 
 ```bash

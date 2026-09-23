@@ -161,13 +161,13 @@ if (gatewayLifecycleCommands.length !== EXPECTED_GATEWAY_LIFECYCLE_COUNT) {
   fail(`analysis gateway lifecycle command count mismatch: expected ${EXPECTED_GATEWAY_LIFECYCLE_COUNT}, got ${gatewayLifecycleCommands.length}`);
 }
 
-const EXPECTED_CAPABILITY_COUNT = 334;
+const EXPECTED_CAPABILITY_COUNT = 336;
 if (capabilityCommands.length !== EXPECTED_CAPABILITY_COUNT) {
   fail(`analysis capability command count mismatch: expected ${EXPECTED_CAPABILITY_COUNT}, got ${capabilityCommands.length}`);
 }
 
 const EXPECTED_CAPABILITY_COUNTS_BY_SERVICE = {
-  analysis: 115,
+  analysis: 117,
   'analysis-meta': 65,
   'analysis-governance': 23,
   project: 44,
@@ -287,13 +287,14 @@ for (const item of [...capabilityCommands, ...gatewayLifecycleCommands]) {
 }
 
 const criticalReferenceTokens = {
-  'skills/ae-analysis/references/dashboard_list.md': ['dashboard_id', 'dashboard_name', 'remark', 'snake_case'],
+  'skills/ae-analysis/references/dashboard_list.md': ['dashboard_id', 'dashboard_name', 'remark', 'snake_case', 'update or manage', 'shared read-only', 'analysis asset search'],
   'skills/ae-analysis/references/dashboard_share.md': ['numeric user ID', 'READ', 'EDIT', 'complete directly shared user map'],
   'skills/ae-analysis/references/dashboard_update.md': ['refresh_type', '0', '1', 'dashboard_status', 'normal', 'freeze', 'dashboard_job_schedule'],
   'skills/ae-analysis/references/audience_models.md': ['Operators', 'Property reference', 'Time range', 'Filter group'],
   'skills/ae-analysis/references/user_cluster_models.md': ['event', 'user', 'tag', 'cluster', 'compound', 'behavior_sequence', 'condition', 'SQL'],
   'skills/ae-analysis/references/user_tag_models.md': [
     'condition', 'metric', 'first_last', 'SQL', 'percentile', '5', '99',
+    'Required: `event`, `aggregation`, and `time_range`', 'never omit `time_range`',
   ],
   'skills/ae-analysis/references/user_cluster_member_export.md': ['native full-download SQL', 'does not concatenate preview pages', 'jsonl|csv', 'members.jsonl.gz'],
   'skills/ae-analysis/references/user_tag_member_export.md': ['native current-tag or history-tag full-download SQL', 'does not concatenate preview pages', 'jsonl|csv', 'tag-members.jsonl.gz'],
@@ -310,7 +311,8 @@ const criticalReferenceTokens = {
   'skills/ae-analysis/references/analysis_data_export.md': ['Default and maximum runtime is 21600 seconds (6 hours)', 'resume_command'],
   'skills/ae-analysis/references/report_create.md': ['SQL dynamic parameter', '"use_timezone":true', 'boolean definition field', 'If the user also requests report data', '`report_id` returned by this exact create response'],
   'skills/ae-analysis/references/report_update.md': ['read the current `version` exactly once', 'query directly with the requested'],
-  'skills/ae-analysis/references/report_list.md': ['group known names into one `--queries` call or narrow with `--model-types`', 'do not issue one list call per name'],
+  'skills/ae-analysis/references/report_list.md': ['group known names into one `--queries` call or narrow with `--model-types`', 'do not issue one list call per name', 'edit or manage', 'shared read-only', 'analysis asset search'],
+  'skills/ae-analysis/references/asset_search.md': ['shared read-only assets', 'shared editable assets', 'analysis report list', 'analysis dashboard list'],
   'skills/ae-analysis/references/report_data_run.md': ['omit it when the saved defaults are requested', 'pass the requested value overrides directly through `--sql-params`', '"recent_day":"1-7"', '`effective_zone_offset`'],
   'skills/ae-analysis/references/report_data_export.md': ['same export response'],
   'skills/ae-analysis/references/adhoc_run.md': ['current runtime synchronous maximum', 'go directly to `analysis adhoc export`', 'Do not lower the requested row count'],

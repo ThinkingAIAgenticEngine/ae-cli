@@ -14,7 +14,7 @@ function buildArgs(ctx: RuntimeContext): Record<string, unknown> {
 export const getFlowInstanceDetail: Command = {
   service: 'dataops_operations',
   command: '+get_flow_instance_detail',
-  description: 'Get one workflow instance detail from the operations perspective. Use after +search_flow_instances returns flowCode and flowInstanceId. Returns flowInstance, tasks, relations, taskInstances, and summary for troubleshooting.',
+  description: 'Get one workflow instance detail from the operations perspective. Use after +search_flow_instances returns flowCode and flowInstanceId. Requires dwOMInstanceView. Returns flowInstance, tasks, relations, taskInstances, and summary. flowInstance.instanceParamMap contains the historical execution parameter snapshot, or null/omitted when unavailable; current definitions do not replace it.',
   flags: [
     { name: 'spaceCode', type: 'string', required: true, desc: 'Space code' },
     { name: 'flowCode', type: 'number', required: true, desc: 'Task flow code from +search_flow_instances' },

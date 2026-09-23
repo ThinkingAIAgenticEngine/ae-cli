@@ -1,12 +1,24 @@
 ---
 name: ae-engage
-version: 1.0.0
+version: 1.0.1
 description: "AE Engage capability gateway: config center, flows, push/config channels, strategies, templates, task management, operation activities, and query lifecycle. Trigger words: config center, scene config, push channel, config channel, operation strategy, operation task, operation activity, query lifecycle, template, config item, Engage, Hermes, engage-scene, engage-setting, engage-flow, engage-task, engage-activity, engage-query."
 ---
 
 # ae-engage
 
 AE CLI (`ae-cli`) is the command-line tool for the Agentic Engine data analysis platform, used by AI Agents and human users.
+
+## Capability contract
+
+- Responsibilities: engagement channels, configuration, strategies, task drafts/lifecycle, flows, activities and their reports/query lifecycle.
+- Inputs: verified project/resource identifiers and operation-specific configuration. Reuse known audience/event/property definitions; discover missing prerequisites only when the chosen operation needs them.
+- Outputs: configuration/task/resource identifiers, reports, or query/run status with the actual persisted state. Saving a draft does not submit approval or start delivery.
+- Boundaries: general analysis, metadata discovery and standalone audience creation are separate capabilities; they are not mandatory preflight stages for every engagement request.
+- Completion: the user's requested engagement action is verified, or pending/blocked work is reported. Draft creation, approval submission and sending are distinct actions with their own user-intent requirements.
+
+## Cross-skill collaboration
+
+When remaining work is outside this skill's scope, or a necessary prerequisite needs another capability, follow [the collaboration protocol](references/collaboration.md). Choose from the skills available in this run by capability, preserve verified context, and continue the remaining task. Reuse this protocol if already loaded.
 
 ## Global AE CLI Rules
 
@@ -53,7 +65,7 @@ When the user mentions a product term below (including common Chinese UI labels)
 | **Scene config** | Same as config center; params, groups, metrics, channels, strategies, and templates under a config item | `engage-scene` | `references/scene-config-item.md` | Same as above; params/groups/metrics: `scene-config-param.md`, `scene-config-group.md`, `scene-preset-metric.md`, `scene-config-metric.md` |
 | **Config item** | A single config item in the config center | `engage-scene` | `references/scene-config-item.md` | `scene-config-param.md`, `scene-preset-metric.md`, `scene-config-metric.md`, `scene-strategy.md`, `scene-template.md` |
 | **Push channel** | Project-level message push channels (Webhook, FCM, APNS, etc.) | `engage-setting` | `references/channel-list.md` | `channel-detail.md`, `add-channel.md` (**Webhook vs Client differ**: `url` = HTTP vs scene key; custom params `user:` vs `user:`/`client:`), `update-channel-status.md`, `delete-channel.md`, `channel-update-config.md`, `channel-test-send.md`, `channel_touch_limits_list.md` |
-| **Config channel** | Config-center Webhook/client config channels (not the same as push channels) | `engage-scene` | `references/scene-config-channel.md` | `channel-mgmt.md` (create/enable-disable/copy/delete workflows). User params in `config.customsParamList` require `columnName` with `user:` prefix (e.g. `user:#account_id`); preflight names with ae-analysis `analysis-meta property list/get`. |
+| **Config channel** | Config-center Webhook/client config channels (not the same as push channels) | `engage-scene` | `references/scene-config-channel.md` | `channel-mgmt.md` (create/enable-disable/copy/delete workflows). User params in `config.customsParamList` require `columnName` with `user:` prefix (e.g. `user:#account_id`); reuse verified property names or discover a property lookup capability. |
 | **Operation strategy** | Ops/delivery strategies under a config item | `engage-scene` | `references/scene-strategy.md` | Custom audience: [`scene-strategy-audience.md`](references/scene-strategy-audience.md) — semantic `definitionRequest` (Analysis condition shape); do not pass `targetClusterQp`/`qp`; preflight props (stop + list if missing); template: `scene-template.md` |
 | **Operation task** | Hermes push/engagement tasks (list, save, lifecycle, reports) | `engage-task` | `references/task-list.md` | `task-detail.md` (get), `save-task.md`, `build-task-save-guide.md`, `task-stats.md`, `task-delete.md`, `push-record-query.md`, `task-user-detail-export.md`, `task-indicator-user.md`, `task-data-overview.md`, `task-data-detail.md`, `task-metric-detail.md`, `task-metric-update.md`, `task-experiment-report.md` |
 | **Operation activity** | Campaign activity management and delivery trends by activity, topic, or standalone task | `engage-activity` | `references/activity-activity.md` | `activity-data-detail.md`, `activity-topic.md`, `activity-task.md`, `activity-approval.md` |
@@ -288,7 +300,7 @@ ae-cli engage-scene config-metric update-rule --project-id <project_id> --metric
 ae-cli engage-scene config-metric batch-delete --project-id <project_id> --config-id <config_id> --metric-ids '[1,2]' --yes
 
 # Config channel list / get / create / update / update-status / delete / query-log
-# User params: verify each customsParamList columnName via ae-analysis property list/get first; then use user:<prop_name>
+# User params: reuse or discover verified customsParamList property names; then use user:<prop_name>
 # Strategy custom audience: scene-strategy-audience.md — semantic definitionRequest; strategy predict for 预估人数
 # Workflows: references/channel-mgmt.md · schema: references/scene-config-channel.md
 ae-cli engage-scene config-channel list --project-id <project_id> [--channel-type 0|1]
@@ -398,6 +410,8 @@ When the user wants to "create a flow / generate a flow canvas / save a flow", d
 3. Build condition-related nodes with semantic `targetDefinitionRequest` and
    `triggerDefinition` objects. Resolve real event and property names through Analysis metadata;
    do not create an intermediate cluster merely to obtain persisted QP.
+   For `ab_split_flow` indicators, use `indicatorsDef[].eventDefinition`; always provide the
+   aggregate `operator`/`value` and every event-property filter's `operator`/`values`.
 
 4. Before building touchpoint nodes such as `message_push`, `wechat_push`, or `webhook_push`, you must call:
 
@@ -561,7 +575,7 @@ Commands that accept date parameters usually use `yyyy-MM-dd`, for example `--st
 
 ## Write Operation Reminder
 
-High-risk delete commands (`risk: high-risk-write`) require explicit user authorization before execution. Ordinary write commands (`risk: write`) do not:
+All writes require the corresponding user intent. High-risk delete commands (`risk: high-risk-write`) additionally require explicit confirmation before execution; ordinary writes (`risk: write`) do not require that extra confirmation:
 
 - Channels: `engage-setting channel create` (write), `engage-setting channel delete` (high-risk-write), `engage-setting channel update-status` (write)
 - Config channels (config center channel management): `engage-scene config-channel create|update|update-status` (write), `engage-scene config-channel delete` (high-risk-write)
@@ -590,7 +604,10 @@ For task draft creation or update, use this workflow:
    and reject all users (`3`); `client_push` (`channelType=3`) allows custom (`1`) or all users (`3`)
    and rejects existing (`2`). Do not infer audience support from `triggerType` alone.
 4. `ae-cli engage-task task save --project-id <projectId> --req '{...}'`
-5. `ae-cli engage-task task submit-approval --project-id <projectId> --task-id <taskId>`
+
+For a draft-only request, stop after saving and verifying the draft. Submit approval
+only when that separate action is included in the user's intent:
+`ae-cli engage-task task submit-approval --project-id <projectId> --task-id <taskId>`.
 
 `engage-task task build-save-guide` is a read-only helper. It returns scenario-specific required fields, channel content schema, unsupported combinations, examples, and a handoff template for `save_task`.
 When `enableExp=true`, capability `engage-task.task.build-save-guide` enriches the handoff so
@@ -601,7 +618,7 @@ rejects misaligned experiment content with `TASK_EXPERIMENT_GROUP_CONTENT_INVALI
 
 `engage-task task save` creates or updates a task configuration. It does not submit approval, does not start sending, and does not trigger task execution. If `req.taskId` is omitted it creates a new draft; if `req.taskId` is present it updates an existing **draft or paused** task. Update mode rejects running/ended tasks with `invalid_status`. Omitted fields inherit from the existing task before validation (partial rename/update is supported).
 
-`engage-task task submit-approval --task-id` is the recommended approval path after `task save`.
+When approval submission is requested, `engage-task task submit-approval --task-id` is the recommended path after `task save`.
 It submits the persisted draft without requiring the Agent to reconstruct internal `trigger_rule`.
 The legacy `--request` mode remains available for compatibility; provide exactly one of
 `--task-id` or `--request`.

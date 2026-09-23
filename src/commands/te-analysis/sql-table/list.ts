@@ -14,7 +14,7 @@ export const sqlTableList = createAnalysisCapabilityCommand({
   resource: 'sql-table',
   command: 'list',
   capabilityId: 'analysis.sql_table.list',
-  description: 'List server-authoritative SQL table references queryable by the current user in a project.',
+  description: 'List server-authoritative SQL table references queryable by the current user in a project, including authorized space tables. Use sql_reference when copying a table into SQL.',
   flags: [projectIdFlag, queriesFlag, directoryLimitFlag, directoryOffsetFlag, sqlTableUsageFlag],
   risk: 'read',
   validate: validateQueriesFlag,

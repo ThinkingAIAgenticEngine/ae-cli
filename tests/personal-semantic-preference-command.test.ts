@@ -4,6 +4,8 @@ import {
   validatePersonalSemanticWrite,
 } from '../src/commands/personal-semantic-preference/shared.ts';
 import { personalSemanticPreferenceAdd } from '../src/commands/personal-semantic-preference/add.ts';
+import { personalSemanticPreferenceDelete } from '../src/commands/personal-semantic-preference/delete.ts';
+import { personalSemanticPreferenceGet } from '../src/commands/personal-semantic-preference/get.ts';
 import { clearCliToken, setCliTokenManual } from '../src/core/cli-token.ts';
 import type { RuntimeContext } from '../src/framework/types.ts';
 
@@ -41,8 +43,10 @@ assert.throws(
 const host = 'https://personal-semantic.example.com';
 setCliTokenManual('personal-semantic-token', host);
 let capturedBody: Record<string, any> | undefined;
+let capturedUrl = '';
 const originalFetch = globalThis.fetch;
-globalThis.fetch = (async (_input: any, init?: RequestInit) => {
+globalThis.fetch = (async (input: any, init?: RequestInit) => {
+  capturedUrl = String(input);
   capturedBody = JSON.parse(String(init?.body));
   return new Response(JSON.stringify({ ok: true, data: { dry_run: true } }), { status: 200 });
 }) as typeof fetch;
@@ -72,6 +76,61 @@ try {
 
   assert.deepEqual(capturedBody?.input.resource_refs, refs);
   assert.equal(capturedBody?.input.context_type, 'asset_context');
+
+  const getCtx = {
+    host: () => host,
+    str: (name: string) => {
+      if (name === 'id') return 'preference_31';
+      if (name === 'title') return 'Today data';
+      return '';
+    },
+    num: (name: string) => name === 'project-id' ? 6 : 0,
+    optionalNum: () => undefined,
+    bool: (name: string) => name === 'mark-used',
+    json: () => undefined,
+    list: () => [],
+  } as RuntimeContext;
+
+  await personalSemanticPreferenceGet.dryRun!(getCtx);
+
+  const titleFlag = personalSemanticPreferenceGet.flags.find((flag) => flag.name === 'title');
+  assert.equal(titleFlag?.required, true);
+  assert.equal(titleFlag?.minLength, 1);
+  assert.match(capturedUrl, /business_semantics\.personal_context\.get\/dry-run$/);
+  assert.deepEqual(capturedBody?.input, {
+    project_id: 6,
+    id: 'preference_31',
+    title: 'Today data',
+    mark_used: true,
+  });
+
+  const deleteCtx = {
+    host: () => host,
+    str: (name: string) => {
+      if (name === 'id') return 'preference_31';
+      if (name === 'request-id') return 'delete-request-1';
+      return '';
+    },
+    num: (name: string) => {
+      if (name === 'project-id') return 6;
+      if (name === 'expected-revision') return 3;
+      return 0;
+    },
+    optionalNum: () => undefined,
+    bool: () => false,
+    json: () => undefined,
+    list: () => [],
+  } as RuntimeContext;
+
+  await personalSemanticPreferenceDelete.dryRun!(deleteCtx);
+
+  assert.match(capturedUrl, /business_semantics\.personal_context\.delete\/dry-run$/);
+  assert.deepEqual(capturedBody?.input, {
+    project_id: 6,
+    id: 'preference_31',
+    expected_revision: 3,
+    request_id: 'delete-request-1',
+  });
 } finally {
   globalThis.fetch = originalFetch;
   clearCliToken(host);

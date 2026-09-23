@@ -18,13 +18,13 @@ function buildArgs(ctx: RuntimeContext): Record<string, unknown> {
 export const searchFlowInstances: Command = {
   service: 'dataops_operations',
   command: '+search_flow_instances',
-  description: 'Search workflow instances from the operations perspective. Requires spaceCode; keyword, startDate, endDate, status, pageNum, and pageSize are optional. Returns totalCount, returnedCount, pageNum, pageSize, hasMore, instances, statusCounts, triggerTypeCounts, and ownerCounts. Use flowInstanceId for operations inspection; do not confuse it with executeId.',
+  description: 'Search workflow instances from the operations perspective. Requires spaceCode; keyword, startDate, endDate, status, pageNum, and pageSize are optional. Returns totalCount, returnedCount, pageNum, pageSize, hasMore, instances, statusCounts, triggerTypeCounts, and ownerCounts. Each instance uses status for execution state, triggerType for its trigger, and flowStatus for the workflow definition state. Use flowInstanceId for operations inspection; do not confuse it with executeId.',
   flags: [
     { name: 'spaceCode', type: 'string', required: true, desc: 'Space code' },
     { name: 'keyword', type: 'string', required: false, desc: 'Optional keyword; fuzzy matches instance ID, workflow name, and workflow remark' },
     { name: 'startDate', type: 'string', required: false, desc: 'Optional execution start date, yyyy-MM-dd' },
     { name: 'endDate', type: 'string', required: false, desc: 'Optional execution end date, yyyy-MM-dd' },
-    { name: 'status', type: 'string', required: false, desc: 'Optional comma-separated statuses: WAITING,RUNNING,SUCCESS,FAIL,READY_PAUSE,PAUSE,STOP' },
+    { name: 'status', type: 'string', required: false, desc: 'Optional comma-separated statuses: RUNNING,SUCCESS,FAIL,READY_PAUSE,PAUSE,STOP. WAITING filtering is not supported' },
     { name: 'pageNum', type: 'number', required: false, desc: 'Optional page number; default 1' },
     { name: 'pageSize', type: 'number', required: false, desc: 'Optional page size; default 20, max 100' },
   ],

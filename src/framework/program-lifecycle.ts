@@ -1,7 +1,15 @@
 import type { Command, Option } from 'commander';
+import { CredentialStoreUnreadableError } from '../core/secure-store.js';
+import { printError } from './output.js';
 
 export async function parseProgram(program: Command, argv: string[] = process.argv): Promise<void> {
-  await program.parseAsync(normalizeSubcommandVersionOption(program, argv));
+  try {
+    await program.parseAsync(normalizeSubcommandVersionOption(program, argv));
+  } catch (error) {
+    if (!(error instanceof CredentialStoreUnreadableError)) throw error;
+    printError('config', error.message, error.hint, error.code);
+    process.exitCode = 1;
+  }
 }
 
 export function normalizeSubcommandVersionOption(program: Command, argv: string[]): string[] {

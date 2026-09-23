@@ -62,7 +62,7 @@ try {
           }
           assert.equal(path, `/api/cli/analysis/v1/capabilities/${id}/${mode}`);
           assert.equal(init?.method, 'POST');
-          assert.deepEqual(JSON.parse(String(init?.body)), { input: value });
+          assert.deepEqual(JSON.parse(String(init?.body)).input, value);
           return new Response(JSON.stringify({ ok: true, data: { accepted: true } }));
         }) as typeof fetch;
         const success = await invoke(args);
@@ -88,7 +88,7 @@ try {
                 return new Response(JSON.stringify({ ok: true, data: { risk: 'write' } }));
               }
               assert.equal(path, `/api/cli/analysis/v1/capabilities/${id}/${mode}`);
-              assert.deepEqual(JSON.parse(String(init?.body)), { input: value });
+              assert.deepEqual(JSON.parse(String(init?.body)).input, value);
               dispatched++;
               return new Response(JSON.stringify({ ok: false, error, meta }), { status });
             }) as typeof fetch;

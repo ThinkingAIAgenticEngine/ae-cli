@@ -1,10 +1,14 @@
 ---
 name: ae-kb
-version: 1.0.0
+version: 1.0.1
 description: 'AE knowledge base CLI manual for creating, importing read-only compiled snapshots, querying, LLM-powered ask, listing accessible knowledge bases and their sources, deterministic index/grep/read retrieval, checking status, ZIP source upload and directory management, raw child-file reading, revision-checked child updates and deletion, compiling, schema generation, URL sources, source deletion, file/ZIP source draft replacement and restoration, and knowledge base deletion. Use when the user asks to manage AE (Agentic Engine) knowledge bases, import a compiled Markdown ZIP snapshot, upload documents or URLs to a knowledge base, query knowledge, ask knowledge bases with an LLM, list accessible knowledge bases or source metadata, inspect knowledge base indexes, search knowledge base pages, read a specific knowledge base page, check knowledge base status, generate schemas, compile knowledge, remove sources, or delete a knowledge base. To choose which knowledge base is worth searching, use the ae-kb-discovery skill first; this skill runs the retrieval once a target is chosen. Must use ae-cli kb commands and must not guess knowledge base names, scopes, page paths, source IDs, source display names, JSON payload shapes, or URL formats.'
 ---
 
 # ae-kb
+
+## Cross-skill collaboration
+
+When remaining work is outside this skill's scope, or a necessary prerequisite needs another capability, follow [the collaboration protocol](references/collaboration.md). Choose from the skills available in this run by capability, preserve verified context, and continue the remaining task. Reuse this protocol if already loaded.
 
 AE CLI (`ae-cli`) knowledge base commands are invoked through:
 
@@ -550,6 +554,10 @@ ae-cli kb +rm-source --name "<name>" --id "<source-id>" [--scope personal|compan
 ```bash
 ae-cli kb +remove --name "<name>" [--scope personal|company]
 ```
+
+## Import and replace compilation rules
+
+Use [schema import commands](references/schema-import.md) to upload, validate, edit, repair, review and apply a Markdown compilation rule candidate. These actions do not generate rules from sources or import a compiled snapshot.
 
 ## Check a Feishu source for updates
 

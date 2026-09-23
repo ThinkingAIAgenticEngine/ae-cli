@@ -2,7 +2,7 @@
 
 # ae-cli
 
-`ae-cli` 是 ThinkingAI AgenticEngine（AE）平台的命令行客户端，为 AI Agent 和人工操作提供稳定、结构化的接口，覆盖分析与项目配置、元数据、埋点、本地数据接入、运营、DataOps、知识库、Agent 资源、用户记忆及系统管理。
+`ae-cli` 是 ThinkingAI AgenticEngine（AE）平台的命令行客户端，为 AI Agent 和人工操作提供稳定、结构化的接口，覆盖分析、实验、项目配置、元数据、埋点、本地数据接入、运营、DataOps、知识库、Agent 资源、用户记忆及系统管理。
 
 CLI 的核心设计包括：
 
@@ -113,12 +113,13 @@ ae-cli capability list --domain analysis --jq '.data.capabilities[] | .id'
 | 类别 | 根命令 | 用途 |
 |---|---|---|
 | 分析与项目 | `analysis` | 报告、看板、即席分析、下钻、详情、告警、标签和分群 |
+| 分析与项目 | `experiment` | Atlas 实验、报表、流量层、分桶、Feature、指标和操作日志 |
 | 分析与项目 | `analysis-meta` | 事件/属性目录、指标、虚拟元数据、埋点治理和项目分析配置 |
 | 分析与项目 | `analysis-governance` | 数据资产搜索、血缘、影响分析、认证和治理 |
 | 分析与项目 | `project` | 项目信息、成员、角色、权限、实体、时区和交接配置 |
 | 分析与项目 | `metadata` | 基于 Capability Gateway 的数据表、属性及维度表绑定 |
 | 分析与项目 | `personal-semantic-preference` | 当前用户按项目维护轻量个人语义偏好 |
-| 分析与项目 | `project-semantic` | 导出用于知识库构建的项目资产包 |
+| 分析与项目 | `project-semantic` | 项目语义治理、知识库资产包、候选校验、审核和发布 |
 | 数据与埋点 | `tracking` | 埋点方案、SDK 示例、检查、采集诊断、代码生成和内置 Wiki |
 | 数据与埋点 | `data-integration` | 检查、规划、转换、上传、交接和复用本地 CSV/JSON/Excel 数据 |
 | 社区洞察 | `community` | 社区帖子、评论、话题、情感、直播和报告工作流 |
@@ -130,7 +131,7 @@ ae-cli capability list --domain analysis --jq '.data.capabilities[] | .id'
 | 运营 | `engage-workbench` | 运营工作台和待办管理 |
 | 运营 | `engage-query` | 运营查询、异步导出和产物管理 |
 | DataOps | `dataops_repo` | 数仓和数据源管理 |
-| DataOps | `dataops_datatable` | 数据表生命周期管理 |
+| DataOps | `dataops_datatable` | 表/视图生命周期管理，包括回收、查询回收站与彻底删除 |
 | DataOps | `dataops_flow` | 开发流程、调度和补数作业管理 |
 | DataOps | `dataops_ide` | IDE 查询及结果下载 |
 | DataOps | `dataops_integration` | 数据集成任务管理 |
@@ -180,6 +181,10 @@ Gateway 命令遵循 [Capability 命令收录规则](docs/capability-command-adm
 ```bash
 ae-cli auth login --host https://host-a.example.com
 ae-cli auth status --host https://host-a.example.com
+# 导入从“外部访问管理”复制的 CLI Token（隐藏输入）
+ae-cli auth set-token --host https://host-a.example.com
+# 本地脚本或测试使用非交互输入
+printf '%s' "$AE_CLI_TOKEN" | ae-cli auth set-token --host https://host-a.example.com --token-stdin
 # 少量需要同一 Host 多账号的场景
 ae-cli auth login --host https://host-a.example.com --add
 ae-cli auth list --host https://host-a.example.com
@@ -198,6 +203,8 @@ ae-cli config remove pre-production --yes
 `<env>` 可以是完整 URL 或唯一 label。交互管理器和 `config list` 都会明确标识 active 环境。当还存在其他环境时，不允许直接删除 active 环境；应先显式切换。`config set-host` 作为兼容命令继续保留，其语义是添加或更新 Host 并立即激活。
 
 普通 `auth login` 保持一个 Host 一个账号的简单语义，并替换该 Host 已保存的账号；仅在需要时使用 `--add` 保留其他账号。`auth status` 只展示 CLI Token 状态；新版后端可同时返回账号和到期时间，旧版后端不支持 `/validate` 时仍按历史行为信任本地 CLI Token，且不会输出含 null 字段的 `account`。
+
+`auth set-token` 用于在本地导入从“外部访问管理”复制的 `cli_` Token。默认使用不回显的隐藏输入，`--token-stdin` 支持本地测试等非交互场景。CLI 会先向目标 Host 校验 Token，再替换本地凭证，并写入现有的按 Host 加密凭据库；命令输出不会包含 Token。需要保留同一 Host 的其他账号时增加 `--add`。
 
 新版 CLI 只持久化 CLI Token，不保存 access token 或 refresh token。多账号保存在加密的 V1 凭据文件中，同时维护旧文件格式的当前账号投影，保证 CLI 自动降级后仍可登录；再次升级时会合并旧 CLI 对投影的登录、切换或退出变更。
 
@@ -361,6 +368,7 @@ npm test
 npm run qa-changed
 npm run self-check
 npm run check:release
+npm run verify:experiment-tools
 npm run verify:readme
 npm run verify:auth-credentials
 npm run verify:update-check

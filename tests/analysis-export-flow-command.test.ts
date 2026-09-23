@@ -68,7 +68,8 @@ async function dryBody(command: { dryRun?: (ctx: any) => unknown }, values: Reco
   }) as typeof fetch;
   try {
     await command.dryRun!(makeCtx(values));
-    return body;
+    const { client_context: _clientContext, ...businessBody } = body;
+    return businessBody;
   } finally {
     globalThis.fetch = originalFetch;
     clearCliToken(host);
@@ -79,6 +80,7 @@ process.stdout.write('\nanalysis export flow command tests\n');
 
 clearCapabilityGatewayRoutesForTest();
 registerCapabilityGatewayRoute('analysis', { gatewayDomain: 'analysis' });
+registerCapabilityGatewayRoute('analysis-governance', { gatewayDomain: 'analysis' });
 
 await test('run inspect targets analysis run endpoint', () => {
   const dryRun = runInspect.dryRun!(makeCtx({ 'run-id': 'run_abc' }));
@@ -137,6 +139,10 @@ await test('every known run-scoped artifact capability uses the same lifecycle c
     'analysis.report_data.export',
     'analysis.user_cluster_member.export',
     'analysis.user_tag_member.export',
+    'governance.asset.export',
+    'governance.asset.batch_export_info',
+    'governance.asset.batch_export_sql',
+    'governance.operation_record.export',
     'metadata.event_property_bundle.export',
     'metadata.catalog.export',
     'project.member_handover.export',
@@ -315,6 +321,43 @@ await test('--output implies wait and streams a completed artifact to an atomic 
   }
 });
 
+for (const capabilityId of ['governance.asset.export', 'governance.asset.batch_export_info',
+  'governance.asset.batch_export_sql', 'governance.operation_record.export']) {
+  await test(`${capabilityId} waits and downloads the returned artifact through the analysis gateway`, async () => {
+    const command = baseCommands.find((entry) => entry.capabilityId === capabilityId)!;
+    const dir = await mkdtemp(join(tmpdir(), 'ae-governance-export-'));
+    const output = join(dir, capabilityId === 'governance.asset.export' ? 'rows.jsonl' : 'rows.xlsx');
+    const originalFetch = globalThis.fetch;
+    const requests: string[] = [];
+    setCliTokenManual('governance-export-fixture', 'https://ta.example.com');
+    globalThis.fetch = (async (request: any) => {
+      const url = String(request);
+      if (url.includes('/v1/ta/cli/token/renew?')) return new Response('{"return_code":0}', { status: 200 });
+      requests.push(url);
+      if (url.endsWith(`/capabilities/${capabilityId}/execute`)) {
+        return new Response(JSON.stringify({ ok: true, data: {
+          run_id: 'run_governance', artifact_id: 'artifact_governance', status: 'SUCCEEDED', artifact_status: 'COMPLETED',
+        } }), { status: 200 });
+      }
+      if (url.endsWith('/runs/run_governance/artifacts/artifact_governance/download')) {
+        return new Response('governance-artifact', { status: 200 });
+      }
+      throw new Error(`Unexpected request ${url}`);
+    }) as typeof fetch;
+    try {
+      const result = await command.execute(makeCtx({ 'project-id': 1, 'node-ids': '["node-a"]', 'record-id': 1, output }));
+      assert.equal(result.output_path, output);
+      assert.equal(await readFile(output, 'utf8'), 'governance-artifact');
+      assert.ok(requests.every((url) => url.includes('/api/cli/analysis/v1/')), requests.join('\n'));
+      assert.equal(requests.length, 2);
+    } finally {
+      globalThis.fetch = originalFetch;
+      clearCliToken('https://ta.example.com');
+      await rm(dir, { recursive: true, force: true });
+    }
+  });
+}
+
 await test('artifact download refuses an existing file unless force is explicit', async () => {
   const host = 'https://ta.example.com';
   const dir = await mkdtemp(join(tmpdir(), 'ae-cli-artifact-existing-'));
@@ -393,11 +436,13 @@ await test('failed streamed downloads remove the temporary file and never publis
   }), { status: 200 })) as typeof fetch;
 
   try {
-    await assert.rejects(
-      () => downloadAnalysisArtifact(host, 'run_abc', 'artifact_xyz', output, { ensureReady: false }),
-      /connection dropped/,
-    );
-    assert.deepEqual(await readdir(dir), []);
+    for (let attempt = 0; attempt < 20; attempt++) {
+      await assert.rejects(
+        () => downloadAnalysisArtifact(host, 'run_abc', 'artifact_xyz', output, { ensureReady: false }),
+        /connection dropped/,
+      );
+      assert.deepEqual(await readdir(dir), []);
+    }
   } finally {
     globalThis.fetch = originalFetch;
     clearCliToken(host);

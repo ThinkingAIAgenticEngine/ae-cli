@@ -8,7 +8,10 @@ import { clearCliToken, setCliTokenManual } from '../src/core/cli-token.js';
 import { unwrapOutputData } from '../src/framework/output.js';
 import commands, { agentReviewSubmitToPage, agentReviewReview, agentReviewRetry, agentReviewEvidence } from '../src/commands/te-analysis/meta/agent-review/index.js';
 import allCommands from '../src/commands/te-analysis/meta/index.js';
-import { metadataGovernanceRecommendationExport } from '../src/commands/te-analysis/meta/governance-recommendation/index.js';
+import {
+  metadataGovernanceRecommendationAutoReview,
+  metadataGovernanceRecommendationExport,
+} from '../src/commands/te-analysis/meta/governance-recommendation/index.js';
 import { metadataGovernanceRecommendationSubmit } from '../src/commands/te-analysis/meta/governance-recommendation/submit.js';
 
 const host = 'https://agent-review.example.com';
@@ -57,10 +60,91 @@ const retry = { 'project-id': 1, 'batch-id': batchId, 'client-request-id': 'retr
 
 function ctx(values: Record<string, unknown>): RuntimeContext {
   return {
+    has: (name: string) => Object.prototype.hasOwnProperty.call(values, name),
     str: (name: string) => values[name] === undefined ? '' : String(values[name]),
     num: (name: string) => Number(values[name]),
     json: (name: string) => values[name], host: () => host,
   } as RuntimeContext;
+}
+
+function exportProbe(limit: number, enough: boolean): Record<string, unknown> {
+  const unitCount = enough ? 3 : 1;
+  const candidatesPerUnit = enough ? 4 : 4;
+  const pendingCandidateAssets = Array.from({ length: unitCount }, (_unit, unitIndex) =>
+    Array.from({ length: candidatesPerUnit }, (_candidate, candidateIndex) => ({
+      client_item_id: `event_${unitIndex}_${candidateIndex}`,
+      target_ref: { type: 'event', key: `event_${unitIndex}_${candidateIndex}` },
+      display_name: `事件 ${unitIndex}-${candidateIndex}`,
+      recommendation_role: 'source_dashboard',
+      action_state: 'PENDING',
+      actionable: true,
+      evidence_hash: `hash_${unitIndex}_${candidateIndex}`,
+      heat_count90d: candidateIndex === 1 ? 60 : 1,
+      user_count90d: candidateIndex === 1 ? 6 : 1,
+      impact_degree: candidateIndex === 1 ? 3 : 0,
+      source_link: `/#/data/event/${unitIndex}_${candidateIndex}`,
+      evidence_links: [{ label: '来源事件', url: `/#/data/event/${unitIndex}_${candidateIndex}` }],
+      evidence_snapshot: {
+        asset: { resource_type: 'event', resource_key: `event_${unitIndex}_${candidateIndex}` },
+        source_link: `/#/data/event/${unitIndex}_${candidateIndex}`,
+      },
+    })),
+  ).flat();
+  const candidateAssets = [
+    {
+      client_item_id: 'dashboard_1',
+      target_ref: { type: 'dashboard', key: '1' },
+      display_name: '来源看板',
+      action_state: 'AUTHENTICATED',
+      actionable: false,
+      source_link: '/#/panel/panel/1_1_0',
+      evidence_links: [{ label: '来源看板', url: '/#/panel/panel/1_1_0' }],
+      evidence_snapshot: {
+        asset: { resource_type: 'dashboard', resource_key: '1', authentication_status: 1 },
+        source_link: '/#/panel/panel/1_1_0',
+      },
+    },
+    {
+      client_item_id: 'event_existing',
+      target_ref: { type: 'event', key: 'event_existing' },
+      display_name: '事件 0-2',
+      action_state: 'AUTHENTICATED',
+      actionable: false,
+      heat_count90d: 120,
+      user_count90d: 20,
+      impact_degree: 6,
+      evidence_snapshot: {
+        asset: { resource_type: 'event', resource_key: 'event_existing', display_name: '事件 0-2', authentication_status: 1 },
+      },
+    },
+    ...pendingCandidateAssets,
+  ];
+  return {
+    run_id: `rec_${limit}`,
+    dashboard_limit: limit,
+    snapshot_hash: `snapshot-${limit}`,
+    coverage: {
+      selected_dashboards: limit,
+      visible_work_units: unitCount,
+      has_more: true,
+    },
+    work_units: Array.from({ length: unitCount }, (_unit, unitIndex) => ({
+      actionable_count: candidatesPerUnit,
+      asset_candidates: Array.from({ length: candidatesPerUnit }, (_candidate, candidateIndex) => ({
+        resource_type: 'event',
+        resource_key: `event_${unitIndex}_${candidateIndex}`,
+        action_state: 'PENDING',
+        actionable: true,
+      })),
+    })),
+    review_material_package: {
+      candidate_assets: candidateAssets,
+      relations: [{ parent: 'dashboard_1', child: 'event_0_0', type: 'uses' }],
+      source_index: [{ role: 'source_dashboard', client_item_id: 'dashboard_1' }],
+      quality_gates: ['manual review item reasons must include auto review reason'],
+      definition_policy: { hash: 'snapshot_hash plus per-item evidence_hash' },
+    },
+  };
 }
 
 test('registers seven typed commands and keeps legacy executing submit separate', () => {
@@ -69,7 +153,11 @@ test('registers seven typed commands and keeps legacy executing submit separate'
   assert.equal(agentReviewSubmitToPage.capabilityId, 'metadata.agent_review.create');
   assert.equal(agentReviewSubmitToPage.risk, 'write');
   assert.equal(metadataGovernanceRecommendationSubmit.capabilityId, 'metadata.governance_recommendation.submit');
+  assert.equal(metadataGovernanceRecommendationAutoReview.capabilityId, 'metadata.governance_recommendation.auto_review');
+  assert.equal(metadataGovernanceRecommendationAutoReview.command, 'auto-review');
+  assert.equal(metadataGovernanceRecommendationAutoReview.risk, 'write');
   assert.ok(metadataGovernanceRecommendationSubmit.flags.some((flag) => flag.name === 'decisions'));
+  assert.ok(!metadataGovernanceRecommendationAutoReview.flags.some((flag) => flag.name === 'decisions'));
   assert.ok(!agentReviewSubmitToPage.flags.some((flag) => flag.name === 'decisions'));
 });
 
@@ -89,6 +177,15 @@ test('command help text exposes customer and Agent review contracts without loca
   assert.match(metadataGovernanceRecommendationExport.helpText ?? '', /Dashboard candidates may include optional space_id\/space_name/);
   assert.match(metadataGovernanceRecommendationExport.helpText ?? '', /never invent or require them/);
   assert.match(metadataGovernanceRecommendationExport.helpText ?? '', /agent-review submit-to-page/);
+  assert.match(metadataGovernanceRecommendationAutoReview.helpText ?? '', /only when the user explicitly asks/i);
+  assert.match(metadataGovernanceRecommendationAutoReview.helpText ?? '', /agent_auto_asset_certification_enabled/);
+  assert.match(metadataGovernanceRecommendationAutoReview.helpText ?? '', /project_semantic_enable/);
+  assert.match(metadataGovernanceRecommendationAutoReview.helpText ?? '', /top-20.*top-50.*top-100/);
+  assert.match(metadataGovernanceRecommendationAutoReview.helpText ?? '', /CLI Agent builds automatic decisions once/);
+  assert.match(metadataGovernanceRecommendationAutoReview.helpText ?? '', /duplicate skip must name the conflicting asset targets/);
+  assert.match(metadataGovernanceRecommendationAutoReview.helpText ?? '', /manual_review_handoff/);
+  assert.match(metadataGovernanceRecommendationAutoReview.helpText ?? '', /Do not call this command for a plain recommendation request/);
+  assert.match(metadataGovernanceRecommendationAutoReview.helpText ?? '', /reviewer-readable Chinese/);
 
   assert.match(agentReviewSubmitToPage.helpText ?? '', /governance-recommendation export -> Agent builds ai_summary\/presentation_snapshot\/item reasons -> submit-to-page --input-file/);
   assert.match(agentReviewSubmitToPage.helpText ?? '', /review page batch and site notification/);
@@ -116,6 +213,134 @@ test('command help text exposes customer and Agent review contracts without loca
   assert.doesNotMatch(help, /AE_CLI_CAPABILITY_GATEWAY_DOMAIN/);
   assert.doesNotMatch(help, /127\.0\.0\.1/);
   assert.doesNotMatch(help, /projectId=196|project_id=196|--project-id 196/);
+});
+
+test('auto-review is an explicit gateway write separate from recommendation and page submission', async () => {
+  setCliTokenManual('test-agent-review-token', host);
+  const original = globalThis.fetch;
+  const calls: Array<{ url: string; input: Record<string, unknown> }> = [];
+  globalThis.fetch = async (request, init) => {
+    const url = String(request);
+    assert.equal(new Headers(init?.headers).get('cli-token'), 'test-agent-review-token');
+    calls.push({ url, input: JSON.parse(String(init?.body)).input });
+    if (url.endsWith('/capabilities/metadata.governance_recommendation.export/execute')) {
+      return new Response(JSON.stringify({ ok: true, data: exportProbe(10, true) }));
+    }
+    return new Response(JSON.stringify({ ok: true, data: { run_id: 'rec_auto_1', total: 0, items: [] } }));
+  };
+  try {
+    const values = { 'project-id': 1, 'window-days': 30, limit: 10 };
+    await metadataGovernanceRecommendationAutoReview.validateInput!(ctx(values));
+    await metadataGovernanceRecommendationAutoReview.dryRun!(ctx(values));
+    await metadataGovernanceRecommendationAutoReview.execute(ctx(values));
+    assert.deepEqual(calls.map((call) => call.url.split('/capabilities/')[1]), [
+      'metadata.governance_recommendation.auto_review/validate',
+      'metadata.governance_recommendation.auto_review/dry-run',
+      'metadata.governance_recommendation.auto_review/validate',
+      'metadata.governance_recommendation.export/execute',
+      'metadata.governance_recommendation.submit/execute',
+    ]);
+    assert.equal(calls.at(-1)!.input.project_id, 1);
+    assert.equal(calls.at(-1)!.input.window_days, 30);
+    assert.equal(calls.at(-1)!.input.limit, 10);
+    assert.ok(Array.isArray(calls.at(-1)!.input.decisions));
+    assert.equal(calls[3].input.include_completed, false);
+  } finally {
+    globalThis.fetch = original;
+    clearCliToken(host);
+  }
+});
+
+test('auto-review expands hot-dashboard scope read-only before a single automatic certification write', async () => {
+  setCliTokenManual('test-agent-review-token', host);
+  const original = globalThis.fetch;
+  const calls: Array<{ url: string; input: Record<string, unknown> }> = [];
+  globalThis.fetch = async (request, init) => {
+    const url = String(request);
+    const input = JSON.parse(String(init?.body)).input;
+    calls.push({ url, input });
+    assert.equal(new Headers(init?.headers).get('cli-token'), 'test-agent-review-token');
+    if (url.endsWith('/capabilities/metadata.governance_recommendation.auto_review/validate')) {
+      return new Response(JSON.stringify({ ok: true, data: { valid: true } }));
+    }
+    if (url.endsWith('/capabilities/metadata.governance_recommendation.export/execute')) {
+      const limit = Number(input.limit);
+      const enough = limit === 50;
+      return new Response(JSON.stringify({ ok: true, data: exportProbe(limit, enough) }));
+    }
+    if (url.endsWith('/capabilities/metadata.governance_recommendation.submit/execute')) {
+      const decisions = input.decisions as Array<Record<string, unknown>>;
+      const items = decisions.map((decision) => ({
+        ...decision,
+        landing_status: decision.decision === 'APPROVE' ? 'APPLIED' : 'RECORDED',
+        landing_message: decision.decision === 'APPROVE'
+          ? 'asset_authenticated; operation_id=operation-auto'
+          : 'decision_recorded',
+      }));
+      return new Response(JSON.stringify({ ok: true, data: {
+        run_id: input.run_id,
+        dashboard_limit: input.limit,
+        total: items.length,
+        applied: items.filter((item) => item.landing_status === 'APPLIED').length,
+        recorded: items.filter((item) => item.landing_status === 'RECORDED').length,
+        failed: 0,
+        items,
+      } }));
+    }
+    throw new Error(`unexpected request: ${url}`);
+  };
+  try {
+    const result = unwrapOutputData(await metadataGovernanceRecommendationAutoReview.execute(ctx({
+      'project-id': 1,
+      'window-days': 90,
+    })));
+    assert.equal(result.dashboard_limit, 50);
+    assert.equal(result.auto_review_expansion.final_limit, 50);
+    assert.equal(result.auto_review_expansion.stop_reason, 'sufficient_pending_scope');
+    assert.deepEqual(result.auto_review_expansion.inspected_limits, [20, 50]);
+    assert.match(result.manual_review_handoff.source_auto_review_run_id, /^rec_auto_/);
+    assert.equal(result.manual_review_handoff.source_export_run_id, 'rec_50');
+    assert.ok(result.manual_review_handoff.items.some((entry: Record<string, unknown>) =>
+      String(entry.manual_review_reason).includes('自动认证未通过')
+        && String(entry.manual_review_reason).includes('近 90 天访问/使用 1 次')
+        && (entry.target_ref as Record<string, unknown>).key === 'event_0_0'
+        && entry.source_link === '/#/data/event/0_0'));
+    assert.ok(!result.manual_review_handoff.items.some((entry: Record<string, unknown>) =>
+      (entry.target_ref as Record<string, unknown>).key === 'event_0_1'));
+    const conflictReason = String(result.manual_review_handoff.items.find((entry: Record<string, unknown>) =>
+      (entry.target_ref as Record<string, unknown>).key === 'event_0_2')?.manual_review_reason);
+    assert.match(conflictReason, /事件 0-2/);
+    assert.match(conflictReason, /event:event_existing/);
+    assert.match(conflictReason, /语义重复或口径相近/);
+    assert.doesNotMatch(conflictReason, /证据指纹|历史审核依据|已有审核记录/);
+    const duplicateItem = result.manual_review_handoff.items.find((entry: Record<string, unknown>) =>
+      (entry.target_ref as Record<string, unknown>).key === 'event_0_2') as Record<string, unknown>;
+    assert.deepEqual((duplicateItem.semantic_duplicate_targets as Array<Record<string, unknown>>)[0].target_ref,
+      { type: 'event', key: 'event_existing' });
+    assert.equal(result.manual_review_handoff.auto_certified_items.length, 3);
+    assert.equal(result.manual_review_handoff.auto_review_trace.approved_items.length, 3);
+    assert.equal(result.manual_review_handoff.page_review_context_count, 1);
+    assert.ok(result.manual_review_handoff.page_review_items.some((entry: Record<string, unknown>) =>
+      entry.client_item_id === 'dashboard_1'
+        && entry.manual_review_context === true
+        && (entry.evidence_snapshot as Record<string, any>).asset.authentication_status === 1));
+    assert.ok(result.manual_review_handoff.relations.some((entry: Record<string, unknown>) =>
+      entry.parent === 'dashboard_1' && entry.child === 'event_0_0'));
+    assert.match(String(result.manual_review_handoff.auto_certified_items[0].auto_review_reason), /Agent 自动认证通过/);
+    assert.doesNotMatch(String(result.manual_review_handoff.auto_certified_items[0].auto_review_reason), /matched=/);
+    assert.deepEqual(calls.map((call) => call.url.split('/capabilities/')[1]), [
+      'metadata.governance_recommendation.auto_review/validate',
+      'metadata.governance_recommendation.export/execute',
+      'metadata.governance_recommendation.export/execute',
+      'metadata.governance_recommendation.submit/execute',
+    ]);
+    assert.deepEqual(calls.map((call) => call.input.limit), [20, 20, 50, 50]);
+    assert.equal(calls[1].input.include_completed, false);
+    assert.equal(calls[2].input.include_completed, false);
+  } finally {
+    globalThis.fetch = original;
+    clearCliToken(host);
+  }
 });
 
 test('all commands use Gateway validate/dry-run/execute with CLI token and lossless snake_case input', async () => {
@@ -325,6 +550,9 @@ test('Skill documents dynamic expansion and pending-only visible topics for recu
   assert.match(skill, /preserve optional location facts from Common/);
   assert.match(skill, /Not every dashboard belongs to a space/);
   assert.match(skill, /missing space fields are valid/);
+  assert.match(skill, /auto-review.*read-only probes top-20\/top-50\/top-100 pending recommendation material.*CLI Agent builds one set of automatic certification decisions/s);
+  assert.match(skill, /duplicate skips must name concrete conflicting asset targets/);
+  assert.match(skill, /manual_review_handoff.*assets still uncertified after automatic review/s);
 
   assert.match(exportReference, /fewer than about 10 pending review assets/);
   assert.match(exportReference, /fewer than 3 pending business domains/);
@@ -339,6 +567,21 @@ test('Skill documents dynamic expansion and pending-only visible topics for recu
   assert.match(exportReference, /hidden topics or pure authenticated context/);
   assert.match(exportReference, /Preserve optional dashboard `space_id` \/ `space_name`/);
   assert.match(exportReference, /absence is valid because not every dashboard has an owning space/);
+  assert.match(exportReference, /auto-review.*read-only probing top-20\/top-50\/top-100 pending material.*CLI Agent builds one automatic decision set/s);
+  assert.match(exportReference, /semantic-duplicate skips must name concrete conflicting asset targets/);
+  assert.match(exportReference, /remaining uncertified assets.*manual_review_handoff/s);
+
+  const autoReviewReference = readFileSync(new URL('../skills/ae-analysis/references/governance_recommendation_auto_review.md', import.meta.url), 'utf8');
+  assert.match(autoReviewReference, /Validate automatic-review preconditions first/);
+  assert.match(autoReviewReference, /top-20.*top-50.*top-100/s);
+  assert.match(autoReviewReference, /Build automatic certification decisions exactly once/);
+  assert.match(autoReviewReference, /Semantic-duplicate skips must name the conflicting asset targets/);
+  assert.match(autoReviewReference, /explicit limit disables automatic expansion/);
+  assert.match(autoReviewReference, /auto_review_expansion/);
+  assert.match(autoReviewReference, /manual_review_handoff/);
+  assert.match(autoReviewReference, /manual_review_handoff\.page_review_items/);
+  assert.match(autoReviewReference, /manual_review_context:true/);
+  assert.match(autoReviewReference, /source_metadata\.auto_review_trace/);
 
   assert.match(submitReference, /filter to pending review work/);
   assert.match(submitReference, /Apply the daily review capacity before drafting/);
@@ -350,6 +593,8 @@ test('Skill documents dynamic expansion and pending-only visible topics for recu
   assert.match(submitReference, /preserve optional `space_id` and `space_name`/);
   assert.match(submitReference, /missing space facts must not be invented or treated as a validation failure/);
   assert.match(submitReference, /Hidden domains and pure authenticated context rows/);
+  assert.match(submitReference, /manual_review_handoff/);
+  assert.match(submitReference, /source_metadata\.auto_review_trace/);
 });
 
 test('submission preserves Agent priorities, classified comparisons and explicit coverage without deciding quality', async () => {

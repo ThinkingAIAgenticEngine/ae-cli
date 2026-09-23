@@ -92,10 +92,15 @@ Formula rules:
 
 Saved formula report round-trip rules:
 
-- `analysis report get` can return saved formula metrics with `custom_filters`, `formulation`, `custom_event_desc`, `format`, `event_type`, `event_split_indexes`, `quota_time_ranges`, `quota_entities`, and `event_uuid`. These are saved-report round-trip fields, not the authoring shape for a new formula.
+- `analysis report get` can return saved formula metrics with `custom_filters`, `formulation`, `custom_event_desc`, `event_desc`, `format`, `event_type`, `event_split_indexes`, `quota_time_ranges`, `quota_entities`, and `event_uuid`. These are saved-report round-trip fields, not the authoring shape for a new formula.
 - When updating an existing report from its returned `definition`, preserve all of those fields unchanged unless the user explicitly requests that formula behavior to change. `custom_filters[*].index` binds each numerator/denominator occurrence to its own filter set, including repeated event/aggregation tokens.
 - For a display-name-only change, modify only `display_name`. Do not convert the saved formula to `formula + dependencies`, because rebuilding dependencies can change or discard per-component filters and other formula semantics.
 - Continue to use the `formula + dependencies` shape above when authoring a new formula metric.
+
+Saved report filter round-trip rules:
+
+- `analysis report get` can return historical recursive filter groups in report-level or metric-level `filters`. A group is `{"relation":"and|or","items":[...]}`; `items` may contain leaf filters or nested groups. Preserve this tree on read.
+- Follow the shared saved-report boundary in [`../ai_models.md`](../ai_models.md): never flatten a deeper historical tree or keep only its last leaf. For a page-compatible tree, change only the requested leaf and retain all surrounding `relation` and `items` nodes before validating the complete definition.
 
 ## Aggregation
 

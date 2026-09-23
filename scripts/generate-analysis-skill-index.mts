@@ -10,6 +10,7 @@ const outputPath = path.join(referencesDir, 'command_index.md');
 const checkOnly = process.argv.includes('--check');
 
 const sharedReferences = new Set([
+  'collaboration.md',
   'agent_review_preflight.md',
   'agent_review_priorities_comparisons.md',
   'ai_models.md',

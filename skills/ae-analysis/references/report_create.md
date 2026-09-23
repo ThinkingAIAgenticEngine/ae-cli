@@ -4,7 +4,7 @@ Use when the user explicitly wants to create a saved analysis report from an AI 
 
 Do not use raw QP, `analysis_query`, `events`, `event_view`, or `visual_view`. The gateway accepts `model_type` plus AI QP `definition`.
 
-Read [`ai_models.md`](ai_models.md) for the single AI-facing model registry. Report create supports the 12 analysis models plus `tag` for saved tag report data.
+Read [`ai_models.md`](ai_models.md) for the single AI-facing model registry. Report create supports the 13 analysis models plus `tag` for saved tag report data.
 
 Command:
 
@@ -15,6 +15,8 @@ ae-cli analysis report create --project-id <project_id> --report-name "Demo" --m
 When the caller supplies an existing snapshot, optional `--intent-snapshot` accepts `schema_version: 1`, non-empty `requirement`, `definition` and `model_type`. The CLI checks that its definition and model match the submitted values locally; the snapshot is never sent to Gateway.
 
 Input sends `project_id`, `report_name`, `model_type`, `definition`, optional user-confirmed `resolutions`, `report_desc`, `cache_seconds`, `query_duration_ms`, and `dashboard_ids`. `--resolutions` is not supported with `--model-type tag`.
+
+Saved report definitions follow the filter write boundary in [`ai_models.md`](ai_models.md): one compound group level with leaf-only, non-empty `items`. A deeper tree or empty group is rejected by the capability schema as `INVALID_CAPABILITY_INPUT`; use the returned field path or schema keyword to correct it, and never flatten a deeper tree.
 
 Output is the gateway envelope. `data` contains the created `report_id`, creation status, normalized `model_type`, AI QP `definition`, and optional resolution warnings.
 
@@ -33,3 +35,5 @@ ae-cli analysis report create --project-id <project_id> --report-name "Recent SQ
 After creation, keep the `report_id` returned by this exact create response. If the user also requests report data, call `analysis report-data run` directly with the requested value-only `--sql-params` overrides, or omit that flag to use saved defaults. Do not rebuild internal `sqlViewParams` or guess an ID.
 
 After any successful report create, call `analysis-meta asset url-get` with that returned `report_id` and output its `markdown_link`.
+
+The capability schema includes model-specific nested definition validation. Unknown fields, including nested filter/time-range fields and diagnostic backing fields, are rejected instead of silently ignored. Use canonical snake_case keys and aggregation names such as `user_count`; event report metrics may additionally carry `display_name`. Inspect the report capability itself for the full saved-report definition schema.

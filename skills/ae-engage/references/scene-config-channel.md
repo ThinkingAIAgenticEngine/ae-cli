@@ -120,9 +120,9 @@ ae-cli engage-scene config-channel query-log --project-id <project_id> --channel
 
 When creating or updating a config channel (`create` / `update` with `--config`), normalize every `customsParamList[].columnName` to `user:<prop_code>` before submit. If `get` returns bare names, add the prefix when building the next update payload.
 
-## Preflight: verify user properties (ae-analysis)
+## Preflight: verify user properties
 
-Before setting `customsParamList[].columnName`, use the **ae-analysis** skill to confirm each linked user property exists in the project. Do not invent property names.
+Before setting `customsParamList[].columnName`, confirm each linked user property exists in the project. Reuse sufficiently fresh, verified metadata; if evidence is missing, follow the [collaboration protocol](collaboration.md) to discover a property lookup capability. Do not invent property names. The CLI lookup commands are:
 
 ```bash
 # 1) Browse / search user properties
@@ -136,7 +136,7 @@ ae-cli analysis-meta property get --project-id <project_id> --table-type user --
 
 Decision rules:
 
-- Read `skills/ae-analysis/references/property_list.md` and `property_get.md` when unsure about flags or output shape.
+- Read the selected capability's command reference when unsure about flags or output shape; do not assume another Skill's installation path.
 - Match a real `data.properties[].prop_name` (or confirmed `data.property.prop_name`) from metadata, then set `columnName` to `user:` + that name — e.g. `prop_name` `#account_id` → `columnName` `user:#account_id`.
 - If the property is not found after list + optional get, stop and tell the user; do not submit the channel config with a fabricated `columnName`.
 - `envParamList` names come from config-table / env-param setup, not from user-property metadata.
@@ -153,7 +153,7 @@ Decision rules:
 
 - Risk: `list` / `get` / `query-log` = read; `create` / `update` / `update-status` = write; `delete` = high-risk-write (user confirmation + `--yes`)
 - Discover `channel_id` with `list` first; never invent IDs
-- **User params (`customsParamList`)**: `columnName` must be `user:<user_prop_code>` (e.g. `user:#account_id`). Applies to both webhook and client channels on create/update. Preflight each name with `ae-cli analysis-meta property list/get` (ae-analysis skill) before submit.
+- **User params (`customsParamList`)**: `columnName` must be `user:<user_prop_code>` (e.g. `user:#account_id`). Applies to both webhook and client channels on create/update. Verify each name before submit, reusing valid metadata or discovering the missing lookup capability.
 - Enabled channel (`channel_status=1`): only limited fields such as name can change; disable first (`update-status --channel-status 2`) before changing URL, auth, or parameter definitions
 - Delete: disable first, then `delete --yes`
 - Copy: `get` → rename (often append `_copy`) → `create`

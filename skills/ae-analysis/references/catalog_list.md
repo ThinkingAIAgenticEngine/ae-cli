@@ -2,7 +2,7 @@
 
 Use for a metadata lookup across selected resource types when their definitions or identities are still missing.
 
-Reuse known candidates or search an existing project catalog locally. Do not use it to search saved reports; use `analysis report list`. Follow [`metadata_resolution.md`](metadata_resolution.md).
+Reuse known candidates or search an existing project catalog locally. Do not use it to search saved reports or dashboards; use `analysis asset search` so shared read-only assets remain discoverable. Follow [`metadata_resolution.md`](metadata_resolution.md).
 
 Online search:
 

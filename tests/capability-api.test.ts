@@ -38,6 +38,88 @@ function setCliTokenManual(token: string, host: string): void {
 let pass = 0;
 let fail = 0;
 
+const AGENT_CONTEXT_ENV_KEYS = [
+  'TA_CLI_CONTEXT_FILE',
+  'TA_CLI_AGENT_CLIENT',
+  'TA_CLI_AGENT_MODEL',
+  'TA_CLI_AGENT_SESSION_ID',
+  'TA_CLI_AGENT_TURN_ID',
+  'TA_CLI_PARENT_TURN_ID',
+  'TA_CLI_INTENT_RELATION',
+  'TA_CLI_INTENT_REVISION',
+  'TA_CLI_RUNTIME',
+  'TA_CLI_INTENT_SOURCE',
+  'TA_CLI_SESSION_INITIAL_INTENT',
+  'TA_CLI_USER_INTENT',
+  'TA_CLI_USER_INTENT_HASH',
+  'TA_CLI_SESSION_GOAL',
+  'TA_CLI_CONTEXT_CAPTURE_STATUS',
+] as const;
+
+const AGENT_RUNTIME_ENV_KEYS = [
+  'CODEX_SESSION_ID',
+  'CODEX_THREAD_ID',
+  'CODEX_VERSION',
+  'CODEX_SHELL',
+  'CODEX_MODEL',
+  'OPENAI_MODEL',
+  'CODEX_INTERNAL_ORIGINATOR_OVERRIDE',
+  'CLAUDE_CODE_SESSION_ID',
+  'CLAUDE_SESSION_ID',
+  'CLAUDECODE',
+  'CLAUDE_CODE',
+  'CLAUDE_CODE_MODEL',
+  'CLAUDE_MODEL',
+  'ANTHROPIC_MODEL',
+  'WORKBUDDY_SESSION_ID',
+  'WORKBUDDY_AGENT_ID',
+  'WORKBUDDY_RUNTIME',
+  'WORKBUDDY_MODEL',
+  'WORKBUDDY_AGENT_MODEL',
+  'WORKBUDDY_CONVERSATION_ID',
+] as const;
+
+const ALL_AGENT_ENV_KEYS = [
+  ...AGENT_CONTEXT_ENV_KEYS,
+  ...AGENT_RUNTIME_ENV_KEYS,
+] as const;
+
+function saveAndClearEnv(keys: readonly string[]): Map<string, string | undefined> {
+  const previousEnv = new Map<string, string | undefined>();
+  for (const key of keys) {
+    previousEnv.set(key, process.env[key]);
+    delete process.env[key];
+  }
+  return previousEnv;
+}
+
+function restoreEnv(previousEnv: Map<string, string | undefined>): void {
+  for (const [key, value] of previousEnv.entries()) {
+    if (value === undefined) {
+      delete process.env[key];
+    } else {
+      process.env[key] = value;
+    }
+  }
+}
+
+function disableContextFileDiscovery(): void {
+  process.env.TA_CLI_CONTEXT_FILE = path.join(
+    os.tmpdir(),
+    `ae-cli-missing-agent-context-${process.pid}-${Date.now()}-${Math.random()}.json`,
+  );
+}
+
+function withProcessArgv(args: string[]): string[] {
+  const previousArgv = process.argv;
+  process.argv = ['node', 'ae-cli', ...args];
+  return previousArgv;
+}
+
+function restoreProcessArgv(previousArgv: string[]): void {
+  process.argv = previousArgv;
+}
+
 async function test(name: string, fn: () => void | Promise<void>) {
   try {
     await fn();
@@ -74,6 +156,8 @@ await test('listCapabilities sends cli-token header', async () => {
   const host = 'https://test-cap-list.internal';
   clearCliToken(host);
   setCliTokenManual('cli-list-token', host);
+  const previousSandboxRoot = process.env.SANDBOX_RUNTIME_ROOT;
+  delete process.env.SANDBOX_RUNTIME_ROOT;
 
   let capturedToken: string | undefined;
   let capturedSource: string | undefined;
@@ -94,6 +178,11 @@ await test('listCapabilities sends cli-token header', async () => {
   } finally {
     globalThis.fetch = prevFetch;
     clearCliToken(host);
+    if (previousSandboxRoot === undefined) {
+      delete process.env.SANDBOX_RUNTIME_ROOT;
+    } else {
+      process.env.SANDBOX_RUNTIME_ROOT = previousSandboxRoot;
+    }
   }
 });
 
@@ -157,6 +246,8 @@ await test('executeCapability POSTs { input } to .../execute', async () => {
   const host = 'https://test-cap-exec.internal';
   clearCliToken(host);
   setCliTokenManual('cli-exec-token', host);
+  const previousEnv = saveAndClearEnv(ALL_AGENT_ENV_KEYS);
+  disableContextFileDiscovery();
 
   let capturedUrl = '';
   let capturedBody: any;
@@ -177,7 +268,303 @@ await test('executeCapability POSTs { input } to .../execute', async () => {
     assert.equal(JSON.stringify(result), JSON.stringify({ event_name: 'x' }));
   } finally {
     globalThis.fetch = prevFetch;
+    restoreEnv(previousEnv);
     clearCliToken(host);
+  }
+});
+
+await test('executeCapability infers partial Codex agent context from runtime environment', async () => {
+  const host = 'https://test-cap-agent-context-infer.internal';
+  clearCliToken(host);
+  setCliTokenManual('cli-agent-context-infer-token', host);
+  const previousEnv = saveAndClearEnv(ALL_AGENT_ENV_KEYS);
+  disableContextFileDiscovery();
+  process.env.CODEX_THREAD_ID = 'codex-thread-1';
+  process.env.CODEX_VERSION = '0.155.0';
+  process.env.CODEX_INTERNAL_ORIGINATOR_OVERRIDE = 'Codex Desktop';
+
+  let capturedHeaders: Record<string, string> = {};
+  let capturedBody = '';
+  const prevFetch = globalThis.fetch;
+  globalThis.fetch = (async (_url, init) => {
+    capturedHeaders = init?.headers as Record<string, string>;
+    capturedBody = String(init?.body ?? '');
+    return new Response(JSON.stringify({ ok: true, data: { ok: true } }), { status: 200 });
+  }) as typeof fetch;
+
+  try {
+    await executeCapability(host, 'analysis', 'analysis.dashboard.list', { project_id: 1 });
+    assert.equal(capturedHeaders['X-TA-CLI-Context-Encoding'], 'base64url');
+    assert.equal(capturedHeaders['X-TA-CLI-Agent-Client'], Buffer.from('codex', 'utf8').toString('base64url'));
+    assert.equal(capturedHeaders['X-TA-CLI-Agent-Session-Id'], Buffer.from('codex-thread-1', 'utf8').toString('base64url'));
+    assert.equal(capturedHeaders['X-TA-CLI-Runtime'], Buffer.from('codex_desktop', 'utf8').toString('base64url'));
+    assert.equal(capturedHeaders['X-TA-CLI-Intent-Source'], Buffer.from('runtime_env', 'utf8').toString('base64url'));
+    assert.equal(capturedHeaders['X-TA-CLI-Context-Capture-Status'], Buffer.from('partial', 'utf8').toString('base64url'));
+    const body = JSON.parse(capturedBody);
+    assert.deepEqual(body.input, { project_id: 1 });
+    assert.equal(body.client_context.agent_client, 'codex');
+    assert.equal(body.client_context.agent_session_id, 'codex-thread-1');
+    assert.equal(body.client_context.context_capture_status, 'partial');
+  } finally {
+    globalThis.fetch = prevFetch;
+    restoreEnv(previousEnv);
+    clearCliToken(host);
+  }
+});
+
+await test('executeCapability merges hidden agent-context argument over runtime context', async () => {
+  const host = 'https://test-cap-agent-context-argument.internal';
+  clearCliToken(host);
+  setCliTokenManual('cli-agent-context-argument-token', host);
+  const previousEnv = saveAndClearEnv(ALL_AGENT_ENV_KEYS);
+  disableContextFileDiscovery();
+  process.env.CODEX_THREAD_ID = 'codex-thread-argument';
+  process.env.CODEX_VERSION = '0.155.0';
+  process.env.CODEX_INTERNAL_ORIGINATOR_OVERRIDE = 'Codex Desktop';
+  const payload = Buffer.from(JSON.stringify({
+    agent_turn_id: 'turn-argument-2',
+    parent_turn_id: 'turn-argument-1',
+    intent_relation: 'correction',
+    intent_revision: 2,
+    user_intent: '只看项目2的核心看板',
+    session_goal: '盘点项目2可用于分析的看板',
+  }), 'utf8').toString('base64url');
+  const previousArgv = withProcessArgv([
+    'analysis',
+    'dashboard',
+    'list',
+    '--agent-context',
+    payload,
+  ]);
+
+  let capturedHeaders: Record<string, string> = {};
+  let capturedBody = '';
+  const prevFetch = globalThis.fetch;
+  globalThis.fetch = (async (_url, init) => {
+    capturedHeaders = init?.headers as Record<string, string>;
+    capturedBody = String(init?.body ?? '');
+    return new Response(JSON.stringify({ ok: true, data: { ok: true } }), { status: 200 });
+  }) as typeof fetch;
+
+  try {
+    await executeCapability(host, 'analysis', 'analysis.dashboard.list', { project_id: 2 });
+    assert.equal(capturedHeaders['X-TA-CLI-Context-Encoding'], 'base64url');
+    assert.equal(capturedHeaders['X-TA-CLI-Agent-Client'], Buffer.from('codex', 'utf8').toString('base64url'));
+    assert.equal(capturedHeaders['X-TA-CLI-Agent-Session-Id'], Buffer.from('codex-thread-argument', 'utf8').toString('base64url'));
+    assert.equal(capturedHeaders['X-TA-CLI-Agent-Turn-Id'], Buffer.from('turn-argument-2', 'utf8').toString('base64url'));
+    assert.equal(capturedHeaders['X-TA-CLI-User-Intent'], Buffer.from('只看项目2的核心看板', 'utf8').toString('base64url'));
+    assert.equal(capturedHeaders['X-TA-CLI-Intent-Source'], Buffer.from('agent_argument', 'utf8').toString('base64url'));
+    assert.equal(capturedHeaders['X-TA-CLI-Context-Capture-Status'], Buffer.from('full', 'utf8').toString('base64url'));
+    const body = JSON.parse(capturedBody);
+    assert.deepEqual(body.input, { project_id: 2 });
+    assert.equal(body.client_context.agent_client, 'codex');
+    assert.equal(body.client_context.agent_session_id, 'codex-thread-argument');
+    assert.equal(body.client_context.agent_turn_id, 'turn-argument-2');
+    assert.equal(body.client_context.user_intent, '只看项目2的核心看板');
+    assert.equal(body.client_context.intent_revision, '2');
+    assert.equal(body.client_context.context_capture_status, 'full');
+  } finally {
+    globalThis.fetch = prevFetch;
+    restoreProcessArgv(previousArgv);
+    restoreEnv(previousEnv);
+    clearCliToken(host);
+  }
+});
+
+await test('executeCapability automatically attaches optional agent context from context file', async () => {
+  const host = 'https://test-cap-agent-context.internal';
+  clearCliToken(host);
+  setCliTokenManual('cli-agent-context-token', host);
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'ae-cli-agent-context-'));
+  const contextFile = path.join(dir, 'current.json');
+  fs.writeFileSync(contextFile, JSON.stringify({
+    agent_client: 'codex',
+    agent_model: 'gpt-5.5',
+    agent_session_id: 'sess-1',
+    agent_turn_id: 'turn-2',
+    parent_turn_id: 'turn-1',
+    intent_relation: 'refinement',
+    intent_source: 'raw_user_prompt',
+    user_intent: '不对，是只看美国区',
+    session_goal: '分析项目A最近7天留存表现',
+  }));
+  const previousContextFile = process.env.TA_CLI_CONTEXT_FILE;
+  process.env.TA_CLI_CONTEXT_FILE = contextFile;
+
+  let capturedHeaders: Record<string, string> = {};
+  let capturedBody = '';
+  const prevFetch = globalThis.fetch;
+  globalThis.fetch = (async (_url, init) => {
+    capturedHeaders = init?.headers as Record<string, string>;
+    capturedBody = String(init?.body ?? '');
+    return new Response(JSON.stringify({ ok: true, data: { ok: true } }), { status: 200 });
+  }) as typeof fetch;
+
+  try {
+    await executeCapability(host, 'analysis', 'analysis.adhoc.run', { project_id: 1 });
+    assert.equal(capturedHeaders['X-TA-CLI-Context-Encoding'], 'base64url');
+    assert.equal(capturedHeaders['X-TA-CLI-Agent-Client'], Buffer.from('codex', 'utf8').toString('base64url'));
+    assert.equal(capturedHeaders['X-TA-CLI-Agent-Model'], Buffer.from('gpt-5.5', 'utf8').toString('base64url'));
+    assert.equal(capturedHeaders['X-TA-CLI-Agent-Session-Id'], Buffer.from('sess-1', 'utf8').toString('base64url'));
+    assert.equal(capturedHeaders['X-TA-CLI-Agent-Turn-Id'], Buffer.from('turn-2', 'utf8').toString('base64url'));
+    assert.equal(capturedHeaders['X-TA-CLI-Parent-Turn-Id'], Buffer.from('turn-1', 'utf8').toString('base64url'));
+    assert.equal(capturedHeaders['X-TA-CLI-Intent-Relation'], Buffer.from('refinement', 'utf8').toString('base64url'));
+    assert.equal(capturedHeaders['X-TA-CLI-Intent-Source'], Buffer.from('raw_user_prompt', 'utf8').toString('base64url'));
+    assert.equal(capturedHeaders['X-TA-CLI-User-Intent'], Buffer.from('不对，是只看美国区', 'utf8').toString('base64url'));
+    assert.equal(capturedHeaders['X-TA-CLI-Session-Goal'], Buffer.from('分析项目A最近7天留存表现', 'utf8').toString('base64url'));
+    assert.equal(capturedHeaders['X-TA-CLI-Context-Capture-Status'], Buffer.from('full', 'utf8').toString('base64url'));
+    const body = JSON.parse(capturedBody);
+    assert.deepEqual(body.input, { project_id: 1 });
+    assert.equal(body.client_context.agent_client, 'codex');
+    assert.equal(body.client_context.user_intent, '不对，是只看美国区');
+    assert.equal(body.client_context.session_goal, '分析项目A最近7天留存表现');
+    assert.equal(body.client_context.context_capture_status, 'full');
+  } finally {
+    globalThis.fetch = prevFetch;
+    clearCliToken(host);
+    if (previousContextFile === undefined) {
+      delete process.env.TA_CLI_CONTEXT_FILE;
+    } else {
+      process.env.TA_CLI_CONTEXT_FILE = previousContextFile;
+    }
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+await test('executeCapability prefers context file over hidden agent-context argument', async () => {
+  const host = 'https://test-cap-agent-context-file-priority.internal';
+  clearCliToken(host);
+  setCliTokenManual('cli-agent-context-file-priority-token', host);
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'ae-cli-agent-context-file-priority-'));
+  const contextFile = path.join(dir, 'current.json');
+  fs.writeFileSync(contextFile, JSON.stringify({
+    agent_client: 'codex',
+    agent_session_id: 'sess-file',
+    agent_turn_id: 'turn-file',
+    intent_relation: 'correction',
+    intent_revision: 3,
+    intent_source: 'agent_context_file',
+    user_intent: '查询项目 2 当前可访问的分析看板',
+    session_goal: '确认项目 2 的看板列表和可用字段',
+  }));
+  const argumentPayload = Buffer.from(JSON.stringify({
+    agent_client: 'codex',
+    agent_session_id: 'sess-argument',
+    agent_turn_id: 'turn-argument',
+    intent_source: 'agent_argument',
+    user_intent: 'List accessible analysis dashboards for project 2',
+    session_goal: 'Query dashboards',
+  }), 'utf8').toString('base64url');
+  const previousEnv = saveAndClearEnv(ALL_AGENT_ENV_KEYS);
+  process.env.TA_CLI_CONTEXT_FILE = contextFile;
+  const previousArgv = withProcessArgv([
+    'analysis',
+    'dashboard',
+    'list',
+    '--agent-context',
+    argumentPayload,
+  ]);
+
+  let capturedHeaders: Record<string, string> = {};
+  let capturedBody = '';
+  const prevFetch = globalThis.fetch;
+  globalThis.fetch = (async (_url, init) => {
+    capturedHeaders = init?.headers as Record<string, string>;
+    capturedBody = String(init?.body ?? '');
+    return new Response(JSON.stringify({ ok: true, data: { ok: true } }), { status: 200 });
+  }) as typeof fetch;
+
+  try {
+    await executeCapability(host, 'analysis', 'analysis.dashboard.list', { project_id: 2 });
+    assert.equal(capturedHeaders['X-TA-CLI-Agent-Session-Id'], Buffer.from('sess-file', 'utf8').toString('base64url'));
+    assert.equal(capturedHeaders['X-TA-CLI-Agent-Turn-Id'], Buffer.from('turn-file', 'utf8').toString('base64url'));
+    assert.equal(capturedHeaders['X-TA-CLI-Intent-Source'], Buffer.from('agent_context_file', 'utf8').toString('base64url'));
+    assert.equal(capturedHeaders['X-TA-CLI-User-Intent'], Buffer.from('查询项目 2 当前可访问的分析看板', 'utf8').toString('base64url'));
+    const body = JSON.parse(capturedBody);
+    assert.equal(body.client_context.agent_session_id, 'sess-file');
+    assert.equal(body.client_context.agent_turn_id, 'turn-file');
+    assert.equal(body.client_context.user_intent, '查询项目 2 当前可访问的分析看板');
+    assert.equal(body.client_context.session_goal, '确认项目 2 的看板列表和可用字段');
+    assert.equal(body.client_context.intent_revision, '3');
+  } finally {
+    globalThis.fetch = prevFetch;
+    restoreProcessArgv(previousArgv);
+    restoreEnv(previousEnv);
+    clearCliToken(host);
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+await test('executeCapability discovers well-known agent context file and rereads intent changes', async () => {
+  const host = 'https://test-cap-agent-context-discovery.internal';
+  clearCliToken(host);
+  setCliTokenManual('cli-agent-context-discovery-token', host);
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'ae-cli-agent-context-discovery-'));
+  const contextDir = path.join(dir, '.ta');
+  const contextFile = path.join(contextDir, 'cli-agent-context.json');
+  fs.mkdirSync(contextDir, { recursive: true });
+  fs.writeFileSync(contextFile, JSON.stringify({
+    agent_client: 'codex',
+    agent_model: 'gpt-5.5',
+    agent_session_id: 'sess-2',
+    agent_turn_id: 'turn-1',
+    intent_relation: 'initial',
+    intent_revision: 1,
+    intent_source: 'agent_context_file',
+    session_initial_intent: '看下项目最近留存',
+    user_intent: '看下项目最近留存',
+    session_goal: '分析项目最近留存表现',
+  }));
+
+  const previousCwd = process.cwd();
+  const previousEnv = saveAndClearEnv(ALL_AGENT_ENV_KEYS);
+
+  const capturedBodies: any[] = [];
+  const capturedHeaders: Record<string, string>[] = [];
+  const prevFetch = globalThis.fetch;
+  globalThis.fetch = (async (_url, init) => {
+    capturedHeaders.push(init?.headers as Record<string, string>);
+    capturedBodies.push(JSON.parse(String(init?.body ?? '{}')));
+    return new Response(JSON.stringify({ ok: true, data: { ok: true } }), { status: 200 });
+  }) as typeof fetch;
+
+  try {
+    process.chdir(dir);
+    await executeCapability(host, 'analysis', 'analysis.dashboard.list', { project_id: 1 });
+
+    fs.writeFileSync(contextFile, JSON.stringify({
+      agent_client: 'codex',
+      agent_model: 'gpt-5.5',
+      agent_session_id: 'sess-2',
+      agent_turn_id: 'turn-2',
+      parent_turn_id: 'turn-1',
+      intent_relation: 'correction',
+      intent_revision: 2,
+      intent_source: 'agent_context_file',
+      session_initial_intent: '看下项目最近留存',
+      user_intent: '不对，只看美国区最近7天留存',
+      session_goal: '分析项目最近7天美国区留存表现',
+    }));
+    await executeCapability(host, 'analysis', 'analysis.dashboard.list', { project_id: 1 });
+
+    assert.equal(capturedBodies.length, 2);
+    assert.equal(capturedBodies[0].client_context.user_intent, '看下项目最近留存');
+    assert.equal(capturedBodies[0].client_context.intent_revision, '1');
+    assert.equal(capturedBodies[0].client_context.context_capture_status, 'full');
+    assert.equal(capturedBodies[1].client_context.user_intent, '不对，只看美国区最近7天留存');
+    assert.equal(capturedBodies[1].client_context.intent_revision, '2');
+    assert.equal(capturedBodies[1].client_context.intent_relation, 'correction');
+    assert.equal(capturedHeaders[1]['X-TA-CLI-Intent-Revision'], Buffer.from('2', 'utf8').toString('base64url'));
+    assert.equal(
+      capturedHeaders[1]['X-TA-CLI-Session-Initial-Intent'],
+      Buffer.from('看下项目最近留存', 'utf8').toString('base64url'),
+    );
+  } finally {
+    globalThis.fetch = prevFetch;
+    process.chdir(previousCwd);
+    restoreEnv(previousEnv);
+    clearCliToken(host);
+    fs.rmSync(dir, { recursive: true, force: true });
   }
 });
 
@@ -210,6 +597,8 @@ await test('dryRunCapability POSTs { input } to .../dry-run', async () => {
   const host = 'https://test-cap-dry-run.internal';
   clearCliToken(host);
   setCliTokenManual('cli-dry-run-token', host);
+  const previousEnv = saveAndClearEnv(ALL_AGENT_ENV_KEYS);
+  disableContextFileDiscovery();
 
   let capturedUrl = '';
   let capturedBody: any;
@@ -227,6 +616,7 @@ await test('dryRunCapability POSTs { input } to .../dry-run', async () => {
     assert.equal(JSON.stringify(result), JSON.stringify({ dry_run: true }));
   } finally {
     globalThis.fetch = prevFetch;
+    restoreEnv(previousEnv);
     clearCliToken(host);
   }
 });
@@ -235,6 +625,8 @@ await test('validateCapability POSTs { input } to .../validate', async () => {
   const host = 'https://test-cap-validate.internal';
   clearCliToken(host);
   setCliTokenManual('cli-validate-token', host);
+  const previousEnv = saveAndClearEnv(ALL_AGENT_ENV_KEYS);
+  disableContextFileDiscovery();
 
   let capturedUrl = '';
   let capturedBody: any;
@@ -262,6 +654,7 @@ await test('validateCapability POSTs { input } to .../validate', async () => {
     assert.equal(result.capability_id, 'metadata.data_table.sql_write');
   } finally {
     globalThis.fetch = prevFetch;
+    restoreEnv(previousEnv);
     clearCliToken(host);
   }
 });

@@ -5,6 +5,10 @@ description: "Bring local CSV, TSV, TXT, JSON, JSONL (NDJSON), XLS, and XLSX fil
 
 # AE Data Integration
 
+## Cross-skill collaboration
+
+When remaining work is outside this skill's scope, or a necessary prerequisite needs another capability, follow [the collaboration protocol](references/collaboration.md). Choose from the skills available in this run by capability, preserve verified context, and continue the remaining task. Reuse this protocol if already loaded.
+
 Turn local/offline files and Feishu sheet / Bitable (多维表格) URLs into AE data through one fixed pipeline of four submodules: **Source → Tracking plan → Transform → Sink**. A file or sheet is never uploaded merely because it is present: its business meaning is understood, confirmed once by a human, and only then ingested. The tracking plan is generated and confirmed **before** ingestion (data governance shift-left) — see [references/tracking-plan.md](references/tracking-plan.md).
 
 Two entrances lead here: the AE Agent dialog (attach / plus-button upload) and `ae-cli`. Two sink paths exist: RESTful API for one-time/small loads (current phase), and LogBus / DataX for recurring/high-volume loads (next phase). Source and Sink are pluggable — adding one does not change the main pipeline.

@@ -1,5 +1,7 @@
 import {
   compactInput,
+  certificationScopeFlag,
+  certificationScopeInput,
   createAnalysisMetaCapabilityCommand,
   fieldsFlag,
   optionalBoolean,
@@ -28,6 +30,7 @@ export const metadataPropertyExport = createAnalysisMetaCapabilityCommand({
     queriesFlag,
     fieldsFlag,
     { name: 'authenticated-only', type: 'boolean', required: false, desc: 'When true, export only authenticated properties.' },
+    certificationScopeFlag,
     metadataExportOutputFlag,
   ],
   risk: 'read',
@@ -40,6 +43,7 @@ export const metadataPropertyExport = createAnalysisMetaCapabilityCommand({
     queries: optionalQueries(ctx),
     fields: optionalJson(ctx, 'fields'),
     authenticated_only: optionalBoolean(ctx, 'authenticated-only'),
+    certification_scope: certificationScopeInput(ctx),
   }),
   postProcess: metadataExportPostProcess('property', 'properties'),
 });

@@ -8,12 +8,14 @@ export const personalSemanticPreferenceGet = createPersonalSemanticPreferenceCom
   flags: [
     { name: 'project-id', type: 'number', required: true, desc: 'Numeric project ID.', alias: 'p', min: 1 },
     { name: 'id', type: 'string', required: true, desc: 'Preference ID returned by list/add.' },
+    { name: 'title', type: 'string', required: true, desc: 'Preference title copied from list output for telemetry only.', minLength: 1, maxLength: 255 },
     { name: 'mark-used', type: 'boolean', desc: 'Count this preference as adopted and update its usage heat.' },
   ],
   risk: 'read',
   buildInput: (ctx) => ({
     project_id: ctx.num('project-id'),
     id: ctx.str('id'),
+    title: ctx.str('title'),
     mark_used: ctx.bool('mark-used'),
   }),
 });

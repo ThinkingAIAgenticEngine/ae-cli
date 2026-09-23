@@ -1,14 +1,26 @@
 ---
 name: ae-metadata
-version: 1.0.1
-description: "AE metadata capability-gateway CLI: metadata data-table management and property dimension-table binding. Metadata CLI routes through the analysis gateway. Input-file upload and event/property detail belong to ae-analysis."
+version: 1.0.2
+description: "AE metadata capability-gateway CLI: list, inspect, create, update, delete and download metadata data tables; bind an existing dimension table to a property or create and bind a CSV dimension table. Local file upload and event/property discovery are separate prerequisite capabilities."
 ---
 
 # ae-metadata
 
 CLI domain **`metadata`** routes to the analysis capability gateway (`/api/cli/analysis/v1/...`), using auth header **`cli-token`**.
 
-Parallel to **`ae-analysis`**. Use **this skill** for gateway-backed metadata detail and data-table/dimension-table operations; use **`ae-analysis`** for metadata list/search, metrics, virtual create, and batch edit.
+Use this skill for gateway-backed data-table and property dimension-table operations.
+
+## Capability contract
+
+- Responsibilities: data-table management and dimension-table bindings through the commands below.
+- Inputs: verified project, table/property identifiers and operation-specific parameters; local CSV workflows need a valid uploaded input-file identifier and purpose.
+- Outputs: table/binding operation results, resource identifiers, or download run/artifact status. A submitted asynchronous download is not yet a completed file.
+- Boundaries: local input-file upload, event/property detail and discovery, metric CRUD, virtual metadata, batch metadata, project configuration and tracking plans are separate capabilities.
+- Completion: the requested table or binding result is verified, or pending/blocked work and its remaining requirements are reported.
+
+## Cross-skill collaboration
+
+When remaining work is outside this skill's scope, or a necessary prerequisite needs another capability, follow [the collaboration protocol](references/collaboration.md). Choose from the skills available in this run by capability, preserve verified context, and continue the remaining task. Reuse this protocol if already loaded.
 
 ## Global AE CLI Rules
 
@@ -29,18 +41,18 @@ Safety:
 - Read-only commands can run directly after IDs/names are verified.
 - Ordinary writes (`data-table *-write`, `property-bindings-update`, dimension-table bind/create) execute without `--yes`. Delete commands are `high-risk-write`: dry-run first, summarize impact, wait for explicit confirmation, then execute with `--yes`.
 - **Before any command**, read the matching `references/<name>.md` (filename = command with spaces → underscores, e.g. `metadata data-table list` → `metadata_data_table_list.md`).
-- Never invent `project_id`, event/property names, `input_file_id`, or `data_table_id`. Discover names via `ae-analysis` and data table IDs via `metadata data-table list`.
+- Never invent `project_id`, event/property names, `input_file_id`, or `data_table_id`. Reuse verified names or discover a metadata lookup capability; find data table IDs via `metadata data-table list`.
 - `metadata data-table download` is an async artifact command: plain invocation submits, `--wait` waits, and `--output <file>` waits then streams atomically. Resume with `analysis run wait`; local interruption never cancels the remote run.
 
 ## When to Use
 
-Switch to **`ae-metadata`** when the user needs:
+Use this skill when the user needs:
 
 - Metadata data-table list/get/create/update/delete/download
-- For local uploads, switch to `ae-analysis` and use `analysis input-file upload` with a discovered purpose.
+- For local uploads, first obtain an input-file identifier through an available upload capability with the required purpose, then continue the table operation.
 - Bind an existing data table to a property, or create a CSV dimension table and bind it
 
-Stay on **`ae-analysis`** for: metadata event/property detail, metadata event/property/metric list/search, metric CRUD, batch metadata, virtual create, project config, tracking plans.
+For out-of-scope work, discover an available capability using the collaboration protocol.
 
 ## Command Format
 
@@ -54,7 +66,7 @@ ae-cli metadata property <dimension-table-action> [options]
 
 ## PROJECT_ID_GATE
 
-Same rules as `ae-analysis`: reuse verified project context in one conversation; otherwise `ae-cli project info list` (or `ae-analysis` skill) to resolve `project_id`.
+Reuse verified project context in one conversation; otherwise discover a project lookup capability to resolve `project_id`. Ask the user only when the returned projects leave a real ambiguity.
 
 ## Commands (10)
 
@@ -79,7 +91,3 @@ ae-cli metadata data-table list --help
 ae-cli metadata data-table list --project-id 1 --dry-run
 ae-cli analysis input-file purpose list --project-id 1
 ```
-
-## Related Skills
-
-- **`ae-analysis`**: `analysis-meta event get` / `analysis-meta property get` for detail, and `analysis-meta event list` / `analysis-meta property list` to discover names.

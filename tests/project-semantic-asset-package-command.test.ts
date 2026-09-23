@@ -18,9 +18,18 @@ function ctx(values: Record<string, string | number> = {}): RuntimeContext {
   } as RuntimeContext;
 }
 
-assert.deepEqual(commands.map(command => `${command.service} ${command.resource} ${command.command}`), [
-  'project-semantic asset-package export',
-]);
+const registeredCommandNames = commands.map(
+  command => `${command.service} ${command.resource} ${command.command}`,
+);
+assert.ok(
+  registeredCommandNames.includes('project-semantic asset-package export'),
+  'asset-package export remains available independently of the retired project-semantic lifecycle',
+);
+assert.equal(
+  registeredCommandNames.filter(name => name === 'project-semantic asset-package export').length,
+  1,
+  'asset-package export is registered exactly once',
+);
 
 async function captureGatewayCall(fn: () => Promise<unknown>) {
   setCliTokenManual('cli-test-token', 'https://project-semantic.example.com');
@@ -44,13 +53,16 @@ async function captureGatewayCall(fn: () => Promise<unknown>) {
   }
 }
 
+function gatewayInput(body: unknown): unknown {
+  assert.ok(body && typeof body === 'object' && 'input' in body);
+  return body.input;
+}
+
 const dryRun = await captureGatewayCall(() =>
   projectSemanticAssetPackageExport.dryRun!(ctx({ 'project-id': 5 })) as Promise<unknown>);
-assert.deepEqual(dryRun.capturedBody, {
-  input: {
-    project_id: 5,
-    asset_scope: 'governed',
-  },
+assert.deepEqual(gatewayInput(dryRun.capturedBody), {
+  project_id: 5,
+  asset_scope: 'governed',
 });
 assert.ok(String(dryRun.capturedUrl).endsWith(
   '/api/cli/analysis/v1/capabilities/business_semantics.asset_package.export/dry-run',
@@ -61,11 +73,9 @@ const validate = await captureGatewayCall(() =>
     'project-id': 5,
     'asset-scope': 'collaborative',
   })));
-assert.deepEqual(validate.capturedBody, {
-  input: {
-    project_id: 5,
-    asset_scope: 'collaborative',
-  },
+assert.deepEqual(gatewayInput(validate.capturedBody), {
+  project_id: 5,
+  asset_scope: 'collaborative',
 });
 assert.ok(String(validate.capturedUrl).endsWith(
   '/api/cli/analysis/v1/capabilities/business_semantics.asset_package.export/validate',
@@ -82,22 +92,33 @@ assert.throws(
 const previousFetch = globalThis.fetch;
 setCliTokenManual('cli-test-token', 'https://project-semantic.example.com');
 try {
-  for (const command of [projectSemanticAssetPackageExport, metadataGovernanceRecommendationExport]) {
+  for (const { command, code, message } of [
+    {
+      command: projectSemanticAssetPackageExport,
+      code: 'PROJECT_NOT_FOUND',
+      message: 'Project is not available to the authenticated user.',
+    },
+    {
+      command: metadataGovernanceRecommendationExport,
+      code: 'PROJECT_SEMANTIC_DISABLED',
+      message: 'Enable project_semantic_enable for this project before exporting.',
+    },
+  ]) {
     const requests: string[] = [];
     globalThis.fetch = (async (url) => {
       if (String(url).includes("/api/cli/")) requests.push(String(url));
       return new Response(JSON.stringify({
         ok: false,
-        error: { code: 'PROJECT_SEMANTIC_DISABLED', message: 'Enable project_semantic_enable for this project before exporting.' },
+        error: { code, message },
       }), { status: 200, headers: { 'Content-Type': 'application/json' } });
     }) as typeof fetch;
     await assert.rejects(command.execute(ctx({ 'project-id': 5 })), (error: unknown) => {
       assert.ok(error instanceof CapabilityGatewayError);
-      assert.equal(error.code, 'PROJECT_SEMANTIC_DISABLED');
-      assert.match(error.message, /project_semantic_enable/);
+      assert.equal(error.code, code);
+      assert.equal(error.message, message);
       return true;
     });
-    assert.equal(requests.length, 1, `Disabled exports must not retry, poll, or download an artifact: ${requests.join(', ')}`);
+    assert.equal(requests.length, 1, `Failed exports must not retry, poll, or download an artifact: ${requests.join(', ')}`);
     assert.ok(requests[0].endsWith('/execute'));
   }
 } finally {

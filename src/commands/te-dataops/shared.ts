@@ -6,7 +6,7 @@ import { Readable } from 'node:stream';
 import { pipeline } from 'node:stream/promises';
 import { resolveHost } from '../../core/auth.js';
 import { getCliToken } from '../../core/cli-token.js';
-import { PermissionError } from '../../core/errors.js';
+import { CliApiError, PermissionError } from '../../core/errors.js';
 import { safeJsonParse } from '../../core/json-utils.js';
 import { logger } from '../../core/logger.js';
 import { internalCallSourceHeaders } from '../../core/internal-call-source.js';
@@ -28,6 +28,12 @@ const TOOL_API_MAP: Record<string, DataopsApiSpec> = {
   datatable_create_table: { method: 'POST', path: '/api/cli/dataops/v1/gaia/datatable/tables' },
   datatable_create_view: { method: 'POST', path: '/api/cli/dataops/v1/gaia/datatable/views' },
   datatable_publish_entity: { method: 'POST', path: '/api/cli/dataops/v1/gaia/datatable/publish' },
+  datatable_add_table_field: { method: 'POST', path: '/api/cli/dataops/v1/gaia/datatable/table-fields/add' },
+  datatable_modify_table_field: { method: 'POST', path: '/api/cli/dataops/v1/gaia/datatable/table-fields/modify' },
+  datatable_delete_table_field: { method: 'POST', path: '/api/cli/dataops/v1/gaia/datatable/table-fields/delete' },
+  datatable_recycle_entity: { method: 'POST', path: '/api/cli/dataops/v1/gaia/datatable/entities/recycle' },
+  datatable_list_recycle_bin: { method: 'GET', path: '/api/cli/dataops/v1/gaia/datatable/recycle-bin' },
+  datatable_delete_recycled_entity: { method: 'POST', path: '/api/cli/dataops/v1/gaia/datatable/recycle-bin/delete' },
 
   flow_list_flows: { method: 'GET', path: '/api/cli/dataops/v1/gaia/workflow/flows' },
   flow_get_flow_overview: { method: 'GET', path: '/api/cli/dataops/v1/gaia/workflow/flow-overview' },
@@ -48,7 +54,10 @@ const TOOL_API_MAP: Record<string, DataopsApiSpec> = {
   flow_update_task_instance_check_task: { method: 'POST', path: '/api/cli/dataops/v1/gaia/workflow/task-instance-check-task-definition' },
   flow_delete_task: { method: 'POST', path: '/api/cli/dataops/v1/gaia/workflow/task-deletion' },
   flow_add_task_relation: { method: 'POST', path: '/api/cli/dataops/v1/gaia/workflow/task-relation' },
-  flow_get_task_params: { method: 'GET', path: '/api/cli/dataops/v1/gaia/workflow/task-params' },
+  flow_get_flow_params: { method: 'GET', path: '/api/cli/dataops/v1/gaia/workflow/flow-params' },
+  flow_create_flow_param: { method: 'POST', path: '/api/cli/dataops/v1/gaia/workflow/flow-params' },
+  flow_update_flow_param: { method: 'POST', path: '/api/cli/dataops/v1/gaia/workflow/flow-param-definition' },
+  flow_delete_flow_param: { method: 'POST', path: '/api/cli/dataops/v1/gaia/workflow/flow-param-deletion' },
 
   operations_search_flow_instances: { method: 'POST', path: '/api/cli/dataops/v1/gaia/operations/flow-instances/search' },
   operations_get_flow_instance_detail: { method: 'GET', path: '/api/cli/dataops/v1/gaia/operations/flow-instances/detail' },
@@ -101,11 +110,60 @@ export async function callDataopsApi(ctx: RuntimeContext, toolName: string, args
     throw new Error(`DataOps API mapping not found for tool: ${toolName}`);
   }
 
-  const params = compactArgs(args);
+  const params = compactArgs(args, toolName);
   if (spec.method === 'GET') {
     return dataopsRequest(ctx, spec.method, spec.path, params);
   }
   return dataopsRequest(ctx, spec.method, spec.path, {}, params);
+}
+
+/** Preserve legacy DataOps transport behavior while making new field mutations fail structurally. */
+export async function callDataopsFieldMutationApi(
+  ctx: RuntimeContext,
+  toolName: string,
+  args: Record<string, unknown>,
+): Promise<unknown> {
+  return callDataopsMutationApi(ctx, toolName, args, 'DataOps table field mutation failed.');
+}
+
+/** Keep business failures and partial outcomes distinct from successful HTTP responses. */
+export async function callDataopsMutationApi(
+  ctx: RuntimeContext,
+  toolName: string,
+  args: Record<string, unknown>,
+  defaultMessage = 'DataOps entity mutation failed.',
+): Promise<unknown> {
+  const response = await callDataopsApi(ctx, toolName, args);
+  const envelope = asRecord(response);
+  const result = asRecord(envelope?.result);
+  const outcome = result?.outcome;
+  const failed = envelope?.status === 'FAILED'
+    || result?.success === false
+    || outcome === 'FAILED'
+    || outcome === 'PARTIAL';
+  if (!failed) {
+    return response;
+  }
+
+  const errorType = result?.errorType;
+  const message = typeof result?.message === 'string' && result.message
+    ? result.message
+    : defaultMessage;
+  const hint = typeof result?.hint === 'string' && result.hint ? result.hint : undefined;
+  const meta = { ...result };
+  delete meta.success;
+  delete meta.errorType;
+  delete meta.message;
+  delete meta.hint;
+  if (typeof envelope?.action === 'string') {
+    meta.action = envelope.action;
+  }
+
+  throw new CliApiError(message, {
+    code: typeof errorType === 'string' || typeof errorType === 'number' ? errorType : undefined,
+    hint,
+    meta,
+  });
 }
 
 export function buildDataopsApiDryRun(ctx: RuntimeContext, toolName: string, args: Record<string, unknown> = {}): DryRunResult {
@@ -114,7 +172,7 @@ export function buildDataopsApiDryRun(ctx: RuntimeContext, toolName: string, arg
     throw new Error(`DataOps API mapping not found for tool: ${toolName}`);
   }
 
-  const params = compactArgs(args);
+  const params = compactArgs(args, toolName);
   if (spec.method === 'GET') {
     return {
       method: spec.method,
@@ -241,15 +299,19 @@ function buildUrl(host: string, path: string, params: Record<string, unknown> = 
   return url.toString();
 }
 
-function compactArgs(args: Record<string, unknown>): Record<string, unknown> {
+function compactArgs(args: Record<string, unknown>, toolName?: string): Record<string, unknown> {
   const result: Record<string, unknown> = {};
   for (const [key, value] of Object.entries(args)) {
-    if (value === undefined || value === null || value === '') {
+    if (value === undefined || value === null || (value === '' && !(toolName === 'flow_update_flow_param' && key === 'remark'))) {
       continue;
     }
     result[key] = value;
   }
   return result;
+}
+
+function asRecord(value: unknown): Record<string, any> | undefined {
+  return typeof value === 'object' && value !== null ? value as Record<string, any> : undefined;
 }
 
 function unwrapDataResponse(data: any): unknown {

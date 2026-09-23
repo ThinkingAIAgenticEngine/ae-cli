@@ -8,7 +8,10 @@ import { releaseFlow } from './release-flow.js';
 import { previewReleaseFlow } from './preview-release-flow.js';
 import { updateFlow } from './update-flow.js';
 import { createFlow } from './create-flow.js';
-import { getTaskParams } from './get-task-params.js';
+import { getFlowParams } from './get-flow-params.js';
+import { createFlowParam } from './create-flow-param.js';
+import { updateFlowParam } from './update-flow-param.js';
+import { deleteFlowParam } from './delete-flow-param.js';
 import { addTaskRelation } from './add-task-relation.js';
 import { createSqlTask } from './create-sql-task.js';
 import { updateSqlTask } from './update-sql-task.js';
@@ -31,7 +34,10 @@ const commands: Command[] = [
   releaseFlow,
   updateFlow,
   createFlow,
-  getTaskParams,
+  getFlowParams,
+  createFlowParam,
+  updateFlowParam,
+  deleteFlowParam,
   updateSqlTask,
   updateIntegrationTask,
   updateWorkflowInstanceCheckTask,
@@ -47,6 +53,10 @@ const commands: Command[] = [
 export default commands;
 
 export {
+  getFlowParams,
+  createFlowParam,
+  updateFlowParam,
+  deleteFlowParam,
   createWorkflowInstanceCheckTask,
   updateWorkflowInstanceCheckTask,
   createTaskInstanceCheckTask,

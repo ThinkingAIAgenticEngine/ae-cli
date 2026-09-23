@@ -1,10 +1,14 @@
 ---
 name: ae-kb-discovery
 description: >
-  Discover which AE (Agentic Engine) knowledge bases accessible to the current user are worth searching, and decide whether to search at all, through read-only operations. Use when the user explicitly asks to search knowledge bases, internal documentation, or company materials. Also use when a task requires internal facts or business context, including product design and rules, events, campaign or operations calendars, release and iteration records, workflows, policies, and terminology; use it as well when this context is needed to explain data analysis results, anomalies, or trends and form evidence-backed conclusions. Do not use if the user explicitly asks not to access knowledge bases. This skill covers discovery and candidate selection; run the actual `+index` / `+grep` / `+read` / `+ask` retrieval with the `ae-kb` skill.
+  Discover which AE (Agentic Engine) knowledge bases accessible to the current user are worth searching, and decide whether to search at all, through read-only operations. Use when the user explicitly asks to search knowledge bases, internal documentation, or company materials. Also use when a task requires internal facts or business context, or when ae-analysis sees an enabled KB auto-discovery company switch before choosing its query route. Use internal context to explain data analysis results, anomalies, or trends and form evidence-backed conclusions. Do not use if the user explicitly asks not to access knowledge bases. This skill covers discovery and candidate selection; run the actual `+index` / `+grep` / `+read` / `+ask` retrieval with the `ae-kb` skill.
 ---
 
 # Knowledge Base Discovery
+
+## Cross-skill collaboration
+
+When remaining work is outside this skill's scope, or a necessary prerequisite needs another capability, follow [the collaboration protocol](references/collaboration.md). Choose from the skills available in this run by capability, preserve verified context, and continue the remaining task. Reuse this protocol if already loaded.
 
 Treat knowledge bases as an optional source of internal facts and business context. Keep the user's original goal unchanged; knowledge base retrieval is a supporting workflow, not the task itself.
 
@@ -18,11 +22,12 @@ Use this skill when:
 - The task requires organization-specific facts or context, such as product design and rules, events, campaign or operations calendars, release and iteration records, workflows, policies, or terminology.
 - Internal context is needed to explain data analysis results, anomalies, or trends and form evidence-backed conclusions.
 - The knowledge base context currently available does not cover the question, and discovering other accessible sources has clear value.
+- `ae-analysis` read `data.routing.knowledge_base: auto` from `ae-cli config show` before selecting the project-scoped query route, and a knowledge base could materially improve the answer or asset selection.
 
 Do not use this skill when:
 
 - The user explicitly asks not to use knowledge bases.
-- The task only requires querying real-time state or performing an operation and does not need document context.
+- The task only requires querying real-time state or performing an operation and does not need document context or enabled project-semantic KB asset routing.
 - General knowledge is sufficient for a reliable answer and internal evidence would not materially improve it.
 
 ## Discovery Workflow

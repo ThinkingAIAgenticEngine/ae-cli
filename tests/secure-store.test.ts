@@ -16,6 +16,7 @@ import {
   save,
   saveCredential,
   SecureStoreAuthError,
+  CredentialStoreUnreadableError,
   updateCredentialMetadata,
 } from '../src/core/secure-store.ts';
 import { getConfigDir } from '../src/core/config.ts';
@@ -116,7 +117,7 @@ try {
     const blob = JSON.parse(fs.readFileSync(file, 'utf8'));
     blob.tag = `${blob.tag.startsWith('00') ? 'ff' : '00'}${blob.tag.slice(2)}`;
     fs.writeFileSync(file, JSON.stringify(blob));
-    assert.equal(load(value), null);
+    assert.throws(() => load(value), CredentialStoreUnreadableError);
   });
 
   await test('first new CLI run migrates an old cliToken without needing access/refresh tokens', () => {

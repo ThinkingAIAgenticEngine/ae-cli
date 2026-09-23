@@ -25,6 +25,12 @@ ae-cli analysis report-data export --project-id <project_id> --report-ids '[1001
 
 Input also accepts optional `cluster_query_scope` and conditional `slave_cluster_id`. Omit both for current-self data. Resolve allowed physical routes with `analysis query-cluster list`; SQL reports reject `GLOBAL`. Async export has no inline row limit. Runtime defaults to and is capped at 21600 seconds (6 hours); cancel earlier with `analysis query cancel --run-id <run_id>`.
 
+Path exports contain native graph node and link records. `record_type` distinguishes `node` and `link`; `step` is one-based, and `source`/`target` refer to native node IDs. The saved maximum steps and nodes per step still define the graph, including native More aggregation and wastage links. Export includes every computed node and link without the synchronous `preview_rows` cap.
+
+An empty path follows synchronous query semantics: native `PROJECT_NO_DATA` becomes an empty result. Other native failures, including identity and permission failures, still fail the export. JSONL uses `empty` when no data rows were produced, even when a native printer emitted only a header.
+
+Saved-report JSONL records (`schema`, `row`, `empty`, `error`) carry `report_id`; each report has an independent schema. CSV batches use `# report_id=...` boundary comments. Empty reports retain an explicit marker instead of disappearing from a mixed batch.
+
 The downloaded report-data artifact contains report rows and per-report markers, not `actual_cluster_query_scope` metadata. Therefore resolve an allowed route first, keep the submitted scope/ID with the run record, and do not infer route from row contents.
 
 Timezone contract is identical to `report-data run`: omit `--zone-offset` to match the current user's report UI timezone (falling back to the project default); use an enabled integer from `-12` through `14` for a fixed UTC offset; use `--zone-offset 99` for local-time mode, where rows are not converted to one fixed UTC offset. `99` is a mode identifier, not `UTC+99`, and the option is not persisted.

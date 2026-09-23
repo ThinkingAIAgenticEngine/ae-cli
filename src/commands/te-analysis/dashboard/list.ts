@@ -14,7 +14,7 @@ export const dashboardList = createAnalysisCapabilityCommand({
   resource: 'dashboard',
   command: 'list',
   capabilityId: 'analysis.dashboard.list',
-  description: 'List dashboards visible to the current user through the capability gateway.',
+  description: 'List dashboards the current user can update or manage. Read-only dashboards are excluded; use analysis asset search for readable asset discovery.',
   flags: [
     projectIdFlag,
     queriesFlag,

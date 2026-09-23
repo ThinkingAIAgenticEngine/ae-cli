@@ -39,7 +39,7 @@ console.log('community data report skill contract tests');
 
 test('revision and frontmatter trigger reporting and WeCom ingestion requests', () => {
   const frontmatter = getFrontmatter(skill);
-  assert.match(skill, /^Skill revision: 2\.4\.1\.$/m);
+assert.match(skill, /^Skill revision: 2\.4\.2\.$/m);
   assert.match(frontmatter, /data reporting/i);
   assert.match(frontmatter, /ingestion\/import\/submission/i);
   assert.match(frontmatter, /WeCom chat data integration/i);

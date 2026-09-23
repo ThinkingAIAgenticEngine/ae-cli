@@ -30,7 +30,7 @@ const expectedCommands = [
   "+write-context",
 ];
 
-assert.match(skill, /^version: 1\.5\.3$/m);
+assert.match(skill, /^version: 1\.5\.7$/m);
 assert.deepEqual(
   memoryCommands.map((command) => command.command),
   expectedCommands,
@@ -103,6 +103,11 @@ assert.match(
   skill,
   /explicitly asks to view, manage, or security-audit memories/,
 );
+assert.match(
+  skill,
+  /project scope.*personal-semantic-preference add\|update/s,
+);
+assert.match(skill, /reusable project workflows are `context_type=experience`/);
 assert.match(skill, /Inspection alone is not actual use/);
 assert.match(
   skill,

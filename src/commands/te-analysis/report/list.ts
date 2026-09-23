@@ -14,7 +14,7 @@ export const reportList = createAnalysisCapabilityCommand({
   resource: 'report',
   command: 'list',
   capabilityId: 'analysis.report.list',
-  description: 'List analysis reports visible to the current user through the capability gateway.',
+  description: 'List analysis reports the current user can edit or manage. Read-only reports are excluded; use analysis asset search for readable asset discovery.',
   flags: [
     projectIdFlag,
     queriesFlag,

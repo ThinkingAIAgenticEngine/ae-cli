@@ -31,7 +31,7 @@ function commandPrefix(command) {
 
 function commandRisks(markdownFiles) {
   const risks = new Map();
-  for (const file of markdownFiles.filter((candidate) => path.basename(candidate) === 'command_index.md')) {
+  for (const file of markdownFiles) {
     const lines = fs.readFileSync(file, 'utf8').split('\n');
     for (const line of lines) {
       const match = line.match(

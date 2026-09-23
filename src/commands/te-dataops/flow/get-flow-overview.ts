@@ -22,7 +22,7 @@ function buildArgs(ctx: RuntimeContext): Record<string, unknown> {
 export const getFlowOverview: Command = {
   service: 'dataops_flow',
   command: '+get_flow_overview',
-  description: 'Get a DEV/PROD flow overview. Requires spaceCode and either flowCode or exact flowName; flowCode wins. env defaults to DEV. Returns success, env, resolvedBy, flow, schedule, dag, and summary; PROD may include latest instance fields.',
+  description: 'Get a DEV/PROD flow overview; env defaults to DEV. Requires dwWorkflowEdit, spaceCode, and either flowCode or exact flowName; flowCode wins. Returns success, env, resolvedBy, flow, flowParams, schedule, dag, and summary. flowParams contains all custom flow definitions; dag.tasks[].taskParams contains task references with source, value, type, and built-in flags in the selected environment. Definition values preserve expression text. paramFrom is FLOW or SPACE for configured sources. Code-parsed parameters without a configured source stay in the list with null or omitted paramFrom and paramValue fields. Empty parameter lists are arrays. PROD may include latest instance fields.',
   flags: [
     { name: 'spaceCode', type: 'string', required: true, desc: 'Space code' },
     { name: 'flowCode', type: 'number', required: false, desc: 'Optional task flow code; takes precedence over flowName' },

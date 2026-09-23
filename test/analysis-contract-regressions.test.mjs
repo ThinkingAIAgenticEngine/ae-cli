@@ -62,6 +62,10 @@ async function captureDryRun(command, values, { operation = 'dryRun', respond } 
   setCliTokenManual('cli_test_token', HOST);
   try {
     await command[operation](ctx(values));
+    if (body?.input?.request_id && values['request-id'] === undefined && values.payload?.request_id === undefined) {
+      assert.match(body.input.request_id, /^cli_[0-9a-f]{32}$/);
+      delete body.input.request_id;
+    }
     return body;
   } finally {
     globalThis.fetch = originalFetch;
@@ -133,7 +137,8 @@ for (const [id, input, unknown] of governanceTypedInputs) {
   await test(`${id} exposes only release-supported typed fields and preserves unknown payload fields`, async () => {
     const command = governance(id);
     const flags = Object.fromEntries(Object.entries(input).map(([key, value]) => [key.replaceAll('_', '-'), value]));
-    assert.deepEqual(command.flags.map((flag) => flag.name).sort(), ['project-id', 'payload', ...Object.keys(flags)].sort());
+    const lifecycle = id.includes('export') ? ['request-id', 'artifact-format', 'timeout-seconds', 'wait', 'wait-timeout-seconds', 'output', 'force'] : [];
+    assert.deepEqual(command.flags.map((flag) => flag.name).sort(), ['project-id', 'payload', ...Object.keys(flags), ...lifecycle].sort());
     const body = await captureDryRun(command, { 'project-id': 7, ...flags, payload: { project_id: 999, ...unknown } });
     assert.deepEqual(body.input, { project_id: 7, ...input, ...unknown });
   });
@@ -259,5 +264,32 @@ await test('CLI rejects missing BI identity/project and out-of-range system flag
     }
   } finally {
     rmSync(home, { recursive: true, force: true });
+  }
+});
+
+for (const id of ['asset.export', 'asset.batch_export_info', 'asset.batch_export_sql', 'operation_record.export']) {
+  await test(`governance ${id} exposes asynchronous export lifecycle and preserves payload defaults`, async () => {
+    const command = governance(id);
+    for (const name of ['wait', 'output', 'force', 'request-id', 'artifact-format', 'timeout-seconds']) {
+      assert.ok(command.flags.some((flag) => flag.name === name), `${id}: ${name}`);
+    }
+    assert.equal(command.flags.find((flag) => flag.name === 'timeout-seconds').max, 7200);
+    const input = (await captureDryRun(command, {
+      'project-id': 7,
+      payload: { node_ids: ['node-a'], record_id: 4, format: 'csv', timeout_seconds: 500 },
+      'request-id': 'cli_' + 'a'.repeat(32),
+      'artifact-format': id === 'asset.export' ? 'jsonl' : 'xlsx',
+    })).input;
+    assert.equal(input.format, id === 'asset.export' ? 'jsonl' : 'xlsx');
+    assert.equal(input.timeout_seconds, 500);
+    assert.equal(input.request_id, 'cli_' + 'a'.repeat(32));
+    assert.equal(input.project_id, 7);
+  });
+}
+
+await test('governance list and export retain the selected node filter', async () => {
+  for (const id of ['asset.list', 'asset.export']) {
+    const body = await captureDryRun(governance(id), { 'project-id': 7, 'node-id': 'node-a' });
+    assert.equal(body.input.node_id, 'node-a');
   }
 });

@@ -5,7 +5,10 @@ import type { Draft, Event, EventPlatform, Property, UserProperty, PropType, Upd
 import { allSheetNames, allHeaderNames, displayToType } from '../i18n/xlsx.js';
 import { t } from '../i18n/translate.js';
 
-XLSX.set_fs(nodeFs);
+const setXlsxFs = (XLSX as unknown as { set_fs?: (fs: typeof nodeFs) => void }).set_fs;
+if (typeof setXlsxFs === 'function') {
+  setXlsxFs(nodeFs);
+}
 
 const VALID_PROP_TYPES = new Set<PropType>(['string', 'number', 'bool', 'datetime', 'object', 'array_row', 'array_string']);
 const VALID_UPDATE_TYPES = new Set<UpdateType>(['user_set', 'user_setOnce', 'user_add', 'user_append']);
