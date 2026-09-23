@@ -28,7 +28,6 @@ import entityDetail from './entity-detail/index.js';
 import drilldownEvents from './drilldown-events/index.js';
 import drilldownEntities from './drilldown-entities/index.js';
 import drilldownUserEvents from './drilldown-user-events/index.js';
-import drilldownSessionDetails from './drilldown-session-details/index.js';
 import user from './user/index.js';
 import queryCluster from './query-cluster/index.js';
 import sqlTable from './sql-table/index.js';
@@ -78,7 +77,6 @@ export const baseCommands: Command[] = [
   ...drilldownEvents,
   ...drilldownEntities,
   ...drilldownUserEvents,
-  ...drilldownSessionDetails,
   ...user,
   ...sqlTable,
   ...queryCluster,

@@ -92,7 +92,7 @@ const artifactDownload = readFileSync(new URL('../skills/ae-analysis/references/
 const assetUrl = readFileSync(new URL('../skills/ae-analysis/references/asset_url_get.md', import.meta.url), 'utf8');
 const aiCommon = readFileSync(new URL('../skills/ae-analysis/references/ai_models.md', import.meta.url), 'utf8');
 const modelRefs = [...aiCommon.matchAll(/\]\((ai_models\/[^)]+\.md)\)/g)].map((match) => match[1]);
-assert.equal(modelRefs.length, 14, 'all supported models have directly readable references');
+assert.equal(modelRefs.length, 13, 'all supported models have directly readable references');
 const modelDocs = modelRefs.map((ref) => readFileSync(join(analysisRoot, 'references', ref), 'utf8'));
 const aiModels = [aiCommon, ...modelDocs].join('\n');
 const audienceModels = readFileSync(

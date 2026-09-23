@@ -11,25 +11,18 @@ const sourceRoot = fs.realpathSync(sourceDir);
 const treeOutput = path.resolve(args['tree-output'] || `${sourceDir}-source-tree`);
 const outputArchive = args.output ? path.resolve(args.output) : '';
 const previousManifestPath = args['previous-manifest'] ? path.resolve(args['previous-manifest']) : '';
-const previousRefreshStatePath = args['previous-refresh-state'] ? path.resolve(args['previous-refresh-state']) : '';
-const previousTreeRoot = args['previous-tree-root'] ? fs.realpathSync(path.resolve(args['previous-tree-root'])) : '';
 const manifestOutput = path.resolve(args['manifest-output'] || path.join(treeOutput, 'kb-source-tree-manifest.json'));
 const force = Boolean(args.force);
-const shouldEmbedRefreshStateBaseline = Boolean(args['embed-refresh-state-baseline']);
 const rootPath = normalizeRootPath(args['root-path'] || 'sources');
 
-if (previousManifestPath && previousRefreshStatePath) throw new Error('Use either --previous-manifest or --previous-refresh-state, not both.');
-if (!outputArchive && !previousManifestPath && !previousRefreshStatePath && !shouldEmbedRefreshStateBaseline) {
-  throw new Error('--output, --previous-manifest, --previous-refresh-state, or --embed-refresh-state-baseline is required.');
-}
+if (!outputArchive && !previousManifestPath) throw new Error('--output or --previous-manifest is required.');
 assertOutputPath(treeOutput, sourceRoot, 'Tree output');
 if (outputArchive) assertOutputPath(outputArchive, sourceRoot, 'Archive');
 if (manifestOutput.startsWith(`${sourceRoot}${path.sep}`)) throw new Error('Manifest output must not be nested inside the flat source directory.');
 
 const flatManifest = readManifest(path.join(sourceRoot, 'kb-upload-manifest.json'), { allowFlat: true });
 const next = buildSourceTreeManifest(flatManifest, { requireLocalContent: true });
-const nextBaseline = shouldEmbedRefreshStateBaseline ? refreshStateBaseline(next) : null;
-const entries = buildSourceTreeEntries(next, nextBaseline);
+const entries = buildSourceTreeEntries(next);
 
 materializeTree(treeOutput, force, (staging) => {
   for (const entry of entries) writeText(path.join(staging, entry.path), entry.content);
@@ -45,17 +38,11 @@ const result = {
   manifest: manifestOutput,
 };
 
-if (previousManifestPath || previousRefreshStatePath) {
-  const previousState = previousManifestPath
-    ? { manifest: readManifest(previousManifestPath, { allowFlat: true, allowTree: true }), baseline: null }
-    : readRefreshStateBaseline(previousRefreshStatePath);
-  const previous = buildSourceTreeManifest(previousState.manifest, { requireLocalContent: false });
-  if (previousTreeRoot) rehashPreviousTreeSources(previous, previousTreeRoot);
+if (previousManifestPath) {
+  const previous = buildSourceTreeManifest(readManifest(previousManifestPath, { allowFlat: true, allowTree: true }), { requireLocalContent: false });
   if (previous.namespace !== next.namespace || previous.semantic_project_id !== next.semantic_project_id) {
     throw new Error('Wiki namespace/project changed; stop.');
   }
-  const semanticPlanDiff = diffSemanticPlanFragments(previous.semantic_plan_state, next.semantic_plan_state);
-  const changedPlanFragments = new Set(semanticPlanDiff.changed_fragments);
   const before = new Map(previous.sources.map((source) => [source.file, source]));
   const after = new Map(next.sources.map((source) => [source.file, source]));
   const actions = [];
@@ -63,28 +50,28 @@ if (previousManifestPath || previousRefreshStatePath) {
   for (const source of next.sources) {
     const old = before.get(source.file);
     if (old?.content_hash === source.content_hash) unchanged.push(source.file);
-    else actions.push(actionForSource(old ? 'replace' : 'add', source, old, changedPlanFragments));
+    else actions.push({
+      action: old ? 'replace' : 'add',
+      path: source.file,
+      file: path.join(treeOutput, source.file),
+      source_kind: source.source_kind,
+      asset_type: source.asset_type,
+      asset_key: source.asset_key,
+      content_hash: source.content_hash,
+      previous_content_hash: old?.content_hash ?? null,
+    });
   }
   for (const source of previous.sources) {
-    if (!after.has(source.file)) actions.push(actionForSource('remove', source, source, changedPlanFragments));
-  }
-  const affectedBySemanticPlan = next.sources
-    .map((source) => ({
+    if (!after.has(source.file)) actions.push({
+      action: 'remove',
       path: source.file,
       source_kind: source.source_kind,
       asset_type: source.asset_type,
       asset_key: source.asset_key,
-      changed_semantic_plan_fragments: intersect(source.semantic_plan_fragment_refs, changedPlanFragments),
-    }))
-    .filter((source) => source.changed_semantic_plan_fragments.length);
-  Object.assign(result, {
-    actions,
-    unchanged,
-    compile_mode: actions.length ? 'incremental' : 'skip',
-    semantic_plan_diff: semanticPlanDiff,
-    affected_by_semantic_plan: affectedBySemanticPlan,
-    previous_refresh_state_baseline: previousState.baseline,
-  });
+      previous_content_hash: source.content_hash,
+    });
+  }
+  Object.assign(result, { actions, unchanged, compile_mode: actions.length ? 'incremental' : 'skip' });
 }
 
 if (outputArchive) {
@@ -120,7 +107,6 @@ function buildSourceTreeManifest(manifest, options) {
       title: source.title,
       content_hash: content == null ? source.content_hash : sha256(normalizeContentForHash(content)),
       source_path: source.source_path,
-      semantic_plan_fragment_refs: source.semantic_plan_fragment_refs,
       managed_by: 'project-semantic-kb-source-tree',
     };
   });
@@ -151,12 +137,11 @@ function buildSourceTreeManifest(manifest, options) {
     source_count: sources.length,
     generated_source_count: generated.length,
     filing_guide_count: readmes.length,
-    semantic_plan_state: normalizeSemanticPlanState(manifest.semantic_plan_state),
     sources,
   };
 }
 
-function buildSourceTreeEntries(manifest, refreshStateBaseline = null) {
+function buildSourceTreeEntries(manifest) {
   const flatToTree = new Map(manifest.sources
     .filter((item) => item.source_kind !== 'filing-guide')
     .map((item) => [item.display_name, item.file]));
@@ -167,80 +152,11 @@ function buildSourceTreeEntries(manifest, refreshStateBaseline = null) {
       if (!content) throw new Error(`Missing filing guide content for ${source.file}.`);
       return { path: source.file, content };
     }
-    if (refreshStateBaseline && source.source_kind === 'refresh-state') {
-      return {
-        path: source.file,
-        content: embedRefreshStateBaseline(
-          rewriteLinksForTree(readText(path.join(sourceRoot, source.display_name)), source.display_name, flatToTree),
-          refreshStateBaseline,
-        ),
-      };
-    }
     return {
       path: source.file,
       content: rewriteLinksForTree(readText(path.join(sourceRoot, source.display_name)), source.display_name, flatToTree),
     };
   });
-}
-
-function refreshStateBaseline(manifest) {
-  const contentRevision = optionalPositiveInteger(args['baseline-content-revision'], 'baseline-content-revision');
-  return {
-    schema_version: '1.0',
-    source_id: clean(args['baseline-source-id']) || null,
-    source_display_name: clean(args['baseline-source-display-name']) || null,
-    content_revision: contentRevision,
-    published_version_id: clean(args['baseline-published-version-id']) || null,
-    manifest_hash: sourceTreeManifestHash(manifest),
-    source_tree_manifest: manifest,
-  };
-}
-
-function embedRefreshStateBaseline(content, baseline) {
-  const payload = parseRefreshStatePayload(content);
-  const nextPayload = {
-    ...payload,
-    source_tree_baseline: {
-      ...baseline,
-      source_tree_manifest: baseline.source_tree_manifest,
-    },
-  };
-  const encoded = Buffer.from(JSON.stringify(nextPayload, null, 2)).toString('base64url');
-  return content.replace(/<!-- pskb_refresh_state_base64\n[\s\S]*?\n-->/,
-    `<!-- pskb_refresh_state_base64\n${encoded}\n-->`);
-}
-
-function readRefreshStateBaseline(file) {
-  const payload = parseRefreshStatePayload(readText(file));
-  const baseline = payload.source_tree_baseline ?? null;
-  const manifest = baseline?.source_tree_manifest;
-  if (!manifest) throw new Error('Refresh state does not contain source_tree_baseline.source_tree_manifest.');
-  const expectedHash = clean(baseline.manifest_hash);
-  const actualHash = sourceTreeManifestHash(manifest);
-  if (expectedHash && expectedHash !== actualHash) {
-    throw new Error('Refresh state source_tree_manifest hash does not match its manifest_hash.');
-  }
-  return {
-    manifest,
-    baseline: {
-      schema_version: clean(baseline.schema_version) || null,
-      source_id: clean(baseline.source_id) || null,
-      source_display_name: clean(baseline.source_display_name) || null,
-      content_revision: Number.isSafeInteger(baseline.content_revision) ? baseline.content_revision : null,
-      published_version_id: clean(baseline.published_version_id) || null,
-      manifest_hash: expectedHash || actualHash,
-    },
-  };
-}
-
-function parseRefreshStatePayload(content) {
-  const match = String(content).match(/<!-- pskb_refresh_state_base64\n([A-Za-z0-9_=\-\s]+)\n-->/);
-  if (!match) throw new Error('Refresh state base64 payload is missing.');
-  return JSON.parse(Buffer.from(match[1].replace(/\s+/g, ''), 'base64url').toString('utf8'));
-}
-
-function sourceTreeManifestHash(manifest) {
-  return sha256(stableJson(manifest));
 }
 
 function sourceDirectoryReadmes(manifest) {
@@ -270,8 +186,6 @@ function sourceTreePath(source) {
   if (assetType === 'report') return `${rootPath}/assets/reports/${base}`;
   if (assetType === 'metric') return `${rootPath}/assets/metrics/${base}`;
   if (assetType === 'metadata' || kind === 'metadata') return `${rootPath}/assets/metadata/${base}`;
-  if (source.source_path === 'wiki/project-overview.md') return `${rootPath}/project/${base}`;
-  if (kind === 'refresh-state') return `${rootPath}/project/${base}`;
   if (kind === 'domain' || kind === 'recall-card') return `${rootPath}/business/${base}`;
   if (kind === 'index' || kind === 'manifest') return `${rootPath}/project/${base}`;
   if (kind === 'governance') return `${rootPath}/references/governance/${base}`;
@@ -345,7 +259,6 @@ function normalizeFlatSource(manifest, source, requireLocalFile) {
     asset_key: clean(source.asset_key) || null,
     title: clean(source.title) || clean(source.display_name).replace(/\.md$/i, ''),
     source_path: clean(source.source_path),
-    semantic_plan_fragment_refs: normalizeStringArray(source.semantic_plan_fragment_refs),
   };
 }
 
@@ -360,75 +273,12 @@ function validateTreeManifest(manifest) {
         || !/^[a-f0-9]{64}$/i.test(source.content_hash) || seen.has(source.file)) {
       throw new Error('Invalid or duplicate source tree path/hash.');
     }
-    source.semantic_plan_fragment_refs = normalizeStringArray(source.semantic_plan_fragment_refs);
     seen.add(source.file);
   }
-  manifest.semantic_plan_state = normalizeSemanticPlanState(manifest.semantic_plan_state);
   return manifest;
 }
 
-function actionForSource(action, source, previous, changedPlanFragments) {
-  return {
-    action,
-    path: source.file,
-    ...(action === 'remove' ? {} : { file: path.join(treeOutput, source.file) }),
-    source_kind: source.source_kind,
-    asset_type: source.asset_type,
-    asset_key: source.asset_key,
-    content_hash: action === 'remove' ? null : source.content_hash,
-    previous_content_hash: previous?.content_hash ?? null,
-    semantic_plan_fragment_refs: source.semantic_plan_fragment_refs ?? [],
-    changed_semantic_plan_fragments: intersect(source.semantic_plan_fragment_refs, changedPlanFragments),
-  };
-}
-
-function diffSemanticPlanFragments(previousState, nextState) {
-  const previous = new Map(normalizeSemanticPlanState(previousState).fragments.map((fragment) => [fragment.id, fragment.hash]));
-  const next = new Map(normalizeSemanticPlanState(nextState).fragments.map((fragment) => [fragment.id, fragment.hash]));
-  const ids = [...new Set([...previous.keys(), ...next.keys()])].sort((left, right) => left.localeCompare(right, 'en'));
-  const changed = ids.filter((id) => previous.get(id) !== next.get(id));
-  return {
-    changed_fragment_count: changed.length,
-    changed_fragments: changed,
-  };
-}
-
-function normalizeSemanticPlanState(value) {
-  if (!value || typeof value !== 'object') return { schema_version: null, plan_hash: null, fragment_count: 0, fragments: [] };
-  const fragments = Array.isArray(value.fragments) ? value.fragments
-    .map((fragment) => ({
-      ...fragment,
-      id: clean(fragment?.id),
-      kind: clean(fragment?.kind),
-      hash: clean(fragment?.hash),
-    }))
-    .filter((fragment) => fragment.id && /^[a-f0-9]{64}$/i.test(fragment.hash))
-    .sort((left, right) => left.id.localeCompare(right.id, 'en')) : [];
-  return {
-    ...value,
-    fragment_count: fragments.length,
-    fragments,
-  };
-}
-
-function normalizeStringArray(value) {
-  return [...new Set((Array.isArray(value) ? value : []).map(clean).filter(Boolean))].sort((left, right) => left.localeCompare(right, 'en'));
-}
-
-function intersect(values, set) {
-  const source = normalizeStringArray(values);
-  return source.filter((value) => set.has(value));
-}
-
 function normalizeContentForHash(content) { return normalizeSourceForHash(String(content).replace(/\r\n/g, '\n')); }
-
-function rehashPreviousTreeSources(manifest, root) {
-  for (const source of manifest.sources) {
-    const file = path.resolve(root, source.file);
-    if (!file.startsWith(`${root}${path.sep}`) || !fs.existsSync(file)) continue;
-    source.content_hash = sha256(normalizeContentForHash(readText(file)));
-  }
-}
 
 function parseArgs(tokens) {
   const parsed = {};
@@ -436,7 +286,7 @@ function parseArgs(tokens) {
     const key = tokens[i];
     if (!key.startsWith('--')) throw new Error(`Invalid argument: ${key}`);
     const name = key.slice(2);
-    if (name === 'force' || name === 'embed-refresh-state-baseline') {
+    if (name === 'force') {
       parsed[name] = true;
       continue;
     }
@@ -451,13 +301,6 @@ function required(name) {
   const value = args[name];
   if (!value) throw new Error(`--${name} is required.`);
   return value;
-}
-
-function optionalPositiveInteger(value, label) {
-  if (value == null || value === '') return null;
-  const parsed = Number(value);
-  if (!Number.isSafeInteger(parsed) || parsed < 1) throw new Error(`--${label} must be a positive integer.`);
-  return parsed;
 }
 
 function normalizeRootPath(value) {
@@ -531,9 +374,3 @@ function writeJson(file, value, replace) {
 function readText(file) { return fs.readFileSync(file, 'utf8'); }
 function clean(value) { return value == null ? '' : String(value).trim(); }
 function sha256(value) { return createHash('sha256').update(value).digest('hex'); }
-function stableJson(value) {
-  if (Array.isArray(value)) return `[${value.map(stableJson).join(',')}]`;
-  if (!value || typeof value !== 'object') return JSON.stringify(value);
-  const entries = Object.entries(value).sort(([left], [right]) => left.localeCompare(right, 'en'));
-  return `{${entries.map(([key, item]) => `${JSON.stringify(key)}:${stableJson(item)}`).join(',')}}`;
-}

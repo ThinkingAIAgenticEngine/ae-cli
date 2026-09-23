@@ -28,8 +28,6 @@ Agent 将流程摘要的 flowInstanceStatus 用于运维实例列表，jq 返回
 
 后续用户明确授权：将上述四个文件提交并推送到当前 codex/dataops-google-sheets-integration-6.0 分支；其他范围不变。
 
-6.1 后续授权：用户要求将已推送的 6.0 提交 517d1599 同步到 codex/dataops-google-sheets-integration-6.1，并在 ta1-61 回归。采用普通 merge，仅合入本次四文件增量，保留 6.1 独有版本与历史。构建本地候选 CLI，针对现有流程实例执行只读列表、详情、任务详情和 jq 路径回归；通过 SSH 独立核对环境。无后端制品变更，不部署、不新建或执行流程、不停止或删除资产，不更换全局安装。
-
 ## 期望行为
 
 - 搜索帮助列出 RUNNING、SUCCESS、FAIL、READY_PAUSE、PAUSE、STOP，并明确 WAITING 筛选不受支持；请求参数透传行为不变。
@@ -65,32 +63,13 @@ Agent 将流程摘要的 flowInstanceStatus 用于运维实例列表，jq 返回
 
 ## 端到端测试
 
-6.0 初轮文档与帮助修正未部署、未执行真实流程，仅验证本地帮助和离线 Skill 指引。后续 6.1 已授权回归的实际结果单独记录如下；真实 Agent 会话复测仍待用户使用更新后的本地 Skill/CLI。
-
-### 6.1 同步与 ta1-61 针对性回归
-
-- 同步前：6.1 HEAD=f7247bf8，工作区干净且与远端一致；6.0 仅新增 517d1599。普通 merge --no-ff --no-commit 无冲突。
-- 预期：候选帮助不声明 WAITING 支持；真实同一实例在摘要、列表、详情、任务详情中的状态与字段路径匹配；错误字段投影产生 null 后改读原始结构，不重复提交。选择现有成功/失败实例（若可用）验证读取成功不等于任务成功。
-- 本地构建、合同测试和 ta1-61 只读业务验证：passed，实际证据见下。状态转换及并发反例仅离线验证，不冒充线上新执行覆盖。
-- 精确 host=http://ta1-61:8996 的 CLI 认证有效；本地6.1.24高于环境声明6.1.14，保留提示并使用本轮候选，不运行提示中的 ae-cli update。
-
-实际验证（2026-09-22）：
-
-- SSH 只读预检：hostname=wjd-20260818-02；gaia.service active；8996/v1/gaia/health、9011/health、8996/gaia/ 均 HTTP200。远端有 Node22.22.1、无现成 CLI；使用本地构建候选固定访问 ta1-61。未部署或重启服务，未改代理。
-- `npm run build`、`npm run verify:dataops-flow-params`、`npm test`、`npm run check:release` 重跑通过。合同19 params/overview +23 integration +20 flow task +9 backfill；runner variadic flags通过。冒烟含2 retired API、sandbox-tools、5 dependency hygiene、1 README surface。仓库门禁4/4。
-- `node --import tsx test/jq-output.test.mjs` 通过；全量 `node self-check/scan.mjs` 无P1/P2，仅既有无typecheck的P3与两个info。6.0/6.1三个帮助和Skill文件逐字一致，package仍为6.1.24。
-- `node /private/tmp/cli61-monitor-0922.Skn75E/regression.mjs`：最终脚本11个只读业务请求全部断言通过；此前9请求初跑也通过，不当作额外独立用例。另只读发现空间及检查认证。
-- 空间e2e_merge61_0920，流11009817761760、实例253、任务实例295：摘要flowInstanceStatus、列表status、详情flowInstance.status、任务status均为SUCCESS；原始JSON和文档jq示例一致。
-- 错误列表投影flowInstanceStatus/flowScheduleStatus/historyCmd均为null，改用status/triggerType后得到SUCCESS/MANUAL；确认outer ok不能替代字段有效性与业务状态判定。SUCCESS筛选包含目标且返回实例均为SUCCESS。
-- 同一流11009812522464的历史实例252与251分别精确回读，返回ID分别匹配且均SUCCESS；未用任一历史成功替代另一实例。
-- FAIL筛选正常返回空列表，测试空间本次没有失败样本，因此未验证真实失败详情。未新建或执行流程、未制造RUNNING→SUCCESS/FAIL转换或并发；历史成功与当前运行并存的行为规则仍仅为离线验证。
-- 证据保留在上述临时目录：regression.mjs、summary.json、help.txt及各阶段JSON；未包含凭据、未修改业务资产，业务写操作为0。
+本轮文档与帮助修正不部署、不执行真实流程。验证本地帮助和离线 Skill 指引；真实 Agent 会话复测待用户使用更新后的本地 Skill/CLI，不声明线上 E2E 通过。
 
 ## 准出结论
 
-- 阶段：集成。
-- 结论：6.1合并、本地构建与合同测试、ta1-61针对性只读回归通过。通用Python Skill校验受依赖阻塞的6.0记录保留，6.1使用仓库原生门禁；不声明新流程执行或完整业务E2E通过。
+- 阶段：Coding。
+- 结论：本轮帮助与文档修正、本地构建及离线验证通过；通用 Python Skill 校验受依赖阻塞，以仓库原生门禁和离线行为复核补充，不声明线上 E2E 通过。
 - 剩余风险：文档不能修复服务端 WAITING 筛选，也不能提供 executeId 的精确实例关联。
-- 后续验证：用户使用更新后的工作树 Skill/CLI 进行真实 Agent 会话复测；全局 CLI 尚未更新，不把本地构建成功等同于已安装版本变更。本轮未覆盖真实失败实例或新执行状态转换。
+- 后续验证：用户使用更新后的工作树 Skill/CLI 进行真实 Agent 会话复测；全局 CLI 尚未更新，不把本地构建成功等同于已安装版本变更。
 - 验证人：Codex。
 - 日期：2026-09-22。

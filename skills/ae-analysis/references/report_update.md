@@ -4,7 +4,7 @@ Use when the user explicitly wants to update saved report metadata or replace it
 
 Do not use raw QP, `qp`, `report_model`, or `analysis_query`. When changing the definition, pass `model_type` and AI QP `definition` together.
 
-Read [`ai_models.md`](ai_models.md) for the single AI-facing model registry. Report update supports the 13 analysis models plus `tag` for saved tag report data.
+Read [`ai_models.md`](ai_models.md) for the single AI-facing model registry. Report update supports the 12 analysis models plus `tag` for saved tag report data.
 
 Command:
 

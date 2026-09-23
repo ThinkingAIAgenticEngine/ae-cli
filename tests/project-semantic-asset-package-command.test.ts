@@ -18,18 +18,9 @@ function ctx(values: Record<string, string | number> = {}): RuntimeContext {
   } as RuntimeContext;
 }
 
-const registeredCommandNames = commands.map(
-  command => `${command.service} ${command.resource} ${command.command}`,
-);
-assert.ok(
-  registeredCommandNames.includes('project-semantic asset-package export'),
-  'asset-package export remains available independently of the retired project-semantic lifecycle',
-);
-assert.equal(
-  registeredCommandNames.filter(name => name === 'project-semantic asset-package export').length,
-  1,
-  'asset-package export is registered exactly once',
-);
+assert.deepEqual(commands.map(command => `${command.service} ${command.resource} ${command.command}`), [
+  'project-semantic asset-package export',
+]);
 
 async function captureGatewayCall(fn: () => Promise<unknown>) {
   setCliTokenManual('cli-test-token', 'https://project-semantic.example.com');

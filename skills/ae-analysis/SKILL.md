@@ -169,7 +169,7 @@ For every gateway command that exposes `--request-id`, ae-cli generates a `reque
 
 Use the current turn's project ID supplied by the Agent host. When no project is supplied, resolve the user's ID or name with `project info list`. Ask only when the returned candidates leave a real ambiguity. A new user selection replaces the previous project for subsequent commands.
 
-### Project Semantic Knowledge Base
+### Project Semantic Knowledge
 
 When the user explicitly asks to build, update, refresh, rebuild, or sync a project semantic knowledge base, open `references/project_semantic_knowledge_wiki.md`. That command-reference workflow starts from `ae-cli project-semantic asset-package export` and then uploads/compiles KB sources. The retired governed project-semantic candidate and release lifecycle is not part of this knowledge-base build path or CLI Agent asset-authentication and metric-recommendation review.
 

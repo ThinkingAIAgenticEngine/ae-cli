@@ -1,6 +1,5 @@
 import assert from 'node:assert/strict';
 import { execFileSync, spawnSync } from 'node:child_process';
-import { createHash } from 'node:crypto';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -16,7 +15,6 @@ const companyKb = path.join(scriptPath, 'company-kb.mjs');
 const syncPlanner = path.join(scriptPath, 'plan-kb-source-sync.mjs');
 const concurrentUploader = path.join(scriptPath, 'upload-kb-sources-concurrently.mjs');
 const reference = fs.readFileSync(referencePath, 'utf8');
-const { normalizeSourceForHash } = await import(pathToFileURL(path.join(scriptPath, 'precompiled-source.mjs')));
 
 // Local semantic planning/rendering remains the current source contract.
 assert.match(reference, /Company-only target/);
@@ -35,9 +33,6 @@ assert.match(defaultCompileRules, /bare numeric links/);
 assert.match(defaultCompileRules, /output fields/);
 assert.match(defaultCompileRules, /incremental compilation/);
 assert.match(defaultCompileRules, /Agent 使用摘要/);
-assert.match(defaultCompileRules, /project-level business model/);
-assert.match(defaultCompileRules, /business judgment chain/);
-assert.match(defaultCompileRules, /mechanical parser echo/);
 
 const temp = fs.mkdtempSync(path.join(os.tmpdir(), 'project-semantic-knowledge-wiki-'));
 const assetPackage = path.join(temp, 'asset-package');
@@ -47,8 +42,6 @@ const outputB = path.join(temp, 'raw-b');
 const wikiA = path.join(temp, 'wiki-a');
 const wikiB = path.join(temp, 'wiki-b');
 const wikiDateOnly = path.join(temp, 'wiki-date-only');
-const wikiOrderOnly = path.join(temp, 'wiki-order-only');
-const wikiSnapshotOnly = path.join(temp, 'wiki-snapshot-only');
 const wikiAllVisible = path.join(temp, 'wiki-all-visible');
 const wikiChanged = path.join(temp, 'wiki-changed');
 const sourceTreeA = path.join(temp, 'wiki-a-kb-source-tree');
@@ -122,13 +115,10 @@ writeJsonl('report-catalog', [
       metric_key: 'm1',
       aggregation_code: 'A103', aggregation_name: 'Sum', measure_key: 'amount', measure_title: 'Payment amount',
       formula_expression: 'pay.A103/pay.A101',
-	      formula_definition: { formulationDeps: [{
-	        event: { eventDesc: 'Payment', filter: { filts: [{ columnDesc: 'Paid users' }] } },
-	        quota: { quotaDesc: 'Sum' },
-	      }, {
-	        event: { eventDesc: 'Discount applied' },
-	        quota: {},
-	      }] },
+      formula_definition: { formulationDeps: [{
+        event: { eventDesc: 'Payment', filter: { filts: [{ columnDesc: 'Paid users' }] } },
+        quota: { quotaDesc: 'Sum' },
+      }] },
     }, {
       display_name: '客户数', event_name: 'pay', event_title: 'Payment',
       metric_key: null,
@@ -275,39 +265,6 @@ const validPlan = {
   schema_version: '2.0',
   source_snapshot_hash: snapshotHash,
   generation_method: 'agent_semantic_synthesis',
-  project_business_model: {
-    business_positioning: '该项目用于观察商业化收入表现，帮助分析人员判断收入规模、趋势和地域差异，并把正式付费客户口径与测试订单排除边界固定下来。',
-    audience_roles: ['商业分析师', '运营负责人'],
-    business_objects: [{
-      object_id: 'customer-segment',
-      name: '客户分层',
-      meaning: '用于区分正式付费客户和其他客户，是收入分析的主过滤对象。',
-      evidence_refs: [{ resource_type: 'dashboard', resource_key: 'd1' }, { resource_type: 'report', resource_key: 'r1' }],
-    }, {
-      object_id: 'payment-event',
-      name: '支付事件',
-      meaning: '承载付费金额和付费用户数，是收入判断的事实事件。',
-      evidence_refs: [{ resource_type: 'report', resource_key: 'r1' }, { resource_type: 'metric', resource_key: 'm1' }],
-    }],
-    object_relationships: [{
-      from_object: '客户分层',
-      to_object: '支付事件',
-      relationship: '收入分析先限定正式付费客户分层，再统计支付事件上的金额和用户贡献。',
-      evidence_refs: [{ resource_type: 'dashboard', resource_key: 'd1' }],
-    }],
-    decision_chains: [{
-      chain_id: 'commerce-revenue-judgment',
-      title: '商业收入判断链路',
-      decision_question: '收入规模和趋势是否健康，不同国家的付费表现是否有差异？',
-      signals: ['付费金额', '付费用户数', '国家维度', '日期趋势'],
-      decision_steps: ['先用收入看板确认正式付费客户口径。', '再看付费金额和付费用户数。', '最后按国家和日期定位差异。'],
-      preferred_domain_ids: ['commerce-revenue'],
-      asset_refs: [{ resource_type: 'dashboard', resource_key: 'd1' }, { resource_type: 'report', resource_key: 'r1' }],
-      requires_live_execution: true,
-      boundaries: ['当前收入数值必须实时执行报表', '共享技术示例看板不作为主判断入口'],
-    }],
-    non_goals: ['不承载当前实时收入数值', '不把共享技术示例资产当成正式收入口径'],
-  },
   domains: [{
     domain_id: 'commerce-revenue',
     title: '商业收入分析',
@@ -321,22 +278,6 @@ const validPlan = {
       '国家（`country`）：按国家拆分收入和付费用户。',
       '日期（`date`）：按时间观察趋势。',
     ],
-    domain_judgment_model: {
-      business_state_judged: '判断商业收入是否稳定增长，以及收入贡献是否集中在特定国家或客户分层。',
-      main_objects: ['客户分层', '支付事件', '国家', '日期'],
-      signals: ['付费金额', '付费用户数', '国家拆分', '日期趋势'],
-      decision_path: ['先确认收入看板是否适用当前问题。', '再核对付费金额和付费用户数口径。', '最后按国家和日期下钻解释差异。'],
-      asset_attachment_logic: [{
-        asset_ref: { resource_type: 'dashboard', resource_key: 'd1' },
-        role: 'primary_entry',
-        reason: '收入看板承载正式付费客户过滤、国家分组和收入指标，是该业务域的首选入口。',
-      }, {
-        asset_ref: { resource_type: 'report', resource_key: 'r1' },
-        role: 'drilldown',
-        reason: '收入报表用于核对付费金额、付费用户数和国家维度的具体计算口径。',
-      }],
-      boundaries: ['当前数值必须实时执行资产', '技术示例资产不进入正式收入判断链路'],
-    },
     merge_rationale: '该看板围绕收入决策。',
     dashboard_ids: ['d1'],
     recall_cards: [{
@@ -372,12 +313,12 @@ const validPlan = {
     non_applicable_questions: ['不能直接回答单个用户的登录明细。'],
     evidence_locator: 'details/normalized/report/r2.json',
     definition_state: 'valid',
-	  }, {
-	    report_id: 'r4',
-	    business_purpose: 'unknown',
-	    input_parameters: [{ name: 'Variable2', meaning: '返回数量限制', required: true }],
-	    output_fields: [{ name: 'unknown', meaning: 'SQL 使用 select *，输出字段需以源表 payment_summary 当前结构为准' }],
-	    statistical_grain: 'unknown',
+  }, {
+    report_id: 'r4',
+    business_purpose: 'unknown',
+    input_parameters: [],
+    output_fields: [],
+    statistical_grain: 'unknown',
     key_filters: [],
     default_limits: [],
     applicable_questions: [],
@@ -393,9 +334,6 @@ for (const output of [outputA, outputB]) {
 }
 
 const corpus = JSON.parse(fs.readFileSync(path.join(outputA, 'corpus.json'), 'utf8'));
-assert.match(corpus.project_business_model.business_positioning, /商业化收入表现/);
-assert.equal(corpus.project_business_model.business_objects.length, 2);
-assert.equal(corpus.project_business_model.decision_chains[0].chain_id, 'commerce-revenue-judgment');
 assert.deepEqual(corpus.counts, {
   business_domains: 1,
   technical_appendices: 1,
@@ -431,9 +369,6 @@ assert.match(fs.readFileSync(path.join(outputA, 'domains', 'commerce-revenue.md'
 assert.match(fs.readFileSync(path.join(outputA, 'domains', 'commerce-revenue.md'), 'utf8'), /该看板围绕收入决策/);
 const rawDomainPage = fs.readFileSync(path.join(outputA, 'domains', 'commerce-revenue.md'), 'utf8');
 assert.match(rawDomainPage, /## Agent 使用摘要/);
-assert.match(rawDomainPage, /## 这个域判断什么/);
-assert.match(rawDomainPage, /判断商业收入是否稳定增长/);
-assert.match(rawDomainPage, /首选入口：\[Revenue dashboard\]/);
 assert.match(rawDomainPage, /### 主要事件/);
 assert.match(rawDomainPage, /Payment（`pay`）/);
 assert.match(rawDomainPage, /付费金额：用于回答收入规模、趋势和国家差异。/);
@@ -509,7 +444,6 @@ assert.doesNotMatch(snapshotIndex, /^---$/m);
 assert.doesNotMatch(snapshotIndex, /进入项目语义知识库 Wiki/);
 assert.doesNotMatch(snapshotIndex, /个人知识库|只读快照/);
 assert.match(snapshotIndex, /\(wiki\/recall-cards\/index\.md\)/);
-assert.match(snapshotIndex, /\(wiki\/project-overview\.md\)/);
 assert.match(snapshotIndex, /\(wiki\/domains\/index\.md\)/);
 assert.match(snapshotIndex, /\(wiki\/dashboards\/index\.md\)/);
 assert.match(snapshotIndex, /\(wiki\/reports\/index\.md\)/);
@@ -526,18 +460,13 @@ assert.doesNotMatch(reportPage, /^---$/m);
 assert.match(reportPage, /<!--\npage_metadata:/);
 assert.match(reportPage, /## Agent 使用摘要/);
 assert.match(reportPage, /用途：基于“Payment”事件/);
-assert.doesNotMatch(reportPage, /^- 用途：(.+)\n- 适合回答：\n  - \1/m);
-assert.match(reportPage, /查看“Revenue”对应的Paid amount、客户数/);
 assert.match(reportPage, /Paid amount、客户数/);
 assert.match(reportPage, /可按 Country 下钻/);
-assert.doesNotMatch(markdownTopLevelSection(reportPage, '## Agent 使用摘要'), /未识别到稳定下钻维度|未发现需要 Agent 解释的输入参数|未发现明确过滤/);
 assert.doesNotMatch(reportPage, /用途：用于分析“Revenue”，核心观察/);
 assert.doesNotMatch(reportPage, /事件事件/);
 assert.match(reportPage, /Customer segment 为真/);
 assert.doesNotMatch(reportPage, /Customer segment 为真 未给出固定值/);
 assert.match(reportPage, /聚合方式: 总和/);
-assert.match(reportPage, /资产包未暴露聚合方式/);
-assert.doesNotMatch(reportPage, /未说明聚合/);
 assert.doesNotMatch(reportPage, /聚合方式: .*A\d{3}/);
 assert.doesNotMatch(reportPage, /`\{"(?:timeRelative|columnType|tableType|calcuSymbol|columnDesc)"/);
 assert.match(reportPage, /## 证据定位/);
@@ -545,9 +474,6 @@ assert.match(reportPage, /authority_role: dependency_only/);
 assert.match(reportPage, /definition_state: valid/);
 assert.match(reportPage, /runtime_policy: warn/);
 assert.match(reportPage, /standalone_recall: false/);
-assert.match(reportPage, /## 召回与权威边界/);
-assert.match(reportPage, /只能作为辅助线索/);
-assert.match(reportPage, /依赖闭包/);
 assert.doesNotMatch(reportPage, /\.\.\/\.\.\/metadata\//);
 const dashboardPage = fs.readFileSync(path.join(wikiA, 'wiki', 'dashboards', 'revenue-dashboard-d1.md'), 'utf8');
 assert.match(dashboardPage, /看板便签/);
@@ -558,9 +484,6 @@ assert.doesNotMatch(dashboardPage.split('## 精确证据')[0], /<strong>|&nbsp;/
 assert.match(dashboardPage, /## Agent 使用摘要/);
 assert.doesNotMatch(dashboardPage, /## 原始索引记录/);
 const wikiDomainPage = fs.readFileSync(path.join(wikiA, 'wiki', 'domains', 'commerce-revenue.md'), 'utf8');
-assert.match(wikiDomainPage, /## 这个域判断什么/);
-assert.match(wikiDomainPage, /判断商业收入是否稳定增长/);
-assert.match(wikiDomainPage, /收入报表用于核对付费金额、付费用户数和国家维度的具体计算口径/);
 assert.match(wikiDomainPage, /## Agent 使用摘要/);
 assert.match(wikiDomainPage, /Payment（`pay`）/);
 assert.match(wikiDomainPage, /付费金额：用于回答收入规模、趋势和国家差异。/);
@@ -585,7 +508,6 @@ assert.match(sqlAgentUsageSummary, /### 不可安全回答的问题/);
 assert.match(sqlPage, /`user_count`：登录去重用户数/);
 assert.match(sqlPage, /目标事件日期（`date`）：required=true/);
 assert.match(sqlPage, /最多返回 100 行/);
-assert.doesNotMatch(sqlPage, /CLI Agent|摘要来源|semantic_plan|parser fallback|builder/i);
 assert.match(sqlPage, /## 证据定位/);
 assert.doesNotMatch(sqlPage, /cli_agent_sql_report_semantic_source/);
 assert.doesNotMatch(sqlPage, /## 计算上下文/);
@@ -599,47 +521,26 @@ assert.match(sqlPage, /definition_state: valid/);
 const visualSqlPage = fs.readFileSync(path.join(wikiA, 'wiki', 'reports', 'visual-sql-report-r4.md'), 'utf8');
 assert.match(visualSqlPage, /## Agent 使用摘要/);
 assert.doesNotMatch(visualSqlPage, /## SQL Agent 语义摘要/);
-assert.doesNotMatch(visualSqlPage, /CLI Agent|摘要来源|semantic_plan|parser fallback|builder/i);
+assert.match(visualSqlPage, /摘要来源: semantic_plan/);
 assert.match(visualSqlPage, /definition_state: unknown/);
 assert.match(visualSqlPage, /runtime_policy: block/);
 assert.doesNotMatch(visualSqlPage, /semantic_plan_plus_cli_fact_fallback/);
 assert.match(visualSqlPage, /用途：通过 SQL 查询“Visual SQL report”相关明细/);
-assert.match(visualSqlPage, /返回数量限制：required=true/);
-assert.doesNotMatch(visualSqlPage, /Variable2|select \*/i);
-assert.match(visualSqlPage, /源表全字段输出，字段清单需回源表 payment_summary 当前结构确认/);
 assert.doesNotMatch(visualSqlPage, /## 计算上下文/);
 
 const appendixDashboard = fs.readFileSync(path.join(wikiA, 'wiki', 'dashboards', 'executive-revenue-d2.md'), 'utf8');
 assert.match(appendixDashboard, /authority_role: appendix/);
 assert.match(appendixDashboard, /runtime_policy: block/);
 assert.match(appendixDashboard, /standalone_recall: false/);
-assert.match(appendixDashboard, /## 召回与权威边界/);
-assert.match(appendixDashboard, /不能作为直接回答入口/);
-assert.match(appendixDashboard, /优先使用 `dashboard:d1`/);
 const conflictReport = fs.readFileSync(path.join(wikiA, 'wiki', 'reports', 'user-dau-r5.md'), 'utf8');
 assert.match(conflictReport, /certification_state: certified/);
 assert.match(conflictReport, /definition_state: conflict/);
 assert.match(conflictReport, /runtime_policy: block/);
-assert.match(conflictReport, /存在同名或近义资产口径冲突/);
 const wikiRecallCard = fs.readFileSync(path.join(wikiA, 'wiki', 'recall-cards', 'revenue-overview.md'), 'utf8');
 assert.match(wikiRecallCard, /Revenue dashboard（dashboard:d1）/);
 assert.doesNotMatch(wikiRecallCard, /\[dashboard:d1\]/);
 assert.match(wikiRecallCard, /当前收入数值必须执行报表/);
 assert.match(fs.readFileSync(path.join(wikiA, 'wiki', 'governance', 'authority-index.md'), 'utf8'), /dependency_only/);
-const projectOverview = fs.readFileSync(path.join(wikiA, 'wiki', 'project-overview.md'), 'utf8');
-assert.match(projectOverview, /# Example project 项目业务模型/);
-assert.match(projectOverview, /## 项目定位/);
-assert.match(projectOverview, /该项目用于观察商业化收入表现/);
-assert.match(projectOverview, /## 业务对象/);
-assert.match(projectOverview, /客户分层/);
-assert.match(projectOverview, /## 对象关系/);
-assert.match(projectOverview, /客户分层 -> 支付事件/);
-assert.match(projectOverview, /## 业务判断链路/);
-assert.match(projectOverview, /商业收入判断链路/);
-assert.match(projectOverview, /Revenue dashboard（dashboard:d1）/);
-assert.doesNotMatch(projectOverview, /。。证据/);
-assert.doesNotMatch(projectOverview, /。；/);
-assert.doesNotMatch(projectOverview, /客户健康|Agent 对话|DataOps|EasyStart|私有化/);
 const wikiManifest = JSON.parse(fs.readFileSync(path.join(wikiA, 'manifest.json'), 'utf8'));
 assert.equal(wikiManifest.package_kind, 'ae_project_semantic_knowledge_wiki');
 assert.equal(wikiManifest.semantic_project_id, 196);
@@ -689,12 +590,10 @@ assert.ok(uploadFiles.some((entry) => entry.name === 'kb-upload-manifest.json'))
 assert.ok(uploadMarkdownFiles.some((entry) => entry.name === 'pskb-p196-dashboard-index.md'));
 assert.ok(uploadMarkdownFiles.some((entry) => entry.name === 'pskb-p196-recall-card-revenue-overview.md'));
 assert.ok(uploadMarkdownFiles.some((entry) => entry.name === 'pskb-p196-manifest.md'));
-assert.ok(uploadMarkdownFiles.some((entry) => entry.name === 'pskb-p196-refresh-state.md'));
 const flatSnapshotIndex = fs.readFileSync(path.join(`${wikiA}-kb-upload-sources`, 'pskb-p196-index.md'), 'utf8');
 assert.match(flatSnapshotIndex, /\(pskb-p196-recall-card-index\.md\)/);
 assert.doesNotMatch(flatSnapshotIndex, /\(wiki\/recall-cards\/index\.md\)/);
 const flatDomain = fs.readFileSync(path.join(`${wikiA}-kb-upload-sources`, 'pskb-p196-domain-commerce-revenue.md'), 'utf8');
-assert.match(flatDomain, /## 这个域判断什么/);
 assert.match(flatDomain, /\(pskb-p196-recall-card-revenue-overview\.md\)/);
 assert.match(flatDomain, /kb_source_namespace: pskb-p196/);
 assert.match(flatDomain, /source_path: wiki\/domains\/commerce-revenue\.md/);
@@ -720,26 +619,11 @@ assert.equal(uploadManifest.manifest_kind, 'ae_project_semantic_kb_upload_source
 assert.equal(uploadManifest.namespace, 'pskb-p196');
 assert.equal(uploadManifest.semantic_project_id, 196);
 assert.equal(uploadManifest.source_count, uploadMarkdownFiles.length);
-assert.ok(uploadManifest.semantic_plan_state.fragments.some((fragment) => fragment.id === 'project:model'));
-assert.ok(uploadManifest.semantic_plan_state.fragments.some((fragment) => fragment.id === 'domain:commerce-revenue'));
-assert.ok(uploadManifest.semantic_plan_state.fragments.some((fragment) => fragment.id === 'recall-card:revenue-overview'));
-assert.ok(uploadManifest.semantic_plan_state.fragments.some((fragment) => fragment.id === 'report:r2:sql_semantics'));
 assert.ok(uploadManifest.sources.some((source) => source.display_name === 'pskb-p196-dashboard-revenue-dashboard-d1.md'
   && source.asset_type === 'dashboard'
   && source.asset_key === 'd1'
   && source.source_path === 'wiki/dashboards/revenue-dashboard-d1.md'
-  && /^[0-9a-f]{64}$/.test(source.content_hash)
-  && source.semantic_plan_fragment_refs.includes('domain:commerce-revenue')));
-assert.ok(uploadManifest.sources.some((source) => source.display_name === 'pskb-p196-recall-card-revenue-overview.md'
-  && source.semantic_plan_fragment_refs.includes('recall-card:revenue-overview')));
-assert.ok(uploadManifest.sources.some((source) => source.display_name === 'pskb-p196-refresh-state.md'
-  && source.source_kind === 'refresh-state'
-  && source.semantic_plan_fragment_refs.length === uploadManifest.semantic_plan_state.fragment_count));
-const refreshStateSource = fs.readFileSync(path.join(`${wikiA}-kb-upload-sources`, 'pskb-p196-refresh-state.md'), 'utf8');
-const refreshStatePayload = JSON.parse(Buffer.from(refreshStateSource.match(/pskb_refresh_state_base64\s+([A-Za-z0-9_-]+)/)[1], 'base64url').toString('utf8'));
-assert.equal(refreshStatePayload.semantic_plan.schema_version, '2.0');
-assert.equal(refreshStatePayload.semantic_plan.domains[0].recall_cards[0].card_id, 'revenue-overview');
-assert.ok(refreshStatePayload.semantic_plan_state.fragments.some((fragment) => fragment.id === 'recall-card:revenue-overview'));
+  && /^[0-9a-f]{64}$/.test(source.content_hash)));
 
 const sourceTreeResult = JSON.parse(execFileSync(process.execPath, [packager,
   '--source-dir', `${wikiA}-kb-upload-sources`,
@@ -757,62 +641,20 @@ assert.ok(fs.existsSync(path.join(sourceTreeA, 'sources', 'assets', 'reports', '
 assert.ok(fs.existsSync(path.join(sourceTreeA, 'sources', 'assets', 'dashboards', 'pskb-p196-dashboard-revenue-dashboard-d1.md')));
 assert.ok(fs.existsSync(path.join(sourceTreeA, 'sources', 'business', 'pskb-p196-domain-商业收入分析-commerce-revenue.md')));
 assert.ok(fs.existsSync(path.join(sourceTreeA, 'sources', 'project', 'pskb-p196-manifest.md')));
-assert.ok(fs.existsSync(path.join(sourceTreeA, 'sources', 'project', 'pskb-p196-refresh-state.md')));
-assert.ok(fs.existsSync(path.join(sourceTreeA, 'sources', 'project', 'pskb-p196-wiki-project-overview.md')));
-assert.ok(!fs.existsSync(path.join(sourceTreeA, 'sources', 'references', 'pskb-p196-wiki-project-overview.md')));
 const sourceTreeManifest = JSON.parse(fs.readFileSync(sourceTreeManifestA, 'utf8'));
 assert.equal(sourceTreeManifest.manifest_kind, 'ae_project_semantic_kb_source_tree');
 assert.equal(sourceTreeManifest.source_count, uploadManifest.source_count + 12);
 assert.equal(sourceTreeManifest.filing_guide_count, 12);
-assert.ok(sourceTreeManifest.semantic_plan_state.fragments.some((fragment) => fragment.id === 'recall-card:revenue-overview'));
 assert.ok(sourceTreeManifest.sources.some((source) => source.file === 'sources/assets/reports/pskb-p196-report-revenue-r1.md'
   && source.display_name === 'pskb-p196-report-revenue-r1.md'
   && source.title === 'Revenue'
   && source.asset_type === 'report'
-  && source.asset_key === 'r1'
-  && source.semantic_plan_fragment_refs.includes('domain:commerce-revenue')));
+  && source.asset_key === 'r1'));
 assert.match(execFileSync('unzip', ['-Z1', sourceTreeZipA], { encoding: 'utf8' }), /^sources\/README\.md$/m);
 assert.match(execFileSync('unzip', ['-Z1', sourceTreeZipA], { encoding: 'utf8' }), /^sources\/assets\/reports\/pskb-p196-report-revenue-r1\.md$/m);
 const treeRootIndex = fs.readFileSync(path.join(sourceTreeA, 'sources', 'project', 'pskb-p196-index.md'), 'utf8');
-assert.match(treeRootIndex, /\]\(pskb-p196-wiki-project-overview\.md\)/);
-assert.doesNotMatch(treeRootIndex, /\]\(pskb-p196-(?!wiki-project-overview)/);
+assert.doesNotMatch(treeRootIndex, /\]\(pskb-p196-/);
 assert.match(treeRootIndex, /\]\(\.\.\/business\/pskb-p196-recall-card-index\.md\)/);
-const sourceTreeWithState = path.join(temp, 'wiki-a-kb-source-tree-with-state');
-const sourceTreeWithStateManifest = path.join(temp, 'wiki-a-kb-source-tree-with-state-manifest.json');
-execFileSync(process.execPath, [packager,
-  '--source-dir', `${wikiA}-kb-upload-sources`,
-  '--tree-output', sourceTreeWithState,
-  '--manifest-output', sourceTreeWithStateManifest,
-  '--embed-refresh-state-baseline',
-  '--baseline-source-id', 'zip-source-1',
-  '--baseline-source-display-name', 'project-semantic-wiki.zip',
-  '--baseline-content-revision', '42',
-  '--baseline-published-version-id', 'version-11',
-], { encoding: 'utf8' });
-const refreshStateWithBaseline = fs.readFileSync(path.join(sourceTreeWithState, 'sources', 'project', 'pskb-p196-refresh-state.md'), 'utf8');
-const refreshStateWithBaselinePayload = JSON.parse(Buffer.from(
-  refreshStateWithBaseline.match(/pskb_refresh_state_base64\s+([A-Za-z0-9_-]+)/)[1],
-  'base64url',
-).toString('utf8'));
-assert.equal(refreshStateWithBaselinePayload.source_tree_baseline.source_id, 'zip-source-1');
-assert.equal(refreshStateWithBaselinePayload.source_tree_baseline.content_revision, 42);
-assert.equal(refreshStateWithBaselinePayload.source_tree_baseline.published_version_id, 'version-11');
-assert.equal(refreshStateWithBaselinePayload.source_tree_baseline.source_tree_manifest.source_count, sourceTreeManifest.source_count);
-assert.match(refreshStateWithBaselinePayload.source_tree_baseline.manifest_hash, /^[0-9a-f]{64}$/);
-assert.equal(
-  sha256(normalizeSourceForHash(refreshStateWithBaseline)),
-  sourceTreeManifest.sources.find((source) => source.source_kind === 'refresh-state').content_hash,
-);
-const refreshStateOnlySyncPlan = JSON.parse(execFileSync(process.execPath, [packager,
-  '--source-dir', `${wikiA}-kb-upload-sources`,
-  '--tree-output', path.join(temp, 'wiki-a-kb-source-tree-from-refresh-state'),
-  '--manifest-output', path.join(temp, 'wiki-a-kb-source-tree-from-refresh-state-manifest.json'),
-  '--previous-refresh-state', path.join(sourceTreeWithState, 'sources', 'project', 'pskb-p196-refresh-state.md'),
-], { encoding: 'utf8' }));
-assert.equal(refreshStateOnlySyncPlan.compile_mode, 'skip');
-assert.equal(refreshStateOnlySyncPlan.actions.length, 0);
-assert.equal(refreshStateOnlySyncPlan.previous_refresh_state_baseline.source_id, 'zip-source-1');
-assert.equal(refreshStateOnlySyncPlan.previous_refresh_state_baseline.content_revision, 42);
 const previousFlatManifestWithDeletedSource = path.join(temp, 'previous-flat-upload-manifest-with-deleted-source.json');
 writeJson(previousFlatManifestWithDeletedSource, {
   ...uploadManifest,
@@ -888,61 +730,6 @@ execFileSync(process.execPath, [builder,
 const dateOnlyManifest = JSON.parse(fs.readFileSync(path.join(`${wikiDateOnly}-kb-upload-sources`, 'kb-upload-manifest.json'), 'utf8'));
 assert.deepEqual(sourceHashByDisplayName(dateOnlyManifest), sourceHashByDisplayName(uploadManifest));
 
-const orderOnlyPackage = path.join(temp, 'asset-package-order-only');
-fs.cpSync(assetPackage, orderOnlyPackage, { recursive: true });
-for (const relative of [
-  path.join('indexes', 'dashboard-catalog.jsonl'),
-  path.join('indexes', 'report-catalog.jsonl'),
-  path.join('indexes', 'metric-catalog.jsonl'),
-  path.join('metadata', 'analysis-selectable.jsonl'),
-]) {
-  const file = path.join(orderOnlyPackage, relative);
-  const rows = fs.readFileSync(file, 'utf8').trim().split(/\r?\n/);
-  fs.writeFileSync(file, `${rows.reverse().join('\n')}\n`);
-}
-execFileSync(process.execPath, [builder,
-  '--asset-package', orderOnlyPackage,
-  '--semantic-plan', domainPlanPath,
-  '--output', wikiOrderOnly,
-  '--project-name', 'Example project',
-], { stdio: 'pipe' });
-const orderOnlyManifest = JSON.parse(fs.readFileSync(path.join(`${wikiOrderOnly}-kb-upload-sources`, 'kb-upload-manifest.json'), 'utf8'));
-assert.deepEqual(sourceHashByDisplayName(orderOnlyManifest), sourceHashByDisplayName(uploadManifest));
-
-const snapshotOnlyPackage = path.join(temp, 'asset-package-snapshot-only');
-fs.cpSync(assetPackage, snapshotOnlyPackage, { recursive: true });
-const snapshotOnlyHash = 'b'.repeat(64);
-writeJson(path.join(snapshotOnlyPackage, '.asset-package.json'), {
-  ...JSON.parse(fs.readFileSync(path.join(snapshotOnlyPackage, '.asset-package.json'), 'utf8')),
-  snapshot_id: 'snapshot-test-same-assets',
-  snapshot_hash: snapshotOnlyHash,
-  generated_at: '2026-09-04T00:00:00Z',
-});
-writeJson(path.join(snapshotOnlyPackage, 'manifest.json'), {
-  ...JSON.parse(fs.readFileSync(path.join(snapshotOnlyPackage, 'manifest.json'), 'utf8')),
-  snapshot_id: 'snapshot-test-same-assets',
-  snapshot_hash: snapshotOnlyHash,
-  generated_at: '2026-09-04T00:00:00Z',
-});
-execFileSync(process.execPath, [builder,
-  '--asset-package', snapshotOnlyPackage,
-  '--semantic-plan', domainPlanPath,
-  '--output', wikiSnapshotOnly,
-  '--project-name', 'Example project',
-  '--allow-semantic-plan-snapshot-drift',
-], { stdio: 'pipe' });
-const snapshotOnlyManifest = JSON.parse(fs.readFileSync(path.join(`${wikiSnapshotOnly}-kb-upload-sources`, 'kb-upload-manifest.json'), 'utf8'));
-assert.deepEqual(sourceHashByDisplayName(snapshotOnlyManifest), sourceHashByDisplayName(uploadManifest));
-const snapshotOnlySyncPlan = JSON.parse(execFileSync(process.execPath, [packager,
-  '--source-dir', `${wikiSnapshotOnly}-kb-upload-sources`,
-  '--tree-output', path.join(temp, 'wiki-snapshot-only-kb-source-tree'),
-  '--manifest-output', path.join(temp, 'wiki-snapshot-only-kb-source-tree-manifest.json'),
-  '--previous-manifest', sourceTreeManifestA,
-  '--previous-tree-root', sourceTreeA,
-], { encoding: 'utf8' }));
-assert.equal(snapshotOnlySyncPlan.compile_mode, 'skip');
-assert.equal(snapshotOnlySyncPlan.actions.length, 0);
-
 const changedPackage = path.join(temp, 'asset-package-changed');
 const changedPlanPath = path.join(temp, 'business-domain-plan-changed.json');
 fs.cpSync(assetPackage, changedPackage, { recursive: true });
@@ -978,13 +765,6 @@ assert.ok(sourceTreeSyncPlan.actions.some((action) => action.action === 'replace
   && action.path === 'sources/assets/dashboards/pskb-p196-dashboard-revenue-dashboard-d1.md'));
 assert.ok(sourceTreeSyncPlan.actions.some((action) => action.action === 'replace'
   && action.path === 'sources/business/pskb-p196-recall-card-收入规模和趋势如何-revenue-overview.md'));
-assert.deepEqual(sourceTreeSyncPlan.semantic_plan_diff.changed_fragments, ['recall-card:revenue-overview']);
-assert.ok(sourceTreeSyncPlan.affected_by_semantic_plan.some((source) => source.path === 'sources/business/pskb-p196-recall-card-收入规模和趋势如何-revenue-overview.md'
-  && source.changed_semantic_plan_fragments.includes('recall-card:revenue-overview')));
-assert.ok(sourceTreeSyncPlan.affected_by_semantic_plan.some((source) => source.path === 'sources/project/pskb-p196-refresh-state.md'
-  && source.changed_semantic_plan_fragments.includes('recall-card:revenue-overview')));
-assert.ok(!sourceTreeSyncPlan.actions.some((action) => action.changed_semantic_plan_fragments.includes('domain:commerce-revenue')));
-assert.ok(!sourceTreeSyncPlan.actions.some((action) => action.changed_semantic_plan_fragments.includes('project:model')));
 assert.ok(sourceTreeSyncPlan.unchanged.includes('sources/assets/reports/pskb-p196-report-revenue-r1.md'));
 
 const { runCompanyKb } = await import(pathToFileURL(companyKb).href);
@@ -1045,9 +825,9 @@ const syncPlan = JSON.parse(execFileSync(process.execPath, [syncPlanner,
 ], { encoding: 'utf8' }));
 assert.deepEqual(syncPlan.counts, {
   added: 1,
-  updated: 3,
+  updated: 2,
   removed: 1,
-  unchanged: uploadManifest.source_count - 4,
+  unchanged: uploadManifest.source_count - 3,
 });
 assert.equal(syncPlan.compile_mode, 'incremental');
 assert.equal(syncPlan.compile_mode_reason, 'small_source_delta');
@@ -1055,7 +835,6 @@ assert.equal(syncPlan.requires_schema_force, false);
 assert.ok(syncPlan.added.some((source) => source.display_name === 'pskb-p196-dashboard-synthetic-dashboard-d3.md'));
 assert.ok(syncPlan.updated.some((source) => source.display_name === 'pskb-p196-dashboard-revenue-dashboard-d1.md'));
 assert.ok(syncPlan.updated.some((source) => source.display_name === 'pskb-p196-recall-card-revenue-overview.md'));
-assert.ok(syncPlan.updated.some((source) => source.display_name === 'pskb-p196-refresh-state.md'));
 assert.ok(syncPlan.updated.some((source) => source.display_name === 'pskb-p196-dashboard-revenue-dashboard-d1.md' && source.source_id));
 assert.ok(syncPlan.removed.some((source) => source.display_name === 'pskb-p196-report-placeholder-label-report-r3.md' && source.source_id));
 
@@ -1094,11 +873,6 @@ assert.equal(noChangePlan.compile_mode_reason, 'no_source_changes');
 assert.equal(noChangePlan.requires_schema_force, false);
 
 assertBuildRejected('missing SQL semantics', { ...validPlan, sql_report_semantics: [] }, /missing SQL semantics/);
-assertBuildRejected('missing project business model', { ...validPlan, project_business_model: undefined }, /project_business_model requires business_positioning/);
-assertBuildRejected('missing domain judgment model', {
-  ...validPlan,
-  domains: [{ ...validPlan.domains[0], domain_judgment_model: undefined }],
-}, /missing domain_judgment_model/);
 assertBuildRejected('SQL evidence mismatch', {
   ...validPlan,
   sql_report_semantics: [{ ...validPlan.sql_report_semantics[0], evidence_locator: 'external/sql/r2.sql' }],
@@ -1230,10 +1004,6 @@ function containerRef(containerKey, containerTitle, containerKind) {
 
 function writeJson(file, value) {
   fs.writeFileSync(file, JSON.stringify(value, null, 2));
-}
-
-function sha256(value) {
-  return createHash('sha256').update(String(value)).digest('hex');
 }
 
 function writeJsonl(name, values) {
