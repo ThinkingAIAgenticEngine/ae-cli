@@ -114,7 +114,6 @@ The table covers every current root command individually. Use `ae-cli --help` fo
 | Analysis and projects | `project` | Project information, members, roles, permissions, entities, time zones, and handover settings |
 | Analysis and projects | `metadata` | Capability-backed data-table, property, and dimension-table binding operations |
 | Analysis and projects | `personal-semantic-preference` | Project-scoped lightweight semantic preferences for the current user |
-| Analysis and projects | `project-semantic` | Export project asset packages for knowledge-base builds |
 | Data and tracking | `tracking` | Tracking plans, SDK samples, checks, ingestion diagnostics, code generation, and bundled wiki |
 | Data and tracking | `data-integration` | Inspect, plan, convert, upload, hand off, and reuse local CSV/JSON/Excel data |
 | Community insights | `community` | Community posts, comments, topics, sentiment, livestream, and report workflows |
@@ -126,14 +125,13 @@ The table covers every current root command individually. Use `ae-cli --help` fo
 | Engage | `engage-workbench` | Engage workbench and to-do management |
 | Engage | `engage-query` | Engage queries, asynchronous exports, and artifact management |
 | DataOps | `dataops_repo` | Data-warehouse and data-source management |
-| DataOps | `dataops_datatable` | Table/view lifecycle management, including recycling, recycle-bin discovery, and permanent deletion |
+| DataOps | `dataops_datatable` | Data-table lifecycle management |
 | DataOps | `dataops_flow` | Development flows, scheduling, and backfill-job management |
 | DataOps | `dataops_ide` | IDE queries and result downloads |
 | DataOps | `dataops_integration` | Data-integration task management |
 | DataOps | `dataops_operations` | Operations, monitoring, and alert workflows |
 | Agent platform | `kb` | Knowledge-base lifecycle, LLM Q&A, and deterministic index/grep/read retrieval |
 | Agent platform | `agent` | Agents, approvals, automations, models, MCP servers, Skills, attachments, credentials, and sandbox tools |
-| Agent platform | `context` | Read the current product-page context authorized for the active Agent Run |
 | Agent platform | `memory` | User memory, Top-K context writing, and actual-usage accounting |
 | Agent platform | `team` | Agent Team and TeamRun execution, chat, results, and artifacts |
 | Agent platform | `system` | Root/admin management of members, sandboxes, tools, models, usage, quotas, and channels |
@@ -176,10 +174,6 @@ For scripts and agents, use the non-interactive subcommands:
 ```bash
 ae-cli auth login --host https://host-a.example.com
 ae-cli auth status --host https://host-a.example.com
-# Import a CLI token copied from External Access Management (hidden prompt)
-ae-cli auth set-token --host https://host-a.example.com
-# Non-interactive input for local scripts or tests
-printf '%s' "$AE_CLI_TOKEN" | ae-cli auth set-token --host https://host-a.example.com --token-stdin
 # For the uncommon case where one Host needs multiple accounts
 ae-cli auth login --host https://host-a.example.com --add
 ae-cli auth list --host https://host-a.example.com
@@ -198,8 +192,6 @@ ae-cli config remove pre-production --yes
 `<env>` accepts either an exact URL or a unique label. The active environment is clearly marked in the interactive manager and in `config list`. Removing an active environment is rejected while other environments remain; switch first so replacement is explicit. `config set-host` remains available as a compatibility command that adds or updates a host and activates it.
 
 A regular `auth login` keeps the simple one-Host/one-account behavior and replaces credentials for that Host; use `--add` only when other accounts must be retained. `auth status` reports CLI-token state only. A new backend can also provide account identity and expiration; when an older backend does not support `/validate`, the CLI preserves the historical behavior of trusting the stored CLI token and omits `account` instead of returning null fields.
-
-`auth set-token` is for local use with a `cli_` token copied from External Access Management. It prompts without echo by default; `--token-stdin` supports non-interactive local testing. The CLI validates the token against the target Host before replacing the stored credential, encrypts it in the existing per-Host vault, and never includes the value in command output. Add `--add` to retain other accounts for the same Host.
 
 The new CLI persists only CLI tokens, never access or refresh tokens. Multiple accounts live in an encrypted V1 vault while the active account is projected into the historical file shape for automatic downgrades. When the CLI upgrades again, it reconciles login, switch, or logout changes made by the old CLI.
 

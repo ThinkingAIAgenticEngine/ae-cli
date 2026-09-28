@@ -21,8 +21,8 @@ Only the bounded `run` preview may return `query_context_id` and finite `sources
 
 ### Report definitions and data
 
-- `analysis report create`: create a report from AI-facing `model_type + definition`. Supports the 12 analysis models plus `tag` for saved tag report data. Saved-report filters follow the analysis page boundary: at most one compound group level, with leaf-only `items`.
-- `analysis report update`: update metadata and/or an analysis-page-compatible AI-facing report definition. Supports the same model set as create; metadata-only updates are unaffected.
+- `analysis report create`: create a report from AI-facing `model_type + definition`. Supports the 12 analysis models plus `tag` for saved tag report data.
+- `analysis report update`: update metadata and/or AI-facing report definition. Supports the same model set as create.
 - `analysis report get`: returns AI-facing `model_type + definition`; raw QP is not returned.
 - `analysis report-data run`: bounded inline saved-report data. Omit `--preview-rows` to use each report model's current cluster synchronous limit; explicit values are checked at runtime. Default timeout is 120 seconds, max 180 seconds.
 - `analysis report-data export`: async saved-report artifact. Default and maximum runtime is 21600 seconds (6 hours); cancel earlier with `analysis query cancel --run-id <run_id>`.

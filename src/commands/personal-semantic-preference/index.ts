@@ -6,10 +6,7 @@ import { personalSemanticPreferenceGet } from './get.js';
 import { personalSemanticPreferenceList } from './list.js';
 import { personalSemanticPreferenceUpdate } from './update.js';
 
-registerCapabilityGatewayRoute('personal-semantic-preference', {
-  gatewayDomain: 'analysis',
-  capabilityPrefixes: ['business_semantics.personal_context'],
-});
+registerCapabilityGatewayRoute('personal-semantic-preference', { gatewayDomain: 'analysis' });
 
 const commands: Command[] = [
   personalSemanticPreferenceList,

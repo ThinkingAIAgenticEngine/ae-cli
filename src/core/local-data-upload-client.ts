@@ -72,7 +72,6 @@ async function performAttempt(
   let response: Response | undefined;
   let responseText = '';
   try {
-    const requestBody = typeof body === 'string' ? body : Uint8Array.from(body).buffer;
     response = await fetchImpl(endpoint, {
       method: 'POST',
       headers: {
@@ -80,7 +79,7 @@ async function performAttempt(
         'Accept': 'application/json',
         ...(compress ? { 'Content-Encoding': 'gzip' } : {}),
       },
-      body: requestBody,
+      body,
       redirect: 'manual',
       signal: controller.signal,
     });

@@ -1,17 +1,13 @@
-import * as nodeFs from 'node:fs';
+import XLSXMod from 'xlsx';
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const XLSX = (XLSXMod as any).default ?? XLSXMod;
 import path from 'node:path';
-import * as XLSX from 'xlsx';
 import type { Draft, Event, EventPlatform, Property, UserProperty, PropType, UpdateType, Source } from '../plan/types.js';
 import { allSheetNames, allHeaderNames, displayToType } from '../i18n/xlsx.js';
 import { t } from '../i18n/translate.js';
 
-const setXlsxFs = (XLSX as unknown as { set_fs?: (fs: typeof nodeFs) => void }).set_fs;
-if (typeof setXlsxFs === 'function') {
-  setXlsxFs(nodeFs);
-}
-
 const VALID_PROP_TYPES = new Set<PropType>(['string', 'number', 'bool', 'datetime', 'object', 'array_row', 'array_string']);
-const VALID_UPDATE_TYPES = new Set<UpdateType>(['user_set', 'user_setOnce', 'user_add', 'user_append']);
+const VALID_UPDATE_TYPES = new Set<UpdateType>(['user_set', 'user_setOnce', 'user_add']);
 
 /**
  * Normalize a header cell for comparison:
@@ -462,7 +458,7 @@ export async function readTemplateXlsx(filePath: string): Promise<Draft> {
     // #用户ID体系 / #ID mapping rule / ... — skip
     if (allSheetNames('user_id').includes(sName)) continue;
 
-    const ws = wb.Sheets[sName];
+    const ws = (wb.Sheets as Record<string, unknown>)[sName];
     const rows = XLSX.utils.sheet_to_json(ws, {
       header: 1,
       raw: false,

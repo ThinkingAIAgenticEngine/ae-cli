@@ -8,6 +8,7 @@ Command:
 
 ```bash
 ae-cli analysis-meta property get --project-id <project_id> --table-type <table_type> --prop-name <prop_name>
+ae-cli analysis-meta property get --dry-run
 ```
 
 Capability id: `metadata.property.get`.

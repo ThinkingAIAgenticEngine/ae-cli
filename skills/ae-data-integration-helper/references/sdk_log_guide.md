@@ -11,8 +11,8 @@
 首先我们简要介绍原生客户端 SDK 的上报机制，Android 和 iOS SDK 都会在本地数据库缓存数据并批量上报。本地缓存数据为了避免网络异常情况下丢失数据，批量上报为了避免频繁上报产生的系统和网络开销。当符合以下任一条件时，均会触发数据上报：
 
 - APP 切换到后台
-- 距上次数据上报时间间隔达到上报时间间隔（默认时间间隔为30秒，可以在 AE 修改）
-- 本地缓存数量达到上报的数量（默认上报的数量达到30条触发上报，可以在 AE 修改）
+- 距上次数据上报时间间隔达到上报时间间隔（默认时间间隔为30秒，可以在 TE 修改）
+- 本地缓存数量达到上报的数量（默认上报的数量达到30条触发上报，可以在 TE 修改）
 
 因此，在调试过程中，如果没有满足触发数据上报的条件，数据仍然缓存在本地。
 
@@ -52,7 +52,7 @@ mode：表示SDK使用的模式
   "#type" : "track",
   "#uuid" : "DB2B97A5-183A-439E-B8B2-FE9AF77D7421",
   "#distinct_id" : "E5ABB02F-EA10-47AC-AB6C-A8E47E55B4E9",
-  "#event_name" : "example_event",
+  "#event_name" : "testA",
   "#time" : "2022-10-25 14:30:29.256"
 }
 ```
@@ -108,7 +108,7 @@ code为0代表上传成功
   "#type" : "track",
   "#uuid" : "0ECCD33B-8076-42A5-BA2B-89DE0773B84B",
   "#distinct_id" : "51C6265F-8F03-461E-91D3-D0FFB11DFCFD_2",
-  "#event_name" : "example_event",
+  "#event_name" : "iOS_001",
   "#time" : "2023-09-05 14:27:44.719"
 }
 ```
@@ -156,7 +156,7 @@ mode：表示SDK使用的模式
         "#type": "track",
         "#time": "2022-10-26 10:56:54.285",
         "#distinct_id": "04af1a3d-56b2-4c8f-a54a-2b6f655b8286",
-        "#event_name": "example_event",
+        "#event_name": "testA",
         ...
     }
 ```
@@ -193,7 +193,7 @@ TDAnalytics.enableLog(true);
         "#type": "track",
         "#time": "2023-09-14 10:09:52.445",
         "#distinct_id": "b86de4eb-12b8-4ce4-924a-54cd12b5fa25",
-        "#event_name": "example_event",
+        "#event_name": "android_001",
         ...
     }
 ```
@@ -308,7 +308,7 @@ TDAnalytics.enableLog(true);
 [ThinkingData] Info: Response :{"responseCode":200,...}
 ```
 
-# 三、AE系统查询数据
+# 三、TE系统查询数据
 
 使用sql通过#device_id查询数据，这里数据最及时，实时数据也没这里及时
 

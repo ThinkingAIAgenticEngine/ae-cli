@@ -9,14 +9,9 @@ import {
   slaveClusterIdFlag,
   validateClusterQueryRouting,
 } from '../capability-shared.js';
-import {
-  reportDataExportInput,
-  reportDataZoneOffsetDescription,
-  sqlReportParamsDescription,
-  withSqlSelectorRuntimeDiagnostics,
-} from './shared.js';
+import { reportDataExportInput, reportDataZoneOffsetDescription } from './shared.js';
 
-export const reportDataExport = withSqlSelectorRuntimeDiagnostics(createAnalysisCapabilityCommand({
+export const reportDataExport = createAnalysisCapabilityCommand({
   resource: 'report-data',
   command: 'export',
   capabilityId: 'analysis.report_data.export',
@@ -28,7 +23,7 @@ export const reportDataExport = withSqlSelectorRuntimeDiagnostics(createAnalysis
     requestIdFlag,
     { name: 'filters', type: 'json', required: false, desc: 'Non-SQL analysis models only. SQL-only requests reject this field; mixed batches are best-effort. Use AI-facing field intent, never QP taFilters.' },
     { name: 'group-by', type: 'json', required: false, desc: 'Non-SQL analysis models only. SQL-only requests reject this field. Shape: [{"field":{"name":"country","type":"user_property"}}].' },
-    { name: 'sql-params', type: 'json', required: false, desc: sqlReportParamsDescription },
+    { name: 'sql-params', type: 'json', required: false, desc: 'SQL reports only. First run analysis report get for every target SQL report; each name must exist in every definition.params. Send value overrides only, including saved part_date/time parameters for date changes. Do not send definition fields such as paramType, selectorItems, or use_timezone.' },
     { name: 'start-time', type: 'string', required: false, desc: 'Non-SQL analysis-model date override start, yyyy-MM-dd. SQL dates use --sql-params.' },
     { name: 'end-time', type: 'string', required: false, desc: 'Non-SQL analysis-model date override end, yyyy-MM-dd. SQL dates use --sql-params.' },
     { name: 'time-granularity', type: 'string', required: false, desc: 'Non-SQL analysis-model time granularity override. SQL accepts only --sql-params.' },
@@ -42,4 +37,4 @@ export const reportDataExport = withSqlSelectorRuntimeDiagnostics(createAnalysis
   risk: 'read',
   validate: validateClusterQueryRouting,
   buildInput: reportDataExportInput,
-}));
+});

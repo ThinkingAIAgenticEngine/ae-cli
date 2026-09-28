@@ -5,8 +5,8 @@ import { getActiveHost } from '../core/config.js';
 import { safeJsonParse } from '../core/json-utils.js';
 import { logger } from '../core/logger.js';
 import { TeAgentCredentialsError } from '../core/te-agent-credentials.js';
-import { CredentialStoreUnreadableError, SecureStoreAuthError } from '../core/secure-store.js';
-import { CliApiError, CliValidationError, CommunityReportError, LocalDataUploadError, PermissionError } from '../core/errors.js';
+import { SecureStoreAuthError } from '../core/secure-store.js';
+import { CliValidationError, CommunityReportError, LocalDataUploadError, PermissionError } from '../core/errors.js';
 import { TeAgentApiError } from '../core/te-agent-client.js';
 import { CapabilityGatewayError } from '../core/capability-api.js';
 import { requiresConfirmation } from '../core/capability-risk.js';
@@ -216,7 +216,7 @@ export async function runCommand(cmd: Command, opts: Record<string, any>, global
     await ctx.out(result);
   } catch (err: any) {
     if (err?.type === 'validation' && typeof err?.hint === 'string' && String(err.message || '').includes('--jq')) {
-      printError('validation', err.message, err.hint, err.code);
+      printError('validation', err.message, err.hint);
       process.exit(1);
     }
     const message = err.message || String(err);
@@ -240,18 +240,14 @@ export async function runCommand(cmd: Command, opts: Record<string, any>, global
     } else if (err instanceof PermissionError) {
       // authenticated-but-forbidden — surface the server's reason; re-login won't help
       printError('permission', message, err.hint, err.code);
-    } else if (err instanceof CliApiError) {
-      printError('api', message, err.hint, err.code, err.meta);
     } else if (err instanceof CapabilityGatewayError) {
-      printError(err.type, message, err.hint ?? capabilityGatewayHint(err), err.code, err.meta);
+      printError('api', message, err.hint ?? capabilityGatewayHint(err), err.code, err.meta);
     } else if (err instanceof CommunityReportError) {
       // The message/hint may come from the ingestion response. Keep it visible to the caller but
       // never persist it to CLI logs; the dedicated client records only URL/status/byte counts.
       printError('api', message, err.hint, err.code, err.meta, { log: false });
     } else if (err instanceof LocalDataUploadError) {
       printError('api', message, err.hint, err.code, err.meta, { log: false });
-    } else if (err instanceof CredentialStoreUnreadableError) {
-      printError('config', message, err.hint, err.code);
     } else if (err instanceof SecureStoreAuthError) {
       printError('auth', message, 'Run: ae-cli auth login');
     } else if (err instanceof TeAgentApiError) {
@@ -386,7 +382,7 @@ function createRuntimeContext(cmd: Command, opts: Record<string, any>, globalOpt
     list(name: string): string[] {
       const val = opts[camelCase(name)];
       if (Array.isArray(val)) return val.map(String);
-      if (val === undefined || val === null) return [];
+      if (val === undefined || val === null || val === '') return [];
       return [String(val)];
     },
 

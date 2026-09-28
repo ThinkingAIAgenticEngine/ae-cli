@@ -8,6 +8,7 @@ Command:
 
 ```bash
 ae-cli project member update --project-id <project_id> --payload <payload> --target-user-id <target_user_id>
+ae-cli project member update --dry-run --project-id <project_id> --payload <payload> --target-user-id <target_user_id>
 ```
 
 Capability id: `project.member.update`.

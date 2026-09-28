@@ -124,7 +124,6 @@ Upload is a two-step capability-gateway flow:
 | `user_set` | 覆盖赋值 |
 | `user_setOnce` | 仅首次赋值 |
 | `user_add` | 数值累加 |
-| `user_append` | 列表追加 |
 
 ## v2（暂未实现）
 

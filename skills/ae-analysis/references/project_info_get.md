@@ -8,6 +8,7 @@ Command:
 
 ```bash
 ae-cli project info get --project-id <project_id>
+ae-cli project info get --dry-run --project-id <project_id>
 ```
 
 Capability id: `project.info.get`.

@@ -2,7 +2,7 @@
 
 > **Terminology**: 数据转译插件 = data parser/translation plugin | 自定义数据解析器 = custom data parser | 数据格式转换 = data format conversion | gRPC 插件 = gRPC plugin | 批量处理 = batch processing | 分隔符 = separator / delimiter | 拼接 = concatenate | proto 文件 = .proto file (Protocol Buffers) | 告警功能 = alerting | 无限重试 = infinite retry | 错误数据 = malformed/error data | 标准 TA 格式 = standard ThinkingAnalytics data format
 
-> Logbus2 from version 2.1.0.0 supports custom data parsers for converting source data formats that differ from the AE data format. This is equivalent to Logbus1's Custom Interceptor feature.
+> Logbus2 from version 2.1.0.0 supports custom data parsers for converting source data formats that differ from the TE data format. This is equivalent to Logbus1's Custom Interceptor feature.
 
 ## 一、准备工作
 
@@ -33,7 +33,7 @@ gRPC插件服务端返回数据格式，以parser.separator拼接转换为标准
 错误处理：
 - 返回非正确json数据，则主程序会跳过错误行
 - 返回非标准ta数据，则数据上报会产生错误
-- 返回第二个参数为error，则会进行无限重试，防止错误数据进入AE集群。可搭配告警功能，提前预知错误信息。
+- 返回第二个参数为error，则会进行无限重试，防止错误数据进入te集群。可搭配告警功能，提前预知错误信息。
 
 ### proto文件
 
@@ -201,13 +201,13 @@ class ParserServicer(parser_pb2_grpc.ParserServicer):
                 parse_data = json.loads(raw_data_list[1])
                 new_parse_data = {}
                 new_parse_data["properties"] = parse_data.copy()
-                new_parse_data["#account_id"] = parse_data["user_id"]
-                new_parse_data["#distinct_id"] = parse_data["distinct_id"]
+                new_parse_data["#account_id"] = parse_data["ACCOUNTID"]
+                new_parse_data["#distinct_id"] = parse_data["OSTYPE"]
                 new_parse_data["#type"] = "track"
-                new_parse_data["#ip"] = parse_data["ip"]
-                new_parse_data["#uuid"] = parse_data["event_id"]
-                new_parse_data["#time"] = parse_data["event_time"]
-                new_parse_data["#event_name"] = "event_" + str(parse_data["event_code"])
+                new_parse_data["#ip"] = parse_data["IP"]
+                new_parse_data["#uuid"] = parse_data["UID"]
+                new_parse_data["#time"] = parse_data["LOGTM"]
+                new_parse_data["#event_name"] = "event_" + str(parse_data["CODE"])
                 return_data_list.append(json.dumps(new_parse_data))
             except Exception as ve:
                 return_data_list.append('{}')

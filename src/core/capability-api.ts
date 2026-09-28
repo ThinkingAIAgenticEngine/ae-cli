@@ -5,16 +5,11 @@
  * backing service at `/api/cli/v1/...`. Auth uses the `cli-token` header (same as MCP transport).
  */
 
-import { clearCliTokenCache, getCliToken } from './cli-token.js';
+import { getCliToken } from './cli-token.js';
 import { safeJsonParse } from './json-utils.js';
 import { PermissionError } from './errors.js';
 import { SecureStoreAuthError } from './secure-store.js';
 import { internalCallSourceHeaders } from './internal-call-source.js';
-import {
-  cliAgentContextHeaders,
-  readCliAgentContext,
-  withCliAgentContextBody,
-} from './cli-agent-context.js';
 import { readFile } from 'node:fs/promises';
 import { basename } from 'node:path';
 
@@ -42,7 +37,6 @@ export class CapabilityGatewayError extends Error {
     readonly httpStatus?: number,
     readonly hint?: string,
     readonly meta?: Record<string, unknown>,
-    readonly type: 'api' | 'validation' = 'api',
   ) {
     super(message);
     this.name = 'CapabilityGatewayError';
@@ -138,7 +132,6 @@ function parseCapabilityEnvelope(body: any): CapabilityGatewaySuccess {
       err.http_status ?? err.httpStatus,
       hint,
       isRecord(body.meta) ? body.meta : undefined,
-      err.type === 'validation' ? 'validation' : 'api',
     );
   }
   return { ok: true, data: body };
@@ -173,7 +166,6 @@ function buildCapabilityHttpError(resp: Response, body: any): CapabilityGatewayE
         resp.status,
         hint,
         isRecord(body.meta) ? body.meta : undefined,
-        err.type === 'validation' ? 'validation' : 'api',
       );
     }
   }
@@ -203,17 +195,15 @@ async function requestOnce(
   body: any,
   accept = 'application/json',
 ): Promise<Response> {
-  const agentContext = readCliAgentContext();
   const headers: Record<string, string> = {
     'cli-token': token,
     'Accept': accept,
     ...internalCallSourceHeaders(),
-    ...cliAgentContextHeaders(agentContext),
   };
   const init: RequestInit = { method, headers };
   if (body !== undefined && method !== 'GET') {
     headers['Content-Type'] = 'application/json';
-    init.body = JSON.stringify(withCliAgentContextBody(body, agentContext));
+    init.body = JSON.stringify(body);
   }
   return fetch(url, init);
 }
@@ -265,13 +255,7 @@ async function callGatewayWithEnvelope(
   const url = buildCapabilityGatewayUrl(options.apiBaseUrl ?? host, domain, pathAfterV1, queryParams);
   const token = await getCliToken(host);
 
-  let resp = await requestOnce(url, method, token, body);
-  // Explicit opt-in only: reread host-scoped credentials once without minting or deleting them.
-  if (resp.status === 401 && options.retryOnUnauthorized === true) {
-    await resp.body?.cancel();
-    clearCliTokenCache(host);
-    resp = await requestOnce(url, method, await getCliToken(host), body);
-  }
+  const resp = await requestOnce(url, method, token, body);
   if (resp.status === 403) {
     const error = await permissionError(resp);
     if (options.retryOnInvalidTokenForbidden !== false && isInvalidCliTokenMessage(error.message)) {

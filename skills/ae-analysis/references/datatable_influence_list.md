@@ -8,6 +8,7 @@ Command:
 
 ```bash
 ae-cli analysis-meta datatable influence-list --project-id <project_id> --datatable-id <datatable_id>
+ae-cli analysis-meta datatable influence-list --dry-run
 ```
 
 Capability id: `metadata.data_table.influence_list`.

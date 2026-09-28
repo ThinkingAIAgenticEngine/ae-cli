@@ -19,9 +19,9 @@ The response uses `ok`, `data`, and `meta`. Treat empty `data` as success when `
 | Parameter | Required | Description |
 |---|---|---|
 | `--company-id` | Yes | Company ID. |
-| `--scope` | Yes | `global` or `project`; project scope requires `--project-ids`. |
+| `--scope` | Yes | Receiver scope. |
 | `--address-url` | Yes | Receiver address URL. |
-| `--address-type` | Yes | `public` or `private`. |
+| `--address-type` | Yes | Receiver address type. |
 | `--project-ids` | No | Project ID JSON array; required for project scope. |
 | `--original-address-url` | No | Original URL when changing an existing address. |
-| `--original-address-type` | No | Original `public` or `private` type. |
+| `--original-address-type` | No | Original address type. |

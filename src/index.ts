@@ -1,9 +1,8 @@
-import { Command as CommanderCommand, Option } from 'commander';
+import { Command as CommanderCommand } from 'commander';
 import { createRequire } from 'module';
 import { registerCommands } from './framework/register.js';
 import type { Command } from './framework/types.js';
 import { runHostCompatCheck } from './core/compat-check.js';
-import { runFeatureConfigCheck } from './core/feature-config-check.js';
 import { getLocalCliPackageInfo } from './core/package-info.js';
 import { registerTracking } from './commands/tracking/index.js';
 import { parseProgram } from './framework/program-lifecycle.js';
@@ -36,109 +35,57 @@ program
   .option('--yes', 'Skip confirmation for high-risk write operations', false)
   .option('--no-update-check', 'Skip host compatibility checks', false);
 
-program.addOption(
-  new Option('--agent-context <base64url-json>', 'Internal agent context payload for gateway telemetry')
-    .hideHelp(),
-);
-
 // Import domain commands
-
-/**
- * Log a failed lazy import to stderr (stdout stays reserved for the JSON
- * envelope) so a domain or registrar that fails to load is visible instead of
- * surfacing as a bare "unknown command".
- */
-function warnLoadFailure(label: string, err: unknown): void {
-  const reason = err instanceof Error ? err.message : String(err);
-  process.stderr.write(`warning: failed to load ${label}: ${reason}\n`);
-}
-
 async function loadCommands(): Promise<Command[]> {
   const commands: Command[] = [];
   try {
     const teAnalysis = await import('./commands/te-analysis/index.js');
     commands.push(...teAnalysis.default);
-  } catch (err) {
-    warnLoadFailure('domain te-analysis', err);
-  }
+  } catch {}
   try {
     const engage = await import('./commands/te-engage/index.js');
     commands.push(...engage.default);
-  } catch (err) {
-    warnLoadFailure('domain te-engage', err);
-  }
+  } catch {}
   try {
     const community = await import('./commands/te-community/index.js');
     commands.push(...community.default);
-  } catch (err) {
-    warnLoadFailure('domain te-community', err);
-  }
+  } catch {}
   try {
     const dataops = await import('./commands/te-dataops/index.js');
     commands.push(...dataops.default);
-  } catch (err) {
-    warnLoadFailure('domain te-dataops', err);
-  }
+  } catch {}
   try {
     const teKb = await import('./commands/te-kb/index.js');
     commands.push(...teKb.default);
-  } catch (err) {
-    warnLoadFailure('domain te-kb', err);
-  }
+  } catch {}
   try {
     const teTeam = await import('./commands/te-team/index.js');
     commands.push(...teTeam.default);
-  } catch (err) {
-    warnLoadFailure('domain te-team', err);
-  }
+  } catch {}
   try {
     const teAgent = await import('./commands/te-agent/index.js');
     commands.push(...teAgent.default);
-  } catch (err) {
-    warnLoadFailure('domain te-agent', err);
-  }
+  } catch {}
   try {
     const memory = await import('./commands/memory/index.js');
     commands.push(...memory.default);
-  } catch (err) {
-    warnLoadFailure('domain memory', err);
-  }
+  } catch {}
   try {
     const teSystem = await import('./commands/te-system/index.js');
     commands.push(...teSystem.default);
-  } catch (err) {
-    warnLoadFailure('domain te-system', err);
-  }
+  } catch {}
   try {
     const metadata = await import('./commands/metadata/index.js');
     commands.push(...metadata.default);
-  } catch (err) {
-    warnLoadFailure('domain metadata', err);
-  }
+  } catch {}
   try {
     const personalSemanticPreference = await import('./commands/personal-semantic-preference/index.js');
     commands.push(...personalSemanticPreference.default);
-  } catch (err) {
-    warnLoadFailure('domain personal-semantic-preference', err);
-  }
-  try {
-    const projectSemantic = await import('./commands/project-semantic/index.js');
-    commands.push(...projectSemantic.default);
-  } catch (err) {
-    warnLoadFailure('domain project-semantic', err);
-  }
+  } catch {}
   try {
     const dataIntegration = await import('./commands/data-integration/index.js');
     commands.push(...dataIntegration.default);
-  } catch (err) {
-    warnLoadFailure('domain data-integration', err);
-  }
-  try {
-    const context = await import('./commands/context/index.js');
-    commands.push(...context.default);
-  } catch (err) {
-    warnLoadFailure('domain context', err);
-  }
+  } catch {}
   return commands;
 }
 
@@ -147,9 +94,7 @@ async function registerAuthCommands(): Promise<void> {
   try {
     const { registerAuth } = await import('./commands/auth.js');
     registerAuth(program);
-  } catch (err) {
-    warnLoadFailure('auth commands', err);
-  }
+  } catch {}
 }
 
 // Register config commands
@@ -157,18 +102,14 @@ async function registerConfigCommands(): Promise<void> {
   try {
     const { registerConfig } = await import('./commands/config.js');
     registerConfig(program);
-  } catch (err) {
-    warnLoadFailure('config commands', err);
-  }
+  } catch {}
 }
 
 async function registerCapabilityCommands(): Promise<void> {
   try {
     const { registerCapability } = await import('./commands/capability/index.js');
     registerCapability(program);
-  } catch (err) {
-    warnLoadFailure('capability commands', err);
-  }
+  } catch {}
 }
 
 // Register sync command (te-agent Skill / MCP push)
@@ -176,9 +117,7 @@ async function registerSyncCommand(): Promise<void> {
   try {
     const { registerSync } = await import('./commands/sync/index.js');
     registerSync(program);
-  } catch (err) {
-    warnLoadFailure('sync commands', err);
-  }
+  } catch {}
 }
 
 // Register model command (te-agent settings.json model switch)
@@ -186,18 +125,14 @@ async function registerModelCommand(): Promise<void> {
   try {
     const { registerModel } = await import('./commands/model/index.js');
     registerModel(program);
-  } catch (err) {
-    warnLoadFailure('model commands', err);
-  }
+  } catch {}
 }
 
 async function registerUpdateCommand(): Promise<void> {
   try {
     const { registerUpdate } = await import('./commands/update.js');
     registerUpdate(program);
-  } catch (err) {
-    warnLoadFailure('update commands', err);
-  }
+  } catch {}
 }
 
 async function main() {
@@ -230,7 +165,6 @@ async function main() {
       return;
     }
   }
-  await runFeatureConfigCheck(globalOptionValue(process.argv.slice(2), '--host'));
 
   const commands = await loadCommands();
   registerCommands(program, commands);
@@ -285,8 +219,7 @@ function optionConsumesValue(token: string): boolean {
   return token === '--host'
     || token === '--mcp-url'
     || token === '--format'
-    || token === '--jq'
-    || token === '--agent-context';
+    || token === '--jq';
 }
 
 function globalOptionValue(args: string[], option: string): string | undefined {

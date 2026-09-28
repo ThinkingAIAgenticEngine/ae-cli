@@ -117,7 +117,7 @@ First, check if both `.ae-cli/draft.json` and `.ae-cli/draft.xlsx` exist:
 
 1. **Do you need to generate a tracking plan first?**
    - Yes → suggest using `ae-generate-tracking-plan` skill
-   - Reference: use a tracking plan document supplied by the user as source material.
+   - Reference: tracking plan document (Feishu: https://www.feishu.cn/docx/Jt0VdhNB6oSJ4TxISs1cq2Ebnmg)
 
 2. **If you already have a tracking plan**
    - Provide the xlsx file path and use `ae-cli tracking code import-template --template` to import
@@ -299,7 +299,6 @@ From the plan file, read:
 - `meta.client_sdk_type` — client SDK type (if `client_only` or `both`)
 - `meta.server_language` — server language (if `server_only` or `both`)
 - `meta.user_identity` — user identity config (used to generate `login()` / `identify()` calls)
-- `user_properties` — user property pool (each entry's `name` + `update_type`, used to generate `user_set` / `user_setOnce` / `user_add` calls)
 
 **Determine list of platforms to generate code for**:
 ```
@@ -640,7 +639,7 @@ Validation steps:
 ### After validation passes
 
 - Remind user to commit changes (if any `insert` was used)
-- Remind user to call `login()` / `identify()` (associate user IDs) and `user_set` / `user_setOnce` / `user_add` (set user properties) at the right business moments
+- Remind user to call `login()` / `identify()` in code to associate user IDs
 - Remind user to copy daemon.json to LogBus2 conf/ directory
 
 ### Validation failure

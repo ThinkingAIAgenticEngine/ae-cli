@@ -8,6 +8,7 @@ Command:
 
 ```bash
 ae-cli analysis-meta exchange config-update --project-id <project_id> --config-val <config_val>
+ae-cli analysis-meta exchange config-update --dry-run
 ```
 
 Capability id: `metadata.exchange_config.update`.

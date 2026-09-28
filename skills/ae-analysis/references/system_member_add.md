@@ -7,7 +7,8 @@ Do not use it to add existing company members to a project; use the project memb
 Command:
 
 ```bash
-ae-cli system member add --company-id <company_id> --members '[{"login_name":"<login_name>","user_name":"<user_name>"}]'
+ae-cli system member add --dry-run --company-id <company_id> --members @members.json
+ae-cli system member add --company-id <company_id> --members @members.json
 ```
 
 Capability id: `system.member.add`.

@@ -19,6 +19,5 @@ export const adhocExport = createAnalysisCapabilityCommand({
   ],
   risk: 'read',
   validate: validateClusterQueryRouting,
-  intentConsistency: { definitionFlag: 'definition', modelTypeFlag: 'model-type' },
   buildInput: adhocExportInput,
 });

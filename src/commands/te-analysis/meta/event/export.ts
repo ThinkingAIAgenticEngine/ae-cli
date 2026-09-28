@@ -1,7 +1,5 @@
 import {
   compactInput,
-  certificationScopeFlag,
-  certificationScopeInput,
   createAnalysisMetaCapabilityCommand,
   fieldsFlag,
   optionalBoolean,
@@ -26,7 +24,6 @@ export const metadataEventExport = createAnalysisMetaCapabilityCommand({
     queriesFlag,
     fieldsFlag,
     { name: 'authenticated-only', type: 'boolean', required: false, desc: 'When true, export only authenticated events.' },
-    certificationScopeFlag,
     metadataExportOutputFlag,
   ],
   risk: 'read',
@@ -36,7 +33,6 @@ export const metadataEventExport = createAnalysisMetaCapabilityCommand({
     queries: optionalQueries(ctx),
     fields: optionalJson(ctx, 'fields'),
     authenticated_only: optionalBoolean(ctx, 'authenticated-only'),
-    certification_scope: certificationScopeInput(ctx),
   }),
   postProcess: metadataExportPostProcess('event', 'events'),
 });

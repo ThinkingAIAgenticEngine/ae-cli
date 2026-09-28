@@ -8,6 +8,7 @@ Command:
 
 ```bash
 ae-cli analysis-meta property related-events --project-id <project_id> --prop-name <prop_name>
+ae-cli analysis-meta property related-events --dry-run
 ```
 
 Capability id: `metadata.property.related_events`.

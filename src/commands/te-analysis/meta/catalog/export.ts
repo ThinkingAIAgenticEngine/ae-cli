@@ -22,9 +22,9 @@ export const metadataCatalogExport = createAnalysisMetaCapabilityCommand({
   capabilityId: 'metadata.catalog.export',
   asyncArtifact: {
     preflightOutput: preflightCatalogArtifactOutput,
-    materialize: catalogArtifactMaterializer,
+    materialize: catalogArtifactMaterializer('analysis_metadata'),
   },
-  description: 'Export the complete accessible analysis metadata catalog to one local JSONL file.',
+  description: 'Export the complete accessible analysis metadata catalog to JSONL with an integrity sidecar.',
   flags: [projectIdFlag, requestIdFlag, asyncTimeoutSecondsFlag, certificationScopeFlag],
   risk: 'read',
   validate: validateCatalogExportFlags,

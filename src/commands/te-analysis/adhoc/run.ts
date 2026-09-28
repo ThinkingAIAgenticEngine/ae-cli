@@ -20,6 +20,5 @@ export const adhocRun = createAnalysisCapabilityCommand({
   ],
   risk: 'read',
   validate: validateClusterQueryRouting,
-  intentConsistency: { definitionFlag: 'definition', modelTypeFlag: 'model-type' },
   buildInput: adhocRunInput,
 });

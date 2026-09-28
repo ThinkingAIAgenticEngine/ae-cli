@@ -8,6 +8,7 @@ Command:
 
 ```bash
 ae-cli analysis-meta exchange rate-refresh --project-id <project_id>
+ae-cli analysis-meta exchange rate-refresh --dry-run
 ```
 
 Capability id: `metadata.exchange_rate.refresh`.

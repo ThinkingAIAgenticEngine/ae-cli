@@ -57,7 +57,7 @@ export const importStatus: Command = {
         API_PATH,
         { requestId: requestIdFrom(ctx) },
         undefined,
-        { preserveErrorMetadata: true, retryUnauthorized: true },
+        { preserveErrorMetadata: true },
       )) as ImportTaskResponse;
     } catch (error) {
       if (error instanceof PermissionError) {

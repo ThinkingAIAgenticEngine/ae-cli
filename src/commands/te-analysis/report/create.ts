@@ -4,7 +4,6 @@ import {
   reportMetadataResolutionsFlag,
   validateReportMetadataResolutions,
 } from '../ai-models.js';
-import { modelDefinitionIntentSnapshotFlag } from '../../../core/definition-intent.js';
 import {
   compactInput,
   createAnalysisCapabilityCommand,
@@ -26,7 +25,6 @@ export const reportCreate = createAnalysisCapabilityCommand({
     { name: 'report-name', type: 'string', required: true, desc: 'Report display name.' },
     reportWriteModelTypeFlag(true),
     reportWriteDefinitionFlag(true),
-    modelDefinitionIntentSnapshotFlag,
     reportMetadataResolutionsFlag,
     { name: 'report-desc', type: 'string', required: false, desc: 'Optional report description.' },
     { name: 'cache-seconds', type: 'number', required: false, desc: 'Optional cache duration in seconds.' },
@@ -35,7 +33,6 @@ export const reportCreate = createAnalysisCapabilityCommand({
   ],
   risk: 'write',
   validate: validateReportMetadataResolutions,
-  intentConsistency: { definitionFlag: 'definition', modelTypeFlag: 'model-type' },
   buildInput: (ctx) => compactInput({
     ...projectInput(ctx),
     report_name: ctx.str('report-name'),

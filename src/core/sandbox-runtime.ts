@@ -50,9 +50,6 @@ export function isAeSandboxRuntime(): boolean {
   if (process.env.SANDBOX_RUNTIME_ROOT) {
     return true;
   }
-  if (process.platform !== 'linux') {
-    return false;
-  }
   try {
     if (fs.existsSync(getSandboxCliTokenFilePath())) {
       return true;

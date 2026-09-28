@@ -8,6 +8,7 @@ Command:
 
 ```bash
 ae-cli project entity get --project-id <project_id> --entity-id <entity_id>
+ae-cli project entity get --dry-run --project-id <project_id> --entity-id <entity_id>
 ```
 
 Capability id: `project.entity.get`.

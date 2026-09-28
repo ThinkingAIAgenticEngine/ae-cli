@@ -1,5 +1,4 @@
 import type { Flag, RuntimeContext } from '../../../framework/types.js';
-import { modelDefinitionIntentSnapshotFlag } from '../../../core/definition-intent.js';
 import {
   aiDefinitionFlag,
   aiModelTypeFlag,
@@ -79,7 +78,6 @@ export const adhocBaseFlags = [
   projectIdFlag,
   aiModelTypeFlag(true),
   aiDefinitionFlag(true),
-  modelDefinitionIntentSnapshotFlag,
   metadataResolutionsFlag,
   requestIdFlag,
   useCacheFlag,

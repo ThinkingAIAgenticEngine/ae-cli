@@ -1,6 +1,8 @@
 # tracking plan generate
 
-Use only when the user asks to submit an AI tracking plan generation task.
+Use when submit an AI tracking plan generation task.
+
+Do not use for commands listed under the sheet's non-CLI section or for unrelated metadata/report operations. If the command needs a complex JSON object, read the backend schema or existing asset first and send snake_case fields only.
 
 Command:
 
@@ -12,7 +14,7 @@ Capability id: `tracking.plan.generate`
 
 Input sends `project_id`, `language`, `form_data`, optional `development_carrier`, and optional `predefined_event`. The backend resolves `company_id` from the authorized project. `form_data` is the intentionally open business-context object; all surrounding fields are explicit. Do not send camelCase aliases.
 
-Output is the capability gateway envelope: success is `ok=true,data,meta`; failure is `ok=false,error`.
+Output is the capability gateway envelope: success is `ok=true,data,meta`; failure is `ok=false,error`. Export commands return lifecycle data such as `run_id` and `artifact_id` for inspect/download.
 
 Parameters:
 

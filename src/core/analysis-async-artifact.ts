@@ -1,5 +1,4 @@
 import { randomBytes } from 'node:crypto';
-import { once } from 'node:events';
 import { createWriteStream } from 'node:fs';
 import { access, link, mkdir, rename, stat, unlink } from 'node:fs/promises';
 import { Readable } from 'node:stream';
@@ -105,7 +104,7 @@ export type AsyncArtifactLifecycleOptions = {
     force: boolean;
     signal: AbortSignal;
     finalDescriptor: AsyncRunDescriptor;
-  }) => Promise<Record<string, unknown>>;
+  }) => Promise<unknown>;
 };
 
 export function withAsyncArtifactLifecycle(
@@ -323,7 +322,7 @@ export async function downloadAnalysisArtifact(
   runId: string,
   artifactId: string,
   output: string,
-  options: { force?: boolean; signal?: AbortSignal; ensureReady?: boolean; mode?: number } = {},
+  options: { force?: boolean; signal?: AbortSignal; ensureReady?: boolean } = {},
 ): Promise<ArtifactDownloadResult> {
   const outputPath = resolve(output);
   await assertOutputPathAvailable(outputPath, options.force, { run_id: runId, artifact_id: artifactId });
@@ -344,11 +343,9 @@ export async function downloadAnalysisArtifact(
     if (!response.body) {
       throw protocolError('Artifact download response has no body.', runId);
     }
-    const destination = createWriteStream(tempPath, { flags: 'wx', mode: options.mode });
-    await once(destination, 'open');
     tempPresent = true;
     const source = Readable.fromWeb(response.body as any);
-    await pipeline(source, destination, {
+    await pipeline(source, createWriteStream(tempPath, { flags: 'wx' }), {
       signal: options.signal,
     });
     const file = await stat(tempPath);

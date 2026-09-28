@@ -8,6 +8,7 @@ Command:
 
 ```bash
 ae-cli analysis-meta event changelog-list --project-id <project_id> --event-name <event_name>
+ae-cli analysis-meta event changelog-list --dry-run
 ```
 
 Capability id: `metadata.event.changelog_list`.

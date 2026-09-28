@@ -8,6 +8,7 @@ Command:
 
 ```bash
 ae-cli project member list --project-id <project_id>
+ae-cli project member list --dry-run --project-id <project_id>
 ```
 
 Capability id: `project.member.list`.

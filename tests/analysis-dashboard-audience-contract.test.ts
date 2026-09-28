@@ -89,12 +89,6 @@ function flagNames(command: Command): string[] {
 
 process.stdout.write('\nanalysis dashboard/audience contract tests\n');
 
-await test('dashboard list is documented as a manageable-asset directory', () => {
-  assert.match(dashboardList.description, /update or manage/);
-  assert.match(dashboardList.description, /Read-only dashboards are excluded/);
-  assert.match(dashboardList.description, /analysis asset search/);
-});
-
 await test('result cluster has one canonical capability', () => {
   assert.equal(queryCreateResultCluster.capabilityId, 'analysis.query.create_result_cluster');
   assert.equal(userCommands.some((item) => item.capabilityId === 'analysis.user_cluster.create_from_result'), false);
@@ -209,20 +203,6 @@ await test('dashboard update forwards dashboard-level business filter unchanged'
     'dashboard-id': 1001,
     filter: JSON.stringify(filter),
   });
-  assert.deepEqual(result.body.input.filter, filter);
-});
-
-await test('dashboard update forwards personal default filter operation', async () => {
-  const filter = { junction_kind: 'and', ta_filters: [] };
-  const result = await dryBody(dashboardUpdate, {
-    'project-id': 1,
-    operation: 'personal-default-filter',
-    'dashboard-id': 1001,
-    'filter-name': 'My default',
-    filter: JSON.stringify(filter),
-  });
-  assert.equal(result.body.input.operation, 'personal-default-filter');
-  assert.equal(result.body.input.filter_name, 'My default');
   assert.deepEqual(result.body.input.filter, filter);
 });
 
@@ -508,17 +488,6 @@ await test('dashboard report-data help warns that SQL reports ignore shared over
     assert.match(flag.desc, /SQL reports ignore/);
     assert.match(flag.desc, /warnings/);
   }
-});
-
-await test('dashboard report-data export omits cache controls while run retains them', async () => {
-  assert.equal(flagNames(dashboardReportDataExport).includes('use-cache'), false);
-  assert.equal(flagNames(dashboardReportDataRun).includes('use-cache'), true);
-
-  const args = { 'project-id': 5, 'dashboard-id': 903, 'use-cache': false };
-  const run = await dryBody(dashboardReportDataRun, args);
-  const exported = await dryBody(dashboardReportDataExport, args);
-  assert.equal(run.body.input.use_cache, false);
-  assert.equal(Object.hasOwn(exported.body.input, 'use_cache'), false);
 });
 
 await test('dashboard report-data run and export expose and forward the unified timezone override', async () => {

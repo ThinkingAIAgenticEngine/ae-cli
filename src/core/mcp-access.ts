@@ -24,9 +24,9 @@ function buildUrl(
 export type KbApiOptions = {
   preserveBusinessErrorCode?: boolean;
   preserveErrorMetadata?: boolean;
-  /** Retry one HTTP 401 after re-reading the local CLI token. */
+  /** @deprecated Retained for source compatibility. Unauthorized requests are never retried. */
   retryUnauthorized?: boolean;
-  responseType?: "bytes" | "empty";
+  responseType?: "bytes";
 };
 
 class KbUnauthorizedError extends Error {}
@@ -218,7 +218,6 @@ async function fetchWithCliToken(
   headers.set("cli-token", cliToken);
 
   const resp = await fetch(input, { ...init, headers });
-  if (options.responseType === "empty" && resp.status === 204) return null;
   if (options.responseType === "bytes" && resp.ok) {
     if (resp.headers.get("content-type")?.includes("application/json")) {
       parseKbResponse(resp, await resp.text(), options);
@@ -229,11 +228,7 @@ async function fetchWithCliToken(
       contentType: resp.headers.get("content-type") ?? "application/octet-stream",
     };
   }
-  const result = parseKbResponse(resp, await resp.text(), options);
-  if (options.responseType === "empty") {
-    throw new Error(`KB API protocol error: expected HTTP 204, received ${resp.status}`);
-  }
-  return result;
+  return parseKbResponse(resp, await resp.text(), options);
 }
 
 async function requestWithCliToken(
@@ -242,21 +237,10 @@ async function requestWithCliToken(
   init: RequestInit,
   options: KbApiOptions,
 ): Promise<any> {
-  const originalToken = await getCliToken(host);
   try {
-    return await fetchWithCliToken(input, init, originalToken, options);
+    return await fetchWithCliToken(input, init, await getCliToken(host), options);
   } catch (error) {
     if (error instanceof KbUnauthorizedError) {
-      if (options.retryUnauthorized === true) {
-        const refreshedToken = await getCliToken(host);
-        if (refreshedToken !== originalToken) {
-          try {
-            return await fetchWithCliToken(input, init, refreshedToken, options);
-          } catch (retryError) {
-            if (!(retryError instanceof KbUnauthorizedError)) throw retryError;
-          }
-        }
-      }
       throw new SecureStoreAuthError(
         `The stored CLI token for ${host} is invalid or expired. Run: ae-cli auth login --host ${host}`,
       );
@@ -302,7 +286,7 @@ export async function kbUpload(
   path: string,
   form: FormData,
   params: Record<string, any> = {},
-  options: KbApiOptions & { method?: "POST" | "PUT" } = {},
+  options: KbApiOptions = {},
 ): Promise<any> {
   const host = ctx.host();
   const uploadOptions = { preserveErrorMetadata: false, ...options };
@@ -311,7 +295,7 @@ export async function kbUpload(
     host,
     buildUrl(host, path, params),
     {
-      method: options.method ?? "POST",
+      method: "POST",
       body: form,
     },
     uploadOptions,

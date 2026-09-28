@@ -9,7 +9,6 @@ import {
   markCredentialRenewed,
   saveCredential,
   SecureStoreAuthError,
-  CredentialStoreUnreadableError,
 } from './secure-store.js';
 import { safeJsonParse, safeReadJsonFile } from './json-utils.js';
 import { logger } from './logger.js';
@@ -45,19 +44,6 @@ function isExplicitCliTokenRejection(data: any, responseText: string): boolean {
   return /cli[_-]?token[_-]?(invalid|expired)/i.test(code)
     || /cli[-_\s]?token.*\b(invalid|expired)\b/i.test(message)
     || /\b(invalid|expired)\b.*cli[-_\s]?token/i.test(message);
-}
-
-function cliAccessDisabledDetails(data: any, responseText: string): {
-  message: string;
-  hint?: string;
-} | undefined {
-  const code = String(data?.code ?? data?.error?.code ?? '');
-  const message = String(data?.return_message ?? data?.message ?? data?.error?.message ?? responseText);
-  if (code !== 'CLI_ACCESS_DISABLED' && !message.includes('CLI_ACCESS_DISABLED')) return undefined;
-  return {
-    message: message || 'CLI access is disabled for this account.',
-    hint: data?.hint ?? data?.error?.hint,
-  };
 }
 
 function optionalNonEmptyString(...values: unknown[]): string | undefined {
@@ -204,12 +190,11 @@ export async function validateCliTokenOnServer(
   const responseText = await resp.text();
   let body: any;
   try { body = safeJsonParse(responseText); } catch { body = undefined; }
-  const accessDisabled = cliAccessDisabledDetails(body, responseText);
-  if (accessDisabled) {
-    throw new PermissionError(accessDisabled.message, 'CLI_ACCESS_DISABLED', accessDisabled.hint);
-  }
   if (isExplicitCliTokenRejection(body, responseText)) {
-    throw new SecureStoreAuthError(`CLI token is invalid or expired for ${hostUrl}.`);
+    throw new SecureStoreAuthError(
+      `CLI token is invalid or expired for ${hostUrl}. `
+      + `Run: ae-cli auth logout --host ${hostUrl}, then ae-cli auth login --host ${hostUrl}`,
+    );
   }
   if (!resp.ok) {
     throw new CliTokenValidationUnavailableError(
@@ -275,15 +260,7 @@ export function peekCliToken(hostOverride?: string): string | undefined {
   const hostUrl = hostOverride || getActiveHost();
   if (!hostUrl) return undefined;
   const normalizedHost = normalizeUrl(hostUrl);
-  let stored: string | null;
-  try {
-    stored = loadSecureCliToken(normalizedHost);
-  } catch (error) {
-    // A best-effort version probe must not block help, recovery, or replace credentials.
-    // Actual authenticated commands still surface the local read error.
-    if (error instanceof CredentialStoreUnreadableError) return undefined;
-    throw error;
-  }
+  const stored = loadSecureCliToken(normalizedHost);
   if (stored) {
     cliTokenCache.set(normalizedHost, stored);
     return stored;

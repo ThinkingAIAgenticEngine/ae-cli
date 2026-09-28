@@ -22,7 +22,6 @@ import {
   type VersionSyncStage,
 } from './version-sync.js';
 import { normalizeUrl } from './url-utils.js';
-import { rememberKbAutoDiscoveryFeature } from './feature-config.js';
 
 const CHECK_INTERVAL_MS = 24 * 60 * 60 * 1000;
 const FETCH_TIMEOUT_MS = 3000;
@@ -146,21 +145,12 @@ type CliConfigPayload = {
     cluster_version?: string;
     ae_cli_version?: string;
   };
-  features?: {
-    projectSemanticKbAutoDiscovery?: boolean;
-  };
 };
-
-export interface CliConfigResult {
-  clusterVersion: string | null;
-  aeCliVersion: string | null;
-  projectSemanticKbAutoDiscovery?: boolean;
-}
 
 export async function fetchCliConfig(
   host: string,
   cliToken: string,
-): Promise<CliConfigResult | null> {
+): Promise<{ clusterVersion: string | null; aeCliVersion: string | null } | null> {
   const url = new URL(CLI_CONFIG_PATH, host.endsWith('/') ? host : `${host}/`);
   url.searchParams.set('cli-token', cliToken);
   const controller = new AbortController();
@@ -181,9 +171,6 @@ export async function fetchCliConfig(
     return {
       clusterVersion: clusterVersion?.trim() || null,
       aeCliVersion: aeCliVersion?.trim() || null,
-      ...(typeof data.features?.projectSemanticKbAutoDiscovery === 'boolean'
-        ? { projectSemanticKbAutoDiscovery: data.features.projectSemanticKbAutoDiscovery }
-        : {}),
     };
   } catch {
     return null;
@@ -294,7 +281,6 @@ async function refreshAndMaybeNotify(
 
   if (isStale(existing)) {
     const remote = await fetchCliConfig(host, token);
-    if (remote) rememberKbAutoDiscoveryFeature(host, token, remote.projectSemanticKbAutoDiscovery ?? false);
     if (!remote?.aeCliVersion) {
       return { status: 'continue' };
     }
@@ -342,7 +328,6 @@ async function refreshAndMaybeNotify(
   if (canAutoSync) {
     // Never mutate a global installation from a cached target alone.
     const confirmed = await fetchCliConfig(host, token);
-    if (confirmed) rememberKbAutoDiscoveryFeature(host, token, confirmed.projectSemanticKbAutoDiscovery ?? false);
     if (confirmed?.aeCliVersion) {
       expected = confirmed.aeCliVersion;
       cluster = confirmed.clusterVersion ?? cluster ?? '';

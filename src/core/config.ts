@@ -4,9 +4,13 @@ import { safeReadJsonFile } from './json-utils.js';
 import { logger } from './logger.js';
 import { normalizeUrl } from './url-utils.js';
 import { getSandboxCliTokenFilePath } from './sandbox-runtime.js';
+import { getConfigDir, hasConfigDirOverride } from './config-dir.js';
 
-const CONFIG_DIR = path.join(process.env.HOME || '', '.ae-cli');
-const CONFIG_FILE = path.join(CONFIG_DIR, 'config.json');
+export { getConfigDir } from './config-dir.js';
+
+function configFile(): string {
+  return path.join(getConfigDir(), 'config.json');
+}
 
 export interface SandboxCliTokenEntry {
   url: string;
@@ -15,6 +19,7 @@ export interface SandboxCliTokenEntry {
 
 /** Candidate paths for sandbox-provisioned cli-token.json (read-only). */
 function sandboxCliTokenCandidatePaths(): string[] {
+  if (hasConfigDirOverride()) return [];
   const paths = [getSandboxCliTokenFilePath()];
   const homeFallback = path.join(process.env.HOME || '', '.ae-config', 'cli-token.json');
   if (!paths.includes(homeFallback)) {
@@ -82,7 +87,8 @@ export interface TeConfig {
 }
 
 function ensureDir(): void {
-  if (!fs.existsSync(CONFIG_DIR)) fs.mkdirSync(CONFIG_DIR, { recursive: true });
+  const configDir = getConfigDir();
+  if (!fs.existsSync(configDir)) fs.mkdirSync(configDir, { recursive: true });
 }
 
 function dedupeNormalizedHosts(config: TeConfig): TeConfig {
@@ -108,8 +114,9 @@ function configNeedsNormalization(config: TeConfig): boolean {
 
 export function loadConfig(): TeConfig {
   try {
-    if (fs.existsSync(CONFIG_FILE)) {
-      const raw = safeReadJsonFile(CONFIG_FILE);
+    const file = configFile();
+    if (fs.existsSync(file)) {
+      const raw = safeReadJsonFile(file);
       // Migrate from old format (defaultHost without protocol)
       if (raw.defaultHost && !raw.activeHost) {
         const migrated = dedupeNormalizedHosts(migrateConfig(raw));
@@ -149,7 +156,7 @@ function migrateConfig(old: any): TeConfig {
 
 export function saveConfig(config: TeConfig): void {
   ensureDir();
-  fs.writeFileSync(CONFIG_FILE, JSON.stringify(config, null, 2));
+  fs.writeFileSync(configFile(), JSON.stringify(config, null, 2));
   logger.info(`Config saved: activeHost=${config.activeHost}, hosts=${Object.keys(config.hosts).length}`);
 }
 
@@ -247,10 +254,6 @@ export function resolveHostSelector(env: string): HostSelectorResult {
   if (byLabel.length === 1) return { status: 'found', host: byLabel[0] };
   if (byLabel.length > 1) return { status: 'duplicate-label', matches: byLabel };
   return { status: 'not-found', hosts };
-}
-
-export function getConfigDir(): string {
-  return CONFIG_DIR;
 }
 
 /**

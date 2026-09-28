@@ -1,15 +1,17 @@
 {
   "name": "@thinkingai/ae-cli",
-  "version": "6.0.53",
+  "version": "6.0.48-workbuddy.1",
   "description": "CLI tool for ThinkingAI (AE) analytics platform",
   "type": "module",
   "bin": {
-    "ae-cli": "bin/ae-cli.js"
+    "ae-cli": "bin/ae-cli.js",
+    "ae-cli-workbuddy": "bin/ae-cli-workbuddy.js"
   },
   "main": "dist/index.js",
   "files": [
     "bin/",
     "dist/",
+    "assets/workbuddy-host-page/",
     "skills/",
     "wiki/",
     "tracking-plan-template/",
@@ -19,19 +21,12 @@
     "dev": "tsx src/index.ts",
     "build": "tsup src/index.ts --format esm --outDir dist --clean --config tsup.config.ts && node scripts/copy-tracking-assets.mjs",
     "generate:analysis-skill": "tsx scripts/generate-analysis-skill-index.mts",
-    "sync:skill-collaboration": "node scripts/sync-skill-collaboration.mjs",
-    "check:skill-collaboration": "node scripts/sync-skill-collaboration.mjs --check",
-    "verify:skill-collaboration": "node --test test/skill-collaboration.test.mjs",
-    "verify:skill-collaboration-install": "node test/skill-collaboration-install.mjs",
     "verify:config": "node test/config-commands.test.mjs",
-    "verify:dataops-flow-params": "tsx --test tests/dataops-flow-params-contract.test.ts tests/dataops-flow-overview-contract.test.ts && tsx tests/dataops-integration.test.ts && tsx tests/dataops-flow-task-contract.test.ts && tsx tests/dataops-backfill-contract.test.ts && tsx tests/runner-variadic-flags.test.ts",
-    "verify:dataops-entity-lifecycle": "tsx --test tests/dataops-entity-lifecycle.test.ts tests/dataops-lifecycle-command-surface.test.ts && tsx tests/dataops-table-field-mutation.test.ts && tsx tests/dataops-integration.test.ts && node test/release-gate-skill-risk-examples.test.mjs",
     "verify:json-utils": "npx tsx tests/json-utils.test.ts",
     "verify:jq-output": "npx tsx test/jq-output.test.mjs",
     "verify:analysis-tools": "tsx scripts/verify-te-analysis-tools.mjs",
-    "verify:project-asset-sources": "node --test test/project-asset-source-workflow.test.mjs test/project-semantic-entrypoint.test.mjs",
     "verify:analysis-skill": "tsx scripts/generate-analysis-skill-index.mts --check",
-    "verify:analysis-four-modules": "tsx tests/dashboard-filter-transport.test.ts && tsx tests/analysis-report-capability-command.test.ts && tsx tests/analysis-export-flow-command.test.ts && tsx tests/analysis-dashboard-audience-contract.test.ts",
+    "verify:analysis-four-modules": "tsx tests/analysis-report-capability-command.test.ts && tsx tests/analysis-export-flow-command.test.ts && tsx tests/analysis-dashboard-audience-contract.test.ts",
     "verify:analysis-contract-regressions": "tsx test/analysis-contract-regressions.test.mjs && tsx tests/analysis-sql-special-identifiers.test.ts",
     "verify:analysis-agent-contract": "tsx tests/analysis-agent-skill-contract.test.ts",
     "verify:analysis-system": "tsx tests/analysis-system-capability-command.test.ts",
@@ -46,26 +41,22 @@
     "verify:retired-api-command": "node --test test/retired-api-command.test.mjs",
     "verify:analysis-common-tools": "node scripts/verify-te-common-tools.mjs",
     "verify:team-tools": "node scripts/verify-te-team-tools.mjs",
-    "verify:agent-tools": "node --test test/agent-command-registry.test.mjs && tsx tests/te-agent-credentials.test.ts && tsx tests/te-agent-unified-auth.test.ts && tsx tests/te-agent-conversations.test.ts && tsx tests/te-agent-automations.test.ts && tsx scripts/verify-agent-tools.mjs && npm run verify:approval && npm run verify:agent-distribution && npm run verify:agent-context && npm run verify:sandbox-tools && npm run verify:notifications",
+    "verify:agent-tools": "node --test test/agent-command-registry.test.mjs && tsx tests/te-agent-credentials.test.ts && tsx tests/te-agent-unified-auth.test.ts && tsx tests/te-agent-conversations.test.ts && tsx tests/te-agent-automations.test.ts && tsx scripts/verify-agent-tools.mjs && npm run verify:approval && npm run verify:agent-distribution && npm run verify:agent-context && npm run verify:sandbox-tools",
     "verify:agent-context": "tsx tests/agent-context-command.test.ts",
     "verify:agent-distribution": "tsx tests/agent-distribution-command.test.ts && tsx tests/agent-distribution-skill.test.ts",
     "verify:approval": "tsx tests/approval-command.test.ts && tsx tests/approval-cli-client.test.ts && tsx tests/approval-skill.test.ts",
     "verify:memory": "tsx tests/memory-command.test.ts && tsx tests/memory-cli-client.test.ts && tsx tests/memory-skill.test.ts",
-    "verify:current-context": "tsx --test tests/current-page-context-command.test.ts",
     "verify:system-tools": "node scripts/verify-system-tools.mjs && npx tsx tests/system-domain.test.ts && npx tsx tests/channel-cli-http.test.ts && npx tsx tests/te-agent-download.test.ts && npx tsx tests/sandbox-tool-package.test.ts",
-    "verify:kb-skill": "node test/kb-skill-query-workflow.test.mjs && node test/kb-analysis-workflow.test.mjs",
-    "verify:kb-sources": "tsx test/kb-source-check-updates-command.test.mjs && tsx test/kb-list-sources-command.test.mjs && tsx test/kb-zip-directory-command.test.mjs && tsx test/kb-source-mutation-command.test.mjs",
+    "verify:kb-skill": "node test/kb-skill-query-workflow.test.mjs",
+    "verify:kb-sources": "tsx test/kb-list-sources-command.test.mjs && tsx test/kb-zip-directory-command.test.mjs",
     "verify:sandbox-tools": "tsx test/sandbox-tools.test.ts",
     "verify:skill-version-management": "tsx tests/skill-version-management.test.ts",
     "verify:skill-reference-files": "tsx tests/skill-reference-files.test.ts",
-    "verify:page-context": "node --test test/page-context-skill.test.mjs test/page-context-references.test.mjs test/internal-skill-distribution.test.mjs",
-    "verify:skill-migration": "node --test test/ae-migrate-tracking-code/migration-regression.test.mjs test/ae-migrate-tracking-code/ir-golden-consistency.test.mjs test/ae-migrate-tracking-code/migrated-signatures.test.mjs",
-    "verify:skill-migration-e2e": "node test/ae-migrate-tracking-code/e2e/diff.mjs",
     "verify:tracking-tools": "tsx test/tracking-client.test.mjs && tsx test/tracking-skill-flow.test.mjs && node test/tracking-commands.test.mjs && tsx tests/tracking-display-name-sync.test.ts && tsx tests/local-data-inspect-convert.test.ts && tsx tests/local-data-upload-client.test.ts && tsx tests/local-data-upload-command.test.ts && tsx tests/local-data-encoding-sniff.test.ts && tsx tests/local-data-time-formats.test.ts && tsx tests/local-data-xlsx-dates.test.ts && tsx tests/local-data-xlsx-hidden-sheets.test.ts && tsx tests/local-data-xlsx-formulas.test.ts && tsx tests/local-data-title-rows.test.ts && tsx tests/local-data-xlsx-merged-cells.test.ts && tsx tests/local-data-xlsx-shared-strings.test.ts && tsx tests/local-data-xlsx-namespace-prefix.test.ts && tsx tests/local-data-value-distribution.test.ts && tsx tests/local-data-summary-rows.test.ts && tsx tests/local-data-duplicate-keys.test.ts && tsx tests/local-data-row-balance.test.ts && tsx tests/local-data-eight-types.test.ts && tsx tests/local-data-mapping-extras.test.ts && tsx tests/local-data-plan.test.ts && tsx tests/local-data-handoff.test.ts && tsx tests/local-data-reuse.test.ts && tsx tests/local-data-conflicts-resolutions.test.ts && tsx tests/runner-variadic-flags.test.ts && node test/local-data-skill.test.mjs",
     "verify:self-check-overlay": "node test/self-check-overlay.test.mjs",
     "verify:update-check": "npx tsx test/update-check.test.mjs",
     "verify:version-sync": "npx tsx tests/version-sync.test.ts",
-    "verify:auth-credentials": "npx tsx tests/secure-store.test.ts && npx tsx tests/secure-store-environment.test.ts && npx tsx tests/cli-token-validation.test.ts && npx tsx tests/auth-multi-account.test.ts && npx tsx tests/mcp-no-disk.test.ts && node --import tsx --test tests/secure-store-windows-lock.test.ts",
+    "verify:auth-credentials": "npx tsx tests/secure-store.test.ts && npx tsx tests/cli-token-validation.test.ts && npx tsx tests/auth-multi-account.test.ts && npx tsx tests/mcp-no-disk.test.ts",
     "verify:readme": "node --test test/readme-command-surface.test.mjs",
     "verify:dependency-hygiene": "node --test test/dependency-hygiene.test.mjs",
     "qa-changed": "node scripts/qa-changed.mjs",
@@ -77,8 +68,7 @@
     "prepublishOnly": "npm run check:release && npm run build",
     "start": "node dist/index.js",
     "test": "npx tsx src/index.ts --help && npm run verify:retired-api-command && npm run verify:sandbox-tools && npm run verify:dependency-hygiene && npm run verify:readme",
-    "verify:kb-versions": "tsx test/kb-version-management-command.test.mjs",
-    "verify:notifications": "tsx tests/notification-command.test.ts"
+    "verify:kb-versions": "tsx test/kb-version-management-command.test.mjs"
   },
   "repository": {
     "type": "git",
@@ -96,6 +86,7 @@
   },
   "dependencies": {
     "@types/json-bigint": "^1.0.4",
+    "archiver": "^5.3.2",
     "cli-table3": "^0.6.5",
     "commander": "^12.1.0",
     "csv-parse": "^7.0.2",
@@ -104,32 +95,29 @@
     "jschardet": "^3.1.4",
     "json-bigint": "^1.0.0",
     "saxes": "^6.0.0",
-    "stream-json": "3.6.0",
+    "stream-json": "^1.9.1",
     "turndown": "^7.2.4",
-    "undici": "6.28.1",
-    "unzipper": "^0.12.5"
+    "undici": "^6.19.0",
+    "unzipper": "^0.12.5",
+    "xlsx": "^0.18.5"
   },
   "devDependencies": {
-    "@types/archiver": "7.0.0",
+    "@types/archiver": "^5.3.4",
     "@types/node": "^22.0.0",
+    "@types/stream-json": "^1.7.8",
     "@types/turndown": "^5.0.6",
     "@types/unzipper": "^0.10.11",
-    "archiver": "7.0.1",
     "exceljs": "^4.4.0",
     "jszip": "^3.10.1",
     "tsup": "^8.0.0",
-    "tsx": "4.23.13",
-    "typescript": "^5.5.0",
-    "xlsx": "https://cdn.sheetjs.com/xlsx-0.20.3/xlsx-0.20.3.tgz"
+    "tsx": "^4.0.0",
+    "typescript": "^5.5.0"
   },
   "overrides": {
     "exceljs": {
-      "archiver": "7.0.1",
       "fast-csv": "5.0.7",
       "unzipper": "0.12.5",
       "uuid": "11.1.1"
-    },
-    "esbuild": "0.28.1",
-    "glob": "13.0.6"
+    }
   }
 }

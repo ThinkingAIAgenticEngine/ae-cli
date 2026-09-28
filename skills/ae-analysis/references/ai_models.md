@@ -1,8 +1,6 @@
 # Analysis AI-facing models
 
-This file defines `model_type` spelling and shared AI-facing building blocks. Each model's definition contract has its own file below.
-
-Open the selected model file directly from the registry and construct `definition` from its example and field rules. Use common building blocks only for fields supported by that model; add `time_range` or `time_particle_size` only when its contract supports them. Reuse unchanged content already read; other model files do not add requirements to the selected model.
+This file is the single reference for `model_type` spelling and AI-facing `definition` shape.
 
 ## Capability coverage
 
@@ -16,25 +14,25 @@ Do not pass raw QP, `events`, `eventView`, `visualView`, frontend DTOs, schema-g
 
 Common analysis models (9):
 
-- [`event`](ai_models/event.md): event analysis
-- [`retention`](ai_models/retention.md): retention analysis
-- [`funnel`](ai_models/funnel.md): funnel conversion analysis
-- [`distribution`](ai_models/distribution.md): distribution analysis
-- [`attribution`](ai_models/attribution.md): attribution analysis
-- [`interval`](ai_models/interval.md): interval analysis
-- [`path`](ai_models/path.md): path analysis
-- [`prop_analysis`](ai_models/prop_analysis.md): property analysis
-- [`sql`](ai_models/sql.md): SQL analysis
+- `event`: event analysis
+- `retention`: retention analysis
+- `funnel`: funnel conversion analysis
+- `distribution`: distribution analysis
+- `attribution`: attribution analysis
+- `interval`: interval analysis
+- `path`: path analysis
+- `prop_analysis`: property analysis
+- `sql`: SQL analysis
 
 Scenario analysis models (3):
 
-- [`heat_map`](ai_models/heat_map.md): heat map analysis
-- [`rank_list`](ai_models/rank_list.md): ranking analysis
-- [`revenue`](ai_models/revenue.md): revenue analysis
+- `heat_map`: heat map analysis
+- `rank_list`: ranking analysis
+- `revenue`: revenue analysis
 
 Report write only:
 
-- [`tag`](ai_models/tag.md): saved tag report data. Use this spelling in CLI.
+- `tag`: saved tag report data. Use this spelling in CLI.
 
 ## Common building blocks
 
@@ -60,20 +58,6 @@ Chinese natural-language time mapping (mandatory; do not infer a different mode)
 
 If the user explicitly says whether today is included, that explicit requirement overrides the phrase mapping. Relative dates are resolved at query time using the effective project/user timezone; do not invent absolute dates.
 
-Calendar settings belong at the definition root, alongside `time_range` or the model-specific object:
-
-- `first_day_of_week`: Monday `1` through Sunday `7`. Available for all analysis/report models except SQL. It controls calendar grouping and relative-week filters; omission preserves the native default. For tag reports it is alongside `tag`, not inside `tag`.
-- `complete_incomplete_period`: available for `event`, `retention`, `funnel`, `distribution`, and `interval`. Set `false` to preserve selected date bounds when grouping by week/month/quarter/year; `true` expands bounds to complete periods. Omission keeps the native behavior. For example, a Tuesday-through-Thursday query grouped by week must explicitly use `false` when the user wants only those three days.
-- Retention's `summary_first_day_of_week` is a separate setting inside `retention` for summary rows. Preserve it together with the root `first_day_of_week` when editing a saved report.
-
-Analysis identity:
-
-- Root `analysis_entity` is supported by `event`, `retention`, `funnel`, `interval`, `distribution`, `path`, `attribution`, `revenue`, `prop_analysis`, and `heat_map`. Omission uses the primary user ID. SQL, ranking, and tag reports do not accept this selector.
-- Supply exactly one selector: `{"id": 42}`, `{"name": "Devices"}`, or `{"property": {"name": "device_id", "type": "event_property"}}`. IDs must be positive and come from the current project's `project.entity.list` capability. Names must exactly identify one visible entity. Never guess entity IDs.
-- Property references support `event_property` or `user_property` and must resolve to a visible numeric or string property. The property must be bound to a visible registered project entity; inspect `project entity list` or create the test entity before use. This selector preserves older reports that omitted the entity ID, but does not bypass entity registration. Do not supply native property metadata such as `tableType` or `selectType`.
-- Entity choices survive saved-report get → update → run. For `event` and `prop_analysis`, root `analysis_entity` selects the drilldown identity; it does not change metric counting. Event metrics count their individual `quota_entities` overrides, while property metrics retain native user semantics. Preserve returned `quota_entities`, `quota_time_ranges`, and `event_split_indexes` on regular event metrics as well as formulas.
-- For heat maps, root `analysis_entity` controls metric counting. `heat_map.event_processing.entity` independently controls the entity used when selecting FIRST/LAST/MAX/MIN events; omission there uses primary users even when the metric counts another entity.
-
 Field reference:
 
 ```json
@@ -82,21 +66,7 @@ Field reference:
 
 - `type` can be `event_property`, `user_property`, `cluster`, or `tag`.
 - Omit `type` only when the field name is unambiguous.
-
-Dimension options for `groups` (including user-property analysis groups):
-
-- `bucket_mode`: `discrete`, `automatic`, or `custom` for numeric properties. `custom` requires a non-empty, strictly increasing `bucket_boundaries` number array, for example `[0, 7, 30]`; omit boundaries for the other modes.
-- `array_grouping`: `array_group` (whole list), `array_set_group` (distinct element set), or `array_item_group` (individual elements).
-- `time_granularity`: `hour`, `day`, `week`, `month`, `minute`, `minute5`, `minute10`, `quarter`, `year`, or `millisecond` for date/time properties.
-- `funnel_step`: the one-based funnel step supplying grouping values. It must refer to an existing step; omit outside funnel analysis.
-- `retention_source`: `initial_event` or `return_event`; omit outside retention analysis.
-- Tag/cluster dimensions also accept `cluster_date_policy` and `specified_cluster_date` with the same rules as filters below.
-
-Preserve these options when editing saved report definitions. Grouping by a field with its default settings can produce different results from grouping by that field's numeric intervals, array elements, historical values, or a selected funnel/retention event.
-
-```json
-{"field":{"name":"amount","type":"event_property"},"bucket_mode":"custom","bucket_boundaries":[0,30,60]}
-```
+- `prop_analysis` dimensions and filters support `user_property`, `cluster`, and `tag`; they do not support `event_property`.
 
 Filter:
 
@@ -108,74 +78,476 @@ Filter:
 - Omit `values` for `exists` and `not_exists`.
 - Use exactly two values for `between`.
 
-Relative date/time filters use `operator: "relative_current_time"` or `"relative_event_time"` with `time_relative`:
-
-- `relative_current_time`: `before`, `between`, `that_day`, `that_week`, or `that_month`. Offsets are in days relative to the effective current date.
-- `relative_event_time`: `before`, `after`, `absolute`, `range`, `that_day`, `that_week`, or `that_month`. Offset modes also require `time_unit: "day"|"hour"|"minute"`.
-- `between` and `range` require two string values; other offset modes require one. `that_day`, `that_week`, and `that_month` need no `values`.
-- For retention phase-specific event-time filters, preserve `relative_event_time_retention_phase` (`0` initial event, `1` return event).
-- Preserve these fields when editing saved definitions. Event-only filters using `event_property_name` carry the same relative-time options.
-
-Compound filter group:
-
-```json
-{
-  "relation": "or",
-  "items": [
-    {
-      "relation": "and",
-      "items": [
-        {"field":{"name":"discount_multiplier","type":"event_property"},"operator":"eq","values":["2.4"]},
-        {"field":{"name":"current_user_level","type":"event_property"},"operator":"gte","values":["100"]},
-        {"field":{"name":"registered_days","type":"event_property"},"operator":"gte","values":["3"]}
-      ]
-    },
-    {"field":{"name":"discount_multiplier","type":"event_property"},"operator":"eq","values":["1.4"]}
-  ]
-}
-```
-
-- A compound node has `relation` plus `items` and no `field` or `operator`. In ad-hoc definitions and historical report reads, each item can be a leaf filter or another compound node.
-- `items` must be non-empty. Every nested leaf must retain its own `field` and `operator`; validation applies at every depth.
-- Use `items` inside every compound node. Do not rename it to `filters`.
-- Put compound nodes in the same `filters` arrays that accept leaf filters, including report-level and metric-level filters.
-- This recursive shape applies to ad-hoc user-property analysis filters and event-only filters (such as funnel steps, retention initial/return filters, and revenue events), and is preserved by historical report reads. Event-only leaves use `event_property_name`; user-property leaves use `field` with `user_property`, `tag`, or `cluster`. A compound node contains only `items` and optional `relation`; do not put leaf values, operators, or time options on the group itself.
-- Saved-report create/update follows the analysis page: at most one compound group level, with leaf-only, non-empty `items`. The capability schema rejects deeper or empty groups as `INVALID_CAPABILITY_INPUT`; use the returned field path or schema keyword to correct the structure. If `analysis report get` returns a deeper historical tree, never flatten it or discard unread conditions. Omit `definition` for an unrelated metadata update; replacing the definition requires an explicitly approved page-compatible tree.
-
-Tag and cluster result-date policy:
-
-- `cluster_date_policy` is valid only when `field.type` is `tag` or `cluster`.
-- `LATEST` uses the latest computed tag/cluster result and is the default when the field is omitted.
-- `AUTO` dynamically matches the computed result for each analysis date. Use it for historical daily analysis that must evaluate each day against that day's tag or cluster state.
-- `SPECIFIED` uses one fixed result date and requires `specified_cluster_date` in `yyyy-MM-dd` format. Do not send `specified_cluster_date` with `LATEST` or `AUTO`.
-
-For example, the following filter evaluates `<verified_tag_name> != <excluded_tag_value>` against each analysis day's tag result:
-
-```json
-{
-  "field": {"name": "<verified_tag_name>", "type": "tag"},
-  "operator": "neq",
-  "values": ["<excluded_tag_value>"],
-  "cluster_date_policy": "AUTO"
-}
-```
-
-A successful ad-hoc response returns the effective policy in `definition`. A saved report read returns the persisted policy when it is present in the report QP. Treat `AUTO` as the evidence for dynamic matching; `field.type=tag` or `sub_table_type=tag_by_static_condition` alone does not prove it.
-
 Group:
 
 ```json
 {"field":{"name":"country","type":"user_property"}}
 ```
 
-Metric aggregation values must use semantic spelling, not internal A-codes. Use the selected model file's aggregation whitelist; it is specific to the model and property type.
+Metric aggregation values must use semantic spelling, not internal A-codes. The whitelist is model- and property-type-specific because it mirrors the page controls:
+
+- `event`: without property use `total_count`, `user_count`, or `per_user_count`; numeric properties support `sum`, `avg`, `avg_per_user`, `max`, `min`, `distinct_count`, `median`, `percentile`, `variance`, and `stddev`; string/date/datetime properties support `distinct_count`; boolean properties support `true_count`, `false_count`, `not_empty_count`, `empty_count`, and `distinct_count`.
+- `retention` simultaneous metrics: without property use `total_count`, `user_count`, or `per_user_count`; numeric properties support only `sum` and `avg_per_user`; boolean properties support only `true_count`, `false_count`, `not_empty_count`, and `empty_count`.
+- `distribution`: without property use `count`, `active_days`, or `active_hours`; numeric properties support `sum`, `avg`, `max`, `min`, `distinct_count`, `median`, `percentile`, `variance`, and `stddev`; string/date/datetime properties support `distinct_count`; boolean properties support `true_count`, `false_count`, `not_empty_count`, `empty_count`, and `distinct_count`.
+- `attribution`: use `total_count` without `target_property`, or `sum` with a numeric `target_property`.
+- `prop_analysis`: use `user_count` without property; property aggregations follow the event property-type rules except that `percentile` is not supported.
+- `heat_map`, `rank_list`, and `revenue`: use the event whitelist except that `percentile` is not supported.
 
 For total event count use `total_count`; `count` belongs only to distribution. Internal `Axxx` codes are persisted page details and are not valid authored AI definitions.
 
-Use verified canonical metadata when constructing an intent model. Discover missing definitions or fields with [metadata resolution](metadata_resolution.md). Successful responses expose internally resolved events/properties in `resolved`, including `input`, `resolved_name`, `match_type` and `path`; reuse those mappings.
+## Model definitions
 
-### Report time-range round trips
+### `event`
 
-Report definitions preserve dynamic day/week/month/quarter/year ranges, fixed-start ranges, and comparison periods when read and saved again. Disabled comparisons are omitted even if a report retains stale comparison configuration.
+Use for event metrics, trends, grouping, filters, and comparisons.
 
-Use `mode: "offset_range"` with `unit`, `start_offset`, and `end_offset` for a range anchored before the current unit: offsets are inclusive and must satisfy `0 <= start_offset <= end_offset`. For example `{ "mode": "offset_range", "unit": "day", "start_offset": 7, "end_offset": 13 }` selects days 7 through 13 before today. The same fields are supported in `comparison_time_ranges`; `previous_period` remains the preferred way to compare with the immediately preceding equal-length period.
+```json
+{
+  "time_range": {"mode": "previous", "unit": "day", "value": 7},
+  "time_particle_size": "day",
+  "metrics": [
+    {"event": "login", "aggregation": "user_count"}
+  ],
+  "groups": [
+    {"field": {"name": "country", "type": "user_property"}}
+  ],
+  "filters": [
+    {"field": {"name": "country", "type": "user_property"}, "operator": "eq", "values": ["US"]}
+  ],
+  "relation": "and"
+}
+```
+
+Property aggregation example:
+
+```json
+{
+  "time_range": {"mode": "previous", "unit": "day", "value": 7},
+  "metrics": [
+    {"event": "purchase", "aggregation": "sum", "property": "amount"}
+  ]
+}
+```
+
+Omit `display_name` by default; apply business-facing labels in the final answer instead. Add this optional field only when the target host's capability schema or a successful validation explicitly supports `display_name` for that command. Support can differ by deployment and command; a saved report supporting it does not prove ad-hoc support. If rejected, remove only the unsupported label, preserving events, aggregations, properties, filters, and formula dependencies.
+
+Formula metric example:
+
+```json
+{
+  "time_range": {"mode": "previous", "unit": "day", "value": 7},
+  "metrics": [
+    {
+      "formula": "revenue / users",
+      "dependencies": [
+        {"alias": "revenue", "event": "purchase", "aggregation": "sum", "property": "amount"},
+        {"alias": "users", "event": "login", "aggregation": "user_count"}
+      ]
+    }
+  ]
+}
+```
+
+Formula rules:
+
+- Write **bare aliases** only in `formula` (e.g. `"revenue / users"` or `"pay / dau"`).
+- **Do not** write `alias.Axxx` (e.g. `"pay.A103"` / `"revenue.A103"`). Aggregation codes come from each dependency's `aggregation`; the builder expands aliases to real event tokens such as `purchase.amount.A103/login.A101`.
+- After the builder returns `status=generated`, hard-validate by querying (`analysis adhoc run` / report-data / dashboard-report-data). Do not save a report or dashboard from an unqueried formula QP.
+
+### `retention`
+
+Use for retained/lost users from an initial event to a return event.
+
+```json
+{
+  "time_range": {"mode": "previous", "unit": "day", "value": 7},
+  "time_particle_size": "day",
+  "retention": {
+    "initial_event": "register",
+    "return_event": "login",
+    "stat_type": "retention",
+    "unit_num": 1,
+    "rtn_rate_or_num": "rate",
+    "groups": [
+      {"field": {"name": "channel", "type": "user_property"}}
+    ]
+  }
+}
+```
+
+Use `stat_type=lost` for lost-user analysis. Use `rtn_rate_or_num=count` when the user asks for user counts instead of rates.
+
+Initial-event and return-event property filters use the retention-specific shape below. Put them inside `retention`; use `event_property_name` instead of a generic `field` object. Do not use top-level `filters`, `retention.filters`, or `initial_event_filters`.
+
+```json
+{
+  "time_range": {"mode": "custom", "start_time": "2026-08-18 00:00:00", "end_time": "2026-08-18 23:59:59"},
+  "time_particle_size": "day",
+  "retention": {
+    "initial_event": "register",
+    "initial_filters": [
+      {"event_property_name": "case_id", "operator": "eq", "values": ["retention_test"]}
+    ],
+    "initial_filter_relation": "and",
+    "return_event": "login",
+    "return_filters": [
+      {"event_property_name": "case_id", "operator": "eq", "values": ["retention_test"]}
+    ],
+    "return_filter_relation": "and",
+    "stat_type": "retention",
+    "unit_num": 1,
+    "rtn_rate_or_num": "rate",
+    "groups": [
+      {"field": {"name": "channel", "type": "event_property"}}
+    ]
+  }
+}
+```
+
+### `funnel`
+
+Use for ordered conversion steps with a conversion window.
+
+```json
+{
+  "time_range": {"mode": "previous", "unit": "day", "value": 7},
+  "time_particle_size": "day",
+  "funnel": {
+    "steps": [
+      {"event": "view_product"},
+      {"event": "add_to_cart"},
+      {"event": "purchase"}
+    ],
+    "window": {"value": 3, "unit": "day"},
+    "groups": [
+      {"field": {"name": "channel", "type": "user_property"}}
+    ]
+  }
+}
+```
+
+If the user asks to match users across events by a shared event property, set `relation_event_property_name`.
+
+Step-level event-property filters belong inside the matching `funnel.steps[].filters`. Use `event_property_name`, not the common `field` object. `values` is an array of strings, including `"true"` / `"false"` for boolean properties; omit values for existence operators. For example, ordered registration -> login -> first payment:
+
+```json
+{
+  "time_range": {"mode": "previous", "unit": "day", "value": 14},
+  "time_particle_size": "day",
+  "funnel": {
+    "steps": [
+      {"event": "register"},
+      {"event": "login"},
+      {"event": "payment", "filters": [
+        {"event_property_name": "is_first_pay", "operator": "eq", "values": ["true"]}
+      ]}
+    ],
+    "window": {"value": 7, "unit": "day"}
+  }
+}
+```
+
+Preserve step order, conversion window, and all requested filters when correcting input. Only actual funnel results support step counts and conversion rates; independent event UVs are not an ordered funnel.
+
+### `distribution`
+
+Use for user distribution buckets for an event or property metric.
+
+```json
+{
+  "time_range": {"mode": "previous", "unit": "day", "value": 7},
+  "distribution_metrics": [
+    {
+      "event": "purchase",
+      "aggregation": "sum",
+      "property": "amount",
+      "filters": [
+        {
+          "field": {"name": "vip_users", "type": "cluster"},
+          "operator": "in_cluster"
+        }
+      ],
+      "relation": "and",
+      "interval_type": "user_defined",
+      "quota_interval_arr": [100, 1000, 10000]
+    }
+  ],
+  "groups": [
+    {"field": {"name": "country", "type": "user_property"}}
+  ]
+}
+```
+
+Use `interval_type=def` for automatic buckets, `user_defined` for explicit numeric boundaries, and `discrete` to group by raw values.
+
+Distribution filters must be attached to the corresponding `distribution_metrics[].filters`.
+Do not use top-level `filters` or `relation` in a distribution definition.
+When multiple metrics need the same filter, attach it to each metric explicitly. If the requested filter scope is ambiguous, clarify which metric it applies to before running the analysis.
+
+### `attribution`
+
+Use to attribute target conversions to touchpoint/source events.
+
+```json
+{
+  "time_range": {"mode": "previous", "unit": "day", "value": 14},
+  "attribution": {
+    "target_event": "purchase",
+    "target_aggregation": "total_count",
+    "attribution_events": [
+      {"event": "ad_click"},
+      {"event": "campaign_view"}
+    ],
+    "attribution_model": "first",
+    "window": {"value": 7, "unit": "day"},
+    "direct_conversion": true
+  }
+}
+```
+
+`attribution_model` values: `first`, `last`, or `linear`.
+The target aggregation is intentionally narrow: use `total_count` without a property, or `sum` with a numeric `target_property`. Do not use `user_count`.
+
+### `interval`
+
+Use for elapsed-time analysis between an initial event and a return event.
+
+```json
+{
+  "time_range": {"mode": "previous", "unit": "day", "value": 7},
+  "time_particle_size": "day",
+  "interval": {
+    "initial_event": "register",
+    "return_event": "first_purchase",
+    "window": {"value": 7, "unit": "day"},
+    "groups": [
+      {"field": {"name": "channel", "type": "user_property"}}
+    ]
+  }
+}
+```
+
+### `path`
+
+Use for behavior paths before or after a source event.
+
+```json
+{
+  "time_range": {"mode": "previous", "unit": "day", "value": 7},
+  "filters": [
+    {"field": {"name": "account_id", "type": "user_property"}, "operator": "exists"}
+  ],
+  "relation": "and",
+  "path": {
+    "source_event": "purchase",
+    "included_events": ["view_product", "add_to_cart", "purchase"],
+    "session_interval": 30,
+    "session_unit": "minute",
+    "direction": "forward"
+  }
+}
+```
+
+`direction=forward` asks what users do after `source_event`; `direction=backward` asks what users did before it. Do not send original-QP fields such as `source_type` or `event_names`.
+
+For path analysis, `preview_rows` is a graph-display boundary aligned with the analysis UI: it keeps up to that many real nodes per path level, then combines overflow nodes into `more`. `result.nodes` retains the synthesized `more` node for graph structure and drilldown coordinates. The top-level `returned_rows` counts real business nodes actually returned across all levels; it excludes synthesized `more` nodes and the real nodes folded into them. The count may still exceed `preview_rows` because the boundary applies independently to each level. `has_more=true` means at least one level contains real nodes folded into `more`; a linear multi-level path can return more real nodes than `preview_rows` with `has_more=false`.
+
+Path `filters` are global member filters compiled to the original QP `user_filter`. They support `user_property`, `cluster`, and `tag`, but not `event_property`. Do not move a user filter into the source event's event-property filter.
+
+Path session timeout accepts only these unit/value ranges:
+
+- `second`: `1..999`
+- `minute`: `1..999`
+- `hour`: `1..24`
+
+Do not use `day`. Express one day as `session_interval=24` with `session_unit=hour`.
+
+Property types come from project metadata. If resolution says a field is an `event_property`, never relabel it as `user_property` just to satisfy the path schema. Remove the unsupported global filter, choose a model that supports event-property filtering, or ask the user to clarify the intended constraint. A familiar name such as `channel` is not universally an event or user property across projects.
+
+For every non-SQL intent model, do not call `list_events` or `list_properties` as an execution prerequisite. The successful response must expose every internally resolved event/property in `resolved`, including `input`, `resolved_name`, `match_type`, and `path`. Use metadata discovery only after a structured `need_clarification` response or an explicit resolution capability error.
+
+### `prop_analysis`
+
+Use for user-property metrics, grouping, filters, and user-crowd comparison.
+
+```json
+{
+  "prop_analysis": {
+    "metric": {"aggregation": "user_count"},
+    "groups": [
+      {"field": {"name": "country", "type": "user_property"}}
+    ],
+    "filters": [
+      {"field": {"name": "vip_level", "type": "user_property"}, "operator": "gte", "values": ["3"]}
+    ],
+    "user_crowds": [
+      {
+        "name": "US users",
+        "filters": [
+          {"field": {"name": "country", "type": "user_property"}, "operator": "eq", "values": ["US"]}
+        ]
+      }
+    ]
+  }
+}
+```
+
+For property aggregations, pass the user property:
+
+```json
+{"prop_analysis":{"metric":{"aggregation":"distinct_count","property":"account_id"}}}
+```
+
+### `sql`
+
+Use for SQL analysis. The AI-facing model has only:
+
+- `sql`: required SQL text.
+- `params`: optional dynamic parameter values and definitions, required only when SQL contains `${...}` placeholders.
+
+Simple SQL:
+
+```json
+{"sql":"SELECT 1 AS value"}
+```
+
+Trino special identifiers must use double-quoted identifier delimiters:
+
+```json
+{"sql":"SELECT \"#user_id\", \"$part_event\" FROM hive.ta.v_event_1 WHERE \"$part_date\" BETWEEN '2026-07-01' AND '2026-07-07' LIMIT 20"}
+```
+
+Reserved words used as identifiers must also be double quoted, for example `SELECT "end" FROM ...`.
+
+For multiline SQL JSON, ensure JSON decoding produces a real line break in the `sql` value. Do not submit a literal `\\n` sequence outside a quoted SQL string value; use a JSON escape that the caller decodes once before invoking the capability.
+
+Event-table queries must include a date-partition predicate on the quoted `"$part_date"` column. The backend rejects SQL against an event table when this predicate is absent. This requirement is specific to event tables; do not invent a `$part_date` condition for a table whose discovered columns do not include it.
+
+Typed condition-fragment placeholder:
+
+```json
+{
+  "sql": "select * from events where country ${Text:country}",
+  "params": [
+    {"name": "country", "type": "text", "operator": "eq", "value": "US"}
+  ]
+}
+```
+
+Raw variable placeholder:
+
+```json
+{
+  "sql": "select * from events where country = ${country}",
+  "params": [
+    {"name": "country", "type": "variable", "value": "'US'"}
+  ]
+}
+```
+
+Time placeholder:
+
+```json
+{
+  "sql": "select * from events where ${PartDate:ds}",
+  "params": [
+    {"name": "ds", "type": "part_date", "recent_day": "1-7", "use_timezone": true}
+  ]
+}
+```
+
+Rules:
+
+- If SQL has no `${...}` placeholder, omit `params`.
+- If SQL has placeholders, every placeholder must have one matching item in `params`.
+- Raw variables use `${name}`, not `${Variable:name}`. A selector's `value` must equal one of its `options[].value` values. `${PartDate:name}` expands to a complete predicate, so place it directly after `WHERE`/`AND` rather than after a column name.
+- A `part_date` parameter must provide either `recent_day` or a complete custom range with both `start_time` and `end_time`; one-sided custom ranges are invalid.
+- `use_timezone` is an optional boolean definition field that is only valid for `part_date`. It defaults to `false`. When `true`, that PartDate parameter uses the query's effective timezone selected by `zone_offset` or the current user/project default; when `false`, it follows the non-timezone-aware PartDate path. This is distinct from the command-level `zone_offset`.
+- Do not pass SQL-IDE internals such as `sqlVoParams`, `sqlViewParams`, `paramType`, `paramName`, `paramExpress`, `commonFilter`, or `requiredEvents`.
+- Delimit any Trino identifier containing `#`, `$`, `@`, spaces, punctuation, or a reserved word with double quotes, for example `"#user_id"`, `"$part_event"`, and `"end"`. Single quotes create string literals, not identifiers. Escape a literal double quote inside an identifier by doubling it. The CLI preserves the submitted SQL and does not rewrite identifiers.
+- For an event table, include a date-partition predicate on the discovered `"$part_date"` column, for example `WHERE "$part_date" BETWEEN '2026-07-01' AND '2026-07-07'`. The backend rejects event-table SQL without this condition.
+- Do not invent table or column names. If the user already provides a concrete table reference, use `analysis-meta datatable columns-get --project-id <project_id> --table-ref <table_ref>` to inspect columns before writing SQL. If the table itself is unknown, call `analysis sql-table list --project-id <project_id>` when available and select an exact returned `table_ref`; otherwise stop and ask for the table/data source. Ask the user only when multiple authorized tables remain semantically plausible after discovery.
+- For a saved dynamic SQL report, put the default values in `analysis report create/update --definition`. Verify the default once with `analysis report-data run` without `--sql-params`, then verify a changed value with one value-only `--sql-params` override.
+- `use_timezone` belongs to the saved parameter definition. To change it, update the report `definition`; never pass it through report-data `--sql-params`, which changes values only.
+- SQL tags and SQL clusters do not use this general parameter contract. They accept only `${PartDate:name}` with `type=part_date`, and their tables must be discovered with `analysis sql-table list/columns --usage tag_cluster`; see `user_tag_models.md` and `user_cluster_models.md`.
+
+### `heat_map`
+
+Use for two-dimensional heat map analysis based on numeric event coordinate properties.
+
+```json
+{
+  "time_range": {"mode": "previous", "unit": "day", "value": 7},
+  "heat_map": {
+    "hot_event": "click",
+    "hot_aggregation": "total_count",
+    "x_prop": "screen_x",
+    "y_prop": "screen_y",
+    "filters": [
+      {"field": {"name": "page", "type": "event_property"}, "operator": "eq", "values": ["home"]}
+    ]
+  }
+}
+```
+
+For property metrics, set `hot_property` and use a property aggregation such as `sum` or `avg`.
+
+### `rank_list`
+
+Use for ranking users/entities by an event metric.
+
+```json
+{
+  "time_range": {"mode": "previous", "unit": "day", "value": 7},
+  "rank_list": {
+    "rank_dimension": {"field": {"name": "#account_id", "type": "user_property"}},
+    "rank_event": "purchase",
+    "rank_aggregation": "sum",
+    "rank_property": "amount",
+    "rank_type": "dense_rank",
+    "order_by": "DESC"
+  }
+}
+```
+
+`rank_type` values: `rank`, `dense_rank`, or `row_rank`.
+
+### `revenue`
+
+Use for revenue cohort metrics such as LTV, ROI, revenue, and cost.
+
+```json
+{
+  "time_range": {"mode": "previous", "unit": "day", "value": 30},
+  "initial_event": {"event": "register"},
+  "pay_event": {"event": "purchase"},
+  "revenue_metric": {"event": "purchase", "aggregation": "sum", "property": "amount"},
+  "cost_metric": {"event": "ad_cost", "aggregation": "sum", "property": "cost"},
+  "observation_days": 14,
+  "selected_metrics": ["payAmount", "ltv", "roi"],
+  "groups": [
+    {"field": {"name": "channel", "type": "user_property"}}
+  ]
+}
+```
+
+`cost_metric` is optional when the user does not ask for cost/ROI.
+`selected_metrics` supports `payUsers`, `payAmount`, `cumPayUsers`, `cumPayAmount`, `payRate`, `cumPayRate`, `ltv`, `ltvMultiple`, and `roi`.
+
+### `tag` report write only
+
+Use only with `analysis report create/update`; do not use with `analysis adhoc run/export`.
+
+`tag_name` is the only tag-report name field. Do not send `cluster_name` for a tag report; `cluster_name` belongs only to audience-cluster commands.
+
+```json
+{
+  "tag": {
+    "tag_name": "vip_users",
+    "time_range": {"mode": "recent", "unit": "day", "value": 7},
+    "time_particle_size": "day"
+  }
+}
+```
+
+Prefer `time_range` for new tag reports. `recent_day`, `start_time`, and `end_time` are only for report readback or precise round-trip updates.

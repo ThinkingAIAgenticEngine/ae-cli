@@ -8,11 +8,12 @@ Command:
 
 ```bash
 ae-cli analysis-governance rule schema --project-id <project_id>
+ae-cli analysis-governance rule schema --dry-run --project-id <project_id>
 ```
 
-Capability id: governance.rule.schema.
+Capability id: analysis_meta.asset_rule.schema.
 
-Input sends project_id. The CLI merges the snake_case object from `--payload` into these top-level Gateway fields; explicit flags override matching payload fields. `--project-id` owns the project identity and cannot be supplied or overridden by payload. Required business fields must exist in the final merged input.
+Input sends project_id, payload. Payload keys must follow the common-service snake_case input schema; do not send camelCase aliases.
 
 Output `data` is the project-specific rule column/operator schema consumed by the `rule` object in rule create and update commands.
 
@@ -20,4 +21,4 @@ Output `data` is the project-specific rule column/operator schema consumed by th
 | Parameter | Required | Description |
 |---|---|---|
 | --project-id | Yes | Numeric project ID. |
-| --payload | No | Optional JSON object merged into top-level input. Use schema-declared snake_case fields; explicit flags take precedence. `node_ids`, `searchs`, and `status` are arrays; `rule` is an object when supplied. |
+| --payload | No | Optional snake_case object carrying the same fields. Use this for complex governance filters or backend-shaped payloads. |

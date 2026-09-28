@@ -23,4 +23,4 @@ The response uses `ok`, `data`, and `meta`. Treat empty `data` as success when `
 |---|---|---|
 | `--company-id` | Yes | Company ID. |
 | `--target-open-id` | Yes | Target member open ID. |
-| `--status` | Yes | `locked` or `active`. |
+| `--status` | Yes | Target status. |

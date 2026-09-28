@@ -8,6 +8,7 @@ Command:
 
 ```bash
 ae-cli project mark-time list --project-id <project_id> --query <query> --fields <fields> --limit <limit> --offset <offset> --zone-offset <zone_offset>
+ae-cli project mark-time list --dry-run --project-id <project_id>
 ```
 
 Capability id: `project.mark_time.list`.

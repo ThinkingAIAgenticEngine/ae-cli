@@ -1,8 +1,8 @@
 import fs from 'fs';
 import path from 'path';
+import { getConfigDir } from './config-dir.js';
 
-// Computed directly to avoid circular dependency with config.ts
-const LOG_DIR = path.join(process.env.HOME || '', '.ae-cli', 'log');
+const LOG_DIR = path.join(getConfigDir(), 'log');
 
 type LogLevel = 'info' | 'warning' | 'error';
 

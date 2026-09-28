@@ -13,12 +13,7 @@ export const projectMemberAdd = createAnalysisCapabilityCommand({
   flags: [
     projectIdFlag,
     requiredPayloadFlag,
-    {
-      name: 'type',
-      type: 'string',
-      required: true,
-      desc: 'Member add type: 0 creates a company member from project management; 1 adds an existing company member. Type 0 may be disabled by company configuration.',
-    },
+    { name: 'type', type: 'string', required: true, desc: 'Add type accepted by ProjMemberAddTypeEnum.' },
   ],
   risk: 'write',
   buildInput: (ctx) => compactInput({

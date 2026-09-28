@@ -1,75 +1,11 @@
-### 6.0.53
-**Date:** 2026-09-23
+### 6.0.48-workbuddy.1
+**Date:** 2026-09-28
 
 **Changes:**
 
-#### Authentication & Runtime
-
-* Add `auth set-token` with hidden input or stdin support for importing a CLI token copied from External Access Management; validate it against the target Host before writing and optionally retain other accounts on the same Host.
-* Harden cross-runtime credential compatibility and secure storage by reconciling new and legacy credential files, protecting credentials that cannot be decrypted, and rolling back partial dual-file writes to avoid invalid imports or false logout states.
-* Add `config show` to return the selected Host's compact effective configuration and knowledge-base routing mode; cache configuration per Host and account, and disable automatic knowledge-base routing when configuration is unavailable.
-
-#### Agent & Asset Governance
-
-* Add in-app notification commands for recipient discovery, send, list, detail, unread count, and mark-read, with idempotent retry, sensitive-content redaction, and permission boundaries.
-* Add automated review and certification for governance-recommended assets, including expanded batch handling, manual review submission for failed assets, preserved parent-asset context and audit history, and CLI Agent handling of semantic duplicates.
-* Forward and record CLI Agent context for Capability requests, and improve knowledge-base discovery, asset-search recall, and current-project memory routing.
-
-#### Analysis
-
-* Complete parameter, filter, time, grouping, and result-interpretation contracts for event, funnel, path, retention, revenue, ranking, interval, heat-map, tag, and related analysis models, including recursive validation and lossless round trips for compound filters.
-* Fix report-filter writes, saved-formula round trips, description clearing, metric-versus-analysis-entity handling, invalid dashboard-export cache parameters, and metadata-export authentication scope.
-* Complete wait and download flows for asynchronous asset-governance exports, and fix analysis validation, asset export, and temporary-file cleanup.
-
-#### DataOps & Knowledge Base
-
-* Add custom workflow-parameter management and fold task-parameter queries into workflow overviews; align table and view lifecycle, instance-monitoring, and status-filter guidance.
-* Add single-field add, modify, and delete operations for data tables, plus table and view recycling, recycle-bin listing, and permanent deletion with semantic preview, explicit confirmation, and structured outcomes.
-* Add the knowledge-base compilation-rule import lifecycle, including download, upload, validate, optimize, diff, apply, and abandon operations with revision, hash, asynchronous-task, and conflict protection.
-* Guide project knowledge-base discovery from company configuration, consolidate project-semantic entry points, and fix the title and routing information required when consuming personal semantic preferences.
-
-#### Skill Collaboration
-
-* Add decentralized collaboration guidance, shared contracts, and independent distribution checks to ten system Skills, and enforce them in the release gate to prevent omissions or drift during synchronization.
-
-### 6.0.52
-**Date:** 2026-09-18
-
-**Changes:**
-
-* Generalize project names, events, properties, and business examples in analysis, data integration, and Engage Skills using generic examples or placeholders, and clarify that review explanations should reference actual events and properties from the current asset definition.
-* Remove the fixed Feishu tracking-plan link from the tracking-code generation Skill and use a user-provided tracking-plan document as input instead.
-
-### 6.0.51
-**Date:** 2026-09-18
-
-**Changes:**
-
-* Clarify analysis-model Skill input constraints: construct parameters for the selected model and include time ranges and time granularity only when supported.
-* Clarify the parameter nesting and historical-date query limitations of user-property analysis to avoid answering historical questions with current property statistics.
-* Document the required event scope for path analysis, including the source event, and explain how to traverse nodes and links as two-dimensional arrays grouped by path level.
-
-### 6.0.49
-**Date:** 2026-09-17
-
-**Changes:**
-
-#### Analysis & Governance
-* Rework `ae-analysis` execution and result recovery to consume valid results directly while preserving exit status, streamline command indexes and model references, strengthen metadata, saved-definition, and result-file reuse, and document natural day/week/month windows and formula-report writeback constraints.
-* Add an Agent review and governance-recommendation CLI lifecycle covering batch lists, details, evidence, review, retry, recommendation export, and submission to pages, with recommendation batching, dashboard-space preservation, and project-semantic asset-package export.
-* Support personal default dashboard filters and fix SQL report Selector runtime parameters, unified asset search, virtual-event snapshot dates, project member creation, and role-update contracts.
-
-#### Tracking Migration & Data Integration
-* Add the `ae-migrate-tracking-code` Skill for migrating Amplitude, Firebase/GA4, Mixpanel, and Sensors Data integrations to AE across Web, server, Android, iOS, React Native, `dataLayer`, and wrapper-based code, with dual-write isolation, common-property and identity mappings, consent switches, and confirmation before removing legacy code.
-* Unify user-property code generation, add `user_append`, and preserve the correct direct handling of `user_append` and `user_unset` operations during generation and migration.
-* Add ingestion workflows for Lark Base, Lark Sheets, and manually exported files, including snapshot, reuse, UE mapping, and upload guidance; Lark Base snapshots keep stable IDs in reserved `__record_id` and stop on business-field collisions instead of silently replacing the deduplication key.
-
-#### Knowledge Base
-* Support replacing and restoring knowledge-base file and ZIP sources while preserving directory structure and revision checks, and add Lark-source update detection for identifying remote document changes.
-
-#### Page Context & Compatibility
-* Add `context +current`, `ae-current-context`, and the page-context business Skill so Agents can read the current product-page context on demand, with release gates that keep internal page dictionaries out of public packages.
-* Fix CLI ESM compatibility and dependency warnings to improve runtime stability for data-integration and XLSX processing paths.
+#### CLI & Integrations
+* Add an `ae-cli-workbuddy` entry point with isolated configuration and credentials, plus two-step host selection and device authentication for WorkBuddy connections.
+* Refresh the WorkBuddy host selection page with official ThinkingAI branding, an animated connection indicator, and a clear completed state that prevents repeated requests after the local server exits.
 
 ### 6.0.48
 **Date:** 2026-09-10
@@ -150,7 +86,6 @@
 #### Agent & CLI
 * Harden Skill editing and version synchronization with actionable version-conflict recovery, customer-safe history-conflict errors, internal-only rescan guidance, and explicit public npm registry selection during version installation
 * Preserve Host configuration on `auth logout`, and stop capability discovery from guessing unregistered domains or retrying empty catalogs without deployment or permission evidence
-* Add `context +current` and the `ae-current-context` Skill for Run-bound, sandbox-authenticated, on-demand reading of generic product-page context without exposing context locators to the model
 
 ### 6.0.45
 **Date:** 2026-08-21

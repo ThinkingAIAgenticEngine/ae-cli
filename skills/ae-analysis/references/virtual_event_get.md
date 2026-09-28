@@ -8,6 +8,7 @@ Command:
 
 ```bash
 ae-cli analysis-meta virtual-event get --project-id <project_id> --v-event-id <v_event_id>
+ae-cli analysis-meta virtual-event get --dry-run
 ```
 
 Capability id: `metadata.virtual_event.get`.

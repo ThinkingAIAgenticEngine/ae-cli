@@ -5,10 +5,6 @@ description: "Interactive generation of an AE tracking plan and upload. Trigger 
 
 # ae-generate-tracking-plan
 
-## Cross-skill collaboration
-
-When remaining work is outside this skill's scope, or a necessary prerequisite needs another capability, follow [the collaboration protocol](references/collaboration.md). Choose from the skills available in this run by capability, preserve verified context, and continue the remaining task. Reuse this protocol if already loaded.
-
 > **Conversation language**: This skill document is in English, but **all output to the user MUST be in the user's input language**.
 > English input → English reply; Chinese input → Chinese reply; Japanese input → Japanese reply.
 > If uncertain, default to English.
@@ -644,7 +640,7 @@ Draft
 }
 ```
 
-> `update_type` is one of: `user_set` (overwrite), `user_setOnce` (first-set-only), `user_add` (numeric accumulate), `user_append` (array append).
+> `update_type` is one of: `user_set` (overwrite), `user_setOnce` (first-set-only), `user_add` (numeric accumulate).
 
 **User identity fields (`meta.user_identity`)**:
 
@@ -1363,7 +1359,7 @@ AE_LANG=<user_lang> ae-cli tracking plan upload --project <projectId> --xlsx .ae
 #### Auto-fix Flow
 
 CLI auto-executes:
-1. Upload xlsx to AE
+1. Upload xlsx to TE
 2. Check if `eventErrorMap` has errors
 3. Fixable errors → auto-fix draft.json → regenerate xlsx → re-upload
 4. Loop up to 3 times; prompt user for manual intervention if exceeded

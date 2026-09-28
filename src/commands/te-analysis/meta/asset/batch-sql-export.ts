@@ -5,9 +5,14 @@ import {
 } from '../../capability-shared.js';
 import {
   assetGovernanceInput,
-  governanceExportFlags,
-  governanceExportFields,
+  cacheConfigFlag,
+  clearHistoryTagFlag,
+  dashboardStatusFlag,
   nodeIdsFlag,
+  refreshTypeFlag,
+  reportsVersionFlag,
+  scheduleUiConfigFlag,
+  zoneOffsetFlag,
 } from './shared.js';
 
 export const analysisMetaAssetBatchSqlExport = createAnalysisGovernanceCapabilityCommand({
@@ -15,8 +20,7 @@ export const analysisMetaAssetBatchSqlExport = createAnalysisGovernanceCapabilit
   command: 'batch-sql-export',
   capabilityId: 'governance.asset.batch_export_sql',
   description: 'Batch export asset SQL definitions.',
-  flags: [projectIdFlag, nodeIdsFlag, payloadFlag, ...governanceExportFlags('xlsx')],
+  flags: [projectIdFlag, nodeIdsFlag, reportsVersionFlag, zoneOffsetFlag, scheduleUiConfigFlag, dashboardStatusFlag, refreshTypeFlag, cacheConfigFlag, clearHistoryTagFlag, payloadFlag],
   risk: 'read',
-  asyncArtifact: true,
-  buildInput: (ctx) => assetGovernanceInput(ctx, [...governanceExportFields, "node_ids"]),
+  buildInput: (ctx) => assetGovernanceInput(ctx, ["node_ids","reports_version","zone_offset","schedule_ui_config","dashboard_status","refresh_type","cache_config","clear_history_tag"]),
 });
