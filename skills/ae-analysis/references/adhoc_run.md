@@ -36,7 +36,7 @@ For SQL model definitions, use [`sql_table_list.md`](sql_table_list.md) to disco
 ## Input
 
 - `--project-id`: target project ID.
-- `--model-type`: one of the 13 AI-facing model names from [`ai_models.md`](ai_models.md). Do not pass `scenario`, `history_tag`, or `cluster`; tags and cohorts/clusters are separate capabilities.
+- `--model-type`: one of the 12 AI-facing model names from [`ai_models.md`](ai_models.md). Do not pass `scenario`, `history_tag`, or `cluster`; tags and cohorts/clusters are separate capabilities.
 - `--definition`: model-specific AI-facing definition JSON.
 - `--intent-snapshot`: use when the caller supplies an existing snapshot containing `schema_version: 1`, non-empty `requirement`, `definition`, and `model_type`. The CLI checks that its definition and model match the submitted values locally; the snapshot is never sent to Gateway.
 - `--resolutions`: only after user confirmation, pass deterministic bindings keyed by compiler error path. Keep each bound field's path and original wording; fill the other confirmed model parameters in `--definition`. Follow [`metadata_resolution.md`](metadata_resolution.md).
