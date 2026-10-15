@@ -1,10 +1,10 @@
 # Knowledge-guided analysis workflow
 
 Use this workflow after knowledge-base retrieval when the pages will guide a
-project-scoped business data analysis. The knowledge base determines which
-saved asset to execute, which business definition applies, and which
-conclusions are out of bounds. Current values still require an `ae-analysis`
-data query.
+project-scoped business data analysis. The knowledge base supplies candidate
+assets, verified definitions, and decision boundaries. Check their coverage of
+the user's original question before choosing execution. Current values still
+require an `ae-analysis` data query; a related KB page is not task completion.
 
 This workflow does not define knowledge-base compilation rules. Do not use it
 to create, upload, generate a schema for, compile, or delete a knowledge base.
@@ -89,25 +89,33 @@ pages actually read:
 | Decision boundaries | Case-only, frontend-only, adoption-only, not revenue, non-generalizable, expired, conflicting, or human-decision-required constraints |
 | KB evidence | Exact KB name, page path, and section actually read |
 
-Classify the contract before querying:
+Classify each candidate's coverage before querying. These states classify the
+asset, not completion of the original task:
 
 - `executable`: exact asset identity and semantics cover the question, with no
   unresolved conflict.
-- `partially_executable`: evidence covers only some subquestions; query and
-  answer only those parts.
+- `partially_executable`: evidence covers only some subquestions; execute the
+  applicable parts and retain their results, then continue discovery for the
+  uncovered parts.
+- `semantic_only`: read evidence supplies useful events, properties, or
+  limitations, but the candidate's definition cannot produce the requested
+  measure, entity, or scope. Retain that evidence and continue ordinary analysis.
 - `blocked`: a required asset, metric, aggregation, entity, filter, parameter,
-  time rule, or decision boundary is missing or conflicting; stop the affected
-  query and report the gap.
+  time rule, or decision boundary is missing or conflicting; do not execute
+  that unsupported definition. Continue discovery for the affected requirement
+  when an independently verified, authorized path remains possible.
 
 Do not fill a contract gap with general knowledge, a similarly named asset, or
-a technically valid query. When the task forbids clarification, return that the
-available evidence cannot answer the affected part instead of choosing an
-interpretation silently.
+a technically valid query. Resolve missing evidence through the ordinary
+analysis path below. If a material business choice remains ambiguous, request
+that choice once; if clarification is forbidden, disclose the unresolved part
+instead of choosing silently. Do not ask the user to authorize continuation of
+the same read-only data request merely because the KB covers only part of it.
 
 ## Execute the exact saved-asset chain
 
-An exact asset identified by a source page takes priority over fuzzy search and
-ad-hoc analysis:
+An exact, semantically applicable asset identified by a source page takes
+priority over fuzzy search and ad-hoc analysis:
 
 1. For a dashboard ID, call `analysis dashboard get` once with the verified
    project ID. Verify its name, child reports, `effective_settings`,
@@ -116,6 +124,10 @@ ad-hoc analysis:
 2. For a report ID, call `analysis report get` with the verified project ID.
    Verify its model, metric, aggregation, dimensions, filters, saved parameters,
    and time definition before querying data.
+   Definition inspection that establishes an unsuitable saved asset does not
+   require a data query to prove the mismatch. Record the incompatible fields
+   and continue ordinary discovery; do not execute a known wrong definition
+   merely to satisfy an attempt-first rule.
 3. Read the matching `ae-analysis` data-command reference before execution. Use
    [`report_data_run.md`](../../ae-analysis/references/report_data_run.md) for a
    bounded saved report result and
@@ -131,9 +143,9 @@ ad-hoc analysis:
    `ae-analysis`.
 6. For a metric or another saved asset, use its exact identity and corresponding
    command. Never replace it with a same-name object.
-7. Use the saved-asset discovery procedure from `ae-analysis` only when the KB
-   page provides no exact identity. A discovered candidate still requires
-   semantic equality, not title similarity.
+7. Use the saved-asset discovery procedure from `ae-analysis` when the KB
+   provides no suitable executable identity or leaves requirements uncovered.
+   A discovered candidate still requires semantic coverage, not title similarity.
 
 If the user asks for multiple groupings that one saved dynamic report supports,
 execute that same report once per required parameter variant. Keep the common
@@ -142,9 +154,11 @@ identical data command merely to inspect output that was locally truncated;
 capture or export the complete result through the supported data command.
 
 The statement "the KB contains definitions but not current values" means that
-the matched saved asset must be attempted first. It does not authorize jumping
-directly to a reconstructed SQL or ad-hoc query. If the attempt cannot produce
-a usable result, follow the explicit ordinary-analysis fallback below.
+an exact, semantically applicable saved asset must be attempted first. It does
+not require executing a related but unsuitable asset, nor authorize skipping
+saved-asset discovery directly to SQL. If inspection establishes a mismatch or
+execution cannot produce the requested result, follow the ordinary-analysis
+fallback below.
 
 When the live definition agrees with the KB, use the query result as data
 evidence and the KB page as routing, semantic, and boundary evidence.
@@ -173,9 +187,10 @@ definition or hide it with a replacement query.
 
 ## Fall back without hiding the knowledge-base result
 
-None of these conditions alone authorizes an ad-hoc or SQL reconstruction:
+These conditions require the state-specific handling and ordinary-analysis
+checks below; none alone establishes a verified ad-hoc or SQL definition:
 
-- The exact saved asset has not yet been attempted.
+- An applicable exact saved asset has not yet been attempted.
 - The exact saved asset returns an empty result.
 - The exact asset has a validation, transport, capability, or definition
   execution failure.
@@ -200,8 +215,8 @@ Handle these states without changing the contract:
   the input mapping allowed by its saved definition. Do not translate the report
   into SQL.
 - Partial success: retain successful saved-asset results and apply these rules
-  independently to each failed part. Do not discard valid sub-results or replace
-  the whole request with one reconstructed query.
+  independently to each failed or semantically uncovered part. Do not discard
+  valid sub-results or replace the whole request with one reconstructed query.
 - Permission denial: preserve the denied asset, error, and request ID. Do not
   retry the denied operation or use an undocumented lower-level API. The
   ordinary analysis fallback may still use another standard `ae-analysis`
@@ -222,8 +237,9 @@ Handle these states without changing the contract:
   may answer under a different, independently verified definition, but it must
   not claim to resolve the KB asset's conflict or present the result as
   definition-equivalent.
-- Fixed historical window: answer only for that window. If it cannot answer a
-  current-period question, state that it cannot be extrapolated.
+- Fixed historical window: do not extrapolate its values to the requested
+  period. If the window cannot be overridden, inspect alternatives through
+  ordinary analysis instead of presenting that window as the requested result.
 - Limited applicability: keep the conclusion within the declared scope. Do not
   expand adoption into revenue or intent, one module into the whole product, or
   one case into all customers.
@@ -234,25 +250,34 @@ applicable scope is not an equivalent validation.
 
 ## Degrade to the ordinary analysis path
 
-The KB path is preferred, not exclusive. If the exact KB-selected asset cannot
-produce the requested live result after a real attempt, continue as though no
-executable KB asset had been found and follow the ordinary `ae-analysis`
-"Existing business asset before ad-hoc" workflow:
+The KB path is preferred, not exclusive. If definition inspection establishes
+that the KB-selected asset cannot cover the request, or a real execution attempt
+cannot produce the requested live result, continue through the ordinary
+`ae-analysis` "Existing business asset before ad-hoc" workflow. Preserve the KB
+evidence and already verified definitions; do not restart from zero:
 
 1. Search for another accessible saved report or dashboard whose current live
    definition covers the request.
-2. Verify semantic equality before using it. A title match is not enough.
-3. If no saved definition matches, use ad-hoc analysis only when the normal
+2. Compare live definitions with the original request, including distinctions
+   such as creation versus creation-and-editing, user versus customer, and
+   event count versus distinct entity count. A title match is not enough.
+3. Follow [`metadata_resolution.md`](../../ae-analysis/references/metadata_resolution.md)
+   for uncovered definitions. Reuse verified KB and live-asset evidence; discover
+   only missing metadata, filters, dimensions, or scope. A missing descriptive
+   field does not invalidate independently supported action counts.
+4. If no saved definition matches, use authorized ad-hoc analysis only when the normal
    `ae-analysis` rules permit it and the required event, properties, metric,
    aggregation, entity, filters, time, and timezone can be established.
-4. Use only documented standard capabilities. Each fallback command remains
+5. Use only documented standard capabilities. Each fallback command remains
    subject to the backend's independent authorization checks.
 
 Fallback is available when the KB-selected asset is missing from the live
 project, inaccessible, empty for the requested scope, outside its supported
-time or breakdown, or persistently fails after the documented correction or
-retry path. The user does not need to restate the original data request merely
-to allow this ordinary fallback.
+time or breakdown, semantically unsuitable, missing requested fields or
+submetrics, or persistently fails after the documented correction or retry
+path. Technical success with a partial or wrong definition is also a coverage
+gap, not a reason to stop. The user does not need to restate the original data
+request merely to allow this ordinary fallback.
 
 Ad-hoc analysis must still satisfy the safety conditions below. SQL must also
 satisfy the additional SQL constraints in `ae-analysis`.
@@ -273,6 +298,18 @@ which alternative asset or ad-hoc definition produced the data, and every
 material difference from the KB-selected definition. Never claim that the KB
 asset produced a fallback result. An empty or denied KB result remains part of
 the audit record even when the fallback succeeds.
+
+## Check task completion
+
+Before answering, check each requirement of the original question against the
+actual definition and returned data. Finish when it is answered, or when bounded
+discovery establishes a concrete unavailable prerequisite, authorization
+boundary, or material choice requiring clarification. An asset state of
+`semantic_only`, `partially_executable`, or `blocked` is not by itself a terminal
+task state. Do not label creation-and-editing totals as pure creation, substitute
+another entity, or stop at a KB limitation while verified metadata supports a
+remaining authorized query. Keep genuine unknown fields unknown and label
+partial results explicitly; do not broaden an empty result merely to get rows.
 
 ## Answer with traceable boundaries
 

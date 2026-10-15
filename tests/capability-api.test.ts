@@ -14,6 +14,7 @@ import {
   buildCapabilityGatewayUrl,
   callCapabilityApi,
   CapabilityGatewayError,
+  downloadCapabilityArtifact,
   dryRunCapability,
   executeCapability,
   executeCapabilityWithEnvelope,
@@ -22,6 +23,7 @@ import {
   uploadInputFileBytes,
   validateCapability,
 } from '../src/core/capability-api.ts';
+import { getLocalCliPackageInfo } from '../src/core/package-info.ts';
 import {
   setCliTokenManual as persistCliTokenManual,
   clearCliToken,
@@ -152,7 +154,7 @@ await test('buildApiUrl: legacy alias maps to v1 path', () => {
   assert.equal(url, 'https://ta.example.com/api/cli/metadata/v1/capabilities');
 });
 
-await test('listCapabilities sends cli-token header', async () => {
+await test('listCapabilities sends authentication, source, and CLI version headers', async () => {
   const host = 'https://test-cap-list.internal';
   clearCliToken(host);
   setCliTokenManual('cli-list-token', host);
@@ -161,12 +163,14 @@ await test('listCapabilities sends cli-token header', async () => {
 
   let capturedToken: string | undefined;
   let capturedSource: string | undefined;
+  let capturedVersion: string | undefined;
   let capturedUrl = '';
   const prevFetch = globalThis.fetch;
   globalThis.fetch = (async (url, init) => {
     capturedUrl = String(url);
     capturedToken = (init?.headers as Record<string, string>)?.['cli-token'];
     capturedSource = (init?.headers as Record<string, string>)?.['X-Source'];
+    capturedVersion = (init?.headers as Record<string, string>)?.['X-TA-CLI-Version'];
     return new Response(JSON.stringify({ ok: true, data: [] }), { status: 200 });
   }) as typeof fetch;
 
@@ -174,6 +178,7 @@ await test('listCapabilities sends cli-token header', async () => {
     await listCapabilities(host, 'metadata', 42);
     assert.equal(capturedToken, 'cli-list-token');
     assert.equal(capturedSource, 'ae-cli');
+    assert.equal(capturedVersion, getLocalCliPackageInfo().version);
     assert.equal(new URL(capturedUrl).searchParams.get('project_id'), '42');
   } finally {
     globalThis.fetch = prevFetch;
@@ -183,6 +188,49 @@ await test('listCapabilities sends cli-token header', async () => {
     } else {
       process.env.SANDBOX_RUNTIME_ROOT = previousSandboxRoot;
     }
+  }
+});
+
+await test('uploadInputFileBytes sends CLI version header', async () => {
+  const host = 'https://test-capi-upload-version.internal';
+  clearCliToken(host);
+  setCliTokenManual('tok', host);
+
+  let capturedVersion: string | undefined;
+  const prevFetch = globalThis.fetch;
+  globalThis.fetch = (async (_url, init) => {
+    capturedVersion = (init?.headers as Record<string, string>)?.['X-TA-CLI-Version'];
+    return new Response(JSON.stringify({ ok: true, data: { input_file_id: 'file-1' } }), { status: 200 });
+  }) as typeof fetch;
+
+  try {
+    await uploadInputFileBytes(host, 'metadata', 1, 'data_table.csv', Buffer.from('id\n1\n'), 'data.csv');
+    assert.equal(capturedVersion, getLocalCliPackageInfo().version);
+  } finally {
+    globalThis.fetch = prevFetch;
+    clearCliToken(host);
+  }
+});
+
+await test('downloadCapabilityArtifact sends CLI version header', async () => {
+  const host = 'https://test-capi-download-version.internal';
+  clearCliToken(host);
+  setCliTokenManual('tok', host);
+
+  let capturedVersion: string | undefined;
+  const prevFetch = globalThis.fetch;
+  globalThis.fetch = (async (_url, init) => {
+    capturedVersion = (init?.headers as Record<string, string>)?.['X-TA-CLI-Version'];
+    return new Response(new Uint8Array([1, 2, 3]), { status: 200 });
+  }) as typeof fetch;
+
+  try {
+    const result = await downloadCapabilityArtifact(host, 'analysis', 'run-1', 'artifact-1');
+    assert.deepEqual([...result.bytes], [1, 2, 3]);
+    assert.equal(capturedVersion, getLocalCliPackageInfo().version);
+  } finally {
+    globalThis.fetch = prevFetch;
+    clearCliToken(host);
   }
 });
 

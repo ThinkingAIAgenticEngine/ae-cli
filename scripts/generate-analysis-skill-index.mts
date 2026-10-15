@@ -18,6 +18,7 @@ const sharedReferences = new Set([
   'analysis_data_export.md',
   'analysis_drilldown_contract.md',
   'analysis_gateway_assets.md',
+  'event_report_presentation.md',
   'analysis_interpretation.md',
   'audience_models.md',
   'command_index.md',

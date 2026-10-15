@@ -2,7 +2,7 @@
 
 # ae-cli
 
-`ae-cli` 是 ThinkingAI AgenticEngine（AE）平台的命令行客户端，为 AI Agent 和人工操作提供稳定、结构化的接口，覆盖分析与项目配置、元数据、埋点、本地数据接入、运营、DataOps、知识库、Agent 资源、用户记忆及系统管理。
+`ae-cli` 是 ThinkingAI AgenticEngine（AE）平台的命令行客户端，为 AI Agent 和人工操作提供稳定、结构化的接口，覆盖分析、实验、项目配置、元数据、埋点、本地数据接入、运营、DataOps、知识库、Agent 资源、用户记忆及系统管理。
 
 CLI 的核心设计包括：
 
@@ -15,8 +15,9 @@ CLI 的核心设计包括：
 ## 环境要求
 
 - Node.js 20 或更高版本。
+- 支持 macOS、Linux 和原生 Windows（PowerShell / CMD），无需安装 WSL。
 - 安装 CLI 时能够访问 npm 仓库。
-- 首次安装 Skills，或本地 Skills 来源不可用时，能够访问 GitHub。
+- 内置 Skills 来源不可用时，能够访问 GitHub。
 
 ## 安装
 
@@ -24,14 +25,16 @@ CLI 的核心设计包括：
 
 可直接复制给 Agent，并把 `<AE_HOST>` 替换为你的 AE 地址：
 
-> 请阅读 https://raw.githubusercontent.com/ThinkingAIAgenticEngine/ae-cli/main/cli-installation-guide.md 并按说明帮我安装或升级 AE CLI。我的 AE 地址是 `<AE_HOST>`。只安装 AE CLI 和配套 Skills，不要修改当前项目；遇到登录授权或需要管理员权限时请暂停并提示我。
+> 请按[安装指南](./cli-installation-guide.md)中的“AI installation prompt”帮助我安装 AE CLI；全局安装 Skills，并根据最终 CLI/Skills 验证结果判断成功。
 
 安装公开版 CLI 和 Agent Skills：
 
 ```bash
-npm install -g @thinkingai/ae-cli
-npx -y skills add ThinkingAIAgenticEngine/ae-cli -g -y
+npx @thinkingai/ae-cli@latest install
+npx @thinkingai/ae-cli@latest install --format json
 ```
+
+安装器检查 Node.js 20+、安装并验证 CLI，再将同版本 Skills 全局安装到 `~/.agents/skills`，公共文件只写入一次，再自动向需要独立目录的客户端分发副本，无需选择 Agent；之后安装的 Codex、Cursor 也可共享这些 Skills。支持 `--dry-run`、`--format json` 和可选的 `--host <AE_HOST>`。验证成功后不显示无关的项目级客户端告警；文件缺失和 YAML 错误仍判为失败。未登录不算安装失败。详见[安装指南](./cli-installation-guide.md)。
 
 Skills 会帮助 Claude Code、Codex、Cursor 等编码 Agent 理解、发现并调用 `ae-cli`。
 
@@ -60,6 +63,10 @@ ae-cli auth status
 ae-cli update
 ae-cli update --dry-run
 ```
+
+更新与 `install` 复用全局 Skills 安装和校验。旧包无需包含安装器或生成的清单，直接以目标包内置 Skills 为准。CLI 安装后 Skills 失败会返回部分成功信息，修复后可重复执行。
+
+自动同步在登录后的普通命令中触发，集群版本检查最长缓存 24 小时；`ae-cli update --host <AE_HOST>` 可立即查询。降级后，后续更新由旧版 CLI 自身执行，也受旧版实现限制。需要用新安装逻辑匹配旧集群时，可运行 `npx @thinkingai/ae-cli@latest update --host <AE_HOST>`，目标仍是集群要求的版本。
 
 `ae-cli update` 安装当前 Host 要求的精确版本，不依赖 npm `latest`。更新时优先从已安装的 npm 包同步 Skills，本地来源失败后才回退到对应的 GitHub tag。
 
@@ -113,12 +120,13 @@ ae-cli capability list --domain analysis --jq '.data.capabilities[] | .id'
 | 类别 | 根命令 | 用途 |
 |---|---|---|
 | 分析与项目 | `analysis` | 报告、看板、即席分析、下钻、详情、告警、标签和分群 |
+| 分析与项目 | `experiment` | Atlas 实验、报表、流量层、分桶、Feature、指标和操作日志 |
 | 分析与项目 | `analysis-meta` | 事件/属性目录、指标、虚拟元数据、埋点治理和项目分析配置 |
 | 分析与项目 | `analysis-governance` | 数据资产搜索、血缘、影响分析、认证和治理 |
 | 分析与项目 | `project` | 项目信息、成员、角色、权限、实体、时区和交接配置 |
 | 分析与项目 | `metadata` | 基于 Capability Gateway 的数据表、属性及维度表绑定 |
 | 分析与项目 | `personal-semantic-preference` | 当前用户按项目维护轻量个人语义偏好 |
-| 分析与项目 | `project-semantic` | 导出用于知识库构建的项目资产包 |
+| 分析与项目 | `project-semantic` | 项目语义治理、知识库资产包、候选校验、审核和发布 |
 | 数据与埋点 | `tracking` | 埋点方案、SDK 示例、检查、采集诊断、代码生成和内置 Wiki |
 | 数据与埋点 | `data-integration` | 检查、规划、转换、上传、交接和复用本地 CSV/JSON/Excel 数据 |
 | 社区洞察 | `community` | 社区帖子、评论、话题、情感、直播和报告工作流 |
@@ -138,15 +146,19 @@ ae-cli capability list --domain analysis --jq '.data.capabilities[] | .id'
 | Agent 平台 | `kb` | 知识库生命周期、LLM 问答及确定性的 index/grep/read 检索 |
 | Agent 平台 | `agent` | Agent、审批、自动化、模型、MCP、Skills、附件、凭证和沙盒工具 |
 | Agent 平台 | `context` | 读取当前 Agent Run 已授权的产品页面上下文 |
-| Agent 平台 | `memory` | 用户记忆、Top-K 上下文写入和实际采用计数 |
+| Agent 平台 | `memory` | AgentSpace 记忆、草稿、共享审核、提取任务、版本与状态治理 |
 | Agent 平台 | `team` | Agent Team 和 TeamRun 的执行、对话、结果及产物 |
 | Agent 平台 | `system` | root/admin 的成员、沙盒、工具、模型、用量、配额和渠道管理 |
 | 通用工具 | `capability` | 能力发现、Schema 查看、参数校验、dry-run 和通用执行 |
 | 通用工具 | `auth` | 按 Host 登录、查看状态及管理同一 Host 的多个账号 |
 | 通用工具 | `config` | 添加、切换、重命名和删除 Host 环境 |
-| 通用工具 | `sync` | 在本地工作区与 Agent 应用之间推送或拉取 Skills 和 MCP |
-| 通用工具 | `model` | 在 Agent 沙盒中查看并切换当前工作区模型 |
+| 通用工具 | `sync` | 在本地工作区与 Agent 应用之间推送或拉取 Skills 和 MCP；在 AgentSpace 上下文中禁用 |
+| 通用工具 | `model` | 在 Agent 沙盒中查看并切换当前工作区模型；在 AgentSpace 上下文中禁用 |
 | 通用工具 | `update` | 将 CLI 和 Skills 同步到当前 Host 要求的版本 |
+| 通用工具 | `install` | 一键安装、验证 CLI 和同版本全局 Skills |
+| Agent 平台 | `workspace` | AgentSpace 上下文、资料、能力、成员、动态与生命周期 |
+| Agent 平台 | `things` | 工作空间事项、协作成员、时间线、归档与恢复 |
+| Agent 平台 | `automation` | 自动化配置、执行、历史和结果 |
 <!-- root-command-surface:end -->
 
 ## Capability Gateway
@@ -167,6 +179,10 @@ ae-cli capability run analysis.report.list --input input.json
 复杂嵌套参数尚在调整时使用 `validate`；需要确认最终风险等级、输出模式、取消能力或删除门禁时使用 `dry-run`。默认不要对同一份最终入参连续执行 `validate` 和 `dry-run`，因为 `dry-run` 已包含参数校验。
 
 Gateway 命令遵循 [Capability 命令收录规则](docs/capability-command-admission.md)。常见工作流可以提供精选命令，长尾能力则保持动态发现。
+
+事件报表的展示配置与查询定义分开：`analysis report create|update --presentation '{"chart_type":"bar","table_layout":"event"}'` 设置原报表图形及结果表布局，`report get` 返回实际生效的展示配置。同模型更新时省略 presentation 可保留原有图形和结果表布局。看板表格卡片使用 `analysis dashboard-report get|update`，明确项目、看板和报表 ID；`update --chart-type table --table-layout event --date-outside false` 只改变该卡片，保留原报表定义及其他看板。本次展示配置契约仅支持事件报表。详见[报表更新](skills/ae-analysis/references/report_update.md)和[卡片更新](skills/ae-analysis/references/dashboard_report_update.md)。
+
+事件组合图使用原报表 `presentation.chart_type=combo` 和 `series` 项 `{metric_index:1,type:"bar",axis:"primary"}`（`type=bar|line`，`axis=primary|secondary`）。索引是当前 `definition.metrics` 从 1 开始的位置；更新使用当前报表版本，支持部分指标补丁及显式 `series: []` / `chart_type=line` 重置。看板趋势图继承原报表系列，修改源系列会影响该报表的其他趋势卡片；`dashboard-report update --chart-type combo` 选择已有组合图，不提供卡片独立覆盖。累计折线不等于组合图。详见[组合图作用域与安全规则](skills/ae-analysis/references/event_report_presentation.md)。
 
 `analysis user-tag create|update` 支持一次配置自动更新：传入 `--auto-refresh-schedule '{"frequency":"daily","time":"02:30"}'`（也支持每周、每月），或使用 `--auto-refresh-cron`。用 `--enable-auto-refresh false` 关闭自动更新。仅修改调度计划不触发即时重算；省略调度参数则保留原计划。详见[创建标签](skills/ae-analysis/references/user_tag_create.md)和[更新标签](skills/ae-analysis/references/user_tag_update.md)。
 
@@ -278,7 +294,7 @@ ae-cli agent +list-agents
 ae-cli agent +list-models
 ae-cli agent +list-mcps
 ae-cli agent +list-skills
-ae-cli agent +list-automations
+ae-cli automation list
 ae-cli agent +list-attachments
 ae-cli agent approval-type list
 ae-cli agent approval-request list --status pending
@@ -328,7 +344,7 @@ npm 包内包含与公开仓库一致的 `skills/` 目录：
 重新安装全部公开 Skills：
 
 ```bash
-npx -y skills add ThinkingAIAgenticEngine/ae-cli -g -y
+ae-cli install
 ```
 
 ## 开发
@@ -367,10 +383,12 @@ npm test
 npm run qa-changed
 npm run self-check
 npm run check:release
+npm run verify:experiment-tools
 npm run verify:readme
 npm run verify:auth-credentials
 npm run verify:update-check
 npm run verify:version-sync
+npm run verify:install
 ```
 
 ## 更新日志

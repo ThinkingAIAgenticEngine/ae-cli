@@ -7,13 +7,15 @@ Domain: **Conversations / read**
 ## Use Cases
 
 - Find conversations the current user previously archived.
-- Search one Agent by default inside an Agent sandbox.
+- Search the current AgentSpace when `--workspace-id`, `TE_AGENT_CURRENT_AGENT_SPACE_ID`, or a conversation target is available.
+- Preserve legacy one-Agent and explicit all-Agent search outside an AgentSpace scope.
 - Search a specific Agent from a regular terminal, or explicitly search all Agents.
 - Discover a real `conversation_id` before `+restore-conversation`.
 
 ## Mandatory Rules (MUST)
 
-- Never silently search every Agent. Outside an Agent sandbox, provide `--agent-id` or `--all true`.
+- Target precedence is explicit `--workspace-id`, current AgentSpace environment or canonical runtime directory, explicit `--conversation-id`, then legacy Agent/all scope. A legacy conversation environment variable alone does not opt into AgentSpace routing.
+- Never silently search every Agent. Outside an AgentSpace or Agent sandbox, provide `--agent-id` or `--all true`.
 - `--all false` does not authorize an all-Agent search.
 - `--agent-id` and `--all true` are mutually exclusive.
 - Inside an Agent sandbox, the default Agent is read from `TE_AGENT_CURRENT_AGENT_ID`.
@@ -23,8 +25,11 @@ Domain: **Conversations / read**
 ## Command
 
 ```bash
-# Current Agent inside an Agent sandbox
+# Current AgentSpace inside an AgentSpace runtime
 ae-cli agent +find-archived-conversations
+
+# Explicit AgentSpace
+ae-cli agent +find-archived-conversations --workspace-id <agent-space-id> --q "quarterly review"
 
 # Specific Agent from any terminal
 ae-cli agent +find-archived-conversations --agent-id <agent-id> --q "quarterly review" --time-zone Asia/Shanghai
@@ -43,6 +48,8 @@ ae-cli agent +find-archived-conversations --agent-id <agent-id> --dry-run
 
 | Parameter     | Required    | Description                                                        |
 | ------------- | ----------- | ------------------------------------------------------------------ |
+| `--workspace-id` | No | AgentSpace ID; defaults to `TE_AGENT_CURRENT_AGENT_SPACE_ID` |
+| `--conversation-id` | No | Conversation used to resolve its owning AgentSpace |
 | `--q`         | No          | Keyword matched against conversation titles and message previews   |
 | `--agent-id`  | Conditional | Agent ID; required outside a sandbox unless `--all true` is used   |
 | `--all`       | Conditional | Must be explicitly `true` to search every Agent                    |
@@ -63,7 +70,7 @@ When presenting results to a user, prefer `archived_at_local` and `updated_at_lo
 
 ## Next Steps on Failure
 
-- Scope error: add `--agent-id <agent-id>` or explicitly use `--all true`.
+- Scope error: add `--workspace-id <agent-space-id>`, `--conversation-id <conversation-id>`, `--agent-id <agent-id>`, or explicitly use `--all true`.
 - Time zone error: provide a valid IANA name such as `Asia/Shanghai` or `America/Los_Angeles`.
 - Empty result: try another keyword or an explicit all-Agent search.
 - Auth error: run `ae-cli auth login`, or verify that the command is running inside the expected Agent sandbox.
@@ -76,7 +83,7 @@ When presenting results to a user, prefer `archived_at_local` and `updated_at_lo
 
 - Transition status: transitional
 - Owning module: te-claude conversation archive
-- Current transport: te-claude sandbox REST API
+- Current transport: CLI-token Workspace REST API for AgentSpace scope; te-claude sandbox REST API for legacy Agent/all scope
 - Gateway target: `agent.conversation.find_archived`
 - Review after: 2026-10-23
 - Exit condition: Migrate to the Gateway when the equivalent capability has stable metadata and output, or remove this command if L3 discovery provides the same typed scope and output guarantees.

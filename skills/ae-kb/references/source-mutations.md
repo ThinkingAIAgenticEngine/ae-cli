@@ -11,6 +11,8 @@ These commands require a host exposing the External KB source-mutation and previ
 
 All new commands use `kb source <action>`. Existing `+source-put`, `+source-rm` and whole-KB `+rollback` keep their original behavior.
 
+For ordinary `.md`, `.markdown` and `.txt` sources, [the text workflow](text-sources.md) also supports `replace --text` or `--stdin` using the complete text API and the same required revision. `--file` continues to use the original multipart replacement contract below.
+
 ## Replace a file source
 
 ```bash
@@ -88,8 +90,8 @@ Keep the structured `error.code` and `hint`. `SOURCE_CONTENT_REVISION_CONFLICT`,
 ## Transitional admission
 
 - Transition status: transitional
-- Owning module: te-claude External Knowledge Base source mutation/version APIs
-- Current transport: authenticated external REST through `kbApi` / `kbUpload`, using only the standard CLI token
-- Gateway target: TBD; no equivalent typed source replacement/restore capability is registered in the current backend implementation
-- Review after: 2026-12-15
+- Owning module: te-claude knowledge-base source management
+- Current transport: External Knowledge Base REST API
+- Gateway target: TBD
+- Review after: 2026-11-12
 - Exit condition: migrate to equivalent Gateway capabilities while retaining typed file handling, revision guards, preview confirmation and stable outcomes, or remove redundant wrappers when dynamic invocation provides the same contract

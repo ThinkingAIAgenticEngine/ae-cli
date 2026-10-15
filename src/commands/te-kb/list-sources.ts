@@ -15,6 +15,7 @@ function buildUrl(ctx: RuntimeContext): string {
   url.searchParams.set('name', knowledgeBaseName(ctx));
   const scope = getExternalKnowledgeBaseTargetScope(ctx);
   if (scope) url.searchParams.set('scope', scope);
+  if (ctx.str('content-type')) url.searchParams.set('contentType', ctx.str('content-type'));
   return url.toString();
 }
 
@@ -38,6 +39,7 @@ export const listSources: Command = {
       required: false,
       desc: 'Exact knowledge base scope: personal | company (omit for personal → company fallback)',
     },
+    { name: 'content-type', type: 'string', desc: 'Source content filter: all (default) or text (ordinary .md, .markdown and .txt files only)' },
   ],
   risk: 'read',
   validate: (ctx) => {
@@ -51,6 +53,9 @@ export const listSources: Command = {
       );
     }
     getExternalKnowledgeBaseTargetScope(ctx);
+    if ((ctx.has?.('content-type') || ctx.str('content-type')) && !['all', 'text'].includes(ctx.str('content-type'))) {
+      throw new CliValidationError('--content-type must be all or text.');
+    }
   },
   dryRun: (ctx) => ({
     method: 'GET',
@@ -60,6 +65,7 @@ export const listSources: Command = {
     const params: Record<string, string> = { name: knowledgeBaseName(ctx) };
     const scope = getExternalKnowledgeBaseTargetScope(ctx);
     if (scope) params.scope = scope;
+    if (ctx.str('content-type')) params.contentType = ctx.str('content-type');
     return kbApi(ctx, 'GET', API_PATH, params, undefined, {
       preserveErrorMetadata: true,
       retryUnauthorized: false,

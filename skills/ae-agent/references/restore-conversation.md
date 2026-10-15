@@ -20,6 +20,7 @@ Domain: **Conversations / write**
 
 ```bash
 ae-cli agent +restore-conversation --conversation-id <conversation-id>
+ae-cli agent +restore-conversation --workspace-id <agent-space-id> --conversation-id <conversation-id>
 ae-cli agent +restore-conversation --conversation-id <conversation-id> --dry-run
 ```
 
@@ -27,6 +28,7 @@ ae-cli agent +restore-conversation --conversation-id <conversation-id> --dry-run
 
 | Parameter           | Required | Description                                   |
 | ------------------- | -------- | --------------------------------------------- |
+| `--workspace-id` | No | AgentSpace ID; defaults to the current AgentSpace environment or canonical runtime directory |
 | `--conversation-id` | Yes      | ID returned by `+find-archived-conversations` |
 
 ## Output
@@ -48,7 +50,7 @@ ae-cli agent +restore-conversation --conversation-id <conversation-id> --dry-run
 
 - Transition status: transitional
 - Owning module: te-claude conversation archive
-- Current transport: te-claude sandbox REST API
+- Current transport: CLI-token Workspace REST API for AgentSpace scope; te-claude sandbox REST API otherwise
 - Gateway target: `agent.conversation.restore`
 - Review after: 2026-10-23
 - Exit condition: Migrate to the Gateway when the equivalent capability has stable write metadata and idempotency guarantees, or remove this command if L3 provides the same typed safety.

@@ -8,6 +8,7 @@ import { dashboardShare } from './share.js';
 import { dashboardDelete } from './delete.js';
 import { dashboardHandover } from './handover.js';
 import { dashboardCopy } from './copy.js';
+import { dashboardMove } from './move.js';
 import { dashboardFreeze } from './freeze.js';
 import { dashboardAbnormalGet } from './abnormal-get.js';
 import { dashboardTaskStatus } from './task-status.js';
@@ -22,6 +23,7 @@ const commands: Command[] = [
   dashboardDelete,
   dashboardHandover,
   dashboardCopy,
+  dashboardMove,
   dashboardFreeze,
   dashboardAbnormalGet,
   dashboardTaskStatus,
@@ -37,6 +39,7 @@ export { dashboardShare };
 export { dashboardDelete };
 export { dashboardHandover };
 export { dashboardCopy };
+export { dashboardMove };
 export { dashboardFreeze };
 export { dashboardAbnormalGet };
 export { dashboardTaskStatus };

@@ -1,7 +1,7 @@
 ---
 name: ae-kb
-version: 1.0.1
-description: 'AE knowledge base CLI manual for creating, importing read-only compiled snapshots, querying, LLM-powered ask, listing accessible knowledge bases and their sources, deterministic index/grep/read retrieval, checking status, ZIP source upload and directory management, raw child-file reading, revision-checked child updates and deletion, compiling, schema generation, URL sources, source deletion, file/ZIP source draft replacement and restoration, and knowledge base deletion. Use when the user asks to manage AE (Agentic Engine) knowledge bases, import a compiled Markdown ZIP snapshot, upload documents or URLs to a knowledge base, query knowledge, ask knowledge bases with an LLM, list accessible knowledge bases or source metadata, inspect knowledge base indexes, search knowledge base pages, read a specific knowledge base page, check knowledge base status, generate schemas, compile knowledge, remove sources, or delete a knowledge base. To choose which knowledge base is worth searching, use the ae-kb-discovery skill first; this skill runs the retrieval once a target is chosen. Must use ae-cli kb commands and must not guess knowledge base names, scopes, page paths, source IDs, source display names, JSON payload shapes, or URL formats.'
+version: 1.0.4
+description: 'AE knowledge base CLI manual for creating, importing read-only compiled snapshots, querying, LLM-powered ask, listing accessible knowledge bases and their sources, deterministic index/grep/read retrieval, checking status, ZIP source upload and directory management, raw child-file reading, revision-checked child updates and deletion, compiling, schema generation, URL sources, source deletion, ordinary text source creation, full reads and revision-checked editing, file/ZIP source draft replacement and restoration, and knowledge base deletion. Use when the user asks to manage AE (Agentic Engine) knowledge bases, import a compiled Markdown ZIP snapshot, upload documents or URLs to a knowledge base, query knowledge, ask knowledge bases with an LLM, list accessible knowledge bases or source metadata, inspect knowledge base indexes, search knowledge base pages, read a specific knowledge base page, check knowledge base status, generate schemas, compile knowledge, remove sources, create or edit text sources, or delete a knowledge base. To choose which knowledge base is worth searching, use the ae-kb-discovery skill first; this skill runs the retrieval once a target is chosen. Must use ae-cli kb commands and must not guess knowledge base names, scopes, page paths, source IDs, source display names, JSON payload shapes, or URL formats.'
 ---
 
 # ae-kb
@@ -14,15 +14,15 @@ AE CLI (`ae-cli`) knowledge base commands are invoked through:
 
 ```bash
 ae-cli kb +<command> [options]
-ae-cli kb source <replace|restore|preview|commit|cancel|check-updates> [options]
+ae-cli kb source <create-text|read-text|replace|restore|preview|commit|cancel|check-updates|check-url-updates> [options]
 ```
 
 ## Global Rules
 
 - Use this skill for AE knowledge base tasks: create, import a compiled snapshot, query, ask with LLM, list accessible knowledge bases and their sources, inspect indexes, grep pages, read pages, check status, upload sources, add URL sources, generate schema, compile, remove source files, and delete knowledge bases.
 - **Searching a knowledge base for an answer is the most common task. If that is what you are doing, go straight to [Explore Knowledge Base Pages](#explore-knowledge-base-pages) and read [`references/query-workflow.md`](references/query-workflow.md) first — it is the retrieval procedure. The other commands below are for managing knowledge bases, not answering from them.**
-- **When retrieved pages will guide project-scoped business data analysis, read and follow [`references/analysis-workflow.md`](references/analysis-workflow.md) before running any data query. This is mandatory after a KB hit identifies a saved asset, definition, parameter, time rule, conflict, or decision boundary; do not jump directly to ad-hoc analysis or SQL.**
-- Read operations can run directly after required inputs are known. Write operations require explicit user intent and normally keep the confirmation prompt unless the user asks to bypass it.
+- **When retrieved pages will guide project-scoped business data analysis, read and follow [`references/analysis-workflow.md`](references/analysis-workflow.md) before running any data query. This is mandatory after a KB hit identifies an asset, definition, parameter, time rule, conflict, or decision boundary. Verify semantic coverage before execution; a related page or KB limitation is not task completion. Continue ordinary analysis for uncovered requirements without jumping directly to unverified ad-hoc analysis or SQL.**
+- Read operations can run directly after required inputs are known. Write operations require explicit user intent. Only `high-risk-write` commands require the CLI confirmation prompt; use `--yes` after explicit authorization.
 - Prefer `--dry-run` before destructive or broad writes when the user has not already validated the target.
 - Do not invent knowledge base names, scopes, source IDs, source display names, or JSON payloads. Ask the user or query known context when values are missing.
 - When building a `--sources` ref (or `+read --source`), copy the exact `scope` and `name` from `+list` output — run `ae-cli kb +list` first when the scope of a named knowledge base is unknown.
@@ -36,6 +36,9 @@ ae-cli kb source <replace|restore|preview|commit|cancel|check-updates> [options]
 
 | Command | Risk | Purpose |
 |---|---:|---|
+| `source create-text` | write | Create one ordinary Markdown source from text, UTF-8 file or explicit stdin; saves without compiling. |
+| `source read-text` | read | Read complete ordinary text with its corresponding revision; optionally save original UTF-8 bytes to a new file. |
+| `source check-url-updates` | write | Submit an asynchronous check for one compiled custom URL source; success means accepted only. |
 | `source check-updates` | write | Check one compiled Feishu source with the scheduled detector; mark changes without compiling. |
 | `+ask` | read | LLM-powered Q&A over knowledge bases; for multi-page synthesis or multi-hop questions. |
 | `+ask-status` | read | Query the current status of an ask execution by `--execution-id` without polling. |
@@ -52,8 +55,29 @@ ae-cli kb source <replace|restore|preview|commit|cancel|check-updates> [options]
 | `+schema` | write | Generate the compile schema for a knowledge base. |
 | `+compile` | write | Compile a knowledge base in incremental or full mode. |
 | `+status` | read | Query the current status of a knowledge base. |
+| `usage list` | read | List one page of compilation usage logs, including elapsed time in milliseconds. |
 | `+rm-source` | high-risk-write | Delete one source from a knowledge base by stable ID; exact display name is legacy compatibility only. |
 | `+remove` | write | Delete an entire knowledge base. |
+
+## Compilation Usage Logs
+
+```bash
+ae-cli kb usage list --name handbook --scope personal --page 1 --page-size 20
+ae-cli kb usage list --name handbook --jq '.items | map({createdAt, taskType, status, durationMs})' --format table
+```
+
+- Returns `{ items, total, page, pageSize }`. `--page` defaults to 1; `--page-size` defaults to 20 and accepts 1–100. Fetch each page explicitly.
+- `durationMs` is the usage log's `finishedAt - startedAt`, in milliseconds. A missing or invalid timestamp yields `null`; zero remains zero. Failed records can have duration even when `usageAvailable` is false.
+- Historical missing durations are not reconstructed from compile runs. `startedAt` and `finishedAt` are ISO timestamps or `null`.
+- Requires the same Schema-read permission as the Web compilation usage list. Imported snapshots do not expose usage. `--scope` selects exactly personal or company; omission keeps the existing personal-then-company lookup.
+- `--dry-run` previews the read without sending a request. Default output retains numeric/null values; use the existing `--jq` and `--format table` options for a compact table.
+
+Transition status: transitional
+Owning module: te-claude External Knowledge Base Usage API
+Current transport: authenticated External REST via `kbApi`
+Gateway target: TBD (compilation usage list)
+Review after: 2026-12-14
+Exit condition: migrate to the Gateway equivalent when available, preserving typed pagination and duration/null semantics.
 
 ## Published Version History
 
@@ -298,7 +322,7 @@ ae-cli kb +list --build-status compiled
 
 Use the deterministic retrieval primitives when an agent needs to explore knowledge base content like a code repository. These endpoints do not call an LLM on the server side.
 
-**Before running a real query, read [`references/query-workflow.md`](references/query-workflow.md)** — it is the step-by-step procedure for turning a question into an answer without crawling. It covers candidate indexing, copied-path grep, same-page read windows, linked-page re-grep, outline-derived ranges, and coverage assessment. This section below is the per-command reference the workflow draws on.
+**Before running a real query, read [`references/query-workflow.md`](references/query-workflow.md)** — it selects the next useful retrieval step without crawling. It covers candidate indexing, copied-path grep, direct bounded reads of linked short pages, same-page read windows, linked-page re-grep when needed, optional outline-derived ranges, and coverage assessment. This section below is the per-command reference the workflow draws on.
 
 Start with `+list` or `+index` to discover accessible knowledge bases. Use `+index` when you also need navigation maps:
 
@@ -343,6 +367,10 @@ ae-cli kb +read \
   --expand block
 ```
 
+### Create, read or edit text sources
+
+Read [the text source workflow](references/text-sources.md) when collecting text, reading full editable source content, or updating an ordinary `.md`, `.markdown` or `.txt` source. It covers explicit scope, UTF-8/BOM/newline preservation, exclusive local output, revision conflicts, redacted dry-run and manual compilation. Web and CLI maintain the same source ID.
+
 ### List Sources
 
 List sources first to discover the stable identifier for the intended source:
@@ -354,10 +382,10 @@ ae-cli kb +list-sources --name engineering-handbook --scope company
 Copy the exact `id` from the response into `+rm-source`. Do not guess a source ID from a local filename, URL, display name, or an older upload response.
 
 - Transition status: transitional
-- Owning module: te-claude External Knowledge Base Sources API
-- Current transport: authenticated KB external REST through `kbApi`.
-- Gateway target: TBD (`kb.source.list` proposed)
-- Review after: 2026-12-03
+- Owning module: te-claude knowledge-base source management
+- Current transport: External Knowledge Base REST API
+- Gateway target: TBD
+- Review after: 2026-11-12
 - Exit condition: migrate to a typed Gateway capability when an equivalent source-list capability is available, or remove this command if dynamic Gateway execution provides the same discoverability and safe output contract.
 
 ### Remove One Source
@@ -441,7 +469,7 @@ ae-cli kb +grep --query "<keywords>" --sources '[{"scope":"company","name":"kb-n
 
 - `--query`, alias `-q`: required keywords to search.
 - `--sources`: required JSON array of knowledge base refs.
-- `--paths`: required JSON array of wiki pages or subdirectories **copied** from `+index`. A single page is still an array, e.g. `["wiki/sandbox.md"]`. Distinct from `+read --path` (one string).
+- `--paths`: required JSON array of wiki pages or subdirectories **copied** from current `+index`, `+grep` or `+read` navigation links. Do not invent paths. A single page is still an array, e.g. `["wiki/sandbox.md"]`. Distinct from `+read --path` (one string).
 - `--top-k`: optional max number of hits, 1-50, default 10.
 - `--locale`: optional locale: `zh`, `en`, `ja`, or `ko`.
 - Each page entry in results carries `hitCount` (full match count), `pageKind`, and `sections` previews with `sectionStartLine` / `sectionEndLine` — use the section range as the `+read` window.
@@ -530,10 +558,11 @@ ae-cli kb +status --name "<name>" [--scope personal|company]
 ### `+list-sources`
 
 ```bash
-ae-cli kb +list-sources --name "<name>" [--scope personal|company]
+ae-cli kb +list-sources --name "<name>" [--scope personal|company] [--content-type all|text]
 ```
 
 - `--name`: required knowledge base name.
+- `--content-type`: defaults to `all`; `text` selects ordinary `.md`, `.markdown` and `.txt` sources (case-insensitive), excluding URL and ZIP sources. Scope remains optional for this list command.
 - Output: `items` contains effective sources with stable `id`. `pendingDeletions` contains soft-deleted sources still included in the current successful version. `deletionMaintenance` is separate and may report already-published deletions awaiting cleanup. Paths, hashes, credentials, and source content are not returned.
 - Check `deletionProjection.state` and its `baseline` before interpreting deletion lists. `ready` with `pendingDeletions: []` means no pending deletion at that baseline. `changing`, `review_required`, or `unavailable` with `pendingDeletions: null` means undetermined; display the `reasonCode`, never turn null into an empty list. Legacy libraries without a verifiable complete publication manifest return unavailable until a real version is published.
 - A rollback creates a new current version. An older deletion receipt cannot override membership in that version. A later source deletion needs publication again.
@@ -580,3 +609,24 @@ Transport: `POST /agent/api/external/knowledge-bases/sources/check-updates`, bod
 - Gateway target: TBD; reuse an equivalent source update-check capability when available.
 - Review after: 2026-10-16.
 - Exit condition: once the Gateway exposes equivalent authorization and detector semantics, migrate the typed command to L2 or use L3 if it adds no value.
+
+
+### Submit an ordinary URL update check
+
+```bash
+ae-cli kb source check-url-updates --name "Engineering Handbook" --id "<source-id>" --scope company --dry-run
+ae-cli kb source check-url-updates --name "Engineering Handbook" --id "<source-id>" --scope company
+```
+
+Only existing `sourceType=url`, `platform=custom`, compiled sources without pending updates qualify. The request is rejected while Wiki/Schema compilation or input preparation is active. Success returns `{accepted:true,sourceId}` and only means accepted. It has no final counts, task ID, checking state, wait mode or completion query. Read `kb +list-sources` for update markers; unchanged state cannot distinguish execution, no change, failure or a discarded result. When marked changed, explicitly run the existing incremental compile. Feishu continues to use synchronous `source check-updates`.
+
+Transport: `POST /agent/api/external/knowledge-bases/sources/check-url-updates`, body `{name,sourceId,scope?}`. Dry-run previews without sending a request. Submission errors preserve the server error code, details and nonzero exit.
+
+### Admission record: source check-url-updates
+
+- Transition status: transitional (this new KB external capability has no Gateway equivalent).
+- Owning module: te-claude knowledge-base source management.
+- Current transport: KB external REST through kbApi and CLI token.
+- Gateway target: TBD; reuse an equivalent asynchronous ordinary URL source-check capability.
+- Review after: 2026-10-24.
+- Exit condition: when the Gateway provides equivalent authorization and asynchronous submission semantics, migrate to L2 if typed flags add value, otherwise use L3.

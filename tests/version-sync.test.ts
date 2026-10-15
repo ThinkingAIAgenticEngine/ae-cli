@@ -4,6 +4,7 @@ import os from 'node:os';
 import path from 'node:path';
 
 const testHome = fs.mkdtempSync(path.join(os.tmpdir(), 'ae-version-sync-'));
+process.on('exit', () => fs.rmSync(testHome, { recursive: true, force: true }));
 process.env.HOME = testHome;
 
 const {
@@ -13,6 +14,10 @@ const {
   isAutoSyncTargetEligible,
   isPublicAeCliPackage,
   resolveNodeTool,
+  recordVersionSyncResult,
+  getPendingSkillsTarget,
+  reserveAutoAttempt,
+  autoSyncDirection,
 } = await import('../src/core/version-sync.ts');
 
 assert.equal(isAutoSyncTargetEligible('6.0.32'), false);
@@ -67,122 +72,64 @@ assert.equal(
   'npm.cmd',
 );
 
-function createInstalledPackage(version: string): { root: string; skillsPath: string } {
-  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'ae-global-root-'));
+function scenario(mode: 'local' | 'fallback' | 'skip' | 'mismatch' | 'timeout', platform = process.platform) {
+  const fixture = fs.mkdtempSync(path.join(testHome, 'package-'));
+  const root = platform === 'win32' ? path.join(fixture, 'node_modules') : path.join(fixture, 'lib', 'node_modules');
   const packageRoot = path.join(root, '@thinkingai', 'ae-cli');
-  const skillsPath = path.join(packageRoot, 'skills');
-  fs.mkdirSync(skillsPath, { recursive: true });
-  fs.writeFileSync(
-    path.join(packageRoot, 'package.json'),
-    JSON.stringify({ name: '@thinkingai/ae-cli', version }),
-  );
-  return { root, skillsPath };
-}
-
-{
-  const installed = createInstalledPackage('6.1.9');
+  const skills = path.join(packageRoot, 'skills', 'ae-agent');
+  const target = path.join(fixture, 'agent-skills');
+  const bin = platform === 'win32' ? path.join(fixture, 'ae-cli.cmd') : path.join(fixture, 'bin', 'ae-cli');
+  fs.mkdirSync(skills, { recursive: true });
+  fs.mkdirSync(path.join(packageRoot, 'bin'));
+  fs.mkdirSync(path.join(packageRoot, 'dist'));
+  fs.mkdirSync(path.dirname(bin), { recursive: true });
+  fs.writeFileSync(path.join(packageRoot, 'package.json'), JSON.stringify({ name: '@thinkingai/ae-cli', version: '6.1.9' }));
+  fs.writeFileSync(path.join(packageRoot, 'bin', 'ae-cli.js'), '');
+  fs.writeFileSync(path.join(skills, 'SKILL.md'), '---\nname: ae-agent\ndescription: "Fixture"\n---\n');
+  if (platform === 'win32') fs.writeFileSync(bin, '@node "%dp0%\\node_modules\\@thinkingai\\ae-cli\\bin\\ae-cli.js" %*');
+  else fs.symlinkSync(path.join(packageRoot, 'bin', 'ae-cli.js'), bin);
   const calls: string[][] = [];
   const result = installVersion('6.1.9', {
-    runner: (_command, args) => {
+    packageName: '@thinkingai/ae-cli', skillsDirectory: target, nodeVersion: '20.19.5', platform,
+    env: { PATH: path.dirname(bin) },
+    skipCliInstall: mode === 'skip',
+    runner: (command, args) => {
       calls.push(args);
-      if (args[0] === 'root') {
-        return { status: 0, stdout: `${installed.root}\n`, stderr: '' };
+      const ok = (stdout = '') => ({ status: 0, stdout, stderr: '' });
+      if (args[0] === 'root') return ok(root);
+      if (args[0] === 'prefix') return ok(fixture);
+      if (args[0] === '--version') return ok(command === bin ? (mode === 'mismatch' ? '6.1.8' : '6.1.9') : '10.8.2');
+      if (args.includes('add')) {
+        if (mode === 'timeout' || (mode === 'fallback' && !args[3].includes('#v') && !args.includes('--copy'))) return { status: 1, stdout: '', stderr: 'network timeout' };
+        fs.cpSync(skills, path.join(target, 'ae-agent'), { recursive: true });
+        return ok();
       }
-      return { status: 0, stdout: '', stderr: '' };
+      throw new Error('Unexpected process invocation');
     },
   });
-  assert.equal(result.ok, true);
-  if (result.ok) assert.equal(result.skillsSource, 'local');
-  assert.deepEqual(
-    calls.find((args) => args[0] === 'install'),
-    [
-      'install',
-      '-g',
-      '@thinkingai/ae-cli@6.1.9',
-      '--registry',
-      'https://registry.npmjs.org',
-    ],
-  );
-  assert.equal(calls.some((args) => args.includes(`${installed.skillsPath}`)), true);
-  assert.equal(calls.some((args) => args.some((arg) => arg.includes('ThinkingAIAgenticEngine'))), false);
+  return { result, calls };
 }
-
-{
-  const installed = createInstalledPackage('6.1.9');
-  let npmInstallCalled = false;
-  const result = installVersion('6.1.9', {
-    skipCliInstall: true,
-    runner: (_command, args) => {
-      if (args[0] === 'install') npmInstallCalled = true;
-      if (args[0] === 'root') {
-        return { status: 0, stdout: `${installed.root}\n`, stderr: '' };
-      }
-      return { status: 0, stdout: '', stderr: '' };
-    },
-  });
-  assert.equal(result.ok, true);
-  assert.equal(npmInstallCalled, false);
-}
-
-{
-  const installed = createInstalledPackage('6.0.37');
-  const calls: string[][] = [];
-  const result = installVersion('6.0.37', {
-    runner: (_command, args) => {
-      calls.push(args);
-      if (args[0] === 'root') {
-        return { status: 0, stdout: `${installed.root}\n`, stderr: '' };
-      }
-      if (args.includes(installed.skillsPath)) {
-        return { status: 1, stdout: '', stderr: 'local source unsupported' };
-      }
-      return { status: 0, stdout: '', stderr: '' };
-    },
-  });
-  assert.equal(result.ok, true);
-  if (result.ok) assert.equal(result.skillsSource, 'github');
-  assert.equal(
-    calls.some((args) => args.includes('ThinkingAIAgenticEngine/ae-cli#v6.0.37')),
-    true,
-  );
-}
-
-{
-  const installed = createInstalledPackage('6.1.8');
-  const result = installVersion('6.1.9', {
-    runner: (_command, args) => {
-      if (args[0] === 'root') {
-        return { status: 0, stdout: `${installed.root}\n`, stderr: '' };
-      }
-      return { status: 0, stdout: '', stderr: '' };
-    },
-  });
-  assert.equal(result.ok, false);
-  if (!result.ok) {
-    assert.equal(result.stage, 'package_validation');
-    assert.equal(result.cause, 'validation');
+for (const platform of new Set([process.platform, 'win32'] as const)) {
+  for (const mode of ['local', 'fallback', 'skip'] as const) {
+    const { result, calls } = scenario(mode, platform);
+    assert.equal(result.ok, true, JSON.stringify(result));
+    if (result.ok) assert.equal(result.skillsSource, mode === 'fallback' ? 'github' : 'local');
+    assert.equal(calls.some(args => args[0] === 'install'), false);
+    assert.equal(result.report?.skills.installed_count, 1);
+    const adds = calls.filter(args => args.includes('add'));
+    assert.ok(adds.every(args => args.includes('-g')));
+    assert.ok(adds.at(-1)!.includes('--copy'));
+    assert.ok(!adds.at(-1)!.includes('--agent'));
   }
-}
-
-{
-  const installed = createInstalledPackage('6.1.9');
-  const result = installVersion('6.1.9', {
-    runner: (_command, args) => {
-      if (args[0] === 'root') {
-        return { status: 0, stdout: `${installed.root}\n`, stderr: '' };
-      }
-      if (args[0] === 'install') {
-        return { status: 0, stdout: '', stderr: '' };
-      }
-      return { status: 1, stdout: '', stderr: 'network timeout' };
-    },
-  });
-  assert.equal(result.ok, false);
-  if (!result.ok) {
-    assert.equal(result.stage, 'skills_github');
-    assert.equal(result.cliInstalled, true);
-    assert.equal(result.skillsPending, true);
-    assert.equal(result.cause, 'timeout');
+  const mismatch = scenario('mismatch', platform).result;
+  assert.equal(mismatch.ok, false);
+  if (!mismatch.ok) assert.equal(mismatch.stage, 'package_validation');
+  const timeout = scenario('timeout', platform).result;
+  assert.equal(timeout.ok, false);
+  if (!timeout.ok) {
+    assert.equal(timeout.cause, 'timeout');
+    assert.equal(timeout.skillsPending, true);
+    assert.equal(timeout.stage, 'skills_local');
   }
 }
 
@@ -199,6 +146,22 @@ function createInstalledPackage(version: string): { root: string; skillsPath: st
   if (!result.ok) assert.equal(result.cause, 'busy');
   fs.unlinkSync(path.join(configDir, 'version-sync.lock'));
 }
+
+// Preserve the on-disk state contract used by historical updaters.
+const legacyHost = 'https://legacy-cluster.example';
+fs.writeFileSync(path.join(testHome, '.ae-cli', 'version-sync.json'), JSON.stringify({ hosts: {
+  [legacyHost]: { target: '6.0.50', attemptDay: '2026-09-18', attemptsToday: 1,
+    lastAttemptAt: '2026-09-18T00:00:00.000Z', pendingSkills: true, lastFailureStage: 'skills_github' },
+} }));
+assert.equal(getPendingSkillsTarget(legacyHost), '6.0.50');
+recordVersionSyncResult(legacyHost, '6.0.50', { ok: true, cliInstalled: true, skillsSource: 'local' });
+assert.equal(getPendingSkillsTarget(legacyHost), undefined);
+assert.equal(autoSyncDirection('6.0.50', '6.0.40'), 'downgrade');
+assert.equal(autoSyncDirection('6.0.40', '6.0.50'), 'upgrade');
+assert.equal(autoSyncDirection('6.0.40', '6.1.9'), 'switch');
+assert.equal(reserveAutoAttempt(legacyHost, '6.0.40', now).allowed, true);
+assert.equal(reserveAutoAttempt(legacyHost, '6.0.50', now).allowed, true);
+assert.equal(reserveAutoAttempt('https://second-cluster.example', '6.1.9', now).allowed, true);
 
 fs.rmSync(testHome, { recursive: true, force: true });
 process.stdout.write('version-sync tests: passed\n');

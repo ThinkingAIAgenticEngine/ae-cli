@@ -14,7 +14,11 @@ Input sends `project_id` and `report_id`.
 
 This command reads saved definition metadata and deliberately has no `--use-cache` option. Cache selection applies to `report-data run/export`, not to definition reads.
 
-Output is the gateway envelope. `data` contains `version`, `model_type`, `definition`, report metadata, and dashboard membership in snake_case. Use `data.version` as `--report-version` when updating the same report. Raw frontend `events`, `event_view`, `visual_view`, and raw QP are not returned.
+Output is the gateway envelope. `data` contains `version`, `model_type`, `definition`, report metadata, and dashboard membership in snake_case. Event reports additionally expose separate `presentation` with `chart_type` and `table_layout`. Use `data.version` as `--report-version` when updating the same report. Raw frontend `events`, `event_view`, `visual_view`, and raw QP are not returned.
+
+`presentation.chart_type` describes the source report's effective chart under the current definition. `presentation.table_layout` describes its persisted result-table layout when readable; a legacy report without a persisted layout omits it because that setting can be inherited from the browser, not because it is necessarily `date`. For a table card on a specific analysis board, read [`dashboard-report get`](dashboard_report_get.md) with the exact dashboard ID. A raw chart code such as `L0` can coexist with a displayed result table or a dashboard table card; it is not proof of a read failure. Use the semantic response fields, and state unknown/null presentation fields as inherited/unknown rather than inventing values.
+
+For an effective trend, presentation also returns `series_scope=report` and per-metric `series` including default styles/axes. Non-default series can make `chart_type=combo` despite native `graphShape=L0`. Match each 1-based series index to this response's `definition.metrics` order, and use its current version for a subsequent source-series write. Read [event-report presentation](event_report_presentation.md) before interpreting or editing combination styles/axes.
 
 Reads preserve historical filter trees without flattening, including definitions deeper than the current analysis page can author. Follow the read/write boundary in [`ai_models.md`](ai_models.md): omit `definition` for metadata-only changes, and never feed an unsupported historical tree back as a definition update.
 

@@ -5,6 +5,7 @@ import {
   validateReportMetadataResolutions,
 } from '../ai-models.js';
 import { modelDefinitionIntentSnapshotFlag } from '../../../core/definition-intent.js';
+import { reportPresentationFlag, validateReportPresentation } from './presentation.js';
 import {
   compactInput,
   createAnalysisCapabilityCommand,
@@ -26,6 +27,7 @@ export const reportCreate = createAnalysisCapabilityCommand({
     { name: 'report-name', type: 'string', required: true, desc: 'Report display name.' },
     reportWriteModelTypeFlag(true),
     reportWriteDefinitionFlag(true),
+    reportPresentationFlag,
     modelDefinitionIntentSnapshotFlag,
     reportMetadataResolutionsFlag,
     { name: 'report-desc', type: 'string', required: false, desc: 'Optional report description.' },
@@ -34,15 +36,19 @@ export const reportCreate = createAnalysisCapabilityCommand({
     { name: 'dashboard-ids', type: 'json', required: false, desc: 'Optional dashboard ID array to associate after creation.' },
   ],
   risk: 'write',
-  validate: validateReportMetadataResolutions,
+  validate: (ctx) => {
+    validateReportMetadataResolutions(ctx);
+    validateReportPresentation(ctx);
+  },
   intentConsistency: { definitionFlag: 'definition', modelTypeFlag: 'model-type' },
   buildInput: (ctx) => compactInput({
     ...projectInput(ctx),
     report_name: ctx.str('report-name'),
     model_type: ctx.str('model-type'),
     definition: ctx.json('definition'),
+    presentation: optionalJson(ctx, 'presentation'),
     resolutions: optionalJson(ctx, 'resolutions'),
-    report_desc: optionalString(ctx, 'report-desc'),
+    report_desc: optionalString(ctx, 'report-desc') ?? '',
     cache_seconds: optionalNumber(ctx, 'cache-seconds'),
     query_duration_ms: optionalNumber(ctx, 'query-duration-ms'),
     dashboard_ids: optionalJsonArray(ctx, 'dashboard-ids'),

@@ -75,13 +75,14 @@ test('update dry-run prints local-first CLI and Skills plan', () => {
   assert.equal(body.data.target, '6.0.34');
   assert.equal(
     body.data.commands[0],
-    'npm install -g @thinkingai/ae-cli@6.0.34 --registry=https://registry.npmjs.org',
+    'npm install -g @tant/ae-cli@6.0.34 --registry=https://npm.thinkingdata.cn:3443',
   );
-  assert.match(body.data.commands[1], /npx -y skills add .*@thinkingai.*ae-cli.*skills -g -y/);
+  assert.match(body.data.commands[1], /npx -y skills@1\.5\.12 add .*@tant.*ae-cli.*skills" -g -y --agent universal/);
   assert.equal(
     body.data.commands[2],
-    'npx -y skills add ThinkingAIAgenticEngine/ae-cli#v6.0.34 -g -y',
+    'npx -y skills@1.5.12 add http://10.27.249.150:8888/te-ai/te-cli.git#v6.0.34 -g -y --agent universal',
   );
+  assert.match(body.data.commands[3], /skills@1\.5\.12 add .* -g -y --copy$/);
   assert.deepEqual(body.data.skillsSources, ['installed-package', 'github-fallback']);
 });
 

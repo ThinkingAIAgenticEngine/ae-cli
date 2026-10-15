@@ -24,7 +24,8 @@ import {
 import { normalizeUrl } from './url-utils.js';
 import { rememberKbAutoDiscoveryFeature } from './feature-config.js';
 
-const CHECK_INTERVAL_MS = 24 * 60 * 60 * 1000;
+const CHECK_INTERVAL_MS = 60 * 60 * 1000;
+const NOTIFY_INTERVAL_MS = 24 * 60 * 60 * 1000;
 const FETCH_TIMEOUT_MS = 3000;
 const CLI_CONFIG_PATH = '/v1/ta/cli/config';
 
@@ -97,16 +98,16 @@ function hostKey(host: string): string {
   return normalizeUrl(host);
 }
 
-function isStale(entry: CompatHostCache | undefined): boolean {
+export function isCompatCacheStale(entry: CompatHostCache | undefined, now = Date.now()): boolean {
   if (!entry?.lastFetchedAt) return true;
-  const age = Date.now() - new Date(entry.lastFetchedAt).getTime();
+  const age = now - new Date(entry.lastFetchedAt).getTime();
   return age >= CHECK_INTERVAL_MS;
 }
 
-function shouldNotify(entry: CompatHostCache | undefined): boolean {
+export function shouldNotifyCompat(entry: CompatHostCache | undefined, now = Date.now()): boolean {
   if (!entry?.lastNotifiedAt) return true;
-  const age = Date.now() - new Date(entry.lastNotifiedAt).getTime();
-  return age >= CHECK_INTERVAL_MS;
+  const age = now - new Date(entry.lastNotifiedAt).getTime();
+  return age >= NOTIFY_INTERVAL_MS;
 }
 
 export function shouldSkipCompatCheck(argv: string[] = process.argv): boolean {
@@ -136,7 +137,7 @@ function rootCommand(argv: string[]): string | undefined {
 
 export function shouldSkipAutoSync(argv: string[] = process.argv): boolean {
   const command = rootCommand(argv);
-  return command === 'update' || command === 'auth' || command === 'config';
+  return command === 'update' || command === 'install' || command === 'auth' || command === 'config';
 }
 
 type CliConfigPayload = {
@@ -292,7 +293,7 @@ async function refreshAndMaybeNotify(
   let cluster = existing?.clusterVersion;
   let fetchedAt = existing?.lastFetchedAt;
 
-  if (isStale(existing)) {
+  if (isCompatCacheStale(existing)) {
     const remote = await fetchCliConfig(host, token);
     if (remote) rememberKbAutoDiscoveryFeature(host, token, remote.projectSemanticKbAutoDiscovery ?? false);
     if (!remote?.aeCliVersion) {
@@ -430,7 +431,7 @@ async function refreshAndMaybeNotify(
   if (!notice) return { status: 'continue' };
 
   // Human and Agent-facing update hint: once per 24h for each host.
-  const dueForTip = shouldNotify(entry);
+  const dueForTip = shouldNotifyCompat(entry);
   if (!dueForTip) {
     pendingHostCompatNotice = undefined;
     pendingUpdateNotice = undefined;

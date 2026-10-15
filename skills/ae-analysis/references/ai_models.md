@@ -6,15 +6,15 @@ Open the selected model file directly from the registry and construct `definitio
 
 ## Capability coverage
 
-- `analysis adhoc run/export`: supports the 12 analysis models only.
-- `analysis report create/update`: supports the same 12 analysis models plus `tag` for saved tag report data.
+- `analysis adhoc run/export`: supports the 13 analysis models only.
+- `analysis report create/update`: supports the same 13 analysis models plus `tag` for saved tag report data.
 - `analysis report-data run/export`, `analysis dashboard-report-data run/export`, and `analysis bi-panel-page-data run/export`: execute existing saved assets. They do not accept `model_type`; use their own command references.
 
 Do not pass raw QP, `events`, `eventView`, `visualView`, frontend DTOs, schema-generated payloads, `scenario`, `history_tag`, or `cluster` as AI-facing `definition` or `model_type`.
 
 ## Model type registry
 
-Common analysis models (9):
+Common analysis models (10):
 
 - [`event`](ai_models/event.md): event analysis
 - [`retention`](ai_models/retention.md): retention analysis
@@ -25,6 +25,7 @@ Common analysis models (9):
 - [`path`](ai_models/path.md): path analysis
 - [`prop_analysis`](ai_models/prop_analysis.md): property analysis
 - [`sql`](ai_models/sql.md): SQL analysis
+- [`session`](ai_models/session.md): session analysis
 
 Scenario analysis models (3):
 
@@ -107,6 +108,33 @@ Filter:
 - Operators include `eq`, `neq`, `lt`, `lte`, `gt`, `gte`, `exists`, `not_exists`, `between`, `contains`, and `not_contains`.
 - Omit `values` for `exists` and `not_exists`.
 - Use exactly two values for `between`.
+
+List filters:
+
+For a verified list property or list-valued tag, use `array_contains` to match any element exactly, or `array_not_contains` when no element may equal any supplied value. `contains` and `not_contains` remain text substring operators; they are not aliases for list membership.
+
+`array_element_match` tests one element: `element_position` is a non-zero signed integer (`1` is the first element, `-1` the last; `0` is rejected), and `element_operator` is one of `eq`, `neq`, `contains`, `not_contains`, `regex`, `not_regex`, `exists`, or `not_exists`. Supply ordinary string-array `values`, except omit `values` for inner `exists` or `not_exists`.
+
+Each object below is a standalone leaf for a supported `filters` array:
+
+```json
+[
+  {"field":{"name":"<verified_list_tag>","type":"tag"},"operator":"array_contains","values":["share"]},
+  {"field":{"name":"<verified_list_tag>","type":"tag"},"operator":"array_not_contains","values":["task"]},
+  {"field":{"name":"<verified_list_tag>","type":"tag"},"operator":"array_element_match","element_position":-1,"element_operator":"contains","values":["task"]},
+  {"field":{"name":"<verified_list_tag>","type":"tag"},"operator":"array_element_match","element_position":1,"element_operator":"exists"},
+  {"field":{"name":"<verified_list_tag>","type":"tag"},"operator":"exists"},
+  {"field":{"name":"<verified_list_tag>","type":"tag"},"operator":"not_exists"}
+]
+```
+
+Top-level `exists` and `not_exists` keep their names and omit `values`; the server uses the resolved property metadata to distinguish list presence from scalar presence. Event-only filter contexts use the same list options with their existing `event_property_name` key instead of `field`:
+
+```json
+{"event_property_name":"<verified_list_event_property>","operator":"array_element_match","element_position":1,"element_operator":"eq","values":["share"]}
+```
+
+New list operators require a backend whose capability schema supports them. If an older deployment rejects them, report that version gap; preserve the requested list semantics rather than substituting text `contains`.
 
 Relative date/time filters use `operator: "relative_current_time"` or `"relative_event_time"` with `time_relative`:
 

@@ -1,7 +1,7 @@
 /**
  * ae-cli agent command domain
  *
- * Unified export of 95 commands across Agent CRUD and distribution, conversations, automations, models,
+ * Unified export of Agent CRUD and distribution, conversations, notifications, models,
  * MCP CRUD + market + OAuth + credentials, Skills CRUD + market + copy +
  * content + assets + approval + share, generic approvals, attachments, sandbox tools.
  */
@@ -78,7 +78,6 @@ import {
   rejectSkillShare,
 } from './skill-shares.js';
 import { listAttachments, addAttachment, delAttachment, attachmentStats } from './attachments.js';
-import { createAutomation, listAutomations, updateAutomation } from './automations.js';
 import { listSandboxTools } from './sandbox-tools.js';
 import { findArchivedConversations, restoreConversation } from './conversations.js';
 import {
@@ -129,8 +128,6 @@ const commands: Command[] = [
   shareSkill, listSkillShares, acceptSkillShare, rejectSkillShare,
   // Attachment library management
   listAttachments, addAttachment, delAttachment, attachmentStats,
-  // Automate tasks
-  listAutomations, createAutomation, updateAutomation,
   // Archived conversations
   findArchivedConversations, restoreConversation,
   // Sandbox tools (local scan of /home/ta/.local/bin managed shims)

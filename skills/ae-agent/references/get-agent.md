@@ -34,4 +34,4 @@ ae-cli agent +get-agent --dry-run --id <agent-cuid>
 - Auth error: run `ae-cli auth login`.
 
 ## Recommended Chaining
-- `+list-agents` → confirm `id` → `+get-agent` (inspect) → `+update-agent` / `+del-agent` / `+create-automation --agent-id <id>`
+- `+list-agents` → confirm `id` → `+get-agent` (inspect) → `+update-agent` / `+del-agent` / `ae-cli automation create --target-type agent --agent-id <id>`

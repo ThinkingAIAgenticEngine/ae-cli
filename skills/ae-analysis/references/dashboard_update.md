@@ -2,7 +2,7 @@
 
 Use when the user wants to update dashboard settings in batch, upsert a dashboard note, save a dashboard-wide or personal default filter, or replace the dashboard-level business filter.
 
-Do not use for moving/copying dashboards. Use `dashboard copy`, `dashboard handover`, or the relevant project-space/folder command.
+Do not use for moving/copying dashboards. Use `dashboard move`, `dashboard copy`, or `dashboard handover` for those workflows.
 
 Command:
 

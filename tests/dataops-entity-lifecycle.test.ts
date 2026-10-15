@@ -118,13 +118,15 @@ for (const { command, path } of writes) {
     });
   });
 
-  test(`${command.command}: refusal without --yes never enters execution`, () => {
+  test(`${command.command}: non-interactive calls without --yes require confirmation`, () => {
     const child = spawnSync(process.execPath, ['--import', 'tsx', 'src/index.ts', '--no-update-check',
       'dataops_datatable', command.command, '--spaceCode', 'demo', '--entityId', 'exact-entity-id',
       '--name', 'orders', '--host', host], { input: 'n\n', encoding: 'utf8', timeout: 30_000 });
-    assert.equal(child.status, 0, child.stderr);
-    assert.match(child.stderr, /high-risk-write/);
-    assert.match(child.stderr, /Aborted/);
+    assert.equal(child.status, 1, child.stderr);
+    const envelope = JSON.parse(child.stderr);
+    assert.equal(envelope.ok, false);
+    assert.equal(envelope.error.type, 'validation');
+    assert.equal(envelope.error.code, 'CONFIRMATION_REQUIRED');
     assert.equal(child.stdout.trim(), '');
   });
 

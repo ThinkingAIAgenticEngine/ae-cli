@@ -12,6 +12,8 @@ ae-cli system query-task get --company-id <company-id> --task-id <task-id>
 
 Capability id: `system.query_task.get`.
 
+The task must belong to `--company-id` by project or workspace. A foreign-company or missing task ID is rejected before details are read.
+
 The response uses `ok`, `data`, and `meta`. Treat empty `data` as success when `ok=true`; preserve `request_id` and `invocation_id` when present.
 
 ## Parameters

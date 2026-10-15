@@ -1,4 +1,5 @@
 import { randomUUID } from 'node:crypto';
+import { readCliAgentContext, runWithCliAgentContext } from '../../../../core/cli-agent-context.js';
 import type { Command, Flag, RuntimeContext } from '../../../../framework/types.js';
 import {
   compactInput,
@@ -78,7 +79,7 @@ export const metadataGovernanceRecommendationAutoReview: Command = {
     autoReviewInput(ctx)),
   dryRun: async (ctx) => dryRunCapability(ctx.host(), gatewayDomain(), AUTO_REVIEW_CAPABILITY_ID,
     autoReviewInput(ctx)),
-  execute: async (ctx) => {
+  execute: async (ctx) => withAutoReviewAgentContext(async () => {
     const input = autoReviewInput(ctx);
     if (hasExplicitLimit(ctx)) {
       await validateCapabilityWithEnvelope(ctx.host(), gatewayDomain(), AUTO_REVIEW_CAPABILITY_ID, input);
@@ -102,8 +103,16 @@ export const metadataGovernanceRecommendationAutoReview: Command = {
       }, result.meta);
     }
     return withOutputMetadata(result.data, result.meta);
-  },
+  }),
 };
+
+async function withAutoReviewAgentContext<T>(run: () => Promise<T>): Promise<T> {
+  const inherited = readCliAgentContext();
+  return runWithCliAgentContext({
+    agent_session_id: inherited.agent_session_id || randomUUID(),
+    agent_turn_id: inherited.agent_turn_id || randomUUID(),
+  }, run);
+}
 
 function autoReviewInput(ctx: RuntimeContext): Record<string, unknown> {
   return compactInput({

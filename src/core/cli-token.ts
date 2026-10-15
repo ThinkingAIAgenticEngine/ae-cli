@@ -20,6 +20,10 @@ const CLI_TOKEN_GENERATE_PATH = '/v1/ta/cli/token/generate';
 const CLI_TOKEN_RENEW_PATH = '/v1/ta/cli/token/renew';
 const CLI_TOKEN_VALIDATE_PATH = '/v1/ta/cli/token/validate';
 
+function safeReturnCode(value: unknown): string | undefined {
+  return typeof value === 'number' && Number.isFinite(value) ? String(value) : undefined;
+}
+
 export interface CliTokenAccount {
   openId: string;
   loginName: string;
@@ -165,20 +169,36 @@ async function generateCliToken(hostUrl: string, accessToken: string): Promise<s
     if (resp.status === 403) {
       const text = await resp.text();
       let body: any = {};
-      try { body = text ? safeJsonParse(text) : {}; } catch {}
-      const message = body.message ?? body.return_message ?? 'CLI access is disabled for this account.';
-      const code = body.code ?? (String(message).includes('CLI_ACCESS_DISABLED') ? 'CLI_ACCESS_DISABLED' : undefined);
-      throw new PermissionError(message, code, body.hint);
+      try {
+        body = text ? safeJsonParse(text) : {};
+      } catch {
+        // Older gateways may return an empty or non-JSON 403 response.
+      }
+      const serviceMessage = body.message ?? body.return_message;
+      const code = body.code === 'CLI_ACCESS_DISABLED'
+        || String(serviceMessage).includes('CLI_ACCESS_DISABLED')
+        ? 'CLI_ACCESS_DISABLED'
+        : undefined;
+      throw new PermissionError(
+        code === 'CLI_ACCESS_DISABLED'
+          ? 'CLI access is disabled for this account.'
+          : 'You do not have permission to generate a CLI token.',
+        code,
+      );
     }
     throw new Error(`CLI token generate HTTP error: ${resp.status} ${resp.statusText}`);
   }
   const data = safeJsonParse(await resp.text());
   if (data.return_code !== 0) {
-    const message = data.return_message || data.message || 'unknown';
-    if (data.code === 'CLI_ACCESS_DISABLED' || String(message).includes('CLI_ACCESS_DISABLED')) {
-      throw new PermissionError(message, 'CLI_ACCESS_DISABLED', data.hint);
+    const serviceMessage = data.return_message || data.message;
+    if (data.code === 'CLI_ACCESS_DISABLED' || String(serviceMessage).includes('CLI_ACCESS_DISABLED')) {
+      throw new PermissionError(
+        'CLI access is disabled for this account.',
+        'CLI_ACCESS_DISABLED',
+      );
     }
-    throw new Error(`CLI token generate error: ${message} (code: ${data.return_code})`);
+    const code = safeReturnCode(data.return_code);
+    throw new Error(`CLI token generation failed${code ? ` (code: ${code})` : ''}`);
   }
   const cliToken = data.data?.userSecret ?? data.data?.user_secret;
   if (!cliToken) throw new Error('CLI token generate error: empty userSecret in response');

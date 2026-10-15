@@ -1,25 +1,36 @@
 # analysis report update
 
-Use when the user explicitly wants to update saved report metadata or replace its AI QP definition.
+Use when the user explicitly wants to update saved report metadata, replace its AI QP definition, or change an event report's chart/result-table layout.
 
 Do not use raw QP, `qp`, `report_model`, or `analysis_query`. When changing the definition, pass `model_type` and AI QP `definition` together.
 
-Read [`ai_models.md`](ai_models.md) for the single AI-facing model registry. Report update supports the 12 analysis models plus `tag` for saved tag report data.
+Read [`ai_models.md`](ai_models.md) for the single AI-facing model registry. Report update supports the 13 analysis models plus `tag` for saved tag report data.
 
 Command:
 
 ```bash
 ae-cli analysis report update --project-id <project_id> --report-id <report_id> --report-version <version> --report-name "New name"
 ae-cli analysis report update --project-id <project_id> --report-id <report_id> --report-version <version> --model-type event --definition '{...}' [--resolutions '<confirmed_resolution_json>']
+ae-cli analysis report update --project-id <project_id> --report-id <report_id> --report-version <version> --presentation '{"table_layout":"event"}'
 ```
 
 When the caller supplies an existing snapshot, optional `--intent-snapshot` accepts `schema_version: 1`, non-empty `requirement`, `definition` and `model_type`. The CLI checks that its definition and model match the submitted values locally; the snapshot is never sent to Gateway. Metadata-only updates use no definition snapshot.
 
-Input sends `project_id`, `report_id`, `version` from CLI `--report-version`, and at least one of `report_name`, `report_desc`, or `definition`. Read `version` from `analysis report get` before updating. `model_type` is required when `definition` is provided; `resolutions` is allowed only when a definition is provided and is not supported with `model_type=tag`.
+Input sends `project_id`, `report_id`, `version` from CLI `--report-version`, and at least one of `report_name`, `report_desc`, `definition`, or top-level `presentation`. Read `version` from `analysis report get` before updating. `model_type` is required when `definition` is provided; `resolutions` is allowed only when a definition is provided and is not supported with `model_type=tag`.
+
+## Preserve display settings
+
+For same-model definition updates, omit `presentation` to preserve the saved event-report chart and result-table layout. For a display-only change, send `--presentation` without `--definition` or `--model-type`, using the current version. Only supplied presentation fields change; omitted fields are retained. Supported only for event reports: `chart_type=line|combo|bar|stacked|cumulative|pie`, `table_layout=date|event|group`, and report-level `series`. The gateway validates the effective presentation against the saved definition; pie always requires grouping without time comparison. Total-time reports support bar, or pie only when those grouping/comparison conditions hold. A model change uses the target model's display defaults unless an allowed event presentation is supplied.
+
+For combination styles/axes, read [event-report presentation](event_report_presentation.md) before updating. Series is a subset patch; `[]` is an explicit reset, and `chart_type=line` resets all series to primary-axis lines. Metric positions are tied to the current returned `definition.metrics` and report version. Changing source series also affects its other trend (`L0`) cards; card updates cannot override series locally. During definition changes, the server preserves uniquely matched technical metrics and rejects unsafe non-default series loss with `SERIES_PRESERVATION_CONFLICT`; follow its reset guidance instead of silently carrying old indexes into new metrics.
+
+Non-empty series-only updates require an existing compatible trend. Empty `series: []` also clears retained series on a compatible non-trend chart without changing that chart type. When changing from another chart, use explicit `chart_type=combo` with non-empty series; do not attach non-empty series to an explicit bar/pie/cumulative/line choice. If a definition change invalidates a previously valid chart, implicit preservation fails before writing; follow its compatible-chart guidance rather than promising an unchanged invalid display.
+
+To change a table card on an analysis board, use [`dashboard-report update`](dashboard_report_update.md) with `--chart-type table`, not report presentation. The source report, the analysis page's result table, and a dashboard card are separate display scopes. Raw `graphShape`, `byType`, `reportGraphShape`, `tableFormat`, and `dateOutside` are not authoring fields.
 
 Definition replacement follows the filter write boundary in [`ai_models.md`](ai_models.md): one compound group level with leaf-only, non-empty `items`. A deeper historical tree remains readable, but a deeper tree or empty group submitted for writing is rejected by the capability schema as `INVALID_CAPABILITY_INPUT`; use the returned field path or schema keyword to correct it. Omit `definition` for metadata-only changes and never flatten it.
 
-Output is the gateway envelope. `data` contains update status, `report_id`, and the normalized AI QP definition when a definition was updated.
+Output is the gateway envelope. `data` contains update status, `report_id`, and the normalized AI QP definition when a definition was updated, plus event-report `presentation`. It does not represent any dashboard card's display.
 
 When a definition is supplied, update and its `--validate` / `--dry-run` paths use the same compiler contract. `AI_QP_COMPILE_FAILED` preserves the full structured error array. The report is not changed on this failure; follow [`metadata_resolution.md`](metadata_resolution.md), keep each bound field's path and original wording, fill confirmed model parameters, and retry with `--resolutions` only after confirmation.
 
@@ -29,6 +40,6 @@ For a SQL `part_date` parameter, `use_timezone` is a boolean saved definition fi
 
 After a successful update, call `analysis-meta asset url-get` with the updated `report_id` and output its `markdown_link`.
 
-The capability schema includes model-specific nested definition validation. Unknown fields, including nested filter/time-range fields and diagnostic backing fields, are rejected instead of silently ignored. Use canonical snake_case keys and aggregation names such as `user_count`; event report metrics may additionally carry `display_name`. Inspect the report capability itself for the full saved-report definition schema.
+The capability schema includes model-specific nested definition validation. Unknown fields, including nested filter/time-range fields and diagnostic backing fields, are rejected instead of silently ignored. Use canonical snake_case keys and aggregation names such as `user_count`; event report metrics and funnel `steps[]` may additionally carry `display_name`. When replacing a funnel definition, preserve every step's returned `display_name` so custom labels survive the round trip. Inspect the report capability itself for the full saved-report definition schema.
 
 Use `--report-desc ""` to clear an existing description. Omitting `--report-desc` preserves the saved description. Clearing only the description is a valid metadata-only update.

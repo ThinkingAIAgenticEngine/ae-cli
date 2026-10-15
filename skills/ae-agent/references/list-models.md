@@ -26,7 +26,7 @@ ae-cli agent +list-models --dry-run
 | `--scope` | No | Filter by scope: `personal` \| `company` \| `system` |
 
 ## Decision Rules
-- When the user needs a model record ID for `+create-automation --model`, call this first.
+- When the user needs a model record ID for `ae-cli automation create --model`, call this first.
 - `--scope personal` shows only the user's own custom models; `company` / `system` show shared models.
 - Use `--format table` for a scannable overview of many models.
 
@@ -35,4 +35,4 @@ ae-cli agent +list-models --dry-run
 - Auth error: run `ae-cli auth login`.
 
 ## Recommended Chaining
-- `+list-models` → confirm model ID → `+create-automation --model <id>` or `+toggle-model` / `+del-model`
+- `+list-models` → confirm model ID → `ae-cli automation create --model <id>` or `+toggle-model` / `+del-model`

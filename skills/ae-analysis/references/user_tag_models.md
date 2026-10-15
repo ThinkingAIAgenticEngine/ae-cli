@@ -62,6 +62,8 @@ From a fixed date through today:
 
 ## SQL tag
 
+Return one row per distinct analysis-subject ID, with the tag value in the second column; a list tag requires a native SQL `ARRAY(varchar)` value, not a JSON string or repeated scalar rows. The server infers the tag type from that column, so do not add `selectType`; aggregate repeated subjects in the SQL itself, for example with `array_agg(DISTINCT CAST(value AS varchar))` and `GROUP BY` the subject ID.
+
 ```json
 {"type":"sql","sql":"SELECT \"#user_id\", 'payer' AS tag_value FROM hive.ta.v_event_1 WHERE ${PartDate:partdate} AND \"$part_event\"='pay'","params":[{"name":"partdate","type":"part_date","recent_day":"1-7"}]}
 ```

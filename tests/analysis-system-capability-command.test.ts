@@ -53,6 +53,7 @@ const expectedSystemIds = [
   'system.query_task.get',
   'system.query_task.list',
   'system.query_task.options',
+  'system.query_task.realtime_list',
   'system.receiver_address.delete',
   'system.receiver_address.overview',
   'system.receiver_address.project_list',
@@ -172,9 +173,9 @@ function protectedSecretFile(value: string): { dir: string; file: string } {
 
 process.stdout.write('\nanalysis system capability command tests\n');
 
-await test('registers exactly the admitted 60 system commands and 2 project commands', () => {
-  assert.equal(systemCommands.length, 60);
-  assert.equal(new Set(systemCommands.map((item) => item.capabilityId)).size, 60);
+await test('registers exactly the admitted 61 system commands and 2 project commands', () => {
+  assert.equal(systemCommands.length, 61);
+  assert.equal(new Set(systemCommands.map((item) => item.capabilityId)).size, 61);
   assert.deepEqual(systemCommands.map((item) => item.capabilityId).sort(), expectedSystemIds);
   assert.equal(projectInfoCreate.capabilityId, 'project.info.create');
   assert.equal(projectInfoDelete.capabilityId, 'project.info.delete');
@@ -270,8 +271,8 @@ await test('usage trend export forwards the cancellable run lifecycle input', as
     new URL('../skills/ae-analysis/references/system_usage_trend_export.md', import.meta.url),
     'utf8',
   );
-  assert.match(reference, /analysis run inspect --run-id/);
-  assert.match(reference, /analysis artifact download --run-id/);
+  assert.match(reference, /analysis run wait --run-id/);
+  assert.match(reference, /analysis run wait --run-id <run_id> --output <file>/);
   assert.match(reference, /jsonl\.gz/);
   assert.match(reference, /analysis query cancel --run-id/);
 });
@@ -398,6 +399,30 @@ await test('query alert update validates typed rule arrays and forwards confirma
   });
 });
 
+await test('query-task list/export document completion-time bounds without changing the wire format', async () => {
+  for (const id of ['system.query_task.list', 'system.query_task.export']) {
+    const command = byId(id);
+    assert.match(command.flags.find((flag) => flag.name === 'start-time')!.desc!, /completion-time/);
+    assert.match(command.flags.find((flag) => flag.name === 'end-time')!.desc!, /entire second/);
+    const input = await dryInput(command, {
+      'company-id': 7,
+      'start-time': '2026-10-10 11:29:00',
+      'end-time': '2026-10-10 11:59:22',
+      'project-ids': '[11]',
+      'status-codes': '[4]',
+      'content-codes': '[1]',
+      'task-type-codes': '[2]',
+    });
+    assert.equal(input.start_time, '2026-10-10 11:29:00');
+    assert.equal(input.end_time, '2026-10-10 11:59:22');
+    const reference = readFileSync(new URL(
+      `../skills/ae-analysis/references/system_query_task_${command.command}.md`, import.meta.url,
+    ), 'utf8');
+    assert.match(reference, /completion.time/);
+    assert.match(reference, /initiation time/);
+  }
+});
+
 await test('query-task export forwards standard run/artifact filters', async () => {
   const command = byId('system.query_task.export');
   assert.equal(command.risk, 'read');
@@ -429,8 +454,8 @@ await test('query-task export forwards standard run/artifact filters', async () 
     new URL('../skills/ae-analysis/references/system_query_task_export.md', import.meta.url),
     'utf8',
   );
-  assert.match(reference, /analysis run inspect --run-id/);
-  assert.match(reference, /analysis artifact download --run-id/);
+  assert.match(reference, /analysis run wait --run-id/);
+  assert.match(reference, /analysis run wait --run-id <run_id> --output <file>/);
   assert.match(reference, /analysis query cancel --run-id/);
 });
 
@@ -446,6 +471,32 @@ await test('query-task options is the discoverable source for list and export fi
   assert.match(reference, /content.*code/i);
   assert.match(reference, /task.*type.*code/i);
   assert.match(reference, /cluster/i);
+});
+
+await test('realtime query-task snapshot uses typed bounded filters without changing historical list', async () => {
+  const command = byId('system.query_task.realtime_list');
+  assert.equal(command.risk, 'read');
+  assert.deepEqual(await dryInput(command, {
+    'company-id': 7,
+    'project-ids': '[11]',
+    'cluster-names': '["cluster-a"]',
+    'duration-minutes': 10,
+    'status-codes': '[3]',
+    limit: 20,
+  }), {
+    company_id: 7,
+    duration_minutes: 10,
+    project_ids: [11],
+    cluster_names: ['cluster-a'],
+    status_codes: [3],
+    limit: 20,
+  });
+  assert.throws(() => command.validate!(ctx({
+    'company-id': 7,
+    'project-ids': '[11]',
+    'cluster-names': '[]',
+  })), /--cluster-names/);
+  assert.equal(byId('system.query_task.list').command, 'list');
 });
 
 await test('role and admin function replacement reject empty function arrays locally', async () => {

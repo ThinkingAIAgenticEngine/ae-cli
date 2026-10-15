@@ -218,11 +218,12 @@ test('command help text exposes customer and Agent review contracts without loca
 test('auto-review is an explicit gateway write separate from recommendation and page submission', async () => {
   setCliTokenManual('test-agent-review-token', host);
   const original = globalThis.fetch;
-  const calls: Array<{ url: string; input: Record<string, unknown> }> = [];
+  const calls: Array<{ url: string; input: Record<string, unknown>; clientContext?: Record<string, string> }> = [];
   globalThis.fetch = async (request, init) => {
     const url = String(request);
     assert.equal(new Headers(init?.headers).get('cli-token'), 'test-agent-review-token');
-    calls.push({ url, input: JSON.parse(String(init?.body)).input });
+    const body = JSON.parse(String(init?.body));
+    calls.push({ url, input: body.input, clientContext: body.client_context });
     if (url.endsWith('/capabilities/metadata.governance_recommendation.export/execute')) {
       return new Response(JSON.stringify({ ok: true, data: exportProbe(10, true) }));
     }
@@ -245,6 +246,10 @@ test('auto-review is an explicit gateway write separate from recommendation and 
     assert.equal(calls.at(-1)!.input.limit, 10);
     assert.ok(Array.isArray(calls.at(-1)!.input.decisions));
     assert.equal(calls[3].input.include_completed, false);
+    assert.ok(calls[3].clientContext?.agent_session_id);
+    assert.ok(calls[3].clientContext?.agent_turn_id);
+    assert.equal(calls[3].clientContext?.agent_session_id, calls[4].clientContext?.agent_session_id);
+    assert.equal(calls[3].clientContext?.agent_turn_id, calls[4].clientContext?.agent_turn_id);
   } finally {
     globalThis.fetch = original;
     clearCliToken(host);

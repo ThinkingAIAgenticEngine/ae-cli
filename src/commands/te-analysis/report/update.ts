@@ -1,5 +1,6 @@
 import type { RuntimeContext } from '../../../framework/types.js';
 import { modelDefinitionIntentSnapshotFlag } from '../../../core/definition-intent.js';
+import { reportPresentationFlag, validateReportPresentation } from './presentation.js';
 import {
   reportWriteDefinitionFlag,
   reportWriteModelTypeFlag,
@@ -20,9 +21,10 @@ import {
 function validateReportUpdate(ctx: RuntimeContext): void {
   const hasDefinition = ctx.str('definition') !== '';
   const hasResolutions = ctx.json('resolutions') !== undefined;
+  const hasPresentation = ctx.has?.('presentation') ?? ctx.str('presentation') !== '';
   const hasMetadataUpdate = ctx.str('report-name') !== '' || optionalStringPreserveEmpty(ctx, 'report-desc') !== undefined;
-  if (!hasDefinition && !hasMetadataUpdate) {
-    throw new Error('At least one of --report-name, --report-desc, or --definition is required.');
+  if (!hasDefinition && !hasMetadataUpdate && !hasPresentation) {
+    throw new Error('At least one of --report-name, --report-desc, --definition, or --presentation is required.');
   }
   if (hasDefinition && ctx.str('model-type') === '') {
     throw new Error('--model-type is required when --definition is provided.');
@@ -31,13 +33,14 @@ function validateReportUpdate(ctx: RuntimeContext): void {
     throw new Error('--resolutions requires --definition.');
   }
   validateReportMetadataResolutions(ctx);
+  validateReportPresentation(ctx);
 }
 
 export const reportUpdate = createAnalysisCapabilityCommand({
   resource: 'report',
   command: 'update',
   capabilityId: 'analysis.report.update',
-  description: 'Update report metadata or AI QP definition through the capability gateway.',
+  description: 'Update report metadata, AI QP definition, or event-report presentation through the capability gateway.',
   flags: [
     projectIdFlag,
     { name: 'report-id', type: 'number', required: true, desc: 'Report ID to update.' },
@@ -46,6 +49,7 @@ export const reportUpdate = createAnalysisCapabilityCommand({
     { name: 'report-desc', type: 'string', required: false, desc: 'New report description. Pass an empty string to clear it; omit to preserve it.' },
     reportWriteModelTypeFlag(false),
     reportWriteDefinitionFlag(false),
+    reportPresentationFlag,
     modelDefinitionIntentSnapshotFlag,
     reportMetadataResolutionsFlag,
     { name: 'cache-seconds', type: 'number', required: false, desc: 'Optional cache duration in seconds.' },
@@ -62,6 +66,7 @@ export const reportUpdate = createAnalysisCapabilityCommand({
     report_desc: optionalStringPreserveEmpty(ctx, 'report-desc'),
     model_type: optionalString(ctx, 'model-type'),
     definition: optionalJson(ctx, 'definition'),
+    presentation: optionalJson(ctx, 'presentation'),
     resolutions: optionalJson(ctx, 'resolutions'),
     cache_seconds: optionalNumber(ctx, 'cache-seconds'),
     query_duration_ms: optionalNumber(ctx, 'query-duration-ms'),

@@ -8,6 +8,7 @@ import { getLocalCliPackageInfo } from './core/package-info.js';
 import { registerTracking } from './commands/tracking/index.js';
 import { parseProgram } from './framework/program-lifecycle.js';
 import { printError } from './framework/output.js';
+import { registerInstall } from './commands/install.js';
 
 const require = createRequire(import.meta.url);
 const pkg = require('../package.json');
@@ -68,6 +69,12 @@ async function loadCommands(): Promise<Command[]> {
     warnLoadFailure('domain te-engage', err);
   }
   try {
+    const experiment = await import('./commands/te-experiment/index.js');
+    commands.push(...experiment.default);
+  } catch (err) {
+    warnLoadFailure('domain te-experiment', err);
+  }
+  try {
     const community = await import('./commands/te-community/index.js');
     commands.push(...community.default);
   } catch (err) {
@@ -102,6 +109,20 @@ async function loadCommands(): Promise<Command[]> {
     commands.push(...memory.default);
   } catch (err) {
     warnLoadFailure('domain memory', err);
+  }
+  const automation = await import('./commands/automation/index.js');
+  commands.push(...automation.default);
+  try {
+    const things = await import('./commands/things/index.js');
+    commands.push(...things.default);
+  } catch (err) {
+    warnLoadFailure('domain things', err);
+  }
+  try {
+    const workspace = await import('./commands/workspace/index.js');
+    commands.push(...workspace.default);
+  } catch (err) {
+    warnLoadFailure('domain workspace', err);
   }
   try {
     const teSystem = await import('./commands/te-system/index.js');
@@ -240,6 +261,7 @@ async function main() {
   await registerSyncCommand();
   await registerModelCommand();
   await registerUpdateCommand();
+  registerInstall(program);
   registerTracking(program);
   rejectUnknownHelpCommandPath(program, process.argv.slice(2));
   await parseProgram(program);
@@ -308,7 +330,7 @@ function isRootUpdateCommand(args: string[]): boolean {
       }
       continue;
     }
-    return token === 'update';
+    return token === 'update' || token === 'install';
   }
   return false;
 }

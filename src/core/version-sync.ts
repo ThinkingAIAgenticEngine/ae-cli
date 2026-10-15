@@ -1,17 +1,16 @@
-import { spawnSync } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
 import { getConfigDir } from './config.js';
 import {
-  AE_CLI_SKILLS_REPO,
   normalizeCliVersion,
   OPEN_SOURCE_AE_CLI_PACKAGE,
-  OPEN_SOURCE_NPM_REGISTRY,
   versionLine,
 } from './version-compat.js';
 import { normalizeUrl } from './url-utils.js';
 
-const COMMAND_TIMEOUT_MS = 120_000;
+import { runInstallation, installPlan, type InstallationOptions, type InstallationReport } from './installation.js';
+export { resolveNodeTool } from './install-process.js';
+export type { ProcessResult, ProcessRunner } from './install-process.js';
 const AUTO_ATTEMPT_INTERVAL_MS = 60 * 60 * 1000;
 const MAX_AUTO_ATTEMPTS_PER_DAY = 3;
 const LOCK_STALE_MS = 10 * 60 * 1000;
@@ -19,11 +18,13 @@ const SYNC_STATE_FILE = 'version-sync.json';
 const SYNC_LOCK_FILE = 'version-sync.lock';
 
 export type VersionSyncStage =
+  | 'environment'
   | 'lock'
   | 'npm_install'
   | 'package_validation'
   | 'skills_local'
-  | 'skills_github';
+  | 'skills_github'
+  | 'skills_clients';
 
 export type VersionSyncFailureCause =
   | 'busy'
@@ -34,24 +35,7 @@ export type VersionSyncFailureCause =
   | 'validation'
   | 'unknown';
 
-export interface ProcessResult {
-  status: number | null;
-  stdout: string;
-  stderr: string;
-  error?: Error;
-  signal?: NodeJS.Signals | null;
-}
-
-export type ProcessRunner = (
-  command: string,
-  args: string[],
-  timeoutMs: number,
-) => ProcessResult;
-
-export interface VersionInstallOptions {
-  skipCliInstall?: boolean;
-  progress?: (message: string) => void;
-  runner?: ProcessRunner;
+export interface VersionInstallOptions extends InstallationOptions {
   now?: Date;
 }
 
@@ -59,12 +43,14 @@ export type VersionInstallResult =
   | {
       ok: true;
       cliInstalled: boolean;
+      report?: InstallationReport;
       skillsSource: 'local' | 'github';
     }
   | {
       ok: false;
       stage: VersionSyncStage;
       cliInstalled: boolean;
+      report?: InstallationReport;
       skillsPending: boolean;
       cause: VersionSyncFailureCause;
       message: string;
@@ -219,73 +205,13 @@ export function isPublicAeCliPackage(packageName: string): boolean {
   return packageName === OPEN_SOURCE_AE_CLI_PACKAGE;
 }
 
-export function resolveNodeTool(
-  tool: 'npm' | 'npx',
-  execPath: string = process.execPath,
-  platform: NodeJS.Platform = process.platform,
-): string {
-  const fileName = platform === 'win32' ? `${tool}.cmd` : tool;
-  const sibling = path.join(path.dirname(execPath), fileName);
-  return fs.existsSync(sibling) ? sibling : fileName;
-}
-
-export function buildVersionInstallPlan(targetRaw: string, globalRoot = '<npm-root>'): {
+export function buildVersionInstallPlan(targetRaw: string, globalRoot = '<npm-root>', packageName = OPEN_SOURCE_AE_CLI_PACKAGE): {
   target: string;
   commands: string[];
   skillsSources: Array<'installed-package' | 'github-fallback'>;
 } {
   const target = normalizeCliVersion(targetRaw);
-  const localSkills = path.join(globalRoot, '@thinkingai', 'ae-cli', 'skills');
-  return {
-    target,
-    commands: [
-      `npm install -g ${OPEN_SOURCE_AE_CLI_PACKAGE}@${target} --registry=${OPEN_SOURCE_NPM_REGISTRY}`,
-      `npx -y skills add ${localSkills} -g -y`,
-      `npx -y skills add ${AE_CLI_SKILLS_REPO}#v${target} -g -y`,
-    ],
-    skillsSources: ['installed-package', 'github-fallback'],
-  };
-}
-
-function defaultRunner(command: string, args: string[], timeoutMs: number): ProcessResult {
-  const result = spawnSync(command, args, {
-    encoding: 'utf8',
-    maxBuffer: 2 * 1024 * 1024,
-    stdio: ['ignore', 'pipe', 'pipe'],
-    timeout: timeoutMs,
-    windowsHide: true,
-  });
-  return {
-    status: result.status,
-    stdout: result.stdout || '',
-    stderr: result.stderr || '',
-    error: result.error,
-    signal: result.signal,
-  };
-}
-
-function resultMessage(result: ProcessResult): string {
-  if (result.error?.message) return result.error.message;
-  const detail = (result.stderr || result.stdout).trim().split(/\r?\n/).filter(Boolean).slice(-3).join(' ');
-  if (detail) return detail;
-  if (result.signal) return `Command terminated by ${result.signal}`;
-  return `Command exited with status ${result.status ?? 'unknown'}`;
-}
-
-function classifyFailure(result: ProcessResult): VersionSyncFailureCause {
-  const text = `${result.error?.message || ''}\n${result.stderr}\n${result.stdout}`;
-  if (result.error && (result.error as NodeJS.ErrnoException).code === 'ETIMEDOUT') return 'timeout';
-  if (/timed?\s*out|ETIMEDOUT/i.test(text)) return 'timeout';
-  if (/EACCES|EPERM|permission denied|access is denied/i.test(text)) return 'permission';
-  if (
-    /EAI_AGAIN|ENOTFOUND|ECONNRESET|ECONNREFUSED|network|unable to access|could not resolve|certificate|SSL/i.test(text)
-  ) {
-    return 'network';
-  }
-  if (/E404|404 Not Found|no matching version|couldn't find remote ref|not found/i.test(text)) {
-    return 'package_missing';
-  }
-  return 'unknown';
+  return { target, commands: installPlan(packageName, target, globalRoot), skillsSources: ['installed-package', 'github-fallback'] };
 }
 
 export function friendlyVersionSyncFailure(
@@ -310,10 +236,6 @@ export function friendlyVersionSyncFailure(
     return 'The installed package could not be validated.';
   }
   return `Version synchronization failed at ${result.stage}.`;
-}
-
-function commandSucceeded(result: ProcessResult): boolean {
-  return !result.error && result.status === 0;
 }
 
 function acquireInstallLock(now: Date): number | null {
@@ -349,129 +271,26 @@ function releaseInstallLock(fd: number): void {
   } catch {}
 }
 
-function validateInstalledPackage(
-  npm: string,
-  target: string,
-  runner: ProcessRunner,
-): { ok: true; skillsPath: string } | { ok: false; message: string } {
-  const rootResult = runner(npm, ['root', '-g'], COMMAND_TIMEOUT_MS);
-  if (!commandSucceeded(rootResult)) {
-    return { ok: false, message: resultMessage(rootResult) };
+export function installVersion(targetRaw: string, options: VersionInstallOptions = {}): VersionInstallResult {
+  const run = (): VersionInstallResult => {
+    const report = runInstallation({ ...options, target: targetRaw });
+    const cliInstalled = report.cli.verified || report.cli.action === 'installed';
+    if (report.ok) return { ok: true, cliInstalled, skillsSource: report.skills.source === 'installed-package' ? 'local' : 'github', report };
+    return { ok: false, stage: report.error?.stage as VersionSyncStage ?? 'environment', cliInstalled,
+      skillsPending: cliInstalled, cause: report.error?.cause as VersionSyncFailureCause ?? 'validation',
+      message: report.error?.message ?? 'Installation failed.', report };
+  };
+  if (options.dryRun) return run();
+  let lock: number | null;
+  try { lock = acquireInstallLock(options.now ?? new Date()); }
+  catch {
+    return { ok: false, stage: 'lock', cliInstalled: false, skillsPending: Boolean(options.skipCliInstall),
+      cause: 'permission', message: 'The installation lock directory is not writable.' };
   }
-
-  const globalRoot = rootResult.stdout.trim();
-  const packageRoot = path.join(globalRoot, '@thinkingai', 'ae-cli');
-  const packageJson = path.join(packageRoot, 'package.json');
-  const skillsPath = path.join(packageRoot, 'skills');
-  try {
-    const installed = JSON.parse(fs.readFileSync(packageJson, 'utf8')) as { version?: string };
-    if (normalizeCliVersion(installed.version || '') !== target) {
-      return {
-        ok: false,
-        message: `Installed package version ${installed.version || 'unknown'} does not match ${target}`,
-      };
-    }
-    if (!fs.statSync(skillsPath).isDirectory()) {
-      return { ok: false, message: `Installed package has no skills directory: ${skillsPath}` };
-    }
-    return { ok: true, skillsPath };
-  } catch (error: any) {
-    return { ok: false, message: error?.message || String(error) };
-  }
-}
-
-export function installVersion(
-  targetRaw: string,
-  options: VersionInstallOptions = {},
-): VersionInstallResult {
-  const target = normalizeCliVersion(targetRaw);
-  const runner = options.runner ?? defaultRunner;
-  const progress = options.progress ?? (() => {});
-  const npm = resolveNodeTool('npm');
-  const npx = resolveNodeTool('npx');
-  const lock = acquireInstallLock(options.now ?? new Date());
-  if (lock === null) {
-    return {
-      ok: false,
-      stage: 'lock',
-      cliInstalled: false,
-      skillsPending: Boolean(options.skipCliInstall),
-      cause: 'busy',
-      message: 'Another ae-cli process is already synchronizing the global installation.',
-    };
-  }
-
-  let cliInstalled = Boolean(options.skipCliInstall);
-  try {
-    if (!options.skipCliInstall) {
-      progress(`[ae-cli] [1/2] Installing ae-cli ${target}...`);
-      const npmResult = runner(
-        npm,
-        [
-          'install',
-          '-g',
-          `${OPEN_SOURCE_AE_CLI_PACKAGE}@${target}`,
-          '--registry',
-          OPEN_SOURCE_NPM_REGISTRY,
-        ],
-        COMMAND_TIMEOUT_MS,
-      );
-      if (!commandSucceeded(npmResult)) {
-        return {
-          ok: false,
-          stage: 'npm_install',
-          cliInstalled: false,
-          skillsPending: false,
-          cause: classifyFailure(npmResult),
-          message: resultMessage(npmResult),
-        };
-      }
-      cliInstalled = true;
-    }
-
-    const installed = validateInstalledPackage(npm, target, runner);
-    if (!installed.ok) {
-      return {
-        ok: false,
-        stage: 'package_validation',
-        cliInstalled,
-        skillsPending: cliInstalled,
-        cause: 'validation',
-        message: installed.message,
-      };
-    }
-
-    progress('[ae-cli] [2/2] Synchronizing Skills from the installed npm package...');
-    const localResult = runner(
-      npx,
-      ['-y', 'skills', 'add', installed.skillsPath, '-g', '-y'],
-      COMMAND_TIMEOUT_MS,
-    );
-    if (commandSucceeded(localResult)) {
-      return { ok: true, cliInstalled, skillsSource: 'local' };
-    }
-
-    progress('[ae-cli] Local Skills sync did not complete; trying the GitHub fallback...');
-    const githubResult = runner(
-      npx,
-      ['-y', 'skills', 'add', `${AE_CLI_SKILLS_REPO}#v${target}`, '-g', '-y'],
-      COMMAND_TIMEOUT_MS,
-    );
-    if (commandSucceeded(githubResult)) {
-      return { ok: true, cliInstalled, skillsSource: 'github' };
-    }
-
-    return {
-      ok: false,
-      stage: 'skills_github',
-      cliInstalled,
-      skillsPending: cliInstalled,
-      cause: classifyFailure(githubResult),
-      message: resultMessage(githubResult) || resultMessage(localResult),
-    };
-  } finally {
-    releaseInstallLock(lock);
-  }
+  if (lock === null) return { ok: false, stage: 'lock', cliInstalled: false,
+    skillsPending: Boolean(options.skipCliInstall), cause: 'busy',
+    message: 'Another ae-cli process is already synchronizing the global installation.' };
+  try { return run(); } finally { releaseInstallLock(lock); }
 }
 
 export function autoSyncDirection(current: string, expected: string): 'upgrade' | 'downgrade' | 'switch' {

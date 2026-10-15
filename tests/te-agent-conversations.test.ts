@@ -5,6 +5,9 @@
  */
 
 import assert from "node:assert/strict";
+import fs from "node:fs";
+import os from "node:os";
+import path from "node:path";
 import test from "node:test";
 
 import {
@@ -60,7 +63,21 @@ async function withEnv(
   }
 }
 
-const noCurrentAgent = { TE_AGENT_CURRENT_AGENT_ID: undefined };
+async function withCwd(cwd: string, run: () => Promise<void> | void): Promise<void> {
+  const previous = process.cwd();
+  process.chdir(cwd);
+  try {
+    await run();
+  } finally {
+    process.chdir(previous);
+  }
+}
+
+const noCurrentAgent = {
+  TE_AGENT_CURRENT_AGENT_ID: undefined,
+  TE_AGENT_CURRENT_AGENT_SPACE_ID: undefined,
+  TE_AGENT_CONVERSATION_ID: undefined,
+};
 
 test("find command requires an explicit scope outside an Agent sandbox", async () => {
   await withEnv(noCurrentAgent, () => {
@@ -77,7 +94,7 @@ test("find command requires an explicit scope outside an Agent sandbox", async (
 });
 
 test("find command uses the current Agent sandbox scope by default", async () => {
-  await withEnv({ TE_AGENT_CURRENT_AGENT_ID: "agent-from-env" }, () => {
+  await withEnv({ ...noCurrentAgent, TE_AGENT_CURRENT_AGENT_ID: "agent-from-env" }, () => {
     const path = buildArchivedConversationSearchPath(
       ctx({ q: "quarterly review", limit: 20 }),
     );
@@ -88,14 +105,55 @@ test("find command uses the current Agent sandbox scope by default", async () =>
   });
 });
 
+test("legacy conversation environment alone does not imply AgentSpace scope", async () => {
+  await withEnv(
+    {
+      ...noCurrentAgent,
+      TE_AGENT_CURRENT_AGENT_ID: "agent-from-env",
+      TE_AGENT_CONVERSATION_ID: "legacy-conversation",
+    },
+    () => {
+      const preview = findArchivedConversations.dryRun?.(ctx({ limit: 20 }));
+      assert.deepEqual(preview, {
+        method: "GET",
+        url: "/api/sandbox/agent/conversations/archived?agentId=agent-from-env&limit=20",
+      });
+    },
+  );
+});
+
 test("explicit Agent scope overrides the sandbox Agent and encodes the keyword", async () => {
-  await withEnv({ TE_AGENT_CURRENT_AGENT_ID: "agent-from-env" }, () => {
+  await withEnv({ ...noCurrentAgent, TE_AGENT_CURRENT_AGENT_ID: "agent-from-env" }, () => {
     const path = buildArchivedConversationSearchPath(
       ctx({ q: "review & plan", agentId: "agent/explicit", limit: 1 }),
     );
     assert.equal(
       path,
       "/api/sandbox/agent/conversations/archived?q=review+%26+plan&agentId=agent%2Fexplicit&limit=1",
+    );
+  });
+});
+
+test("find command prefers AgentSpace scope and rejects mixed legacy scope", async () => {
+  await withEnv(noCurrentAgent, () => {
+    const workspaceContext = ctx({
+      workspaceId: "space/1",
+      q: "review & plan",
+      limit: 20,
+    });
+    assert.doesNotThrow(() => findArchivedConversations.validate?.(workspaceContext));
+    const preview = findArchivedConversations.dryRun?.(workspaceContext);
+    assert.equal(
+      preview?.url,
+      `${TEST_HOST}/agent/api/cli/workspace/v1/agent-spaces/space%2F1/conversations/archived?q=review+%26+plan&limit=20`,
+    );
+    assert.equal(
+      preview?.params?.target_url,
+      `${TEST_HOST}/agent/api/cli/workspace/v1/target?agentSpaceId=space%2F1`,
+    );
+    assert.throws(
+      () => findArchivedConversations.validate?.(ctx({ workspaceId: "space-1", agentId: "agent-1" })),
+      /cannot be combined/,
     );
   });
 });
@@ -172,6 +230,39 @@ test("restore dry-run URL-encodes the conversation ID", () => {
       body: {},
     },
   );
+});
+
+test("restore preserves an explicit AgentSpace scope", async () => {
+  await withEnv(noCurrentAgent, () => {
+    const preview = restoreConversation.dryRun?.(
+      ctx({ workspaceId: "space-1", conversationId: "conversation/a b" }),
+    );
+    assert.equal(
+      preview?.url,
+      `${TEST_HOST}/agent/api/cli/workspace/v1/agent-spaces/space-1/conversations/conversation%2Fa%20b/restore`,
+    );
+    assert.equal(
+      preview?.params?.target_url,
+      `${TEST_HOST}/agent/api/cli/workspace/v1/target?agentSpaceId=space-1&conversationId=conversation%2Fa+b`,
+    );
+  });
+});
+
+test("AgentSpace runtime directory scopes restore without a new environment variable", async () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), "ae-cli-agent-space-cwd-"));
+  const runtimeDir = path.join(root, "spaces", "actived", "space-cwd", ".conversations", "conversation-1");
+  fs.mkdirSync(runtimeDir, { recursive: true });
+  await withEnv(noCurrentAgent, () => withCwd(runtimeDir, () => {
+    const preview = restoreConversation.dryRun?.(ctx({ conversationId: "conversation-1" }));
+    assert.equal(
+      preview?.url,
+      `${TEST_HOST}/agent/api/cli/workspace/v1/agent-spaces/space-cwd/conversations/conversation-1/restore`,
+    );
+    assert.equal(
+      preview?.params?.target_url,
+      `${TEST_HOST}/agent/api/cli/workspace/v1/target?agentSpaceId=space-cwd&conversationId=conversation-1`,
+    );
+  }));
 });
 
 test("execute preserves UTC timestamps and defaults local output to Shanghai", async () => {

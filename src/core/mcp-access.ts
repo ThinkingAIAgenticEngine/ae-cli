@@ -26,10 +26,14 @@ export type KbApiOptions = {
   preserveErrorMetadata?: boolean;
   /** Retry one HTTP 401 after re-reading the local CLI token. */
   retryUnauthorized?: boolean;
+  /** Text endpoints must never echo server error details that could contain source content. */
+  redactErrorDetails?: boolean;
   responseType?: "bytes" | "empty";
 };
 
-class KbUnauthorizedError extends Error {}
+class KbUnauthorizedError extends Error {
+  constructor(message: string, readonly code?: string) { super(message); }
+}
 
 function optionalString(value: unknown): string | undefined {
   return typeof value === "string" && value.trim() ? value.trim() : undefined;
@@ -69,6 +73,26 @@ function responseErrorMessage(data: any): string | undefined {
   );
 }
 
+function safeTextErrorCode(data: any): string | undefined {
+  const rawCode = responseErrorMetadata(data).code;
+  return rawCode && /^[a-z0-9][a-z0-9_.:-]{0,127}$/i.test(rawCode) ? rawCode : undefined;
+}
+
+function safeTextError(resp: Response, data: any): Error {
+  const code = safeTextErrorCode(data);
+  const message = resp.status === 404 && !code
+    ? 'This host does not support the KB text API (HTTP 404).'
+    : `KB text request failed (HTTP ${resp.status}${code ? `, ${code}` : ''}).`;
+  const hint = code === 'SOURCE_CONTENT_REVISION_CONFLICT'
+    ? 'The source changed. Keep your local input, read the current revision and explicitly resolve the conflict.'
+    : resp.status === 404
+      ? 'Verify the exact source and host support for text APIs; no upload fallback was attempted.'
+      : 'Inspect the source list and current state before retrying. Source content is omitted from diagnostics.';
+  return resp.status === 403
+    ? new PermissionError(message, code, hint)
+    : new KbHttpError(message, code, resp.status, hint);
+}
+
 function responseStatus(resp: Response): string {
   const statusText = optionalString(resp.statusText);
   return statusText ? `${resp.status} ${statusText}` : String(resp.status);
@@ -100,6 +124,7 @@ function nonOkResponseError(
   data: any,
   options: KbApiOptions,
 ): Error {
+  if (options.redactErrorDetails) return safeTextError(resp, data);
   const metadata = responseErrorMetadata(data);
   const serverMessage = responseErrorMessage(data);
   const fallbackMessage = `KB API HTTP error: ${responseStatus(resp)}`;
@@ -131,23 +156,32 @@ export function parseKbResponse(
     let metadata: { code?: string; hint?: string } = {};
     try {
       const d: any = safeJsonParse(text);
+      if (options.redactErrorDetails) throw safeTextError(resp, d);
       const m =
         d &&
         (typeof d.error === "string" ? d.error : d.error?.message || d.message);
       if (m && typeof m === "string") msg = m;
       if (options.preserveErrorMetadata) metadata = responseErrorMetadata(d);
-    } catch {
+    } catch (error) {
+      if (error instanceof PermissionError) throw error;
       /* non-JSON body */
     }
     throw new PermissionError(msg, metadata.code, metadata.hint);
   }
   if (resp.status === 401) {
+    let code: string | undefined;
+    if (options.redactErrorDetails) {
+      try { code = safeTextErrorCode(safeJsonParse(text)); } catch { /* Keep malformed auth responses body-free. */ }
+    }
     throw new KbUnauthorizedError(
-      `KB API token auth failed: HTTP ${resp.status} ${resp.statusText}`,
+      options.redactErrorDetails ? 'KB API token auth failed: HTTP 401.'
+        : `KB API token auth failed: HTTP ${resp.status} ${resp.statusText}`,
+      code,
     );
   }
 
   if (!text.trim()) {
+    if (options.redactErrorDetails && !resp.ok) throw safeTextError(resp, undefined);
     throw malformedResponseError(resp, "empty response body");
   }
 
@@ -155,12 +189,15 @@ export function parseKbResponse(
   try {
     data = safeJsonParse(text);
   } catch {
+    if (options.redactErrorDetails && !resp.ok) throw safeTextError(resp, undefined);
     throw malformedResponseError(resp, "non-JSON response");
   }
 
   if (data?.return_code === -1001) {
     throw new KbUnauthorizedError(
-      `KB API token auth failed: ${data.return_message || "unauthorized"} (code: ${data.return_code})`,
+      options.redactErrorDetails ? 'KB API token auth failed (code: -1001).'
+        : `KB API token auth failed: ${data.return_message || "unauthorized"} (code: ${data.return_code})`,
+      options.redactErrorDetails ? safeTextErrorCode(data) : undefined,
     );
   }
 
@@ -169,9 +206,14 @@ export function parseKbResponse(
   }
 
   if (data?.return_code !== 0 && data?.return_code !== undefined) {
+    if (options.redactErrorDetails) throw safeTextError(resp, data);
     throw new Error(
       `AE API error: ${data.return_message || "unknown"} (code: ${data.return_code})`,
     );
+  }
+
+  if (options.redactErrorDetails && data?.error && typeof data.error === 'object') {
+    throw safeTextError(resp, data);
   }
 
   // F-019: HTTP 200 + body { error: "..." } (no return_code/success) is a business failure
@@ -184,6 +226,7 @@ export function parseKbResponse(
     data.return_code === undefined &&
     data.success === undefined
   ) {
+    if (options.redactErrorDetails) throw safeTextError(resp, data);
     if (options.preserveErrorMetadata) {
       const metadata = responseErrorMetadata(data);
       throw new CapabilityGatewayError(
@@ -259,6 +302,7 @@ async function requestWithCliToken(
       }
       throw new SecureStoreAuthError(
         `The stored CLI token for ${host} is invalid or expired. Run: ae-cli auth login --host ${host}`,
+        options.redactErrorDetails ? error.code : undefined,
       );
     }
     throw error;

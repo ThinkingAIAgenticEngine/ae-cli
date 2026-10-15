@@ -28,7 +28,7 @@ ae-cli agent +list-agents --dry-run
 | `--q` | No | Search by Agent name or description |
 
 ## Decision Rules
-- When the user needs an Agent ID for `+create-automation` (`--agent-id` / `--agent-name`), call this first.
+- When the user needs an Agent ID for `ae-cli automation create --target-type agent`, call this first.
 - If many Agents are returned, summarize by `id`, `name`, and `scope` to help the user pick the right one.
 - `--scope personal` shows only the user's own Agents; `company` / `system` show shared resources.
 
@@ -37,4 +37,4 @@ ae-cli agent +list-agents --dry-run
 - Auth error: run `ae-cli auth login`.
 
 ## Recommended Chaining
-- `+list-agents` → confirm `agent-id` → `+create-automation`
+- `+list-agents` → confirm `agent-id` → `ae-cli automation create --target-type agent --agent-id <id>`

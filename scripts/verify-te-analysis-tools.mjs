@@ -86,6 +86,8 @@ if (coreCommands.length !== EXPECTED_CORE_COUNT) {
 const REQUIRED_FOUR_MODULE_CAPABILITIES = [
   'analysis.dashboard.list',
   'analysis.dashboard.get',
+  'analysis.dashboard_report.get',
+  'analysis.dashboard_report.update',
   'analysis.dashboard_report_data.run',
   'analysis.dashboard_report_data.export',
   'analysis.report.list',
@@ -161,17 +163,17 @@ if (gatewayLifecycleCommands.length !== EXPECTED_GATEWAY_LIFECYCLE_COUNT) {
   fail(`analysis gateway lifecycle command count mismatch: expected ${EXPECTED_GATEWAY_LIFECYCLE_COUNT}, got ${gatewayLifecycleCommands.length}`);
 }
 
-const EXPECTED_CAPABILITY_COUNT = 335;
+const EXPECTED_CAPABILITY_COUNT = 341;
 if (capabilityCommands.length !== EXPECTED_CAPABILITY_COUNT) {
   fail(`analysis capability command count mismatch: expected ${EXPECTED_CAPABILITY_COUNT}, got ${capabilityCommands.length}`);
 }
 
 const EXPECTED_CAPABILITY_COUNTS_BY_SERVICE = {
-  analysis: 116,
+  analysis: 121,
   'analysis-meta': 65,
   'analysis-governance': 23,
   project: 44,
-  system: 60,
+  system: 61,
   tracking: 27,
 };
 for (const [service, expectedCount] of Object.entries(EXPECTED_CAPABILITY_COUNTS_BY_SERVICE)) {

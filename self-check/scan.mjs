@@ -41,12 +41,15 @@ const DOMAIN_TO_SKILL = {
   'te-audience': 'ae-analysis',
   'te-common': 'ae-analysis',
   'te-engage': 'ae-engage',
+  'te-experiment': 'ae-experiment',
   'te-dataops': 'ae-dataops',
   'te-community': 'ae-community',
   'te-kb': 'ae-kb',
   'te-team': 'ae-team',
   'te-agent': 'ae-agent',
   'memory': 'ae-agent',
+  'things': 'ae-things',
+  'workspace': 'ae-workspace',
   'te-system': 'ae-system',
   'context': 'ae-current-context',
 };
@@ -58,9 +61,10 @@ const GROUPED_DOC_SKILLS = new Set([
   'ae-dataops',
   'ae-kb',
   'ae-system',
+  'ae-things',
 ]);
 // These command domains reuse target skill inline sections and do not need per-command reference files.
-const INLINE_DOC_DOMAINS = new Set(['memory']);
+const INLINE_DOC_DOMAINS = new Set(['memory', 'workspace', 'things']);
 const COMMAND_SKILL_OVERRIDES = [
   { pathPrefix: 'src/commands/te-analysis/global/', skill: 'ae-analysis-global' },
 ];

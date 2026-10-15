@@ -2,7 +2,6 @@ import { Command } from 'commander';
 import { peekCliToken } from '../core/cli-token.js';
 import { getActiveHost } from '../core/config.js';
 import { fetchCliConfig, getCachedCompatForHost } from '../core/compat-check.js';
-import { normalizeUrl } from '../core/url-utils.js';
 import { missingAeHostHint } from '../core/host-guidance.js';
 import {
   buildVersionInstallPlan,
@@ -11,9 +10,10 @@ import {
   recordVersionSyncResult,
 } from '../core/version-sync.js';
 import { printError, printOutput } from '../framework/output.js';
+import { getLocalCliPackageInfo } from '../core/package-info.js';
+import { exactVersion, installHost } from '../core/install-process.js';
 
 const HOST_OPTION_DESC = 'Override active AE host URL (e.g., https://ta.thinkingdata.cn)';
-const SEMVER_RE = /^\d+\.\d+\.\d+(?:[-+].*)?$/;
 
 type UpdateOptions = {
   host?: string;
@@ -34,52 +34,59 @@ export function registerUpdate(program: Command): void {
     .option('--host <url>', HOST_OPTION_DESC)
     .option('--target <version>', 'Install a specific ae-cli version instead of reading the active host')
     .action(async (opts: UpdateOptions) => {
-      const target = await resolveTargetVersion(program, opts);
-      if (!target) return;
+      try {
+        const target = await resolveTargetVersion(program, opts);
+        if (!target) return;
 
-      const host = resolveUpdateHost(program, opts);
-      const plan = buildUpdatePlan(target, host);
-      if (program.opts().dryRun) {
-        await printOutput({ action: 'update', dryRun: true, ...plan }, program.opts().format || 'json', program.opts().jq);
-        return;
-      }
+        const host = resolveUpdateHost(program, opts);
+        const plan = buildUpdatePlan(target, host);
+        if (program.opts().dryRun) {
+          await printOutput({ action: 'update', dryRun: true, ...plan }, program.opts().format || 'json', program.opts().jq);
+          return;
+        }
 
-      const result = installVersion(target, {
-        progress: (message) => process.stderr.write(`${message}\n`),
-      });
-      if (host) {
-        recordVersionSyncResult(host, target, result);
-      }
-      if (!result.ok) {
-        const message =
-          result.skillsPending
-            ? `ae-cli ${target} was installed, but Skills synchronization failed.`
-            : `Could not install ae-cli ${target}.`;
-        printError(
-          'config',
-          message,
-          `${friendlyVersionSyncFailure(result)} Check access and run: ae-cli update`,
-          'AE_CLI_UPDATE_FAILED',
+        const result = installVersion(target, {
+          packageName: getLocalCliPackageInfo().name,
+          progress: (message) => process.stderr.write(`${message}\n`),
+        });
+        if (host) {
+          recordVersionSyncResult(host, target, result);
+        }
+        if (!result.ok) {
+          const message =
+            result.skillsPending
+              ? `ae-cli ${target} was installed, but Skills synchronization failed.`
+              : `Could not install ae-cli ${target}.`;
+          printError(
+            'config',
+            message,
+            `${result.message} ${friendlyVersionSyncFailure(result)} Retry with ae-cli update.`,
+            'AE_CLI_UPDATE_FAILED',
+            {
+              target,
+              stage: result.stage,
+              cause: result.cause,
+              skillsPending: result.skillsPending,
+              installation: result.report,
+            },
+          );
+          process.exitCode = 1;
+          return;
+        }
+        await printOutput(
           {
-            target,
-            stage: result.stage,
-            cause: result.cause,
-            skillsPending: result.skillsPending,
+            action: 'update',
+            dryRun: false,
+            ...plan,
+            skillsSource: result.skillsSource,
+            installation: result.report,
           },
+          program.opts().format || 'json',
+          program.opts().jq,
         );
-        process.exitCode = 1;
-        return;
+      } catch {
+        failUpdate('Could not prepare the update.', 'Use a valid --host and an exact --target version.');
       }
-      await printOutput(
-        {
-          action: 'update',
-          dryRun: false,
-          ...plan,
-          skillsSource: result.skillsSource,
-        },
-        program.opts().format || 'json',
-        program.opts().jq,
-      );
     });
 }
 
@@ -115,21 +122,20 @@ async function resolveTargetVersion(program: Command, opts: UpdateOptions): Prom
 }
 
 function validateTarget(version: string): string | null {
-  const target = version.trim().replace(/^v/i, '');
-  if (!SEMVER_RE.test(target)) {
-    failUpdate(`Invalid target version: ${version}`, 'Expected semver like 6.0.34 or 6.1.6.');
+  try { return exactVersion(version); }
+  catch {
+    failUpdate('Invalid target version.', 'Expected an exact version like 6.0.49 or 6.1.9.');
     return null;
   }
-  return target;
 }
 
 function resolveUpdateHost(program: Command, opts: UpdateOptions): string | undefined {
   const raw = opts.host || program.opts().host || getActiveHost();
-  return raw ? normalizeUrl(raw) : undefined;
+  return installHost(raw) ?? undefined;
 }
 
 function buildUpdatePlan(target: string, host?: string): UpdatePlan {
-  const installPlan = buildVersionInstallPlan(target);
+  const installPlan = buildVersionInstallPlan(target, '<npm-root>', getLocalCliPackageInfo().name);
   return {
     target: installPlan.target,
     ...(host ? { host } : {}),

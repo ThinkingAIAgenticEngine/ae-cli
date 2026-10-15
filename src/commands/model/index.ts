@@ -27,6 +27,7 @@ import {
 } from '../../core/te-agent-credentials.js';
 import { MultiselectCancelled, promptSingleCheckboxSelect } from '../../core/multiselect.js';
 import { getCurrentWorkspace } from '../sync/scanners.js';
+import { assertLegacyWorkspaceCommand } from '../../core/agent-space-context.js';
 
 export interface CurrentModelSelection {
   routingModelId: string | null;
@@ -84,6 +85,7 @@ function isCurrentModel(model: SandboxModelSummary, current: CurrentModelSelecti
 }
 
 async function runModelPicker(): Promise<void> {
+  assertLegacyWorkspaceCommand('model');
   const current = readCurrentModelSelection();
   const models = await getSandboxModels();
   if (models.length === 0) {
@@ -137,7 +139,7 @@ async function runModelPicker(): Promise<void> {
 export function registerModel(program: Command): void {
   program
     .command('model')
-    .description('Choose and switch the current workspace model (te-agent sandbox only)')
+    .description('Choose and switch the legacy sandbox workspace model (not AgentSpace)')
     .action(async () => {
       try {
         await runModelPicker();

@@ -1,9 +1,9 @@
 # ae-kb deterministic query workflow
 
 How to answer a knowledge question with the deterministic retrieval primitives
-(`+list` / `+index` / `+grep` / `+read`) instead of `+ask`. Follow this order;
-it is designed to reach the right section in a few calls and to avoid crawling a
-page line by line.
+(`+list` / `+index` / `+grep` / `+read`) instead of `+ask`. Choose the next step
+from the evidence already returned; these are branches, not commands to run on
+every page. Reach relevant evidence without crawling a page line by line.
 
 Use `+ask` when the question requires synthesizing across multiple pages or
 multi-hop reasoning; simple factual lookups are served by the steps below.
@@ -17,7 +17,17 @@ and ranked candidates. Start here with a chosen candidate; scope every `+index`
 turns out not to cover the question, go back to `ae-kb-discovery` for the next
 candidate rather than searching everything blindly.
 
-1. **Index the candidate.** Call `+index --sources` with the discovery pick.
+**Known-page fast path:** within the same host, identity, KB and published revision,
+reuse navigation and read evidence already obtained in this task. Copy exact
+links returned by `+index`, `+grep` or `+read`; go to step 3 for a relevant page
+whose path is known. Do not guess filenames. Once a path is known,
+do not repeat indexing or broad directory searches to rediscover it;
+only read a domain, catalog or parent page when its additional
+context is needed to resolve scope, applicability or an uncovered requirement.
+A revision or access-context change requires revalidation, not silent reuse.
+
+1. **Index the candidate.** If no usable navigation is in context, call
+   `+index --sources` with the discovery pick.
    Use `index.md` for navigation, a fit check, and **query wording** — the real
    terms in the index (product names, API identifiers, section titles) become
    your `+grep` keywords. The root index routes at module level only; when a
@@ -30,32 +40,33 @@ candidate rather than searching everything blindly.
    **Done when:** you have the candidate's `index.md`, and a list of `wiki/...`
    links you can **copy** (0 items still counts as done).
 
-2. **Grep copied paths.** Copy 1–3 `wiki/...` entries from the index (a page
+2. **Grep copied paths.** When no sufficiently specific page link is known,
+   copy 1–3 `wiki/...` entries from the navigation already returned (a page
    such as `wiki/sandbox.md`, or a subdirectory such as `wiki/guides`). Call
    `+grep` with the candidate `--sources` and the copied list as `--paths`. Search
-   with the index terms. If the first grep misses, rewrite the query **once**
-   using different index terms **only** — never paraphrase the user's wording
-   from memory — still with this same `--paths`. If the rewrite also misses,
-   stop grepping entirely: `+read --outline` the index page whose title or
-   section name relates to the question and read the matching heading range
-   from it. A third rewrite of the same idea produces no new recall.
+   with the terms in the returned navigation. If the first grep misses, rewrite
+   the query **once** using different terms from that navigation, still with
+   the same `--paths`. If the rewrite also misses, choose the likeliest linked
+   page and use step 3, or return to discovery. A third rewrite of the same
+   idea produces no new recall.
 
    **Done when:** you have hits, or you have rewritten once, or step 1 copied
-   0 paths. Copied 0 paths → skip grep and `+read --outline` the likeliest
-   title page, or go back to discovery for the next candidate.
+   0 paths. Copied 0 paths → skip grep and go back to discovery rather than
+   constructing a path from a title.
 
    **Reading the result — the page-level `results` view.** The response is a page-level
    `results` array: each entry is one page with its full `hitCount`, a
    `pageKind`, and up to 4 `sections` previews (each with its breadcrumb,
    `sectionStartLine`/`sectionEndLine`, and a text preview). Read the top
    relevant pages until every subquestion of the question is backed by
-   sections you have actually read. `hitCount` tells you how dense the matches
+   sections you have actually read (step 4 distinguishes business analysis
+   from knowledge-only coverage). `hitCount` tells you how dense the matches
    are on a page; `pageKind: "catalog"` marks a module directory page — its
    previews are detail-page entries, so treat them as navigation: add the
    detail-page paths you see there to your read list instead of reading the
    catalog as an answer source. When a page has `moreSections > 0` and the
-   answer is not in the previews, re-grep that single page to see all its
-   hits.
+   answer is not in the previews, locate the missing evidence on that single
+   page using step 3 rather than searching its entire directory again.
 
    Each page-group section preview carries its enclosing heading-section
    boundaries:
@@ -73,6 +84,15 @@ candidate rather than searching everything blindly.
 3. **Choose the section locator.** Pick one locator for the current target
    page:
 
+   - **Short or unknown-length linked page:** for a focused recall card or
+     asset-definition page, read once with
+     `--offset 1 --limit 200 --expand none`; an outline is not a prerequisite.
+     If a response already shows a longer page or a precise relevant section,
+     use the section branches below instead. Check the returned coverage:
+     `startLine: 1`, `endLine: totalLines`, and `truncated: false` prove a
+     complete page. If partial, locate only the missing evidence on the same page
+     with scoped grep or an outline; a bounded prefix is not proof of full
+     coverage. Do not reuse a range from another page.
    - **Section preview of a page group:** read the section range with
      `--offset sectionStartLine` and
      `--limit sectionEndLine - sectionStartLine + 1`. For narrow
@@ -80,10 +100,10 @@ candidate rather than searching everything blindly.
      once you see the preview text. If the window turns out too small, widen
      once up to the section range. Do not crawl by shifting offsets line by
      line.
-   - **Linked or related page:** if you follow a catalog/detail/related link to
-     a different page, the old grep range no longer applies. If you have
-     concrete terms for that new page, run `+grep --paths '["<new-page>"]'`
-     scoped to that page and use the new hit range.
+   - **Linked or related page needing section localization:** if the direct
+     read branch does not apply and you have concrete terms for that new page,
+     run `+grep --paths '["<new-page>"]'` scoped to that page and use the new
+     hit range. An explicit child link needs no catalog or directory lookup.
    - **No reliable range:** if the new page has no concrete grep terms, its
      grep misses, or headings are needed to choose the right section, call
      `+read --outline` for that page. It returns only the heading tree
@@ -102,30 +122,44 @@ candidate rather than searching everything blindly.
    come from a page-group section preview's boundaries or two adjacent outline
    headings (`heading.line` of the target section to `heading.line - 1` of the
    next). If a window turns out too small, widen to the section boundary in one
-   more call.
+   more call. A completed direct read in step 3 needs no additional read or
+   outline. Independent, already identified pages may be read in parallel;
+   follow only links needed for the question, not every related page.
 
    **Done when:** the needed evidence is in context without shell truncation,
    or the page response is complete and untruncated.
 
-   **Read coverage:** read the relevant candidate pages from the page results
-   until every subquestion of the user's question is backed by sections you
-   have actually read — not until a page "looks like the answer". Do not stop
-   to compose the answer while any subquestion still has no read evidence
-   behind it, and do not pick a single page by surface similarity between the
-   question wording and the page/module name or hit line.
+   **Read coverage:** for knowledge-only answers, read relevant candidate pages
+   until every answered subquestion is backed by sections actually read — not
+   until a page "looks like the answer". For business data analysis, read the
+   relevant definitions and boundaries, then hand off verified coverage and
+   remaining gaps in step 5; live values do not need KB text as their source.
+   Do not pick a single page by surface similarity between the question wording
+   and the page/module name or hit line.
 
 5. **Assess coverage, then answer or iterate.** Map the user's question into
    subquestions and check each one against the sections you actually read. If a
    subquestion is covered, answer with citations (knowledge base + page path +
    section). If a gap remains, go back to step 2 with another set of `--paths`
-   **copied** from the index, or return to discovery for the next candidate.
-   If the evidence is missing after the allowed search, the only acceptable
-   output for that subquestion is "not covered by the knowledge base" — do not
-   attach a confident value from general knowledge, not even with a disclaimer
-   or a self-declared boundary.
+   **copied** from current navigation, or return to discovery for the next candidate.
+   For a knowledge-only question, missing evidence after the allowed search
+   means "not covered by the knowledge base" — do not attach a confident fact
+   from general knowledge, even with a disclaimer. For business data analysis,
+   this is a KB coverage gap, not completion of the original task. Preserve the
+   read KB evidence and continue through `ae-analysis` using
+   [`analysis-workflow.md`](analysis-workflow.md): verify suitable saved assets,
+   resolve only missing metadata, and execute an independently supported,
+   authorized query. Never attribute that live result to unread KB content.
+
+   Once relevant definitions, parameters and boundaries are covered, proceed
+   to the analysis handoff. Do not keep navigating to validate already verified
+   links or to seek live numbers in a semantic snapshot. Return to KB retrieval
+   only for a concrete unresolved semantic question.
 
    **Done when:** every answered subquestion is supported by read sections, or
-   the remaining gaps are explicitly reported as missing evidence.
+   the remaining knowledge gaps are explicitly reported as missing evidence.
+   A business data request still requires the analysis handoff and its task
+   completion check; routing or definition-only coverage is not a live answer.
 
 ## Anti-pattern: same-page offset crawling
 

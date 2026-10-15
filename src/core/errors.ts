@@ -11,10 +11,18 @@
  * re-login will not help. The runner surfaces this as `type: 'permission'` and does NOT suggest re-login.
  */
 export class PermissionError extends Error {
-  constructor(message: string, public readonly code?: string, public readonly hint?: string) {
+  constructor(message: string, public readonly code?: string, public readonly hint?: string, public readonly details?: unknown) {
     super(message);
     this.name = 'PermissionError';
   }
+}
+
+export type ApiErrorType = 'auth' | 'permission' | 'validation' | 'not_found' | 'api';
+export type CliErrorType = ApiErrorType | 'config';
+
+export function isApiErrorType(value: unknown): value is ApiErrorType {
+  return value === 'auth' || value === 'permission' || value === 'validation'
+    || value === 'not_found' || value === 'api';
 }
 
 /** Safe structural location for a CLI validation error; never include the rejected value. */

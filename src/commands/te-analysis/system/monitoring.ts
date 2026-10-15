@@ -19,14 +19,14 @@ const monitorTimeFields = [
     type: 'string',
     required: true,
     pattern: '^\\d{4}-\\d{2}-\\d{2} \\d{2}:\\d{2}:\\d{2}$',
-    desc: 'Inclusive query range start, yyyy-MM-dd HH:mm:ss.',
+    desc: 'Inclusive completion-time range start, yyyy-MM-dd HH:mm:ss.',
   },
   {
     flag: 'end-time',
     type: 'string',
     required: true,
     pattern: '^\\d{4}-\\d{2}-\\d{2} \\d{2}:\\d{2}:\\d{2}$',
-    desc: 'Inclusive query range end, yyyy-MM-dd HH:mm:ss.',
+    desc: 'Inclusive completion-time range end, including the entire second, yyyy-MM-dd HH:mm:ss.',
   },
 ] as const;
 
@@ -93,6 +93,27 @@ export const systemMonitoringCommands: Command[] = [
       fieldsField,
     ],
     validate: (_ctx, input) => validateTaskQueryInput(input),
+  }),
+  defineSystemCommand({
+    resource: 'query-task',
+    command: 'realtime-list',
+    capabilityId: 'system.query_task.realtime_list',
+    description: 'List a bounded realtime query-monitor snapshot; use query-task list for historical logs.',
+    risk: 'read',
+    fields: [
+      { flag: 'duration-minutes', type: 'number', min: 1, max: 30, desc: 'Realtime window in minutes. Default: 30.' },
+      ...monitorScopeFields,
+      { flag: 'cluster-names', type: 'json', required: true, array: true, desc: 'Query cluster-name JSON array.' },
+      { flag: 'status-codes', type: 'json', array: true, desc: 'Optional task status-code JSON array.' },
+      { flag: 'limit', type: 'number', min: 1, max: 200, desc: 'Maximum returned tasks. Default: 100, max: 200.' },
+    ],
+    validate: (_ctx, input) => {
+      validateMonitorScope(input);
+      requireAtLeastOne(input, ['cluster_names'], '--cluster-names must be a non-empty JSON array.');
+      if (input.status_codes !== undefined) {
+        requireAtLeastOne(input, ['status_codes'], '--status-codes must be a non-empty JSON array.');
+      }
+    },
   }),
   defineSystemCommand({
     resource: 'query-task',

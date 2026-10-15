@@ -6,7 +6,20 @@
  */
 
 import type { Command, RuntimeContext } from "../../framework/types.js";
+import { currentAgentSpaceId } from "../../core/agent-space-context.js";
 import { getAgentApi, postAgentApi } from "./api-client.js";
+import {
+  buildWorkspaceCliUrl,
+  getWorkspaceApi,
+  postWorkspaceApi,
+} from "../workspace/client.js";
+import {
+  previewWorkspaceResourcePath,
+  resolveWorkspaceTarget,
+  workspaceResourcePath,
+  workspaceTargetFlags,
+  workspaceTargetPath,
+} from "../workspace/target.js";
 
 const CONVERSATION_PATH = "/api/sandbox/agent/conversations";
 const ARCHIVE_SEARCH_PATH = `${CONVERSATION_PATH}/archived`;
@@ -43,6 +56,16 @@ function envOptional(name: string): string | undefined {
 
 function readAll(ctx: RuntimeContext): boolean {
   return ctx.str("all") === "true";
+}
+
+function hasWorkspaceScope(ctx: RuntimeContext, useConversationContext: boolean): boolean {
+  return Boolean(
+    optional(ctx.str("workspaceId")) ||
+    currentAgentSpaceId() ||
+    (useConversationContext && (
+      optional(ctx.str("conversationId"))
+    )),
+  );
 }
 
 function readTimeZone(ctx: RuntimeContext): string {
@@ -86,13 +109,19 @@ function validateFind(ctx: RuntimeContext): void {
 
   const agentId = optional(ctx.str("agentId"));
   const all = readAll(ctx);
-  if (agentId && all) {
-    throw new Error("--agent-id and --all true cannot be used together");
-  }
-  if (!agentId && !all && !envOptional("TE_AGENT_CURRENT_AGENT_ID")) {
-    throw new Error(
-      "Archive scope is required. Provide --agent-id or --all true, or run inside an Agent sandbox.",
-    );
+  if (hasWorkspaceScope(ctx, true)) {
+    if (agentId || all) {
+      throw new Error("Workspace archive scope cannot be combined with --agent-id or --all true");
+    }
+  } else {
+    if (agentId && all) {
+      throw new Error("--agent-id and --all true cannot be used together");
+    }
+    if (!agentId && !all && !envOptional("TE_AGENT_CURRENT_AGENT_ID")) {
+      throw new Error(
+        "Archive scope is required. Provide --agent-id or --all true, or run inside an Agent sandbox.",
+      );
+    }
   }
 
   const limit = optional(ctx.str("limit")) ? ctx.num("limit") : DEFAULT_LIMIT;
@@ -103,6 +132,15 @@ function validateFind(ctx: RuntimeContext): void {
   if (!isValidTimeZone(readTimeZone(ctx))) {
     throw new Error("--time-zone must be a valid IANA time zone");
   }
+}
+
+function buildWorkspaceArchiveSuffix(ctx: RuntimeContext): string {
+  const params = new URLSearchParams();
+  const q = optional(ctx.str("q"));
+  const limit = optional(ctx.str("limit")) ? ctx.num("limit") : DEFAULT_LIMIT;
+  if (q) params.set("q", q);
+  params.set("limit", String(limit));
+  return `/conversations/archived?${params.toString()}`;
 }
 
 export function buildArchivedConversationSearchPath(
@@ -149,8 +187,9 @@ function toArchivedConversationOutput(
 export const findArchivedConversations: Command = {
   service: "agent",
   command: "+find-archived-conversations",
-  description: "Find archived conversations for one Agent or all Agents",
+  description: "Find archived conversations in an AgentSpace, one legacy Agent, or the legacy all-Agent scope",
   flags: [
+    ...workspaceTargetFlags,
     {
       name: "q",
       type: "string",
@@ -188,16 +227,24 @@ export const findArchivedConversations: Command = {
   ],
   risk: "read",
   validate: validateFind,
-  dryRun: (ctx) => ({
-    method: "GET",
-    url: buildArchivedConversationSearchPath(ctx),
-  }),
+  dryRun: (ctx) => hasWorkspaceScope(ctx, true)
+    ? {
+        method: "GET",
+        url: buildWorkspaceCliUrl(ctx, previewWorkspaceResourcePath(ctx, buildWorkspaceArchiveSuffix(ctx))),
+        params: { target_url: buildWorkspaceCliUrl(ctx, workspaceTargetPath(ctx)) },
+      }
+    : { method: "GET", url: buildArchivedConversationSearchPath(ctx) },
   execute: async (ctx) => {
     const timeZone = readTimeZone(ctx);
-    const result = await getAgentApi<ArchivedConversationApiResult>(
-      ctx,
-      buildArchivedConversationSearchPath(ctx),
-    );
+    const result = hasWorkspaceScope(ctx, true)
+      ? await (async () => {
+          const target = await resolveWorkspaceTarget(ctx);
+          return getWorkspaceApi<ArchivedConversationApiResult>(
+            ctx,
+            workspaceResourcePath(target.agentSpaceId, buildWorkspaceArchiveSuffix(ctx)),
+          );
+        })()
+      : await getAgentApi<ArchivedConversationApiResult>(ctx, buildArchivedConversationSearchPath(ctx));
     return {
       items: result.items.map((item) =>
         toArchivedConversationOutput(item, timeZone),
@@ -212,6 +259,7 @@ export const restoreConversation: Command = {
   command: "+restore-conversation",
   description: "Restore an archived conversation by conversation ID",
   flags: [
+    workspaceTargetFlags[0],
     {
       name: "conversation-id",
       type: "string",
@@ -220,20 +268,35 @@ export const restoreConversation: Command = {
     },
   ],
   risk: "write",
-  dryRun: (ctx) => ({
-    method: "POST",
-    url: `${CONVERSATION_PATH}/${encodeURIComponent(ctx.str("conversationId"))}/restore`,
-    body: {},
-  }),
+  dryRun: (ctx) => hasWorkspaceScope(ctx, false)
+    ? {
+        method: "POST",
+        url: buildWorkspaceCliUrl(ctx, previewWorkspaceResourcePath(ctx, `/conversations/${encodeURIComponent(ctx.str("conversationId"))}/restore`)),
+        params: { target_url: buildWorkspaceCliUrl(ctx, workspaceTargetPath(ctx)) },
+        body: {},
+      }
+    : { method: "POST", url: `${CONVERSATION_PATH}/${encodeURIComponent(ctx.str("conversationId"))}/restore`, body: {} },
   execute: async (ctx) => {
-    const result = await postAgentApi<{
-      changed: boolean;
-      conversationId: string;
-    }>(
-      ctx,
-      `${CONVERSATION_PATH}/${encodeURIComponent(ctx.str("conversationId"))}/restore`,
-      {},
-    );
+    const result = hasWorkspaceScope(ctx, false)
+      ? await (async () => {
+          const target = await resolveWorkspaceTarget(ctx);
+          return postWorkspaceApi<{
+            changed: boolean;
+            conversationId: string;
+          }>(
+            ctx,
+            workspaceResourcePath(target.agentSpaceId, `/conversations/${encodeURIComponent(ctx.str("conversationId"))}/restore`),
+            {},
+          );
+        })()
+      : await postAgentApi<{
+          changed: boolean;
+          conversationId: string;
+        }>(
+          ctx,
+          `${CONVERSATION_PATH}/${encodeURIComponent(ctx.str("conversationId"))}/restore`,
+          {},
+        );
     return { changed: result.changed, conversation_id: result.conversationId };
   },
 };

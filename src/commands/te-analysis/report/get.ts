@@ -8,7 +8,7 @@ export const reportGet = createAnalysisCapabilityCommand({
   resource: 'report',
   command: 'get',
   capabilityId: 'analysis.report.get',
-  description: 'Get one analysis report definition as AI QP without executing report data.',
+  description: 'Get one analysis report definition and event-report presentation without executing report data.',
   flags: [projectIdFlag, { name: 'report-id', type: 'number', required: true, desc: 'Report ID.' }],
   risk: 'read',
   buildInput: (ctx) => ({

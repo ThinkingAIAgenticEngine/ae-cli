@@ -104,6 +104,9 @@ function tasksFor(files) {
   if (needs(files, [/self-check/i])) {
     tasks.push(['npm', ['run', 'verify:self-check-overlay']]);
   }
+  if (needs(files, [/install/i, /version-sync/i, /version-compat/i, /^src\/commands\/update\.ts$/])) {
+    tasks.push(['npm', ['run', 'verify:install']], ['npm', ['run', 'verify:version-sync']], ['npm', ['run', 'verify:update-check']]);
+  }
   if (needs(files, [/update-check/i])) {
     tasks.push(['npm', ['run', 'verify:update-check']]);
   }

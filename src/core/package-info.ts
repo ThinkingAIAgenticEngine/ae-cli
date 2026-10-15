@@ -3,7 +3,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 /** Resolve local ae-cli package.json after tsup split-chunk bundling. */
-export function getLocalCliPackageInfo(): { name: string; version: string } {
+export function getLocalCliPackageInfo(): { name: string; version: string; root: string } {
   let dir = path.dirname(fileURLToPath(import.meta.url));
   for (let i = 0; i < 8; i += 1) {
     const candidate = path.join(dir, 'package.json');
@@ -14,7 +14,7 @@ export function getLocalCliPackageInfo(): { name: string; version: string } {
           version?: string;
         };
         if (pkg.name && pkg.version && String(pkg.name).includes('ae-cli')) {
-          return { name: pkg.name, version: pkg.version };
+          return { name: pkg.name, version: pkg.version, root: dir };
         }
       }
     } catch {
@@ -24,5 +24,5 @@ export function getLocalCliPackageInfo(): { name: string; version: string } {
     if (parent === dir) break;
     dir = parent;
   }
-  return { name: '@tant/ae-cli', version: '0.0.0' };
+  return { name: '@tant/ae-cli', version: '0.0.0', root: '' };
 }

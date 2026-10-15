@@ -115,6 +115,8 @@ test('ZIP CLI preserves file bytes, paths, revisions, conflict codes and explici
     const del = ['kb', '+source-rm', ...flags, '--path', 'country/subdir', '--recursive', '--expected-revision', '8'];
     const beforeCancel = requests.length;
     result = await run(del, env, 'n\n');
+    assert.equal(result.status, 1);
+    assert.match(result.stderr, /CONFIRMATION_REQUIRED/);
     assert.equal(requests.length, beforeCancel);
     result = await run([...del, '--yes'], env);
     assert.equal(result.status, 0, result.stderr);

@@ -198,7 +198,11 @@ AI 发现的问题仅供参考，不自动 approve、merge，也不构成强制�
 | `.ci/pr_agent_local.py` | 显式加载当前版本配置，用 PR-Agent 本地 provider 生成报告 |
 | `.ci/review_messages.zh-CN.json` | 中文审核正文模板，与模型生成的问题描述分开维护 |
 
-配置从当前检出的 `.pr_agent.toml` 显式加载，关闭远端仓库配置读取，因此不会读取 GitLab 默认分支上的配置。`AGENTS.md` 从固定基线 SHA 读取，作为审核上下文。CI 脚本与规则自身的变更仍需正常代码评审。
+配置从当前检出的 `.pr_agent.toml` 显式加载，关闭远端仓库配置读取，因此不会读取 GitLab 默认分支上的配置。`AGENTS.md` 和已有的 [`docs/compatibility-policy.md`](compatibility-policy.md) 从固定基线 SHA 读取，作为审核上下文；新规范尚未进入基线时仍可运行，CLI 专项审核要求会直接检查兼容性。CI 脚本与规则自身的变更仍需正常代码评审。
+
+**兼容性是重点审核维度。** 检查公开命令、别名、参数与 Gateway 字段的移除/重命名、类型、必填性、默认值、行为及返回契约变化，尤其是旧 CLI/固定脚本 → 新服务端的调用。版本检测或自动升级不作为兼容层；例如直接删除导出 `use_cache` 输入会让旧 `--use-cache` 调用失败。审核需定位旧调用的具体失败路径、兼容适配或获准迁移及回归证据，同时保持权限与安全边界。
+
+已发布 Skill 的删除、改名、reference 失效及同名替换职责同样优先检查；需要核对正式发布证据、原地版本迭代或保留入口的迁移窗口。新增 Skill 检查独立职责和不能复用已有 Skill 的理由。该检查仍属于观察模式，不自动批准或阻止合并，证据不足不编造运行故障。
 
 发现问题时，报告中的定位链接指向实际审核提交的文件及行号，不指向临时合成提交。
 
@@ -210,7 +214,7 @@ PR-Agent 仅生成报告，关闭其 GitLab 发布功能；模型子进程不接
 
 ### 本地验证
 
-离线测试使用真实临时 Git 历史和模拟 GitLab API，覆盖 MR 与 integration push 事件选择、完整差异、merged-result/merge-train 源 SHA、merge/squash/fast-forward 合并跳过、直接 push 评论、过期结果、评论分页去重及模型异常；渲染测试模拟 PR-Agent 输出，不调用模型。
+离线测试使用真实临时 Git 历史和模拟 GitLab API，覆盖 MR 与 integration push 事件选择、完整差异、merged-result/merge-train 源 SHA、merge/squash/fast-forward 合并跳过、直接 push 评论、过期结果、评论分页去重及模型异常；同时验证兼容性规范从固定基线读取、旧基线缺少该文件时仍可运行，以及命令/参数和已发布 Skill 检查要求进入 reviewer 配置。渲染测试模拟 PR-Agent 输出，不调用模型，不代表真实模型一定发现所有兼容性缺陷。
 
 ```sh
 python3 -m venv /tmp/te-cli-review-tests

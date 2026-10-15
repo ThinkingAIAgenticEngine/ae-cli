@@ -672,7 +672,7 @@ export function loadCliToken(host: string): string | null {
 }
 
 export class SecureStoreAuthError extends Error {
-  constructor(message: string) {
+  constructor(message: string, readonly code?: string) {
     super(message);
     this.name = 'SecureStoreAuthError';
   }

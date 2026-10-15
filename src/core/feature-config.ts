@@ -59,7 +59,7 @@ function remember(host: string, token: string, entry: FeatureEntry): void {
   writeStore(store);
 }
 
-/** Reuse a successful daily CLI config fetch from the compatibility check. */
+/** Reuse a successful CLI config fetch from the compatibility check. */
 export function rememberKbAutoDiscoveryFeature(host: string, token: string, enabled: boolean): void {
   remember(host, token, { enabled, available: true, fetchedAt: Date.now() });
 }

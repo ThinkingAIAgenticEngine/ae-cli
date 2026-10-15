@@ -2,6 +2,15 @@
 
 Reuse verified assets, canonical names and business meanings in the current project. Use this workflow for missing definitions or metadata; discovery is complete when the requested measure can be constructed or a specific business choice needs the user's reply.
 
+After a KB semantic-only or partial-coverage handoff, retain the read KB evidence
+and live definitions already verified. Search for a suitable saved definition
+for the uncovered requirement, then discover only missing metadata. A related
+asset that merges actions or lacks a requested filter is not an equivalent
+answer. When the remaining definition is verified, continue authorized ad-hoc
+analysis under its actual scope; disclose differences from the KB-selected
+asset. Do not ask for continuation of the same read-only request. A genuine
+unconfirmed business mapping still follows the confirmation rule below.
+
 ## Find a reusable definition
 
 For an unknown business measure, search relevant saved metrics and readable analysis assets. A named asset needs only its own family; already known definitions go directly to execution. Read the selected [metric](metric_list.md) and [asset search](asset_search.md) command references together, then issue independent searches in the same model turn:
@@ -54,6 +63,12 @@ Use the Agent host's current working directory, configured CLI environment and c
 A new project uses its own filename. An explicit environment/account change or a requested refresh requires a new export; use `--force` when intentionally replacing the existing file. The CLI publishes the completed download and reports failures. No model-managed hash, sidecar or directory validation is needed.
 
 ## Confirm and bind
+
+Verifying canonical fields, types, or filter values for an already explicit or
+confirmed business meaning is evidence completion, not automatically a new
+business mapping. Reuse the established meaning and continue when metadata
+supports it without a material choice. If verification exposes an ambiguous
+entity, scope, or definition, the business mapping still needs confirmation.
 
 Confirm a selected business mapping once, even if only one candidate is suitable. Present its meaning and any unresolved semantics. Reuse mappings already confirmed in this task. User confirmation selects the business definition; it does not verify an unknown asset formula. If the confirmation tool cannot obtain a reply, present the same choices in text and wait. A failed tool call is not confirmation. Rejected candidates are discarded; seek a different candidate for that choice using the relevant search above.
 

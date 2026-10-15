@@ -67,4 +67,4 @@ ae-cli agent +create-agent --dry-run --name "daily-report" --description "x"
 - `stdin is empty; cannot read instructions`: ensure stdin has content when using `@-`.
 
 ## Recommended Chaining
-- `+list-models` / `+list-mcps` / `+list-skills` (discover IDs) → `+create-agent` → `+get-agent` (verify) → `+create-automation --agent-id <id>`
+- `+list-models` / `+list-mcps` / `+list-skills` (discover IDs) → `+create-agent` → `+get-agent` (verify) → `ae-cli automation create --target-type agent --agent-id <id>`

@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { mock } from 'node:test';
 
 type FetchCall = {
   url: string;
@@ -113,7 +114,8 @@ try {
       () => getFromMainApp('/api/sandbox/agent/agents', host),
       (error: unknown) => error instanceof TeAgentApiError
         && error.status === 401
-        && error.code === 'auth_expired',
+        && error.code === 'cli_token_invalid'
+        && error.errorType === 'auth',
     );
 
     assert.equal(businessCalls.length, 1);
@@ -157,6 +159,43 @@ try {
     assert.equal(businessCalls.length, 1);
     assert.deepEqual(authCalls, [], 'the 403 response must not trigger an auth request');
     clearCliToken(host);
+  });
+
+  await test('terminal Workspace HTTP 401 preserves the structured reason without retrying', async () => {
+    const host = 'http://workspace-terminal-auth.local';
+    seedSession(host, 'cli-terminal-old');
+    let businessCalls = 0;
+    const error = {
+      type: 'auth', code: 'WORKSPACE_CLI_UNAUTHENTICATED',
+      message: 'The CLI token is invalid or the account is unavailable.',
+      hint: 'Check the account status before logging in again.',
+      details: { reason: 'account_unavailable' },
+    };
+    globalThis.fetch = async (input) => {
+      const url = String(input);
+      if (authPath(url)) return Response.json({
+        return_code: 0, data: { userSecret: 'cli-terminal-new' },
+      });
+      businessCalls++;
+      return Response.json({ ok: false, error }, { status: 401 });
+    };
+    const { runCommand } = await import('../src/framework/runner.ts');
+    const { listWorkspaces } = await import('../src/commands/workspace/list.ts');
+    const stderr: string[] = [];
+    const exit = new Error('test-only process exit');
+    const exitMock = mock.method(process, 'exit', (code?: number) => { assert.equal(code, 1); throw exit; });
+    const errMock = mock.method(process.stderr, 'write', (chunk: unknown) => { stderr.push(String(chunk)); return true; });
+    try {
+      await assert.rejects(runCommand(listWorkspaces, {}, {
+        host, format: 'json', dryRun: false, validate: false, yes: true,
+      }), (failure) => failure === exit);
+    } finally {
+      exitMock.mock.restore();
+      errMock.mock.restore();
+      clearCliToken(host);
+    }
+    assert.equal(businessCalls, 1);
+    assert.deepEqual(JSON.parse(stderr.join('')), { ok: false, error });
   });
 
   await test('agent network errors retain the safe target origin and socket cause', async () => {

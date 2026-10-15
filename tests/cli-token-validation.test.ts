@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 
 const {
   CliTokenValidationUnavailableError,
+  mintCliToken,
   validateCliTokenOnServer,
 } = await import('../src/core/cli-token.ts');
 const { SecureStoreAuthError } = await import('../src/core/secure-store.ts');
@@ -121,6 +122,27 @@ await test('rejects an invalid or expired CLI token', async () => {
         && !error.message.includes('auth login'),
     );
     assert.equal(calls, 1, 'validation failure must not trigger an automatic mint');
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+await test('does not expose an access token echoed by the CLI token generation service', async () => {
+  const host = 'https://test-cli-generation.internal';
+  const echoedAccessToken = 'access-token-must-not-leak';
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = (async () => new Response(JSON.stringify({
+    return_code: -1001,
+    return_message: `Invalid access token: ${echoedAccessToken}`,
+  }), { status: 200 })) as typeof fetch;
+
+  try {
+    await assert.rejects(
+      () => mintCliToken(host, echoedAccessToken, false),
+      (error: unknown) => error instanceof Error
+        && error.message === 'CLI token generation failed (code: -1001)'
+        && !error.message.includes(echoedAccessToken),
+    );
   } finally {
     globalThis.fetch = originalFetch;
   }

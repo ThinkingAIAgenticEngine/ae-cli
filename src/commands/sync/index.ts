@@ -48,6 +48,7 @@ import {
 } from './scanners.js';
 import { updateMcpManifestForProjectSource, updateSkillManifestForSource } from './local-copy.js';
 import { assertSkillDocumentSize } from '../te-agent/skill-version.js';
+import { assertLegacyWorkspaceCommand } from '../../core/agent-space-context.js';
 
 type Kind = 'skill' | 'mcp';
 type ResourceKind = Kind | 'both';
@@ -506,12 +507,13 @@ async function runPull(kind: ResourceKind): Promise<void> {
 export function registerSync(program: Command): void {
   program
     .command('sync')
-    .description('Sync Skills / MCPs between current workspace and te-claude main app')
+    .description('Sync Skills / MCPs between a legacy sandbox workspace and te-claude main app')
     .option('--direction <direction>', 'push | pull (skip interactive direction picker)')
     .option('--include-secrets', 'Include MCP env secrets (TOKEN/SECRET/KEY) in push', false)
     .option('--kind <kind>', 'skill | mcp | both (skip interactive picker)')
     .action(async (opts: { direction?: string; includeSecrets?: boolean; kind?: string }) => {
       try {
+        assertLegacyWorkspaceCommand('sync');
         const direction = await selectDirection(opts.direction);
         const kind = await selectKind(opts.kind);
         if (direction === 'push') await runPush(kind, !!opts.includeSecrets);

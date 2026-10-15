@@ -1,4 +1,35 @@
-### 6.0.53
+### 6.1.26
+**Date:** 2026-10-15
+
+**Changes:**
+
+#### Installation and usability
+
+* Add `ae-cli install` to install the CLI and matching AI assistant Skills together, with Windows support and coordinated upgrades or version changes.
+* Fix cases where AI assistants could not read authorized page information, improve installation failure messages, and protect sensitive login information.
+
+#### Workspaces and collaboration
+
+* Manage workspace materials, members, and the capabilities available to AI assistants, and find or restore archived conversations within a workspace.
+* Manage memory by workspace with private drafts, shared review, automatic extraction, and history restoration; follow migration hints for selected legacy memory operations.
+* Add task management for collaboration, progress records, linked conversations, delivery attachments, reviews, and periodic summaries.
+* Manage scheduled tasks through `ae-cli automation`, including immediate execution, stop, retry, and results; replace legacy `agent` automation commands with this entry point.
+
+#### Knowledge bases
+
+* Add, read, and edit text materials directly, check web sources for updates, and view KB compilation time and usage.
+* Read relevant pages already located for KB questions, reduce repeated searches, and check whether the material supports the answer.
+* Organize project knowledge using adopted personal experience and initialize a knowledge base for new projects without business materials.
+* Refresh changed project KB content while preserving manually added materials and reuse existing compilation rules to reduce repeated configuration.
+
+#### Analysis
+
+* Configure report chart types, combo charts, and result-table layouts, adjust dashboard-card display, and move dashboards in batches to other project spaces.
+* Improve guidance for list-tag filters and funnel step names, and fix default description handling when creating reports.
+* View currently executing queries filtered by project, space, and cluster, and search historical query logs by completion time.
+* Submit personal analysis preferences for review and provide satisfaction feedback after analysis results are delivered.
+
+### 6.1.25
 **Date:** 2026-09-23
 
 **Changes:**
@@ -32,7 +63,13 @@
 
 * Add decentralized collaboration guidance, shared contracts, and independent distribution checks to ten system Skills, and enforce them in the release gate to prevent omissions or drift during synchronization.
 
-### 6.0.52
+#### 6.1-only
+
+* Add the session analysis model with interval, start-event, start/end-event, and session-ID cutting, plus session or step views, metrics, groups, buckets, and session filters.
+* Add `analysis drilldown-session-details run` to inspect individual sessions or steps behind a session-analysis result.
+* Harden incremental refresh for project semantic knowledge bases by persisting semantic plans, fragment dependencies, and remote refresh baselines, updating only affected source files, preserving manual edits, and skipping compilation when content is unchanged.
+
+### 6.1.24
 **Date:** 2026-09-18
 
 **Changes:**
@@ -40,7 +77,7 @@
 * Generalize project names, events, properties, and business examples in analysis, data integration, and Engage Skills using generic examples or placeholders, and clarify that review explanations should reference actual events and properties from the current asset definition.
 * Remove the fixed Feishu tracking-plan link from the tracking-code generation Skill and use a user-provided tracking-plan document as input instead.
 
-### 6.0.51
+### 6.1.23
 **Date:** 2026-09-18
 
 **Changes:**
@@ -49,7 +86,7 @@
 * Clarify the parameter nesting and historical-date query limitations of user-property analysis to avoid answering historical questions with current property statistics.
 * Document the required event scope for path analysis, including the source event, and explain how to traverse nodes and links as two-dimensional arrays grouped by path level.
 
-### 6.0.49
+### 6.1.21
 **Date:** 2026-09-17
 
 **Changes:**
@@ -71,7 +108,10 @@
 * Add `context +current`, `ae-current-context`, and the page-context business Skill so Agents can read the current product-page context on demand, with release gates that keep internal page dictionaries out of public packages.
 * Fix CLI ESM compatibility and dependency warnings to improve runtime stability for data-integration and XLSX processing paths.
 
-### 6.0.48
+#### 6.1-only
+* Add `experiment external-experiment save-submit` for creating or updating and submitting an external experiment in one operation, with validation for experiment groups, exactly one control group, primary metrics, analysis bucket, and experiment times; updates to submitted experiments must preserve stable group IDs.
+
+### 6.1.20
 **Date:** 2026-09-10
 
 **Changes:**
@@ -101,7 +141,7 @@
 #### Compatibility
 * Roll back `archiver` to a compatible release to restore ZIP packaging for data-integration handoffs and sandbox tool packages while retaining Node.js 20 compatibility.
 
-### 6.0.47
+### 6.1.19
 **Date:** 2026-09-03
 
 **Changes:**
@@ -128,7 +168,10 @@
 * Keep `auth status` compatible with older services that do not expose CLI-token validation while continuing to reject explicitly invalid or expired tokens
 * Add an AI Agent CLI installation and upgrade guide, standardize the minimum Node.js version on 20, clean dependency deprecation warnings and stale build output, and remove the retired MCP integration Skill
 
-### 6.0.46
+#### 6.1-only: Experiment
+* Harden semantic validation for experiment metrics and Flow A/B indicators: property comparisons use `metricDefinition.filters`; aggregation types, required properties, comparison operators, and values are validated; Flow A/B indicators use `eventDefinition` and cannot be mixed with the legacy `event` field
+
+### 6.1.18
 **Date:** 2026-08-27
 
 **Changes:**
@@ -151,6 +194,10 @@
 * Harden Skill editing and version synchronization with actionable version-conflict recovery, customer-safe history-conflict errors, internal-only rescan guidance, and explicit public npm registry selection during version installation
 * Preserve Host configuration on `auth logout`, and stop capability discovery from guessing unregistered domains or retrying empty catalogs without deployment or permission evidence
 * Add `context +current` and the `ae-current-context` Skill for Run-bound, sandbox-authenticated, on-demand reading of generic product-page context without exposing context locators to the model
+
+#### 6.1-only: Project Semantics & Atlas Experiment
+* Add the `project-semantic` domain and `ae-project-semantic` Skill for governed asset-package export, evidence-scoped recommendation generation, deterministic candidate validation and submission, candidate activation, semantic lifecycle management, and release publishing
+* Extend Atlas Experiment with Feature whitelist list/save/status/delete commands and full metric-binding replacement with guardrail roles; scope duplicate-ID validation to each whitelist bucket and hide the unsupported internal `observation` metric role
 
 ### 6.0.45
 **Date:** 2026-08-21
@@ -184,7 +231,7 @@
 #### DataOps
 * Stream SQL query download results directly to local files for safer handling of large result sets
 
-### 6.0.42
+### 6.1.14
 **Date:** 2026-08-13
 
 **Changes:**
@@ -198,7 +245,7 @@
 * Allow existing user tags and clusters to update their enabled auto-refresh Quartz cron without enabling auto refresh or triggering recomputation
 * Tighten favorite, metric creation, virtual-property SQL update, and dimension-table binding contracts; clarify metric display names in analysis model guidance
 
-### 6.0.41
+### 6.1.13
 **Date:** 2026-08-06
 
 **Changes:**
@@ -224,7 +271,11 @@
 * Remove preset MCP fallback from product Skills and add a release-gate check
 * Complete additional `ae-cli system` coverage for usage CSV stream export, sandbox-tool lifecycle, models, and member statistics that landed after 6.0.40
 
-### 6.0.40
+#### 6.1-only: Atlas Experiment
+* Clarify that adjacent `compound` groups with the same `relation` are flattened on Atlas experiment save/submit so generated cluster QP stays within backend layer limits; different relations are preserved
+* Remove preset MCP / te-mcp fallback wording from experiment design and insight Skills
+
+### 6.1.12
 **Date:** 2026-07-31
 
 **Changes:**
@@ -239,7 +290,11 @@
 * Clarify per-event and behavior-sequence `time_range` requirements and filter-property contracts, including technical-name or structured field references, `array_row` object-group filters, and rejection of unsupported or unknown fields
 * Add `engage-activity.activity-data.detail` guidance for delivery-trend queries, covering activity/topic/task selection, time grains, cancellation request IDs, and indicator semantics
 
-### 6.0.39
+#### 6.1-only: Atlas Experiment
+* Add curated `experiment report summary`, `experiment report sample-size`, and `experiment report metric-trend` commands, and enumerate the supported `capability search --domain` values
+* Harden experiment save and metric workflows with native camelCase DTO guidance, authoritative schema checks, verified metric IDs, `METRIC_NOT_FOUND` / `METRIC_IN_USE` handling, and clearer project-ID resolution
+
+### 6.1.11
 **Date:** 2026-07-30
 
 **Changes:**
@@ -262,7 +317,11 @@
 * Remove obsolete `engage-setting query cluster-qp-skill`; build semantic audience, trigger, and completion definitions from Analysis models for Hermes compilation, including `targetDefinitionRequest` compilation before legacy Flow validation
 * Clarify Webhook versus client channel parameters and document optional `relationProps` on task save
 
-### 6.0.38
+#### 6.1-only: Atlas Experiment
+* Add `ae-experiment-design` and `ae-experiment-insight` Skills for experiment planning, SDK/exposure readiness, result analysis, and diagnostic playbooks
+* Add experiment-save build-guide and validation commands, and tighten metric-property and integer allocation contracts, including a required allocation total of 100
+
+### 6.1.10
 **Date:** 2026-07-30
 
 **Changes:**
@@ -274,7 +333,7 @@
 #### CLI / Agent
 * Switch Skills release synchronization to the centralized system service, with updated packaging scripts and regression coverage
 
-### 6.0.37
+### 6.1.9
 **Date:** 2026-07-28
 
 **Changes:**
@@ -287,6 +346,10 @@
 #### Tracking & documentation
 * Fix tracking-code generation Wiki references to use `~/.ae-cli/wiki/raw` and `~/.ae-cli/wiki/synthesis`
 * Refresh bilingual internal/public README documentation and add a Chinese changelog
+
+#### 6.1-only: Atlas Experiment
+* Add the `experiment` capability domain for experiment lifecycle, reports, sample-size and metric trends, traffic-layer conflict checks, Features, metrics, buckets, operation logs, and batch deletion
+* Add the `ae-experiment` Skill and verification coverage, including readiness checks and high-risk write guidance
 
 ### 6.0.36
 **Date:** 2026-07-24

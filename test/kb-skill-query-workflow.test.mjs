@@ -114,6 +114,30 @@ test('workflow accepts bare read only after complete response evidence', () => {
   assert.match(workflow, /do not\s+shell-truncate with `\| head`/);
 });
 
+test('known paths bypass redundant navigation within a stable retrieval context', () => {
+  assert.match(workflow, /Known-page fast path/);
+  assert.match(workflow, /same host, identity, KB and published revision/);
+  assert.match(workflow, /links returned by `\+index`, `\+grep` or `\+read`/);
+  assert.match(workflow, /do not repeat indexing or broad directory searches/);
+  assert.match(workflow, /only read a domain, catalog or parent page when/);
+  assert.match(workflow, /definitions, parameters and boundaries.*analysis handoff/s);
+});
+
+test('short linked pages use a bounded read before optional section localization', () => {
+  const locator = sectionBetween(
+    workflow,
+    '3. **Choose the section locator.**',
+    '4. **Read the selected window.**',
+  );
+  assert.match(locator, /Short or unknown-length linked page/);
+  assert.match(locator, /`--offset 1 --limit 200 --expand none`/);
+  assert.match(locator, /startLine: 1.*endLine: totalLines.*truncated: false/s);
+  assert.match(locator, /outline is not a prerequisite/);
+  assert.match(locator, /If partial.*missing evidence.*same page/s);
+  assert.match(locator, /Do not reuse a range from another page/);
+  assert.match(workflow, /Independent, already identified pages may be read in parallel/);
+});
+
 test('workflow requires subquestion coverage before answering', () => {
   const assess = sectionBetween(
     workflow,
@@ -123,7 +147,36 @@ test('workflow requires subquestion coverage before answering', () => {
   assert.match(assess, /Map the user's question into\s+subquestions/);
   assert.match(assess, /every answered subquestion is supported by read sections/);
   assert.match(assess, /not covered by the knowledge base/);
-  assert.match(assess, /do not\s+attach a confident value from general knowledge/);
+  assert.match(assess, /do not\s+attach a confident (?:value|fact)\s+from general knowledge/);
+});
+
+test('read coverage requires KB sources for knowledge facts while handing live data to analysis', () => {
+  const readCoverage = sectionBetween(
+    workflow,
+    '**Read coverage:**',
+    '5. **Assess coverage, then answer or iterate.**',
+  ).replace(/\s+/g, ' ');
+  assert.match(readCoverage, /for knowledge-only answers.*every answered subquestion.*sections actually read/i);
+  assert.match(readCoverage, /For business data analysis.*definitions and boundaries.*hand off/i);
+  assert.match(readCoverage, /live values do not need KB text as their source/i);
+  assert.doesNotMatch(readCoverage, /until every subquestion of the user's question/i);
+});
+
+test('knowledge coverage gaps hand business data analysis back to analysis discovery', () => {
+  const assess = sectionBetween(
+    workflow,
+    '5. **Assess coverage, then answer or iterate.**',
+    '## Anti-pattern: same-page offset crawling',
+  );
+  assert.ok(
+    /business data (?:analysis|task)|data question/i.test(assess) &&
+      /ae-analysis/.test(assess),
+    'The coverage assessment must distinguish business data analysis from knowledge-only answers and continue through ae-analysis.',
+  );
+  assert.ok(
+    /retain|preserve|carry/i.test(assess) && /KB evidence|knowledge-base evidence|read evidence/i.test(assess),
+    'An analysis handoff must retain read KB evidence and its limitations.',
+  );
 });
 
 test('workflow treats catalog pages as navigation, not answer sources', () => {

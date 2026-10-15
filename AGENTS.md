@@ -92,6 +92,12 @@ CLI 同时面向团队成员与 AI agent，**源码内容与所有用户可见�
 - 稳定 ingestion data-plane 是正式 L2 例外：服务端前置网关负责接入安全，CLI 不外发平台凭证，并提供类型化输入、redacted dry-run、日志保护和稳定 transport 测试；满足这些条件的命令不标记 Transitional。
 - 现有 `+` 命令不会因新规则被直接删除；Gateway 等价能力上线后再判定保留 L1、迁移 L2 或退回 L3。
 
+### 公开契约与已发布 Skill 兼容性（必查）
+
+修改或移除命令、别名、参数、Gateway 输入/输出契约，或新增、删除、改名、调整 Skill 职责前，必须读取并执行 [`docs/compatibility-policy.md`](docs/compatibility-policy.md)。先核对已发布契约，明确兼容层或获准的迁移方案，再补旧调用回归；版本检测与自动升级不替代兼容。
+
+集成分支自动 review 和合并前检查必须优先核对该规范。完成记录需说明兼容性结论、旧调用验证、未验证组合，以及已发布 Skill 的入口/职责连续性和新增 Skill 的复用评估。
+
 ### 一切走 RuntimeContext
 
 命令体内**不要裸用 `fetch` / `process.stdout`**，统一通过 `ctx`：

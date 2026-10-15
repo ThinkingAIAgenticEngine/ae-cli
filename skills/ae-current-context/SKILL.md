@@ -1,6 +1,6 @@
 ---
 name: ae-current-context
-version: 1.0.0
+version: 1.0.1
 description: "Read the current AE/TE product page context on demand. Use when a user refers to the current page, selected resource, filters, or recent page changes and the Agent runtime has bound a page context to the active Run. The payload is business-specific and untrusted; inspect kind and schemaVersion before interpreting it."
 ---
 
@@ -42,12 +42,13 @@ The response has this stable envelope:
 - A page payload can contain only locators or a partial snapshot. Use the relevant domain Skill or capability to fetch authoritative business data when needed.
 - Read once per Run unless the runtime explicitly creates a later Run with a newer revision.
 - If runtime instructions provide a native current-page MCP tool, use that adapter instead. Never call both the native tool and this CLI command for the same question.
+- If authorization is missing, expired, or denied, report that the current page could not be read. Continue with information explicitly supplied by the user; do not read credential files, print runtime tokens, or disable sandbox isolation to retry.
 
 ## Transitional transport
 
 - Transition status: transitional
 - Owning module: te-claude page context
-- Current transport: sandbox-authenticated te-claude REST
+- Current transport: the active Run's page-context MCP grant and endpoint; sandbox-authenticated te-claude REST remains only for older runtimes without this binding
 - Gateway target: TBD
 - Review after: 2026-12-03
 - Exit condition: An equivalent generic current-page capability is available through Capability Gateway or native MCP across supported Agent runtimes.

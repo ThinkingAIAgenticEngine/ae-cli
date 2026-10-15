@@ -23,6 +23,7 @@ const projectNameOverride = clean(args['project-name']);
 const force = Boolean(args.force);
 const keepBuildIr = Boolean(args['keep-build-ir']);
 const allowAllVisible = Boolean(args['allow-all-visible']);
+const allowSemanticPlanSnapshotDrift = Boolean(args['allow-semantic-plan-snapshot-drift']);
 
 assertSafePaths(packageRoot, outputRoot, archivePath, uploadSourcesPath);
 
@@ -59,7 +60,9 @@ const snapshotDate = normalizeSnapshotDate(args['snapshot-date'] || descriptor.g
 
 const semanticPlan = readJson(semanticPlanPath);
 if (clean(semanticPlan.schema_version) !== '2.0') fail('Project semantic knowledge Wiki plan schema 2.0 is required.');
-if (clean(semanticPlan.source_snapshot_hash) !== snapshotHash) fail('Semantic plan snapshot hash does not match the asset package.');
+if (clean(semanticPlan.source_snapshot_hash) !== snapshotHash && !allowSemanticPlanSnapshotDrift) {
+  fail('Semantic plan snapshot hash does not match the asset package.');
+}
 if (clean(semanticPlan.generation_method) !== 'agent_semantic_synthesis') {
   fail('Semantic plan generation_method must be agent_semantic_synthesis.');
 }
@@ -68,9 +71,12 @@ const dashboards = readIndex('dashboard-catalog');
 const reports = readIndex('report-catalog');
 const metrics = readIndex('metric-catalog');
 const containers = readIndex('asset-containers');
+const adoptedPersonalSemantics = readPackageJsonl('sources/adopted-personal-semantics.jsonl');
+const eventGroups = readOptionalIndex('event-groups');
 const dashboardById = indexBy(dashboards, 'resource_key');
 const reportById = indexBy(reports, 'resource_key');
 const metricById = indexBy(metrics, 'resource_key');
+const adoptedPersonalBySourceId = indexBy(adoptedPersonalSemantics, 'source_id');
 const dashboardFileNames = titleFirstAssetFileMap(dashboards, 'dashboard');
 const reportFileNames = titleFirstAssetFileMap(reports, 'report');
 const metricFileNames = titleFirstAssetFileMap(metrics, 'metric');
@@ -78,12 +84,14 @@ const titleFirstAssetPathMap = titleFirstAssetPathRewrites();
 const containerById = indexBy(containers, 'container_key');
 const domains = asArray(semanticPlan.domains);
 const appendices = asArray(semanticPlan.appendices);
+const personalSemanticIntegrations = asArray(semanticPlan.personal_semantic_integrations);
 const domainByDashboardId = new Map();
 const appendixByDashboardId = new Map();
 for (const domain of domains) for (const id of asArray(domain.dashboard_ids).map(clean)) domainByDashboardId.set(id, domain);
 for (const appendix of appendices) for (const id of asArray(appendix.dashboard_ids).map(clean)) appendixByDashboardId.set(id, appendix);
 
 const planModel = validateSemanticPlan();
+const semanticPlanState = buildSemanticPlanState();
 const scratch = fs.mkdtempSync(path.join(os.tmpdir(), 'project-semantic-knowledge-wiki-'));
 const buildIr = path.join(scratch, 'build-ir');
 
@@ -92,6 +100,7 @@ try {
   const generatorArgs = [generator, '--asset-package', packageRoot, '--domain-plan', semanticPlanPath,
     '--output', buildIr, '--project-name', projectName];
   if (allowAllVisible) generatorArgs.push('--allow-all-visible');
+  if (allowSemanticPlanSnapshotDrift) generatorArgs.push('--allow-semantic-plan-snapshot-drift');
   execFileSync(process.execPath, generatorArgs, { stdio: 'pipe' });
 
   const corpus = readJson(path.join(buildIr, 'corpus.json'));
@@ -105,8 +114,11 @@ try {
     const wikiRoot = path.join(staging, 'wiki');
     for (const directory of [
       'domains', 'technical-appendices', 'source-containers', 'dashboards', 'reports', 'metrics',
-      'metadata', 'recall-cards', 'governance',
+      'metadata', 'recall-cards', 'personal-semantics', 'governance', 'common', 'event-map', 'asset-index',
     ]) fs.mkdirSync(path.join(wikiRoot, directory), { recursive: true });
+    for (const type of ['background', 'preference', 'experience', 'asset-context']) {
+      fs.mkdirSync(path.join(wikiRoot, 'personal-semantics', type), { recursive: true });
+    }
 
     for (const metadataType of fs.readdirSync(path.join(buildIr, 'metadata'), { withFileTypes: true })
       .filter((entry) => entry.isDirectory()).map((entry) => entry.name)) {
@@ -117,10 +129,11 @@ try {
       const id = clean(domain.domain_id);
       const source = readText(path.join(buildIr, 'domains', fileName('domain', id)));
       const cards = asArray(domain.recall_cards);
-      const cardLinks = cards.map((card) => `- [${escapeLink(card.questions?.[0] || card.intent || card.card_id)}](../recall-cards/${fileName('recall-card', card.card_id)})`).join('\n');
+      const cardLinks = cards.map((card) => `- [${escapeLink(card.intent || card.card_id)}](../recall-cards/${fileName('recall-card', card.card_id)})`).join('\n');
       writeText(path.join(wikiRoot, 'domains', fileName('domain', id)),
         replaceFrontmatter(source, domainFrontmatter(domain))
-          + `\n## 场景召回卡\n\n${cardLinks || '- 无'}\n`);
+          + `\n## 场景召回卡\n\n${cardLinks || '- 无'}\n`
+          + renderTargetedKnowledge('domain', id, '../personal-semantics/'));
     }
 
     for (const appendix of appendices) {
@@ -180,7 +193,7 @@ try {
     }
 
     copyIndex(path.join(buildIr, 'dashboards', 'index.md'), path.join(wikiRoot, 'dashboards', 'index.md'));
-    copyIndex(path.join(buildIr, 'reports', 'index.md'), path.join(wikiRoot, 'reports', 'index.md'));
+    writeText(path.join(wikiRoot, 'reports', 'index.md'), renderReportIndex());
     copyIndex(path.join(buildIr, 'metrics', 'index.md'), path.join(wikiRoot, 'metrics', 'index.md'));
     copyIndex(path.join(buildIr, 'metadata', 'index.md'), path.join(wikiRoot, 'metadata', 'index.md'));
 
@@ -189,18 +202,36 @@ try {
     }
     writeText(path.join(wikiRoot, 'recall-cards', 'index.md'), renderRecallCardIndex(planModel.cards));
 
+    writeText(path.join(wikiRoot, 'common', 'index.md'), renderCommonIndex());
+    writeText(path.join(wikiRoot, 'asset-index', 'index.md'), renderAssetIndex());
+    writeEventMap(wikiRoot, buildIr);
+
+    for (const integration of planModel.personalSemanticIntegrations) {
+      const contextPath = personalSemanticContextPath(integration.context_type);
+      writeText(path.join(wikiRoot, 'personal-semantics', contextPath,
+        fileName('personal-semantic', integration.integration_id)), renderPersonalSemanticIntegration(integration));
+    }
+    writeText(path.join(wikiRoot, 'personal-semantics', 'index.md'),
+      renderPersonalSemanticIndex(planModel.personalSemanticIntegrations));
+    for (const type of ['background', 'preference', 'experience', 'asset_context']) {
+      writeText(path.join(wikiRoot, 'personal-semantics', personalSemanticContextPath(type), 'index.md'),
+        renderPersonalSemanticTypeIndex(type, planModel.personalSemanticIntegrations));
+    }
+
     const coverage = readText(path.join(buildIr, 'indexes', 'coverage.md'))
       .replaceAll('../appendices/', '../technical-appendices/')
       .replaceAll('../briefs/reports/', '../reports/')
       .replaceAll('../briefs/metadata/', '../metadata/');
     writeText(path.join(wikiRoot, 'governance', 'coverage.md'), coverage);
     writeText(path.join(wikiRoot, 'governance', 'authority-index.md'), renderAuthorityIndex(authorityRows));
+    writeText(path.join(wikiRoot, 'governance', 'knowledge-adoption.md'), renderKnowledgeAdoptionIndex());
     writeText(path.join(wikiRoot, 'governance', 'index.md'), renderGovernanceIndex(conflictReportIds.size));
     writeText(path.join(wikiRoot, 'governance', 'source-project-boundary.md'), renderSourceProjectBoundary(sourceProjectReferencesFromPackage()));
     writeText(path.join(wikiRoot, 'project-overview.md'), renderProjectOverview(corpus));
     writeText(path.join(wikiRoot, 'index.md'), renderWikiIndex(corpus));
     writeText(path.join(wikiRoot, 'log.md'), renderLog(corpus));
     writeText(path.join(staging, 'index.md'), renderSnapshotIndex(corpus));
+    writeText(path.join(staging, 'refresh-state.md'), renderRefreshState(semanticPlanState));
 
     const sourceProjectRefs = sourceProjectReferencesFromPackage();
     const sourceProjectIds = [...new Set(sourceProjectRefs.map((row) => row.source_project_id))].sort((a, b) => a - b);
@@ -215,12 +246,18 @@ try {
       source_project_id_status: sourceProjectRefs.length ? 'detected_in_packaged_definitions' : 'not_exposed',
       project_name: projectName,
       source_snapshot_hash: snapshotHash,
-      semantic_plan_hash: sha256(fs.readFileSync(semanticPlanPath)),
+      semantic_plan_hash: semanticPlanState.plan_hash,
+      semantic_plan_state_schema_version: semanticPlanState.schema_version,
+      semantic_plan_fragment_count: semanticPlanState.fragments.length,
       asset_package_schema_version: '3.0',
       asset_scope: packageAssetScope,
-      wiki_schema_version: '1.0',
+      wiki_schema_version: '2.0',
+      navigation_taxonomy_version: '2.1',
       generated_at: descriptor.generated_at ?? packageManifest.generated_at ?? null,
-      counts: { ...corpus.counts, recall_cards: planModel.cards.length, blocked_assets: blockedCount, unknown_sql_reports: unknownSqlCount },
+      counts: { ...corpus.counts, recall_cards: planModel.cards.length,
+        adopted_personal_semantics: adoptedPersonalSemantics.length,
+        personal_semantic_integrations: planModel.personalSemanticIntegrations.length,
+        blocked_assets: blockedCount, unknown_sql_reports: unknownSqlCount },
       quality_warnings: [...asArray(corpus.warnings),
         ...(sourceProjectRefs.filter((row) => Number(row.source_project_id) !== semanticProjectId).length
           ? [`${sourceProjectRefs.filter((row) => Number(row.source_project_id) !== semanticProjectId).length} packaged asset reference(s) mention another project: ${sourceProjectRefs.filter((row) => Number(row.source_project_id) !== semanticProjectId).slice(0, 5).map((row) => `${row.resource_type}:${row.resource_key}->${row.source_project_id}`).join(', ')}`] : []),
@@ -265,6 +302,8 @@ function validateSemanticPlan() {
   const cardIds = new Set();
   const excludedByAsset = new Map();
   const preferredByAsset = new Map();
+  const domainIds = new Set(domains.map((domain) => clean(domain.domain_id)).filter(Boolean));
+  const projectBusinessModel = validateProjectBusinessModel(semanticPlan.project_business_model, domainIds);
   for (const domain of domains) {
     const domainId = clean(domain.domain_id);
     const domainDashboardIds = new Set(asArray(domain.dashboard_ids).map(clean));
@@ -272,6 +311,7 @@ function validateSemanticPlan() {
       .some((ref) => domainDashboardIds.has(clean(ref.dashboard_id)))).map((report) => clean(report.resource_key)));
     const domainMetricIds = new Set(reports.filter((report) => domainReportIds.has(clean(report.resource_key)))
       .flatMap((report) => asArray(report.metric_occurrences).map((item) => clean(item.metric_key)).filter(Boolean)));
+    validateDomainJudgmentModel(domain.domain_judgment_model, domainId, domainDashboardIds, domainReportIds, domainMetricIds);
     const recallCards = asArray(domain.recall_cards);
     if (!recallCards.length) fail(`Domain ${domainId || '<unknown>'} must contain at least one recall card.`);
     for (const value of recallCards) {
@@ -292,6 +332,25 @@ function validateSemanticPlan() {
             : type === 'metric' ? domainMetricIds.has(key) : false;
         if (!inDomain) fail(`Recall card ${cardId} references ${type}:${key} outside domain ${domainId}.`);
         if (preferred.includes(ref)) addMulti(preferredByAsset, `${type}:${key}`, cardId);
+      }
+      const routing = asObject(card.routing);
+      if (card.routing != null) {
+        for (const field of ['applicable_when', 'answer_grain', 'stop_when', 'fallback_when_unavailable', 'evidence_boundary']) {
+          if (!clean(routing[field])) fail(`Recall card ${cardId} routing requires ${field}.`);
+        }
+        if (!asArray(routing.branches).length) fail(`Recall card ${cardId} routing requires branches.`);
+        for (const branch of asArray(routing.branches)) {
+          if (!clean(branch.when) || !asArray(branch.asset_refs).length) {
+            fail(`Recall card ${cardId} routing branch requires when and asset_refs.`);
+          }
+          for (const ref of asArray(branch.asset_refs)) {
+            validateAssetRef(ref, cardId);
+            if (![...preferred, ...asArray(card.fallback_asset_refs)].some((allowed) =>
+              clean(allowed.resource_type) === clean(ref.resource_type) && clean(allowed.resource_key) === clean(ref.resource_key))) {
+              fail(`Recall card ${cardId} routing branch references an asset outside preferred/fallback refs.`);
+            }
+          }
+        }
       }
       for (const ref of asArray(card.excluded_asset_refs)) {
         validateAssetRef(ref, cardId);
@@ -333,8 +392,208 @@ function validateSemanticPlan() {
   if (missingSql.length && !allowAllVisible) {
     fail(`Semantic plan is missing SQL semantics for ${missingSql.length} report(s): ${missingSql.join(', ')}`);
   }
+  const personalIntegrations = validatePersonalSemanticIntegrations(domainIds, cardIds);
 
-  return { cards, excludedByAsset, preferredByAsset, sqlByReportId, missingSqlByReportId: new Set(missingSql) };
+  return {
+    cards,
+    personalSemanticIntegrations: personalIntegrations,
+    excludedByAsset,
+    preferredByAsset,
+    sqlByReportId,
+    missingSqlByReportId: new Set(missingSql),
+    projectBusinessModel,
+  };
+}
+
+function validatePersonalSemanticIntegrations(domainIds, cardIds) {
+  const integrationIds = new Set();
+  const referencedSourceIds = new Set();
+  const integrations = [];
+  for (const [index, value] of personalSemanticIntegrations.entries()) {
+    const row = asObject(value);
+    const integrationId = clean(row.integration_id);
+    if (!/^[a-z0-9][a-z0-9_-]{1,79}$/.test(integrationId) || integrationIds.has(integrationId)) {
+      fail(`Invalid or duplicate personal semantic integration ID: ${integrationId || `<index ${index}>`}.`);
+    }
+    integrationIds.add(integrationId);
+    const contextType = normalizePersonalSemanticContextType(row.context_type);
+    const sourceIds = asArray(row.source_ids).map(clean).filter(Boolean);
+    if (!sourceIds.length) fail(`Personal semantic integration ${integrationId} requires source_ids.`);
+    for (const sourceId of sourceIds) {
+      const source = adoptedPersonalBySourceId.get(sourceId);
+      if (!source) fail(`Personal semantic integration ${integrationId} references unknown source ${sourceId}.`);
+      if (normalizePersonalSemanticContextType(source.context_type) !== contextType) {
+        fail(`Personal semantic integration ${integrationId} mixes context_type ${contextType} with source ${sourceId}:${source.context_type}.`);
+      }
+      referencedSourceIds.add(sourceId);
+    }
+    const title = clean(row.title);
+    const projectUsage = clean(row.project_usage);
+    const boundaries = asArray(row.boundaries).map(clean).filter(Boolean);
+    const conflictPolicy = clean(row.conflict_policy);
+    if (!title || !projectUsage) fail(`Personal semantic integration ${integrationId} requires title and project_usage.`);
+    if (!['compatible', 'scoped', 'blocked'].includes(conflictPolicy)) {
+      fail(`Personal semantic integration ${integrationId} has invalid conflict_policy.`);
+    }
+    if (!boundaries.length) fail(`Personal semantic integration ${integrationId} requires boundaries.`);
+    const target = validatePersonalSemanticIntegrationTarget(row.integration_target, integrationId, domainIds, cardIds);
+    integrations.push({ ...row, integration_id: integrationId, context_type: contextType,
+      source_ids: sourceIds, title, project_usage: projectUsage, boundaries, conflict_policy: conflictPolicy,
+      integration_target: target });
+  }
+  const missing = adoptedPersonalSemantics
+    .map((source) => clean(source.source_id))
+    .filter((sourceId) => sourceId && !referencedSourceIds.has(sourceId));
+  if (missing.length) {
+    fail(`Semantic plan is missing adopted personal semantic source(s): ${missing.join(', ')}`);
+  }
+  return integrations;
+}
+
+function validatePersonalSemanticIntegrationTarget(value, integrationId, domainIds, cardIds) {
+  const target = asObject(value);
+  const type = clean(target.target_type);
+  const id = clean(target.target_id);
+  if (!['project', 'domain', 'asset', 'recall_card'].includes(type)) {
+    fail(`Personal semantic integration ${integrationId} has invalid integration_target.target_type.`);
+  }
+  if (type === 'project') return { target_type: type, target_id: id || 'project' };
+  if (!id) fail(`Personal semantic integration ${integrationId} target ${type} requires target_id.`);
+  if (type === 'domain' && !domainIds.has(id)) fail(`Personal semantic integration ${integrationId} references unknown domain ${id}.`);
+  if (type === 'recall_card' && !cardIds.has(id)) fail(`Personal semantic integration ${integrationId} references unknown recall card ${id}.`);
+  if (type === 'asset') {
+    const [assetType, assetKey] = id.includes(':') ? id.split(/:(.*)/s).filter(Boolean) : ['', id];
+    const exists = assetType === 'dashboard' ? dashboardById.has(assetKey)
+      : assetType === 'report' ? reportById.has(assetKey)
+        : assetType === 'metric' ? metricById.has(assetKey)
+          : dashboardById.has(assetKey) || reportById.has(assetKey) || metricById.has(assetKey);
+    if (!exists) fail(`Personal semantic integration ${integrationId} references unknown asset target ${id}.`);
+  }
+  return { target_type: type, target_id: id };
+}
+
+function validateProjectBusinessModel(value, domainIds) {
+  const model = asObject(value);
+  const businessPositioning = clean(model.business_positioning);
+  const audienceRoles = asArray(model.audience_roles).map(clean).filter(Boolean);
+  const businessObjects = asArray(model.business_objects).map((item, index) => {
+    const row = asObject(item);
+    const objectId = clean(row.object_id);
+    const name = clean(row.name);
+    const meaning = clean(row.meaning);
+    if (!/^[a-z0-9][a-z0-9_-]{1,79}$/.test(objectId)) fail(`project_business_model.business_objects[${index}] has invalid object_id.`);
+    if (!name || !meaning) fail(`project_business_model.business_objects[${index}] requires name and meaning.`);
+    const evidenceRefs = normalizePlanAssetRefs(row.evidence_refs, `business object ${objectId}`);
+    if (!evidenceRefs.length) fail(`business object ${objectId} requires evidence_refs.`);
+    return { object_id: objectId, name, meaning, evidence_refs: evidenceRefs };
+  });
+  const objectNames = new Set(businessObjects.map((item) => item.name));
+  const objectRelationships = asArray(model.object_relationships).map((item, index) => {
+    const row = asObject(item);
+    const fromObject = clean(row.from_object);
+    const toObject = clean(row.to_object);
+    const relationship = clean(row.relationship);
+    if (!fromObject || !toObject || !relationship) {
+      fail(`project_business_model.object_relationships[${index}] requires from_object, to_object and relationship.`);
+    }
+    if (!objectNames.has(fromObject) || !objectNames.has(toObject)) {
+      fail(`object relationship ${fromObject || '<empty>'}->${toObject || '<empty>'} must reference declared business object names.`);
+    }
+    const evidenceRefs = normalizePlanAssetRefs(row.evidence_refs, `object relationship ${fromObject}->${toObject}`);
+    if (!evidenceRefs.length) fail(`object relationship ${fromObject}->${toObject} requires evidence_refs.`);
+    return { from_object: fromObject, to_object: toObject, relationship, evidence_refs: evidenceRefs };
+  });
+  const decisionChains = asArray(model.decision_chains).map((item, index) => {
+    const row = asObject(item);
+    const chainId = clean(row.chain_id);
+    const title = clean(row.title);
+    const decisionQuestion = clean(row.decision_question);
+    const signals = asArray(row.signals).map(clean).filter(Boolean);
+    const decisionSteps = asArray(row.decision_steps).map(clean).filter(Boolean);
+    const preferredDomainIds = asArray(row.preferred_domain_ids).map(clean).filter(Boolean);
+    const assetRefs = normalizePlanAssetRefs(row.asset_refs, `decision chain ${chainId || index + 1}`);
+    const boundaries = asArray(row.boundaries).map(clean).filter(Boolean);
+    if (!/^[a-z0-9][a-z0-9_-]{1,79}$/.test(chainId)) fail(`project_business_model.decision_chains[${index}] has invalid chain_id.`);
+    if (!title || !decisionQuestion) fail(`decision chain ${chainId} requires title and decision_question.`);
+    if (signals.length < 2) fail(`decision chain ${chainId} requires at least two signals.`);
+    if (decisionSteps.length < 2) fail(`decision chain ${chainId} requires at least two decision_steps.`);
+    if (!preferredDomainIds.length || preferredDomainIds.some((id) => !domainIds.has(id))) {
+      fail(`decision chain ${chainId} must reference existing preferred_domain_ids.`);
+    }
+    if (!assetRefs.length) fail(`decision chain ${chainId} requires asset_refs.`);
+    if (!boundaries.length) fail(`decision chain ${chainId} requires boundaries.`);
+    return {
+      chain_id: chainId,
+      title,
+      decision_question: decisionQuestion,
+      signals,
+      decision_steps: decisionSteps,
+      preferred_domain_ids: preferredDomainIds,
+      asset_refs: assetRefs,
+      requires_live_execution: Boolean(row.requires_live_execution),
+      boundaries,
+    };
+  });
+  const nonGoals = asArray(model.non_goals).map(clean).filter(Boolean);
+  if (!businessPositioning) fail('project_business_model requires business_positioning.');
+  if (!audienceRoles.length) fail('project_business_model requires audience_roles.');
+  if (!businessObjects.length) fail('project_business_model requires business_objects.');
+  if (!objectRelationships.length) fail('project_business_model requires object_relationships.');
+  if (!decisionChains.length) fail('project_business_model requires decision_chains.');
+  if (!nonGoals.length) fail('project_business_model requires non_goals.');
+  return {
+    business_positioning: businessPositioning,
+    audience_roles: audienceRoles,
+    business_objects: businessObjects,
+    object_relationships: objectRelationships,
+    decision_chains: decisionChains,
+    non_goals: nonGoals,
+  };
+}
+
+function validateDomainJudgmentModel(value, domainId, domainDashboardIds, domainReportIds, domainMetricIds) {
+  const model = asObject(value);
+  const businessStateJudged = clean(model.business_state_judged);
+  const mainObjects = asArray(model.main_objects).map(clean).filter(Boolean);
+  const signals = asArray(model.signals).map(clean).filter(Boolean);
+  const decisionPath = asArray(model.decision_path).map(clean).filter(Boolean);
+  const boundaries = asArray(model.boundaries).map(clean).filter(Boolean);
+  const attachmentLogic = asArray(model.asset_attachment_logic);
+  if (!businessStateJudged) fail(`Domain ${domainId} is missing domain_judgment_model.business_state_judged.`);
+  if (!mainObjects.length) fail(`Domain ${domainId} is missing domain_judgment_model.main_objects.`);
+  if (signals.length < 2) fail(`Domain ${domainId} domain_judgment_model requires at least two signals.`);
+  if (decisionPath.length < 2) fail(`Domain ${domainId} domain_judgment_model requires at least two decision_path steps.`);
+  if (!attachmentLogic.length) fail(`Domain ${domainId} domain_judgment_model requires asset_attachment_logic.`);
+  if (!boundaries.length) fail(`Domain ${domainId} domain_judgment_model requires boundaries.`);
+  for (const [index, item] of attachmentLogic.entries()) {
+    const row = asObject(item);
+    const ref = normalizePlanAssetRef(row.asset_ref, `domain ${domainId} asset_attachment_logic[${index}]`);
+    const role = clean(row.role);
+    const reason = clean(row.reason);
+    if (!['primary_entry', 'supporting_evidence', 'drilldown', 'exclusion'].includes(role)) {
+      fail(`domain ${domainId} asset_attachment_logic[${index}] has invalid role.`);
+    }
+    if (!reason || reason.length < 10) fail(`domain ${domainId} asset_attachment_logic[${index}] requires concrete reason.`);
+    const inDomain = ref.resource_type === 'dashboard' ? domainDashboardIds.has(ref.resource_key)
+      : ref.resource_type === 'report' ? domainReportIds.has(ref.resource_key)
+        : ref.resource_type === 'metric' ? domainMetricIds.has(ref.resource_key) : false;
+    if (!inDomain) fail(`domain ${domainId} asset_attachment_logic references ${ref.resource_type}:${ref.resource_key} outside domain closure.`);
+  }
+}
+
+function normalizePlanAssetRefs(values, label) {
+  return asArray(values).map((value, index) => normalizePlanAssetRef(value, `${label} asset_refs[${index}]`));
+}
+
+function normalizePlanAssetRef(value, label) {
+  const ref = asObject(value);
+  const type = clean(ref.resource_type);
+  const key = clean(ref.resource_key);
+  const exists = type === 'dashboard' ? dashboardById.has(key)
+    : type === 'report' ? reportById.has(key)
+      : type === 'metric' ? metricById.has(key) : false;
+  if (!exists) fail(`${label} references unknown asset ${type || '<type>'}:${key || '<key>'}.`);
+  return { resource_type: type, resource_key: key };
 }
 
 function assertAgentAuthoredRecallCard(card, domainId) {
@@ -436,8 +695,36 @@ function writeMergedAsset(wikiRoot, directory, asset, authority, extra = '') {
   const brief = readText(path.join(buildIr, 'briefs', directory, fileName(directory.slice(0, -1), id)));
   const type = directory === 'dashboards' ? 'project-dashboard' : directory === 'reports' ? 'project-report' : 'project-reusable-metric';
   const title = assetReadableTitle(asset, directory.slice(0, -1));
+  const authorityNotice = renderAssetAuthorityNotice(authority);
+  const mergedExtra = [authorityNotice, extra.trim(), renderTargetedKnowledge('asset', `${directory.slice(0, -1)}:${id}`, '../personal-semantics/')].filter(Boolean).join('\n\n');
   writeText(path.join(wikiRoot, directory, assetOutputFileName(directory, id)),
-    ensureReadableHeading(mergePage(source, brief, authorityFrontmatter(type, id, title, authority), extra), title));
+    ensureReadableHeading(mergePage(source, brief, authorityFrontmatter(type, id, title, authority), mergedExtra), title));
+}
+
+function renderAssetAuthorityNotice(authority) {
+  const runtimePolicy = clean(authority.runtime_policy);
+  const definitionState = clean(authority.definition_state);
+  const authorityRole = clean(authority.authority_role);
+  const canonical = clean(authority.canonical_asset_id);
+  const lines = [];
+  if (runtimePolicy === 'block') {
+    lines.push('- 召回限制：该资产不能作为直接回答入口。');
+  } else if (runtimePolicy === 'warn') {
+    lines.push('- 召回限制：该资产只能作为辅助线索，回答时需要说明其依赖或待确认边界。');
+  }
+  if (authorityRole === 'dependency_only') {
+    lines.push('- 权威边界：该资产来自依赖闭包，只能支撑承载看板或业务域，不能单独代表正式业务入口。');
+  }
+  if (definitionState === 'conflict') {
+    lines.push('- 口径状态：存在同名或近义资产口径冲突，应优先回到业务域、召回卡或让用户确认。');
+  } else if (definitionState === 'unknown') {
+    lines.push('- 口径状态：定义证据不足，只能作为待核验线索。');
+  }
+  if (canonical) {
+    lines.push(`- 推荐入口：优先使用 \`${canonical}\`，本页只保留来源和排除理由。`);
+  }
+  if (!lines.length) return '';
+  return `## 召回与权威边界\n\n${lines.join('\n')}`;
 }
 
 function mergePage(source, brief, frontmatter, extra = '') {
@@ -465,6 +752,12 @@ ${asArray(values).map((ref) => {
     const linkPath = assetPath(clean(ref.resource_type), clean(ref.resource_key));
     return `- [${escapeLink(recallAssetLabel(ref))}](${linkPath})：${clean(ref.reason)}`;
   }).join('\n') || '- 无'}`;
+  const routing = asObject(card.routing);
+  const branches = asArray(routing.branches).map((branch) => {
+    const item = asObject(branch);
+    const targets = asArray(item.asset_refs).map(recallAssetLabel).join('、') || '回到业务域核对资产';
+    return `- 当${clean(item.when)}：使用 ${targets}。${clean(item.reason)}`;
+  });
   return `---
 type: project-semantic-recall-card
 card_id: ${yaml(card.card_id)}
@@ -492,12 +785,15 @@ ${alternateQuestions.map((value) => `- ${value}`).join('\n') || '- 同页面标�
 
 ${clean(card.intent)}
 
-## Agent 执行顺序
+## 条件路由与停止
 
-1. 先进入首选资产确认业务范围、指标和维度。
-2. 首选资产不足以回答时，再使用备选资产补充证据。
-3. 排除资产只用于解释为什么不采用，不能作为当前问题的主要答案来源。
-4. 需要当前数值、客户名单、趋势或明细时，必须实时执行报表/查询。
+- 适用条件：${clean(routing.applicable_when) || clean(card.intent)}
+- 答案对象与粒度：${clean(routing.answer_grain) || '先按用户问法确认对象、统计粒度与时间范围。'}
+- 必要参数：${asArray(routing.required_parameters).map(clean).filter(Boolean).join('、') || '按首选资产的输入定义核对。'}
+${branches.join('\n') || `- 问法和资产定义匹配时使用首选资产；不匹配时先回到业务域确认对象与口径，再考虑备选资产。`}
+- 停止条件：${clean(routing.stop_when) || '取得对象、粒度、范围、时间和权威状态均匹配的最小证据后停止扩搜。'}
+- 无匹配或不可用时：${clean(routing.fallback_when_unavailable) || '回到业务域按对象、粒度、过滤和时间筛选域内资产；仍不匹配则说明缺口。'}
+- 执行边界：${clean(routing.evidence_boundary) || '排除资产不能作为当前答案；当前数值、客户名单、趋势或明细必须实时执行。'}
 
 ${refs(card.preferred_asset_refs, '首选资产')}
 
@@ -509,6 +805,7 @@ ${refs(card.excluded_asset_refs, '排除资产')}
 
 - 是否需要执行实时数据：${Boolean(card.requires_live_execution)}
 - 原因：${clean(card.live_execution_reason) || '未说明'}
+${renderTargetedKnowledge('recall_card', clean(card.card_id), '../personal-semantics/')}
 `;
 }
 
@@ -525,11 +822,140 @@ function recallAssetLabel(ref) {
 }
 
 function renderRecallCardIndex(cards) {
-  return `# 场景召回卡\n\n首轮召回先使用这里的业务问题与权威资产路由，不直接宽搜全部资产页。\n\n${cards.map((card) => `- [${escapeLink(card.questions?.[0] || card.intent || card.card_id)}](${fileName('recall-card', card.card_id)})（${clean(card.domain_title)}）`).join('\n')}\n`;
+  return `# 场景召回卡\n\n先按问法、对象、粒度和参数选择匹配的卡；卡内按条件分支找到最小证据并在满足停止条件后停止。无匹配卡时，回到[业务领域](../domains/index.md)，按对象、粒度、过滤和时间筛选域内资产；仍无可用资产时说明具体缺口。\n\n${cards.map((card) => `- [${escapeLink(card.intent || card.card_id)}](${fileName('recall-card', card.card_id)})（${clean(card.domain_title)}）`).join('\n')}\n`;
+}
+
+function renderReportIndex() {
+  const assigned = new Set();
+  const sections = domains.map((domain) => {
+    const dashboardIds = new Set(asArray(domain.dashboard_ids).map(clean));
+    const matching = reports.filter((report) => asArray(report.dashboard_refs)
+      .some((ref) => dashboardIds.has(clean(ref.dashboard_id))))
+      .sort((a, b) => clean(a.resource_key).localeCompare(clean(b.resource_key), 'en'));
+    for (const report of matching) assigned.add(clean(report.resource_key));
+    const questions = asArray(domain.primary_questions).map(clean).filter(Boolean);
+    const cards = asArray(domain.recall_cards)
+      .map((card) => `- 问题入口：[${escapeLink(clean(card.questions?.[0]) || clean(card.intent))}](../recall-cards/${fileName('recall-card', card.card_id)})`);
+    return `## ${clean(domain.title)}\n\n- 业务问题：${questions.join('；') || clean(domain.summary)}\n- [领域判断](../domains/${fileName('domain', domain.domain_id)})\n${cards.join('\n')}\n${matching.map((report) => `- [${escapeLink(assetReadableTitle(report, 'report'))}](${reportFileNames.get(clean(report.resource_key))})（report:${clean(report.resource_key)}）`).join('\n') || '- 本快照无该域报表，按领域页核对其他资产。'}\n`;
+  });
+  const unassigned = reports.filter((report) => !assigned.has(clean(report.resource_key)))
+    .sort((a, b) => clean(a.resource_key).localeCompare(clean(b.resource_key), 'en'));
+  return `# 报表\n\n先按业务问题选择领域或场景，再核对报表的对象、粒度、过滤和时间。点名报表时可直接进入报表页；未归属报表不自动视为业务入口。\n\n${sections.join('\n')}\n## 其他与未归属报表\n\n${unassigned.map((report) => `- [${escapeLink(assetReadableTitle(report, 'report'))}](${reportFileNames.get(clean(report.resource_key))})（report:${clean(report.resource_key)}）`).join('\n') || '- 无'}\n`;
+}
+
+function renderPersonalSemanticIntegration(integration) {
+  const sourceRows = integration.source_ids.map((sourceId) => adoptedPersonalBySourceId.get(sourceId)).filter(Boolean);
+  const provenanceRows = sourceRows.map((source) => {
+    const payload = asObject(source.payload);
+    return `| \`${clean(source.source_id)}\` | ${escapeTable(personalSemanticOwnerName(payload))} | ${escapeTable(formatPersonalSemanticTime(payload.updated_at ?? source.updated_at))} | ${escapeTable(payload.heat_count)} |`;
+  }).join('\n');
+  const sourceSummaries = sourceRows.map((source) => {
+    const payload = asObject(source.payload);
+    return `### ${clean(payload.title) || clean(source.source_id)}\n\n- Source ID: \`${clean(source.source_id)}\`\n- 来源人：${personalSemanticOwnerName(payload)}\n- 更新时间：${formatPersonalSemanticTime(payload.updated_at ?? source.updated_at)}\n- 热度：${clean(payload.heat_count) || '0'}\n- 摘要：${clean(payload.summary) || 'unknown'}\n- 内容：${clean(payload.content) || 'unknown'}\n- 关键词：${asArray(payload.keywords).map(clean).filter(Boolean).join('、') || '无'}\n- 资源引用：${renderPersonalSemanticResourceRefs(payload.resource_refs)}\n`;
+  }).join('\n');
+  return `---\ntype: project-semantic-personal-integration\nsemantic_project_id: ${semanticProjectId}\nintegration_id: ${yaml(integration.integration_id)}\ncontext_type: ${yaml(integration.context_type)}\nsource_snapshot_hash: ${yaml(snapshotHash)}\ntarget_type: ${yaml(integration.integration_target.target_type)}\ntarget_id: ${yaml(integration.integration_target.target_id)}\nconflict_policy: ${yaml(integration.conflict_policy)}\n---\n\n# ${clean(integration.title)}\n\n## Agent 使用摘要\n\n- 类型：${personalSemanticContextLabel(integration.context_type)}\n- 项目用法：${clean(integration.project_usage)}\n- 作用目标：${renderPersonalSemanticTarget(integration.integration_target)}\n- 冲突策略：${clean(integration.conflict_policy)}\n- 边界：${joinChineseClauses(integration.boundaries)}\n\n## 来源\n\n| Source ID | 来源人 | 更新时间 | 热度 |\n| --- | --- | --- | ---: |\n${provenanceRows || '| - | - | - | - |'}\n\n## 原始个人语义摘要\n\n${sourceSummaries || '无'}\n`;
+}
+
+function personalSemanticOwnerName(payload) {
+  return clean(payload.owner_name) || clean(payload.owner_display_name) || '未知用户';
+}
+
+function renderPersonalSemanticIndex(integrations) {
+  const rows = integrations
+    .slice()
+    .sort((left, right) => `${left.context_type}:${left.integration_id}`.localeCompare(`${right.context_type}:${right.integration_id}`, 'en'));
+  return `# 知识采纳记录\n\n已采纳的补充知识按目标写入项目、业务领域、场景或资产页；这里保留来源和适用边界以便追溯。\n\n- [背景](background/index.md)\n- [偏好](preference/index.md)\n- [经验](experience/index.md)\n- [资产上下文](asset-context/index.md)\n\n## 采纳项\n\n${rows.map((row) => `- [${escapeLink(row.title)}](${personalSemanticContextPath(row.context_type)}/${fileName('personal-semantic', row.integration_id)})：${personalSemanticContextLabel(row.context_type)}，${clean(row.project_usage)}`).join('\n') || '- 无已采纳补充知识。'}\n`;
+}
+
+function renderTargetedKnowledge(type, id, relativeRoot) {
+  const rows = planModel.personalSemanticIntegrations.filter((integration) => {
+    const target = integration.integration_target;
+    if (target.target_type !== type) return false;
+    if (type !== 'asset') return target.target_id === id;
+    return target.target_id === id || target.target_id === id.split(':')[1];
+  });
+  if (!rows.length) return '';
+  return `\n## 项目补充知识\n\n${rows.map((row) => `- [${escapeLink(row.title)}](${relativeRoot}${personalSemanticContextPath(row.context_type)}/${fileName('personal-semantic', row.integration_id)})：${clean(row.project_usage)}；适用边界：${joinChineseClauses(row.boundaries)}`).join('\n')}\n`;
+}
+
+function renderKnowledgeAdoptionIndex() {
+  return `# 知识采纳记录\n\n[查看已采纳补充知识及来源](../personal-semantics/index.md)。内容按适用目标进入项目、领域、场景和资产页；个人偏好只在声明的范围内生效。\n`;
+}
+
+function renderCommonIndex() {
+  const model = planModel.projectBusinessModel;
+  const objects = asArray(model.business_objects).map((row) => `- **${clean(row.name)}**：${clean(row.meaning)}`).join('\n');
+  const relationships = asArray(model.object_relationships).map((row) => `- ${clean(row.from_object)} → ${clean(row.to_object)}：${clean(row.relationship)}`).join('\n');
+  const supplements = planModel.personalSemanticIntegrations.filter((row) => row.integration_target.target_type === 'project')
+    .map((row) => `- [${escapeLink(row.title)}](../personal-semantics/${personalSemanticContextPath(row.context_type)}/${fileName('personal-semantic', row.integration_id)})：${clean(row.project_usage)}；适用边界：${joinChineseClauses(row.boundaries)}`).join('\n');
+  return `# 项目共识\n\n这里收录跨业务领域适用的项目对象、关系与已采纳补充知识。领域特有的判断方法保留在对应领域页。\n\n## 共同业务对象\n\n${objects || '- 无。'}\n\n## 对象关系\n\n${relationships || '- 无。'}\n\n## 跨领域补充知识\n\n${supplements || '- 暂无。'}\n\n[查看完整项目判断链路](../project-overview.md#业务判断链路)。\n`;
+}
+
+function renderAssetIndex() {
+  return `# 事件与资产目录\n\n事件公共分组帮助按产品模块找到事件；分组名称本身不定义业务领域或认证状态。业务含义以领域判断和事件定义为准。\n\n- [事件地图](../event-map/index.md)\n- [看板](../dashboards/index.md)\n- [报表](../reports/index.md)\n- [可复用指标](../metrics/index.md)\n- [分析元数据](../metadata/index.md)\n`;
+}
+
+function writeEventMap(wikiRoot, buildIrRoot) {
+  const eventPages = new Map();
+  const eventsDir = path.join(buildIrRoot, 'metadata', 'events');
+  if (fs.existsSync(eventsDir)) for (const name of fs.readdirSync(eventsDir).filter((item) => item.endsWith('.md'))) {
+    const content = readText(path.join(eventsDir, name));
+    const key = frontmatterValue(content, 'resource_key');
+    if (key) eventPages.set(key, name);
+  }
+  const groups = eventGroups.filter((group) => clean(group.catalog_scope) === 'project_public');
+  const seen = new Set();
+  const links = [];
+  for (const group of groups) {
+    const name = clean(group.group_name);
+    if (!name || seen.has(name)) fail(`Duplicate or empty public event group: ${name || '<empty>'}.`);
+    seen.add(name);
+    const members = asArray(group.events).filter((event) => eventPages.has(clean(event.event_name)));
+    if (!members.length) continue;
+    const file = fileName('event-group', `group-${name}-${sha256(name).slice(0, 8)}`);
+    links.push(`- [${escapeLink(name)}](${file})（${members.length} 个已导出事件）`);
+    writeText(path.join(wikiRoot, 'event-map', file), `# ${name}\n\n来源：项目公共事件目录。此分组仅用于查找事件，不自动定义业务领域或事件认证状态。\n\n${members.map((event) => `- [${escapeLink(clean(event.event_title) || clean(event.event_name))}（\`${clean(event.event_name)}\`）](../metadata/events/${eventPages.get(clean(event.event_name))})`).join('\n')}\n`);
+  }
+  writeText(path.join(wikiRoot, 'event-map', 'index.md'), `# 事件地图\n\n按项目公共事件分组查找已纳入资产包的事件。未纳入当前资产范围的事件不会在这里出现；事件分组不等于业务领域。\n\n${links.join('\n') || '- 当前资产范围内没有可展示的公共事件分组。'}\n\n[按元数据类型查找事件](../metadata/index.md)。\n`);
+}
+
+function renderPersonalSemanticTypeIndex(type, integrations) {
+  const normalized = normalizePersonalSemanticContextType(type);
+  const rows = integrations.filter((row) => normalizePersonalSemanticContextType(row.context_type) === normalized)
+    .sort((left, right) => left.integration_id.localeCompare(right.integration_id, 'en'));
+  return `# ${personalSemanticContextLabel(normalized)}\n\n${personalSemanticContextUsage(normalized)}\n\n${rows.map((row) => `- [${escapeLink(row.title)}](${fileName('personal-semantic', row.integration_id)})：${clean(row.project_usage)}`).join('\n') || '- 暂无。'}\n`;
+}
+
+function renderPersonalSemanticTarget(target) {
+  const type = clean(target.target_type);
+  const id = clean(target.target_id);
+  if (type === 'domain') return `业务域 \`${id}\``;
+  if (type === 'recall_card') return `召回卡 \`${id}\``;
+  if (type === 'asset') return `资产 \`${id}\``;
+  return '项目整体';
+}
+
+function renderPersonalSemanticResourceRefs(value) {
+  const refs = asArray(value).map(asObject).map((ref) => {
+    const type = clean(ref.resource_type);
+    const key = clean(ref.resource_key);
+    return type && key ? `${type}:${key}` : clean(ref);
+  }).filter(Boolean);
+  return refs.join('、') || '无';
+}
+
+function formatPersonalSemanticTime(value) {
+  const text = clean(value);
+  if (!text) return 'unknown';
+  if (/^\d{12,}$/.test(text)) {
+    const date = new Date(Number(text));
+    if (!Number.isNaN(date.getTime())) return date.toISOString().replace('T', ' ').replace('.000Z', ' UTC');
+  }
+  return text;
 }
 
 function renderAuthorityIndex(rows) {
-  return `# 资产权威状态\n\n## Agent 判定规则\n\n- \`runtime_policy=allow\`：可以作为主要答案依据，但当前数值仍需实时执行。\n- \`runtime_policy=warn\`：只能作为依赖或辅助线索，回答时需要说明它不是独立召回入口。\n- \`runtime_policy=block\`：不能直接回答，必须回到 canonical 资产、业务域或等待资产作者确认。\n- \`authority_role=dependency_only\`：只在报表/指标引用时使用，不能单独作为业务入口。\n- \`definition_state=conflict\` 或 \`unknown\`：不要断言精确口径，只能描述已知证据和待确认点。\n\n| 类型 | 资产 | Authority role | Certification | Definition | Runtime | Standalone recall | Canonical |\n| --- | --- | --- | --- | --- | --- | --- | --- |\n${rows.sort((a, b) => `${a.resource_type}:${a.resource_key}`.localeCompare(`${b.resource_type}:${b.resource_key}`, 'en')).map((row) => `| ${row.resource_type} | \`${row.resource_key}\` ${escapeTable(row.title)} | ${row.authority_role} | ${row.certification_state} | ${row.definition_state} | ${row.runtime_policy} | ${row.standalone_recall} | ${row.canonical_asset_id ?? '-'} |`).join('\n')}\n`;
+  return `# 资产权威状态\n\n## Agent 判定规则\n\n- \`runtime_policy=allow\`：可以作为主要答案依据，但当前数值仍需实时执行。\n- \`runtime_policy=warn\`：只能作为依赖或辅助线索，回答时需要说明它不是独立召回入口。\n- \`runtime_policy=block\`：不能直接回答，必须回到 canonical 资产、业务域或等待资产作者确认。\n- \`authority_role=dependency_only\`：定义、依赖关系或冲突解释可以引用已知元数据；不能单独据此断言业务状态或当前数值。平台禁止直接检索时回到授权引用资产。\n- \`definition_state=conflict\` 或 \`unknown\`：不要断言精确口径，只能描述已知证据和待确认点。\n\n| 类型 | 资产 | Authority role | Certification | Definition | Runtime | Standalone recall | Canonical |\n| --- | --- | --- | --- | --- | --- | --- | --- |\n${rows.sort((a, b) => `${a.resource_type}:${a.resource_key}`.localeCompare(`${b.resource_type}:${b.resource_key}`, 'en')).map((row) => `| ${row.resource_type} | \`${row.resource_key}\` ${escapeTable(row.title)} | ${row.authority_role} | ${row.certification_state} | ${row.definition_state} | ${row.runtime_policy} | ${row.standalone_recall} | ${row.canonical_asset_id ?? '-'} |`).join('\n')}\n`;
 }
 
 function renderSourceProjectBoundary(rows) {
@@ -551,20 +977,52 @@ ${external.map((row) => `| ${row.resource_type}:${row.resource_key} ${escapeTabl
 }
 
 function renderGovernanceIndex(conflicts) {
-  return `# 治理与质量\n\n- [资产权威状态](authority-index.md)\n- [覆盖、物理来源与未归属资产](coverage.md)\n- [项目来源边界](source-project-boundary.md)\n\n## Agent 使用方式\n\n- 回答前先看资产页 frontmatter 的 \`runtime_policy\`、\`definition_state\` 和 \`authority_role\`。\n- \`runtime_policy=block\` 的资产不能直接回答；如果存在 canonical 资产，优先跳转到 canonical。\n- \`dependency_only\` 元数据只解释报表/指标依赖，不单独发起召回。\n- 语义冲突表示多个资产表达同一业务含义但口径不同，不能只凭名称选择资产；优先使用业务域、召回卡或用户确认。\n- 项目来源边界用于识别资产包里引用了其他项目 ID 的字段；跨项目引用只能作为来源线索，不代表当前项目事实。\n\n当前检测到 ${conflicts} 张语义冲突报表。\n`;
+  return `# 治理与来源\n\n- [知识采纳记录](knowledge-adoption.md)\n- [资产权威状态](authority-index.md)\n- [覆盖、物理来源与未归属资产](coverage.md)\n- [项目来源边界](source-project-boundary.md)\n\n## Agent 使用方式\n\n- 回答前先看资产页 frontmatter 的 \`runtime_policy\`、\`definition_state\` 和 \`authority_role\`。\n- \`runtime_policy=block\` 的资产不能直接回答；如果存在 canonical 资产，优先跳转到 canonical。\n- \`dependency_only\` 元数据可用于有证据的定义、依赖和冲突解释；不能据此单独回答业务状态或当前数值。\n- 语义冲突表示多个资产表达同一业务含义但口径不同，不能只凭名称选择资产；优先使用业务域、召回卡或用户确认。\n- 项目来源边界用于识别资产包里引用了其他项目 ID 的字段；跨项目引用只能作为来源线索，不代表当前项目事实。\n\n当前检测到 ${conflicts} 张语义冲突报表。\n`;
 }
 
 function renderWikiIndex(corpus) {
-  return `---\ntype: project-semantic-knowledge-wiki-index\nsemantic_project_id: ${semanticProjectId}\nproject_name: ${yaml(projectName)}\nsource_snapshot_hash: ${yaml(snapshotHash)}\n---\n\n# ${projectName} 项目语义知识库 Wiki\n\n## 查询顺序\n\n1. [场景召回卡](recall-cards/index.md)\n2. [业务域](domains/index.md)\n3. [看板](dashboards/index.md)、[报表](reports/index.md)、[可复用指标](metrics/index.md)\n4. [分析元数据](metadata/index.md)\n5. [治理与质量](governance/index.md)\n\n技术、演示、副本和定向诊断资产只在[技术附录](technical-appendices/index.md)中追溯。物理空间在[source containers](source-containers/index.md)中保留，不作为业务域。\n\n${countSummary(corpus)}\n`;
+  return `---\ntype: project-semantic-knowledge-wiki-index\nsemantic_project_id: ${semanticProjectId}\nproject_name: ${yaml(projectName)}\nsource_snapshot_hash: ${yaml(snapshotHash)}\nnavigation_taxonomy_version: "2.1"\n---\n\n# ${projectName} 项目语义知识库 Wiki\n\n## 问题意图路由\n\n- 业务判断或当前数值：先选[业务领域](domains/index.md)及其[场景召回卡](recall-cards/index.md)，按对象、粒度、参数选择分支并实时执行。\n- 点名资产、字段定义或依赖关系：从[事件与资产目录](asset-index/index.md)定位资产，再核对[治理与来源](governance/index.md)；依赖元数据可解释定义与关系，但不能单独证明业务状态。\n- 产品机制或共同背景：先读[项目共识](common/index.md)，再进入相关业务域。\n- 无匹配场景卡：进入相关业务域，按对象、粒度、过滤和时间筛选域内资产；仍无合适资产就说明缺口，不编造答案。\n- 已取得对象、粒度、时间、范围和权威性匹配的最小证据后停止扩搜；需要当前值时按权限执行。\n\n## 知识导航\n\n1. [项目总览](project-overview.md)：项目定位、对象关系和判断链路。\n2. [项目共识](common/index.md)：跨领域适用的知识。\n3. [业务领域](domains/index.md)：按业务问题进入判断路径和证据。\n4. [事件与资产目录](asset-index/index.md)：按事件公共分组或资产类型查找。\n5. [治理与来源](governance/index.md)：采纳、权威状态和边界。\n\n技术、演示、副本和定向诊断资产只在[技术附录](technical-appendices/index.md)中追溯。物理空间在[source containers](source-containers/index.md)中保留，不作为业务域。\n\n${countSummary(corpus)}\n`;
 }
 
 function renderSnapshotIndex(corpus) {
   const title = String(projectName).replace(/\r?\n/g, ' ').replace(/^#+\s*/, '');
-  return `# ${title} 项目语义知识库 Wiki\n\n这是可导入知识库源文件体系的项目语义 Wiki，共包含 ${corpus.counts.dashboards} 张看板、${corpus.counts.reports} 张报表和 ${corpus.counts.analysis_metadata} 条分析元数据。\n\n## 查询顺序\n\n1. [场景召回卡](wiki/recall-cards/index.md)\n2. [业务域](wiki/domains/index.md)\n3. [看板](wiki/dashboards/index.md)、[报表](wiki/reports/index.md)、[可复用指标](wiki/metrics/index.md)\n4. [分析元数据](wiki/metadata/index.md)\n5. [治理与质量](wiki/governance/index.md)\n\n技术、演示、副本和定向诊断资产只在[技术附录](wiki/technical-appendices/index.md)中追溯。物理空间在[source containers](wiki/source-containers/index.md)中保留，不作为业务域。\n\n${countSummary(corpus)}\n`;
+  return `# ${title} 项目语义知识库 Wiki\n\n## 问题意图路由\n\n- 业务判断或当前数值：先选[业务领域](wiki/domains/index.md)和匹配的[场景召回卡](wiki/recall-cards/index.md)，按对象、粒度和参数选择分支。\n- 点名资产、字段定义或依赖关系：从[事件与资产目录](wiki/asset-index/index.md)定位，再核对[治理与来源](wiki/governance/index.md)。\n- 产品机制或共同背景：先读[项目共识](wiki/common/index.md)。\n- 无匹配场景卡：回到相关业务域，按对象、粒度、过滤和时间筛选；仍无合适资产则说明缺口。\n- 证据已经匹配对象、粒度、范围、时间和权威状态时停止扩搜；当前数值需要授权实时执行。\n\n## 知识导航\n\n1. [项目总览](wiki/project-overview.md)\n2. [项目共识](wiki/common/index.md)\n3. [业务领域](wiki/domains/index.md)\n4. [事件与资产目录](wiki/asset-index/index.md)\n5. [治理与来源](wiki/governance/index.md)\n\n${countSummary(corpus)}\n`;
 }
 
 function renderProjectOverview(corpus) {
-  return `# ${projectName} 项目语义知识库概览\n\n- Semantic project ID: ${semanticProjectId}\n- Snapshot hash: \`${snapshotHash}\`\n- Asset scope: ${packageAssetScope}\n- Business domains: ${corpus.counts.business_domains}\n- Dashboards: ${corpus.counts.dashboards}\n- Reports: ${corpus.counts.reports}\n- Reusable metrics: ${corpus.counts.reusable_metrics}\n- Metadata: ${corpus.counts.analysis_metadata}\n\nCommon 资产包是权威来源。本 Wiki 将用途总结和精确证据合并为单一页面，不再发布第二套 raw/briefs 语料。\n`;
+  return `# ${projectName} 项目总览\n\n${renderProjectBusinessModel(planModel.projectBusinessModel)}${renderTargetedKnowledge('project', 'project', 'personal-semantics/')}\n\n## 资产与治理范围\n\n- Semantic project ID: ${semanticProjectId}\n- Snapshot hash: \`${snapshotHash}\`\n- Asset scope: ${packageAssetScope}\n- Business domains: ${corpus.counts.business_domains}\n- Dashboards: ${corpus.counts.dashboards}\n- Reports: ${corpus.counts.reports}\n- Reusable metrics: ${corpus.counts.reusable_metrics}\n- Metadata: ${corpus.counts.analysis_metadata}\n\nCommon 资产包是权威来源。本 Wiki 将业务判断模型、用途总结和精确证据合并为单一页面，不再发布第二套 raw/briefs 语料。\n`;
+}
+
+function renderProjectBusinessModel(model) {
+  return `## 项目定位\n\n${clean(model.business_positioning)}\n\n## 使用角色\n\n${asArray(model.audience_roles).map((role) => `- ${clean(role)}`).join('\n')}\n\n## 业务对象\n\n${asArray(model.business_objects).map((item) => {
+    const evidence = asArray(item.evidence_refs).map(renderOverviewAssetRef).join('、');
+    return `- ${clean(item.name)}（\`${clean(item.object_id)}\`）：${appendEvidenceSentence(item.meaning, evidence)}`;
+  }).join('\n')}\n\n## 对象关系\n\n${asArray(model.object_relationships).map((item) => {
+    const evidence = asArray(item.evidence_refs).map(renderOverviewAssetRef).join('、');
+    return `- ${clean(item.from_object)} -> ${clean(item.to_object)}：${appendEvidenceSentence(item.relationship, evidence)}`;
+  }).join('\n')}\n\n## 业务判断链路\n\n${asArray(model.decision_chains).map(renderDecisionChain).join('\n\n')}\n\n## 不承载的内容\n\n${asArray(model.non_goals).map((item) => `- ${clean(item)}`).join('\n')}`;
+}
+
+function appendEvidenceSentence(value, evidence) {
+  const body = clean(value).replace(/[。；;，,\s]+$/u, '');
+  return `${body}${evidence ? `。证据：${evidence}` : ''}`;
+}
+
+function renderDecisionChain(chain) {
+  const domains = asArray(chain.preferred_domain_ids)
+    .map((id) => `[\`${clean(id)}\`](domains/${fileName('domain', id)})`).join('、');
+  const assets = asArray(chain.asset_refs).map(renderOverviewAssetRef).join('、');
+  return `### ${clean(chain.title)}\n\n- 判断问题：${stripClausePunctuation(chain.decision_question)}\n- 判断信号：${joinChineseClauses(chain.signals)}\n- 判断步骤：\n${renderNumberedSteps(chain.decision_steps, '  ')}\n- 业务域：${domains || '未指定'}\n- 关联资产：${assets || '未指定'}\n- 实时执行：${chain.requires_live_execution ? '需要' : '不需要'}\n- 边界：${joinChineseClauses(chain.boundaries)}`;
+}
+
+function renderOverviewAssetRef(ref) {
+  const type = clean(ref.resource_type);
+  const key = clean(ref.resource_key);
+  const label = recallAssetLabel(ref);
+  if (type === 'dashboard') return `[${escapeLink(label)}](dashboards/${dashboardFileNames.get(key) ?? fileName('dashboard', key)})`;
+  if (type === 'report') return `[${escapeLink(label)}](reports/${reportFileNames.get(key) ?? fileName('report', key)})`;
+  if (type === 'metric') return `[${escapeLink(label)}](metrics/${metricFileNames.get(key) ?? fileName('metric', key)})`;
+  return `${type}:${key}`;
 }
 
 function renderLog(corpus) {
@@ -572,7 +1030,7 @@ function renderLog(corpus) {
 }
 
 function countSummary(corpus) {
-  return `## 数量\n\n| 资产 | 数量 |\n| --- | ---: |\n| 业务域 | ${corpus.counts.business_domains} |\n| 技术附录 | ${corpus.counts.technical_appendices} |\n| 看板 | ${corpus.counts.dashboards} |\n| 报表 | ${corpus.counts.reports} |\n| 可复用指标 | ${corpus.counts.reusable_metrics} |\n| 分析元数据 | ${corpus.counts.analysis_metadata} |\n| 场景召回卡 | ${planModel.cards.length} |`;
+  return `## 数量\n\n| 内容 | 数量 |\n| --- | ---: |\n| 业务领域 | ${corpus.counts.business_domains} |\n| 公共事件分组 | ${eventGroups.length} |\n| 看板 | ${corpus.counts.dashboards} |\n| 报表 | ${corpus.counts.reports} |\n| 可复用指标 | ${corpus.counts.reusable_metrics} |\n| 分析元数据 | ${corpus.counts.analysis_metadata} |\n| 场景召回卡 | ${planModel.cards.length} |\n| 已采纳补充知识 | ${planModel.personalSemanticIntegrations.length} |`;
 }
 
 function authorityFrontmatter(type, resourceKey, title, authority) {
@@ -597,6 +1055,35 @@ function assetPath(type, key) {
   if (type === 'report') return `../reports/${reportFileNames.get(key) ?? fileName('report', key)}`;
   if (type === 'metric') return `../metrics/${metricFileNames.get(key) ?? fileName('metric', key)}`;
   fail(`Unsupported recall-card asset type ${type}.`);
+}
+
+function normalizePersonalSemanticContextType(value) {
+  const type = clean(value).toLowerCase().replace('-', '_');
+  if (!['background', 'preference', 'experience', 'asset_context'].includes(type)) {
+    fail(`Invalid adopted personal semantic context_type: ${clean(value) || '<empty>'}.`);
+  }
+  return type;
+}
+
+function personalSemanticContextPath(value) {
+  const type = normalizePersonalSemanticContextType(value);
+  return type === 'asset_context' ? 'asset-context' : type;
+}
+
+function personalSemanticContextLabel(value) {
+  const type = normalizePersonalSemanticContextType(value);
+  if (type === 'background') return '项目背景';
+  if (type === 'preference') return '偏好';
+  if (type === 'experience') return '经验';
+  return '资产上下文';
+}
+
+function personalSemanticContextUsage(value) {
+  const type = normalizePersonalSemanticContextType(value);
+  if (type === 'background') return '用于补充项目、业务域和对象关系的背景信息。';
+  if (type === 'preference') return '用于补充项目内的回答偏好、入口选择和路由方式。';
+  if (type === 'experience') return '用于补充已经验证过的分析路径、风险提示和经验规则。';
+  return '用于补充具体资产的使用语境；引用资产不存在时不能作为当前资产事实。';
 }
 
 function assetOutputFileName(directory, key) {
@@ -744,10 +1231,9 @@ function hideMarkdownFrontmatter(root) {
 function assertSnapshotEntryPoint(root) {
   const content = readText(path.join(root, 'index.md'));
   const requiredLinks = [
-    'wiki/recall-cards/index.md', 'wiki/domains/index.md', 'wiki/dashboards/index.md',
-    'wiki/reports/index.md', 'wiki/metrics/index.md', 'wiki/metadata/index.md',
-    'wiki/governance/index.md', 'wiki/technical-appendices/index.md',
-    'wiki/source-containers/index.md',
+    'wiki/project-overview.md',
+    'wiki/common/index.md', 'wiki/domains/index.md', 'wiki/asset-index/index.md',
+    'wiki/governance/index.md',
   ];
   const missing = requiredLinks.filter((target) => !content.includes(`(${target})`));
   if (missing.length) fail(`Snapshot root index is missing required navigation: ${missing.join(', ')}.`);
@@ -876,6 +1362,7 @@ function writeFlatUploadSources(sourceRoot, targetRoot, replace) {
       const content = precompiledSource(rewriteLinksForFlatUpload(readText(file), rel, relToFlat));
       const contentHash = syncContentHash(content);
       const identity = uploadSourceIdentity(rel, content);
+      const semanticPlanFragmentRefs = semanticPlanFragmentRefsForSource(identity, rel);
       manifestSources.push({
         display_name: flatName,
         file: flatName,
@@ -888,8 +1375,9 @@ function writeFlatUploadSources(sourceRoot, targetRoot, replace) {
         title: firstHeading(content),
         content_hash: contentHash,
         source_path: rel,
+        semantic_plan_fragment_refs: semanticPlanFragmentRefs,
       });
-      writeText(path.join(staging, flatName), `<!--\nkb_source_namespace: ${uploadSourceNamespace}\nsnapshot_date: ${snapshotDate ?? 'null'}\nsnapshot_hash: ${snapshotHash}\nsource_kind: ${identity.source_kind}\nasset_type: ${identity.asset_type ?? 'null'}\nasset_key: ${identity.asset_key ?? 'null'}\ncontent_hash: ${contentHash}\nsource_path: ${rel}\n-->\n\n${content}`);
+      writeText(path.join(staging, flatName), `<!--\nkb_source_namespace: ${uploadSourceNamespace}\nsnapshot_date: ${snapshotDate ?? 'null'}\nsnapshot_hash: ${snapshotHash}\nsource_kind: ${identity.source_kind}\nasset_type: ${identity.asset_type ?? 'null'}\nasset_key: ${identity.asset_key ?? 'null'}\ncontent_hash: ${contentHash}\nsource_path: ${rel}\nsemantic_plan_fragment_refs: ${semanticPlanFragmentRefs.join(',') || 'null'}\n-->\n\n${content}`);
     }
     const manifest = readJson(path.join(sourceRoot, 'manifest.json'));
     const manifestContent = precompiledSource(`# Package manifest\n\n\`\`\`json\n${JSON.stringify(manifest, null, 2)}\n\`\`\`\n`);
@@ -907,16 +1395,19 @@ function writeFlatUploadSources(sourceRoot, targetRoot, replace) {
       title: 'Package manifest',
       content_hash: manifestHash,
       source_path: 'manifest.json',
+      semantic_plan_fragment_refs: [],
     });
-    writeText(path.join(staging, manifestName), `<!--\nkb_source_namespace: ${uploadSourceNamespace}\nsnapshot_date: ${snapshotDate ?? 'null'}\nsnapshot_hash: ${snapshotHash}\nsource_kind: manifest\nasset_type: null\nasset_key: null\ncontent_hash: ${manifestHash}\nsource_path: manifest.json\n-->\n\n${manifestContent}`);
+    writeText(path.join(staging, manifestName), `<!--\nkb_source_namespace: ${uploadSourceNamespace}\nsnapshot_date: ${snapshotDate ?? 'null'}\nsnapshot_hash: ${snapshotHash}\nsource_kind: manifest\nasset_type: null\nasset_key: null\ncontent_hash: ${manifestHash}\nsource_path: manifest.json\nsemantic_plan_fragment_refs: null\n-->\n\n${manifestContent}`);
     writeJson(path.join(staging, 'kb-upload-manifest.json'), {
       schema_version: '1.0',
       manifest_kind: 'ae_project_semantic_kb_upload_sources',
+      navigation_taxonomy_version: '2.1',
       namespace: uploadSourceNamespace,
       semantic_project_id: semanticProjectId,
       project_name: projectName,
       snapshot_date: snapshotDate,
       snapshot_hash: snapshotHash,
+      semantic_plan_state: semanticPlanState,
       source_count: manifestSources.length,
       sources: manifestSources.sort((a, b) => a.display_name.localeCompare(b.display_name, 'en')),
     });
@@ -940,6 +1431,7 @@ function flatUploadFileName(rel, namespace) {
 function uploadSourceIdentity(rel, content = '') {
   const normalized = rel.replaceAll('\\', '/');
   if (normalized === 'index.md') return { source_kind: 'index', asset_type: null, asset_key: null, file_stem: 'index' };
+  if (normalized === 'refresh-state.md') return { source_kind: 'refresh-state', asset_type: null, asset_key: null, file_stem: 'refresh-state' };
   if (normalized === 'wiki/index.md') return { source_kind: 'index', asset_type: null, asset_key: null, file_stem: 'wiki-index' };
   const match = normalized.match(/^wiki\/([^/]+)\/(.+)\.md$/);
   if (!match) {
@@ -954,6 +1446,17 @@ function uploadSourceIdentity(rel, content = '') {
   if (section === 'metrics') return namedUploadSource('metric', stem, frontmatterValue(content, 'resource_key'));
   if (section === 'domains') return namedUploadSource('domain', stem);
   if (section === 'recall-cards') return namedUploadSource('recall-card', stem);
+  if (section === 'personal-semantics') {
+    if (rest.endsWith('/index') || rest === 'index') {
+      return {
+        source_kind: 'personal-semantic',
+        asset_type: null,
+        asset_key: null,
+        file_stem: `personal-semantic-${stem}`,
+      };
+    }
+    return namedUploadSource('personal-semantic', stem, frontmatterValue(content, 'integration_id'));
+  }
   if (section === 'technical-appendices') return namedUploadSource('appendix', stem);
   if (section === 'source-containers') return namedUploadSource('source-container', stem);
   if (section === 'governance') return namedUploadSource('governance', stem);
@@ -964,6 +1467,122 @@ function uploadSourceIdentity(rel, content = '') {
     file_stem: `metadata-${stem}`,
   };
   return namedUploadSource(section, stem);
+}
+
+function semanticPlanFragmentRefsForSource(identity, rel) {
+  const refs = new Set();
+  const sourceKind = clean(identity.source_kind);
+  const assetType = clean(identity.asset_type);
+  const assetKey = clean(identity.asset_key);
+  if (sourceKind === 'refresh-state') {
+    for (const fragment of semanticPlanState.fragments) refs.add(fragment.id);
+    return [...refs].sort();
+  }
+  if (rel === 'wiki/project-overview.md') refs.add('project:model');
+  if (sourceKind === 'domain' && assetKey) refs.add(`domain:${assetKey}`);
+  if (sourceKind === 'appendix' && assetKey) refs.add(`appendix:${assetKey}`);
+  if (sourceKind === 'recall-card' && assetKey) refs.add(`recall-card:${assetKey}`);
+  if (sourceKind === 'personal-semantic' && assetKey) {
+    refs.add(`personal-semantic-integration:${assetKey}`);
+  }
+  if (assetType === 'dashboard' && assetKey) {
+    const domain = domainByDashboardId.get(assetKey);
+    const appendix = appendixByDashboardId.get(assetKey);
+    if (domain) refs.add(`domain:${clean(domain.domain_id)}`);
+    if (appendix) refs.add(`appendix:${clean(appendix.appendix_id)}`);
+  }
+  if (assetType === 'report' && assetKey) {
+    if (planModel.sqlByReportId.has(assetKey)) refs.add(`report:${assetKey}:sql_semantics`);
+    const report = reportById.get(assetKey);
+    for (const dashboardRef of asArray(report?.dashboard_refs)) {
+      const dashboardId = clean(dashboardRef.dashboard_id);
+      const domain = domainByDashboardId.get(dashboardId);
+      const appendix = appendixByDashboardId.get(dashboardId);
+      if (domain) refs.add(`domain:${clean(domain.domain_id)}`);
+      if (appendix) refs.add(`appendix:${clean(appendix.appendix_id)}`);
+    }
+  }
+  if (sourceKind === 'index' && rel === 'wiki/recall-cards/index.md') {
+    for (const card of planModel.cards) refs.add(`recall-card:${clean(card.card_id)}`);
+  }
+  if (sourceKind === 'index' && rel === 'wiki/domains/index.md') {
+    for (const domain of domains) refs.add(`domain:${clean(domain.domain_id)}`);
+  }
+  if (sourceKind === 'personal-semantic' && /\/index\.md$/.test(rel)) {
+    for (const integration of planModel.personalSemanticIntegrations) refs.add(`personal-semantic-integration:${clean(integration.integration_id)}`);
+  }
+  return [...refs].filter(Boolean).sort();
+}
+
+function buildSemanticPlanState() {
+  const fragments = [];
+  const add = (id, kind, value, fields = {}) => {
+    const fragmentId = clean(id);
+    if (!fragmentId) return;
+    fragments.push({
+      id: fragmentId,
+      kind,
+      ...fields,
+      hash: sha256(stableJson(value)),
+    });
+  };
+  add('project:model', 'project', semanticPlan.project_business_model ?? null);
+  for (const domain of domains) {
+    const id = clean(domain.domain_id);
+    const { recall_cards: _recallCards, ...domainWithoutCards } = asObject(domain);
+    add(`domain:${id}`, 'domain', domainWithoutCards, { domain_id: id });
+    for (const card of asArray(domain.recall_cards)) {
+      const cardId = clean(card.card_id);
+      add(`recall-card:${cardId}`, 'recall-card', { ...asObject(card), domain_id: id }, { card_id: cardId, domain_id: id });
+    }
+  }
+  for (const appendix of appendices) {
+    const id = clean(appendix.appendix_id);
+    add(`appendix:${id}`, 'appendix', appendix, { appendix_id: id });
+  }
+  for (const [reportId, summary] of [...planModel.sqlByReportId.entries()].sort(([left], [right]) => left.localeCompare(right, 'en'))) {
+    add(`report:${reportId}:sql_semantics`, 'sql-report', summary, { report_id: reportId });
+  }
+  for (const integration of planModel.personalSemanticIntegrations) {
+    const id = clean(integration.integration_id);
+    add(`personal-semantic-integration:${id}`, 'personal-semantic-integration', integration, {
+      integration_id: id,
+      context_type: clean(integration.context_type),
+      source_ids: integration.source_ids,
+    });
+  }
+  fragments.sort((left, right) => left.id.localeCompare(right.id, 'en'));
+  return {
+    schema_version: '1.0',
+    plan_schema_version: clean(semanticPlan.schema_version),
+    plan_hash: sha256(stableJson(semanticPlan)),
+    fragment_count: fragments.length,
+    fragments,
+  };
+}
+
+function renderRefreshState(state) {
+  const payload = {
+    schema_version: '1.0',
+    semantic_plan: semanticPlan,
+    semantic_plan_state: state,
+  };
+  const encoded = Buffer.from(JSON.stringify(payload, null, 2)).toString('base64url');
+  return `# Refresh State
+
+This managed source stores the reusable semantic plan and incremental-refresh state for generated project semantic sources. It is not business evidence.
+
+<!-- pskb_refresh_state_base64
+${encoded}
+-->
+`;
+}
+
+function stableJson(value) {
+  if (Array.isArray(value)) return `[${value.map(stableJson).join(',')}]`;
+  if (!value || typeof value !== 'object') return JSON.stringify(value);
+  const entries = Object.entries(value).sort(([left], [right]) => left.localeCompare(right, 'en'));
+  return `{${entries.map(([key, item]) => `${JSON.stringify(key)}:${stableJson(item)}`).join(',')}}`;
 }
 
 function namedUploadSource(kind, stem, resourceKey = '') {
@@ -1027,11 +1646,32 @@ function asObject(value) { return value && typeof value === 'object' && !Array.i
 function indexBy(values, key) { return new Map(values.map((value) => [clean(value[key]), value])); }
 function readText(file) { return fs.readFileSync(file, 'utf8'); }
 function readJson(file) { return JSON.parse(readText(file)); }
+
+function stripClausePunctuation(value) {
+  return clean(value).replace(/[。；;，,\s]+$/u, '');
+}
+
+function joinChineseClauses(value) {
+  const values = asArray(value).map(stripClausePunctuation).filter(Boolean);
+  return values.join('；') || '无';
+}
+
+function renderNumberedSteps(value, indent = '') {
+  const values = asArray(value).map(stripClausePunctuation).filter(Boolean);
+  if (!values.length) return `${indent}- 无`;
+  return values.map((item, index) => `${indent}${index + 1}. ${item}`).join('\n');
+}
 function writeText(file, value) { fs.mkdirSync(path.dirname(file), { recursive: true }); fs.writeFileSync(file, value.endsWith('\n') ? value : `${value}\n`, 'utf8'); }
 function writeJson(file, value) { writeText(file, JSON.stringify(value, null, 2)); }
 function readIndex(name) { return readText(path.join(packageRoot, 'indexes', `${name}.jsonl`)).split(/\r?\n/).filter(Boolean).map(JSON.parse).filter((row) => row.record_type !== 'header'); }
+function readOptionalIndex(name) { return fs.existsSync(path.join(packageRoot, 'indexes', `${name}.jsonl`)) ? readIndex(name) : []; }
+function readPackageJsonl(rel) {
+  const file = path.join(packageRoot, rel);
+  if (!fs.existsSync(file)) return [];
+  return readText(file).split(/\r?\n/).filter(Boolean).map(JSON.parse).filter((row) => row.record_type !== 'header');
+}
 function listFiles(root) { return fs.readdirSync(root, { withFileTypes: true }).flatMap((entry) => entry.isDirectory() ? listFiles(path.join(root, entry.name)) : [path.join(root, entry.name)]); }
-function parseArgs(values) { const out = {}; for (let i = 0; i < values.length; i += 1) { const value = values[i]; if (!value.startsWith('--')) fail(`Unexpected argument: ${value}`); const key = value.slice(2); if (['force', 'keep-build-ir', 'allow-all-visible'].includes(key)) out[key] = true; else out[key] = values[++i]; } return out; }
+function parseArgs(values) { const out = {}; for (let i = 0; i < values.length; i += 1) { const value = values[i]; if (!value.startsWith('--')) fail(`Unexpected argument: ${value}`); const key = value.slice(2); if (['force', 'keep-build-ir', 'allow-all-visible', 'allow-semantic-plan-snapshot-drift'].includes(key)) out[key] = true; else out[key] = values[++i]; } return out; }
 function required(values, key) { const value = clean(values[key]); if (!value) fail(`--${key} is required.`); return value; }
 function normalizeUploadSourceNamespace(value) {
   const namespace = slug(clean(value));

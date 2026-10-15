@@ -6,6 +6,9 @@ import {
 import { personalSemanticPreferenceAdd } from '../src/commands/personal-semantic-preference/add.ts';
 import { personalSemanticPreferenceDelete } from '../src/commands/personal-semantic-preference/delete.ts';
 import { personalSemanticPreferenceGet } from '../src/commands/personal-semantic-preference/get.ts';
+import { personalSemanticPreferenceReviewList } from '../src/commands/personal-semantic-preference/review-list.ts';
+import { personalSemanticPreferenceReview } from '../src/commands/personal-semantic-preference/review.ts';
+import { personalSemanticPreferenceSubmit } from '../src/commands/personal-semantic-preference/submit.ts';
 import { clearCliToken, setCliTokenManual } from '../src/core/cli-token.ts';
 import type { RuntimeContext } from '../src/framework/types.ts';
 
@@ -130,6 +133,91 @@ try {
     id: 'preference_31',
     expected_revision: 3,
     request_id: 'delete-request-1',
+  });
+
+  const submitCtx = {
+    host: () => host,
+    str: (name: string) => {
+      if (name === 'id') return 'preference_31';
+      if (name === 'project-review-note') return 'promote to project semantics';
+      if (name === 'request-id') return 'submit-request-1';
+      return '';
+    },
+    num: (name: string) => name === 'project-id' ? 6 : 0,
+    optionalNum: () => undefined,
+    bool: () => false,
+    json: () => undefined,
+    list: () => [],
+  } as RuntimeContext;
+
+  await personalSemanticPreferenceSubmit.dryRun!(submitCtx);
+
+  assert.match(capturedUrl, /business_semantics\.personal_context\.submit\/dry-run$/);
+  assert.deepEqual(capturedBody?.input, {
+    project_id: 6,
+    id: 'preference_31',
+    project_review_note: 'promote to project semantics',
+    request_id: 'submit-request-1',
+  });
+
+  const reviewListCtx = {
+    host: () => host,
+    str: (name: string) => {
+      if (name === 'project-review-status') return 'pending';
+      if (name === 'owner') return 'analyst@example.com';
+      if (name === 'context-type') return 'preference';
+      if (name === 'keyword') return 'retention';
+      return '';
+    },
+    num: (name: string) => name === 'project-id' ? 6 : 0,
+    optionalNum: (name: string) => {
+      if (name === 'limit') return 25;
+      if (name === 'offset') return 50;
+      return undefined;
+    },
+    bool: () => false,
+    json: () => undefined,
+    list: () => [],
+  } as RuntimeContext;
+
+  await personalSemanticPreferenceReviewList.dryRun!(reviewListCtx);
+
+  assert.match(capturedUrl, /business_semantics\.personal_context\.review_list\/dry-run$/);
+  assert.deepEqual(capturedBody?.input, {
+    project_id: 6,
+    project_review_status: 'pending',
+    owner: 'analyst@example.com',
+    context_type: 'preference',
+    keyword: 'retention',
+    limit: 25,
+    offset: 50,
+  });
+
+  const reviewCtx = {
+    host: () => host,
+    str: (name: string) => {
+      if (name === 'ids') return JSON.stringify(['preference_31', 'preference_32']);
+      if (name === 'action') return 'adopt';
+      if (name === 'project-review-note') return 'looks good';
+      if (name === 'request-id') return 'review-request-1';
+      return '';
+    },
+    num: (name: string) => name === 'project-id' ? 6 : 0,
+    optionalNum: () => undefined,
+    bool: () => false,
+    json: (name: string) => name === 'ids' ? ['preference_31', 'preference_32'] : undefined,
+    list: () => [],
+  } as RuntimeContext;
+
+  await personalSemanticPreferenceReview.dryRun!(reviewCtx);
+
+  assert.match(capturedUrl, /business_semantics\.personal_context\.review\/dry-run$/);
+  assert.deepEqual(capturedBody?.input, {
+    project_id: 6,
+    ids: ['preference_31', 'preference_32'],
+    action: 'adopt',
+    project_review_note: 'looks good',
+    request_id: 'review-request-1',
   });
 } finally {
   globalThis.fetch = originalFetch;

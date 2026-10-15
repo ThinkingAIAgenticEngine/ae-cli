@@ -15,6 +15,7 @@ import {
   waitForAnalysisRun,
 } from '../src/core/analysis-async-artifact.ts';
 import { dashboardCopy } from '../src/commands/te-analysis/dashboard/copy.ts';
+import { dashboardMove } from '../src/commands/te-analysis/dashboard/move.ts';
 import { dashboardDailyReportGet } from '../src/commands/te-analysis/dashboard-daily-report/get.ts';
 import { dashboardDailyReportSend } from '../src/commands/te-analysis/dashboard-daily-report/send.ts';
 import { dashboardDailyReportSendStatus } from '../src/commands/te-analysis/dashboard-daily-report/send-status.ts';
@@ -512,6 +513,38 @@ await test('dashboard copy defaults report copy and omits target location', asyn
       dashboard_id: 1001,
       dashboard_name: 'Copy',
       report_copy: false,
+    },
+  });
+});
+
+await test('dashboard move sends single and batch dashboard IDs to one project-space target', async () => {
+  const rootBody = await dryBody(dashboardMove, {
+    'project-id': 1,
+    'dashboard-ids': '[1001]',
+    'to-space-id': 20,
+  });
+
+  assert.deepEqual(rootBody, {
+    input: {
+      project_id: 1,
+      dashboard_ids: [1001],
+      to_space_id: 20,
+    },
+  });
+
+  const folderBody = await dryBody(dashboardMove, {
+    'project-id': 1,
+    'dashboard-ids': '[1001,1002]',
+    'to-space-id': 20,
+    'to-folder-id': 30,
+  });
+
+  assert.deepEqual(folderBody, {
+    input: {
+      project_id: 1,
+      dashboard_ids: [1001, 1002],
+      to_space_id: 20,
+      to_folder_id: 30,
     },
   });
 });

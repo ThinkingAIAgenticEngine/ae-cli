@@ -310,6 +310,22 @@ class IntegrationReviewTests(unittest.TestCase):
             self.assertEqual(review.git(target, "rev-parse", "HEAD^{tree}").stdout.strip(), self.git("rev-parse", f"{after}^{{tree}}"))
             self.assertEqual(review.git(target, "status", "--porcelain").stdout, "")
 
+    def test_review_policy_supports_bases_before_compatibility_policy_exists(self):
+        self.assertEqual(review.repository_policy(self.root, self.base), "Fixed base policy\n")
+
+    def test_review_policy_loads_compatibility_rules_from_fixed_base_not_head(self):
+        policy = self.root / "docs/compatibility-policy.md"
+        policy.parent.mkdir()
+        policy.write_text("Preserve published commands and Skills\n")
+        baseline = self.commit("add compatibility policy")
+        policy.write_text("Untrusted changed policy\n")
+        (self.root / "AGENTS.md").write_text("Untrusted changed agent instructions\n")
+        self.commit("change review policies")
+        actual = review.repository_policy(self.root, baseline)
+        self.assertIn("Fixed base policy", actual)
+        self.assertIn("Preserve published commands and Skills", actual)
+        self.assertNotIn("Untrusted changed", actual)
+
 
 class WorkflowTests(unittest.TestCase):
     def test_workflow_event_matrix_from_actual_rules(self):
@@ -442,6 +458,20 @@ class RendererTests(unittest.TestCase):
         self.assertEqual(settings.get("TEST.REQUEST")["reasoning_effort"], "low")
         self.assertEqual(settings.get("TEST.REQUEST")["max_tokens"], 32768)
         self.assertGreaterEqual(result["model_result"]["model_seconds"], 0)
+
+    def test_compatibility_and_published_skill_rules_reach_reviewer_settings(self):
+        settings, _ = self.execute("review: {key_issues_to_review: [], security_concerns: No}")
+        instructions = settings.get("PR_REVIEWER.EXTRA_INSTRUCTIONS")
+        for requirement in (
+            "Backward compatibility is a priority", "removed/renamed flags",
+            "analysis.dashboard_report_data.export", "--use-cache",
+            "old CLI -> new server", "regression coverage",
+            "security and permission checks", "Published Skill entry points",
+            "unrelated functionality", "existing Skill cannot be reused",
+            "fixed base revision", "Fixed version policy",
+        ):
+            with self.subTest(requirement=requirement):
+                self.assertIn(requirement, instructions)
 
     def test_missing_malformed_or_empty_model_result_fails(self):
         for prediction, artifact in ((None, "report"), ("{}", "report"),

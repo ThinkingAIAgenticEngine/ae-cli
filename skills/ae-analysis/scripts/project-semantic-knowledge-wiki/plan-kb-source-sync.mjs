@@ -212,7 +212,7 @@ function decideCompileMode({ actionCount, baselineCount, nextCount, fullThreshol
       mode: 'full',
       reason: forceReasons[0],
       changeRatio,
-      requiresSchemaForce: true,
+      requiresSchemaForce: false,
       schemaForceReasons: forceReasons,
     };
   }

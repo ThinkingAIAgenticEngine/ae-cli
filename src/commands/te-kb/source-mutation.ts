@@ -3,6 +3,7 @@ import path from 'node:path';
 import type { Command, Flag, RuntimeContext } from '../../framework/types.js';
 import { CliValidationError } from '../../core/errors.js';
 import { kbApi, kbUpload } from '../../core/mcp-access.js';
+import { hasTextFlag, readTextInput, textApiOptions, textInputFlags, validateTextInput } from './source-text.js';
 
 const API = '/agent/api/external/knowledge-bases';
 const apiOptions = { preserveErrorMetadata: true };
@@ -72,14 +73,30 @@ function replaceFields(ctx: RuntimeContext) {
 }
 export const sourceReplace: Command = {
   service: 'kb', resource: 'source', command: 'replace', risk: 'write',
-  description: 'Replace a file source draft, or prepare a ZIP archive replacement preview. ZIP changes require source commit. Does not compile or publish.',
-  flags: [...identityFlags, typeFlag, revisionFlag, { name: 'file', type: 'string', required: true, desc: 'Local replacement file, at most 50 MB; same format, different filename allowed' }],
-  validate: (ctx) => { validateMutation(ctx); if (!ctx.str('file').trim()) throw new CliValidationError('--file is required.'); },
+  description: 'Replace a file source draft from a file or complete text, or prepare a ZIP archive replacement preview. ZIP changes require source commit. Does not compile or publish.',
+  flags: [...identityFlags, typeFlag, revisionFlag, ...textInputFlags.map(flag => flag.name === 'file'
+    ? { ...flag, desc: 'Local replacement file, at most 50 MiB; same format, different filename allowed; mutually exclusive with --text and --stdin' } : flag)],
+  validate: (ctx) => {
+    validateMutation(ctx);
+    validateTextInput(ctx);
+    if ((hasTextFlag(ctx) || ctx.bool('stdin')) && ctx.str('source-type') !== 'file') {
+      throw new CliValidationError('--text and --stdin require --source-type file and an ordinary text source.');
+    }
+  },
   dryRun: async (ctx) => {
+    if (hasTextFlag(ctx) || ctx.bool('stdin')) {
+      const { sizeBytes } = await readTextInput(ctx);
+      return { ...dryRequest(ctx, 'PUT', sourceEndpoint(ctx, 'text'), { expectedRevision: ctx.num('expected-revision'), inputMethod: 'text_input', content: '<redacted>' }), sizeBytes };
+    }
     const { file, filename, sizeBytes } = await replacementFile(ctx, false);
     return { ...dryRequest(ctx, ctx.str('source-type') === 'zip' ? 'POST' : 'PUT', replaceEndpoint(ctx), replaceFields(ctx)), multipart: { file, filename, sizeBytes, content: '<redacted>' } };
   },
   execute: async (ctx) => {
+    if (hasTextFlag(ctx) || ctx.bool('stdin')) {
+      return kbApi(ctx, 'PUT', sourceEndpoint(ctx, 'text'), query(ctx), {
+        content: (await readTextInput(ctx)).content, expectedRevision: ctx.num('expected-revision'), inputMethod: 'text_input',
+      }, textApiOptions);
+    }
     const file = await replacementFile(ctx, true);
     const form = new FormData();
     form.append('file', new Blob([new Uint8Array(file.content!)]), file.filename);

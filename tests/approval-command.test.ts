@@ -334,8 +334,9 @@ const deniedRetry = spawnSync(
   ],
   { cwd: process.cwd(), encoding: 'utf8', input: 'n\n' },
 );
-assert.equal(deniedRetry.status, 0, deniedRetry.stderr);
-assert.match(deniedRetry.stderr, /high-risk-write operation/);
-assert.match(deniedRetry.stderr, /Aborted\./);
+assert.equal(deniedRetry.status, 1, deniedRetry.stderr);
+assert.match(deniedRetry.stderr, /CONFIRMATION_REQUIRED/);
+assert.match(deniedRetry.stderr, /--yes/);
+assert.doesNotMatch(deniedRetry.stderr, /Continue\?/);
 
 console.log('approval command tests passed');

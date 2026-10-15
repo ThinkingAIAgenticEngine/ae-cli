@@ -28,7 +28,7 @@ function body(ctx:RuntimeContext,action:Action) {
   if(['validate','optimize','apply'].includes(action))result.contentHash=ctx.str('hash');
   if(['validate','optimize'].includes(action)&&ctx.str('model'))result.model=ctx.str('model');
   if(action==='optimize'&&ctx.list('issue-id').length)result.issueIds=ctx.list('issue-id');
-  if(action==='apply'){result.reportId=ctx.str('report-id');result.expectedSchemaHash=ctx.bool('schema-absent')?null:ctx.str('schema-hash');}
+  if(action==='apply'){if(ctx.str('report-id'))result.reportId=ctx.str('report-id');result.expectedSchemaHash=ctx.bool('schema-absent')?null:ctx.str('schema-hash');}
   return result;
 }
 function query(ctx:RuntimeContext,action:Action){
@@ -71,7 +71,7 @@ export async function executeSchemaImport(ctx:RuntimeContext,action:Action,api=k
   }else if(['download','list','status','content','diff'].includes(action)){
     const binary=action==='download'||(action==='content'&&Boolean(ctx.str('output')));
     result=await api(ctx,'GET',endpoint(ctx,action),query(ctx,action),undefined,{...options,...(binary?{responseType:'bytes' as const}:{})});
-    if(binary){const output=path.resolve(ctx.str('output'));const bytes=Buffer.from(result);await fs.writeFile(output,bytes,{flag:'wx'});return {output,sizeBytes:bytes.length};}
+    if(binary){const output=path.resolve(ctx.str('output'));const bytes=Buffer.from(result.bytes);await fs.writeFile(output,bytes,{flag:'wx'});return {output,sizeBytes:bytes.length};}
     if(action==='diff'&&ctx.str('output')){const output=path.resolve(ctx.str('output'));await fs.writeFile(output,result.diff,{flag:'wx'});return {...result,output};}
   }else{
     const input=body(ctx,action);
@@ -84,7 +84,7 @@ function command(action:Action,name:string,description:string,flags:Flag[],risk:
   return {service:'kb',command:name,description,flags,risk,validate:ctx=>validate(ctx,action),dryRun:ctx=>({method:action==='save'?'PUT':['upload','validate','optimize','reject','apply','abandon'].includes(action)?'POST':'GET',url:ctx.host().replace(/\/$/,'')+endpoint(ctx,action),params:query(ctx,action),body:action==='upload'?{...target(ctx),requestId:ctx.str('request-id'),file:'[REDACTED]',model:ctx.str('model')||undefined,replacesImportId:ctx.str('replaces-import-id')||undefined,expectedReplacedRevision:ctx.num('replaced-revision')||undefined}:['save','validate','optimize','reject','apply','abandon'].includes(action)?{...body(ctx,action),...(action==='save'?{content:'[REDACTED]'}:{})}:undefined}),execute:ctx=>executeSchemaImport(ctx,action)};
 }
 export const schemaDownload=command('download','+schema-download','Download formal schema bytes without rewriting.',[...targetFlags,flag('output','string','New destination file; never overwrite',true)],'read');
-export const schemaImport=command('upload','+schema-import','Upload a candidate and start validation; formal schema is unchanged.',[...targetFlags,fileFlag,flag('request-id','string','Upload idempotency key',true),modelFlag,flag('replaces-import-id','string','Explicit pending import to replace'),flag('replaced-revision','number','Expected revision of replaced import'),...waitFlags],'write');
+export const schemaImport=command('upload','+schema-import','Upload a candidate with basic checks; AI validation is explicit and formal schema is unchanged.',[...targetFlags,fileFlag,flag('request-id','string','Upload idempotency key',true),modelFlag,flag('replaces-import-id','string','Explicit pending import to replace'),flag('replaced-revision','number','Expected revision of replaced import'),...waitFlags],'write');
 export const schemaImportList=command('list','+schema-import-list','List your pending candidates.',[...targetFlags,{...flag('limit','number','Page size, 1 to 100'),default:20,min:1,max:100},flag('cursor','string','Continuation cursor')],'read');
 export const schemaImportStatus=command('status','+schema-import-status','Read candidate status, report and durable receipt.',[...identityFlags,...waitFlags],'read');
 export const schemaImportContent=command('content','+schema-import-content','Read or download unmodified candidate bytes.',[...identityFlags,flag('target','string','current | original | optimization-input | optimized'),flag('output','string','Optional new destination file')],'read');
@@ -93,6 +93,6 @@ export const schemaImportSave=command('save','+schema-import-save','Save edits w
 export const schemaImportValidate=command('validate','+schema-import-validate','Validate this exact saved revision.',[...identityFlags,...mutationFlags,hashFlag,modelFlag,...waitFlags],'write');
 export const schemaImportOptimize=command('optimize','+schema-import-optimize','Repair selected issues once and independently revalidate.',[...identityFlags,...mutationFlags,hashFlag,modelFlag,{...flag('issue-id','string','Repeat to select repairable issues'),variadic:true},...waitFlags],'write');
 export const schemaImportReject=command('reject','+schema-import-reject','Restore the most recent repair input.',[...identityFlags,...mutationFlags],'write');
-export const schemaImportApply=command('apply','+schema-import-apply','Apply after reviewing full diff; BASE_CHANGED requires a new review.',[...identityFlags,...mutationFlags,hashFlag,flag('report-id','string','Current passing report ID',true),flag('schema-hash','string','Formal hash from a recent diff'),flag('schema-absent','boolean','Explicitly confirm formal schema is absent')],'write');
+export const schemaImportApply=command('apply','+schema-import-apply','Apply after reviewing full diff; BASE_CHANGED requires a new review.',[...identityFlags,...mutationFlags,hashFlag,flag('report-id','string','Optional AI report ID; retained for compatibility'),flag('schema-hash','string','Formal hash from a recent diff'),flag('schema-absent','boolean','Explicitly confirm formal schema is absent')],'write');
 export const schemaImportAbandon=command('abandon','+schema-import-abandon','Abandon candidate and invalidate pending tasks.',[...identityFlags,...mutationFlags],'high-risk-write');
 export const schemaImportCommands=[schemaDownload,schemaImport,schemaImportList,schemaImportStatus,schemaImportContent,schemaImportDiff,schemaImportSave,schemaImportValidate,schemaImportOptimize,schemaImportReject,schemaImportApply,schemaImportAbandon];

@@ -21,6 +21,10 @@ import { basename } from 'node:path';
 export type CapabilityApiMethod = 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE';
 
 export type CapabilityApiRequestOptions = {
+  /** Keep strict REST business bodies unchanged while retaining context headers. */
+  includeClientContextInBody?: boolean;
+  /** Versioned CLI REST contract; existing capability callers remain on v1. */
+  apiVersion?: 'v1' | 'v2';
   /** Actual service base URL when it differs from the host used to obtain the CLI token. */
   apiBaseUrl?: string;
   /** @deprecated Retained for source compatibility. Unauthorized requests are never retried. */
@@ -55,11 +59,12 @@ export function buildCapabilityGatewayUrl(
   domain: string,
   pathAfterV1: string,
   queryParams: Record<string, any> = {},
+  apiVersion: 'v1' | 'v2' = 'v1',
 ): string {
   const base = host.replace(/\/+$/, '');
   const cleanDomain = domain.replace(/^\/+|\/+$/g, '');
   const cleanPath = pathAfterV1.replace(/^\/+|\/+$/g, '');
-  const gatewayPrefix = cleanDomain === '' ? '/api/cli/v1' : `/api/cli/${cleanDomain}/v1`;
+  const gatewayPrefix = cleanDomain === '' ? `/api/cli/${apiVersion}` : `/api/cli/${cleanDomain}/${apiVersion}`;
   const url = new URL(`${base}${gatewayPrefix}/${cleanPath}`);
   for (const [key, value] of Object.entries(queryParams)) {
     if (value !== undefined && value !== null) {
@@ -202,6 +207,7 @@ async function requestOnce(
   token: string,
   body: any,
   accept = 'application/json',
+  includeClientContextInBody = true,
 ): Promise<Response> {
   const agentContext = readCliAgentContext();
   const headers: Record<string, string> = {
@@ -213,7 +219,7 @@ async function requestOnce(
   const init: RequestInit = { method, headers };
   if (body !== undefined && method !== 'GET') {
     headers['Content-Type'] = 'application/json';
-    init.body = JSON.stringify(withCliAgentContextBody(body, agentContext));
+    init.body = JSON.stringify(includeClientContextInBody ? withCliAgentContextBody(body, agentContext) : body);
   }
   return fetch(url, init);
 }
@@ -262,15 +268,15 @@ async function callGatewayWithEnvelope(
   queryParams: Record<string, any> = {},
   options: CapabilityApiRequestOptions = {},
 ): Promise<CapabilityGatewaySuccess> {
-  const url = buildCapabilityGatewayUrl(options.apiBaseUrl ?? host, domain, pathAfterV1, queryParams);
+  const url = buildCapabilityGatewayUrl(options.apiBaseUrl ?? host, domain, pathAfterV1, queryParams, options.apiVersion);
   const token = await getCliToken(host);
 
-  let resp = await requestOnce(url, method, token, body);
+  let resp = await requestOnce(url, method, token, body, 'application/json', options.includeClientContextInBody);
   // Explicit opt-in only: reread host-scoped credentials once without minting or deleting them.
   if (resp.status === 401 && options.retryOnUnauthorized === true) {
     await resp.body?.cancel();
     clearCliTokenCache(host);
-    resp = await requestOnce(url, method, await getCliToken(host), body);
+    resp = await requestOnce(url, method, await getCliToken(host), body, 'application/json', options.includeClientContextInBody);
   }
   if (resp.status === 403) {
     const error = await permissionError(resp);

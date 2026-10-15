@@ -16,20 +16,22 @@ AE CLI (`ae-cli`) is the command-line tool for the AE (Agentic Engine) analysis 
 
 Global parameters:
 
-| Parameter | Description |
-|---|---|
-| `--format <json\|table>` | Output format. Default is JSON. |
-| `--jq <expr>` | jq filter expression for JSON output. |
-| `--host <url>` | Override the active AE host. Available on every command and may be placed after the subcommand, e.g. `ae-cli team +<command> --host <url>`. |
-| `--yes` | Skip confirmation for `high-risk-write` (delete) operations. |
-| `--dry-run` | Show request details without executing. |
+| Parameter                | Description                                                                                                                                 |
+| ------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------- |
+| `--format <json\|table>` | Output format. Default is JSON.                                                                                                             |
+| `--jq <expr>`            | jq filter expression for JSON output.                                                                                                       |
+| `--host <url>`           | Override the active AE host. Available on every command and may be placed after the subcommand, e.g. `ae-cli team +<command> --host <url>`. |
+| `--yes`                  | Skip confirmation for `high-risk-write` (delete) operations.                                                                                |
+| `--dry-run`              | Show request details without executing.                                                                                                     |
 
 Output and errors:
+
 - Successful commands return machine-readable JSON by default. Envelope may include optional `_notice.host_compat`.
 - Failed commands return `{ "ok": false, "error": { "type": "...", "message": "...", "hint": "..." } }` and exit non-zero.
 - **CRITICAL — Host compat (do this first):** If stderr or `_notice.host_compat` has a version warning, open the user reply with ⚠️ and **quote `npm i -g` / `npx skills add` (or update-cluster) lines verbatim**, then list projects/results. Never omit when summarizing. Soft tip; `ok: true` may still include the notice.
 
 Safety constraints:
+
 - Read commands (`+list`, `+list-templates`, `+list-projects`, `+run-result`, `+run-artifacts`, `+ai-generate`) can execute directly once required IDs are known.
 - Ordinary `write` commands require explicit user intent but no CLI confirmation. Only `high-risk-write` commands use the confirmation gate and may receive `--yes` after explicit user authorization.
 - Never invent team IDs, run IDs, `agentId` values, `mcpServerIds`, `skillIds`, `knowledgeBaseIds`, project IDs, or any resource identifiers. Discover them with list commands or accept them from the user.
@@ -81,16 +83,16 @@ ae-cli team +run-start --help
 
 ## TeamRun Status Reference
 
-| Status | Description |
-|---|---|
-| `pending` | Queued, waiting to start |
-| `running` | Actively executing |
-| `waiting_user` | Paused — `+run-watch` exits with code 2; read `pendingQuestion` from stdout, present to user, then call `+run-reply` |
-| `waiting_approval` | Paused — waiting for approval |
-| `paused` | Manually paused |
-| `completed` | Finished successfully |
-| `failed` | Execution failed |
-| `cancelled` | Cancelled by user |
+| Status             | Description                                                                                                          |
+| ------------------ | -------------------------------------------------------------------------------------------------------------------- |
+| `pending`          | Queued, waiting to start                                                                                             |
+| `running`          | Actively executing                                                                                                   |
+| `waiting_user`     | Paused — `+run-watch` exits with code 2; read `pendingQuestion` from stdout, present to user, then call `+run-reply` |
+| `waiting_approval` | Paused — waiting for approval                                                                                        |
+| `paused`           | Manually paused                                                                                                      |
+| `completed`        | Finished successfully                                                                                                |
+| `failed`           | Execution failed                                                                                                     |
+| `cancelled`        | Cancelled by user                                                                                                    |
 
 Terminal statuses: `completed`, `failed`, `cancelled`. Poll `+run-result` until one of these is reached.
 
@@ -163,3 +165,7 @@ ae-cli team +create --name "我的分析团队" --config '<template_config>'
 ```bash
 ae-cli team --help
 ```
+
+## Automation lifecycle
+
+For Agent or team automation schedules, immediate execution, stop, retry, deletion, history and read-only results, use [ae-automation](../ae-automation/SKILL.md). Existing Agent automation aliases remain compatible.

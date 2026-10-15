@@ -39,6 +39,13 @@ interface TeAgentApiErrorPresentation {
   meta?: Record<string, unknown>;
 }
 
+export function canPromptForConfirmation(
+  input: Pick<NodeJS.ReadStream, 'isTTY'> = process.stdin,
+  output: Pick<NodeJS.WriteStream, 'isTTY'> = process.stderr,
+): boolean {
+  return input.isTTY === true && output.isTTY === true;
+}
+
 function readSkillCurrentVersion(body: unknown): string | undefined {
   if (!body || typeof body !== 'object' || Array.isArray(body)) return undefined;
   const currentVersion = (body as Record<string, unknown>).currentVersion;
@@ -203,6 +210,15 @@ export async function runCommand(cmd: Command, opts: Record<string, any>, global
       // parameters surface as validation errors instead of being hidden behind the confirmation.
       cmd.preflight?.(ctx);
       if (!globalOpts.yes) {
+        if (!canPromptForConfirmation()) {
+          throw new CliValidationError(
+            'Non-interactive high-risk writes require global --yes.',
+            {
+              code: 'CONFIRMATION_REQUIRED',
+              hint: 'After explicit authorization, retry with the global --yes flag.',
+            },
+          );
+        }
         const confirmed = await confirm(`This is a high-risk-write operation (${cmdName}). Continue?`);
         if (!confirmed) {
           process.stderr.write('Aborted.\n');
@@ -239,7 +255,7 @@ export async function runCommand(cmd: Command, opts: Record<string, any>, global
       printError('config', message, err.hint);
     } else if (err instanceof PermissionError) {
       // authenticated-but-forbidden — surface the server's reason; re-login won't help
-      printError('permission', message, err.hint, err.code);
+      printError('permission', message, err.hint, err.code, undefined, { details: err.details });
     } else if (err instanceof CliApiError) {
       printError('api', message, err.hint, err.code, err.meta);
     } else if (err instanceof CapabilityGatewayError) {
@@ -253,20 +269,21 @@ export async function runCommand(cmd: Command, opts: Record<string, any>, global
     } else if (err instanceof CredentialStoreUnreadableError) {
       printError('config', message, err.hint, err.code);
     } else if (err instanceof SecureStoreAuthError) {
-      printError('auth', message, 'Run: ae-cli auth login');
+      printError('auth', message, 'Run: ae-cli auth login', err.code);
     } else if (err instanceof TeAgentApiError) {
       if (err.status === 403) {
-        printError('permission', message);
+        printError('permission', message, err.hint, err.code, undefined, { details: err.details });
       } else if (err.status === 401) {
-        printError('auth', message, 'Run: ae-cli auth login');
+        printError('auth', message, err.hint ?? 'Run: ae-cli auth login', err.code, undefined, { details: err.details });
       } else {
         const presentation = teAgentApiErrorPresentation(err);
         printError(
-          'api',
+          err.errorType,
           presentation.message ?? message,
-          presentation.hint,
+          presentation.hint ?? err.hint,
           presentation.code ?? err.code,
           presentation.meta,
+          { details: err.details },
         );
       }
     } else if (looksLikeAuthFailure(message)) {
@@ -315,7 +332,7 @@ export function capabilityGatewayHint(err: CapabilityGatewayError): string | und
   }
   if (err.httpStatus === 404 && !err.code) {
     const base =
-      'The current host returned 404 for this capability route. Do not keep retrying the same command; verify the backend route/capability deployment.';
+      'The current host returned 404 for this capability route. Do not keep retrying the same command; verify the backend route/capability deployment. If --host points directly to a local Common service instead of the deployed gateway, scope AE_CLI_CAPABILITY_GATEWAY_DOMAIN= to this command so it uses /api/cli/v1.';
     return compatExtra ? `${base}\n${compatExtra}` : base;
   }
   return undefined;
@@ -336,7 +353,7 @@ export function looksLikeAuthFailure(message: string): boolean {
   );
 }
 
-function createRuntimeContext(cmd: Command, opts: Record<string, any>, globalOpts: GlobalOptions): RuntimeContext {
+export function createRuntimeContext(cmd: Command, opts: Record<string, any>, globalOpts: GlobalOptions): RuntimeContext {
   let _communityReportModule: typeof import('../core/community-report-client.js') | null = null;
   async function getCommunityReportClient() {
     if (!_communityReportModule) {
@@ -400,6 +417,10 @@ function createRuntimeContext(cmd: Command, opts: Record<string, any>, globalOpt
       return client.localDataUpload(endpoint, rawBody, options);
     },
 
+    hostOverride(): string | undefined {
+      return globalOpts.host;
+    },
+
     host(): string {
       if (globalOpts.host) return globalOpts.host;
       return getActiveHost();
@@ -414,7 +435,7 @@ function createRuntimeContext(cmd: Command, opts: Record<string, any>, globalOpt
     },
 
     async out(data: any): Promise<void> {
-      await printOutput(data, globalOpts.format, globalOpts.jq);
+      await printOutput(data, globalOpts.format, globalOpts.jq, { redactErrors: cmd.sensitiveOutput });
     },
   };
 

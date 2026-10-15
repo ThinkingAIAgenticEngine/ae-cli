@@ -12,6 +12,10 @@ ae-cli system query-task export --company-id <company_id> --start-time '2026-07-
 
 Capability id: `system.query_task.export`.
 
+Selected project IDs and space codes must belong to the supplied company. A different company's scope is rejected before an export is submitted.
+
+The time range has the same completion-time semantics as [`query-task list`](system_query_task_list.md): inclusive boundary seconds, including milliseconds within the end second, and a maximum 31-day window. The CSV `start_time` is task initiation time, not the timestamp used for range filtering.
+
 If the required filter mappings are unknown, call `ae-cli system query-task options --company-id <company_id>` once. Reuse verified mappings within the same company/project scope; do not guess filter codes or cluster names.
 
 Use `--output` to wait and download the completed artifact. If interrupted, resume with `ae-cli analysis run wait --run-id <run_id> --output <file>` using the same export response. See [`run_wait.md`](run_wait.md).
@@ -25,8 +29,8 @@ The response uses `ok`, `data`, and `meta`. Empty task data is a successful expo
 | Parameter | Required | Description |
 |---|---|---|
 | `--company-id` | Yes | Company ID. |
-| `--start-time` | Yes | Inclusive range start in `yyyy-MM-dd HH:mm:ss`. |
-| `--end-time` | Yes | Inclusive range end in `yyyy-MM-dd HH:mm:ss`. |
+| `--start-time` | Yes | Inclusive completion-time range start in `yyyy-MM-dd HH:mm:ss`. |
+| `--end-time` | Yes | Inclusive completion-time range end, including the entire second, in `yyyy-MM-dd HH:mm:ss`. |
 | `--status-codes` | Yes | Non-empty task status-code JSON array. |
 | `--content-codes` | Yes | Non-empty query content-code JSON array. |
 | `--task-type-codes` | Yes | Non-empty query task-type-code JSON array. |

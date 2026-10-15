@@ -65,4 +65,4 @@ ae-cli agent +add-model \
 - After success, capture the returned `id` for `+toggle-model` / `+del-model` calls.
 
 ## Recommended Chaining
-- `+list-models` (verify) → `+add-model` → `+toggle-model` (enable) → `+create-automation --model <id>`
+- `+list-models` (verify) → `+add-model` → `+toggle-model` (enable) → `ae-cli automation create --model <id>`

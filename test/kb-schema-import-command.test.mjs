@@ -28,9 +28,12 @@ test('save and upload preserve BOM/CRLF, redact dry-run and send canonical field
 test('downloads preserve raw bytes and never overwrite files',async()=>{
  const root=await mkdtemp(path.join(os.tmpdir(),'schema-download-'));try{
  const output=path.join(root,'CLAUDE.md'),bytes=Buffer.from([239,187,191,13,10]);
- const input=ctx({output,name:'KB'});const api=async(...args)=>{assert.equal(args[5].responseType,'bytes');assert.equal(args[3].download,'1');return bytes;};
+ const input=ctx({output,name:'KB'});const api=async(...args)=>{assert.equal(args[5].responseType,'bytes');assert.equal(args[3].download,'1');return {bytes:new Uint8Array(bytes),contentType:'text/markdown; charset=utf-8'};};
  await executeSchemaImport(input,'download',api);assert.deepEqual(await readFile(output),bytes);
  await assert.rejects(()=>executeSchemaImport(input,'download',api),/EEXIST/);
+ const candidateOutput=path.join(root,'candidate.md'),candidateInput=ctx({output:candidateOutput,'import-id':'candidate'});
+ const candidateApi=async(...args)=>{assert.equal(args[5].responseType,'bytes');assert.equal(args[3].download,'1');return {bytes:new Uint8Array(bytes),contentType:'text/markdown; charset=utf-8'};};
+ await executeSchemaImport(candidateInput,'content',candidateApi);assert.deepEqual(await readFile(candidateOutput),bytes);
  }finally{await rm(root,{recursive:true,force:true});}
 });
 test('selected issues repeat and wait never calls abandon',async()=>{
@@ -43,4 +46,13 @@ test('BASE_CHANGED is preserved without an automatic second application',async()
  let calls=0;const failure=Object.assign(new Error('BASE_CHANGED'),{code:'KB_SCHEMA_IMPORT_BASE_CHANGED'});
  await assert.rejects(()=>executeSchemaImport(ctx({'import-id':'i',revision:2,'request-id':'r',hash:'a'.repeat(64),'report-id':'b'.repeat(64),'schema-absent':true}),'apply',async()=>{calls++;throw failure;}),failure);
  assert.equal(calls,1);
+});
+test('reviewed presets apply without an AI report and omit the optional JSON field',async()=>{
+ const input=ctx({'import-id':'i',revision:1,'request-id':'apply-preset',hash:'a'.repeat(64),'schema-hash':'c'.repeat(64)});
+ assert.equal(schemaImportApply.flags.find(flag=>flag.name==='report-id').required,false);
+ schemaImportApply.validate(input);
+ const calls=[];
+ await executeSchemaImport(input,'apply',async(...args)=>{calls.push(args);return {status:'applied'};});
+ assert.deepEqual(calls[0][4],{expectedRevision:1,requestId:'apply-preset',contentHash:'a'.repeat(64),expectedSchemaHash:'c'.repeat(64)});
+ assert.deepEqual(schemaImportApply.dryRun(input).body,calls[0][4]);
 });

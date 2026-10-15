@@ -1,5 +1,6 @@
 import { readFileSync, statSync } from 'node:fs';
 import { dirname, join, parse, resolve } from 'node:path';
+import { AsyncLocalStorage } from 'node:async_hooks';
 
 type ContextField = {
   key: string;
@@ -37,12 +38,19 @@ const FIELDS: ContextField[] = [
 
 export type CliAgentContext = Record<string, string>;
 
+const scopedContext = new AsyncLocalStorage<CliAgentContext>();
+
+export function runWithCliAgentContext<T>(context: CliAgentContext, run: () => Promise<T>): Promise<T> {
+  return scopedContext.run(context, run);
+}
+
 export function readCliAgentContext(): CliAgentContext {
   const context = {
     ...inferRuntimeContext(),
     ...readEnvContext(),
     ...readArgumentContext(),
     ...readFileContext(),
+    ...scopedContext.getStore(),
   };
   return withCaptureStatus(context);
 }

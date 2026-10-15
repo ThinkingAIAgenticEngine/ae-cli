@@ -2,7 +2,7 @@
 
 # ae-cli
 
-`ae-cli` is the command-line client for the ThinkingAI AgenticEngine (AE) platform. It provides stable, structured interfaces for both AI Agents and human operators across analytics and project configuration, metadata, tracking, local-data ingestion, Engage, DataOps, knowledge bases, Agent resources, user memory, and system administration.
+`ae-cli` is the command-line client for the ThinkingAI AgenticEngine (AE) platform. It provides stable, structured interfaces for both AI Agents and human operators across analytics, experimentation, project configuration, metadata, tracking, local-data ingestion, Engage, DataOps, knowledge bases, Agent resources, user memory, and system administration.
 
 The CLI is designed around:
 
@@ -15,8 +15,9 @@ The CLI is designed around:
 ## Requirements
 
 - Node.js 20 or later.
+- macOS, Linux, or native Windows (PowerShell / Command Prompt); WSL is optional.
 - Access to the npm registry for CLI installation.
-- Access to GitHub when installing Skills initially or when the local Skills fallback cannot be used.
+- Access to GitHub only when the bundled Skills source cannot be used.
 
 ## Installation
 
@@ -25,9 +26,11 @@ For setup through Codex, Claude Code, Cursor, or another terminal-capable AI Age
 Install the public CLI and Agent Skills:
 
 ```bash
-npm install -g @thinkingai/ae-cli
-npx -y skills add ThinkingAIAgenticEngine/ae-cli -g -y
+npx @thinkingai/ae-cli@latest install
+npx @thinkingai/ae-cli@latest install --format json
 ```
+
+The installer checks Node.js 20+, installs and verifies the CLI, then installs matching Skills globally in `~/.agents/skills`, writing the shared files once before automatically distributing copies to clients that need their own directory. No Agent selection is needed; Codex and Cursor can share these Skills even when installed later. `--dry-run`, `--format json`, and optional `--host <AE_HOST>` are supported. Unrelated project-only client warnings are hidden after successful verification; missing files and YAML errors remain failures. Being logged out is not an installation failure. See the [installation guide](./cli-installation-guide.md).
 
 The Skills teach supported coding Agents, including Claude Code, Codex, Cursor, and similar tools, how to discover and call `ae-cli`.
 
@@ -56,6 +59,10 @@ Each AE environment returns the exact `aeCliVersion` it expects. Use the unified
 ae-cli update
 ae-cli update --dry-run
 ```
+
+Updates use the same global Skills installation and verification as `install`. Older packages need no installer or generated manifest: their bundled Skills define the expected contents. If Skills fail after the CLI installs, the result reports partial completion and can be retried.
+
+Automatic synchronization runs during normal commands after login; host version checks are cached for up to 24 hours. `ae-cli update --host <AE_HOST>` checks immediately. After a downgrade, future updates run the older CLI's own updater, including its historical limitations. To use the new installer logic while following an older host, run `npx @thinkingai/ae-cli@latest update --host <AE_HOST>`; the target remains the host-required version.
 
 `ae-cli update` installs the exact version required by the active host rather than npm `latest`. It synchronizes Skills from the installed npm package first and uses the matching GitHub tag only as a fallback.
 
@@ -109,12 +116,13 @@ The table covers every current root command individually. Use `ae-cli --help` fo
 | Category | Root command | Purpose |
 |---|---|---|
 | Analysis and projects | `analysis` | Reports, dashboards, ad-hoc analysis, drilldowns, details, alerts, tags, and cohorts |
+| Analysis and projects | `experiment` | Atlas experiments, reports, traffic layers, buckets, Features, metrics, and operation logs |
 | Analysis and projects | `analysis-meta` | Event/property catalogs, metrics, virtual metadata, tracking governance, and project analysis settings |
 | Analysis and projects | `analysis-governance` | Data-asset search, lineage, impact analysis, certification, and governance |
 | Analysis and projects | `project` | Project information, members, roles, permissions, entities, time zones, and handover settings |
 | Analysis and projects | `metadata` | Capability-backed data-table, property, and dimension-table binding operations |
 | Analysis and projects | `personal-semantic-preference` | Project-scoped lightweight semantic preferences for the current user |
-| Analysis and projects | `project-semantic` | Export project asset packages for knowledge-base builds |
+| Analysis and projects | `project-semantic` | Governed project semantics, knowledge-base asset packages, candidate validation, review, and publishing |
 | Data and tracking | `tracking` | Tracking plans, SDK samples, checks, ingestion diagnostics, code generation, and bundled wiki |
 | Data and tracking | `data-integration` | Inspect, plan, convert, upload, hand off, and reuse local CSV/JSON/Excel data |
 | Community insights | `community` | Community posts, comments, topics, sentiment, livestream, and report workflows |
@@ -134,15 +142,19 @@ The table covers every current root command individually. Use `ae-cli --help` fo
 | Agent platform | `kb` | Knowledge-base lifecycle, LLM Q&A, and deterministic index/grep/read retrieval |
 | Agent platform | `agent` | Agents, approvals, automations, models, MCP servers, Skills, attachments, credentials, and sandbox tools |
 | Agent platform | `context` | Read the current product-page context authorized for the active Agent Run |
-| Agent platform | `memory` | User memory, Top-K context writing, and actual-usage accounting |
+| Agent platform | `memory` | AgentSpace memory, drafts, shared review, extraction jobs, revisions, and state transitions |
 | Agent platform | `team` | Agent Team and TeamRun execution, chat, results, and artifacts |
 | Agent platform | `system` | Root/admin management of members, sandboxes, tools, models, usage, quotas, and channels |
 | General tools | `capability` | Capability discovery, schema inspection, validation, dry-run, and generic execution |
 | General tools | `auth` | Host-scoped login, status, and multi-account management |
 | General tools | `config` | Add, switch, rename, and remove Host environments |
-| General tools | `sync` | Push or pull local Skills and MCPs to/from the Agent application |
-| General tools | `model` | Inspect and switch the current workspace model inside an Agent sandbox |
+| General tools | `sync` | Push or pull local Skills and MCPs to/from the Agent application; blocked in AgentSpace context |
+| General tools | `model` | Inspect and switch the current workspace model inside an Agent sandbox; blocked in AgentSpace context |
 | General tools | `update` | Synchronize CLI and Skills to the version required by the current Host |
+| General tools | `install` | Install and verify CLI and matching global Skills |
+| Agent platform | `workspace` | AgentSpace context, profiles, capabilities, members, activities, and lifecycle |
+| Agent platform | `things` | Workspace issues, collaborators, timeline, archive, and restore |
+| Agent platform | `automation` | Automation configuration, execution, history, and results |
 <!-- root-command-surface:end -->
 
 ## Capability Gateway
@@ -163,6 +175,10 @@ ae-cli capability run analysis.report.list --input input.json
 Use `validate` while fixing complex nested input. Use `dry-run` when you need the final risk, output mode, cancellation support, or delete confirmation preview. Do not stack `validate` and `dry-run` for the same final payload by default; `dry-run` already validates it.
 
 Gateway-backed features follow the [Capability command admission rules](docs/capability-command-admission.md). Common workflows may have curated commands; long-tail capabilities remain dynamically discoverable.
+
+Event-report presentation is separate from its query definition: `analysis report create|update --presentation '{"chart_type":"bar","table_layout":"event"}'` sets the source chart/result-table layout, and `report get` returns its effective presentation. On same-model updates, omit presentation to preserve the saved chart and result-table layout. For a table card on an analysis board, use `analysis dashboard-report get|update` with exact project/dashboard/report IDs; `update --chart-type table --table-layout event --date-outside false` changes only that card, preserving the source definition and other boards. This presentation contract currently supports event reports only. See [report update](skills/ae-analysis/references/report_update.md) and [card update](skills/ae-analysis/references/dashboard_report_update.md).
+
+Event combination charts use source `presentation.chart_type=combo` and `series` items `{metric_index:1,type:"bar",axis:"primary"}` (`type=bar|line`, `axis=primary|secondary`). Indexes are current 1-based `definition.metrics` positions; updates use the current report version, subset patches, or explicit `series: []`/`chart_type=line` resets. Board trends inherit source series, so source edits affect its other trend cards; `dashboard-report update --chart-type combo` selects existing combo, not a card-local override. Cumulative line is not combo. See [combination-chart scope and safety](skills/ae-analysis/references/event_report_presentation.md).
 
 `analysis user-tag create|update` supports periodic refresh in one command: pass `--auto-refresh-schedule '{"frequency":"daily","time":"02:30"}'` (also weekly/monthly), or `--auto-refresh-cron`. Use `--enable-auto-refresh false` to disable it. Scheduling-only updates do not recompute; omitted settings preserve the existing plan. See the [tag create](skills/ae-analysis/references/user_tag_create.md) and [tag update](skills/ae-analysis/references/user_tag_update.md) references.
 
@@ -274,7 +290,7 @@ ae-cli agent +list-agents
 ae-cli agent +list-models
 ae-cli agent +list-mcps
 ae-cli agent +list-skills
-ae-cli agent +list-automations
+ae-cli automation list
 ae-cli agent +list-attachments
 ae-cli agent approval-type list
 ae-cli agent approval-request list --status pending
@@ -317,14 +333,17 @@ The npm package includes the same `skills/` directory used by the public reposit
 | `ae-community` | Community analysis and reporting |
 | `ae-data-integration` | Local CSV/JSON/Excel inspection, mapping, conversion, upload, and reusable handoff |
 | `ae-kb`, `ae-kb-discovery` | Knowledge-base lifecycle, Q&A, deterministic retrieval, and read-only knowledge-base discovery |
-| `ae-agent`, `ae-system`, `ae-team` | Agent resources and user memory, administration, and TeamRun workflows |
+| `ae-workspace` | AgentSpace context, profiles, capabilities, members, activities, and lifecycle |
+| `ae-things`, `ae-things-progress`, `ae-things-review` | Workspace issues, progress digests, and review summaries |
+| `ae-automation` | Automation configuration, execution, history, and results |
+| `ae-agent`, `ae-system`, `ae-team` | Agent resources, AgentSpace memory, administration, and TeamRun workflows |
 | `ae-generate-tracking-plan`, `ae-generate-tracking-code` | Tracking-plan and tracking-code generation |
 | `ae-data-integration-helper` | SDK and LogBus2 integration guidance |
 
 Reinstall all public Skills with:
 
 ```bash
-npx -y skills add ThinkingAIAgenticEngine/ae-cli -g -y
+ae-cli install
 ```
 
 ## Development
@@ -363,10 +382,12 @@ npm test
 npm run qa-changed
 npm run self-check
 npm run check:release
+npm run verify:experiment-tools
 npm run verify:readme
 npm run verify:auth-credentials
 npm run verify:update-check
 npm run verify:version-sync
+npm run verify:install
 ```
 
 ## Changelog

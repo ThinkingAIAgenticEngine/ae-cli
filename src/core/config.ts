@@ -1,11 +1,12 @@
 import fs from 'fs';
 import path from 'path';
+import os from 'node:os';
 import { safeReadJsonFile } from './json-utils.js';
 import { logger } from './logger.js';
 import { normalizeUrl } from './url-utils.js';
 import { getSandboxCliTokenFilePath } from './sandbox-runtime.js';
 
-const CONFIG_DIR = path.join(process.env.HOME || '', '.ae-cli');
+const CONFIG_DIR = path.join(process.env.HOME || os.homedir(), '.ae-cli');
 const CONFIG_FILE = path.join(CONFIG_DIR, 'config.json');
 
 export interface SandboxCliTokenEntry {
@@ -16,7 +17,7 @@ export interface SandboxCliTokenEntry {
 /** Candidate paths for sandbox-provisioned cli-token.json (read-only). */
 function sandboxCliTokenCandidatePaths(): string[] {
   const paths = [getSandboxCliTokenFilePath()];
-  const homeFallback = path.join(process.env.HOME || '', '.ae-config', 'cli-token.json');
+  const homeFallback = path.join(process.env.HOME || os.homedir(), '.ae-config', 'cli-token.json');
   if (!paths.includes(homeFallback)) {
     paths.push(homeFallback);
   }

@@ -1,4 +1,4 @@
-import { getFromMainApp } from '../../core/te-agent-client.js';
+import { readCurrentPageContext } from '../../core/current-page-context-client.js';
 import { CliValidationError } from '../../core/errors.js';
 import type { Command } from '../../framework/types.js';
 
@@ -7,7 +7,7 @@ const CURRENT_PAGE_CONTEXT_PATH = '/api/sandbox/agent/context/current';
 export type CurrentPageContextReader = (path: string) => Promise<unknown>;
 
 export function createCurrentPageContextCommand(
-  read: CurrentPageContextReader = getFromMainApp,
+  read: CurrentPageContextReader = readCurrentPageContext,
   readConversationId: () => string | undefined = () => process.env.TE_AGENT_CONVERSATION_ID,
 ): Command {
   return {

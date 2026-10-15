@@ -12,6 +12,8 @@ ae-cli system query-monitor overview --company-id <company-id> --cluster-names '
 
 Capability id: `system.query_monitor.overview`.
 
+Selected project IDs and space codes must belong to the supplied company. A different company's scope is rejected before chart data is read.
+
 The response uses `ok`, `data`, and `meta`. Treat empty `data` as success when `ok=true`; preserve `request_id` and `invocation_id` when present.
 
 ## Parameters

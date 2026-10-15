@@ -72,7 +72,7 @@ A candidate returned by `+list`, navigation returned by `+index`, a successful c
 
 ## Use Knowledge Base Evidence in Analysis
 
-For project-scoped business data analysis, the `analysis-workflow.md` handoff above is mandatory after relevant source pages have been read. In particular, a KB statement that current values require live execution means attempting the matched saved asset first. If that attempt cannot produce a usable result, the workflow permits a traceable fallback to ordinary analysis.
+For project-scoped business data analysis, the `analysis-workflow.md` handoff above is mandatory after relevant source pages have been read. Attempt an exact, semantically applicable saved asset first. If definition inspection proves it unsuitable, or execution cannot produce the requested result, continue ordinary analysis for the uncovered requirements without discarding verified KB evidence. A KB statement that current values require execution does not require running a known mismatching asset or asking the user to repeat the data request.
 
 When using internal context to explain data analysis results, anomalies, or trends:
 

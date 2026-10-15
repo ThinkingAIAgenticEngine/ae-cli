@@ -1,6 +1,6 @@
 # system query-task options
 
-Use before query-task list or export to discover every valid filter value exposed by the current environment.
+Use before query-task list, realtime-list, or export to discover valid filter values exposed by the current environment.
 
 Command:
 
@@ -18,7 +18,7 @@ The response maps:
 - `projects[].project_id` and `workspaces[].space_code` to display names.
 - `clusters[].cluster_name` to its query engine metadata.
 
-Use the returned codes and names unchanged in `query-task list` or `query-task export`. Do not infer codes from UI labels or examples.
+Project and workspace options are limited to `--company-id`; status, content, task type, and cluster codes remain discoverable. Use the returned codes and names unchanged in `query-task list`, `query-task realtime-list`, or `query-task export`. Discovery does not authorize a project or workspace; execution still checks company ownership. Do not infer codes from UI labels or examples.
 
 ## Parameters
 

@@ -159,38 +159,57 @@ export function formatError(
   hint?: string,
   code?: string | number,
   meta?: Record<string, unknown>,
+  details?: unknown,
 ): string {
   const envelope: OutputEnvelope = {
     ok: false,
-    error: { type: type as any, message, hint, code },
+    error: { type, message, hint, code, ...(details === undefined ? {} : { details }) },
     ...(meta && Object.keys(meta).length > 0 ? { meta } : {}),
   };
   return JSON.stringify(envelope, null, 2);
 }
 
 export function printError(
-  type: 'auth' | 'permission' | 'api' | 'validation' | 'config',
+  type: import('../core/errors.js').CliErrorType,
   message: string,
   hint?: string,
   code?: string | number,
   meta?: Record<string, unknown>,
-  options: { log?: boolean } = {},
+  options: { log?: boolean; details?: unknown } = {},
 ): void {
-  const formatted = formatError(type, message, hint, code, meta);
+  const formatted = formatError(type, message, hint, code, meta, options.details);
   process.stderr.write(formatted + '\n');
   if (options.log !== false) {
     logger.error(`[${type}] ${message}${hint ? ' | ' + hint : ''}`);
   }
 }
 
-export async function printOutput(data: any, format: OutputFormat, jqExpr?: string): Promise<void> {
+/** Retain only identity and local-output details when a sensitive projection fails. */
+function sensitiveRecoveryData(data: any): Record<string, unknown> {
+  const safe: Record<string, unknown> = {};
+  const item: Record<string, unknown> = {};
+  if (typeof data?.item?.id === 'string') item.id = data.item.id;
+  if (Number.isSafeInteger(data?.item?.contentRevision)) item.contentRevision = data.item.contentRevision;
+  if (Object.keys(item).length > 0) safe.item = item;
+  if (['markdown', 'text'].includes(data?.contentFormat)) safe.contentFormat = data.contentFormat;
+  if (typeof data?.out === 'string') safe.out = data.out;
+  return safe;
+}
+
+export async function printOutput(data: any, format: OutputFormat, jqExpr?: string, options: { redactErrors?: boolean } = {}): Promise<void> {
   try {
     process.stdout.write(await formatOutput(data, format, jqExpr) + '\n');
   } catch (error: any) {
     if (error?.code === 'OUTPUT_PROJECTION_FAILED') {
-      const recovery = JSON.parse(formatError('validation', error.message, error.hint, error.code, readOutputMetadata(data)));
+      if (options.redactErrors) {
+        error.message = 'Invalid --jq expression: output projection failed; source content is omitted from diagnostics.';
+        error.hint = 'The read completed. Fix --jq and explicitly run read-text again without --out, or inspect the file at data.out if present. This error result excludes source content.';
+      }
+      const recovery = JSON.parse(formatError('validation', error.message, error.hint, error.code,
+        options.redactErrors ? undefined : readOutputMetadata(data)));
+      const recoveryData = options.redactErrors ? sensitiveRecoveryData(unwrapOutputData(data)) : unwrapOutputData(data);
       await new Promise<void>((resolve, reject) => {
-        process.stdout.write(JSON.stringify({ ...recovery, data: unwrapOutputData(data) }, null, 2) + '\n',
+        process.stdout.write(JSON.stringify({ ...recovery, data: recoveryData }, null, 2) + '\n',
           (error) => error ? reject(error) : resolve());
       });
     }

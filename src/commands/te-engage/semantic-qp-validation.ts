@@ -70,6 +70,11 @@ export function validateEmbeddedSemanticDefinitions(value: unknown, path: string
   walk(value, path);
 }
 
+/** Validates semantic events embedded in Flow A/B experiment indicators. */
+export function validateFlowAbIndicatorDefinitions(value: unknown, path: string): void {
+  walkFlowAbIndicators(value, path);
+}
+
 /** Validates the required period type on a task trigger definition's primary rule. */
 export function validateTaskTriggerPeriodDefinition(value: unknown, path: string): void {
   const request = object(value, path);
@@ -121,6 +126,64 @@ function walk(value: unknown, path: string): void {
     } else {
       walk(item, itemPath);
     }
+  }
+}
+
+/** Finds A/B indicator arrays in object or JSON-string node configs. */
+function walkFlowAbIndicators(value: unknown, path: string): void {
+  if (Array.isArray(value)) {
+    value.forEach((item, index) => walkFlowAbIndicators(item, `${path}[${index}]`));
+    return;
+  }
+  if (!isObject(value)) return;
+  if (value.indicatorsDef !== undefined && value.indicatorsDef !== null) {
+    array(value.indicatorsDef, `${path}.indicatorsDef`).forEach((item, index) => {
+      const indicatorPath = `${path}.indicatorsDef[${index}]`;
+      const indicator = object(item, indicatorPath);
+      const hasDefinition = indicator.eventDefinition !== undefined && indicator.eventDefinition !== null;
+      const hasLegacyEvent = indicator.event !== undefined && indicator.event !== null;
+      if (hasDefinition && hasLegacyEvent) {
+        invalid(`${indicatorPath} cannot contain both event and eventDefinition.`);
+      }
+      if (!hasDefinition && !hasLegacyEvent) {
+        invalid(`${indicatorPath} must contain eventDefinition or legacy event.`);
+      }
+      if (hasDefinition) validateFlowAbIndicatorEvent(indicator.eventDefinition, `${indicatorPath}.eventDefinition`);
+    });
+  }
+  for (const [key, item] of Object.entries(value)) {
+    const itemPath = `${path}.${key}`;
+    if (key === 'config' && typeof item === 'string') {
+      try {
+        walkFlowAbIndicators(JSON.parse(item), itemPath);
+      } catch (error) {
+        if (error instanceof SyntaxError) invalid(`${itemPath} must contain valid JSON.`);
+        throw error;
+      }
+    } else {
+      walkFlowAbIndicators(item, itemPath);
+    }
+  }
+}
+
+/** Requires explicit aggregate and comparison semantics for one Flow A/B indicator. */
+function validateFlowAbIndicatorEvent(value: unknown, path: string): void {
+  validateSemanticEventDefinition(value, path);
+  const event = object(value, path);
+  enumValue(event.aggregation, AUDIENCE_AGGREGATIONS, `${path}.aggregation`);
+  enumValue(event.operator, new Set(['eq', 'neq', 'lt', 'lte', 'gt', 'gte']), `${path}.operator`);
+  required(event.value, `${path}.value`);
+  optionalNumber(event.value, `${path}.value`);
+  if (['sum', 'avg', 'max', 'min', 'distinct_count'].includes(String(event.aggregation))) {
+    nonBlankString(event.property, `${path}.property`);
+  }
+  if (isObject(event.filters)) {
+    array(event.filters.items, `${path}.filters.items`, 1).forEach((filterValue, index) => {
+      const filter = object(filterValue, `${path}.filters.items[${index}]`);
+      if (!['exists', 'not_exists', 'is_true', 'is_false'].includes(String(filter.operator))) {
+        array(filter.values, `${path}.filters.items[${index}].values`, 1);
+      }
+    });
   }
 }
 

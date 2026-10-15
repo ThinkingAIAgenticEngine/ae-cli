@@ -16,6 +16,7 @@ import {
 import { submitApprovalRequest } from '../src/commands/te-agent/approval-commands.ts';
 import { CapabilityGatewayError } from '../src/core/capability-api.ts';
 import { PermissionError } from '../src/core/errors.ts';
+import { SecureStoreAuthError } from '../src/core/secure-store.ts';
 import { setCliTokenManual, clearCliToken } from '../src/core/cli-token.ts';
 import type { RuntimeContext } from '../src/framework/types.ts';
 
@@ -293,39 +294,34 @@ try {
     },
   );
 
-  for (const alwaysUnauthorized of [false, true]) {
-    calls = 0;
-    const retriedBodies: string[] = [];
-    globalThis.fetch = (async (url, init) => {
-      if (String(url).includes('/v1/ta/cli/token/')) {
-        assert.equal(new URL(String(url)).pathname, '/v1/ta/cli/token/renew');
-        return new Response(JSON.stringify({ return_code: 0 }));
-      }
-      calls += 1;
-      retriedBodies.push(String(init?.body));
-      return calls === 1 || alwaysUnauthorized
-        ? new Response(
-            JSON.stringify({
-              ok: false,
-              error: { code: 'cli_token_invalid', message: 'CLI token expired' },
-            }),
-            { status: 401 },
-          )
-        : new Response(JSON.stringify({ ok: true, data: { outcome: 'accepted' } }));
-    }) as typeof fetch;
-    const operation = () =>
-      acceptAgentShare.execute(
-        context({ shareId: 'share-1', expectedVersion: 0, clientRequestId: 'accept-retry' }),
-      );
-    if (alwaysUnauthorized) await assert.rejects(operation);
-    else assert.equal(((await operation()) as { outcome: string }).outcome, 'accepted');
-    assert.equal(calls, 2, '401 must retry exactly once, including when the retry fails');
-    assert.equal(
-      retriedBodies[0],
-      retriedBodies[1],
-      'auth recovery must preserve the idempotency key and version',
+  calls = 0;
+  let unauthorizedBody = '';
+  globalThis.fetch = (async (url, init) => {
+    if (String(url).includes('/v1/ta/cli/token/')) {
+      assert.equal(new URL(String(url)).pathname, '/v1/ta/cli/token/renew');
+      return new Response(JSON.stringify({ return_code: 0 }));
+    }
+    calls += 1;
+    unauthorizedBody = String(init?.body);
+    return new Response(
+      JSON.stringify({
+        ok: false,
+        error: { code: 'cli_token_invalid', message: 'CLI token expired' },
+      }),
+      { status: 401 },
     );
-  }
+  }) as typeof fetch;
+  await assert.rejects(
+    () => acceptAgentShare.execute(
+      context({ shareId: 'share-1', expectedVersion: 0, clientRequestId: 'accept-unauthorized' }),
+    ),
+    SecureStoreAuthError,
+  );
+  assert.equal(calls, 1, '401 must not retry a share mutation');
+  assert.deepEqual(JSON.parse(unauthorizedBody), {
+    expected_version: 0,
+    client_request_id: 'accept-unauthorized',
+  });
 
   process.env.TE_CLAUDE_BASE_PATH = '/custom-agent';
   process.env.AE_API_PREFIX = '/gateway';

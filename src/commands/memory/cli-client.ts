@@ -1,18 +1,8 @@
-import {
-  buildCapabilityGatewayUrl,
-  callCapabilityApi,
-  type CapabilityApiMethod,
-  type CapabilityApiRequestOptions,
-} from '../../core/capability-api.js';
 import type { RuntimeContext } from '../../framework/types.js';
+import { getAgentApi, patchAgentApi, postAgentApi } from '../te-agent/api-client.js';
 
-const MEMORY_GATEWAY_DOMAIN = 'memory';
 const DEFAULT_TE_CLAUDE_BASE_PATH = '/agent';
-
-export const MEMORY_BASE_PATH = 'memories';
-export const MEMORY_DEFAULTS_PATH = `${MEMORY_BASE_PATH}/defaults`;
-
-type MemoryCliRequestOptions = Pick<CapabilityApiRequestOptions, 'retryOnUnauthorized'>;
+export const MEMORY_CLI_BASE_PATH = '/api/cli/memory/v2';
 
 function normalizeBasePath(value: string): string {
   const trimmed = value.trim();
@@ -29,55 +19,32 @@ export function resolveMemoryApiBaseUrl(host: string): string {
 }
 
 export function buildMemoryCliUrl(ctx: RuntimeContext, path: string): string {
-  return buildCapabilityGatewayUrl(resolveMemoryApiBaseUrl(ctx.host()), MEMORY_GATEWAY_DOMAIN, path);
+  return `${resolveMemoryApiBaseUrl(ctx.host())}${MEMORY_CLI_BASE_PATH}/${path.replace(/^\/+/, '')}`;
 }
 
-export function requestMemoryCli<T>(
-  ctx: RuntimeContext,
-  method: CapabilityApiMethod,
-  path: string,
-  body?: unknown,
-  options: MemoryCliRequestOptions = {},
-): Promise<T> {
-  return callCapabilityApi(
-    ctx.host(),
-    MEMORY_GATEWAY_DOMAIN,
-    path,
-    method,
-    body as Record<string, unknown> | undefined,
-    { apiBaseUrl: resolveMemoryApiBaseUrl(ctx.host()), ...options },
-  ) as Promise<T>;
+function unwrapMemoryResponse<T>(response: unknown): T {
+  if (response && typeof response === 'object' && !Array.isArray(response)) {
+    const envelope = response as { ok?: boolean; data?: unknown; error?: { message?: string } };
+    if (envelope.ok === true) return envelope.data as T;
+    if (envelope.ok === false) throw new Error(envelope.error?.message || 'Memory API request failed');
+  }
+  return response as T;
 }
 
-export function getMemoryCli<T>(ctx: RuntimeContext, path: string): Promise<T> {
-  return requestMemoryCli<T>(ctx, 'GET', path);
+export async function getMemoryCli<T>(ctx: RuntimeContext, path: string): Promise<T> {
+  return unwrapMemoryResponse<T>(
+    await getAgentApi(ctx, `${MEMORY_CLI_BASE_PATH}/${path.replace(/^\/+/, '')}`),
+  );
 }
 
-export function postMemoryCli<T>(
-  ctx: RuntimeContext,
-  path: string,
-  body: unknown,
-  options: MemoryCliRequestOptions = {},
-): Promise<T> {
-  return requestMemoryCli<T>(ctx, 'POST', path, body, options);
+export async function postMemoryCli<T>(ctx: RuntimeContext, path: string, body: unknown): Promise<T> {
+  return unwrapMemoryResponse<T>(
+    await postAgentApi(ctx, `${MEMORY_CLI_BASE_PATH}/${path.replace(/^\/+/, '')}`, body),
+  );
 }
 
-export function patchMemoryCli<T>(
-  ctx: RuntimeContext,
-  path: string,
-  body: unknown,
-): Promise<T> {
-  return requestMemoryCli<T>(ctx, 'PATCH', path, body);
-}
-
-export function putMemoryCli<T>(
-  ctx: RuntimeContext,
-  path: string,
-  body: unknown,
-): Promise<T> {
-  return requestMemoryCli<T>(ctx, 'PUT', path, body);
-}
-
-export function deleteMemoryCli<T>(ctx: RuntimeContext, path: string): Promise<T> {
-  return requestMemoryCli<T>(ctx, 'DELETE', path);
+export async function patchMemoryCli<T>(ctx: RuntimeContext, path: string, body: unknown): Promise<T> {
+  return unwrapMemoryResponse<T>(
+    await patchAgentApi(ctx, `${MEMORY_CLI_BASE_PATH}/${path.replace(/^\/+/, '')}`, body),
+  );
 }

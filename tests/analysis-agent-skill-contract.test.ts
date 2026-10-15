@@ -92,7 +92,7 @@ const artifactDownload = readFileSync(new URL('../skills/ae-analysis/references/
 const assetUrl = readFileSync(new URL('../skills/ae-analysis/references/asset_url_get.md', import.meta.url), 'utf8');
 const aiCommon = readFileSync(new URL('../skills/ae-analysis/references/ai_models.md', import.meta.url), 'utf8');
 const modelRefs = [...aiCommon.matchAll(/\]\((ai_models\/[^)]+\.md)\)/g)].map((match) => match[1]);
-assert.equal(modelRefs.length, 13, 'all supported models have directly readable references');
+assert.equal(modelRefs.length, 14, 'all supported models have directly readable references');
 const modelDocs = modelRefs.map((ref) => readFileSync(join(analysisRoot, 'references', ref), 'utf8'));
 const aiModels = [aiCommon, ...modelDocs].join('\n');
 const audienceModels = readFileSync(
@@ -505,6 +505,30 @@ assert.match(aiModels, /Distribution filters must be attached to the correspondi
 assert.match(aiModels, /`AUTO` dynamically matches the computed result for each analysis date/);
 assert.match(aiModels, /"cluster_date_policy": "AUTO"/);
 assert.match(aiModels, /`field\.type=tag`.*alone does not prove it/);
+const listFilterSection = aiCommon.split('List filters:\n')[1]?.split('Relative date/time filters')[0];
+assert.ok(listFilterSection, 'common model guidance must explain list filter semantics');
+assert.match(listFilterSection, /`contains` and `not_contains` remain text substring operators/);
+assert.match(listFilterSection, /non-zero signed integer.*`-1` the last.*`0` is rejected/);
+assert.match(listFilterSection, /omit `values` for inner `exists` or `not_exists`/);
+assert.match(listFilterSection, /resolved property metadata to distinguish list presence from scalar presence/);
+assert.match(listFilterSection, /New list operators require a backend whose capability schema supports them/);
+const listFilterExamples = [...listFilterSection.matchAll(/```json\n([\s\S]*?)\n```/g)]
+  .map((match) => JSON.parse(match[1]));
+const listTagField = { name: '<verified_list_tag>', type: 'tag' };
+assert.deepEqual(listFilterExamples, [
+  [
+    { field: listTagField, operator: 'array_contains', values: ['share'] },
+    { field: listTagField, operator: 'array_not_contains', values: ['task'] },
+    { field: listTagField, operator: 'array_element_match', element_position: -1, element_operator: 'contains', values: ['task'] },
+    { field: listTagField, operator: 'array_element_match', element_position: 1, element_operator: 'exists' },
+    { field: listTagField, operator: 'exists' },
+    { field: listTagField, operator: 'not_exists' },
+  ],
+  { event_property_name: '<verified_list_event_property>', operator: 'array_element_match', element_position: 1, element_operator: 'eq', values: ['share'] },
+]);
+assert.match(userTagModels, /one row per distinct analysis-subject ID/);
+assert.match(userTagModels, /native SQL `ARRAY\(varchar\)` value, not a JSON string or repeated scalar rows/);
+assert.match(userTagModels, /do not add `selectType`/);
 assert.match(adhocRun, /effective `cluster_date_policy`/);
 assert.match(aiModels, /`event`: without property use `total_count`, `user_count`, or `per_user_count`/);
 assert.match(aiModels, /`retention` simultaneous metrics: without property use `total_count`, `user_count`, or `per_user_count`/);
@@ -562,8 +586,11 @@ const funnelExampleMatch = aiModels.match(/Step-level event-property filters[\s\
 assert.ok(funnelExampleMatch, 'funnel must include a complete step-level filter example');
 const funnelExample = JSON.parse(funnelExampleMatch[1]);
 assert.deepEqual(funnelExample.funnel.steps.map((step: any) => step.event), ['register', 'login', 'payment']);
+assert.deepEqual(funnelExample.funnel.steps.map((step: any) => step.display_name), ['Completed registration', 'Completed login', 'First payment']);
 assert.deepEqual(funnelExample.funnel.steps[2].filters, [{ event_property_name: 'is_first_pay', operator: 'eq', values: ['true'] }]);
 assert.deepEqual(funnelExample.funnel.window, { value: 7, unit: 'day' });
+assert.match(reportUpdate, /funnel `steps\[\]` may additionally carry `display_name`/);
+assert.match(reportUpdate, /preserve every step's returned `display_name`/);
 assert.match(skill, /process exit code.*business success/i);
 assert.match(skill, /TE_TOOL_POLICY_DENIED.*authorization stage/i);
 assert.match(skill, /QUERY_FAILED.*does not establish.*root cause/i);

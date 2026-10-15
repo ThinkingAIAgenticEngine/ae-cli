@@ -23,15 +23,19 @@ export function optionalNumber(ctx: RuntimeContext, name: string): number | unde
   return ctx.optionalNum(name);
 }
 
-export function optionalKeywords(ctx: RuntimeContext): string[] | undefined {
-  if (ctx.str('keywords') === '') {
+export function optionalJsonStringArray(ctx: RuntimeContext, name: string, flag: string): string[] | undefined {
+  if (ctx.str(name) === '') {
     return undefined;
   }
-  const value = ctx.json('keywords');
+  const value = ctx.json(name);
   if (!Array.isArray(value) || value.some((item) => typeof item !== 'string')) {
-    throw new Error('--keywords must be a JSON array of strings.');
+    throw new Error(`${flag} must be a JSON array of strings.`);
   }
   return value;
+}
+
+export function optionalKeywords(ctx: RuntimeContext): string[] | undefined {
+  return optionalJsonStringArray(ctx, 'keywords', '--keywords');
 }
 
 type ResourceRef = {

@@ -1,12 +1,28 @@
 #!/usr/bin/env node
 import fs from 'node:fs';
+import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { pathToFileURL } from 'node:url';
 
-const scoped = new Set(['+new', '+add', '+list-sources', '+schema', '+compile', '+status', '+import']);
+const scoped = new Set(['+new', '+add', '+list-sources', '+schema', '+compile', '+status', '+import', '+schema-download', '+schema-import', '+schema-import-list']);
 const requestScoped = new Set(['+import-status']);
 const directory = new Set(['+source-ls', '+source-read', '+source-put', '+source-rm']);
 const value = (args, key) => args[args.indexOf(key) + 1];
+
+export function invokeCompanyKbCli(flags, { spawn = spawnSync, localCli = path.resolve(import.meta.dirname, '../../../../bin/ae-cli.js') } = {}) {
+  // Packaged/project scripts use their matching CLI; standalone installed Skills retain PATH lookup.
+  const bundled = fs.existsSync(localCli);
+  const child = spawn(bundled ? process.execPath : 'ae-cli', bundled ? [localCli, ...flags] : flags,
+    { encoding: 'utf8', stdio: ['inherit', 'pipe', 'pipe'] });
+  if (child.stderr) process.stderr.write(child.stderr);
+  if (child.error) throw child.error;
+  if (child.status === 0) return JSON.parse(child.stdout);
+  // CLI failures are JSON on stderr, possibly surrounded by compatibility/progress messages.
+  const start = child.stderr.indexOf('{\n  "ok": false,');
+  const end = start < 0 ? -1 : child.stderr.indexOf('\n}', start);
+  if (end >= 0) return JSON.parse(child.stderr.slice(start, end + 2));
+  throw new Error(child.stderr || child.stdout || 'CLI process failed.');
+}
 
 // Project semantic KB operations must never fall back to a personal KB.
 export async function runCompanyKb(command, args, invoke) {
@@ -24,7 +40,9 @@ export async function runCompanyKb(command, args, invoke) {
   const call = async (cmd, flags) => {
     const result = await invoke(['kb', cmd, ...flags]);
     if (!result || result.ok !== true) {
-      throw new Error(`Company KB operation failed; stop without personal fallback: ${JSON.stringify(result?.error ?? result)}`);
+      const error = new Error(`Company KB operation failed; stop without personal fallback: ${JSON.stringify(result?.error ?? result)}`);
+      error.code = result?.error?.code;
+      throw error;
     }
     return result;
   };
@@ -98,12 +116,7 @@ function expandCustomInstructionsFile(args) {
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
   try {
     const [command, ...args] = process.argv.slice(2);
-    const result = await runCompanyKb(command, args, (flags) => {
-      const child = spawnSync('ae-cli', flags, { encoding: 'utf8', stdio: ['inherit', 'pipe', 'pipe'] });
-      if (child.stderr) process.stderr.write(child.stderr);
-      if (child.error || child.status !== 0) throw new Error(child.error?.message || child.stderr || child.stdout || 'CLI failed.');
-      return JSON.parse(child.stdout);
-    });
+    const result = await runCompanyKb(command, args, invokeCompanyKbCli);
     console.log(JSON.stringify(result, null, 2));
   } catch (error) {
     console.error(error.message);

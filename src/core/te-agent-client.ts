@@ -16,7 +16,7 @@ import { pipeline } from 'node:stream/promises';
 import { tryLoadTeAgentSandboxCredentials, TeAgentCredentialsError } from './te-agent-credentials.js';
 import { getCliToken } from './cli-token.js';
 import { getActiveHost } from './config.js';
-import { PermissionError } from './errors.js';
+import { PermissionError, isApiErrorType, type ApiErrorType } from './errors.js';
 import { internalCallSourceHeaders } from './internal-call-source.js';
 import { resolveTeClaudeBaseUrl } from './te-claude-base-url.js';
 
@@ -26,6 +26,9 @@ export class TeAgentApiError extends Error {
     public readonly status: number,
     public readonly code?: string,
     public readonly body?: unknown,
+    public readonly errorType: ApiErrorType = 'api',
+    public readonly hint?: string,
+    public readonly details?: unknown,
   ) {
     super(message);
     this.name = 'TeAgentApiError';
@@ -218,6 +221,8 @@ function errorDetails(parsed: any, defaultErrorPrefix: string, status: number): 
   message: string;
   code?: string;
   hint?: string;
+  type: ApiErrorType;
+  details?: unknown;
 } {
   const nested = parsed && typeof parsed === 'object' && parsed.error && typeof parsed.error === 'object'
     ? parsed.error
@@ -241,7 +246,22 @@ function errorDetails(parsed: any, defaultErrorPrefix: string, status: number): 
     : typeof parsed?.hint === 'string'
       ? parsed.hint
       : undefined;
-  return { message, code, hint };
+  const declaredType = isApiErrorType(nested?.type) ? nested.type : undefined;
+  // HTTP authentication status takes precedence over a contradictory body.
+  const type = status === 401 ? 'auth'
+    : status === 403 ? 'permission'
+    : declaredType ?? ([400, 413, 422].includes(status) ? 'validation' : status === 404 ? 'not_found' : 'api');
+  return { message, code, hint, type, details: declaredType ? nested?.details : undefined };
+}
+
+/** Share the error contract between HTTP failures and explicit ok:false envelopes. */
+export function createTeAgentApiError(
+  body: unknown,
+  status: number,
+  defaultErrorPrefix = 'Main app returned',
+): TeAgentApiError {
+  const error = errorDetails(body, defaultErrorPrefix, status);
+  return new TeAgentApiError(error.message, status, error.code, body, error.type, error.hint, error.details);
 }
 
 async function parseResponse<T>(response: Response, defaultErrorPrefix: string): Promise<T> {
@@ -258,17 +278,22 @@ async function parseResponse<T>(response: Response, defaultErrorPrefix: string):
   if (!response.ok) {
     const details = errorDetails(parsed, defaultErrorPrefix, response.status);
     if (response.status === 403) {
-      throw new PermissionError(details.message, details.code, details.hint);
+      throw new PermissionError(details.message, details.code, details.hint, details.details);
     }
     if (response.status === 401) {
       throw new TeAgentApiError(
-        'Session expired or unauthorized. Please run: ae-cli auth login',
+        isApiErrorType(parsed?.error?.type) && typeof parsed.error.message === 'string' && parsed.error.message.trim()
+          ? details.message
+          : 'Session expired or unauthorized. Please run: ae-cli auth login',
         response.status,
-        'auth_expired',
+        details.code ?? 'auth_expired',
         parsed,
+        'auth',
+        details.hint ?? 'Run: ae-cli auth login',
+        details.details,
       );
     }
-    throw new TeAgentApiError(details.message, response.status, details.code, parsed);
+    throw createTeAgentApiError(parsed, response.status, defaultErrorPrefix);
   }
 
   return parsed as T;

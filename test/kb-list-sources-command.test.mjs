@@ -91,6 +91,7 @@ test('kb +list-sources exposes a bounded read-only contract', () => {
       required: false,
       desc: 'Exact knowledge base scope: personal | company (omit for personal → company fallback)',
     },
+    { name: 'content-type', type: 'string', desc: 'Source content filter: all (default) or text (ordinary .md, .markdown and .txt files only)' },
   ]);
   assert.deepEqual(
     listSources.dryRun(context({ name: ' Engineering Handbook ' })),
@@ -704,7 +705,7 @@ test('kb source list and delete do not retry HTTP 403', async () => {
   }
 });
 
-test('kb +rm-source cancellation without --yes sends no DELETE request', async () => {
+test('kb +rm-source without --yes fails immediately in a non-interactive process', async () => {
   const temporaryRoot = mkdtempSync(path.join(tmpdir(), 'ae-cli-kb-rm-source-confirm-'));
   let targetRequestCount = 0;
   const server = http.createServer((request, response) => {
@@ -746,10 +747,11 @@ test('kb +rm-source cancellation without --yes sends no DELETE request', async (
       'n\n',
     );
 
-    assert.equal(result.status, 0, result.stderr);
+    assert.equal(result.status, 1, result.stderr);
     assert.equal(result.stdout, '');
-    assert.match(result.stderr, /high-risk-write operation/);
-    assert.match(result.stderr, /Aborted\./);
+    assert.match(result.stderr, /CONFIRMATION_REQUIRED/);
+    assert.match(result.stderr, /--yes/);
+    assert.doesNotMatch(result.stderr, /Continue\?/);
     assert.equal(targetRequestCount, 0);
   } finally {
     await new Promise((resolve) => server.close(resolve));

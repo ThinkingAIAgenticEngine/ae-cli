@@ -31,6 +31,8 @@ export interface Command {
   hidden?: boolean;
   /** Set false for commands whose transport is intentionally unrelated to the active AE host. */
   usesAeHost?: boolean;
+  /** Suppress output-projection error details that could echo sensitive business content. */
+  sensitiveOutput?: boolean;
   /** Canonical gateway capability ID for machine-readable registry verification. */
   capabilityId?: string;
   description: string;
@@ -70,6 +72,8 @@ export interface RuntimeContext {
   communityReport(endpoint: string, rawBody: string): Promise<any>;
   localDataUpload(endpoint: string, rawBody: string, options?: Record<string, any>): Promise<any>;
   host(): string;
+  /** Explicit host only; absence allows trusted sandbox authentication. */
+  hostOverride?(): string | undefined;
   mcpUrl(): string | undefined;
   service(): string;
 
@@ -102,9 +106,10 @@ export interface OutputEnvelope {
   /** Soft notices for Agents / non-interactive consumers (e.g. host version compat). */
   _notice?: Record<string, unknown>;
   error?: {
-    type: 'auth' | 'permission' | 'api' | 'validation' | 'config';
+    type: import('../core/errors.js').CliErrorType;
     code?: string | number;
     message: string;
     hint?: string;
+    details?: unknown;
   };
 }
