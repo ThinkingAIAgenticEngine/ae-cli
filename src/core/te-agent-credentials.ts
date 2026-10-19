@@ -91,21 +91,9 @@ function readLegacyCredentials(): Record<string, any> | null {
 }
 
 export function loadTeAgentCredentials(): TeAgentCredentials {
-  const legacy = readLegacyCredentials();
   const credPath = getCredentialsPath();
   const envPath = getPersistentEnvPath();
-  const persistent = readPersistentEnv();
-
-  const url =
-    process.env.TE_CLAUDE_BASE_URL || persistent?.TE_CLAUDE_BASE_URL || legacy?.url;
-  const sandboxId = process.env.SANDBOX_ID || persistent?.SANDBOX_ID || legacy?.sandboxId;
-  const sandboxSecretKey =
-    process.env.SECRET_KEY ||
-    process.env.SANDBOX_SECRET_KEY ||
-    persistent?.SECRET_KEY ||
-    persistent?.SANDBOX_SECRET_KEY ||
-    legacy?.sandboxSecretKey ||
-    legacy?.secretKey;
+  const { url, sandboxId, sandboxSecretKey } = readSandboxCredentials();
 
   if (typeof url !== 'string' || !url) {
     throw new TeAgentCredentialsError(
@@ -145,32 +133,33 @@ export function tryLoadTeAgentSandboxCredentials(): {
   sandboxId: string | null;
   sandboxSecretKey: string | null;
 } | null {
-  const legacy = readLegacyCredentials();
-  const persistent = readPersistentEnv();
+  const credentials = readSandboxCredentials();
+  return credentials.url ? { ...credentials, url: credentials.url } : null;
+}
 
-  const url =
-    process.env.TE_CLAUDE_BASE_URL || persistent?.TE_CLAUDE_BASE_URL || legacy?.url;
-
-  if (typeof url !== 'string' || !url) {
-    // No URL at all — no sandbox credentials whatsoever
-    return null;
+/** Read lower-priority files only when runtime credentials are incomplete. */
+function readSandboxCredentials(): {
+  url: string | null;
+  sandboxId: string | null;
+  sandboxSecretKey: string | null;
+} {
+  let url = process.env.TE_CLAUDE_BASE_URL || null;
+  let sandboxId = process.env.SANDBOX_ID || null;
+  let sandboxSecretKey = process.env.SECRET_KEY || process.env.SANDBOX_SECRET_KEY || null;
+  if (!url || !sandboxId || !sandboxSecretKey) {
+    const persistent = readPersistentEnv();
+    url ||= persistent?.TE_CLAUDE_BASE_URL || null;
+    sandboxId ||= persistent?.SANDBOX_ID || null;
+    sandboxSecretKey ||= persistent?.SECRET_KEY || persistent?.SANDBOX_SECRET_KEY || null;
   }
-
-  const sandboxId = process.env.SANDBOX_ID || persistent?.SANDBOX_ID || legacy?.sandboxId || null;
-  const sandboxSecretKey =
-    process.env.SECRET_KEY ||
-    process.env.SANDBOX_SECRET_KEY ||
-    persistent?.SECRET_KEY ||
-    persistent?.SANDBOX_SECRET_KEY ||
-    legacy?.sandboxSecretKey ||
-    legacy?.secretKey ||
-    null;
-
-  return {
-    url,
-    sandboxId: typeof sandboxId === 'string' ? sandboxId : null,
-    sandboxSecretKey: typeof sandboxSecretKey === 'string' ? sandboxSecretKey : null,
-  };
+  if (!url || !sandboxId || !sandboxSecretKey) {
+    const legacy = readLegacyCredentials();
+    url ||= typeof legacy?.url === 'string' ? legacy.url : null;
+    sandboxId ||= typeof legacy?.sandboxId === 'string' ? legacy.sandboxId : null;
+    const legacySecret = legacy?.sandboxSecretKey || legacy?.secretKey;
+    sandboxSecretKey ||= typeof legacySecret === 'string' ? legacySecret : null;
+  }
+  return { url, sandboxId, sandboxSecretKey };
 }
 
 /**

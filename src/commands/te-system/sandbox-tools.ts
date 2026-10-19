@@ -4,7 +4,8 @@ import path from 'node:path';
 
 import type { Command, RuntimeContext } from '../../framework/types.js';
 import { CliValidationError } from '../../core/errors.js';
-import { tryLoadTeAgentSandboxCredentials } from '../../core/te-agent-credentials.js';
+import { readSandboxCliTokenEntry } from '../../core/config.js';
+import { isAeSandboxRuntime } from '../../core/sandbox-runtime.js';
 import {
   assertEnum,
   createAdminCommand,
@@ -180,12 +181,11 @@ async function requireUploadPolicy(
 }
 
 function requireLinuxSandbox(): void {
-  const credentials = tryLoadTeAgentSandboxCredentials();
-  if (
-    process.platform !== 'linux' ||
-    !credentials?.sandboxId ||
-    !credentials.sandboxSecretKey
-  ) {
+  // Runtime detection is not authentication; the upload still requires a CLI token.
+  const legacyRuntime = Boolean(process.env.SANDBOX_ID &&
+    (process.env.SECRET_KEY || process.env.SANDBOX_SECRET_KEY));
+  if (process.platform !== 'linux' ||
+    !(isAeSandboxRuntime() || legacyRuntime || readSandboxCliTokenEntry())) {
     throw new CliValidationError(
       '+npm-install must run inside a Linux te-agent sandbox',
       {

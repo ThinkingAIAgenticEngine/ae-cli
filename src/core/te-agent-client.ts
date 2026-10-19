@@ -2,8 +2,8 @@
  * te-agent main app HTTP client
  *
  * Auth header selection logic:
- *   1. Internal sandbox calls without a host override use X-Sandbox-Id / X-Sandbox-Secret-Key.
- *   2. Explicit-host CLI calls use the unified cli-token credential.
+ *   1. Legacy model/sync endpoints retain sandbox authentication without a host override.
+ *   2. Other configured-host calls use the unified cli-token credential.
  *
  * Supports ae-cli sync / model / agent commands.
  */
@@ -131,8 +131,8 @@ function teClaudeBaseFromActiveHost(hostOverride?: string): string | undefined {
  * Builds a signed request (including auth headers + URL).
  *
  * Auth header selection logic:
- *   - Sandbox credentials complete and no explicit host -> X-Sandbox-* headers.
- *   - Otherwise -> the unified cli-token credential for the selected host.
+ *   - Explicit hosts and configured hosts on token-capable routes skip legacy file reads.
+ *   - Internal-only model/sync endpoints and unconfigured legacy runtimes load sandbox credentials.
  */
 async function signRequest(
   method: TeAgentHttpMethod,
@@ -140,7 +140,19 @@ async function signRequest(
   hostOverride?: string,
   includeJsonContentType = true,
 ): Promise<SignedRequest> {
-  const sandboxCred = tryLoadTeAgentSandboxCredentials();
+  const configuredHost = hostOverride || getActiveHost();
+  // Choosing CLI-token authentication must not depend on legacy file permissions.
+  // Authentication failures on this path never fall back to sandbox credentials.
+  // These legacy routes require sandbox identity for authentication or workspace side effects.
+  const sandboxOnly = !hostOverride && new Set([
+    '/api/sandbox/models',
+    '/api/sandbox/models/select',
+    '/api/sandbox/sync/push',
+    '/api/sandbox/sync/push/skill',
+    '/api/sandbox/sync/pull',
+    '/api/sandbox/sync/pull/candidates',
+  ]).has(path.split('?')[0]);
+  const sandboxCred = configuredHost && !sandboxOnly ? null : tryLoadTeAgentSandboxCredentials();
 
   // --- Sandbox path: credentials complete ---
   if (!hostOverride && sandboxCred && sandboxCred.sandboxId && sandboxCred.sandboxSecretKey) {
@@ -170,7 +182,7 @@ async function signRequest(
       'Run ae-cli config set-host <url> to configure the service URL, or execute inside a te-agent sandbox',
     );
   }
-  const hostForToken = hostOverride || getActiveHost() || baseUrl;
+  const hostForToken = configuredHost || baseUrl;
 
   const contentTypeHeader: Record<string, string> =
     includeJsonContentType && (method === 'POST' || method === 'PATCH' || method === 'PUT')

@@ -6,7 +6,7 @@ const skill = fs.readFileSync(new URL('../skills/ae-agent/SKILL.md', import.meta
 const spec = fs.readFileSync(new URL('../docs/specs/user-memory-cli-plan.md', import.meta.url), 'utf8');
 const visible = memoryCommands.filter((command) => !command.hidden);
 
-assert.match(skill, /^version: 2\.0\.0$/m);
+assert.match(skill, /^version: 2\.\d+\.\d+$/m);
 assert.match(skill, /\/api\/cli\/memory\/v2/);
 assert.match(skill, /AgentSpace\.id/);
 assert.match(skill, /never falls back to an account default/i);

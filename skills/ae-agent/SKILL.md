@@ -1,6 +1,6 @@
 ---
 name: ae-agent
-version: 2.0.0
+version: 2.0.1
 description: "AE Agent platform CLI for Agent, notification, approval, archived conversation, model, MCP, Skill, attachment, and user-memory work. Use when managing these resources, browsing Agent markets, handling approval requests and tasks, restoring archived conversations, persisting user memory, or answering from user preferences, background, stable workflows, or historical conventions."
 ---
 
@@ -12,6 +12,8 @@ description: "AE Agent platform CLI for Agent, notification, approval, archived 
 > **CRITICAL — Before running `agent bundle`, `agent share`, or `agent submission` commands, read `references/agent-distribution.md`.** Agent and Skill share IDs are not interchangeable.
 > **CRITICAL — Never guess record IDs (Agent / model / MCP / Skill / submission / share / attachment).** Always use the appropriate `+list-*` command to discover real IDs first.
 > **CRITICAL — Legacy Agent CRUD uses `/api/sandbox/agent/*`; Agent distribution and generic approvals use CLI-token-only `/api/cli/agent/v1/*` and `/api/cli/approval/v1/*`; AgentSpace memory uses `/api/cli/memory/v2/*`.** Do not use Web session, sandbox credentials, or memory v1 paths for CLI-token endpoints.
+
+Agent API requests with an explicit or configured host use CLI-token authentication without reading legacy sandbox `.env` or `credentials.json` files. Legacy model/sync routes outside Agent CRUD retain sandbox identity for authentication and workspace updates. Do not change file permissions or copy secrets to work around authentication errors.
 
 `CREDENTIAL_STORE_UNREADABLE` (`error.type: config`) means local credentials exist but cannot be read or decrypted. Preserve the files and retry in the original OS user/runtime with machine-identifier access. Do not automatically log in, import another token, or log out; this error does not establish server-side token expiration.
 
