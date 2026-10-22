@@ -1,6 +1,6 @@
 ---
 name: ae-kb
-version: 1.0.6
+version: 1.0.4
 description: 'AE knowledge base CLI manual for creating, importing read-only compiled snapshots, querying, LLM-powered ask, listing accessible knowledge bases and their sources, deterministic index/grep/read retrieval, checking status, ZIP source upload and directory management, raw child-file reading, revision-checked child updates and deletion, compiling, schema generation, URL sources, source deletion, ordinary text source creation, full reads and revision-checked editing, file/ZIP source draft replacement and restoration, and knowledge base deletion. Use when the user asks to manage AE (Agentic Engine) knowledge bases, import a compiled Markdown ZIP snapshot, upload documents or URLs to a knowledge base, query knowledge, ask knowledge bases with an LLM, list accessible knowledge bases or source metadata, inspect knowledge base indexes, search knowledge base pages, read a specific knowledge base page, check knowledge base status, generate schemas, compile knowledge, remove sources, create or edit text sources, or delete a knowledge base. To choose which knowledge base is worth searching, use the ae-kb-discovery skill first; this skill runs the retrieval once a target is chosen. Must use ae-cli kb commands and must not guess knowledge base names, scopes, page paths, source IDs, source display names, JSON payload shapes, or URL formats.'
 ---
 
@@ -609,6 +609,7 @@ Transport: `POST /agent/api/external/knowledge-bases/sources/check-updates`, bod
 - Gateway target: TBD; reuse an equivalent source update-check capability when available.
 - Review after: 2026-10-16.
 - Exit condition: once the Gateway exposes equivalent authorization and detector semantics, migrate the typed command to L2 or use L3 if it adds no value.
+
 
 ### Submit an ordinary URL update check
 

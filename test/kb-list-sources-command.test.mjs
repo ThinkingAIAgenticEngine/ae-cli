@@ -294,7 +294,7 @@ test('kb +list-sources reports auth failure without retrying HTTP 401', async ()
 
 test('kb +list-sources surfaces an empty HTTP 405 as a bounded API error', async () => {
   const temporaryRoot = mkdtempSync(path.join(tmpdir(), 'ae-cli-kb-list-sources-405-'));
-  const server = http.createServer((request, response) => {
+  const server = http.createServer((_request, response) => {
     response.writeHead(405);
     response.end();
   });

@@ -104,7 +104,7 @@ async function permissionError(resp: Response): Promise<PermissionError> {
   const body = safeJsonParse(await codeResponse.text());
   const error = isRecord(body?.error) ? body.error : undefined;
   const code = nonEmptyString(error?.code) ?? nonEmptyString(body?.code);
-  return new PermissionError(message, code, nonEmptyString(error?.hint) ?? nonEmptyString(body?.hint), undefined,
+  return new PermissionError(message, code, nonEmptyString(error?.hint), undefined,
     isRecord(body?.meta) ? body.meta : undefined);
 }
 

@@ -2,7 +2,7 @@
 
 # ae-cli
 
-`ae-cli` is the command-line client for the ThinkingAI AgenticEngine (AE) platform. It provides stable, structured interfaces for both AI Agents and human operators across analytics, experimentation, project configuration, metadata, tracking, local-data ingestion, Engage, DataOps, knowledge bases, Agent resources, user memory, and system administration.
+`ae-cli` is the command-line client for the ThinkingAI AgenticEngine (AE) platform. It provides stable, structured interfaces for both AI Agents and human operators across analytics and project configuration, metadata, tracking, local-data ingestion, Engage, DataOps, knowledge bases, Agent resources, user memory, and system administration.
 
 The CLI is designed around:
 
@@ -116,13 +116,12 @@ The table covers every current root command individually. Use `ae-cli --help` fo
 | Category | Root command | Purpose |
 |---|---|---|
 | Analysis and projects | `analysis` | Reports, dashboards, ad-hoc analysis, drilldowns, details, alerts, tags, and cohorts |
-| Analysis and projects | `experiment` | Atlas experiments, reports, traffic layers, buckets, Features, metrics, and operation logs |
 | Analysis and projects | `analysis-meta` | Event/property catalogs, metrics, virtual metadata, tracking governance, and project analysis settings |
 | Analysis and projects | `analysis-governance` | Data-asset search, lineage, impact analysis, certification, and governance |
 | Analysis and projects | `project` | Project information, members, roles, permissions, entities, time zones, and handover settings |
 | Analysis and projects | `metadata` | Capability-backed data-table, property, and dimension-table binding operations |
 | Analysis and projects | `personal-semantic-preference` | Project-scoped lightweight semantic preferences for the current user |
-| Analysis and projects | `project-semantic` | Governed project semantics, knowledge-base asset packages, candidate validation, review, and publishing |
+| Analysis and projects | `project-semantic` | Export project asset packages for knowledge-base builds |
 | Data and tracking | `tracking` | Tracking plans, SDK samples, checks, ingestion diagnostics, code generation, and bundled wiki |
 | Data and tracking | `data-integration` | Inspect, plan, convert, upload, hand off, and reuse local CSV/JSON/Excel data |
 | Community insights | `community` | Community posts, comments, topics, sentiment, livestream, and report workflows |
@@ -241,11 +240,6 @@ External mode does not write the token or renewal state to the local credential 
 The new CLI persists only CLI tokens, never access or refresh tokens. Multiple accounts live in an encrypted V1 vault while the active account is projected into the historical file shape for automatic downgrades. When the CLI upgrades again, it reconciles login, switch, or logout changes made by the old CLI.
 
 Login uses a cross-platform device-code flow. Use `--no-browser` when the environment cannot open a browser.
-
-On upgraded 6.1 deployments, authorization always uses the UBA device endpoints and the platform `/#/cli/device-activate` page, independently of Kubernetes or Agent state. Only an explicit missing authorization endpoint (HTTP 404) selects the supported legacy Agent flow; network failures, HTML responses and permission denials never change the issuer. Use `auth login --no-wait`, then resume with the returned `--device-code` and the same `--host` for non-interactive authorization. Existing host accounts, CLI tokens and command flags remain compatible.
-
-The CLI calls business endpoints directly; services enforce product License and user/project permissions. An unavailable component returns the actual API error. HTTP 404 can also mean a missing resource or an unsupported route, so it does not by itself establish that a component is not deployed.
-
 Trial guidance is emitted only when no Host is configured; normal commands and authentication flows for configured environments do not display it.
 
 ## Output and Safety
@@ -408,7 +402,6 @@ npm test
 npm run qa-changed
 npm run self-check
 npm run check:release
-npm run verify:experiment-tools
 npm run verify:readme
 npm run verify:auth-credentials
 npm run verify:update-check
