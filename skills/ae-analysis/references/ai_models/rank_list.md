@@ -31,6 +31,7 @@ Use for ranking users/entities by an event metric.
 - `accompanying_properties` is an array of field dimensions. The main `rank_dimension` and accompanying properties support `array_grouping`, `time_granularity`, and historical tag/cluster date policies. Numeric buckets, funnel steps, and retention sources are not rank-list options.
 - For formula ranking, set `rank_formula` to a formula metric definition. Omit the mutually exclusive regular metric fields `rank_event`, `rank_aggregation`, `rank_property`, `rank_filters`, `rank_relation`, and `rank_quota_entities`; put formula filters inside `rank_formula.filters`. Keep the outer `order_by` as `ASC` or `DESC`.
 - Formula dependencies and accompanying metrics use the same aggregation restrictions as the primary metric, including the exclusion of `percentile`. Preserve saved formula metadata returned by report reads.
+- Both `rank_formula` and accompanying formulas support [operand-specific filters](event.md#formula-operand-filters) in each dependency's `filters` / `relation`, using generic `field` leaves. Keep these separate from the formula's common filters and the definition's global filters; rank-list aggregation and saved-metric restrictions still apply.
 
 ```json
 {

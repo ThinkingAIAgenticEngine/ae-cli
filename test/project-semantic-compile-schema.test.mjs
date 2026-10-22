@@ -67,7 +67,7 @@ test('empty and populated new KBs with placeholders or missing rules produce a r
           return { ok: true, data: { output } };
         }
         assert.equal(flags[flags.indexOf('--request-id') + 1], 'first-upload');
-        assert.ok(fs.readFileSync(flags[flags.indexOf('--file') + 1], 'utf8').includes('预置版本：1.1'));
+        assert.ok(fs.readFileSync(flags[flags.indexOf('--file') + 1], 'utf8').includes('预置版本：1.2'));
         return { ok: true, data: candidate };
       });
       assert.deepEqual(calls.map(flags => flags[1]), ['+status', '+schema-download', '+schema-import']);

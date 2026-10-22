@@ -33,6 +33,10 @@ The reviewer performs both passes on the complete retained scope. It may use scr
 
 ### B. Meaning, Not Filled Fields
 
+- Business topics: review every topic's Agent-authored `semantic_basis.business_question`, `grouping_reason`, and `evidence_item_ids` against definitions of items displayed in that topic. Missing basis is a semantic quality finding even though legacy transport accepts its absence. Copying a dashboard/report title or `topic_seed` is not a business interpretation. Explain why reports answer the same business question, identify justified cross-dashboard merges and within-dashboard splits, and use `待确认业务主题` with the specific uncertainty when evidence is insufficient. A legitimate business name can equal a source name: never reject it by keyword or equality alone.
+- Record `checked_topic_ids`, `unreviewed_topic_ids`, and topic-specific findings alongside item coverage. No whole-packet PASS with unchecked topics. Reuse the existing bounded correction budget and warning continuation policy; topic checks do not authorize certification or submission.
+
+
 - Review every retained item's recommendation, and every retained dashboard/report's definition-based explanation. Track checked IDs; sampling cannot establish a whole-batch PASS. If the scope is too large, split the review across fresh reviewers with disjoint ID lists and combine their coverage and findings.
 - Dashboard: explain the business question jointly answered by its actual child reports and why this particular combination merits review. A title plus heat and "stabilize downstream definitions" is insufficient.
 - Report: explain the actual counted entity, unit, aggregation/formula, measure-level and report-level filters, grouping and saved time semantics. Read raw/normalized configuration when the generic extractor loses model-specific meaning; for example a distinct count may count a company property rather than users. Empty generic measures/dimensions do not establish absent measures/grouping.

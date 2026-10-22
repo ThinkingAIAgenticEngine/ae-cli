@@ -95,6 +95,11 @@ import {
   retryApprovalEffect,
   submitApprovalRequest,
 } from './approval-commands.js';
+import { resourcePackageCommands } from './resource-packages.js';
+export {
+  listResourcePackages, showResourcePackage, previewResourcePackageExport, exportResourcePackage,
+  importResourcePackage, downloadResourcePackageCommand, cancelResourcePackage, retryResourcePackage,
+} from './resource-packages.js';
 
 const commands: Command[] = [
   ...notificationCommands,
@@ -132,6 +137,7 @@ const commands: Command[] = [
   findArchivedConversations, restoreConversation,
   // Sandbox tools (local scan of /home/ta/.local/bin managed shims)
   listSandboxTools,
+  ...resourcePackageCommands,
 ];
 
 export default commands;

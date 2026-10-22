@@ -1,7 +1,7 @@
 import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
-import { getActiveHost, getFallbackCliToken, getConfigDir, listHosts } from './config.js';
+import { getActiveHost, getFallbackCliToken, getConfigDir, listHosts, readSandboxCliTokenEntry } from './config.js';
 import {
   clearAllCredentials,
   getActiveCredential,
@@ -15,6 +15,7 @@ import { safeJsonParse, safeReadJsonFile } from './json-utils.js';
 import { logger } from './logger.js';
 import { PermissionError } from './errors.js';
 import { normalizeUrl } from './url-utils.js';
+import { externalCliTokenRequestOptions, readExternalCliToken } from './external-cli-token.js';
 
 const CLI_TOKEN_GENERATE_PATH = '/v1/ta/cli/token/generate';
 const CLI_TOKEN_RENEW_PATH = '/v1/ta/cli/token/renew';
@@ -216,6 +217,7 @@ export async function validateCliTokenOnServer(
     resp = await fetch(url, {
       method: 'GET',
       headers: { Accept: 'application/json', 'cli-token': cliToken },
+      ...externalCliTokenRequestOptions(url),
     });
   } catch (error: any) {
     throw new CliTokenValidationUnavailableError(`Unable to validate CLI token for ${hostUrl}: ${error.message}`);
@@ -253,10 +255,14 @@ export async function validateCliTokenOnServer(
 }
 
 /** Renew is authenticated exclusively by the CLI token itself. */
-async function renewCliTokenOnServer(hostUrl: string, cliToken: string): Promise<void> {
+async function renewCliTokenOnServer(hostUrl: string, cliToken: string, external = false): Promise<void> {
   const url = new URL(`${hostUrl.replace(/\/+$/, '')}${CLI_TOKEN_RENEW_PATH}`);
-  url.searchParams.set('cli-token', cliToken);
-  const resp = await fetch(url.toString(), { method: 'GET', headers: { Accept: 'application/json' } });
+  if (!external) url.searchParams.set('cli-token', cliToken);
+  const resp = await fetch(url.toString(), {
+    method: 'GET',
+    headers: { Accept: 'application/json', ...(external ? { 'cli-token': cliToken } : {}) },
+    ...externalCliTokenRequestOptions(url.toString()),
+  });
   const text = await resp.text();
   let data: any;
   try { data = text ? safeJsonParse(text) : {}; } catch { data = {}; }
@@ -266,10 +272,10 @@ async function renewCliTokenOnServer(hostUrl: string, cliToken: string): Promise
   }
 }
 
-async function maybeRenewCliTokenDaily(hostUrl: string, cliToken: string): Promise<void> {
+async function maybeRenewCliTokenDaily(hostUrl: string, cliToken: string, external = false): Promise<void> {
   const key = renewKey(hostUrl, cliToken);
   const today = localRenewDate();
-  if (renewedLocalDate.get(key) === today || persistedRenewDate(hostUrl, cliToken) === today) {
+  if (renewedLocalDate.get(key) === today || (!external && persistedRenewDate(hostUrl, cliToken) === today)) {
     renewedLocalDate.set(key, today);
     return;
   }
@@ -277,11 +283,12 @@ async function maybeRenewCliTokenDaily(hostUrl: string, cliToken: string): Promi
   if (existing) return existing;
   const attempt = (async () => {
     try {
-      await renewCliTokenOnServer(hostUrl, cliToken);
-      markRenewSucceeded(hostUrl, cliToken, today);
+      await renewCliTokenOnServer(hostUrl, cliToken, external);
+      if (external) renewedLocalDate.set(key, today);
+      else markRenewSucceeded(hostUrl, cliToken, today);
       logger.info(`cli-token: renewed for ${normalizeUrl(hostUrl)} (local day ${today})`);
     } catch (error: any) {
-      logger.warn(`cli-token: renew failed for ${normalizeUrl(hostUrl)}: ${error?.message || error}; business call proceeds`);
+      logger.warn(`cli-token: renew failed for ${normalizeUrl(hostUrl)}${external ? '' : `: ${error?.message || error}`}; business call proceeds`);
     } finally {
       renewInFlight.delete(key);
     }
@@ -292,6 +299,9 @@ async function maybeRenewCliTokenDaily(hostUrl: string, cliToken: string): Promi
 
 /** Best-effort read without minting or validation, used before version auto-sync. */
 export function peekCliToken(hostOverride?: string): string | undefined {
+  const external = readExternalCliToken(hostOverride);
+  if (external) return external.token;
+  if (process.env.TE_AGENT_CLI_CONFIG_DIR !== undefined) return sessionCliToken(hostOverride);
   const hostUrl = hostOverride || getActiveHost();
   if (!hostUrl) return undefined;
   const normalizedHost = normalizeUrl(hostUrl);
@@ -312,6 +322,16 @@ export function peekCliToken(hostOverride?: string): string | undefined {
 }
 
 export async function getCliToken(hostOverride?: string): Promise<string> {
+  const external = readExternalCliToken(hostOverride);
+  if (external) {
+    await maybeRenewCliTokenDaily(external.url, external.token, true);
+    return external.token;
+  }
+  if (process.env.TE_AGENT_CLI_CONFIG_DIR !== undefined) {
+    const token = sessionCliToken(hostOverride);
+    if (!token) throw new SecureStoreAuthError('Current session CLI credential is unavailable or does not match the requested host.');
+    return token;
+  }
   const resolvedHost = hostOverride || getActiveHost();
   if (!resolvedHost) throw new SecureStoreAuthError('No AE host configured. Run: ae-cli auth login --host <url>');
   const hostUrl = normalizeUrl(resolvedHost);
@@ -323,6 +343,14 @@ export async function getCliToken(hostOverride?: string): Promise<string> {
   cliTokenCache.set(hostUrl, token);
   await maybeRenewCliTokenDaily(hostUrl, token);
   return token;
+}
+
+/** Session identity must never fall back to a shared store or a host-only process cache. */
+function sessionCliToken(hostOverride?: string): string | undefined {
+  const entry = readSandboxCliTokenEntry();
+  if (!entry?.token.startsWith('cli_')) return undefined;
+  if (hostOverride && normalizeUrl(entry.url) !== normalizeUrl(hostOverride)) return undefined;
+  return entry.token;
 }
 
 /** Mint during the current device-login exchange; caller decides how to store the CLI token. */

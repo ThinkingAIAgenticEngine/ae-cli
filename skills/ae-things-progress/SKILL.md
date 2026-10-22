@@ -1,15 +1,15 @@
 ---
 name: ae-things-progress
-description: "工作空间事项进展、日报和周报：使用 ae-cli things 采集当前空间、负责人或显式事项集合的周期事实，由当前会话模型归纳并披露数据边界。"
+description: "Workspace Thing progress, daily reports and weekly reports: use ae-cli things to collect period facts for the current space, an assignee or an explicit set of Things, then summarize them with the current conversation model and disclose data limitations."
 ---
 
-# 事项进展汇总
+# Thing progress summaries
 
-从 aha-links 的事实采集和输出契约适配；先读 [事项操作](../ae-things/SKILL.md) 和 [CLI reference](../ae-things/references/cli.md)。CLI 收事实，当前模型做归纳，不调用独立报告后台。
+Adapt the fact-collection and output contracts from aha-links. Read [Thing operations](../ae-things/SKILL.md) and the [CLI reference](../ae-things/references/cli.md) first. The CLI collects facts and the current model summarizes them; do not call a separate reporting backend. Write reports and report titles in the user's language.
 
-涉及本轮绑定事项时，先遵循 [执行快照与实时上下文](../ae-things/references/cli.md#执行快照与实时上下文) 读取本次执行快照，再按以下流程采集最新审查或周期事实；两种来源分开表述。无绑定时仅使用用户明确指定的范围。
+When working with the Thing bound to this run, first read its execution snapshot as described in [Execution snapshots and live context](../ae-things/references/cli.md#execution-snapshots-and-live-context). Then collect the latest review or period facts using the workflow below, and describe these sources separately. Without a binding, use only the scope explicitly specified by the user.
 
-## 范围和时间
+## Scope and time
 
 ```bash
 ae-cli things +digest --agent-space-id <space-id> --from 2026-09-07T00:00:00+08:00 --to 2026-09-14T00:00:00+08:00 --time-zone Asia/Shanghai --format json
@@ -17,27 +17,27 @@ ae-cli things +digest --agent-space-id <space-id> --assignee-id <member-id> --fo
 ae-cli things +digest --agent-space-id <space-id> --thing-ids <id-a>,<id-b> --format json
 ```
 
-不猜 ID、不选择个人默认空间；不支持关注清单、群或跨空间汇总。日报按自然日，周报按周一 00:00 到下周一 00:00，默认 Asia/Shanghai。今日／本周的截止点用当前时刻，昨日／上周用完整周期。自定义区间必须明确；命令的 from/to 都必须含时区，区间为左闭右开。
+Never guess IDs or select a personal default space. Watchlists, groups and cross-space summaries are unsupported. Daily reports cover calendar days; weekly reports run from Monday 00:00 to the next Monday 00:00, defaulting to Asia/Shanghai. For today/this week, use the current time as the cutoff; for yesterday/last week, use the complete period. Custom intervals must be explicit. Command from/to values must include a timezone, and intervals are start-inclusive and end-exclusive.
 
-输出时将记录的 ISO 时间转换为报告时区，并在时间窗、采集时间和证据日期旁明确标注时区。例：`2026-09-10T04:50:00Z` 在 Asia/Shanghai 应展示为 `2026-09-10 12:50（Asia/Shanghai）`；不能删除 Z 后直接写成“上海时间 04:50”。无法可靠转换时保留原始 ISO 并标注 UTC，披露尚未转换，不能伪造本地时刻。
+Convert recorded ISO timestamps to the report timezone and label the timezone beside the time window, collection time and evidence dates. For example, `2026-09-10T04:50:00Z` should appear as `2026-09-10 12:50 (Asia/Shanghai)` in Asia/Shanghai. Removing Z and calling 04:50 "Shanghai time" is incorrect. If reliable conversion is unavailable, retain the original ISO value, label it UTC and disclose that it has not been converted; never fabricate a local time.
 
-## 证据和完整性
+## Evidence and completeness
 
-核对 `fetchedCount`、`truncated`、`consistency`、`collectedAt`；显式集合再核对 `requestedCount` 和 `unreadable`。字段缺失停止生成全量结论。CLI 自动分页最多每链 100 页／10000 项，异常和上限会标记截断；不能换成单页 list 冒充完整采集。
+Check `fetchedCount`, `truncated`, `consistency` and `collectedAt`; for explicit sets, also check `requestedCount` and `unreadable`. Stop making complete-coverage conclusions when fields are missing. The CLI automatically paginates up to 100 pages / 10000 items per chain and marks errors or limits as truncation. A single-page list is not a substitute for complete collection.
 
-- `thing` 是当前状态，`entries` 是时间窗内记录，`baseline` 是利用完整业务变更记录倒推的窗口前状态；没有基线或采集发生版本变化时不要补造。
-- `lastEffectiveRecordBeforeWindow` 供定位窗口前证据。当前状态不等于周期内变化，周期末状态也不能直接用当前状态代替。
-- 输出前比较 `collectedAt` 与窗口 `to`。当 `collectedAt < to`（包括用户指定尚未结束的完整自然周）时，报告必须注明“截至采集时刻的阶段汇总，周期尚未结束”；三态统计标为“采集时状态”，禁止写“周期末状态”或“无后续更新”。例：9月10日采集9月7日至14日的周报，不能断言9月14日状态与当前相同。即使窗口已经结束，也只有完整的窗口后变更证据支持时才能还原周期末状态。
-- open/paused/done 分别统计，归档另列；最新进展来自 thing.latestProgress，历史变化读取 progress/status 记录。
-- 备注和重复过程描述不算有效进展；`effectiveProgressCount` 是待核查候选，正文没有新信息时排除。
-- 没有记录只能说“未记录更新”。此约束同样适用于摘要和下一步建议；open 不能证明尚未开始，只能报告当前状态和未记录事实。附件未读、不可读取、截断及多次请求的非事务采集边界必须披露。`changed_during_collection` 时先重读；仍有变化则保留限制，不声称静态全量。
+- `thing` is the current state, `entries` are records within the window, and `baseline` is the pre-window state reconstructed from complete business-change records. Do not invent a baseline when it is missing or versions changed during collection.
+- `lastEffectiveRecordBeforeWindow` locates pre-window evidence. Current state is not a change within the period and cannot directly substitute for period-end state.
+- Before output, compare `collectedAt` with the window's `to`. When `collectedAt < to` (including a user-specified full calendar week that has not ended), state that this is an interim summary as of collection time and the period is still open. Label three-status counts as "state at collection", not "period-end state" or "no later updates". For example, a September 7–14 weekly report collected on September 10 cannot claim that September 14 state equals current state. Even after a window ends, reconstruct period-end state only when complete post-window change evidence supports it.
+- Count open/paused/done separately and report archived Things separately. The latest progress comes from thing.latestProgress; read progress/status records for historical changes.
+- Notes and repeated process descriptions are not effective progress. `effectiveProgressCount` is a candidate count to verify; exclude records whose bodies add no new information.
+- With no records, say only "no update recorded". Apply this constraint to summaries and next-step suggestions too. open does not prove work has not started; report only current status and the absence of recorded facts. Disclose unread or inaccessible attachments, truncation and non-transactional limits across multiple requests. For `changed_during_collection`, reread first; if changes continue, retain the limitation rather than claiming a static, complete collection.
 
-## 输出与写回
+## Output and writeback
 
-先写范围、时间窗、采集时间及覆盖边界，再给三态和归档统计、周期变化、阻塞、下一步。每个重要判断附事项来源和日期，区分事实、推断与建议。不默认展示内部记录 ID。
+Start with the scope, time window, collection time and coverage limits. Then give three-status and archive counts, changes during the period, blockers and next steps. Attach Thing sources and dates to every significant judgment, distinguishing facts, inferences and recommendations. Do not display internal record IDs by default.
 
-默认只输出到会话。明确要求写回时：用 `+detail` 完整读取目标事项的报告记录，检查同范围同周期标题，再用 `ae-cli things entry append --id <target-id> --type note --title "事项周报｜起止日期｜范围" --stdin --command-id <uuid> --format json` 写入最终正文。建议标题为 `事项周报｜起止日期｜范围`（日报同理）。已有同范围同周期报告时提示修订，不静默覆盖或重复追加；用户明确要求追加修订后才写新记录，保留原报告。写回已授权无需再问同一许可。
+Output only in the conversation by default. When writeback is explicitly requested, use `+detail` to read all report entries on the target Thing and check for a title covering the same scope and period. Then write the final body with `ae-cli things entry append --id <target-id> --type note --title "Things weekly report | date range | scope" --stdin --command-id <uuid> --format json`. The suggested title pattern is `Things weekly report | date range | scope` (or daily report), localized to the user's language. If a report for the same scope and period already exists, propose a revision instead of silently overwriting or appending a duplicate. Append a new revision only when the user explicitly requests it, preserving the original report. Do not ask for the same writeback permission again once it is granted.
 
-不自动发送消息、修改状态、指派负责人或建立定时任务。
+Do not automatically send messages, change status, assign owners or create scheduled tasks.
 
-文件证据：+detail/+digest 自动翻页收集资产关联，availability=missing 或 verification_failed 的文件不算可用交付；即使 available，也只代表引用可用，不代表已读取正文或验收通过。披露未读文件及非事务采集边界。私有会话来源只在当前用户有权时读取，报告引用共享事项事实，不能把私有历史自动公开。
+File evidence: +detail/+digest automatically paginate asset associations. Files with availability=missing or verification_failed are not available deliverables. Even available only means the reference is available, not that its contents were read or acceptance passed. Disclose unread files and non-transactional collection limits. Read private conversation sources only when the current user has access. Cite shared Thing facts in the report; do not automatically disclose private history.

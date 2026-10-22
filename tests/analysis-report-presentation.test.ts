@@ -35,6 +35,7 @@ async function dispatch(id: string, values: Record<string, unknown>, mode: 'dryR
   globalThis.fetch = async (url, init) => {
     request = { url: String(url), body: JSON.parse(String(init?.body)) };
     return new Response(JSON.stringify({ ok: true, data: {
+      ...(id === 'analysis.adhoc.export' ? { run_id: 'formula-test-run', artifact_id: 'formula-test-artifact' } : {}),
       report_id: 11, model_type: 'event', presentation: responsePresentation ?? { chart_type: 'bar', table_layout: 'event' },
     } }), { status: 200 });
   };
@@ -213,6 +214,222 @@ test('dashboard card partial update omits every unspecified display field', asyn
   assert.deepEqual(result.body.input.presentation, { date_outside: true });
 });
 
+test('dashboard frame size is card-scoped and requires the fresh dashboard version', async () => {
+  for (const frameSize of ['medium', 'large']) {
+    const result = await dispatch('analysis.dashboard_report.update', {
+      'project-id': 1, 'dashboard-id': 22, 'report-id': 11,
+      'frame-size': frameSize, 'reports-version': 0,
+    });
+    assert.deepEqual(result.body.input, {
+      project_id: 1, dashboard_id: 22, report_id: 11,
+      frame_size: frameSize, reports_version: 0,
+    });
+    assert.equal('presentation' in result.body.input, false);
+  }
+});
+
+test('card position uses explicit grid coordinates and can be combined with size and presentation', async () => {
+  const values = {
+    'project-id': 1, 'dashboard-id': 22, 'report-id': 11,
+    'position-x': 0, 'position-y': 20, 'frame-size': 'large', 'reports-version': 7,
+    'chart-type': 'table', 'date-outside': false,
+  };
+  for (const mode of ['dryRun', 'validateInput', 'execute'] as const) {
+    const result = await dispatch('analysis.dashboard_report.update', values, mode);
+    assert.deepEqual(result.body.input, {
+      project_id: 1, dashboard_id: 22, report_id: 11,
+      frame_size: 'large', position: { x: 0, y: 20 }, reports_version: 7,
+      presentation: { chart_type: 'table', date_outside: false },
+    });
+  }
+});
+
+test('card layout flags reject incomplete coordinates, invalid sizes and unsafe numbers before dispatch', () => {
+  const cmd = command('analysis.dashboard_report.update');
+  const base = { 'project-id': 1, 'dashboard-id': 22, 'report-id': 11, 'reports-version': 7 };
+  for (const size of ['small', 'invalid', '1']) {
+    assert.throws(() => cmd.validate!(context({ ...base, 'frame-size': size })), /frame-size/);
+  }
+  assert.throws(() => cmd.validate!(context({ ...base, 'position-x': 0 })), /position-x.*position-y/);
+  assert.throws(() => cmd.validate!(context({ ...base, 'position-y': 0 })), /position-x.*position-y/);
+  for (const value of [-1, 0.5, NaN, Infinity, Number.MAX_SAFE_INTEGER + 1]) {
+    assert.throws(() => cmd.validate!(context({ ...base, 'position-x': value, 'position-y': 0 })), /position-x/);
+    assert.throws(() => cmd.validate!(context({ ...base, 'position-x': 0, 'position-y': value })), /position-y/);
+    assert.throws(() => cmd.validate!(context({ ...base, 'frame-size': 'medium', 'reports-version': value })), /reports-version/);
+  }
+  assert.throws(() => cmd.validate!(context({ ...base, 'position-x': 20, 'position-y': 0 })), /position-x/);
+  assert.throws(() => cmd.validate!(context({ ...base, 'position-x': 0, 'position-y': 10001 })), /position-y/);
+  assert.doesNotThrow(() => cmd.validate!(context({ ...base, 'position-x': 0, 'position-y': 10000 })));
+  assert.throws(() => cmd.validate!(context({ ...base, 'frame-size': 'medium', 'reports-version': Number.MAX_SAFE_INTEGER })), /reports-version/);
+  assert.throws(() => cmd.validate!(context({ 'project-id': 1, 'dashboard-id': 22, 'report-id': 11, 'frame-size': 'medium' })), /reports-version/);
+  assert.throws(() => cmd.validate!(context({ 'project-id': 1, 'dashboard-id': 22, 'report-id': 11, 'position-x': 0, 'position-y': 0 })), /reports-version/);
+  assert.throws(() => cmd.validate!(context(base)), /At least one/);
+});
+
+test('saved-metric formula dependencies are forwarded without invented aggregation or property', async () => {
+  const definition = {
+    time_range: { mode: 'previous', unit: 'day', value: 7 },
+    metrics: [
+      { event: 'diamond_recharge_total' },
+      { event: 'diamond_recharge_third' },
+      { formula: 'third / total', dependencies: [
+        { alias: 'third', event: 'diamond_recharge_third' },
+        { alias: 'total', event: 'diamond_recharge_total' },
+      ] },
+    ],
+  };
+  for (const id of ['analysis.report.create', 'analysis.report.update', 'analysis.adhoc.run', 'analysis.adhoc.export']) {
+    const result = await dispatch(id, {
+      'project-id': 1, 'model-type': 'event', definition,
+      'report-name': 'Saved metric ratio', 'report-id': 11, 'report-version': 2,
+    });
+    assert.deepEqual(result.body.input.definition, definition);
+  }
+});
+
+test('formula operand filters retain their exact scope at every definition entrypoint', async () => {
+  const festival = { field: { type: 'event_property', name: 'festival_name' }, operator: 'eq', values: ['spring'] };
+  const win = { field: { type: 'event_property', name: 'win' }, operator: 'is_true' };
+  const cases = [
+    { formula: 'completed / participants', dependencies: [
+      { alias: 'completed', event: 'activity_dungeon', aggregation: 'total_count', filters: [festival, win], relation: 'and' },
+      { alias: 'participants', event: 'char_login', aggregation: 'total_count' },
+    ] },
+    { formula: 'completed / participants', dependencies: [
+      { alias: 'completed', event: 'activity_dungeon', aggregation: 'total_count' },
+      { alias: 'participants', event: 'char_login', aggregation: 'total_count', filters: [festival] },
+    ] },
+    { formula: 'completed / participants', dependencies: [
+      { alias: 'completed', event: 'activity_dungeon', aggregation: 'total_count', filters: [win] },
+      { alias: 'participants', event: 'char_login', aggregation: 'total_count', filters: [festival] },
+    ] },
+    { formula: '(won + won) / all', dependencies: [
+      { alias: 'won', event: 'activity_dungeon', aggregation: 'total_count', relation: 'or', filters: [
+        { relation: 'and', items: [festival, win] },
+        { ...festival, values: ['autumn'] },
+      ] },
+      { alias: 'all', event: 'activity_dungeon', aggregation: 'total_count', filters: [{ ...win, operator: 'is_false' }] },
+    ] },
+  ];
+  for (const metric of cases) {
+    const definition = { time_range: { mode: 'previous', unit: 'day', value: 7 }, metrics: [metric] };
+    for (const id of ['analysis.report.create', 'analysis.report.update', 'analysis.adhoc.run', 'analysis.adhoc.export']) {
+      for (const mode of ['dryRun', 'execute'] as const) {
+        const result = await dispatch(id, {
+          'project-id': 1, 'model-type': 'event', definition: JSON.stringify(definition),
+          'report-name': 'Operand filters', 'report-id': 11, 'report-version': 2,
+        }, mode);
+        assert.deepEqual(result.body.input.definition, definition);
+        assert.equal('filters' in result.body.input.definition, false);
+        assert.equal('filters' in result.body.input.definition.metrics[0], false);
+      }
+    }
+  }
+});
+
+test('native formula readback is forwarded unchanged without inventing dependencies', async () => {
+  const metric = {
+    formula: 'activity_dungeon.A101 / char_login.A101', formulation: {
+      appData: 'saved-formula-ui-state', formulationDeps: [
+        { event: { eventName: 'activity_dungeon' }, quota: { quotaName: 'A101' } },
+        { event: { eventName: 'char_login' }, quota: { quotaName: 'A101' } },
+      ],
+    },
+    custom_event_desc: 'native formula', event_desc: 'kept', format: 'percent',
+    custom_filters: [{ index: 0, relation: '1', filts: [{ filterType: 'SIMPLE', columnName: 'win',
+      tableType: '0', selectType: 'bool', calcuSymbol: 'C09' }] }],
+    event_type: 'event_v', event_split_indexes: [0, 1],
+    quota_time_ranges: [{ index: 0, type: 'LAST_DAYS', params: ['3'] }],
+    quota_entities: [{ index: 0, taIdMeasure: { entityId: 42, columnName: 'device_id', tableType: '0', selectType: 'string' } }],
+    event_uuid: 'saved-event-uuid',
+  };
+  const definition = { metrics: [metric] };
+  const result = await dispatch('analysis.report.update', {
+    'project-id': 1, 'report-id': 11, 'report-version': 2, 'model-type': 'event', definition,
+  }, 'execute');
+  assert.deepEqual(result.body.input.definition, definition);
+  assert.equal('dependencies' in result.body.input.definition.metrics[0], false);
+});
+
+test('Agent reference teaches operand-scoped formula filters rather than changing the denominator', () => {
+  const reference = readFileSync(new URL('../skills/ae-analysis/references/ai_models/event.md', import.meta.url), 'utf8');
+  const section = reference.split('## Formula operand filters')[1]?.split('\n## ')[0];
+  assert.ok(section, 'Formula operand filters need a dedicated reference section');
+  const example = section.match(/```json\n([\s\S]*?)\n```/);
+  assert.ok(example, 'The operand filter contract needs a valid JSON example');
+  const definition = JSON.parse(example[1]);
+  const metric = definition.metrics[0];
+  assert.equal(metric.formula, 'completed / participants');
+  assert.equal(metric.dependencies[0].event, 'activity_dungeon');
+  assert.equal(metric.dependencies[0].relation, 'and');
+  assert.deepEqual(metric.dependencies[0].filters[0].values, ['spring']);
+  assert.equal(metric.dependencies[0].filters[1].operator, 'is_true');
+  assert.equal('values' in metric.dependencies[0].filters[1], false);
+  assert.equal(metric.dependencies[1].event, 'char_login');
+  assert.equal('filters' in metric.dependencies[1], false);
+  assert.equal('filters' in metric, false);
+  assert.equal('filters' in definition, false);
+  assert.match(section, /Do not move operand filters/);
+  assert.match(section, /repeated occurrences/);
+  assert.match(section, /custom_filters/);
+  assert.match(section, /saved metric/);
+});
+
+test('saved metric reference contract preserves common and local filters before formula reuse', () => {
+  const references = new URL('../skills/ae-analysis/references/', import.meta.url);
+  const create = readFileSync(new URL('metric_create.md', references), 'utf8');
+  const update = readFileSync(new URL('metric_update.md', references), 'utf8');
+  const get = readFileSync(new URL('metric_get.md', references), 'utf8');
+  const event = readFileSync(new URL('ai_models/event.md', references), 'utf8');
+  const section = create.split('## Saved metric filters')[1]?.split('\n## ')[0];
+  assert.ok(section, 'metric creation must explain which filter scope is saved');
+  const example = section.match(/```json\n([\s\S]*?)\n```/);
+  assert.ok(example, 'show a complete semantic definition with common and local filters');
+  const definition = JSON.parse(example[1]);
+  assert.equal(definition.metrics.length, 1);
+  assert.equal(definition.relation, 'or');
+  assert.deepEqual(definition.filters.map((filter: any) => filter.values), [['US'], ['GB']]);
+  assert.equal(definition.metrics[0].relation, 'and');
+  assert.equal(definition.metrics[0].filters[0].field.name, 'elapsed_ms');
+  assert.equal(definition.metrics[0].filters[0].operator, 'lte');
+  assert.deepEqual(definition.metrics[0].filters[0].values, [3000]);
+  assert.match(section, /combined with AND/);
+  assert.match(section, /each scope's.*relation.*compound/is);
+  assert.match(section, /Do not put.*filter.*metric_params/is);
+  assert.match(section, /non-empty.*`filts`.*`filters`.*rejected/is);
+  assert.match(section, /older.*backend.*discard|backend.*older.*discard/is);
+  assert.match(update, /native QP.*semantic.*not supported/is);
+  assert.match(get, /verify.*saved.*filters/is);
+  assert.match(event, /saved metric's own filters.*different.*adding.*filters.*dependency/is);
+});
+
+test('card layout conflicts keep the gateway error without retrying a write', async () => {
+  const originalFetch = globalThis.fetch;
+  const requests: string[] = [];
+  setCliTokenManual('presentation-test-token', host);
+  globalThis.fetch = async (url) => {
+    requests.push(String(url));
+    return new Response(JSON.stringify({ ok: false, error: {
+      type: 'validation', code: 'LAYOUT_CONFLICT',
+      message: 'The board layout changed.', hint: 'Reread the card before choosing another update.',
+    } }), { status: 409 });
+  };
+  try {
+    await assert.rejects(() => command('analysis.dashboard_report.update').execute(context({
+      'project-id': 1, 'dashboard-id': 22, 'report-id': 11,
+      'frame-size': 'medium', 'reports-version': 0,
+    })), (error: any) => {
+      assert.equal(error.code, 'LAYOUT_CONFLICT');
+      assert.match(error.hint, /Reread/);
+      return true;
+    });
+    assert.equal(requests.filter((url) => url.endsWith('/analysis.dashboard_report.update/execute')).length, 1);
+  } finally {
+    globalThis.fetch = originalFetch;
+    clearCliToken(host);
+  }
+});
+
 test('dashboard combo selection is card-scoped and exposes no series mutation flag', async () => {
   const result = await dispatch('analysis.dashboard_report.update', {
     'project-id': 1, 'dashboard-id': 22, 'report-id': 11, 'chart-type': 'combo',
@@ -270,7 +487,7 @@ test('leaf help exposes presentation and distinguishes dashboard cards from repo
     assert.match(help, /metric_index/);
   }
   const help = execFileSync(process.execPath, ['node_modules/tsx/dist/cli.mjs', 'src/index.ts', '--no-update-check', 'analysis', 'dashboard-report', 'update', '--help'], { encoding: 'utf8' });
-  for (const flag of ['--chart-type', '--table-layout', '--date-outside']) assert.ok(help.includes(flag));
+  for (const flag of ['--chart-type', '--table-layout', '--date-outside', '--frame-size', '--position-x', '--position-y', '--reports-version']) assert.ok(help.includes(flag));
   assert.match(help, /event/);
   assert.match(help, /combo/);
 });
@@ -292,6 +509,12 @@ test('Agent routing and references separate report charts, result tables and das
   assert.match(read('references/report_update.md'), /other.*L0.*cards/is);
   assert.match(read('references/dashboard_report_get.md'), /series_scope.*report/s);
   assert.match(read('references/dashboard_report_update.md'), /source.*already.*combo/is);
+  assert.match(read('references/dashboard_report_get.md'), /reports_version/);
+  assert.match(read('references/dashboard_report_update.md'), /--frame-size medium/);
+  assert.match(read('references/dashboard_report_update.md'), /--position-x/);
+  assert.match(read('references/dashboard_report_update.md'), /occupied destinations/);
+  assert.match(read('references/ai_models/event.md'), /Saved metrics as formula operands/);
+  assert.match(read('references/ai_models/event.md'), /Omit `aggregation`, `property`, and `percentile`/);
   const eventPresentation = read('references/event_report_presentation.md');
   assert.match(eventPresentation, /metric_index.*1-based.*definition\.metrics/s);
   assert.match(eventPresentation, /cumulative.*not.*combo/is);

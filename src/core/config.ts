@@ -5,6 +5,7 @@ import { safeReadJsonFile } from './json-utils.js';
 import { logger } from './logger.js';
 import { normalizeUrl } from './url-utils.js';
 import { getSandboxCliTokenFilePath } from './sandbox-runtime.js';
+import { readExternalCliToken } from './external-cli-token.js';
 
 const CONFIG_DIR = path.join(process.env.HOME || os.homedir(), '.ae-cli');
 const CONFIG_FILE = path.join(CONFIG_DIR, 'config.json');
@@ -16,6 +17,11 @@ export interface SandboxCliTokenEntry {
 
 /** Candidate paths for sandbox-provisioned cli-token.json (read-only). */
 function sandboxCliTokenCandidatePaths(): string[] {
+  // An explicit execution context is exclusive, including when its file is missing.
+  if (process.env.TE_AGENT_CLI_CONFIG_DIR !== undefined) {
+    const directory = process.env.TE_AGENT_CLI_CONFIG_DIR;
+    return path.isAbsolute(directory) ? [path.join(directory, 'cli-token.json')] : [];
+  }
   const paths = [getSandboxCliTokenFilePath()];
   const homeFallback = path.join(process.env.HOME || os.homedir(), '.ae-config', 'cli-token.json');
   if (!paths.includes(homeFallback)) {
@@ -34,9 +40,9 @@ export function readSandboxCliTokenEntry(): SandboxCliTokenEntry | null {
     try {
       const data = safeReadJsonFile(file);
       if (data && typeof data === 'object' && !Array.isArray(data)) {
-        const url = data.url as string;
-        const token = (data.token ?? data['cli-token']) as string;
-        if (url && token) {
+        const url = data.url;
+        const token = data.token ?? data['cli-token'];
+        if (typeof url === 'string' && url && typeof token === 'string' && token) {
           return { url, token };
         }
       }
@@ -155,6 +161,8 @@ export function saveConfig(config: TeConfig): void {
 }
 
 export function getActiveHost(): string {
+  const externalHost = readExternalCliToken()?.url;
+  if (externalHost) return externalHost;
   const sandboxHost = readSandboxCliTokenEntry()?.url;
   if (sandboxHost) return sandboxHost;
   const config = loadConfig();

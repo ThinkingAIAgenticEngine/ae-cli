@@ -81,6 +81,7 @@ process.stdout.write('\nanalysis export flow command tests\n');
 
 clearCapabilityGatewayRoutesForTest();
 registerCapabilityGatewayRoute('analysis', { gatewayDomain: 'analysis' });
+registerCapabilityGatewayRoute('metadata', { gatewayDomain: 'analysis' });
 registerCapabilityGatewayRoute('analysis-governance', { gatewayDomain: 'analysis' });
 
 await test('run inspect targets analysis run endpoint', () => {
@@ -122,6 +123,22 @@ await test('wait timeout is local-only and requires an attached wait', () => {
   assert.doesNotThrow(
     () => adhocExport.validate!(makeCtx({ wait: true, 'wait-timeout-seconds': 30 })),
   );
+});
+
+await test('omitted async timeout reaches the server without a client default while explicit values remain compatible', async () => {
+  for (const [command, values] of [
+    [adhocExport, { 'project-id': 1, 'model-type': 'sql', definition: JSON.stringify({ sql: 'SELECT 1' }) }],
+    [dataTableDownload, { 'project-id': 1, 'data-table-id': 2 }],
+  ] as const) {
+    const omitted = await dryBody(command, values);
+    assert.equal(Object.prototype.hasOwnProperty.call(omitted.input, 'timeout_seconds'), false);
+    const explicit = await dryBody(command, { ...values, 'timeout-seconds': 120 });
+    assert.equal(explicit.input.timeout_seconds, 120);
+    const flag = command.flags.find((item) => item.name === 'timeout-seconds');
+    assert.equal(flag?.default, undefined);
+    assert.equal(flag?.min, 1);
+    assert.equal(flag?.max, 21600);
+  }
 });
 
 await test('every known run-scoped artifact capability uses the same lifecycle contract', () => {

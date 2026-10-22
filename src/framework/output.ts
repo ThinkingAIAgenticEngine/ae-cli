@@ -3,6 +3,7 @@ import { JqError, json as jqJson } from 'jq-wasm';
 import type { OutputFormat, OutputEnvelope } from './types.js';
 import { logger } from '../core/logger.js';
 import { getPendingHostCompatNotice, getPendingUpdateNotice } from '../core/compat-check.js';
+import { redactExternalCliToken } from '../core/external-cli-token.js';
 
 const KNOWN_ARRAY_FIELDS = [
   'items', 'events', 'reports', 'dashboards', 'tags', 'clusters',
@@ -110,7 +111,8 @@ export async function applyJq(data: any, expr: string): Promise<any> {
 
   let results: unknown[];
   try {
-    results = await jqJson(data, trimmed);
+    // Commands with no content (HTTP 204) yield undefined; jq treats that as null input.
+    results = await jqJson(data ?? null, trimmed);
   } catch (err: any) {
     const message = err instanceof JqError
       ? err.message
@@ -135,7 +137,7 @@ export async function formatOutput(data: any, format: OutputFormat, jqExpr?: str
     processed = await applyJq(outputData, jqExpr);
   }
   if (format === 'table') {
-    return formatTable(processed);
+    return redactExternalCliToken(formatTable(processed));
   }
   const hostCompat = getPendingHostCompatNotice();
   const updateNotice = getPendingUpdateNotice();
@@ -150,7 +152,7 @@ export async function formatOutput(data: any, format: OutputFormat, jqExpr?: str
     // Soft tip lives only under _notice (not mirrored into meta) to avoid duplicate fields.
     ...(Object.keys(notices).length > 0 ? { _notice: notices } : {}),
   };
-  return JSON.stringify(envelope, null, 2);
+  return redactExternalCliToken(JSON.stringify(envelope, null, 2));
 }
 
 export function formatError(
@@ -166,7 +168,7 @@ export function formatError(
     error: { type, message, hint, code, ...(details === undefined ? {} : { details }) },
     ...(meta && Object.keys(meta).length > 0 ? { meta } : {}),
   };
-  return JSON.stringify(envelope, null, 2);
+  return redactExternalCliToken(JSON.stringify(envelope, null, 2));
 }
 
 export function printError(
@@ -209,7 +211,7 @@ export async function printOutput(data: any, format: OutputFormat, jqExpr?: stri
         options.redactErrors ? undefined : readOutputMetadata(data)));
       const recoveryData = options.redactErrors ? sensitiveRecoveryData(unwrapOutputData(data)) : unwrapOutputData(data);
       await new Promise<void>((resolve, reject) => {
-        process.stdout.write(JSON.stringify({ ...recovery, data: recoveryData }, null, 2) + '\n',
+        process.stdout.write(redactExternalCliToken(JSON.stringify({ ...recovery, data: recoveryData }, null, 2)) + '\n',
           (error) => error ? reject(error) : resolve());
       });
     }

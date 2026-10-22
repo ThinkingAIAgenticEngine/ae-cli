@@ -6,6 +6,7 @@ import { Readable } from 'node:stream';
 import { pipeline } from 'node:stream/promises';
 import { resolveHost } from '../../core/auth.js';
 import { getCliToken } from '../../core/cli-token.js';
+import { externalCliTokenRequestOptions } from '../../core/external-cli-token.js';
 import { CliApiError, PermissionError } from '../../core/errors.js';
 import { safeJsonParse } from '../../core/json-utils.js';
 import { logger } from '../../core/logger.js';
@@ -199,6 +200,7 @@ export async function downloadDataopsApi(
   const url = buildUrl(host, path, compactArgs(params));
   const resp = await fetch(url, {
     method: 'GET',
+    ...externalCliTokenRequestOptions(url),
     headers: {
       'cli-token': token,
       'Accept': '*/*',
@@ -265,7 +267,7 @@ async function dataopsRequest(
     options.body = JSON.stringify(body ?? {});
   }
 
-  const resp = await fetch(url, options);
+  const resp = await fetch(url, { ...options, ...externalCliTokenRequestOptions(url) });
   const text = await resp.text();
   const data = parseResponseBody(text, url, resp.status, !resp.ok);
   logger.api(method, url, resp.status, body, data);

@@ -9,6 +9,8 @@ import { registerTracking } from './commands/tracking/index.js';
 import { parseProgram } from './framework/program-lifecycle.js';
 import { printError } from './framework/output.js';
 import { registerInstall } from './commands/install.js';
+import { ExternalCliTokenError, readExternalCliToken, setExternalCliTokenFile } from './core/external-cli-token.js';
+import { CliValidationError } from './core/errors.js';
 
 const require = createRequire(import.meta.url);
 const pkg = require('../package.json');
@@ -21,6 +23,7 @@ program
   .version(version)
   .description('CLI tool for ThinkingAI (AE) analytics platform')
   .option('--host <url>', 'Override active AE host URL (e.g., https://ta.thinkingdata.cn)')
+  .option('--cli-token-file <path>', 'Use a read-only JSON CLI token file containing url and token for this invocation')
   .option('--mcp-url <url>', 'Override MCP server URL (e.g., http://localhost/mcp/http/example)')
   .option('--format <format>', 'Output format: json | table', 'json')
   .option('--jq <expr>', 'jq 1.8 filter over command payload (via jq-wasm), applied before output envelope')
@@ -67,6 +70,12 @@ async function loadCommands(): Promise<Command[]> {
     commands.push(...engage.default);
   } catch (err) {
     warnLoadFailure('domain te-engage', err);
+  }
+  try {
+    const experiment = await import('./commands/te-experiment/index.js');
+    commands.push(...experiment.default);
+  } catch (err) {
+    warnLoadFailure('domain te-experiment', err);
   }
   try {
     const community = await import('./commands/te-community/index.js');
@@ -154,6 +163,12 @@ async function loadCommands(): Promise<Command[]> {
   } catch (err) {
     warnLoadFailure('domain context', err);
   }
+  try {
+    const evaluation = await import('./commands/evaluation/index.js');
+    commands.push(...evaluation.default);
+  } catch (err) {
+    warnLoadFailure('domain evaluation', err);
+  }
   return commands;
 }
 
@@ -216,6 +231,10 @@ async function registerUpdateCommand(): Promise<void> {
 }
 
 async function main() {
+  setExternalCliTokenFile(globalOptionValue(process.argv.slice(2), '--cli-token-file'));
+  if (!process.argv.slice(2).some((arg) => ['--help', '-h', '--version', '-V'].includes(arg))) {
+    readExternalCliToken(globalOptionValue(process.argv.slice(2), '--host'));
+  }
   const pkgInfo = getLocalCliPackageInfo();
   if (!isRootUpdateCommand(process.argv.slice(2))) {
     const compat = await runHostCompatCheck(
@@ -261,7 +280,13 @@ async function main() {
   await parseProgram(program);
 }
 
-await main();
+try {
+  await main();
+} catch (error) {
+  if (!(error instanceof ExternalCliTokenError) && !(error instanceof CliValidationError)) throw error;
+  printError(error instanceof ExternalCliTokenError ? 'config' : 'validation', error.message, error.hint, error.code);
+  process.exitCode = 1;
+}
 
 function rejectUnknownHelpCommandPath(root: CommanderCommand, args: string[]): void {
   if (!args.includes('--help') && !args.includes('-h')) {
@@ -299,6 +324,7 @@ function optionConsumesValue(token: string): boolean {
     return false;
   }
   return token === '--host'
+    || token === '--cli-token-file'
     || token === '--mcp-url'
     || token === '--format'
     || token === '--jq'
@@ -306,12 +332,20 @@ function optionConsumesValue(token: string): boolean {
 }
 
 function globalOptionValue(args: string[], option: string): string | undefined {
+  let value: string | undefined;
   for (let i = 0; i < args.length; i += 1) {
     const token = args[i];
-    if (token === option) return args[i + 1];
-    if (token.startsWith(`${option}=`)) return token.slice(option.length + 1);
+    if (token === '--') break;
+    if (optionConsumesValue(token)) {
+      const next = args[i + 1];
+      if (next === undefined) {
+        throw new CliValidationError(`${token} requires a value.`, { code: 'MISSING_OPTION_VALUE' });
+      }
+      if (token === option) value = next;
+      i += 1;
+    } else if (token.startsWith(`${option}=`)) value = token.slice(option.length + 1);
   }
-  return undefined;
+  return value;
 }
 
 function isRootUpdateCommand(args: string[]): boolean {

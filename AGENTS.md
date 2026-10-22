@@ -122,16 +122,23 @@ CLI 同时面向团队成员与 AI agent，**源码内容与所有用户可见�
 
 ### 鉴权
 
-- **唯一凭证是 CLI token**（`src/core/cli-token.ts` 的 `getCliToken()`），不存在独立的 mcp-token 获取/mint 逻辑。取值优先级：进程内缓存 → `secure-store.cliToken` → 沙箱注入的 `cli-token.json` → 用 accessToken 调 `/v1/ta/cli/token/generate` **mint**（`auth login` 成功后立即 mint 并写回 secure-store；若缺失则在首次命令执行时补 mint）。
+- **唯一持久凭证是 CLI token**（`src/core/cli-token.ts` 的 `getCliToken()`）。普通命令读取 secure-store、沙箱注入的 `cli-token.json` 或进程缓存，缺失时要求登录；仅 `auth login` 在内存中使用本次领取的 access token 调 `/v1/ta/cli/token/generate` mint，不持久化 access/refresh token。新版登录统一调用 UBA 设备授权；仅新 authorize 端点明确返回 404 时兼容旧 Agent，流程开始后固定 issuer。
 - 上述凭证规则适用于 AE 控制面。通过正式 L2 例外接入的稳定 ingestion data-plane 必须完全不发送 AE access token、CLI token 或自定义认证头，由服务端前置网关承担接入安全。
 - token 按 host 维度存储（per-host）；不要自己实现凭证获取逻辑，统一调用 `getCliToken()`。
 - **旧命令（`createMcpCommand` → MCP JSON-RPC，`src/core/mcp.ts`）**：请求头只带 `cli-token`（值为 CLI token）。KB external 接口走 `kbApi`（`src/core/mcp-access.ts`），同样只发 `cli-token`；**用现成 helper，别手搓鉴权**。
 - **新命令（`createCapabilityCommand` / `createApiCommand` → capability gateway REST，`src/core/capability-api.ts`）**：请求 `/api/cli/<domain>/v1/capabilities/<capabilityId>/execute`（或 `/validate`、`/dry-run`），鉴权用 `cli-token` 请求头。全局 `--validate` = 改对参数；`--dry-run` = 确认可以跑；二者勿同用。nginx 在 `<domain>` 段做域路由并 strip 后转发到各服务的 `/api/cli/v1/...`。metadata 域示例命令：`ae-cli metadata event get`、`ae-cli metadata property get`。
-- 401/403 统一语义：401 清缓存、重新 `getCliToken()`、重试一次；403 是权限拒绝（`PermissionError`），不重试、不重新 mint。
+- 401/403 统一语义：401 保留持久凭证并提示重新登录，不自动 mint；只有明确选择的兼容调用可重新读取本地凭证后重试一次。403 是权限拒绝（`PermissionError`），不重试、不重新 mint。组件部署与 License 限制由实际业务接口返回，CLI 不单独预检 te-agent 部署状态。
 
 ### skills 同步
 
 命令对 agent 暴露的能力发生变化时，要同步更新 `skills/` 下对应的 skill 包；`self-check` 用于校验新合入功能。改 skill frontmatter 或准备发包时跑 `npm run check:release`（可扩展子检查；CI 发布流水线同一入口）。
+
+### README 写作与公开发布
+
+- README 面向客户，承担功能概览、安装、认证、常见操作、最小示例和文档导航；以用户能完成操作为信息粒度。
+- 参数、默认值、限制和错误处理只保留影响用户操作的必要说明。完整命令契约、计数口径、重试及失败边界放在对应 `skills/` 的 reference，README 用简述和链接引导；内部实现、存储方案、研发设计与测试记录放在开发文档中。
+- 同步维护 `README.md`、`README.zh.md`、`open-source/README.opensource.md`、`open-source/README.opensource.zh.md` 的产品用法与中英文含义；内外版本仅保留必要的安装来源等差异。公开模板会复制为 GitHub 首页，须按外部客户视角审查内容及链接，确保不包含内部地址、私有安装源或凭证。
+- 验收时逐段确认新增内容是否帮助客户使用 CLI；仅用于解释实现或记录本次迭代的内容归入相应详细文档，README 保持简洁稳定。
 
 ### KB schema/compile 状态查询陷阱（已知坑）
 

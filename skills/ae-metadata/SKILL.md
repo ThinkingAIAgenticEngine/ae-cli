@@ -1,6 +1,6 @@
 ---
 name: ae-metadata
-version: 1.0.2
+version: 1.0.4
 description: "AE metadata capability-gateway CLI: list, inspect, create, update, delete and download metadata data tables; bind an existing dimension table to a property or create and bind a CSV dimension table. Local file upload and event/property discovery are separate prerequisite capabilities."
 ---
 
@@ -43,6 +43,7 @@ Safety:
 - **Before any command**, read the matching `references/<name>.md` (filename = command with spaces → underscores, e.g. `metadata data-table list` → `metadata_data_table_list.md`).
 - Never invent `project_id`, event/property names, `input_file_id`, or `data_table_id`. Reuse verified names or discover a metadata lookup capability; find data table IDs via `metadata data-table list`.
 - `metadata data-table download` is an async artifact command: plain invocation submits, `--wait` waits, and `--output <file>` waits then streams atomically. Resume with `analysis run wait`; local interruption never cancels the remote run.
+- The member's natural-day quota counts every Gateway capability `execute` call eligible for usage statistics (an identifiable user and statistics enabled), including metadata-only reads, previews, table/binding writes, asset exports, and downloads that submit work. It does not depend on database engine or business purpose. Cache hits, repeated calls, reused runs, and failures within `execute` count, including schema errors, permission denials, and unknown capability IDs. Gateway capability discovery (list/inspect), validate/dry-run, and separate run-status/artifact-download HTTP endpoints do not count; pagination and cancellation through capability execution do count. On `QUERY_DAILY_LIMIT_EXCEEDED` (HTTP 429), wait until reset or contact an administrator; `QUERY_QUOTA_UNAVAILABLE` fails explicitly. Do not switch identities to bypass these errors. Omit download `--timeout-seconds` to use the server default; inspect the selected capability for its current policy.
 
 ## When to Use
 

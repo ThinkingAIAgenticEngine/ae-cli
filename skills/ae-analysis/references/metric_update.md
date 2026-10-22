@@ -37,4 +37,6 @@ Output `data.metric` contains the updated summary for a full-definition update c
 - For full-definition updates, pass `--metric-name`, `--metric-desc`, one of `--model-type` / `--metric-mode`, and `--metric-events` together.
 - If both `--model-type` and `--metric-mode` are present, they must match: `event -> 0`, `retention -> 1`.
 - Use `analysis-meta metric get` before updating if the current definition needs to be preserved and edited.
+- For a full-definition event update, use the native QP returned by `metric get`; semantic event-analysis definitions are not supported by `metric update`. Preserve the native filters, formula metadata, and metric params unless the user requests a calculation change. The semantic create example in [`metric_create.md`](metric_create.md) is not an update payload.
+- For a display-name/remark-only edit, omit `--metric-events` and `--metric-params` so the existing filtered calculation stays unchanged. After a definition change, read back the saved metric and verify its conditions before using it in a formula.
 - This is an ordinary write operation; execute it without the high-risk confirmation flag.

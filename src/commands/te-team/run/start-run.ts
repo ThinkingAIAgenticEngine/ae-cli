@@ -14,7 +14,7 @@ function buildBody(ctx: RuntimeContext): Record<string, unknown> {
   const notification = ctx.json('notification');
   if (notification) body.notification = notification;
   const saveToKbId = ctx.str('save-to-kb-id');
-  if (saveToKbId) body.saveToKbId = saveToKbId;
+  if (saveToKbId) body.saveToKnowledgeBaseId = saveToKbId;
   const projectIds = ctx.json('project-ids');
   if (projectIds) body.projectIds = projectIds;
   const projectNames = ctx.json('project-names');

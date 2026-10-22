@@ -38,7 +38,7 @@ export const recordIdFlag: Flag = { name: 'record-id', type: 'number', required:
 export const governanceExportFlags = (format: 'jsonl' | 'xlsx'): Flag[] => [
   requestIdFlag,
   { ...artifactFormatFlag, desc: `Artifact format: ${format}. This capability supports only ${format}.` },
-  { ...asyncTimeoutSecondsFlag, max: 7200, desc: 'Async export runtime in seconds. Default: 3600, max: 7200.' },
+  { ...asyncTimeoutSecondsFlag, max: 7200, desc: 'Async export runtime in seconds. Omit to use the server-provided default. This CLI accepts explicit values up to 7200; inspect the capability for the server default/max and use capability run for larger allowed values.' },
 ];
 export const governanceExportFields = ['request_id', 'format', 'timeout_seconds'];
 

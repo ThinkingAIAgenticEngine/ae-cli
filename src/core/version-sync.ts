@@ -188,11 +188,16 @@ export function recordVersionSyncResult(
   writeSyncStore(store);
 }
 
-export function isAutoSyncTargetEligible(version: string): boolean {
+/** Automatic replacement only applies to stable, three-component release versions. */
+export function isRegularCliVersion(version: string): boolean {
   const normalized = normalizeCliVersion(version);
-  const parts = normalized.split('-')[0].split('.').map((part) => Number.parseInt(part, 10));
-  if (parts.length < 3 || parts.some((part) => !Number.isFinite(part))) return false;
-  const [major, minor, patch] = parts;
+  return /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)$/.test(normalized)
+    && normalized.split('.').every((part) => Number.isSafeInteger(Number(part)));
+}
+
+export function isAutoSyncTargetEligible(version: string): boolean {
+  if (!isRegularCliVersion(version)) return false;
+  const [major, minor, patch] = normalizeCliVersion(version).split('.').map(Number);
   if (major > 6) return true;
   if (major !== 6) return false;
   if (minor > 1) return true;

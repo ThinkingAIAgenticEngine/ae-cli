@@ -44,13 +44,13 @@ Rules:
 ## Input
 
 - `--project-id`: target project ID.
-- `--model-type`: one of the 12 AI-facing model names from [`ai_models.md`](ai_models.md). Do not pass `scenario`, `history_tag`, or `cluster`; tags and cohorts/clusters are separate capabilities.
+- `--model-type`: one of the 13 AI-facing model names from [`ai_models.md`](ai_models.md). Do not pass `scenario`, `history_tag`, or `cluster`; tags and cohorts/clusters are separate capabilities.
 - `--definition`: model-specific AI-facing definition JSON.
 - `--intent-snapshot`: use when the caller supplies an existing snapshot containing `schema_version: 1`, non-empty `requirement`, `definition`, and `model_type`. The CLI checks that its definition and model match the submitted values locally; the snapshot is never sent to Gateway.
 - `--resolutions`: only after user confirmation, pass deterministic bindings keyed by compiler error path while keeping each bound field's path and original wording. Fill the other confirmed model parameters in `--definition`. Follow [`metadata_resolution.md`](metadata_resolution.md).
 - `--artifact-format`: `jsonl` or `csv`.
 
-Async export has no inline row limit. Runtime defaults to and is capped at 21600 seconds (6 hours); cancel earlier with `analysis query cancel --run-id <run_id>`. Shared lifecycle handling is in [analysis_data_export.md](analysis_data_export.md).
+Async export has no inline row limit. Omit `--timeout-seconds` to use the deployment's server default (normally 21600 seconds / 6 hours). The typed CLI accepts explicit `1..21600`; inspect this capability for the server default/max and use `capability run` for larger explicit values only when allowed. Read the run descriptor for the effective deadline; cancel earlier with `analysis query cancel --run-id <run_id>`. Shared lifecycle handling is in [analysis_data_export.md](analysis_data_export.md).
 
 Do not use raw QP, `events`, `event_view`, `visual_view`, removed ad-hoc QP builder outputs, or schema helper outputs as `--definition`.
 

@@ -17,12 +17,14 @@ import {
   installVersion,
   isAutoSyncTargetEligible,
   isPublicAeCliPackage,
+  isRegularCliVersion,
   recordVersionSyncResult,
   reserveAutoAttempt,
   type VersionSyncStage,
 } from './version-sync.js';
 import { normalizeUrl } from './url-utils.js';
 import { rememberKbAutoDiscoveryFeature } from './feature-config.js';
+import { externalCliTokenRequestOptions, readExternalCliToken } from './external-cli-token.js';
 
 const CHECK_INTERVAL_MS = 60 * 60 * 1000;
 const NOTIFY_INTERVAL_MS = 24 * 60 * 60 * 1000;
@@ -124,7 +126,7 @@ function rootCommand(argv: string[]): string | undefined {
     if (token.startsWith('-')) {
       if (
         !token.includes('=')
-        && ['--host', '--mcp-url', '--format', '--jq'].includes(token)
+        && ['--host', '--cli-token-file', '--mcp-url', '--format', '--jq'].includes(token)
       ) {
         i += 1;
       }
@@ -163,13 +165,15 @@ export async function fetchCliConfig(
   cliToken: string,
 ): Promise<CliConfigResult | null> {
   const url = new URL(CLI_CONFIG_PATH, host.endsWith('/') ? host : `${host}/`);
-  url.searchParams.set('cli-token', cliToken);
+  const external = readExternalCliToken(host)?.token === cliToken;
+  if (!external) url.searchParams.set('cli-token', cliToken);
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
   try {
     const resp = await fetch(url.toString(), {
       signal: controller.signal,
-      headers: { Accept: 'application/json' },
+      headers: { Accept: 'application/json', ...(external ? { 'cli-token': cliToken } : {}) },
+      ...externalCliTokenRequestOptions(url.toString()),
     });
     if (!resp.ok) return null;
     const body = (await resp.json()) as { data?: CliConfigPayload } & CliConfigPayload;
@@ -338,6 +342,7 @@ async function refreshAndMaybeNotify(
   const canAutoSync =
     allowAutoSync
     && isPublicAeCliPackage(pkg.name)
+    && isRegularCliVersion(pkg.version)
     && isAutoSyncTargetEligible(expected);
 
   if (canAutoSync) {

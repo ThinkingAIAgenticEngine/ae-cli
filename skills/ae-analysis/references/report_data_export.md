@@ -23,7 +23,7 @@ ae-cli analysis report-data export --project-id <project_id> --report-ids '[2001
 ae-cli analysis report-data export --project-id <project_id> --report-ids '[1001]' --cluster-query-scope GLOBAL --artifact-format jsonl --output <file>
 ```
 
-Input also accepts optional `cluster_query_scope` and conditional `slave_cluster_id`. Omit both for current-self data. Resolve allowed physical routes with `analysis query-cluster list`; SQL reports reject `GLOBAL`. Async export has no inline row limit. Runtime defaults to and is capped at 21600 seconds (6 hours); cancel earlier with `analysis query cancel --run-id <run_id>`.
+Input also accepts optional `cluster_query_scope` and conditional `slave_cluster_id`. Omit both for current-self data. Resolve allowed physical routes with `analysis query-cluster list`; SQL reports reject `GLOBAL`. Async export has no inline row limit. Omit `--timeout-seconds` to use the deployment's server default (normally 21600 seconds / 6 hours). The typed CLI accepts explicit `1..21600`; inspect this capability for the server default/max and use `capability run` for larger explicit values only when allowed. Read the run descriptor for the effective deadline; cancel earlier with `analysis query cancel --run-id <run_id>`.
 
 Path exports contain native graph node and link records. `record_type` distinguishes `node` and `link`; `step` is one-based, and `source`/`target` refer to native node IDs. The saved maximum steps and nodes per step still define the graph, including native More aggregation and wastage links. Export includes every computed node and link without the synchronous `preview_rows` cap.
 

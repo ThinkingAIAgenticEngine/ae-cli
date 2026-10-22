@@ -17,6 +17,8 @@ Input sends `project_id`, `metric_id`.
 
 Output `data.metric` contains the saved metric definition, or no metric when the ID does not resolve.
 
+After creating or changing a filtered metric, verify the saved event filters and their relations in this returned native definition before formula reuse. Both semantic root conditions and metric-local conditions must still be represented. Do not interpret a successful create/update response or a formula's successful execution as proof that its filters were saved. If an older backend dropped conditions, stop the dependent query and report the scope mismatch; the CLI must not silently treat the metric as unfiltered.
+
 ## Parameters
 | Parameter | Required | Description |
 |---|---|---|

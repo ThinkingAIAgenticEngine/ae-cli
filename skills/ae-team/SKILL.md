@@ -1,6 +1,6 @@
 ---
 name: ae-team
-version: 1.0.0
+version: 1.0.2
 description: "ThinkingAI AE (Agentic Engine) ae-cli manual for AI Agent Team tasks: managing teams (list, create, update, delete, AI-generate, templates) and executing TeamRuns (start, chat, cancel, reply, result, artifacts). Use when the user asks to find a team, run a team task, check run status, retrieve results or artifacts, or set up multi-agent workflows. Must use ae-cli, read the matching references/<command>.md before composing commands, and never guess team IDs, run IDs, config structures, or parameter formats."
 ---
 
@@ -113,7 +113,7 @@ ae-cli team +run-start --team-id <team_id> --input "分析上周用户留存数�
 # 4. Stream until done (blocks; no polling needed)
 ae-cli team +run-watch --id <run_id>
 # exit 0 → completed/partial_success → go to step 5
-# exit 1 → failed/cancelled → inspect errorMessage in output, report to user
+# exit 1 → inspect the terminal entity or error; for connection errors, use +run-result before considering a new run
 # exit 2 → waiting_user → go to step 4a
 
 # 4a. Handle waiting_user: read pendingQuestion from stdout, get user's answer, reply, re-watch

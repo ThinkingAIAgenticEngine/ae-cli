@@ -7,6 +7,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { precompiledSource, normalizeSourceForHash } from './precompiled-source.mjs';
+import { reportContract } from './execution-contract.mjs';
 
 const require = createRequire(import.meta.url);
 const archiverModule = require('archiver');
@@ -259,6 +260,7 @@ try {
         personal_semantic_integrations: planModel.personalSemanticIntegrations.length,
         blocked_assets: blockedCount, unknown_sql_reports: unknownSqlCount },
       quality_warnings: [...asArray(corpus.warnings),
+        ...planModel.cards.filter(card => !card.routing).map(card => `Recall card ${card.card_id} has legacy routing; precise intent branches require semantic review.`),
         ...(sourceProjectRefs.filter((row) => Number(row.source_project_id) !== semanticProjectId).length
           ? [`${sourceProjectRefs.filter((row) => Number(row.source_project_id) !== semanticProjectId).length} packaged asset reference(s) mention another project: ${sourceProjectRefs.filter((row) => Number(row.source_project_id) !== semanticProjectId).slice(0, 5).map((row) => `${row.resource_type}:${row.resource_key}->${row.source_project_id}`).join(', ')}`] : []),
         ...(unknownSqlCount ? [`${unknownSqlCount} SQL reports have unknown semantics and are blocked.`] : []),
@@ -348,6 +350,22 @@ function validateSemanticPlan() {
             if (![...preferred, ...asArray(card.fallback_asset_refs)].some((allowed) =>
               clean(allowed.resource_type) === clean(ref.resource_type) && clean(allowed.resource_key) === clean(ref.resource_key))) {
               fail(`Recall card ${cardId} routing branch references an asset outside preferred/fallback refs.`);
+            }
+          }
+          const combination = asObject(branch.combination);
+          if (branch.combination != null) {
+            if (!['compatible', 'incompatible', 'unknown'].includes(clean(combination.compatibility))) fail(`Recall card ${cardId} has invalid combination compatibility.`);
+            if (!clean(combination.reason)) fail(`Recall card ${cardId} combination requires an evidence-based reason.`);
+            if (combination.compatibility === 'compatible'
+              && (!asArray(combination.join_keys).length || !clean(combination.time_alignment))) {
+              fail(`Recall card ${cardId} compatible combination requires join_keys and time_alignment.`);
+            }
+            for (const ref of asArray(branch.asset_refs).filter(ref => ref.resource_type === 'report')) {
+              const summary = asArray(semanticPlan.sql_report_semantics).find(row => clean(row.report_id) === clean(ref.resource_key));
+              if (summary && combination.compatibility === 'compatible'
+                && asArray(combination.join_keys).some(key => !asArray(summary.output_fields).some(field => clean(field.name) === clean(key)))) {
+                fail(`Recall card ${cardId} join key is not an output field of report ${ref.resource_key}.`);
+              }
             }
           }
         }
@@ -691,6 +709,7 @@ function writeMergedAsset(wikiRoot, directory, asset, authority, extra = '') {
   const id = clean(asset.resource_key);
   const source = readText(path.join(buildIr, directory, fileName(directory.slice(0, -1), id)))
     .replaceAll('../appendices/', '../technical-appendices/')
+    .replace(/^- 定义状态:\s*(valid|unknown|conflict)\s*$/m, `- 定义状态: ${authority.definition_state}`)
     .replace(/- 源详情: `([^`]+)`/g, '- 资产包源定位（精确证据已内嵌）: `$1`');
   const brief = readText(path.join(buildIr, 'briefs', directory, fileName(directory.slice(0, -1), id)));
   const type = directory === 'dashboards' ? 'project-dashboard' : directory === 'reports' ? 'project-report' : 'project-reusable-metric';
@@ -755,8 +774,11 @@ ${asArray(values).map((ref) => {
   const routing = asObject(card.routing);
   const branches = asArray(routing.branches).map((branch) => {
     const item = asObject(branch);
-    const targets = asArray(item.asset_refs).map(recallAssetLabel).join('、') || '回到业务域核对资产';
-    return `- 当${clean(item.when)}：使用 ${targets}。${clean(item.reason)}`;
+    const targets = asArray(item.asset_refs).map(ref => `[${escapeLink(recallAssetLabel(ref))}](${assetPath(clean(ref.resource_type), clean(ref.resource_key))})`).join('、') || '回到业务域核对资产';
+    const combination = asObject(item.combination);
+    const combinationNote = asArray(item.asset_refs).filter(ref => ref.resource_type !== 'dashboard').length > 1
+      ? ` Combination: ${clean(combination.compatibility) || 'unknown'}; ${clean(combination.reason) || 'Verify common population, stable identity, grain and time before combining.'}${asArray(combination.join_keys).length ? ` Keys: ${asArray(combination.join_keys).join(', ')}.` : ''}${clean(combination.time_alignment) ? ` Time: ${clean(combination.time_alignment)}.` : ''}${asArray(combination.missing_coverage).length ? ` Gaps: ${asArray(combination.missing_coverage).join('; ')}.` : ''}` : '';
+    return `- 当${clean(item.when)}：使用 ${targets}。${clean(item.reason)}${combinationNote}`;
   });
   return `---
 type: project-semantic-recall-card
@@ -801,6 +823,8 @@ ${refs(card.fallback_asset_refs, '备选资产')}
 
 ${refs(card.excluded_asset_refs, '排除资产')}
 
+${renderRecallEvidence(card)}
+
 ## 实时执行边界
 
 - 是否需要执行实时数据：${Boolean(card.requires_live_execution)}
@@ -816,9 +840,46 @@ function recallAssetLabel(ref) {
     : type === 'report' ? reportById.get(key)
       : type === 'metric' ? metricById.get(key)
         : null;
-  const title = assetReadableTitle({ ...asObject(row), title: ref.display_name || ref.title || row?.title, resource_key: key }, type);
+  const title = assetReadableTitle({ ...asObject(row), title: row?.title || ref.display_name || ref.title, resource_key: key }, type);
   const identity = `${type}:${key}`;
   return title && title !== key ? `${title}（${identity}）` : identity;
+}
+
+function renderRecallEvidence(card) {
+  const refs = [...asArray(card.preferred_asset_refs), ...asArray(card.fallback_asset_refs),
+    ...asArray(asObject(card.routing).branches).flatMap(branch => asArray(branch.asset_refs))];
+  const seen = new Set();
+  const lines = [];
+  for (const ref of refs) {
+    const identity = `${ref.resource_type}:${ref.resource_key}`;
+    if (seen.has(identity) || !['report', 'metric'].includes(ref.resource_type)) continue;
+    seen.add(identity);
+    const report = ref.resource_type === 'report' ? reportById.get(clean(ref.resource_key)) : null;
+    const summary = report ? planModel.sqlByReportId.get(clean(ref.resource_key)) : null;
+    const facts = report ? reportContract(report) : null;
+    const parameters = summary ? asArray(summary.input_parameters).map(item => `${clean(item.name)}: ${clean(item.meaning)}`) : [];
+    const measures = summary ? [] : asArray(report?.metric_occurrences).map(item =>
+      [clean(item.display_name || item.event_title || item.event_name), clean(item.aggregation_name || item.aggregation_code)].filter(Boolean).join(': '));
+    const savedScope = !summary && facts && Object.keys(facts.time).length ? ` Saved time scope: ${JSON.stringify(facts.time)}.` : '';
+    const reportSource = summary ? readText(path.join(buildIr, 'reports', fileName('report', clean(ref.resource_key)))) : '';
+    const outputs = summary ? asArray(summary.output_fields).map(item => {
+      const name = clean(item.name);
+      const unverified = reportSource.split('\n').some(line => line.startsWith(`- \`${name}\``) && line.includes('output identity unverified'));
+      if (unverified && asArray(asObject(card.routing).branches).some(branch =>
+        branch.combination?.compatibility === 'compatible'
+        && asArray(branch.combination.join_keys).includes(name)
+        && asArray(branch.asset_refs).some(asset => asset.resource_type === 'report' && clean(asset.resource_key) === clean(ref.resource_key)))) {
+        fail(`Recall card ${card.card_id} join key has unverified output identity in report ${ref.resource_key}: ${name}.`);
+      }
+      return `${name}${unverified ? ' (identity unknown)' : ''}`;
+    }) : [];
+    const reminders = summary ? [
+      ...asArray(summary.calculation_rules).slice(0, 1).map(item => clean(item.meaning)),
+      ...['time_semantics', 'coverage_gaps'].flatMap(key => asArray(summary[key]).map(item => clean(item.meaning))),
+    ] : [];
+    lines.push(`- [${escapeLink(recallAssetLabel(ref))}](${assetPath(ref.resource_type, clean(ref.resource_key))}): ${clean(summary?.business_purpose) || clean(ref.reason)} Grain: ${clean(summary?.statistical_grain) || (facts ? JSON.stringify(facts.groups) : 'verify the asset definition')}.${parameters.length ? ` Parameters: ${parameters.join('; ')}.` : ''}${outputs.length ? ` Outputs: ${outputs.join(', ')}.` : ''}${measures.length ? ` Measures (verify result column identities): ${measures.join('; ')}.` : ''}${savedScope}${reminders.length ? ` Reminders: ${reminders.join('; ')}.` : ''}`);
+  }
+  return lines.length ? `## Minimum asset evidence\n\n${lines.join('\n')}\n\nVerify only dashboard notes, inherited filters or timezone settings that affect the chosen route. Asset visibility does not establish runtime data permissions.` : '';
 }
 
 function renderRecallCardIndex(cards) {
@@ -1481,7 +1542,15 @@ function semanticPlanFragmentRefsForSource(identity, rel) {
   if (rel === 'wiki/project-overview.md') refs.add('project:model');
   if (sourceKind === 'domain' && assetKey) refs.add(`domain:${assetKey}`);
   if (sourceKind === 'appendix' && assetKey) refs.add(`appendix:${assetKey}`);
-  if (sourceKind === 'recall-card' && assetKey) refs.add(`recall-card:${assetKey}`);
+  if (sourceKind === 'recall-card' && assetKey) {
+    refs.add(`recall-card:${assetKey}`);
+    const card = planModel.cards.find(card => clean(card.card_id) === assetKey);
+    for (const ref of [...asArray(card?.preferred_asset_refs), ...asArray(card?.fallback_asset_refs)]) {
+      if (ref.resource_type === 'report' && planModel.sqlByReportId.has(clean(ref.resource_key))) {
+        refs.add(`report:${clean(ref.resource_key)}:sql_semantics`);
+      }
+    }
+  }
   if (sourceKind === 'personal-semantic' && assetKey) {
     refs.add(`personal-semantic-integration:${assetKey}`);
   }

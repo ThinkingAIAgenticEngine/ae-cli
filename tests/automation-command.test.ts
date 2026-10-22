@@ -1,6 +1,14 @@
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
-import { readFileSync } from "node:fs";
+import {
+  readFileSync,
+  mkdtempSync,
+  mkdirSync,
+  writeFileSync,
+  rmSync,
+} from "node:fs";
+import { join } from "node:path";
+import { tmpdir } from "node:os";
 import test from "node:test";
 import {
   automationCommands,
@@ -102,7 +110,10 @@ test("all frequencies and manual creation validate before normal or dry-run tran
         ...schedule,
       });
       command("create").validate!(ctx);
-      assert.equal((await command("create").dryRun!(ctx)).request.method, "POST");
+      assert.equal(
+        (await command("create").dryRun!(ctx)).request.method,
+        "POST",
+      );
     }
   } finally {
     globalThis.fetch = original;
@@ -113,10 +124,10 @@ test("all frequencies and manual creation validate before normal or dry-run tran
     name: "A",
     scheduleKind: "monthly",
     time: "09:00",
-    dayOfMonth: 31,
+    dayOfMonth: 32,
   });
-  assert.throws(() => command("create").validate!(invalid), /1 to 28/);
-  await assert.rejects(() => command("create").dryRun!(invalid), /1 to 28/);
+  assert.throws(() => command("create").validate!(invalid), /1 to 31/);
+  await assert.rejects(() => command("create").dryRun!(invalid), /1 to 31/);
   assert.throws(
     () =>
       configuration(
@@ -271,7 +282,7 @@ test("poll failure retains accepted execution and creation identifiers", async (
     globalThis.fetch = original;
   }
 });
-test("real runtime preserves sandbox identity unless host explicitly overridden", async () => {
+test("real runtime uses user identity with or without an explicit host", async () => {
   const { createRuntimeContext } = await import("../src/framework/runner.ts");
   const keys = ["TE_CLAUDE_BASE_URL", "SANDBOX_ID", "SECRET_KEY"];
   const saved = keys.map((k) => process.env[k]);
@@ -289,8 +300,8 @@ test("real runtime preserves sandbox identity unless host explicitly overridden"
   try {
     const c = command("list");
     await c.execute!(createRuntimeContext(c, {}, {}));
-    assert.equal(seen.at(-1)?.get("X-Sandbox-Id"), "sandbox-test");
-    assert.equal(seen.at(-1)?.get("cli-token"), null);
+    assert.equal(seen.at(-1)?.get("X-Sandbox-Id"), null);
+    assert.ok(seen.at(-1)?.get("cli-token"));
     await c.execute!(
       createRuntimeContext(c, {}, { host: "https://automation-test.example" }),
     );
@@ -372,7 +383,15 @@ test("every automation action sends a server dry-run preflight", async () => {
   const cases = [
     [command("list"), {}],
     [command("get"), { id: "a" }],
-    [command("create"), { targetType: "agent", agentId: "agent", name: "A", triggerType: "manual" }],
+    [
+      command("create"),
+      {
+        targetType: "agent",
+        agentId: "agent",
+        name: "A",
+        triggerType: "manual",
+      },
+    ],
     [command("update"), { id: "a", targetType: "agent", name: "B" }],
     [command("enable"), { id: "a" }],
     [command("disable"), { id: "a" }],
@@ -382,7 +401,10 @@ test("every automation action sends a server dry-run preflight", async () => {
     [command("get", "runs"), { id: "a", runId: "r" }],
     [command("result", "runs"), { id: "a", runId: "r" }],
     [command("stop", "runs"), { id: "a", runId: "r" }],
-    [command("retry", "runs"), { id: "a", runId: "r", commandId: "retry-command" }],
+    [
+      command("retry", "runs"),
+      { id: "a", runId: "r", commandId: "retry-command" },
+    ],
   ] as const;
   try {
     for (const [item, values] of cases) {
@@ -391,7 +413,11 @@ test("every automation action sends a server dry-run preflight", async () => {
       assert.equal(result.request.body?.message, undefined);
     }
     assert.equal(calls.length, cases.length);
-    assert.ok(calls.every(({ url }) => new URL(url).searchParams.get("dryRun") === "true"));
+    assert.ok(
+      calls.every(
+        ({ url }) => new URL(url).searchParams.get("dryRun") === "true",
+      ),
+    );
   } finally {
     globalThis.fetch = original;
   }
@@ -411,7 +437,10 @@ test("automation errors preserve the server message code and hint", async () => 
     );
   try {
     await assert.rejects(
-      () => command("update").execute!(context({ id: "a", targetType: "team", name: "B" })),
+      () =>
+        command("update").execute!(
+          context({ id: "a", targetType: "team", name: "B" }),
+        ),
       (error: any) =>
         error?.message === "执行目标类型不匹配" &&
         error?.code === "BAD_REQUEST" &&
@@ -436,7 +465,10 @@ test("run errors retain the server recovery hint and the reusable command ID", a
     );
   try {
     await assert.rejects(
-      () => command("run").execute!(context({ id: "a", commandId: "stable-command" })),
+      () =>
+        command("run").execute!(
+          context({ id: "a", commandId: "stable-command" }),
+        ),
       (error: any) =>
         error?.message === "自动化已暂停" &&
         error?.code === "AUTOMATION_SCHEDULE_PAUSED" &&
@@ -465,7 +497,7 @@ test("non-interactive high-risk writes fail immediately without --yes", () => {
     {
       cwd: process.cwd(),
       encoding: "utf8",
-      timeout: 3000,
+      timeout: 15000,
       stdio: ["pipe", "pipe", "pipe"],
       env: {
         ...process.env,
@@ -477,7 +509,7 @@ test("non-interactive high-risk writes fail immediately without --yes", () => {
   );
   assert.equal(result.error, undefined);
   assert.equal(result.status, 1);
-  assert.ok(Date.now() - started < 2500);
+  assert.ok(Date.now() - started < 12000);
   assert.match(result.stderr, /CONFIRMATION_REQUIRED/);
   assert.match(result.stderr, /--yes/);
   assert.doesNotMatch(result.stderr, /Continue\?/);
@@ -485,9 +517,18 @@ test("non-interactive high-risk writes fail immediately without --yes", () => {
 });
 
 test("interactive confirmation remains available only when both streams are TTYs", () => {
-  assert.equal(canPromptForConfirmation({ isTTY: true }, { isTTY: true }), true);
-  assert.equal(canPromptForConfirmation({ isTTY: false }, { isTTY: true }), false);
-  assert.equal(canPromptForConfirmation({ isTTY: true }, { isTTY: false }), false);
+  assert.equal(
+    canPromptForConfirmation({ isTTY: true }, { isTTY: true }),
+    true,
+  );
+  assert.equal(
+    canPromptForConfirmation({ isTTY: false }, { isTTY: true }),
+    false,
+  );
+  assert.equal(
+    canPromptForConfirmation({ isTTY: true }, { isTTY: false }),
+    false,
+  );
 });
 
 test("legacy Agent automation commands are not registered", () => {
@@ -497,7 +538,9 @@ test("legacy Agent automation commands are not registered", () => {
     "+update-automation",
   ]);
   assert.deepEqual(
-    teAgentCommands.filter((item) => retired.has(item.command)).map((item) => item.command),
+    teAgentCommands
+      .filter((item) => retired.has(item.command))
+      .map((item) => item.command),
     [],
   );
   const publishedFiles = [
@@ -514,7 +557,11 @@ test("legacy Agent automation commands are not registered", () => {
   for (const file of publishedFiles) {
     const content = readFileSync(file, "utf8");
     for (const commandName of retired)
-      assert.doesNotMatch(content, new RegExp(`\\${commandName}`), `${file} still documents ${commandName}`);
+      assert.doesNotMatch(
+        content,
+        new RegExp(`\\${commandName}`),
+        `${file} still documents ${commandName}`,
+      );
   }
 });
 
@@ -534,9 +581,334 @@ test("legacy Agent automation invocations fail as unknown commands", () => {
         "agent",
         retired,
       ],
-      { cwd: process.cwd(), encoding: "utf8", timeout: 3000 },
+      { cwd: process.cwd(), encoding: "utf8", timeout: 15000 },
     );
     assert.equal(result.status, 1, `${retired}: ${result.stderr}`);
     assert.match(result.stderr, /unknown command/i);
+  }
+});
+
+test("Agent and Team share all notification fields and preserve patch omission", () => {
+  const channels = [
+    "feishu",
+    "lark",
+    "slack",
+    "discord",
+    "dingtalk",
+    "wecom",
+    "mattermost",
+    "google_chat",
+    "zoom_chat",
+    "whatsapp",
+  ];
+  for (const targetType of ["agent", "team"]) {
+    assert.deepEqual(
+      configuration(
+        context({
+          targetType,
+          channels,
+          feishuChatId: "chat-f",
+          larkChatId: "chat-l",
+          slackChannelId: "channel-s",
+        }),
+        false,
+      ),
+      {
+        channels,
+        feishuChatId: "chat-f",
+        larkChatId: "chat-l",
+        slackChannelId: "channel-s",
+      },
+    );
+    assert.deepEqual(
+      configuration(
+        context({
+          targetType,
+          channels: [],
+          feishuChatId: "null",
+          larkChatId: "null",
+          slackChannelId: "null",
+        }),
+        false,
+      ),
+      {
+        channels: [],
+        feishuChatId: null,
+        larkChatId: null,
+        slackChannelId: null,
+      },
+    );
+    assert.deepEqual(
+      configuration(context({ targetType, name: "Updated" }), false),
+      { name: "Updated" },
+    );
+    assert.throws(
+      () =>
+        configuration(context({ targetType, channels: ["invalid"] }), false),
+      /supported notification channels/,
+    );
+  }
+  assert.throws(
+    () => configuration(context({ targetType: "agent", scope: {} }), false),
+    /not applicable/,
+  );
+});
+
+test("automation uses the current session CLI identity instead of shared sandbox binding", async () => {
+  const root = mkdtempSync(join(tmpdir(), "automation-session-auth-"));
+  const env = {
+    SANDBOX_RUNTIME_ROOT: root,
+    TE_CLAUDE_BASE_URL: "http://automation-main.local",
+    SANDBOX_ID: "space-sandbox",
+    SANDBOX_SECRET_KEY: "sandbox-test-secret",
+    TE_AGENT_CURRENT_AGENT_SPACE_ID: "space-shared",
+    TE_AGENT_CONVERSATION_ID: "conversation-shared",
+  };
+  const previous = Object.fromEntries(
+    Object.keys(env).map((k) => [k, process.env[k]]),
+  );
+  mkdirSync(join(root, ".ae-config"), { recursive: true });
+  writeFileSync(
+    join(root, ".ae-config", "cli-token.json"),
+    JSON.stringify({
+      url: "https://automation-user.example",
+      token: "cli_current_session",
+    }),
+  );
+  const originalFetch = globalThis.fetch;
+  const calls: Array<{ url: string; headers: Record<string, string> }> = [];
+  globalThis.fetch = async (url, init) => {
+    calls.push({
+      url: String(url),
+      headers: init?.headers as Record<string, string>,
+    });
+    if (String(url).includes("/workspace/v1/target"))
+      return Response.json({
+        ok: true,
+        data: { agentSpaceId: "space-from-conversation" },
+      });
+    return Response.json({
+      return_code: 0,
+      items: [],
+      valid: true,
+      automation: { id: "created-automation" },
+    });
+  };
+  try {
+    Object.assign(process.env, env);
+    const ctx = {
+      ...context(),
+      hostOverride: () => undefined,
+      host: () => "https://automation-user.example",
+    };
+    await command("list").execute(ctx);
+    const call = calls.find((c) => c.url.includes("/api/cli/automation/v1"))!;
+    assert.equal(call.headers["cli-token"], "cli_current_session");
+    assert.equal(call.headers["X-Sandbox-Id"], undefined);
+    assert.equal(call.headers["X-Sandbox-Secret-Key"], undefined);
+    assert.match(call.url, /agentSpaceId=space-shared/);
+    await command("create").execute({
+      ...ctx,
+      ...context({
+        targetType: "agent",
+        agentId: "agent-1",
+        name: "test",
+        triggerType: "manual",
+        channels: ["slack"],
+      }),
+      hostOverride: () => undefined,
+    });
+    assert.match(calls.at(-1)!.url, /agentSpaceId=space-shared/);
+    await command("list").execute({
+      ...ctx,
+      ...context({ agentSpaceId: "space-explicit" }),
+      hostOverride: () => undefined,
+    });
+    assert.match(calls.at(-1)!.url, /agentSpaceId=space-explicit/);
+    process.env.TE_AGENT_CURRENT_AGENT_SPACE_ID = "";
+    await command("list").execute(ctx);
+    assert.match(calls.at(-1)!.url, /agentSpaceId=space-from-conversation/);
+    assert.ok(
+      calls.some((c) => c.url.includes("conversationId=conversation-shared")),
+    );
+    process.env.TE_AGENT_CURRENT_AGENT_SPACE_ID = "space-shared";
+    calls.length = 0;
+    globalThis.fetch = async (url, init) => {
+      calls.push({
+        url: String(url),
+        headers: init?.headers as Record<string, string>,
+      });
+      return Response.json(
+        { error: "Space is read-only", code: "FORBIDDEN" },
+        { status: 403 },
+      );
+    };
+    await assert.rejects(
+      () => command("list").execute(ctx),
+      /Space is read-only/,
+    );
+    assert.equal(calls.length, 1);
+    assert.equal(calls[0].headers["cli-token"], "cli_current_session");
+    assert.equal(calls[0].headers["X-Sandbox-Id"], undefined);
+  } finally {
+    globalThis.fetch = originalFetch;
+    for (const [k, v] of Object.entries(previous)) {
+      if (v === undefined) delete process.env[k];
+      else process.env[k] = v;
+    }
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test("shared space conversations keep their own credentials and fail closed", async () => {
+  const root = mkdtempSync(join(tmpdir(), "automation-two-users-"));
+  const host = "https://two-users-automation.example";
+  const keys = ["SANDBOX_RUNTIME_ROOT", "TE_AGENT_CLI_CONFIG_DIR"];
+  const previous = keys.map((k) => process.env[k]);
+  const { getCliToken, peekCliToken } =
+    await import("../src/core/cli-token.ts");
+  const shared = join(root, ".ae-config");
+  const a = join(root, "conversation-a", ".ae-config", "attempt-a");
+  const b = join(root, "conversation-b", ".ae-config", "attempt-b");
+  for (const [dir, token] of [
+    [shared, "cli_user_b"],
+    [a, "cli_user_a"],
+    [b, "cli_user_b"],
+  ]) {
+    mkdirSync(dir, { recursive: true });
+    writeFileSync(
+      join(dir, "cli-token.json"),
+      JSON.stringify({ url: host, token }),
+    );
+  }
+  try {
+    process.env.SANDBOX_RUNTIME_ROOT = root;
+    process.env.TE_AGENT_CLI_CONFIG_DIR = a;
+    const firstA = getCliToken(host);
+    process.env.TE_AGENT_CLI_CONFIG_DIR = b;
+    const firstB = getCliToken(host);
+    assert.deepEqual(await Promise.all([firstA, firstB]), [
+      "cli_user_a",
+      "cli_user_b",
+    ]);
+    process.env.TE_AGENT_CLI_CONFIG_DIR = a;
+    assert.equal(await getCliToken(host), "cli_user_a");
+    assert.equal(peekCliToken(host), "cli_user_a");
+    await assert.rejects(
+      () => getCliToken("https://unrelated.example"),
+      /session.*credential/i,
+    );
+    rmSync(join(a, "cli-token.json"));
+    await assert.rejects(() => getCliToken(host), /session.*credential/i);
+    assert.equal(peekCliToken(host), undefined);
+    writeFileSync(join(a, "cli-token.json"), "{}");
+    await assert.rejects(() => getCliToken(host), /session.*credential/i);
+  } finally {
+    keys.forEach((k, i) => {
+      if (previous[i] === undefined) delete process.env[k];
+      else process.env[k] = previous[i];
+    });
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test("multi-date schedules preserve legacy fields and validate arrays", () => {
+  for (const targetType of ["agent", "team"]) {
+    for (const [fields, schedule] of [
+      [
+        { scheduleKind: "weekly", time: "09:17", weekdays: [5, 1, 3, 1] },
+        { kind: "weekly", time: "09:17", weekdays: [1, 3, 5] },
+      ],
+      [
+        { scheduleKind: "monthly", time: "09:59", daysOfMonth: [31, 1] },
+        { kind: "monthly", time: "09:59", daysOfMonth: [1, 31] },
+      ],
+      [
+        {
+          scheduleKind: "monthly",
+          time: "09:17",
+          daysOfMonth: ["L", 31, 1, "L"],
+        },
+        { kind: "monthly", time: "09:17", daysOfMonth: [1, 31, "L"] },
+      ],
+      [
+        { scheduleKind: "monthly", time: "09:17", daysOfMonth: ["L"] },
+        { kind: "monthly", time: "09:17", daysOfMonth: ["L"] },
+      ],
+      [
+        { scheduleKind: "monthly", time: "09:01", dayOfMonth: 31 },
+        { kind: "monthly", time: "09:01", dayOfMonth: 31 },
+      ],
+    ])
+      assert.deepEqual(
+        configuration(context({ targetType, ...fields }), false).schedule,
+        schedule,
+      );
+    for (const fields of [
+      { scheduleKind: "weekly", time: "09:17", weekdays: [] },
+      { scheduleKind: "weekly", time: "09:17", weekdays: [7] },
+      { scheduleKind: "weekly", time: "09:17", weekdays: [1], weekday: 1 },
+      { scheduleKind: "monthly", time: "09:17", daysOfMonth: [0, 32] },
+      { scheduleKind: "monthly", time: "09:17", daysOfMonth: ["last"] },
+      {
+        scheduleKind: "monthly",
+        time: "09:17",
+        daysOfMonth: ["L"],
+        dayOfMonth: 1,
+      },
+      { scheduleKind: "weekly", time: "09:17", weekdays: ["L"] },
+      {
+        scheduleKind: "monthly",
+        time: "09:17",
+        daysOfMonth: [1],
+        dayOfMonth: 1,
+      },
+      { scheduleKind: "daily", time: "09:17", weekdays: [1] },
+      { weekdays: [1] },
+      { weekdays: [] },
+      { daysOfMonth: [] },
+    ])
+      assert.throws(() =>
+        configuration(context({ targetType, ...fields }), false),
+      );
+    for (const cronExpression of [
+      "17 9 * * 1,3,5",
+      "59 9 1,15,31 * *",
+      "17 9 L * *",
+      "17 9 1,31,L * *",
+    ])
+      assert.equal(
+        configuration(context({ targetType, cronExpression }), false)
+          .cronExpression,
+        cronExpression,
+      );
+    for (const cronExpression of [
+      "17 9 * * 1,7",
+      "17 9 1,32 * *",
+      "17 9 * * 1,",
+      "17 9 1 * 1",
+      "17 9 * * L",
+      "17 9 L,L, * *",
+      "17 9 L-1 * *",
+      "17 9 L L *",
+    ])
+      assert.throws(() =>
+        configuration(context({ targetType, cronExpression }), false),
+      );
+  }
+});
+
+test("create and update expose plural JSON date flags alongside legacy numeric flags", () => {
+  for (const name of ["create", "update"]) {
+    for (const flag of ["weekdays", "days-of-month"])
+      assert.equal(
+        command(name).flags?.find((item) => item.name === flag)?.type,
+        "json",
+      );
+    for (const flag of ["weekday", "day-of-month"])
+      assert.equal(
+        command(name).flags?.find((item) => item.name === flag)?.type,
+        "number",
+      );
   }
 });

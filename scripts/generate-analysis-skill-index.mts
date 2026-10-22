@@ -11,6 +11,7 @@ const checkOnly = process.argv.includes('--check');
 
 const sharedReferences = new Set([
   'collaboration.md',
+  'scenario_evaluation.md',
   'agent_review_preflight.md',
   'agent_review_priorities_comparisons.md',
   'ai_models.md',

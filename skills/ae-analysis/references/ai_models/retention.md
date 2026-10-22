@@ -86,6 +86,8 @@ Place this object inside `retention`. `combine_operator` belongs to `initial_dat
 
 Both roles support `formula` and `dependencies` with the same retention aggregation restrictions. Use bare aliases for new formulas. Preserve returned `formulation` and `custom_filters` when updating a saved formula; they carry the native dependency metadata and filters. Metric `filters` use event-only leaves and support recursive `items`/`relation` groups.
 
+For conditions on just one formula operand, use that dependency's `filters` / `relation` as described in [formula operand filters](event.md#formula-operand-filters). Dependency leaves use the generic `field` shape, unlike the simultaneous metric's event-only filters. Do not replace operand conditions with shared metric filters; retain retention's aggregation and saved-metric restrictions.
+
 `relation_event_property_name` supplies a shared relation property. `initial_relation_event_property_name` and `return_relation_event_property_name` override it for the two cohort events; both must resolve whenever either is configured. A `return_users` metric can override `relation_event_property_name` for its own event. All relation properties must have compatible types; relation overrides do not apply to `initial_date`.
 
 ## Grouping and summary settings

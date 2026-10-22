@@ -17,7 +17,7 @@ Exit condition: equivalent gateway capabilities preserve permissions, idempotenc
 - `ae-cli automation enable|disable --id ID`
 - `ae-cli automation delete --id ID --yes`
 
-Scheduled creation needs `--schedule-kind` or `--cron-expression`. Frequencies: hourly with `--minute 0..59`; daily with `--time HH:mm`; weekly also `--weekday 0..6`; monthly also `--day-of-month 1..28`. Times use the server timezone. Manual creation does not require a schedule. `--trigger-immediately` executes after creation; `--wait` then waits for that execution. Creation and immediate execution have separate results: do not create another automation if only its execution failed.
+Scheduled creation needs `--schedule-kind` or `--cron-expression`. Frequencies: hourly with `--minute 0..59`; daily with `--time HH:mm`; weekly also `--weekdays '[1,3,5]'` (0=Sunday through 6=Saturday); monthly also `--days-of-month '[1,15,31]'` (integers 1–31 and `"L"` for the actual last day of the month). Existing single-day flags `--weekday 0..6` and `--day-of-month 1..31` remain supported; do not combine a single-day flag with its plural array. Arrays must be non-empty; duplicates are removed and dates sorted. Dates absent in the current month are skipped, never shifted into the next month. `"L"` follows the actual month end in the server timezone (including leap years). It can be selected alone or with numeric dates; overlapping selections at the same time run only once. Any minute 00–59 is valid in `--time`. Times use the server timezone. Manual creation does not require a schedule. `--trigger-immediately` executes after creation; `--wait` then waits for that execution. Creation and immediate execution have separate results: do not create another automation if only its execution failed.
 
 On update, omitted fields retain their values. `--model null`, `--scope null`, destination IDs set to `null`, and `--save-to-knowledge-base-id null` clear nullable fields. `--channels '[]'` clears notifications; `--clear-message` clears instructions; `--reuse-conversation false` disables reuse. An automation's target is immutable on update. Team fields are rejected for Agent targets and vice versa.
 
@@ -51,3 +51,20 @@ Without `--wait`, success means accepted. With `--wait`, output includes complet
 ## Compatibility
 
 The retired Agent-domain automation commands are unavailable. Use the `automation` domain for the complete lifecycle, including teams.
+
+## Shared result notifications and identity
+
+Agent and Agent Team both accept `--channels '["feishu","slack"]'`, `--feishu-chat-id`, `--lark-chat-id` and `--slack-channel-id`. Supported channels: `feishu`, `lark`, `slack`, `discord`, `dingtalk`, `wecom`, `mattermost`, `google_chat`, `zoom_chat`, `whatsapp`. Availability and destination permissions are validated by the server. Omitted update fields keep the existing values; `--channels '[]'` disables external delivery, and a receiver value of `null` clears that override. Results remain available in the application.
+
+Automation requests use the current user's `cli-token`, including in a shared sandbox. They do not infer an owner from `SandboxUser` or fall back to a different member. `--agent-space-id` takes precedence over `TE_AGENT_CURRENT_AGENT_SPACE_ID` or the current AgentSpace working directory. When the shell has changed directories, `TE_AGENT_CONVERSATION_ID` resolves the space through the existing authenticated workspace target API; a resolution failure never falls back to the personal space. Membership and write permissions are enforced by the server.
+
+For conversational creation, keep the supplied prompt editable until the user sends it. Resolve missing or ambiguous targets, summarize the configuration and obtain confirmation before creating. Agent runs inherit its model unless explicitly overridden; Agent Team retains its own configuration. Omit `--trigger-immediately` unless the user requests an immediate run.
+
+## Multi-date examples
+
+```bash
+ae-cli automation create --target-type agent --agent-id ID --name "Weekly report" --message "Summarize the latest metrics" --schedule-kind weekly --weekdays '[1,3,5]' --time 09:17
+ae-cli automation update --id ID --target-type team --schedule-kind monthly --days-of-month '[1,15,"L"]' --time 18:59
+```
+
+Each schedule has one execution time. Select `[1,2,3,4,5]` for Monday–Friday or `[0,6]` for weekends; these are weekdays, not a regional holiday calendar. Five-field cron accepts equivalent comma-separated weekday or month-day lists, such as `17 9 * * 1,3,5` and `59 18 1,15,L * *`. `L` is supported only in the month-day field. Ranges, steps and multiple execution times are not supported. `get` returns the saved `cronExpression` and notification configuration. On a scheduled active task, `nextRunAt`, `scheduleTimeZone` and `serverUtcOffset` describe the server's next execution.

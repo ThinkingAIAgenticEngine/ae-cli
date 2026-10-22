@@ -8,6 +8,7 @@ import info from './info/index.js';
 import markTime from './mark-time/index.js';
 import member from './member/index.js';
 import memberCandidate from './member-candidate/index.js';
+import memberGroup from './member-group/index.js';
 import memberHandover from './member-handover/index.js';
 import memberReceiver from './member-receiver/index.js';
 import owner from './owner/index.js';
@@ -29,6 +30,7 @@ const commands: Command[] = [
   ...markTime,
   ...member,
   ...memberCandidate,
+  ...memberGroup,
   ...memberHandover,
   ...memberReceiver,
   ...owner,

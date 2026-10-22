@@ -111,15 +111,13 @@ await test('Transport keeps feedback context distinct, validates without submitt
   }
 });
 
-await test('Both Skills ask only after completed query and final answer, never after other actions', () => {
+await test('Both Skills keep explicit feedback supplementary and separate from scenario collection', () => {
   for (const name of ['ae-analysis', 'ae-capability']) {
     const skill = readFileSync(new URL(`../skills/${name}/SKILL.md`, import.meta.url), 'utf8');
-    assert.match(skill, /only after a completed analysis data query and the final business analysis answer/i);
-    for (const exclusion of ['individual CLI calls', 'metadata inspection', 'asset governance/writes', 'configuration', 'running exports', 'failed queries']) {
-      assert.ok(skill.includes(exclusion), `${name} must exclude ${exclusion}`);
-    }
-    assert.match(skill, /No explicit feedback means no submission or new feedback event/);
-    assert.match(skill, /do not upload the analysis answer/i);
-    assert.match(skill, /must not block subsequent business work/);
+    assert.match(skill, /Do not routinely ask for a satisfaction rating/);
+    assert.match(skill, /explicit standalone user ratings/);
+    assert.match(skill, /No explicit feedback means no submission or new feedback event for `cli_analysis_feedback`/);
+    assert.match(skill, /Do not upload the analysis answer/);
+    assert.match(skill, /must not block the answer or subsequent business work/);
   }
 });

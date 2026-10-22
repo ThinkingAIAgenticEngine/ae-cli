@@ -4,6 +4,7 @@
  * Auth header selection logic:
  *   1. Legacy model/sync endpoints retain sandbox authentication without a host override.
  *   2. Other configured-host calls use the unified cli-token credential.
+ *   3. User-scoped automation always uses cli-token and never infers a user from a shared sandbox.
  *
  * Supports ae-cli sync / model / agent commands.
  */
@@ -19,6 +20,7 @@ import { getActiveHost } from './config.js';
 import { PermissionError, isApiErrorType, type ApiErrorType } from './errors.js';
 import { internalCallSourceHeaders } from './internal-call-source.js';
 import { resolveTeClaudeBaseUrl } from './te-claude-base-url.js';
+import { externalCliTokenRequestOptions, readExternalCliToken } from './external-cli-token.js';
 
 export class TeAgentApiError extends Error {
   constructor(
@@ -42,7 +44,7 @@ interface SignedRequest {
   tokenHost?: string;
 }
 
-type TeAgentHttpMethod = 'GET' | 'POST' | 'DELETE' | 'PATCH' | 'PUT';
+export type TeAgentHttpMethod = 'GET' | 'POST' | 'DELETE' | 'PATCH' | 'PUT' | 'HEAD';
 
 // Default request timeouts: 30s for regular endpoints, relaxed to 120s for file uploads
 const DEFAULT_TIMEOUT_MS = 30_000;
@@ -61,7 +63,7 @@ async function fetchWithTimeout(
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
   try {
-    return await fetch(url, { ...init, signal: controller.signal });
+    return await fetch(url, { ...init, signal: controller.signal, ...externalCliTokenRequestOptions(url) });
   } catch (err: any) {
     if (err?.name === 'AbortError') {
       throw new TeAgentApiError(
@@ -139,7 +141,9 @@ async function signRequest(
   path: string,
   hostOverride?: string,
   includeJsonContentType = true,
+  authMode: 'auto' | 'cli-token' = 'auto',
 ): Promise<SignedRequest> {
+  const external = readExternalCliToken(hostOverride);
   const configuredHost = hostOverride || getActiveHost();
   // Choosing CLI-token authentication must not depend on legacy file permissions.
   // Authentication failures on this path never fall back to sandbox credentials.
@@ -152,10 +156,10 @@ async function signRequest(
     '/api/sandbox/sync/pull',
     '/api/sandbox/sync/pull/candidates',
   ]).has(path.split('?')[0]);
-  const sandboxCred = configuredHost && !sandboxOnly ? null : tryLoadTeAgentSandboxCredentials();
+  const sandboxCred = external || (configuredHost && !sandboxOnly) ? null : tryLoadTeAgentSandboxCredentials();
 
   // --- Sandbox path: credentials complete ---
-  if (!hostOverride && sandboxCred && sandboxCred.sandboxId && sandboxCred.sandboxSecretKey) {
+  if (authMode === 'auto' && !hostOverride && sandboxCred && sandboxCred.sandboxId && sandboxCred.sandboxSecretKey) {
     const headers: Record<string, string> = {
       'X-Sandbox-Id': sandboxCred.sandboxId,
       'X-Sandbox-Secret-Key': sandboxCred.sandboxSecretKey,
@@ -172,8 +176,8 @@ async function signRequest(
 
   // Determine base URL: prefer the sandbox url field (reuse even if sandbox Id/Key are missing but URL is present),
   // otherwise fall back to the ae-cli-configured activeHost (set by the user via `ae-cli config set-host`).
-  const baseUrl = hostOverride
-    ? teClaudeBaseFromActiveHost(hostOverride)
+  const baseUrl = hostOverride || external
+    ? teClaudeBaseFromActiveHost(hostOverride || external?.url)
     : sandboxCred?.url || teClaudeBaseFromActiveHost();
 
   if (!baseUrl) {
@@ -202,27 +206,30 @@ async function signRequest(
   };
 }
 
-interface SignedFetchOptions {
+export interface SignedFetchOptions {
+  authMode?: 'auto' | 'cli-token';
   method: TeAgentHttpMethod;
   path: string;
   body?: BodyInit;
   hostOverride?: string;
   includeJsonContentType?: boolean;
   timeoutMs?: number;
+  headers?: HeadersInit;
 }
 
-async function fetchSigned(options: SignedFetchOptions): Promise<Response> {
+export async function fetchSigned(options: SignedFetchOptions): Promise<Response> {
   const signed = await signRequest(
     options.method,
     options.path,
     options.hostOverride,
     options.includeJsonContentType,
+    options.authMode,
   );
   return fetchWithTimeout(
     signed.url,
     {
       method: options.method,
-      headers: signed.headers,
+      headers: { ...Object.fromEntries(new Headers(options.headers).entries()), ...signed.headers },
       body: options.body,
     },
     options.timeoutMs,
@@ -252,6 +259,8 @@ function errorDetails(parsed: any, defaultErrorPrefix: string, status: number): 
     ? nested.code
     : typeof parsed?.code === 'string'
       ? parsed.code
+      : typeof parsed?.errorCode === 'string'
+        ? parsed.errorCode
       : undefined;
   const hint = typeof nested?.hint === 'string'
     ? nested.hint
@@ -276,7 +285,7 @@ export function createTeAgentApiError(
   return new TeAgentApiError(error.message, status, error.code, body, error.type, error.hint, error.details);
 }
 
-async function parseResponse<T>(response: Response, defaultErrorPrefix: string): Promise<T> {
+export async function parseResponse<T>(response: Response, defaultErrorPrefix: string): Promise<T> {
   const text = await response.text();
   let parsed: any = undefined;
   if (text) {
@@ -321,6 +330,7 @@ export async function postToMainApp<T = unknown>(
   path: string,
   body: unknown,
   hostOverride?: string,
+  authMode: 'auto' | 'cli-token' = 'auto',
 ): Promise<T> {
   const rawBody = JSON.stringify(body);
   const response = await fetchSigned({
@@ -328,6 +338,7 @@ export async function postToMainApp<T = unknown>(
     path,
     body: rawBody,
     hostOverride,
+    authMode,
   });
 
   return parseResponse<T>(response, 'Main app returned');
@@ -341,11 +352,13 @@ export async function postToMainApp<T = unknown>(
 export async function getFromMainApp<T = unknown>(
   path: string,
   hostOverride?: string,
+  authMode: 'auto' | 'cli-token' = 'auto',
 ): Promise<T> {
   const response = await fetchSigned({
     method: 'GET',
     path,
     hostOverride,
+    authMode,
   });
 
   return parseResponse<T>(response, 'Main app returned');
@@ -467,11 +480,13 @@ export async function postSandboxSyncPull(args: {
 export async function deleteFromMainApp<T = unknown>(
   path: string,
   hostOverride?: string,
+  authMode: 'auto' | 'cli-token' = 'auto',
 ): Promise<T> {
   const response = await fetchSigned({
     method: 'DELETE',
     path,
     hostOverride,
+    authMode,
   });
 
   return parseResponse<T>(response, 'Main app returned');
@@ -484,6 +499,7 @@ export async function patchToMainApp<T = unknown>(
   path: string,
   body: unknown,
   hostOverride?: string,
+  authMode: 'auto' | 'cli-token' = 'auto',
 ): Promise<T> {
   const rawBody = JSON.stringify(body);
   const response = await fetchSigned({
@@ -491,6 +507,7 @@ export async function patchToMainApp<T = unknown>(
     path,
     body: rawBody,
     hostOverride,
+    authMode,
   });
 
   return parseResponse<T>(response, 'Main app returned');
@@ -618,6 +635,7 @@ export async function downloadFromMainApp(
           method: 'GET',
           headers: requestToSend.headers,
           signal: controller.signal,
+          ...externalCliTokenRequestOptions(requestToSend.url),
         });
       } catch (error) {
         if ((error as { name?: string })?.name === 'AbortError') {

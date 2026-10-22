@@ -12,6 +12,7 @@ const {
   evaluateAutoAttempt,
   installVersion,
   isAutoSyncTargetEligible,
+  isRegularCliVersion,
   isPublicAeCliPackage,
   resolveNodeTool,
   recordVersionSyncResult,
@@ -26,8 +27,29 @@ assert.equal(isAutoSyncTargetEligible('6.1.4'), false);
 assert.equal(isAutoSyncTargetEligible('6.1.5'), true);
 assert.equal(isAutoSyncTargetEligible('6.2.0'), true);
 assert.equal(isAutoSyncTargetEligible('1.0.30'), false);
+assert.equal(isAutoSyncTargetEligible('6.1.24'), true);
+assert.equal(isAutoSyncTargetEligible(' v6.1.24 '), true);
+assert.equal(isRegularCliVersion('6.0.54'), true);
+assert.equal(isRegularCliVersion('v6.1.24'), true);
+assert.equal(isRegularCliVersion('1.0.30'), true);
+for (const version of [
+  '', 'release/6.1', '6.1', '6.1.x', '6.1.5junk', '6.1.5.9', '6.1.5e3',
+  '06.1.5', '6.01.5', '6.1.05', '-6.1.5', '6.1.-5',
+  '6.1.24-rc.1', '6.1.24+build.1', '6.1.9007199254740992',
+]) {
+  assert.equal(isRegularCliVersion(version), false, `Non-release version: ${version}`);
+  assert.equal(isAutoSyncTargetEligible(version), false, `Non-release target: ${version}`);
+}
 assert.equal(isPublicAeCliPackage('@thinkingai/ae-cli'), true);
 assert.equal(isPublicAeCliPackage('@tant/ae-cli'), false);
+
+// Explicit updates keep accepting exact SemVer even when automatic replacement skips it.
+for (const target of ['6.1.24-rc.1', '6.1.24+build.1']) {
+  const result = installVersion(target, { dryRun: true, packageName: '@thinkingai/ae-cli' });
+  assert.equal(result.ok, true, JSON.stringify(result));
+  assert.equal(result.report?.cli.version, target);
+  assert.ok(result.report?.commands?.[0].includes(`@thinkingai/ae-cli@${target}`));
+}
 
 const now = new Date('2026-07-28T08:00:00.000Z');
 const firstAttempt = evaluateAutoAttempt(undefined, '6.1.9', now);

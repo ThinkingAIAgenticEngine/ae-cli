@@ -29,6 +29,6 @@ This capability starts an asynchronous artifact export. Use `--wait --output <pa
 
 - `--artifact-format xlsx` selects the logical data format. Follow the returned descriptor for compression and content type.
 - `--request-id cli_<32 lowercase hex>` assigns a stable request identifier.
-- `--timeout-seconds` accepts 1–7200 (server default: 3600).
+- Omit `--timeout-seconds` to use the server-provided default. This typed CLI accepts explicit values in `1..7200`; inspect this capability for the deployment default/max. Use `capability run` with a larger explicit `timeout_seconds` only when its schema permits it.
 - `--wait-timeout-seconds` controls how long this CLI invocation waits; it does not change the server runtime limit.
 - Explicit flags override corresponding `--payload` fields; omitted options preserve payload values.

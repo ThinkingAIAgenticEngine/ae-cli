@@ -14,7 +14,7 @@ ae-cli analysis-governance asset batch-sql-export --project-id <project_id> --no
 
 Capability id: governance.asset.batch_export_sql.
 
-Input sends `project_id` and `node_ids`. Optional `request_id`, `format` (only `xlsx`), and `timeout_seconds` (1..7200, default 3600) may be supplied through `--payload`. The CLI merges the snake_case object from `--payload` into these top-level Gateway fields; explicit flags override matching payload fields. `--project-id` owns the project identity and cannot be supplied or overridden by payload. Required business fields must exist in the final merged input.
+Input sends `project_id` and `node_ids`. Optional `request_id`, `format` (only `xlsx`), and `timeout_seconds` may be supplied through `--payload`; inspect the capability for the server default/range. The explicit `--timeout-seconds` flag retains its `1..7200` range. The CLI merges the snake_case object from `--payload` into these top-level Gateway fields; explicit flags override matching payload fields. `--project-id` owns the project identity and cannot be supplied or overridden by payload. Required business fields must exist in the final merged input.
 
 Output `data` is an async XLSX descriptor with `run_id`, `artifact_id`, status, and expiry fields. Alternatively, wait and download with `ae-cli analysis run wait --run-id <run_id> --output <file>` using the returned run ID; see [`run_wait.md`](run_wait.md).
 
@@ -31,6 +31,6 @@ This capability starts an asynchronous artifact export. Use `--wait --output <pa
 
 - `--artifact-format xlsx` selects the logical data format. Follow the returned descriptor for compression and content type.
 - `--request-id cli_<32 lowercase hex>` assigns a stable request identifier.
-- `--timeout-seconds` accepts 1–7200 (server default: 3600).
+- Omit `--timeout-seconds` to use the server-provided default. This typed CLI accepts explicit values in `1..7200`; inspect this capability for the deployment default/max. Use `capability run` with a larger explicit `timeout_seconds` only when its schema permits it.
 - `--wait-timeout-seconds` controls how long this CLI invocation waits; it does not change the server runtime limit.
 - Explicit flags override corresponding `--payload` fields; omitted options preserve payload values.

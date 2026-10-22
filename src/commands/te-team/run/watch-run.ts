@@ -2,6 +2,7 @@ import type { Command } from '../../../framework/types.js';
 import { BASE_RUN_PATH } from '../shared.js';
 import { printOutput, printError } from '../../../framework/output.js';
 import { getAuthHeaders } from '../../../core/mcp-access.js';
+import { externalCliTokenRequestOptions, redactExternalCliToken } from '../../../core/external-cli-token.js';
 
 const STREAM_PATH = (id: string) => `${BASE_RUN_PATH}/stream/${id}`;
 
@@ -26,30 +27,41 @@ export const watchRun: Command = {
   execute: async (ctx) => {
     const runId = ctx.str('id');
     const quiet = ctx.bool('quiet');
-    const authHeaders = await getAuthHeaders(ctx);
     const host = ctx.host().replace(/\/$/, '');
 
     // Tracks the last log timestamp across reconnects to avoid replaying old log lines.
     let lastLogTs: number | undefined = ctx.num('after-log') || undefined;
     let reconnects = 0;
 
-    while (reconnects <= MAX_RECONNECTS) {
+    const reconnect = async (reason: string): Promise<boolean> => {
+      if (reconnects >= MAX_RECONNECTS) return false;
+      reconnects++;
+      if (!quiet) {
+        process.stderr.write(redactExternalCliToken(`[reconnect] ${reason} (${reconnects}/${MAX_RECONNECTS}), retrying...\n`));
+      }
+      await delay(RECONNECT_DELAY_MS);
+      return true;
+    };
+
+    while (true) {
       const url = new URL(`${host}${STREAM_PATH(runId)}`);
       if (lastLogTs !== undefined) url.searchParams.set('afterLog', String(lastLogTs));
+      // Recheck credentials for each connection; auth/config errors must not be retried as network failures.
+      const authHeaders = await getAuthHeaders(ctx);
+      const requestOptions = externalCliTokenRequestOptions(url.toString());
 
       let resp: Response;
       try {
         resp = await fetch(url.toString(), {
+          ...requestOptions,
           headers: {
             ...authHeaders,
             Accept: 'text/event-stream',
             'Cache-Control': 'no-cache',
           },
         });
-      } catch (err: any) {
-        if (!quiet) process.stderr.write(`[reconnect] network error: ${err.message}\n`);
-        reconnects++;
-        await delay(RECONNECT_DELAY_MS);
+      } catch (err: unknown) {
+        if (!await reconnect(`network error: ${err instanceof Error ? err.message : String(err)}`)) break;
         continue;
       }
 
@@ -64,7 +76,7 @@ export const watchRun: Command = {
       let evtName = '';
       let evtData = '';
 
-      const flush = async () => {
+      const flush = async (): Promise<number | undefined> => {
         if (!evtName || !evtData) {
           evtName = evtData = '';
           return;
@@ -84,14 +96,13 @@ export const watchRun: Command = {
             if (payload.timestamp) lastLogTs = payload.timestamp;
             if (!quiet) {
               const { type, stepId, content } = payload;
-              process.stderr.write(`[${type}] ${stepId}: ${content}\n`);
+              process.stderr.write(redactExternalCliToken(`[${type}] ${stepId}: ${content}\n`));
             }
             break;
           }
           case 'error': {
             printError('api', payload.error || 'stream error');
-            process.exit(1);
-            break;
+            return 1;
           }
           case 'snapshot':
           case 'update': {
@@ -99,44 +110,58 @@ export const watchRun: Command = {
             if (!quiet) process.stderr.write(`[status] ${status}\n`);
             if (status === 'waiting_user') {
               await printOutput(payload, 'json');
-              process.exit(2);
+              return 2;
             }
             break;
           }
           case 'final': {
             await printOutput(payload, 'json');
-            process.exit(SUCCESS_STATUSES.has(payload.status) ? 0 : 1);
-            break;
+            return SUCCESS_STATUSES.has(payload.status) ? 0 : 1;
           }
         }
 
         evtName = evtData = '';
       };
 
-      let streamDone = false;
-      while (!streamDone) {
-        const { done, value } = await reader.read();
-        if (done) { streamDone = true; break; }
+      let exitCode: number | undefined;
+      let closeReason = 'stream closed';
+      try {
+        readStream: while (true) {
+          let chunk: ReadableStreamReadResult<Uint8Array>;
+          try {
+            chunk = await reader.read();
+          } catch (err: unknown) {
+            // Keep event decoding/dispatch outside this transport-only retry boundary.
+            if (err instanceof Error && err.name === 'AbortError') throw err;
+            closeReason = `stream read error: ${err instanceof Error ? err.message : String(err)}`;
+            break;
+          }
+          if (chunk.done) break;
 
-        buf += decoder.decode(value, { stream: true });
-        const lines = buf.split(/\r?\n/);
-        buf = lines.pop() ?? '';
+          buf += decoder.decode(chunk.value, { stream: true });
+          const lines = buf.split(/\r?\n/);
+          buf = lines.pop() ?? '';
 
-        for (const line of lines) {
-          if (line.startsWith('event:')) {
-            evtName = line.slice(6).trim();
-          } else if (line.startsWith('data:')) {
-            evtData = line.slice(5).trim();
-          } else if (line === '') {
-            await flush();
+          for (const line of lines) {
+            if (line.startsWith('event:')) {
+              evtName = line.slice(6).trim();
+            } else if (line.startsWith('data:')) {
+              evtData = line.slice(5).trim();
+            } else if (line === '') {
+              exitCode = await flush();
+              if (exitCode !== undefined) break readStream;
+            }
           }
         }
+      } finally {
+        // Cancel before exit/reconnect, including terminal events received on a still-open stream.
+        try { await reader.cancel(); } catch { /* An errored stream may also reject cancellation. */ }
+        reader.releaseLock();
       }
+      if (exitCode !== undefined) process.exit(exitCode);
 
-      // Stream closed without a final/error event — reconnect.
-      reconnects++;
-      if (!quiet) process.stderr.write(`[reconnect] stream closed (${reconnects}/${MAX_RECONNECTS}), retrying...\n`);
-      await delay(RECONNECT_DELAY_MS);
+      // EOF and read failures share the connection-failure retry budget and last complete log cursor.
+      if (!await reconnect(closeReason)) break;
     }
 
     printError('api', `Stream closed after ${MAX_RECONNECTS} reconnect attempts`);

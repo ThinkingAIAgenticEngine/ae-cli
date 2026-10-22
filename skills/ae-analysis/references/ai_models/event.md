@@ -87,14 +87,70 @@ Formula metric example:
 Formula rules:
 
 - Write **bare aliases** only in `formula` (e.g. `"revenue / users"` or `"pay / dau"`).
-- **Do not** write `alias.Axxx` (e.g. `"pay.A103"` / `"revenue.A103"`). Aggregation codes come from each dependency's `aggregation`; the builder expands aliases to real event tokens such as `purchase.amount.A103/login.A101`.
+- **Do not** write `alias.Axxx` (e.g. `"pay.A103"` / `"revenue.A103"`). Event aggregation codes come from that dependency's `aggregation`; saved-metric dependencies retain their own definition. The builder expands aliases to native event or saved-metric tokens.
 - Verify the complete formula through one analysis query and inspect its resolved definition and result before saving it. Reuse that result; a formula does not require a removed QP builder.
+
+## Formula operand filters
+
+For a new or intentionally rewritten formula, put each operand's conditions in that dependency's `filters`; `relation` joins its filters and defaults to `and`. These use the generic filter shape (`field`, `operator`, `values`, or an `items`/`relation` group), not the event-only `event_property_name` shape. Resolve event properties against that dependency's event. For example, only the numerator below requires the spring festival and `win=true`; the denominator remains unfiltered:
+
+```json
+{
+  "time_range": {"mode": "previous", "unit": "day", "value": 7},
+  "metrics": [{
+    "formula": "completed / participants",
+    "dependencies": [
+      {
+        "alias": "completed", "event": "activity_dungeon", "aggregation": "total_count",
+        "relation": "and",
+        "filters": [
+          {"field": {"type": "event_property", "name": "festival_name"}, "operator": "eq", "values": ["spring"]},
+          {"field": {"type": "event_property", "name": "win"}, "operator": "is_true"}
+        ]
+      },
+      {"alias": "participants", "event": "char_login", "aggregation": "total_count"}
+    ]
+  }]
+}
+```
+
+Replace the example events and properties with verified project metadata. Use `is_true` / `is_false` without `values` for boolean conditions; do not encode `win=true` as `eq` with `[true]` or `["true"]`.
+
+- To filter only the denominator, add `filters` only to its dependency. To give both sides different conditions, populate each dependency independently. One alias's filters apply to all its repeated occurrences; use different aliases for different filters on the same event. Binding follows expression occurrence order, not the order of `dependencies` and not deduplicated event names.
+- Do not move operand filters to root `definition.filters` or to the formula metric's common `filters`: these are shared calculation scopes, not a substitute for numerator/denominator conditions. Keep any intentionally supplied common filters independent of the dependency conditions; never copy an operand's conditions there as a fallback.
+- Compound groups use `{"relation":"and|or","items":[...]}`. Saved-report writes still obey the shared one-compound-level boundary; ad-hoc queries keep recursive support.
+- Filters on a saved metric dependency are not supported; the server rejects them rather than ignoring them. Preserve that metric's existing definition or use an explicitly verified ordinary event dependency. Do not expand or replace a saved metric merely to bypass this restriction.
+- Before using this shape on an older host, check its capability schema for dependency `filters` / `relation`. A new CLI alone does not add server compiler support. If unsupported, report the deployment prerequisite; never silently omit the operand filters.
+- Choose one formula representation. Native `formulation` or non-empty `custom_filters` must not be mixed with non-empty authoring `dependencies`; conflicting input is rejected rather than losing saved conditions or native UI metadata. For an unchanged saved formula, preserve all returned native fields and omit `dependencies`. To intentionally reauthor it, supply a complete reviewed formula/dependency definition and remove conflicting native fields; do not claim this preserves arbitrary native metadata. A supported `format` and display metadata may be kept.
+
+### Saved metrics as formula operands
+
+An event-report formula can reference verified saved metrics directly, without expanding their event definitions. Use each metric's discovered `metric_name` in the dependency's `event` field; it is not a metric ID or a numbered report measure. The compiler resolves the visible metric and preserves its calculation definition. Write only bare aliases in the expression:
+
+```json
+{
+  "time_range": {"mode":"previous","unit":"day","value":7},
+  "metrics": [{
+    "formula":"third / total",
+    "dependencies":[
+      {"alias":"third","event":"<verified_third_party_metric_name>"},
+      {"alias":"total","event":"<verified_total_metric_name>"}
+    ]
+  }]
+}
+```
+
+Replace placeholders with confirmed metric names from the current project. Omit `aggregation`, `property`, and `percentile` for saved-metric operands: the metric already owns these choices. Do not add dummy `total_count` or `sum` to satisfy a validation error. A mixed formula may combine this saved-metric shape with an ordinary event dependency that supplies its real aggregation and required property/percentile. Missing, inaccessible, or ambiguous metadata must follow compiler guidance; do not silently replace a saved metric with an event or inline a different calculation.
+
+A saved metric's own filters belong to its calculation; this is different from adding new `filters` to a saved-metric dependency, which remains unsupported. When creating a filtered metric for later formula reuse, follow [`metric_create.md`](../metric_create.md#saved-metric-filters) and verify its saved conditions with `analysis-meta metric get`. Reuse that verified metric by name without expanding or stripping its definition. To divide filtered replies by all replies, keep the filtered metric only in the numerator and use an independently verified unfiltered metric or event in the denominator; moving its conditions to the formula's common filters changes both sides.
+
+This is a formula inside an event analysis/report, not `analysis-meta metric create`, and it does not imply saved-metric dependency support for retention or other models. Existing saved-formula round-trip rules below still apply.
 
 Saved formula report round-trip rules:
 
 - `analysis report get` can return saved formula metrics with `custom_filters`, `formulation`, `custom_event_desc`, `event_desc`, `format`, `event_type`, `event_split_indexes`, `quota_time_ranges`, `quota_entities`, and `event_uuid`. These are saved-report round-trip fields, not the authoring shape for a new formula.
 - When updating an existing report from its returned `definition`, preserve all of those fields unchanged unless the user explicitly requests that formula behavior to change. `custom_filters[*].index` binds each numerator/denominator occurrence to its own filter set, including repeated event/aggregation tokens.
-- For a display-name-only change, modify only `display_name`. Do not convert the saved formula to `formula + dependencies`, because rebuilding dependencies can change or discard per-component filters and other formula semantics.
+- For a display-name-only change, modify only `display_name`. Do not convert the saved formula to `formula + dependencies`; reauthoring is a different operation and cannot preserve arbitrary native metadata automatically. Mixed representations are rejected as described above.
 - Continue to use the `formula + dependencies` shape above when authoring a new formula metric.
 
 Saved report filter round-trip rules:

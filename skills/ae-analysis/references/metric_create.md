@@ -35,3 +35,32 @@ Output `data.metric` contains the created metric summary.
 - Use public snake_case fields such as `time_range` and `dependencies[].event`; do not send backend-only camelCase fields such as `eventName` in the semantic definition.
 - For event metrics, `--metric-params` is usually a format config such as `{"format":"integer"}`.
 - For retention metrics, `--metric-params` should be the retention `eventView` configuration.
+
+## Saved metric filters
+
+For a semantic event metric, root `filters` and the sole metric's own `filters` are combined with AND. Preserve each scope's `relation` and compound grouping: a root OR group must not become AND between its children, and a metric-level condition must not disappear. For example, this definition means `(country = US OR country = GB) AND elapsed_ms <= 3000`:
+
+```json
+{
+  "time_range": {"mode":"previous","unit":"day","value":7},
+  "metrics": [{
+    "event":"reply",
+    "aggregation":"total_count",
+    "relation":"and",
+    "filters":[
+      {"field":{"type":"event_property","name":"elapsed_ms"},"operator":"lte","values":[3000]}
+    ]
+  }],
+  "relation":"or",
+  "filters":[
+    {"field":{"type":"user_property","name":"country"},"operator":"eq","values":["US"]},
+    {"field":{"type":"user_property","name":"country"},"operator":"eq","values":["GB"]}
+  ]
+}
+```
+
+Use the definition as the single item in `--metric-events`, replacing the example event and properties with verified metadata. Do not put semantic event filter conditions in `metric_params`: non-empty `filts` or misplaced `filters` there are rejected for semantic event creation instead of being silently ignored; null or empty arrays remain compatible. Keep formatting, such as `{"format":"integer"}`, in `--metric-params`. Existing native QP input remains a compatibility path; preserve its own representation rather than mixing it with a semantic definition.
+
+A saved metric is a reusable calculation, not a saved report. The example's `time_range` supplies compilation context; report grouping, comparison periods, and calendar settings are not a promise of persisted query context for that metric. Choose the actual query period when using the metric.
+
+After creation, use `analysis-meta metric get` to verify the saved filters before reusing the metric in a formula. An older backend can accept creation yet discard root filters; a successful response alone does not prove the calculation scope was saved. If readback loses a condition, stop the dependent query and report the backend deployment prerequisite instead of claiming that the filtered result is correct.

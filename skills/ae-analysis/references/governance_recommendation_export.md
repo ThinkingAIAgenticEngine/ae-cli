@@ -4,7 +4,7 @@ Requires `project_semantic_enable=on` for the target project. If export returns 
 
 Use this as the required entry point for CLI Agent asset-authentication and metric-recommendation review.
 
-This command returns one evidence packet seeded from hot shared dashboards and their reports. For normal page-review submission, `--limit 20` is the initial candidate pool; use the bounded expansion procedure below when filtering leaves insufficient candidates. After the command returns, the Agent must transform the returned `work_units` into business-domain review groups before answering. `work_units` are evidence containers, not final answer sections and not an excuse to drop eligible hot dashboards.
+This command returns one evidence packet seeded from eligible shared dashboards and their reports, ordered by available heat and then recent activity. For normal page-review submission, `--limit 20` is the initial candidate pool; use the bounded expansion procedure below when filtering leaves insufficient candidates. After the command returns, the Agent must transform the returned `work_units` into business-domain review groups before answering. `work_units` are evidence containers, not final answer sections and not an excuse to drop eligible dashboards.
 
 Do not use certification-state management commands as a substitute for this recommendation evidence packet.
 Do not load project semantics, project KB, or personal semantic preferences before this command. The recommendation packet is the prerequisite evidence for this review workflow.
@@ -47,7 +47,7 @@ Generate [review priorities and classified definition comparisons](agent_review_
 
 ## Rejection Filtering and Bounded Expansion
 
-Common selects hot dashboards before attaching decision state; it does not automatically replace rejected dashboards with lower-ranked ones. The Agent must apply this procedure before drafting a review:
+Common selects ranked shared dashboards before attaching decision state; it does not automatically replace rejected dashboards with lower-ranked ones. The Agent must apply this procedure before drafting a review:
 
 1. Start with `--limit 20`, unless the user explicitly specifies a different scope or a diagnostic sample. Keep the same host, project, time window, and completed-context setting throughout expansion.
 2. Match each source dashboard to its asset candidate by resource identity. If its current `action_state` is `PREVIOUSLY_REJECTED`, omit the dashboard and its entire display branch: its groups, report/metadata/metric placements, and relations. Do not display that rejected dashboard as completed context or submit it again. A historical `REJECT` alone is not enough to exclude a changed definition; use Common's current same-evidence decision state. Do not treat every `actionable=false` asset as rejected: authenticated context remains useful.
@@ -75,6 +75,14 @@ Report the final requested limit, actual dashboards returned, same-definition re
 - Preserve optional dashboard `space_id` / `space_name` when Common returns them. They are review-page location facts, not eligibility requirements; absence is valid because not every dashboard has an owning space.
 - Keep completed/authenticated context included by default so certified and uncertified assets from the returned evidence appear together under the same business domain. Pass `--include-completed false` only when the user explicitly asks for a pending-only review.
 - If this capability is missing on the target host, report the deployment/catalog gap. Do not synthesize a recommendation from ordinary asset-authentication or metric list commands.
+
+## Incomplete Usage and Lineage
+
+The export may fall back from the requested materialized usage window to Poseidon heat (only for a 90-day request), then to recent activity/update ordering when neither statistic is available. Read `coverage.usage_window_state`, `selection_mode`, and each asset's `heat_source`. Missing statistics and lineage are evidence gaps, not proof of an empty project or a permission failure. Never replace null/unknown users, heat or impact with a factual zero; do not add counts from different sources or claim a Poseidon window anchor that is not exposed. Zero is an observed value and must not be overwritten with older heat. Report the actual returned coverage scope rather than describing all fallback candidates as hot assets. These candidates are for evidence-based manual review, not relaxed automatic certification.
+
+The export marker covers the active request only and is released after success (including empty results) or failure. Do not assume it reserves a project throughout Agent drafting; page submission uses its own idempotency and revision checks.
+
+Each newly authored topic includes optional transport field `semantic_basis: {business_question, grouping_reason, evidence_item_ids}`. Write these explanations from report/event/property/metric definitions and reference items displayed in that topic. The independent preflight must review all topic bases and grouping decisions; CLI/Common only validate nonempty structure and scoped references. Legacy packets without this field remain readable/submittable. Never generate topic business meaning by script templates.
 
 ## Agent Approval Display
 

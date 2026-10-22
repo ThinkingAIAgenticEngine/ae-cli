@@ -246,7 +246,7 @@ export const asyncTimeoutSecondsFlag: Flag = {
   name: 'timeout-seconds',
   type: 'number',
   required: false,
-  desc: 'Async runtime in seconds. Default and max: 21600 (6 hours); cancel earlier with analysis query cancel --run-id <run_id>.',
+  desc: 'Async runtime in seconds. Omit to use the server default (usually 21600 / 6 hours). This CLI accepts explicit values up to 21600; inspect the capability for the server default/max and use capability run for larger allowed values. Cancel with analysis query cancel --run-id <run_id>.',
   min: 1,
   max: 21600,
 };

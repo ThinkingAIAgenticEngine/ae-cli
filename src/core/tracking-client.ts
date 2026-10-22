@@ -4,6 +4,7 @@ import { safeJsonParse } from './json-utils.js';
 import type { TEUploadError, TEUploadResponse } from '../tracking/plan/fix.js';
 import { logger } from './logger.js';
 import { SecureStoreAuthError } from './secure-store.js';
+import { externalCliTokenRequestOptions } from './external-cli-token.js';
 
 export interface TEProperty {
   name: string;
@@ -223,7 +224,7 @@ export class TrackingClient {
       init.body = JSON.stringify(body);
     }
 
-    const resp = await fetch(url, init);
+    const resp = await fetch(url, { ...init, ...externalCliTokenRequestOptions(url) });
     const env = safeJsonParse(await resp.text()) as TEEnvelope<T>;
     logger.api(method, url, resp.status, body, env);
 

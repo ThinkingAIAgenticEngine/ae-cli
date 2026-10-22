@@ -4,11 +4,11 @@ export const dashboardReportGet = createAnalysisCapabilityCommand({
   resource: 'dashboard-report',
   command: 'get',
   capabilityId: 'analysis.dashboard_report.get',
-  description: 'Get an event report card presentation on one analysis dashboard, not the source report definition.',
+  description: 'Get one analysis-board report card frame size, saved grid position, dashboard layout version, and event presentation; not the source report definition.',
   flags: [
     projectIdFlag,
     { name: 'dashboard-id', type: 'number', required: true, desc: 'Dashboard containing the report card.' },
-    { name: 'report-id', type: 'number', required: true, desc: 'Existing event report ID on that dashboard.' },
+    { name: 'report-id', type: 'number', required: true, desc: 'Existing report ID on that dashboard. Event cards also return chart and table presentation.' },
   ],
   risk: 'read',
   buildInput: (ctx) => ({

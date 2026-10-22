@@ -842,3 +842,23 @@ test('submission preserves structured analysis explanations and refs without exe
     clearCliToken(host);
   }
 });
+
+
+test('topic semantic basis keeps legacy packets compatible and rejects empty or foreign evidence', () => {
+  assert.doesNotThrow(() => agentReviewSubmitToPage.preflight!(ctx(create)));
+  const topic = create['presentation-snapshot'].topics[0];
+  const packet = (basis: unknown) => ({ ...create, 'presentation-snapshot': {
+    topics: [{ ...topic, semantic_basis: basis }],
+  } });
+  assert.throws(() => agentReviewSubmitToPage.preflight!(ctx(packet({
+    business_question: '', grouping_reason: 'A shared business question', evidence_item_ids: ['report_1'],
+  }))), /semantic_basis/);
+  assert.throws(() => agentReviewSubmitToPage.preflight!(ctx(packet({
+    business_question: 'How many messages are received?', grouping_reason: 'Counts the same message process',
+    evidence_item_ids: ['other_report'],
+  }))), /semantic_basis/);
+  assert.doesNotThrow(() => agentReviewSubmitToPage.preflight!(ctx(packet({
+    business_question: 'How many messages are received?', grouping_reason: 'Counts the same message process',
+    evidence_item_ids: ['report_1'],
+  }))));
+});

@@ -1,15 +1,15 @@
 ---
 name: ae-things-review
-description: "工作空间事项审查：基于 ae-cli things 的标题、描述、状态与完整时间线，诊断范围漂移、未记录有效更新、拆解和责任、完成证据；默认只读。"
+description: "Workspace Thing reviews: use ae-cli things titles, descriptions, statuses and complete timelines to assess scope drift, missing recorded effective updates, work breakdown, ownership and completion evidence. Read-only by default."
 ---
 
-# 事项推进审查
+# Thing progress review
 
-沿用 aha-links 的证据化审查方法，使用 TE 空间权限和三态及独立归档。先读 [事项操作](../ae-things/SKILL.md) 和 [采集契约](../ae-things/references/cli.md)。不猜事项、空间或负责人 ID。
+Apply the evidence-based review method from aha-links using TE space permissions, three statuses and separate archiving. Read [Thing operations](../ae-things/SKILL.md) and the [collection contract](../ae-things/references/cli.md) first. Never guess Thing, space or assignee IDs. Write the review in the user's language.
 
-涉及本轮绑定事项时，先遵循 [执行快照与实时上下文](../ae-things/references/cli.md#执行快照与实时上下文) 读取本次执行快照，再按以下流程采集最新审查或周期事实；两种来源分开表述。无绑定时仅使用用户明确指定的范围。
+When working with the Thing bound to this run, first read its execution snapshot as described in [Execution snapshots and live context](../ae-things/references/cli.md#execution-snapshots-and-live-context). Then collect the latest review or period facts using the workflow below, and describe these sources separately. Without a binding, use only the scope explicitly specified by the user.
 
-## 读取事实
+## Collect facts
 
 ```bash
 ae-cli things +detail --agent-space-id <space-id> --id <thing-id> --format json
@@ -17,26 +17,26 @@ ae-cli things +digest --agent-space-id <space-id> --format json
 ae-cli things +digest --agent-space-id <space-id> --thing-ids <id-a>,<id-b> --format json
 ```
 
-范围只支持当前空间、负责人或显式事项集合。不要迁入关注清单和飞书群范围。大范围先筛查，再每批深审最多 20 项，披露筛查数和深审数。
+Supported scopes are the current space, an assignee or an explicit set of Things. Do not import watchlist or Feishu-group scopes. Screen broad scopes first, then review at most 20 Things deeply per batch. Disclose both the screening count and the deep-review count.
 
-必须核对 `fetchedCount`、`truncated`、`consistency`、`collectedAt`。缺字段视为契约不兼容。截断或不可读取时只对已覆盖事实下结论，不能把首 100 项称为全量。`changed_during_collection` 时重读受影响事项；`non_transactional` 仍不是某时刻的严格快照。未读附件、私有历史和缺失初始目标均明确披露。
+Check `fetchedCount`, `truncated`, `consistency` and `collectedAt`. Missing fields indicate an incompatible contract. When collection is truncated or resources are unreadable, limit conclusions to the facts covered; the first 100 Things are not a complete collection. For `changed_during_collection`, reread affected Things. `non_transactional` still does not mean a strict snapshot at one instant. Explicitly disclose unread attachments, private history and missing original goals.
 
-## 审查顺序
+## Review sequence
 
-1. 目标与验收：是否明确、合理、可验证；用最早 `created` 记录对照当前目标。无法还原时只审当前目标。
-2. 范围漂移：目标变更是否有明确记录；不把后来结论当作原目标。
-3. 有效更新：结果、变化、阻塞或明确下一步才是进展。进展记录是待核查候选；占位、重复状态、备注和仅改标题不重置提醒节奏；采集的计数只是候选，模型仍需核查正文是否有效。
-4. 责任：负责人和协作者是否可用，描述与进展中是否明确下一步。
-5. 完成证据：产物是否可访问、是否符合验收；未读文件不能声称通过验收。
+1. Goal and acceptance: are they clear, reasonable and verifiable? Compare the current goal with the earliest `created` record. If the original goal cannot be reconstructed, review only the current goal.
+2. Scope drift: are goal changes explicitly recorded? Do not treat later conclusions as the original goal.
+3. Effective updates: progress requires a result, change, blocker or explicit next step. Progress entries are candidates to verify. Placeholders, repeated statuses, notes and title-only edits do not reset the reminder cadence. Collected counts are only candidates; the model must still check whether the body contains an effective update.
+4. Ownership: are the assignee and collaborators available, and do the description and progress identify the next step?
+5. Completion evidence: are outputs accessible and do they satisfy acceptance criteria? Unread files cannot be claimed to have passed acceptance.
 
-优先采用明确约定的节奏。open 表示未完成，不区分尚未开始与进行中；没有约定时只报告最后记录时间，不臆造停滞。paused 检查记录中的暂停原因和恢复条件。只写“未记录更新”，不推断“没有推进”。
+Prefer an explicitly agreed cadence. open means incomplete and does not distinguish not started from in progress. Without an agreed cadence, report only the last recorded time rather than inventing stagnation. For paused, check the recorded reason and conditions for resuming. Say "no update recorded", not "no progress made".
 
-引用时刻必须注明时区；需要按 Asia/Shanghai 判断自然日时先正确转换 ISO 的 Z/偏移量，不能只删除后缀。例如 `2026-09-10T04:50:00Z` 对应上海时间 12:50。无法转换则保留 UTC 原值并披露限制。
+Always identify the timezone when citing timestamps. To determine calendar days in Asia/Shanghai, correctly convert ISO timestamps with Z/offsets rather than removing the suffix. For example, `2026-09-10T04:50:00Z` corresponds to 12:50 in Shanghai. If conversion is unavailable, retain the original UTC value and disclose the limitation.
 
-## 输出与边界
+## Output and boundaries
 
-给出健康／需关注／高风险／信息不足，附目标基线、证据（事项链接和日期）、影响、置信度及最多三条优先动作。空间审查先共性问题，再逐项摘要；不评价个人绩效，不制造总分。
+Classify each review as healthy / needs attention / high risk / insufficient information. Include the goal baseline, evidence (Thing links and dates), impact, confidence and at most three priority actions. For a space review, present common issues before per-Thing summaries. Do not evaluate individual performance or invent an overall score.
 
-默认只诊断，不改状态或负责人。用户明确要求落实的具体修改重新读取版本后执行，不再重复索要相同授权；推断变化先给待确认建议。不要自动发消息或创建定时任务。
+Diagnose only by default, without changing status or assignees. For specific changes the user explicitly asks you to implement, reread the version and execute without asking for the same authorization again. Present inferred changes as proposals awaiting confirmation. Do not automatically send messages or create scheduled tasks.
 
-文件证据：+detail/+digest 自动翻页收集资产关联，availability=missing 或 verification_failed 的文件不算可用交付；即使 available，也只代表引用可用，不代表已读取正文或验收通过。披露未读文件及非事务采集边界。私有会话来源只在当前用户有权时读取，报告引用共享事项事实，不能把私有历史自动公开。
+File evidence: +detail/+digest automatically paginate asset associations. Files with availability=missing or verification_failed are not available deliverables. Even available only means the reference is available, not that its contents were read or acceptance passed. Disclose unread files and non-transactional collection limits. Read private conversation sources only when the current user has access. Cite shared Thing facts in the report; do not automatically disclose private history.

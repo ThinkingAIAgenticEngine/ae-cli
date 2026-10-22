@@ -16,6 +16,7 @@ Domain: **TeamRun execution / write**
 - `--notification` must be valid JSON if provided, e.g. `'{"channels":["feishu"],"feishuChatId":"..."}'`.
 - This is an ordinary `write` operation and does not require CLI confirmation.
 - After starting, capture the returned `id` (run ID) and use it to poll `+run-result`.
+- `--save-to-kb-id` accepts a personal or company knowledge base ID and maps to the API field `saveToKnowledgeBaseId`. After completion, check `savedKnowledgeBase` and read back the saved source; a successful start alone does not confirm saving.
 
 ## Command
 ```bash

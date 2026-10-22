@@ -10,7 +10,7 @@ export const dataTableDownload = createCapabilityCommand({
     { name: 'project-id', type: 'number', required: true, desc: 'Numeric project ID.', alias: 'p' },
     { name: 'data-table-id', type: 'number', required: true, desc: 'Data table ID.' },
     { name: 'request-id', type: 'string', required: false, desc: 'Optional request ID. Format: cli_<32 lowercase hex>.' },
-    { name: 'timeout-seconds', type: 'number', required: false, desc: 'Export timeout seconds. Default and max: 21600 (6 hours).', min: 1, max: 21600 },
+    { name: 'timeout-seconds', type: 'number', required: false, desc: 'Export runtime in seconds. Omit to use the server default (usually 21600 / 6 hours). This CLI accepts explicit values up to 21600; inspect the capability for the server default/max and use capability run for larger allowed values.', min: 1, max: 21600 },
   ],
   risk: 'read',
   buildInput: (ctx) => ({

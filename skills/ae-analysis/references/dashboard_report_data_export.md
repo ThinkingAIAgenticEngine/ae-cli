@@ -16,6 +16,8 @@ Command:
 ae-cli analysis dashboard-report-data export --project-id <project_id> --dashboard-id <dashboard_id> [--report-ids '[1,2]'] [--filters '{...}'] [--cluster-query-scope GLOBAL|SLAVE] [--slave-cluster-id <id>] [--artifact-format jsonl] --output <file>
 ```
 
+Omit `--timeout-seconds` to use the deployment's server default (normally 21600 seconds / 6 hours). The typed CLI accepts explicit `1..21600`; inspect this capability for the server default/max and use `capability run` for larger explicit values only when allowed. Read the run descriptor for the effective deadline; cancel earlier with `analysis query cancel --run-id <run_id>`.
+
 Omit cluster routing to follow the saved dashboard configuration. For an explicit route, use `GLOBAL` or `SLAVE` plus one physical cluster ID returned by `analysis query-cluster list`. SQL reports reject effective `GLOBAL`. Use CLI flag `--artifact-format` for the gateway `format` input; `--format` is only the CLI output formatter.
 
 `--filters` uses the same AI-facing filter model as report data. The gateway resolves fields and compiles it to the dashboard backend filter. Do not pass a dashboard UI control dump or raw QP filter. Minimal shape:

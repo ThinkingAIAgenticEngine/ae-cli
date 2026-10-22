@@ -44,3 +44,5 @@ Both `revenue_metric` and `cost_metric` accept a formula with alias dependencies
 ```
 
 Number formats are `float`, `float3`, `float4`, `integer`, and `percent`. Saved formulas may contain an expanded `formula`, `formulation`, and `custom_filters`; preserve that metadata on updates. Event and regular-metric filters support recursive `items`/`relation` groups using event-property leaves. `first_day_of_week` is between 1 (Monday) and 7 (Sunday).
+
+Formula dependency `filters` / `relation` support [operand-specific conditions](event.md#formula-operand-filters) using the generic `field` shape. Put revenue/cost numerator and denominator conditions in their own dependencies, not in the formula metric's mutually exclusive `filters` / `relation`. Revenue aggregation and saved-metric restrictions still apply.

@@ -163,16 +163,16 @@ if (gatewayLifecycleCommands.length !== EXPECTED_GATEWAY_LIFECYCLE_COUNT) {
   fail(`analysis gateway lifecycle command count mismatch: expected ${EXPECTED_GATEWAY_LIFECYCLE_COUNT}, got ${gatewayLifecycleCommands.length}`);
 }
 
-const EXPECTED_CAPABILITY_COUNT = 340;
+const EXPECTED_CAPABILITY_COUNT = 350;
 if (capabilityCommands.length !== EXPECTED_CAPABILITY_COUNT) {
   fail(`analysis capability command count mismatch: expected ${EXPECTED_CAPABILITY_COUNT}, got ${capabilityCommands.length}`);
 }
 
 const EXPECTED_CAPABILITY_COUNTS_BY_SERVICE = {
-  analysis: 120,
+  analysis: 123,
   'analysis-meta': 65,
   'analysis-governance': 23,
-  project: 44,
+  project: 51,
   system: 61,
   tracking: 27,
 };
@@ -310,7 +310,7 @@ const criticalReferenceTokens = {
   'skills/ae-analysis/references/drilldown_user_events_export.md': ['does not accept `--limit`, `--offset`, `--page-num`, or `--page-size`', 'without the synchronous preview boundary', '`csv.gz`', '`--project-id`'],
   'skills/ae-analysis/references/query_create_result_cluster.md': ['custom-entity', 'query_context_id', 'coordinate', '`--project-id`'],
   'skills/ae-analysis/references/analysis_data_retrieval.md': ['read_results.py', 'sources', 'synchronous'],
-  'skills/ae-analysis/references/analysis_data_export.md': ['Default and maximum runtime is 21600 seconds (6 hours)', 'resume_command'],
+  'skills/ae-analysis/references/analysis_data_export.md': ['Omit `--timeout-seconds` to use the server default (normally 21600 seconds / 6 hours)', 'typed flag still accepts explicit values only in `1..21600`', 'inspect the selected capability', 'QUERY_DAILY_LIMIT_EXCEEDED', 'resume_command'],
   'skills/ae-analysis/references/report_create.md': ['SQL dynamic parameter', '"use_timezone":true', 'boolean definition field', 'If the user also requests report data', '`report_id` returned by this exact create response'],
   'skills/ae-analysis/references/report_update.md': ['read the current `version` exactly once', 'query directly with the requested'],
   'skills/ae-analysis/references/report_list.md': ['group known names into one `--queries` call or narrow with `--model-types`', 'do not issue one list call per name', 'edit or manage', 'shared read-only', 'analysis asset search'],
@@ -417,7 +417,7 @@ const currentDocsTokens = [
   'query_context_id',
   'drilldown_context_id',
   'Omit `--preview-rows` to use the current model and cluster synchronous row limit',
-  'Default and maximum runtime is 21600 seconds (6 hours)',
+  'Omit `--timeout-seconds` to use the server default (normally 21600 seconds / 6 hours)',
   'analysis filter-value list',
   'analysis query-cluster list',
   'analysis query cancel --run-id',

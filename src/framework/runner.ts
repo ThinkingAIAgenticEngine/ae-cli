@@ -9,8 +9,10 @@ import { CredentialStoreUnreadableError, SecureStoreAuthError } from '../core/se
 import { CliApiError, CliValidationError, CommunityReportError, LocalDataUploadError, PermissionError } from '../core/errors.js';
 import { TeAgentApiError } from '../core/te-agent-client.js';
 import { CapabilityGatewayError } from '../core/capability-api.js';
+import { EvalApiError } from '../core/eval-client.js';
 import { requiresConfirmation } from '../core/capability-risk.js';
 import { formatCapabilityMissCompatHint } from '../core/compat-check.js';
+import { ExternalCliTokenError } from '../core/external-cli-token.js';
 
 /** Build message/hint when one or more required flags are missing. */
 export function missingRequiredFlagsError(
@@ -236,7 +238,7 @@ export async function runCommand(cmd: Command, opts: Record<string, any>, global
       process.exit(1);
     }
     const message = err.message || String(err);
-    if (!(err instanceof CommunityReportError)) {
+    if (!(err instanceof CommunityReportError) && !(err instanceof EvalApiError)) {
       if (!(err instanceof LocalDataUploadError)) logger.error(`Command failed: ${message}`);
     }
     // F-018: classify by structured error type (instanceof), NOT by substring-matching the message —
@@ -255,7 +257,7 @@ export async function runCommand(cmd: Command, opts: Record<string, any>, global
       printError('config', message, err.hint);
     } else if (err instanceof PermissionError) {
       // authenticated-but-forbidden — surface the server's reason; re-login won't help
-      printError('permission', message, err.hint, err.code, undefined, { details: err.details });
+      printError('permission', message, err.hint, err.code, err.meta, { details: err.details });
     } else if (err instanceof CliApiError) {
       printError('api', message, err.hint, err.code, err.meta);
     } else if (err instanceof CapabilityGatewayError) {
@@ -266,8 +268,11 @@ export async function runCommand(cmd: Command, opts: Record<string, any>, global
       printError('api', message, err.hint, err.code, err.meta, { log: false });
     } else if (err instanceof LocalDataUploadError) {
       printError('api', message, err.hint, err.code, err.meta, { log: false });
-    } else if (err instanceof CredentialStoreUnreadableError) {
+    } else if (err instanceof CredentialStoreUnreadableError || err instanceof ExternalCliTokenError) {
       printError('config', message, err.hint, err.code);
+    } else if (err instanceof EvalApiError) {
+      // Evaluation business errors can contain private response data even after credential redaction.
+      printError('api', message, err.hint, err.code, undefined, { log: false });
     } else if (err instanceof SecureStoreAuthError) {
       printError('auth', message, 'Run: ae-cli auth login', err.code);
     } else if (err instanceof TeAgentApiError) {
@@ -332,7 +337,7 @@ export function capabilityGatewayHint(err: CapabilityGatewayError): string | und
   }
   if (err.httpStatus === 404 && !err.code) {
     const base =
-      'The current host returned 404 for this capability route. Do not keep retrying the same command; verify the backend route/capability deployment.';
+      'The current host returned 404 for this capability route. Do not keep retrying the same command; verify the backend route/capability deployment. If --host points directly to a local Common service instead of the deployed gateway, scope AE_CLI_CAPABILITY_GATEWAY_DOMAIN= to this command so it uses /api/cli/v1.';
     return compatExtra ? `${base}\n${compatExtra}` : base;
   }
   return undefined;
@@ -396,6 +401,11 @@ export function createRuntimeContext(cmd: Command, opts: Record<string, any>, gl
       try {
         return safeJsonParse(String(val));
       } catch {
+        if (cmd.flags.some((flag) => flag.name === name && flag.sensitive)) {
+          throw new CliValidationError(`Invalid JSON for --${name}.`, {
+            hint: 'Provide valid JSON with quoted keys and strings. Sensitive input is omitted from diagnostics.',
+          });
+        }
         printError('validation', `Invalid JSON for --${name}: ${val}`);
         process.exit(1);
       }

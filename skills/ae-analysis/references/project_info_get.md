@@ -20,3 +20,7 @@ Output uses the gateway envelope: success is `ok=true,data,meta`; failure is `ok
 | Parameter | Required | Description |
 |---|---|---|
 | `--project-id` | Yes | Numeric project ID. |
+
+## Scenario sample collection policy
+
+`data.analysis_scenario_collection_enabled` is a live boolean from the source project's own configuration. It is true only for explicit `agent_analysis_scenario_collection_enabled=on`. Missing, invalid, or unreadable configuration defaults to false; company configuration is not inherited. This field does not change ordinary invocation/intent telemetry. Older servers may omit it; treat omission as disabled. Re-read for each scenario or append rather than keeping a previous grant.

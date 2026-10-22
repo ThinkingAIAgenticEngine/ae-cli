@@ -1,4 +1,6 @@
 import { randomUUID } from "node:crypto";
+import { currentAgentSpaceId } from "../../core/agent-space-context.js";
+import { resolveWorkspaceTarget } from "../workspace/target.js";
 import type { Command, Flag, RuntimeContext } from "../../framework/types.js";
 import {
   getFromMainApp,
@@ -24,7 +26,7 @@ const typeFlag = flag(
 );
 const scopeFlag = flag(
   "agent-space-id",
-  "Explicit space; otherwise server resolves sandbox context or personal space",
+  "Explicit space; otherwise current AgentSpace, then personal space",
 );
 const runFlag = flag(
   "run-id",
@@ -62,7 +64,21 @@ const configFlags = [
   flag("time", "HH:mm in server timezone"),
   flag("minute", "Hourly minute, 0-59", "number"),
   flag("weekday", "Weekly day, 0=Sunday through 6=Saturday", "number"),
-  flag("day-of-month", "Monthly day, 1-28", "number"),
+  flag(
+    "weekdays",
+    "Weekly days as JSON array, 0=Sunday through 6=Saturday",
+    "json",
+  ),
+  flag(
+    "day-of-month",
+    "Monthly day, 1-31; missing dates are skipped",
+    "number",
+  ),
+  flag(
+    "days-of-month",
+    'Monthly days as JSON array: integers 1-31 or "L" for last day; missing dates are skipped',
+    "json",
+  ),
   flag("model", "Agent model configuration ID; null clears the override"),
   flag("reuse-conversation", "Agent: true | false", "json"),
   {
@@ -71,12 +87,12 @@ const configFlags = [
   },
   flag(
     "channels",
-    "Team notification channel array; [] clears channels",
+    "Agent or Team notification channel array; [] clears external notifications",
     "json",
   ),
-  flag("feishu-chat-id", "Team Feishu destination; null clears it"),
-  flag("lark-chat-id", "Team Lark destination; null clears it"),
-  flag("slack-channel-id", "Team Slack destination; null clears it"),
+  flag("feishu-chat-id", "Feishu destination; null clears it"),
+  flag("lark-chat-id", "Lark destination; null clears it"),
+  flag("slack-channel-id", "Slack destination; null clears it"),
   flag(
     "save-to-knowledge-base-id",
     "Team output knowledge base ID; null clears it",
@@ -139,16 +155,58 @@ export function configuration(
   if (kind && cron) throw new Error("Use --schedule-kind or --cron-expression");
   if (
     !kind &&
-    ["time", "minute", "weekday", "dayOfMonth"].some((name) => ctx.str(name))
+    (["time", "minute", "weekday", "dayOfMonth"].some((name) =>
+      ctx.str(name),
+    ) ||
+      ctx.json("weekdays") !== undefined ||
+      ctx.json("daysOfMonth") !== undefined)
   )
     throw new Error("Schedule details require --schedule-kind");
   if (
-    (kind && ctx.str("weekday") && kind !== "weekly") ||
-    (kind && ctx.str("dayOfMonth") && kind !== "monthly") ||
+    (kind &&
+      (ctx.str("weekday") || ctx.json("weekdays") !== undefined) &&
+      kind !== "weekly") ||
+    (kind &&
+      (ctx.str("dayOfMonth") || ctx.json("daysOfMonth") !== undefined) &&
+      kind !== "monthly") ||
     (kind && ctx.str("minute") && kind !== "hourly")
   )
     throw new Error("Schedule field is not applicable to this frequency");
   if (kind) {
+    const dateSelection = (
+      single: string,
+      multiple: string,
+      min: number,
+      max: number,
+      label: string,
+      allowLastDay = false,
+    ) => {
+      const values = ctx.json(multiple);
+      if (values === undefined)
+        return {
+          [single]: range(ctx.optionalNum(single) ?? NaN, min, max, label),
+        };
+      if (ctx.optionalNum(single) !== undefined)
+        throw new Error(`Use --${label} or its plural array, not both`);
+      if (
+        !Array.isArray(values) ||
+        !values.length ||
+        values.length > max - min + 1 + Number(allowLastDay) ||
+        values.some(
+          (value) =>
+            !(allowLastDay && value === "L") &&
+            (!Number.isInteger(value) || value < min || value > max),
+        )
+      )
+        throw new Error(
+          `${multiple} must be a non-empty JSON array of integers from ${min} to ${max}${allowLastDay ? ' or "L" for last day' : ""}`,
+        );
+      return {
+        [multiple]: [...new Set(values)].sort(
+          (a, b) => (a === "L" ? 32 : a) - (b === "L" ? 32 : b),
+        ),
+      };
+    };
     const schedule: Record<string, unknown> = { kind };
     if (kind === "hourly")
       schedule.minute = range(ctx.optionalNum("minute") ?? 0, 0, 59, "minute");
@@ -157,18 +215,21 @@ export function configuration(
         throw new Error("--time must use HH:mm");
       schedule.time = ctx.str("time");
       if (kind === "weekly")
-        schedule.weekday = range(
-          ctx.optionalNum("weekday") ?? NaN,
-          0,
-          6,
-          "weekday",
+        Object.assign(
+          schedule,
+          dateSelection("weekday", "weekdays", 0, 6, "weekday"),
         );
       if (kind === "monthly")
-        schedule.dayOfMonth = range(
-          ctx.optionalNum("dayOfMonth") ?? NaN,
-          1,
-          28,
-          "day-of-month",
+        Object.assign(
+          schedule,
+          dateSelection(
+            "dayOfMonth",
+            "daysOfMonth",
+            1,
+            31,
+            "day-of-month",
+            true,
+          ),
         );
     }
     result.schedule = schedule;
@@ -177,14 +238,21 @@ export function configuration(
     const parts = cron.trim().split(/\s+/);
     const validNumber = (v: string, a: number, b: number) =>
       /^\d+$/.test(v) && Number(v) >= a && Number(v) <= b;
+    const validDays = (v: string, a: number, b: number, allowLastDay = false) =>
+      v.split(",").length <= b - a + 1 + Number(allowLastDay) &&
+      v
+        .split(",")
+        .every(
+          (day) => (allowLastDay && day === "L") || validNumber(day, a, b),
+        );
     const [m, h, d, mo, w] = parts;
     if (
       parts.length !== 5 ||
       !validNumber(m, 0, 59) ||
       !(h === "*" || validNumber(h, 0, 23)) ||
       mo !== "*" ||
-      !(d === "*" || validNumber(d, 1, 28)) ||
-      !(w === "*" || validNumber(w, 0, 6)) ||
+      !(d === "*" || validDays(d, 1, 31, true)) ||
+      !(w === "*" || validDays(w, 0, 6)) ||
       (d !== "*" && w !== "*") ||
       (h === "*" && (d !== "*" || w !== "*"))
     )
@@ -201,19 +269,21 @@ export function configuration(
   )
     throw new Error("Scheduled automation requires a schedule");
   const agentNames = ["model", "reuseConversation"];
-  const teamNames = [
-    "scope",
+  const teamNames = ["scope", "saveToKnowledgeBaseId"];
+  const notificationNames = [
     "channels",
     "feishuChatId",
     "larkChatId",
     "slackChannelId",
-    "saveToKnowledgeBaseId",
   ];
-  for (const name of [...agentNames, ...teamNames]) {
+  for (const name of [...agentNames, ...teamNames, ...notificationNames]) {
     const json = ["scope", "channels", "reuseConversation"].includes(name);
     const value = json ? ctx.json(name) : ctx.str(name) || undefined;
     if (value === undefined) continue;
-    if ((agentNames.includes(name) ? "agent" : "team") !== targetType)
+    if (
+      !notificationNames.includes(name) &&
+      (agentNames.includes(name) ? "agent" : "team") !== targetType
+    )
       throw new Error(`${name} is not applicable to ${targetType} automations`);
     if (name === "reuseConversation" && typeof value !== "boolean")
       throw new Error("--reuse-conversation must be true or false");
@@ -259,9 +329,13 @@ export function configuration(
   if (create) result.triggerImmediately = ctx.bool("triggerImmediately");
   return result;
 }
-function query(ctx: RuntimeContext, list = false, typed = false) {
+async function query(ctx: RuntimeContext, list = false, typed = false) {
   const p = new URLSearchParams();
-  if (ctx.str("agentSpaceId")) p.set("agentSpaceId", ctx.str("agentSpaceId"));
+  let spaceId = ctx.str("agentSpaceId").trim() || currentAgentSpaceId();
+  if (!spaceId && process.env.TE_AGENT_CONVERSATION_ID?.trim()) {
+    spaceId = (await resolveWorkspaceTarget(ctx)).agentSpaceId;
+  }
+  if (spaceId) p.set("agentSpaceId", spaceId);
   if (typed && ctx.str("targetType"))
     p.set("targetType", ctx.str("targetType"));
   if (list)
@@ -279,22 +353,26 @@ async function request(
     return getFromMainApp(
       path,
       ctx.hostOverride ? ctx.hostOverride() : ctx.host(),
+      "cli-token",
     );
   if (method === "POST")
     return postToMainApp(
       path,
       body,
       ctx.hostOverride ? ctx.hostOverride() : ctx.host(),
+      "cli-token",
     );
   if (method === "PATCH")
     return patchToMainApp(
       path,
       body,
       ctx.hostOverride ? ctx.hostOverride() : ctx.host(),
+      "cli-token",
     );
   return deleteFromMainApp(
     path,
     ctx.hostOverride ? ctx.hostOverride() : ctx.host(),
+    "cli-token",
   );
 }
 
@@ -319,7 +397,7 @@ export async function waitForRun(
     const result = await request(
       ctx,
       "GET",
-      `${base}/${encodeURIComponent(id)}/runs/${encodeURIComponent(runId)}/result${query(ctx)}`,
+      `${base}/${encodeURIComponent(id)}/runs/${encodeURIComponent(runId)}/result${await query(ctx)}`,
     );
     if (result.status !== "running")
       return { ...result, executionCompleted: true, timedOut: false };
@@ -466,7 +544,7 @@ export const automationCommands: Command[] = actions.map((a) => ({
       ...body,
       ...(a.wait ? { commandId } : {}),
     };
-    const path = base + a.suffix(ctx) + query(ctx, a.list, a.typed);
+    const path = base + a.suffix(ctx) + (await query(ctx, a.list, a.typed));
     return {
       request: redactedPreview(a.method, path, requestBody),
       validation: await request(ctx, a.method, withDryRun(path), requestBody),
@@ -480,7 +558,7 @@ export const automationCommands: Command[] = actions.map((a) => ({
       output = await request(
         ctx,
         a.method,
-        base + a.suffix(ctx) + query(ctx, a.list, a.typed),
+        base + a.suffix(ctx) + (await query(ctx, a.list, a.typed)),
         body && { ...body, ...(a.wait ? { commandId } : {}) },
       );
     } catch (error) {

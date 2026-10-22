@@ -22,5 +22,5 @@ Parameters:
 | --- | --- | --- |
 | `--project-id` | Numeric project ID. | Yes |
 | `--request-id` | Optional caller-supplied cli_<32 lowercase hex> lifecycle ID. ae-cli generates and prints one before dispatch when omitted. | No |
-| `--timeout-seconds` | Async runtime in seconds. Default and max: 21600 (6 hours); cancel earlier with analysis query cancel --run-id <run_id>. | No |
+| `--timeout-seconds` | Async runtime in seconds. Omit to use the server default (normally 21600 / 6 hours). Explicit CLI values remain in 1..21600. Inspect the capability for its server default/max; use capability run for larger values only when allowed. Cancel with analysis query cancel --run-id <run_id>. | No |
 | `--output` | Wait and download to this local file. | No |

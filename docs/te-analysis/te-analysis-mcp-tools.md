@@ -7,36 +7,38 @@ This document records the current `ae-cli analysis` surface exposed to agents. I
 - Capability-gateway commands use resource/action form: `ae-cli analysis <resource> <action>`.
 - CLI flags use kebab-case, gateway input uses snake_case.
 - For ad-hoc and report definitions, the contract is `model_type + definition`; agents must pass an AI-facing `definition`, not raw QP, frontend DTOs, `events`, `event_view`, `visual_view`, or `analysis_query`.
-- For the 12 supported analysis model names and SQL dynamic parameter syntax, read `skills/ae-analysis/references/ai_models.md`.
+- For the 13 supported analysis model names and SQL dynamic parameter syntax, read `skills/ae-analysis/references/ai_models.md`.
 - For analysis data retrieval `run` vs `export` routing, read `skills/ae-analysis/references/analysis_data_retrieval.md`. This rule is scoped to analysis data retrieval and is not a te-cli global business-module policy.
+
+Typed async-query flags retain their explicit `1..21600` range without injecting a default. Supported Common query exports use the deployment async-query policy; other exports retain their own policies. Use `capability run` with a larger explicit `timeout_seconds` only if inspect allows it. Returned `effective_timeout_seconds`, `timeout_source`, and `deadline_at` describe the actual run; local waiting does not change them.
 
 ## Current high-value commands
 
 ### Ad-hoc analysis
 
 - `analysis adhoc run`: bounded inline query. Omit `--preview-rows` to use the current model and cluster synchronous row limit; explicit values are checked against that runtime maximum. Default timeout is 120 seconds, max 180 seconds.
-- `analysis adhoc export`: async artifact query. Default and maximum runtime is 21600 seconds (6 hours); pass a smaller `--timeout-seconds` only when requested. Cancel earlier with `analysis query cancel --run-id <run_id>`.
+- `analysis adhoc export`: async artifact query. Omit `--timeout-seconds` to use the server default (normally 21600 seconds / 6 hours); inspect the capability for the deployment default/max. Cancel earlier with `analysis query cancel --run-id <run_id>`.
 
 Only the bounded `run` preview may return `query_context_id` and finite `sources[].drilldown` choices. Export never creates an interactive follow-up context.
 
 ### Report definitions and data
 
-- `analysis report create`: create a report from AI-facing `model_type + definition`. Supports the 12 analysis models plus `tag` for saved tag report data. Saved-report filters follow the analysis page boundary: at most one compound group level, with leaf-only `items`.
+- `analysis report create`: create a report from AI-facing `model_type + definition`. Supports the 13 analysis models plus `tag` for saved tag report data. Saved-report filters follow the analysis page boundary: at most one compound group level, with leaf-only `items`.
 - `analysis report update`: update metadata and/or an analysis-page-compatible AI-facing report definition. Supports the same model set as create; metadata-only updates are unaffected.
 - `analysis report get`: returns AI-facing `model_type + definition` and event-report `presentation`; raw QP is not returned. Report create/update accepts separate top-level event presentation; presentation-only update keeps the saved query definition, and omission on same-model updates preserves chart/result-table layout settings.
 - `analysis dashboard-report get/update`: L2 typed IDs/display flags read or change one event card's `presentation`, including `chart_type=table`, independently of the source report and other dashboards. Omitted legacy `table_layout`/`date_outside` means inherited browser configuration, not date/false defaults.
 - Event `presentation.chart_type=combo` uses report-level `series` patches bound to 1-based `definition.metrics` positions and the report version. Card trends inherit these series (`series_scope=report`); card updates select existing combo but cannot override series. See `skills/ae-analysis/references/event_report_presentation.md` for binding/reset and cross-card scope.
 - `analysis report-data run`: bounded inline saved-report data. Omit `--preview-rows` to use each report model's current cluster synchronous limit; explicit values are checked at runtime. Default timeout is 120 seconds, max 180 seconds.
-- `analysis report-data export`: async saved-report artifact. Default and maximum runtime is 21600 seconds (6 hours); cancel earlier with `analysis query cancel --run-id <run_id>`.
+- `analysis report-data export`: async saved-report artifact. Omit `--timeout-seconds` to use the server default (normally 21600 seconds / 6 hours); cancel earlier with `analysis query cancel --run-id <run_id>`.
 
 Report data supports AI-facing override inputs for filters, group-by, time range, time granularity, and SQL dynamic parameter values.
 
 ### Dashboard and BI page data
 
 - `analysis dashboard-report-data run`: bounded inline dashboard report data. Omit `--preview-rows` to use each report model's current cluster synchronous limit; explicit values are checked at runtime. Default timeout is 180 seconds, max 180 seconds.
-- `analysis dashboard-report-data export`: async dashboard report data artifact. Default and maximum runtime is 21600 seconds (6 hours); cancel earlier with `analysis query cancel --run-id <run_id>`.
+- `analysis dashboard-report-data export`: async dashboard report data artifact. Omit `--timeout-seconds` to use the server default (normally 21600 seconds / 6 hours); cancel earlier with `analysis query cancel --run-id <run_id>`.
 - `analysis bi-panel-page-data run`: bounded inline BI panel page data. Omit `--preview-rows` to use the current cluster synchronous limit; explicit values are checked at runtime. Timeout defaults to 120 seconds and has a maximum of 180 seconds.
-- `analysis bi-panel-page-data export`: async BI panel page data artifact. Default and maximum runtime is 21600 seconds (6 hours); cancel earlier with `analysis query cancel --run-id <run_id>`.
+- `analysis bi-panel-page-data export`: async BI panel page data artifact. Omit `--timeout-seconds` to use the server default (normally 21600 seconds / 6 hours); cancel earlier with `analysis query cancel --run-id <run_id>`.
 
 BI panel page data is executed from BI SQL/page state, not from the saved-report AI QP model registry, and does not support analysis model drilldown/result-cluster creation.
 
@@ -45,6 +47,7 @@ BI panel page data is executed from BI SQL/page state, not from the saved-report
 - `analysis drilldown-events run`: preview raw events only for a synchronous event-analysis metric whose returned angle is `EVENT_LIST`.
 - `analysis drilldown-events export`: stream all matching raw events for that returned coordinate into one `csv.gz` artifact; no paging parameters.
 - `analysis drilldown-entities run`: preview users or custom entities for an advertised synchronous-preview coordinate.
+- `analysis drilldown-session-details run`: preview the individual sessions or steps behind a session-analysis session-count or step-count cell. There is no export variant and the response carries no `total`.
 - `analysis drilldown-entities export`: asynchronously export all entities for the same returned coordinate as one artifact.
 - `analysis drilldown-user-events run`: preview one user's event sequence by `drilldown_context_id`. Do not pass raw QP or reconstruct the first query.
 - `analysis drilldown-user-events export`: asynchronously export the complete event sequence as one artifact.
@@ -58,7 +61,7 @@ The intended flow is:
 
 1. Run a bounded synchronous `analysis adhoc run`, `analysis report-data run`, or `analysis dashboard-report-data run`.
 2. Read `query_context_id`, select one returned source, and shallow-merge only that source's returned row/column/metric coordinate fragments. The sync preview limit is the hard selection boundary; never use export/download rows.
-3. Call only the selected metric/source action with the original `--project-id`: `analysis drilldown-events run|export`, `analysis drilldown-entities run|export`, or `analysis query create-result-cluster`. Common rejects a project ID that does not match the stored context. Do not pass raw QP or `target_id`.
+3. Call only the selected metric/source action with the original `--project-id`: `analysis drilldown-events run|export`, `analysis drilldown-entities run|export`, `analysis drilldown-session-details run`, or `analysis query create-result-cluster`. Common rejects a project ID that does not match the stored context. Do not pass raw QP or `target_id`.
 4. Only a user-subject entity preview may return `drilldown_context_id`; pass it with the same `--project-id` and a canonical returned `user_id` to `analysis drilldown-user-events run|export`. Custom entities have no user event sequence.
 
 For async exports, plain invocation submits only. Add `--wait` to wait, or

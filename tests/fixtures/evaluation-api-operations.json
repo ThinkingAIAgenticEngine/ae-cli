@@ -1,0 +1,642 @@
+{
+  "source_revision": "c126221",
+  "operations": [
+    {
+      "method": "DELETE",
+      "path": "/agenteval/api/v1/agents/{agentId}",
+      "operation_id": "deleteAgent"
+    },
+    {
+      "method": "DELETE",
+      "path": "/agenteval/api/v1/auth/session",
+      "operation_id": "logoutTeSession"
+    },
+    {
+      "method": "DELETE",
+      "path": "/agenteval/api/v1/calibration-cases/{id}",
+      "operation_id": "deleteCalibrationCase"
+    },
+    {
+      "method": "DELETE",
+      "path": "/agenteval/api/v1/credentials/{credentialId}",
+      "operation_id": "deleteCredential"
+    },
+    {
+      "method": "DELETE",
+      "path": "/agenteval/api/v1/datasets/{datasetId}",
+      "operation_id": "deleteDataset"
+    },
+    {
+      "method": "DELETE",
+      "path": "/agenteval/api/v1/datasets/{datasetId}/cases/{caseId}",
+      "operation_id": "deleteDatasetCase"
+    },
+    {
+      "method": "DELETE",
+      "path": "/agenteval/api/v1/datasets/{datasetId}/fields/{fieldId}",
+      "operation_id": "deleteDatasetField"
+    },
+    {
+      "method": "DELETE",
+      "path": "/agenteval/api/v1/evaluation-run-schedules/{id}",
+      "operation_id": "deleteRunSchedule"
+    },
+    {
+      "method": "DELETE",
+      "path": "/agenteval/api/v1/evaluation-runs/{runId}",
+      "operation_id": "deleteRun"
+    },
+    {
+      "method": "DELETE",
+      "path": "/agenteval/api/v1/evaluator-templates/{templateId}",
+      "operation_id": "disableEvaluatorTemplate"
+    },
+    {
+      "method": "DELETE",
+      "path": "/agenteval/api/v1/evaluators/{evaluatorId}",
+      "operation_id": "deleteEvaluator"
+    },
+    {
+      "method": "DELETE",
+      "path": "/agenteval/api/v1/model-configs/{modelConfigId}",
+      "operation_id": "deleteModelConfig"
+    },
+    {
+      "method": "DELETE",
+      "path": "/agenteval/api/v1/projects/members/{userId}",
+      "operation_id": "removeProjectMember"
+    },
+    {
+      "method": "GET",
+      "path": "/agenteval/api/v1/agents",
+      "operation_id": "listAgents"
+    },
+    {
+      "method": "GET",
+      "path": "/agenteval/api/v1/agents/{agentId}",
+      "operation_id": "getAgent"
+    },
+    {
+      "method": "GET",
+      "path": "/agenteval/api/v1/agents/{agentId}/snapshot-preview",
+      "operation_id": "previewAgentSnapshot"
+    },
+    {
+      "method": "GET",
+      "path": "/agenteval/api/v1/ai-monitor-connection",
+      "operation_id": "getAIMonitorConnection"
+    },
+    {
+      "method": "GET",
+      "path": "/agenteval/api/v1/calibration-runs/{id}",
+      "operation_id": "getCalibrationRun"
+    },
+    {
+      "method": "GET",
+      "path": "/agenteval/api/v1/calibration-runs/{id}/results",
+      "operation_id": "listCalibrationResults"
+    },
+    {
+      "method": "GET",
+      "path": "/agenteval/api/v1/calibration-suites/{id}/cases",
+      "operation_id": "listCalibrationCases"
+    },
+    {
+      "method": "GET",
+      "path": "/agenteval/api/v1/credentials",
+      "operation_id": "listCredentials"
+    },
+    {
+      "method": "GET",
+      "path": "/agenteval/api/v1/credentials/{credentialId}",
+      "operation_id": "getCredential"
+    },
+    {
+      "method": "GET",
+      "path": "/agenteval/api/v1/datasets",
+      "operation_id": "listDatasets"
+    },
+    {
+      "method": "GET",
+      "path": "/agenteval/api/v1/datasets/{datasetId}",
+      "operation_id": "getDataset"
+    },
+    {
+      "method": "GET",
+      "path": "/agenteval/api/v1/datasets/{datasetId}/cases",
+      "operation_id": "listDatasetCases"
+    },
+    {
+      "method": "GET",
+      "path": "/agenteval/api/v1/datasets/{datasetId}/cases/{caseId}",
+      "operation_id": "getDatasetCase"
+    },
+    {
+      "method": "GET",
+      "path": "/agenteval/api/v1/datasets/{datasetId}/fields",
+      "operation_id": "listDatasetFields"
+    },
+    {
+      "method": "GET",
+      "path": "/agenteval/api/v1/datasets/{datasetId}/import-errors",
+      "operation_id": "downloadDatasetImportErrors"
+    },
+    {
+      "method": "GET",
+      "path": "/agenteval/api/v1/datasets/{datasetId}/import-status",
+      "operation_id": "getDatasetImportStatus"
+    },
+    {
+      "method": "GET",
+      "path": "/agenteval/api/v1/datasets/{datasetId}/references",
+      "operation_id": "listDatasetReferences"
+    },
+    {
+      "method": "GET",
+      "path": "/agenteval/api/v1/datasets/{datasetId}/versions",
+      "operation_id": "listDatasetVersions"
+    },
+    {
+      "method": "GET",
+      "path": "/agenteval/api/v1/datasets/{datasetId}/versions/{versionId}",
+      "operation_id": "getDatasetVersion"
+    },
+    {
+      "method": "GET",
+      "path": "/agenteval/api/v1/evaluation-run-schedules",
+      "operation_id": "listRunSchedules"
+    },
+    {
+      "method": "GET",
+      "path": "/agenteval/api/v1/evaluation-runs",
+      "operation_id": "listRuns"
+    },
+    {
+      "method": "GET",
+      "path": "/agenteval/api/v1/evaluation-runs/{runId}",
+      "operation_id": "getRun"
+    },
+    {
+      "method": "GET",
+      "path": "/agenteval/api/v1/evaluation-runs/{runId}/cases",
+      "operation_id": "listRunCases"
+    },
+    {
+      "method": "GET",
+      "path": "/agenteval/api/v1/evaluation-runs/{runId}/cases/{caseRunId}",
+      "operation_id": "getRunCase"
+    },
+    {
+      "method": "GET",
+      "path": "/agenteval/api/v1/evaluation-runs/{runId}/cases/{caseRunId}/trace",
+      "operation_id": "getRunCaseTrace"
+    },
+    {
+      "method": "GET",
+      "path": "/agenteval/api/v1/evaluation-runs/{runId}/distribution",
+      "operation_id": "getRunDistribution"
+    },
+    {
+      "method": "GET",
+      "path": "/agenteval/api/v1/evaluation-runs/{runId}/evaluators",
+      "operation_id": "listRunEvaluators"
+    },
+    {
+      "method": "GET",
+      "path": "/agenteval/api/v1/evaluation-runs/{runId}/overview",
+      "operation_id": "getRunOverview"
+    },
+    {
+      "method": "GET",
+      "path": "/agenteval/api/v1/evaluation-tasks/{taskId}/versions",
+      "operation_id": "listEvaluationTaskVersions"
+    },
+    {
+      "method": "GET",
+      "path": "/agenteval/api/v1/evaluator-templates",
+      "operation_id": "listEvaluatorTemplates"
+    },
+    {
+      "method": "GET",
+      "path": "/agenteval/api/v1/evaluators",
+      "operation_id": "listEvaluators"
+    },
+    {
+      "method": "GET",
+      "path": "/agenteval/api/v1/evaluators/{evaluatorId}",
+      "operation_id": "getEvaluator"
+    },
+    {
+      "method": "GET",
+      "path": "/agenteval/api/v1/evaluators/{evaluatorId}/calibration-suites",
+      "operation_id": "listCalibrationSuites"
+    },
+    {
+      "method": "GET",
+      "path": "/agenteval/api/v1/evaluators/{evaluatorId}/health",
+      "operation_id": "getEvaluatorHealth"
+    },
+    {
+      "method": "GET",
+      "path": "/agenteval/api/v1/evaluators/{evaluatorId}/versions",
+      "operation_id": "listEvaluatorVersions"
+    },
+    {
+      "method": "GET",
+      "path": "/agenteval/api/v1/files/{fileId}",
+      "operation_id": "getFile"
+    },
+    {
+      "method": "GET",
+      "path": "/agenteval/api/v1/files/{fileId}/content",
+      "operation_id": "downloadFileContent"
+    },
+    {
+      "method": "GET",
+      "path": "/agenteval/api/v1/model-configs",
+      "operation_id": "listModelConfigs"
+    },
+    {
+      "method": "GET",
+      "path": "/agenteval/api/v1/model-configs/{modelConfigId}",
+      "operation_id": "getModelConfig"
+    },
+    {
+      "method": "GET",
+      "path": "/agenteval/api/v1/projects/members",
+      "operation_id": "listProjectMembers"
+    },
+    {
+      "method": "GET",
+      "path": "/agenteval/api/v1/projects/members/candidates",
+      "operation_id": "listProjectMemberCandidates"
+    },
+    {
+      "method": "GET",
+      "path": "/agenteval/api/v1/te-report-config",
+      "operation_id": "getTEReportConfig"
+    },
+    {
+      "method": "GET",
+      "path": "/health/live",
+      "operation_id": "getLive"
+    },
+    {
+      "method": "GET",
+      "path": "/health/ready",
+      "operation_id": "getReady"
+    },
+    {
+      "method": "PATCH",
+      "path": "/agenteval/api/v1/agents/{agentId}",
+      "operation_id": "updateAgent"
+    },
+    {
+      "method": "PATCH",
+      "path": "/agenteval/api/v1/agents/{agentId}/access-scope",
+      "operation_id": "changeAgentAccessScope"
+    },
+    {
+      "method": "PATCH",
+      "path": "/agenteval/api/v1/credentials/{credentialId}",
+      "operation_id": "updateCredential"
+    },
+    {
+      "method": "PATCH",
+      "path": "/agenteval/api/v1/datasets/{datasetId}",
+      "operation_id": "updateDataset"
+    },
+    {
+      "method": "PATCH",
+      "path": "/agenteval/api/v1/datasets/{datasetId}/access-scope",
+      "operation_id": "changeDatasetAccessScope"
+    },
+    {
+      "method": "PATCH",
+      "path": "/agenteval/api/v1/datasets/{datasetId}/cases/{caseId}",
+      "operation_id": "updateDatasetCase"
+    },
+    {
+      "method": "PATCH",
+      "path": "/agenteval/api/v1/datasets/{datasetId}/fields/{fieldId}",
+      "operation_id": "updateDatasetField"
+    },
+    {
+      "method": "PATCH",
+      "path": "/agenteval/api/v1/evaluation-run-schedules/{id}",
+      "operation_id": "updateRunSchedule"
+    },
+    {
+      "method": "PATCH",
+      "path": "/agenteval/api/v1/evaluation-runs/{runId}",
+      "operation_id": "updateRun"
+    },
+    {
+      "method": "PATCH",
+      "path": "/agenteval/api/v1/evaluators/{evaluatorId}",
+      "operation_id": "updateEvaluator"
+    },
+    {
+      "method": "PATCH",
+      "path": "/agenteval/api/v1/evaluators/{evaluatorId}/access-scope",
+      "operation_id": "changeEvaluatorAccessScope"
+    },
+    {
+      "method": "PATCH",
+      "path": "/agenteval/api/v1/model-configs/{modelConfigId}",
+      "operation_id": "updateModelConfig"
+    },
+    {
+      "method": "PATCH",
+      "path": "/agenteval/api/v1/model-configs/{modelConfigId}/access-scope",
+      "operation_id": "changeModelConfigAccessScope"
+    },
+    {
+      "method": "PATCH",
+      "path": "/agenteval/api/v1/projects/members/{userId}",
+      "operation_id": "setProjectMemberStatus"
+    },
+    {
+      "method": "PATCH",
+      "path": "/agenteval/api/v1/projects/members/{userId}/role",
+      "operation_id": "changeProjectMemberRole"
+    },
+    {
+      "method": "POST",
+      "path": "/agenteval/api/v1/agents",
+      "operation_id": "createAgent"
+    },
+    {
+      "method": "POST",
+      "path": "/agenteval/api/v1/agents/{agentId}/test-connectivity",
+      "operation_id": "testAgentConnectivity"
+    },
+    {
+      "method": "POST",
+      "path": "/agenteval/api/v1/agents/{agentId}/transfer-owner",
+      "operation_id": "transferAgentOwner"
+    },
+    {
+      "method": "POST",
+      "path": "/agenteval/api/v1/agents/te-claude/catalog",
+      "operation_id": "listTeClaudeCatalog"
+    },
+    {
+      "method": "POST",
+      "path": "/agenteval/api/v1/ai-monitor-connection/verify",
+      "operation_id": "verifyAIMonitorConnection"
+    },
+    {
+      "method": "POST",
+      "path": "/agenteval/api/v1/auth/session",
+      "operation_id": "createTeSession"
+    },
+    {
+      "method": "POST",
+      "path": "/agenteval/api/v1/auth/session/refresh",
+      "operation_id": "refreshTeSession"
+    },
+    {
+      "method": "POST",
+      "path": "/agenteval/api/v1/calibration-suites/{id}/cases",
+      "operation_id": "createCalibrationCase"
+    },
+    {
+      "method": "POST",
+      "path": "/agenteval/api/v1/calibration-suites/{id}/runs",
+      "operation_id": "startCalibrationRun"
+    },
+    {
+      "method": "POST",
+      "path": "/agenteval/api/v1/credentials",
+      "operation_id": "createCredential"
+    },
+    {
+      "method": "POST",
+      "path": "/agenteval/api/v1/credentials/{credentialId}/disable",
+      "operation_id": "disableCredential"
+    },
+    {
+      "method": "POST",
+      "path": "/agenteval/api/v1/credentials/{credentialId}/enable",
+      "operation_id": "enableCredential"
+    },
+    {
+      "method": "POST",
+      "path": "/agenteval/api/v1/credentials/{credentialId}/rotate",
+      "operation_id": "rotateCredential"
+    },
+    {
+      "method": "POST",
+      "path": "/agenteval/api/v1/credentials/{credentialId}/transfer-owner",
+      "operation_id": "transferCredentialOwner"
+    },
+    {
+      "method": "POST",
+      "path": "/agenteval/api/v1/datasets",
+      "operation_id": "createDataset"
+    },
+    {
+      "method": "POST",
+      "path": "/agenteval/api/v1/datasets/{datasetId}/cases",
+      "operation_id": "createDatasetCase"
+    },
+    {
+      "method": "POST",
+      "path": "/agenteval/api/v1/datasets/{datasetId}/cases/batch",
+      "operation_id": "batchCreateDatasetCases"
+    },
+    {
+      "method": "POST",
+      "path": "/agenteval/api/v1/datasets/{datasetId}/exports",
+      "operation_id": "exportDataset"
+    },
+    {
+      "method": "POST",
+      "path": "/agenteval/api/v1/datasets/{datasetId}/fields",
+      "operation_id": "createDatasetField"
+    },
+    {
+      "method": "POST",
+      "path": "/agenteval/api/v1/datasets/{datasetId}/fields/batch",
+      "operation_id": "batchCreateDatasetFields"
+    },
+    {
+      "method": "POST",
+      "path": "/agenteval/api/v1/datasets/{datasetId}/transfer-owner",
+      "operation_id": "transferDatasetOwner"
+    },
+    {
+      "method": "POST",
+      "path": "/agenteval/api/v1/datasets/{datasetId}/versions",
+      "operation_id": "publishDatasetVersion"
+    },
+    {
+      "method": "POST",
+      "path": "/agenteval/api/v1/datasets/ai-monitor-imports",
+      "operation_id": "importAIMonitorTraces"
+    },
+    {
+      "method": "POST",
+      "path": "/agenteval/api/v1/datasets/imports",
+      "operation_id": "importDataset"
+    },
+    {
+      "method": "POST",
+      "path": "/agenteval/api/v1/evaluation-run-schedules",
+      "operation_id": "createRunSchedule"
+    },
+    {
+      "method": "POST",
+      "path": "/agenteval/api/v1/evaluation-runs",
+      "operation_id": "createRun"
+    },
+    {
+      "method": "POST",
+      "path": "/agenteval/api/v1/evaluation-runs/{runId}/cancel",
+      "operation_id": "cancelRun"
+    },
+    {
+      "method": "POST",
+      "path": "/agenteval/api/v1/evaluation-runs/{runId}/cases/{caseRunId}/copy",
+      "operation_id": "copyRunCase"
+    },
+    {
+      "method": "POST",
+      "path": "/agenteval/api/v1/evaluation-runs/{runId}/cases/{caseRunId}/trace:retry",
+      "operation_id": "retryRunCaseTrace"
+    },
+    {
+      "method": "POST",
+      "path": "/agenteval/api/v1/evaluation-runs/{runId}/export",
+      "operation_id": "exportRunResults"
+    },
+    {
+      "method": "POST",
+      "path": "/agenteval/api/v1/evaluation-runs/{runId}/low-score-export",
+      "operation_id": "createLowScoreExport"
+    },
+    {
+      "method": "POST",
+      "path": "/agenteval/api/v1/evaluation-runs/{runId}/new-version",
+      "operation_id": "createNextTaskVersionDraft"
+    },
+    {
+      "method": "POST",
+      "path": "/agenteval/api/v1/evaluation-runs/{runId}/retry-failed-cases",
+      "operation_id": "retryFailedRunCases"
+    },
+    {
+      "method": "POST",
+      "path": "/agenteval/api/v1/evaluation-runs/{runId}/start",
+      "operation_id": "startRun"
+    },
+    {
+      "method": "POST",
+      "path": "/agenteval/api/v1/evaluation-runs/{runId}/transfer-owner",
+      "operation_id": "transferRunOwner"
+    },
+    {
+      "method": "POST",
+      "path": "/agenteval/api/v1/evaluation-runs/{runId}/validate",
+      "operation_id": "validateRunDraft"
+    },
+    {
+      "method": "POST",
+      "path": "/agenteval/api/v1/evaluator-templates",
+      "operation_id": "createEvaluatorTemplate"
+    },
+    {
+      "method": "POST",
+      "path": "/agenteval/api/v1/evaluator-templates/{templateId}/enable",
+      "operation_id": "enableEvaluatorTemplate"
+    },
+    {
+      "method": "POST",
+      "path": "/agenteval/api/v1/evaluators",
+      "operation_id": "createEvaluator"
+    },
+    {
+      "method": "POST",
+      "path": "/agenteval/api/v1/evaluators/{evaluatorId}/calibration-suites",
+      "operation_id": "createCalibrationSuite"
+    },
+    {
+      "method": "POST",
+      "path": "/agenteval/api/v1/evaluators/{evaluatorId}/transfer-owner",
+      "operation_id": "transferEvaluatorOwner"
+    },
+    {
+      "method": "POST",
+      "path": "/agenteval/api/v1/evaluators/{evaluatorId}/versions",
+      "operation_id": "publishEvaluatorVersion"
+    },
+    {
+      "method": "POST",
+      "path": "/agenteval/api/v1/evaluators/prompt-optimization",
+      "operation_id": "optimizeEvaluatorPrompt"
+    },
+    {
+      "method": "POST",
+      "path": "/agenteval/api/v1/files/{fileId}/download-url",
+      "operation_id": "createFileDownloadUrl"
+    },
+    {
+      "method": "POST",
+      "path": "/agenteval/api/v1/model-configs",
+      "operation_id": "createModelConfig"
+    },
+    {
+      "method": "POST",
+      "path": "/agenteval/api/v1/model-configs/{modelConfigId}/test-connectivity",
+      "operation_id": "testModelConnectivity"
+    },
+    {
+      "method": "POST",
+      "path": "/agenteval/api/v1/model-configs/{modelConfigId}/transfer-owner",
+      "operation_id": "transferModelConfigOwner"
+    },
+    {
+      "method": "POST",
+      "path": "/agenteval/api/v1/projects/members/batch-add",
+      "operation_id": "batchAddProjectMembers"
+    },
+    {
+      "method": "PUT",
+      "path": "/agenteval/api/v1/ai-monitor-connection",
+      "operation_id": "saveAIMonitorConnection"
+    },
+    {
+      "method": "PUT",
+      "path": "/agenteval/api/v1/datasets/{datasetId}/fields/reorder",
+      "operation_id": "reorderDatasetFields"
+    },
+    {
+      "method": "PUT",
+      "path": "/agenteval/api/v1/evaluation-runs/{runId}/evaluators",
+      "operation_id": "selectRunEvaluators"
+    },
+    {
+      "method": "PUT",
+      "path": "/agenteval/api/v1/evaluation-runs/{runId}/field-mapping",
+      "operation_id": "updateRunFieldMapping"
+    },
+    {
+      "method": "PUT",
+      "path": "/agenteval/api/v1/evaluation-runs/{runId}/result-filter-fields",
+      "operation_id": "updateRunResultFilterFields"
+    },
+    {
+      "method": "PUT",
+      "path": "/agenteval/api/v1/te-report-config",
+      "operation_id": "saveTEReportConfig"
+    }
+  ],
+  "exclusions": {
+    "getLive": "Infrastructure health probe",
+    "getReady": "Infrastructure readiness probe",
+    "createTeSession": "Browser session bootstrap; sandbox sessions use the gateway bridge",
+    "logoutTeSession": "Browser session lifecycle",
+    "refreshTeSession": "Browser session lifecycle"
+  }
+}

@@ -4,6 +4,7 @@ import { PermissionError } from "./errors.js";
 import { getCliToken } from "./cli-token.js";
 import { SecureStoreAuthError } from "./secure-store.js";
 import { safeJsonParse } from "./json-utils.js";
+import { externalCliTokenRequestOptions } from "./external-cli-token.js";
 
 function buildUrl(
   host: string,
@@ -260,7 +261,7 @@ async function fetchWithCliToken(
   const headers = new Headers(init.headers);
   headers.set("cli-token", cliToken);
 
-  const resp = await fetch(input, { ...init, headers });
+  const resp = await fetch(input, { ...init, headers, ...externalCliTokenRequestOptions(input) });
   if (options.responseType === "empty" && resp.status === 204) return null;
   if (options.responseType === "bytes" && resp.ok) {
     if (resp.headers.get("content-type")?.includes("application/json")) {

@@ -30,6 +30,7 @@ const SUBMIT_TO_PAGE_HELP = [
   '- Scripts may assemble transport JSON and copy evidence, but page-visible ai_summary and analysis_explanation text must be Agent-written interpretation from verified evidence, not generated boilerplate.',
   '- Follow agent_review_preflight.md: independent Agent review, at most 3 corrections, then submit with unresolved-quality warnings only when already authorized. LOCAL_ONLY never submits. Business meaning and visible-text quality are Agent review responsibilities; this command enforces only transport structure and evidence references.',
   '- Follow agent_review_priorities_comparisons.md: item ai_summary includes recommendation.priority/priority_reason/evidence_refs, classified comparisons with both-side evidence, and comparison_review coverage. LOW is review urgency, not a defer decision; only POSSIBLE_CONFLICT merits a conflict badge. These assessments share the same 3-correction budget.',
+  '- Each new topic must include semantic_basis with business_question, grouping_reason, and evidence_item_ids from that topic. These are Agent-authored business interpretations; legacy packets without this optional field remain accepted.',
   '- presentation_snapshot.topics is one or more business-domain topics. Each topic must use groups[].items; do not use top-level topics[].items or raw Common work_units as the page grouping.',
   '- relations should let the page render dashboard -> report -> metadata with contains/uses edges. Use an empty relations array only when the package truly has no known parent-child evidence.',
   '- Each submitted item must keep source_link or evidence_links[].url so reviewers can jump to source evidence.',
@@ -255,6 +256,7 @@ function validatePresentation(presentation: Record<string, unknown>, itemIds: Se
   const displayed = new Set<string>();
   for (const topicValue of array(presentation.topics, 'presentation_snapshot.topics')) {
     const topic = object(topicValue, 'presentation_snapshot.topics[]');
+    const topicItemIds = new Set<string>();
     if ('items' in topic) {
       throw new Error('presentation_snapshot.topics[] must use groups[].items, not top-level items.');
     }
@@ -273,6 +275,19 @@ function validatePresentation(presentation: Record<string, unknown>, itemIds: Se
           throw new Error('presentation_snapshot references an unknown client_item_id.');
         }
         displayed.add(item.id);
+        topicItemIds.add(item.id);
+      }
+    }
+    if (topic.semantic_basis !== undefined) {
+      const basis = object(topic.semantic_basis, 'presentation_snapshot.topics[].semantic_basis');
+      for (const field of ['business_question', 'grouping_reason']) {
+        if (typeof basis[field] !== 'string' || !String(basis[field]).trim()) {
+          throw new Error(`semantic_basis.${field} must explain the business meaning of this topic.`);
+        }
+      }
+      const references = array(basis.evidence_item_ids, 'semantic_basis.evidence_item_ids');
+      if (!references.length || references.some((id) => typeof id !== 'string' || !topicItemIds.has(id))) {
+        throw new Error('semantic_basis.evidence_item_ids must reference items displayed in the same topic.');
       }
     }
   }

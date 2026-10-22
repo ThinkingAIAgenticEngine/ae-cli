@@ -3,6 +3,9 @@
 import { createHash, randomBytes } from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
+import { conditionTree, renderConditionTree, reportContract, reportSignature,
+  semanticValue, enrichMetricEvidence, renderExecutionContract, validateSqlExplanations,
+  renderSqlExplanations } from './execution-contract.mjs';
 
 const args = parseArgs(process.argv.slice(2));
 const packageRoot = path.resolve(requiredArg(args, 'asset-package'));
@@ -99,13 +102,19 @@ const sqlReportSemanticsById = new Map(array(domainPlan.sql_report_semantics)
   .map((value) => object(value))
   .map((value) => [text(value.report_id), value])
   .filter(([id]) => id));
+for (const report of reports) {
+  report.calculation_context = calculationContextForKb(report);
+  report.metric_occurrences = enrichMetricEvidence(array(report.metric_occurrences), report.calculation_context);
+}
 const semanticConflicts = detectSemanticConflicts();
 const reportConflicts = semanticConflicts.reportConflicts;
+const reportSettingVariants = semanticConflicts.executionVariants;
 const metadataSemanticConflicts = semanticConflicts.metadataConflicts;
 const metadataMissingTitles = metadata.filter((item) => !text(item.title));
 const reportsInBusinessDomains = reports.filter((report) => domainsForReport(report).length);
 const reportsInTechnicalAppendices = reports.filter((report) => appendicesForReport(report).length);
 const warnings = [
+  ...[...reportSettingVariants.keys()].map(id => `Report ${id} has matching calculation evidence but different saved or uninterpreted settings; verify explicit overrides before reuse.`),
   ...(text(descriptor.asset_scope ?? manifest.asset_scope) !== 'governed'
     ? [`The package scope is ${text(descriptor.asset_scope ?? manifest.asset_scope) || 'unknown'}; unauthenticated assets may be present.`]
     : []),
@@ -533,6 +542,9 @@ function validateSqlSemanticPlan(plan) {
     const summary = object(summaryValue);
     const reportId = text(summary.report_id);
     if (!sqlReportsById.has(reportId)) continue;
+    try {
+      validateSqlExplanations(summary, sqlTextFromCalculationContext(calculationContextForKb(sqlReportsById.get(reportId))));
+    } catch (error) { fail(`SQL report ${reportId}: ${error.message}`); }
     if (text(summary.definition_state) !== 'valid') continue;
     const issues = sqlSemanticQualityIssues(summary);
     if (issues.length) {
@@ -1036,13 +1048,29 @@ function renderDashboardAgentUsageSummary(dashboard, reportRows, notes, domain, 
 }
 
 function renderReportAgentUsageSummary(report, metadataRefs, calculationContext, sqlSummary) {
+  const explanation = renderSqlExplanations(sqlSummary);
+  const coverage = text(report.definition_kind) === 'SQL' && !array(sqlSummary?.calculation_rules).length
+    ? '\n\n- Calculation coverage: unknown for this legacy summary. Verify the current SQL for operand filters, denominator, units, rounding, time baselines and excluded rows before execution.' : '';
+  return renderReportAuthoredSummary(report, metadataRefs, calculationContext, sqlSummary)
+    + (explanation ? `\n\n### Calculation evidence\n\n${explanation}` : '')
+    + coverage
+    + renderExecutionContract(reportContract(report, calculationContext))
+    + (reportSettingVariants.has(text(report.resource_key)) ? '\n- Saved-setting variant: matching calculation evidence does not establish identical defaults. Verify or explicitly override the required settings before reuse.\n' : '');
+}
+
+function renderReportAuthoredSummary(report, metadataRefs, calculationContext, sqlSummary) {
   const isSql = text(report.definition_kind) === 'SQL';
   if (isSql) return renderSqlReportAgentUsageSummary(report, sqlSummary);
+  const modelConfig = reportContract(report, calculationContext).model_config;
+  if (array(modelConfig.userCrowds).length || modelConfig.windowsGapValue != null) {
+    const model = array(modelConfig.userCrowds).length ? 'Saved population analysis' : 'Saved interval analysis';
+    return `- Model: ${model}.\n- Purpose: ${text(report.description || report.summary) || 'Verify the business question against the saved model settings below.'}\n- Result semantics: use the complete population conditions or ordered event roles, window and selected statistics in the execution contract.\n- Missing configuration, entity scope and historical state remain unknown; do not infer ordinary event metrics from model endpoints.`;
+  }
   const purpose = usefulSemanticText(sqlSummary?.business_purpose) || reportPurpose(report);
   const questions = usefulSemanticList(sqlSummary?.applicable_questions)
     ? array(sqlSummary.applicable_questions).map(renderPlainSemanticItem)
     : reportApplicableQuestions(report);
-  const metrics = topDomainFacts(array(report.metric_occurrences).map(occurrenceSentence), 12);
+  const metrics = array(report.metric_occurrences).map(occurrenceSentence);
   const parameters = reportParameterSummaryItems(calculationContext);
   const dimensions = reportDimensionSummaryItems(report, sqlSummary, calculationContext, metadataRefs);
   const filters = reportFilterSummaryItems(report, calculationContext);
@@ -1083,18 +1111,29 @@ function renderSqlReportAgentUsageSummary(report, summary) {
 }
 
 function renderSqlSemanticItem(value, summary) {
+  const item = object(value);
+  if (Object.keys(item).length && item.required == null && item.default_value == null && !Array.isArray(item.options)) {
+    return [text(item.name) ? `\`${text(item.name)}\`` : '', sanitizeVisibleSqlSemanticText(item.meaning)].filter(Boolean).join('：')
+      + (item.evidence ? ` [source: ${jsonInline(item.evidence)}]` : '')
+      + (item.identity_state === 'unknown' ? ' [output identity unverified; match the current SQL projection before use]' : '');
+  }
   return replaceSqlParameterMentions(renderSemanticItem(value), summary);
 }
 
 function renderSqlInputParameterItem(value) {
-  return sanitizeVisibleSqlSemanticText(renderSemanticItem(value));
+  if (!value || typeof value !== 'object') return sanitizeVisibleSqlSemanticText(value);
+  return renderSemanticItem({ ...value, meaning: sanitizeVisibleSqlSemanticText(value.meaning) });
 }
 
 function replaceSqlParameterMentions(value, summary) {
-  let result = sanitizeVisibleSqlSemanticText(value);
+  let result = text(value);
   for (const [name, meaning] of sqlParameterMeaningEntries(summary)) {
-    const pattern = new RegExp(`(?<![A-Za-z0-9_#$])${escapeRegExp(name)}(?![A-Za-z0-9_#$]|\\s*\\()`, 'giu');
+    const pattern = new RegExp(`\\$\\{(?:[A-Za-z]+:)?${escapeRegExp(name)}\\}`, 'gu');
     result = result.replace(pattern, meaning);
+    if (/^(?:selector|variable|text|number|date)\d+$/i.test(name)) {
+      const generatedReference = new RegExp(`(?<![A-Za-z0-9_#$\x60])${escapeRegExp(name)}(?![A-Za-z0-9_#$\x60])`, 'gu');
+      result = result.replace(generatedReference, meaning);
+    }
   }
   return sanitizeVisibleSqlSemanticText(result)
     .replace(/\bLIMIT\s+([^，；。]+?)限制/g, '按$1限制')
@@ -1135,11 +1174,6 @@ function genericSqlParameterMeaning(name) {
   return normalized;
 }
 
-function isGeneratedSqlParameterName(name) {
-  return /^(?:selector|variable|text|number|partdate)\d*$/i.test(text(name))
-    || /^date\d+$/i.test(text(name));
-}
-
 function escapeRegExp(value) {
   return text(value).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
@@ -1161,7 +1195,7 @@ function renderPlainSemanticItem(value) {
   if (item.default_value != null && text(item.default_value)) extras.push(`default=${text(item.default_value)}`);
   const expressionKind = text(item.expression_kind);
   if (expressionKind) extras.push(expressionKind);
-  if (isInputParameterSemanticItem(item) && meaning && name && !isGeneratedSqlParameterName(name)) {
+  if (isInputParameterSemanticItem(item) && meaning && name) {
     return [`${meaning}（\`${name}\`）`, extras.join('，')].filter(Boolean).join('：');
   }
   if (isInputParameterSemanticItem(item) && meaning) {
@@ -1190,6 +1224,12 @@ function reportDimensionSummaryItems(report, summary = null, calculationContext 
   const context = calculationContext || calculationContextForKb(report);
   const facts = object(context.sql_semantic_facts);
   const refs = metadataRefs || metadataRefsForReport(report);
+  if (text(report.definition_kind) !== 'SQL') {
+    return reportContract(report, context).groups.map(group => {
+      const row = object(group);
+      return namedCodeFact(row.columnDesc || row.columnName || text(group), row.columnName || text(group));
+    });
+  }
   const candidates = [
     ...array(summary?.output_fields)
       .filter((item) => text(object(item).semantic_role) === 'dimension')
@@ -1207,14 +1247,18 @@ function reportDimensionSummaryItems(report, summary = null, calculationContext 
 function reportParameterSummaryItems(calculationContext) {
   const context = object(calculationContext);
   return [
+    ...(Object.keys(object(context.time_scope)).length ? [`Saved time settings: ${JSON.stringify(context.time_scope)}`] : []),
     ...array(context.sql_params).map((item) => renderPlainSemanticItem({ name: object(item).name || object(item).paramName, meaning: object(item).displayName || object(item).placeholder })),
   ].filter(Boolean).slice(0, 12);
 }
 
 function reportFilterSummaryItems(report, calculationContext) {
   const items = [
-    ...array(report.metric_occurrences).flatMap((item) => filterSummaryLines(item.filters ?? item.custom_filters)),
-    ...array(object(calculationContext).filters).flatMap((item) => filterSummaryLines(item)),
+    ...array(report.metric_occurrences).flatMap((item) => [
+      ...filterSummaryLines(item.filters, item.relation),
+      ...array(item.custom_filters).flatMap((filter) => filterSummaryLines(filter).map(line => `Operand ${filter.index}: ${line}`)),
+    ]),
+    ...filterSummaryLines(object(calculationContext).filters, object(calculationContext).relation),
     ...array(object(calculationContext).event_view?.filts).flatMap((item) => filterSummaryLines(item)),
     ...array(object(calculationContext).visual_view?.filters).flatMap((item) => filterSummaryLines(item)),
     ...array(object(calculationContext).key_predicate_fragments).map(compactSqlFragment),
@@ -1224,7 +1268,17 @@ function reportFilterSummaryItems(report, calculationContext) {
 
 function completeSqlAgentSummary(report, planSummary, facts) {
   const base = object(planSummary);
-  if (Object.keys(base).length) return { summary_source: 'semantic_plan', ...base };
+  if (Object.keys(base).length) {
+    const names = new Set(array(object(facts.final_select).fields).map(field => {
+      if (field.name) return field.name;
+      const expression = text(field.expression);
+      return /^(?:[A-Za-z_][\w$#@.]*|"[^"]+")$/.test(expression) ? unquoteIdentifier(expression) : null;
+    }).filter(Boolean));
+    return { summary_source: 'semantic_plan', ...base,
+      output_fields: array(base.output_fields).map(field => typeof field === 'object' && !names.has(field.name)
+        ? { ...field, identity_state: 'unknown' } : field),
+    };
+  }
   return null;
 }
 
@@ -1380,7 +1434,7 @@ function renderSemanticItem(value) {
     .filter(([key]) => !['name', 'field', 'key', 'column', 'title', 'meaning', 'description', 'remark', 'purpose'].includes(key))
     .map(([key, itemValue]) => `${key}=${inlineSemanticValue(itemValue)}`)
     .join(', ');
-  if (isInputParameterSemanticItem(item) && meaning && name && !isGeneratedSqlParameterName(name)) {
+  if (isInputParameterSemanticItem(item) && meaning && name) {
     return [`${meaning}（\`${name}\`）`, details].filter(Boolean).join('：') || jsonInline(item);
   }
   if (isInputParameterSemanticItem(item) && meaning) {
@@ -1391,12 +1445,9 @@ function renderSemanticItem(value) {
 
 function isInputParameterSemanticItem(item) {
   const row = object(item);
-  const name = text(row.name ?? row.field ?? row.key ?? row.column ?? row.title);
-  const meaning = text(row.meaning ?? row.description ?? row.remark ?? row.purpose);
   return row.required != null
     || row.default_value != null
-    || Array.isArray(row.options)
-    || (Boolean(meaning) && /^(?:selector|variable|date|partdate|text|number)\d*$/i.test(name));
+    || Array.isArray(row.options);
 }
 
 function inlineSemanticValue(value) {
@@ -1434,6 +1485,11 @@ function reportDetailCalculationContext(report) {
   if (Object.keys(eventView).length) result.event_view = eventView;
   const events = jsonObject(rawDefinition.events);
   if (array(events.sqlVoParams).length) result.sql_params = events.sqlVoParams;
+  if (rawDefinition.events != null) {
+    try { result.source_events = typeof rawDefinition.events === 'string' ? JSON.parse(rawDefinition.events) : rawDefinition.events; }
+    catch { result.source_events = null; }
+  }
+  if (eventView.sqlViewParams != null) result.saved_parameters = eventView.sqlViewParams;
   return result;
 }
 
@@ -1857,6 +1913,9 @@ function metadataDefinitionLines(item) {
   if (text(definition.entity_mapping_scope)) lines.push(`实体映射范围: ${text(definition.entity_mapping_scope)}`);
   const sourceVersion = text(object(item.raw).sourceVersion ?? object(item.raw).source_version);
   if (sourceVersion) lines.push(`来源版本: ${sourceVersion}`);
+  for (const key of ['rule', 'rules', 'expression', 'dependent_events', 'dependent_properties']) {
+    if (definition[key] != null) lines.push(`Rule evidence (${key}): ${jsonInline(definition[key])}`);
+  }
   return lines;
 }
 
@@ -2020,11 +2079,17 @@ function eventBasisLabel(value) {
 
 function detectSemanticConflicts() {
   const reportConflicts = new Map();
+  const executionVariants = new Map();
   const metadataConflicts = new Map();
   for (const [key, values] of groupBySemanticKey(reports, reportSemanticKey)) {
     if (values.length < 2) continue;
-    const signatures = new Set(values.map(reportSemanticSignature));
-    if (signatures.size <= 1) continue;
+    const signatures = new Set(values.map(report => reportSignature(report, report.calculation_context, false)));
+    if (signatures.size <= 1) {
+      if (new Set(values.map(reportSemanticSignature)).size > 1) {
+        for (const report of values) executionVariants.set(text(report.resource_key), true);
+      }
+      continue;
+    }
     const summary = semanticConflictSummary('报表', key, values, (row) => reportSemanticSignatureLabel(row));
     for (const report of values) appendConflict(reportConflicts, text(report.resource_key), summary);
   }
@@ -2036,7 +2101,7 @@ function detectSemanticConflicts() {
     const summary = semanticConflictSummary('元数据', key, values, (row) => metadataSemanticSignatureLabel(row));
     for (const item of values) appendConflict(metadataConflicts, text(item.evidence_id), summary);
   }
-  return { reportConflicts, metadataConflicts };
+  return { reportConflicts, metadataConflicts, executionVariants };
 }
 
 function groupBySemanticKey(values, keyFn) {
@@ -2105,25 +2170,7 @@ function normalizeSemanticIntent(value) {
 }
 
 function reportSemanticSignature(report) {
-  if (text(report.definition_kind) === 'SQL') {
-    return JSON.stringify({ kind: 'SQL', sql: normalizeSql(text(object(report.calculation_context).sql)) });
-  }
-  return JSON.stringify({
-    kind: text(report.definition_kind) || text(report.report_model),
-    metrics: array(report.metric_occurrences).map(metricSemanticSignature).sort(),
-    filters: filterSummaryLines(object(report.calculation_context).filters).sort(),
-    groups: array(object(report.calculation_context).group_by).map(groupLabel).sort(),
-  });
-}
-
-function metricSemanticSignature(item) {
-  return JSON.stringify({
-    event_name: text(item.event_name),
-    aggregation_code: text(item.aggregation_code),
-    measure_key: text(item.measure_key),
-    formula_expression: text(item.formula_expression),
-    filters: filterSummaryLines(item.filters ?? item.custom_filters).sort(),
-  });
+  return reportSignature(report);
 }
 
 function reportSemanticSignatureLabel(report) {
@@ -2146,6 +2193,7 @@ function metadataSemanticSignature(item) {
     select_type: text(definition.select_type),
     source_type: text(definition.source_type),
     tag_type: text(definition.tag_type || definition.tag_sub_type),
+    rules: semanticValue(Object.fromEntries(['rule', 'rules', 'expression', 'dependent_events', 'dependent_properties'].filter(key => definition[key] != null).map(key => [key, definition[key]]))),
   });
 }
 
@@ -2173,7 +2221,10 @@ function collectFilterValues(value) {
 function renderOccurrence(item, index) {
   const expression = formulaExpression(item);
   const formulaSummary = formulaDefinitionSummary(item);
-  const filterSummary = filterSummaryLines(item.filters || item.custom_filters);
+  const filterSummary = [
+    ...filterSummaryLines(item.filters, item.relation),
+    ...array(item.custom_filters).flatMap(filter => filterSummaryLines(filter).map(line => `Operand ${filter.index}: ${line}`)),
+  ];
   const event = metricEventLabel(item) || 'unknown';
   return `### ${index + 1}. ${heading(occurrenceLabel(item) || `Metric ${index + 1}`)}
 
@@ -2219,15 +2270,17 @@ function formulaDefinition(item) {
 }
 
 function formulaDependencies(item) {
-  return array(formulaDefinition(item).formulationDeps).map((dependency) => {
+  return array(formulaDefinition(item).formulationDeps).map((dependency, index) => {
     const event = object(object(dependency).event);
     const quota = object(object(dependency).quota);
     const eventName = text(event.eventDesc || event.eventName) || '未知事件';
     const aggregation = text(quota.quotaDesc || quota.quotaName) || '资产包未暴露聚合方式';
-    const filters = array(object(event.filter).filts)
-      .map((filter) => text(object(filter).columnDesc || object(filter).quotDesc || object(filter).prop))
-      .filter(Boolean);
-    return `“${eventName}”的“${aggregation}”${filters.length ? `（过滤：${filters.join('、')}）` : ''}`;
+    const filters = [
+      ...filterSummaryLines(event.filter),
+      ...array(item.custom_filters).filter(filter => Number(filter.index) === index).flatMap(filter => filterSummaryLines(filter)),
+    ];
+    const time = object(dependency).date ?? array(item.quota_time_ranges)[index];
+    return `“${eventName}”的“${aggregation}”${filters.length ? `（过滤：${filters.join('、')}）` : ''}${time != null ? ` [operand ${index}, time=${JSON.stringify(time)}]` : ''}`;
   });
 }
 
@@ -2249,6 +2302,10 @@ function formulaDefinitionSummary(item) {
 }
 
 function aggregationLabel(item) {
+  const entity = array(item.entity_grain).map(row => object(row.taIdMeasure ?? row.ta_id_measure ?? row)).find(row => row.custom === true || text(row.entityType ?? row.entity_type).toUpperCase() === 'CUSTOM');
+  if (text(item.aggregation_code) === 'A101' && entity) {
+    return `Distinct entities (${text(entity.columnName ?? entity.column_name) || 'verify entity key'})`;
+  }
   const name = text(item.aggregation_name);
   const code = text(item.aggregation_code);
   const codeLabel = aggregationCodeLabel(code);
@@ -2312,31 +2369,19 @@ function isAggregationCode(value) {
   return /^A\d{3}(?:_\d+)?$/.test(text(value));
 }
 
-function filterSummaryLines(value) {
-  const conditions = collectFilterConditions(value);
-  return [...new Set(conditions.map(filterConditionSentence).filter(Boolean))];
-}
-
-function collectFilterConditions(value) {
-  if (Array.isArray(value)) return value.flatMap(collectFilterConditions);
-  if (!value || typeof value !== 'object') return [];
-  const source = object(value);
-  const nested = Object.entries(source)
-    .filter(([key]) => !['ftv', 'columnDesc', 'columnName', 'quotDesc', 'prop', 'calcuSymbol', 'calcu_symbol', 'relation', 'junctionKind', 'junction_kind'].includes(key))
-    .flatMap(([, item]) => collectFilterConditions(item));
-  const hasConditionIdentity = ['columnDesc', 'columnName', 'quotDesc', 'prop', 'propertyName', 'tagName'].some((key) => text(source[key]))
-    || array(source.ftv).some((item) => text(item));
-  return hasConditionIdentity ? [source, ...nested] : nested;
+function filterSummaryLines(value, relation) {
+  if (value == null || (Array.isArray(value) && !value.length) || (!Array.isArray(value) && !Object.keys(object(value)).length)) return [];
+  return [renderConditionTree(conditionTree(value, relation), filterConditionSentence)];
 }
 
 function filterConditionSentence(condition) {
   const field = text(condition.columnDesc || condition.quotDesc || condition.columnName || condition.prop || condition.propertyName || condition.tagName) || '未命名字段';
-  const values = array(condition.ftv).map(text).filter(Boolean);
+  const values = array(condition.ftv).map(value => typeof value === 'string' ? `“${value}”` : JSON.stringify(value));
   const code = text(condition.calcuSymbol ?? condition.calcu_symbol);
   const operator = filterOperatorLabel(code);
   const relation = text(condition.relation || condition.junctionKind || condition.junction_kind);
   const needsValue = filterOperatorNeedsValue(code);
-  const valueText = values.length ? values.map((value) => `“${value}”`).join('、') : needsValue ? '未给出固定值' : '';
+  const valueText = values.length ? values.join('、') : needsValue ? '未给出固定值' : '';
   const valuePart = valueText ? ` ${valueText}` : '';
   const relationText = relation ? `（关系：${relation}）` : '';
   return `${field} ${operator}${valuePart}${relationText}`;
@@ -2381,6 +2426,7 @@ function filterOperatorNeedsValue(value) {
 }
 
 function occurrenceLabel(item) { return readableMetricText(item.display_name || item.event_title || item.event_name); }
+function groupLabel(group) { return text(object(group).columnDesc || object(group).columnName || group); }
 
 function metricEventLabel(item) {
   const title = readableMetricText(item.event_title);
@@ -2411,7 +2457,6 @@ function readableMetricText(value) {
     .replace(/^、|、$/g, '')
     .trim();
 }
-function groupLabel(group) { return text(object(group).columnDesc || object(group).columnName || group); }
 
 function renderSemanticConflictList() {
   const reportLines = [...reportConflicts.entries()]

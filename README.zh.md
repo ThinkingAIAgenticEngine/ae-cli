@@ -2,7 +2,7 @@
 
 # ae-cli
 
-`ae-cli` 是 ThinkingAI AgenticEngine（AE）平台的命令行客户端，为 AI Agent 和人工操作提供稳定、结构化的接口，覆盖分析与项目配置、元数据、埋点、本地数据接入、运营、DataOps、知识库、Agent 资源、用户记忆及系统管理。
+`ae-cli` 是 ThinkingAI AgenticEngine（AE）平台的命令行客户端，为 AI Agent 和人工操作提供稳定、结构化的接口，覆盖分析、实验、项目配置、元数据、埋点、本地数据接入、运营、DataOps、知识库、Agent 资源、用户记忆及系统管理。
 
 CLI 的核心设计包括：
 
@@ -66,11 +66,11 @@ ae-cli update --dry-run
 
 更新与 `install` 复用全局 Skills 安装和校验。旧包无需包含安装器或生成的清单，直接以目标包内置 Skills 为准。CLI 安装后 Skills 失败会返回部分成功信息，修复后可重复执行。
 
-自动同步在登录后的普通命令中触发，集群版本检查最长缓存 24 小时；`ae-cli update --host <AE_HOST>` 可立即查询。降级后，后续更新由旧版 CLI 自身执行，也受旧版实现限制。需要用新安装逻辑匹配旧集群时，可运行 `npx @thinkingai/ae-cli@latest update --host <AE_HOST>`，目标仍是集群要求的版本。
+自动同步在登录后的普通命令中触发，集群版本检查最长缓存 1 小时；`ae-cli update --host <AE_HOST>` 可立即查询。降级后，后续更新由旧版 CLI 自身执行，也受旧版实现限制。需要用新安装逻辑匹配旧集群时，可运行 `npx @thinkingai/ae-cli@latest update --host <AE_HOST>`，目标仍是集群要求的版本。
 
 `ae-cli update` 安装当前 Host 要求的精确版本，不依赖 npm `latest`。更新时优先从已安装的 npm 包同步 Skills，本地来源失败后才回退到对应的 GitHub tag。
 
-从 `6.0.37` 和 `6.1.9` 维护线开始，普通业务命令可以自动升级或降级到环境要求的版本。同步成功后，旧进程会返回 `AE_CLI_VERSION_SYNCED`；重新执行原命令，即可使用新的 CLI 和 Skills。安装失败会给出提示，但不会用安装输出污染业务命令的 JSON 结果。
+从 `6.0.37` 和 `6.1.9` 维护线开始，普通业务命令可以自动升级或降级到环境要求的版本，包括从 `6.0.x` 切换到 `6.1.x`。自动同步要求本地和目标均为 `主版本.次版本.补丁号` 格式的正式版本，开发版等不规则版本会跳过。同步成功后，旧进程会返回 `AE_CLI_VERSION_SYNCED`；重新执行原命令，即可使用新的 CLI 和 Skills。安装失败会给出提示，但不会用安装输出污染业务命令的 JSON 结果。
 
 常用控制方式：
 
@@ -120,12 +120,13 @@ ae-cli capability list --domain analysis --jq '.data.capabilities[] | .id'
 | 类别 | 根命令 | 用途 |
 |---|---|---|
 | 分析与项目 | `analysis` | 报告、看板、即席分析、下钻、详情、告警、标签和分群 |
+| 分析与项目 | `experiment` | Atlas 实验、报表、流量层、分桶、Feature、指标和操作日志 |
 | 分析与项目 | `analysis-meta` | 事件/属性目录、指标、虚拟元数据、埋点治理和项目分析配置 |
 | 分析与项目 | `analysis-governance` | 数据资产搜索、血缘、影响分析、认证和治理 |
 | 分析与项目 | `project` | 项目信息、成员、角色、权限、实体、时区和交接配置 |
 | 分析与项目 | `metadata` | 基于 Capability Gateway 的数据表、属性及维度表绑定 |
 | 分析与项目 | `personal-semantic-preference` | 当前用户按项目维护轻量个人语义偏好 |
-| 分析与项目 | `project-semantic` | 导出用于知识库构建的项目资产包 |
+| 分析与项目 | `project-semantic` | 项目语义治理、知识库资产包、候选校验、审核和发布 |
 | 数据与埋点 | `tracking` | 埋点方案、SDK 示例、检查、采集诊断、代码生成和内置 Wiki |
 | 数据与埋点 | `data-integration` | 检查、规划、转换、上传、交接和复用本地 CSV/JSON/Excel 数据 |
 | 社区洞察 | `community` | 社区帖子、评论、话题、情感、直播和报告工作流 |
@@ -147,6 +148,7 @@ ae-cli capability list --domain analysis --jq '.data.capabilities[] | .id'
 | Agent 平台 | `context` | 读取当前 Agent Run 已授权的产品页面上下文 |
 | Agent 平台 | `memory` | AgentSpace 记忆、草稿、共享审核、提取任务、版本与状态治理 |
 | Agent 平台 | `team` | Agent Team 和 TeamRun 的执行、对话、结果及产物 |
+| Agent 平台 | `evaluation` | Agent Evaluation 评测数据集、LLM 裁判、评测任务、用例结果、导出、调度，以及模型/Agent 配置 |
 | Agent 平台 | `system` | root/admin 的成员、沙盒、工具、模型、用量、配额和渠道管理 |
 | 通用工具 | `capability` | 能力发现、Schema 查看、参数校验、dry-run 和通用执行 |
 | 通用工具 | `auth` | 按 Host 登录、查看状态及管理同一 Host 的多个账号 |
@@ -160,6 +162,8 @@ ae-cli capability list --domain analysis --jq '.data.capabilities[] | .id'
 | Agent 平台 | `automation` | 自动化配置、执行、历史和结果 |
 <!-- root-command-surface:end -->
 
+评测命令在普通终端和沙箱中均跟随当前 AE Host，可通过 `--host` 切换。评测请求沿用该 AE Host 配置的 HTTP 或 HTTPS 协议，与其他 AE 命令一致。旧 `--endpoint` 和 `AE_EVAL_BASE_URL` 只能与当前 AE Host 一致，其他值会在发送凭证前报错；请移除这些配置，统一使用 `--host` 切换。沙箱外需设置 `AE_EVAL_ACCESS_TOKEN` 平台 session token，沙箱内可自动获取会话。详见 [地址与鉴权规则](skills/ae-evaluation/SKILL.md#endpoint-and-authentication)。
+
 ## Capability Gateway
 
 不需要独立精选命令的能力，应优先通过 Capability Gateway 调用：
@@ -172,6 +176,10 @@ ae-cli capability validate analysis.report.list --input input.json
 ae-cli capability dry-run analysis.report.list --input input.json
 ae-cli capability run analysis.report.list --input input.json
 ```
+
+管理员可在“外部访问管理”为成员配置每日 CLI 调用限额。
+
+异步导出时，省略 `--timeout-seconds` 即使用服务端默认超时。提交、等待和下载结果的方法见[导出使用指南](skills/ae-analysis/references/analysis_data_export.md)。
 
 `--input` 支持内联 JSON、JSON 文件路径、`@<path>`，或通过 `-` 从 stdin 读取。
 
@@ -198,7 +206,7 @@ ae-cli auth status --host https://host-a.example.com
 # 导入从“外部访问管理”复制的 CLI Token（隐藏输入）
 ae-cli auth set-token --host https://host-a.example.com
 # 本地脚本或测试使用非交互输入
-printf '%s' "$AE_CLI_TOKEN" | ae-cli auth set-token --host https://host-a.example.com --token-stdin
+printf '%s' "$IMPORTED_CLI_TOKEN" | ae-cli auth set-token --host https://host-a.example.com --token-stdin
 # 少量需要同一 Host 多账号的场景
 ae-cli auth login --host https://host-a.example.com --add
 ae-cli auth list --host https://host-a.example.com
@@ -220,9 +228,28 @@ ae-cli config remove pre-production --yes
 
 `auth set-token` 用于在本地导入从“外部访问管理”复制的 `cli_` Token。默认使用不回显的隐藏输入，`--token-stdin` 支持本地测试等非交互场景。CLI 会先向目标 Host 校验 Token，再替换本地凭证，并写入现有的按 Host 加密凭据库；命令输出不会包含 Token。需要保留同一 Host 的其他账号时增加 `--add`。
 
+支持通过环境变量或指定文件，为当前 CLI 调用注入凭证，不改变机器上已保存的账号；适用于自动化脚本、CI/CD、公共Agent等场景。
+
+```bash
+AE_CLI_TOKEN="$CALLER_CLI_TOKEN" AE_CLI_TOKEN_HOST=https://host-a.example.com ae-cli auth status
+AE_CLI_TOKEN_FILE=/secure/caller-token.json ae-cli auth status
+ae-cli --cli-token-file /secure/caller-token.json auth status
+```
+
+Token 文件是只读 JSON 对象：`{"url":"https://host-a.example.com","token":"cli_REPLACE_WITH_USER_TOKEN"}`，也兼容历史字段 `cli-token`。文件应仅允许所有者读取，例如权限 `600`；必须是大小不超过 64 KiB 的普通 JSON 文件。文件中的 URL 或 `AE_CLI_TOKEN_HOST` 决定本次调用的 Host；显式 `--host` 必须与之匹配。外部 Token 仅发送到该 Origin，拒绝其他服务 Origin 和 HTTP 重定向。
+
+凭证优先级为 `--cli-token-file` > `AE_CLI_TOKEN`（必须同时提供 `AE_CLI_TOKEN_HOST`）> `AE_CLI_TOKEN_FILE` > 现有本地账号或沙箱来源。显式来源为空、格式错误、无法读取或 Host 不匹配时返回 `EXTERNAL_CLI_TOKEN_INVALID`，不会回退到其他身份。外部凭证也优先于 Agent 调用的沙箱身份头。`auth status` 的来源为 `environment-cli-token` 或 `file-cli-token`，并在后端支持时展示账号与到期时间，不输出 Token。认证失败不会替换或删除本地凭证。
+
+外部模式不将 Token 或续期状态写入本地凭据库。自动续期使用 `cli-token` 请求头，失败不阻断业务请求，每个进程按 Host、Token 和当天日期限频；旧后端不支持请求头续期时仍可认证业务请求，但不能自动延长外部 Token。选择外部凭证时，`auth`、`auth login`、`auth set-token`、`auth use` 和 `auth logout` 返回 `EXTERNAL_CLI_TOKEN_ACTIVE`。管理机器账号前先移除这些进程设置；`auth list` 仍只列出本地账号。
+
 新版 CLI 只持久化 CLI Token，不保存 access token 或 refresh token。多账号保存在加密的 V1 凭据文件中，同时维护旧文件格式的当前账号投影，保证 CLI 自动降级后仍可登录；再次升级时会合并旧 CLI 对投影的登录、切换或退出变更。
 
 登录使用跨平台设备码流程。当前环境无法打开浏览器时，可使用 `--no-browser`。
+
+已改造的 6.1 环境统一使用 UBA 设备授权接口与平台 `/#/cli/device-activate` 页面，不随 K8s 或 Agent 状态切换。只有授权端点明确不存在（HTTP 404）时才兼容旧 Agent 流程；网络失败、HTML 响应和权限拒绝均不会更换授权方。非交互环境使用 `auth login --no-wait`，再携带返回的 `--device-code` 和同一个 `--host` 继续授权。原有 Host 多账号、CLI Token 与命令参数保持兼容。
+
+CLI 直接请求对应业务接口，由服务端校验产品 License 和用户/项目权限。组件不可用时会返回实际接口错误；HTTP 404 也可能表示资源不存在或路由不支持，不能据此直接判断组件未部署。
+
 试用引导仅在尚未配置 Host 时出现；已配置环境的正常命令和认证流程不会展示该提示。
 
 ## 输出与安全
@@ -382,6 +409,7 @@ npm test
 npm run qa-changed
 npm run self-check
 npm run check:release
+npm run verify:experiment-tools
 npm run verify:readme
 npm run verify:auth-credentials
 npm run verify:update-check

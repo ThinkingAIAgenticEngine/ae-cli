@@ -24,3 +24,11 @@ This index provides command-level risk metadata for Agent distribution and gener
 | `ae-cli agent approval-effect list`          | CLI-token-only versioned REST | read            | approval-effect.md   |
 | `ae-cli agent approval-effect get`           | CLI-token-only versioned REST | read            | approval-effect.md   |
 | `ae-cli agent approval-effect retry`         | CLI-token-only versioned REST | high-risk-write | approval-effect.md   |
+| `ae-cli agent resource-package list` | CLI-token resource package REST | read | resource-package.md |
+| `ae-cli agent resource-package show` | CLI-token resource package REST | read | resource-package.md |
+| `ae-cli agent resource-package export-preview` | CLI-token resource package REST | read | resource-package.md |
+| `ae-cli agent resource-package export` | CLI-token resource package REST | write | resource-package.md |
+| `ae-cli agent resource-package import` | CLI-token resource package REST | write | resource-package.md |
+| `ae-cli agent resource-package download` | CLI-token resource package REST | read | resource-package.md |
+| `ae-cli agent resource-package cancel` | CLI-token resource package REST | high-risk-write | resource-package.md |
+| `ae-cli agent resource-package retry` | CLI-token resource package REST | write | resource-package.md |

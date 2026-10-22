@@ -41,6 +41,7 @@ const DOMAIN_TO_SKILL = {
   'te-audience': 'ae-analysis',
   'te-common': 'ae-analysis',
   'te-engage': 'ae-engage',
+  'te-experiment': 'ae-experiment',
   'te-dataops': 'ae-dataops',
   'te-community': 'ae-community',
   'te-kb': 'ae-kb',
@@ -51,11 +52,13 @@ const DOMAIN_TO_SKILL = {
   'workspace': 'ae-workspace',
   'te-system': 'ae-system',
   'context': 'ae-current-context',
+  'evaluation': 'ae-evaluation',
 };
 // Tool command directories (should not have a skill; used for interactive/ops purposes).
 const TOOL_DIRS = new Set(['sync', 'model']);
 // Skills that use a "grouped/inline doc" strategy rather than per-command references: do not report per-command missing docs for these.
 const GROUPED_DOC_SKILLS = new Set([
+  'ae-evaluation',
   'ae-current-context',
   'ae-dataops',
   'ae-kb',

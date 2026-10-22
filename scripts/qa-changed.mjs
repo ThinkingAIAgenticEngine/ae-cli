@@ -82,7 +82,7 @@ function tasksFor(files) {
     tasks.push(['npm', ['run', 'verify:community-report']]);
   }
 
-  if (needs(files, [/^src\/commands\/team\//, /^scripts\/verify-te-team-tools\.mjs$/])) {
+  if (needs(files, [/^src\/commands\/(te-)?team\//, /^skills\/ae-team\//, /^tests\/team-run-watch\.test\.ts$/, /^scripts\/verify-te-team-tools\.mjs$/])) {
     tasks.push(['npm', ['run', 'verify:team-tools']]);
   }
   if (needs(files, [/^src\/commands\/agent\//, /^scripts\/verify-agent-tools\.mjs$/])) {

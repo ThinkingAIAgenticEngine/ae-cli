@@ -1,5 +1,6 @@
 import fs from 'fs';
 import path from 'path';
+import { redactExternalCliToken } from './external-cli-token.js';
 
 // Computed directly to avoid circular dependency with config.ts
 const LOG_DIR = path.join(process.env.HOME || '', '.ae-cli', 'log');
@@ -45,7 +46,7 @@ class Logger {
    */
   private write(level: LogLevel, message: string): void {
     const ts = this.timestamp();
-    const line = `[${ts}] ${message}\n`;
+    const line = `[${ts}] ${redactExternalCliToken(message)}\n`;
     try {
       fs.appendFileSync(this.filePath(level), line);
     } catch {

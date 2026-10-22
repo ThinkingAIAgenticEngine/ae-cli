@@ -831,6 +831,72 @@ await test('analysis-meta metric create maps model-type to metric_mode', async (
   });
 });
 
+await test('analysis-meta metric create preserves common and metric filter scopes for server compilation', async () => {
+  const cmd = await importCmd('src/commands/te-analysis/meta/metric/create.ts', 'metadataMetricCreate');
+  const definition = {
+    time_range: { mode: 'previous', unit: 'day', value: 7 },
+    relation: 'or',
+    filters: [
+      { field: { name: 'country', type: 'user_property' }, operator: 'eq', values: ['US'] },
+      {
+        relation: 'and',
+        items: [
+          { field: { name: 'channel', type: 'event_property' }, operator: 'eq', values: ['organic'] },
+          { field: { name: 'win', type: 'event_property' }, operator: 'is_true' },
+        ],
+      },
+    ],
+    metrics: [{
+      event: 'client_reply_first_visible',
+      aggregation: 'total_count',
+      relation: 'and',
+      filters: [{ field: { name: 'elapsed_ms', type: 'event_property' }, operator: 'lte', values: [3000] }],
+    }],
+  };
+  const original = JSON.stringify(definition);
+  const { body } = await captureCapabilityDryRun(cmd, {
+    projectId: 1,
+    metricName: 'fast_replies',
+    metricDesc: 'Fast Replies',
+    modelType: 'event',
+    metricEvents: [definition],
+    metricParams: { format: 'integer' },
+  });
+
+  assert.deepEqual(body.input.metric_events, [definition]);
+  assert.deepEqual(body.input.metric_params, { format: 'integer' });
+  assert.equal(JSON.stringify(definition), original, 'building the request must not mutate filter scopes');
+  assert.equal(body.input.metric_params.filts, undefined, 'the server owns native filter compilation');
+});
+
+await test('analysis-meta metric create leaves formula numerator filters on their original dependency', async () => {
+  const cmd = await importCmd('src/commands/te-analysis/meta/metric/create.ts', 'metadataMetricCreate');
+  const numerator = {
+    alias: 'fast',
+    event: 'client_reply_first_visible',
+    aggregation: 'total_count',
+    filters: [{ field: { name: 'elapsed_ms', type: 'event_property' }, operator: 'lte', values: [3000] }],
+  };
+  const denominator = { alias: 'all', event: 'client_reply_first_visible', aggregation: 'total_count' };
+  const definition = {
+    time_range: { mode: 'previous', unit: 'day', value: 7 },
+    metrics: [{ formula: 'fast / all', dependencies: [numerator, denominator] }],
+  };
+  const { body } = await captureCapabilityDryRun(cmd, {
+    projectId: 1,
+    metricName: 'fast_reply_rate',
+    metricDesc: 'Fast Reply Rate',
+    modelType: 'event',
+    metricEvents: [definition],
+    metricParams: { format: 'percent' },
+  });
+
+  assert.deepEqual(body.input.metric_events, [definition]);
+  assert.equal(body.input.metric_events[0].metrics[0].dependencies[1].filters, undefined);
+  assert.equal(body.input.metric_events[0].filters, undefined);
+  assert.deepEqual(body.input.metric_params, { format: 'percent' });
+});
+
 await test('analysis-meta metric get sends metric_id to gateway', async () => {
   const cmd = await importCmd('src/commands/te-analysis/meta/metric/get.ts', 'metadataMetricGet');
   const { url, body } = await captureCapabilityDryRun(cmd, {
@@ -971,6 +1037,36 @@ await test('analysis-meta metric update maps legacy model-type fields to gateway
     metric_events: [{ eventName: 'login', type: 'first' }],
     metric_params: { retentionType: 'retention' },
   });
+});
+
+await test('analysis-meta metric update preserves native saved filters and format without reauthoring', async () => {
+  const cmd = await importCmd('src/commands/te-analysis/meta/metric/update.ts', 'metadataMetricUpdate');
+  const events = [{
+    event_name: 'client_reply_first_visible',
+    analysis: 'A100',
+    relation: '1',
+    filts: [{
+      filter_type: 'COMPOUND',
+      relation: '0',
+      filts: [
+        { filter_type: 'SIMPLE', column_name: 'elapsed_ms', table_type: '0', select_type: 'number', calcu_symbol: 'C00', ftv: [3000] },
+        { filter_type: 'SIMPLE', column_name: 'channel', table_type: '0', select_type: 'string', calcu_symbol: 'C00', ftv: ['organic'] },
+      ],
+    }],
+  }];
+  const params = { format: 'integer' };
+  const { body } = await captureCapabilityDryRun(cmd, {
+    projectId: 1,
+    metricId: 1001,
+    metricName: 'fast_replies',
+    metricDesc: 'Fast Replies',
+    modelType: 'event',
+    metricEvents: events,
+    metricParams: params,
+  });
+
+  assert.deepEqual(body.input.metric_events, events);
+  assert.deepEqual(body.input.metric_params, params);
 });
 
 await test('analysis-meta metric delete sends metric_id to gateway', async () => {

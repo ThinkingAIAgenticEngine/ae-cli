@@ -17,6 +17,7 @@ import {
 } from './cli-agent-context.js';
 import { readFile } from 'node:fs/promises';
 import { basename } from 'node:path';
+import { externalCliTokenRequestOptions } from './external-cli-token.js';
 
 export type CapabilityApiMethod = 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE';
 
@@ -103,7 +104,8 @@ async function permissionError(resp: Response): Promise<PermissionError> {
   const body = safeJsonParse(await codeResponse.text());
   const error = isRecord(body?.error) ? body.error : undefined;
   const code = nonEmptyString(error?.code) ?? nonEmptyString(body?.code);
-  return new PermissionError(message, code);
+  return new PermissionError(message, code, nonEmptyString(error?.hint) ?? nonEmptyString(body?.hint), undefined,
+    isRecord(body?.meta) ? body.meta : undefined);
 }
 
 function isInvalidCliTokenMessage(message: string): boolean {
@@ -221,12 +223,13 @@ async function requestOnce(
     headers['Content-Type'] = 'application/json';
     init.body = JSON.stringify(includeClientContextInBody ? withCliAgentContextBody(body, agentContext) : body);
   }
-  return fetch(url, init);
+  return fetch(url, { ...init, ...externalCliTokenRequestOptions(url) });
 }
 
 async function requestMultipartOnce(url: string, token: string, form: FormData): Promise<Response> {
   return fetch(url, {
     method: 'POST',
+    ...externalCliTokenRequestOptions(url),
     headers: {
       'cli-token': token,
       'Accept': 'application/json',
@@ -239,6 +242,7 @@ async function requestMultipartOnce(url: string, token: string, form: FormData):
 async function requestDownloadOnce(url: string, token: string): Promise<Response> {
   return fetch(url, {
     method: 'GET',
+    ...externalCliTokenRequestOptions(url),
     headers: {
       'cli-token': token,
       'Accept': '*/*',

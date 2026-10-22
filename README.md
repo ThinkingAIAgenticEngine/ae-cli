@@ -2,7 +2,7 @@
 
 # ae-cli
 
-`ae-cli` is the command-line client for the ThinkingAI AgenticEngine (AE) platform. It provides stable, structured interfaces for both AI Agents and human operators across analytics and project configuration, metadata, tracking, local-data ingestion, Engage, DataOps, knowledge bases, Agent resources, user memory, and system administration.
+`ae-cli` is the command-line client for the ThinkingAI AgenticEngine (AE) platform. It provides stable, structured interfaces for both AI Agents and human operators across analytics, experimentation, project configuration, metadata, tracking, local-data ingestion, Engage, DataOps, knowledge bases, Agent resources, user memory, and system administration.
 
 The CLI is designed around:
 
@@ -62,11 +62,11 @@ ae-cli update --dry-run
 
 Updates use the same global Skills installation and verification as `install`. Older packages need no installer or generated manifest: their bundled Skills define the expected contents. If Skills fail after the CLI installs, the result reports partial completion and can be retried.
 
-Automatic synchronization runs during normal commands after login; host version checks are cached for up to 24 hours. `ae-cli update --host <AE_HOST>` checks immediately. After a downgrade, future updates run the older CLI's own updater, including its historical limitations. To use the new installer logic while following an older host, run `npx @thinkingai/ae-cli@latest update --host <AE_HOST>`; the target remains the host-required version.
+Automatic synchronization runs during normal commands after login; host version checks are cached for up to one hour. `ae-cli update --host <AE_HOST>` checks immediately. After a downgrade, future updates run the older CLI's own updater, including its historical limitations. To use the new installer logic while following an older host, run `npx @thinkingai/ae-cli@latest update --host <AE_HOST>`; the target remains the host-required version.
 
 `ae-cli update` installs the exact version required by the active host rather than npm `latest`. It synchronizes Skills from the installed npm package first and uses the matching GitHub tag only as a fallback.
 
-Starting with the `6.0.37` and `6.1.9` release lines, ordinary business commands can automatically upgrade or downgrade the CLI to the host-required version. After a successful synchronization, the old process exits with `AE_CLI_VERSION_SYNCED`; re-run the original command so it executes with the new CLI and Skills. Installation failures are reported without replacing the business command's JSON output.
+Starting with the `6.0.37` and `6.1.9` release lines, ordinary business commands can automatically upgrade or downgrade the CLI to the host-required version, including switching from `6.0.x` to `6.1.x`. Automatic synchronization requires stable `major.minor.patch` versions at both ends; development and other nonstandard versions are skipped. After a successful synchronization, the old process exits with `AE_CLI_VERSION_SYNCED`; re-run the original command so it executes with the new CLI and Skills. Installation failures are reported without replacing the business command's JSON output.
 
 Useful controls:
 
@@ -116,12 +116,13 @@ The table covers every current root command individually. Use `ae-cli --help` fo
 | Category | Root command | Purpose |
 |---|---|---|
 | Analysis and projects | `analysis` | Reports, dashboards, ad-hoc analysis, drilldowns, details, alerts, tags, and cohorts |
+| Analysis and projects | `experiment` | Atlas experiments, reports, traffic layers, buckets, Features, metrics, and operation logs |
 | Analysis and projects | `analysis-meta` | Event/property catalogs, metrics, virtual metadata, tracking governance, and project analysis settings |
 | Analysis and projects | `analysis-governance` | Data-asset search, lineage, impact analysis, certification, and governance |
 | Analysis and projects | `project` | Project information, members, roles, permissions, entities, time zones, and handover settings |
 | Analysis and projects | `metadata` | Capability-backed data-table, property, and dimension-table binding operations |
 | Analysis and projects | `personal-semantic-preference` | Project-scoped lightweight semantic preferences for the current user |
-| Analysis and projects | `project-semantic` | Export project asset packages for knowledge-base builds |
+| Analysis and projects | `project-semantic` | Governed project semantics, knowledge-base asset packages, candidate validation, review, and publishing |
 | Data and tracking | `tracking` | Tracking plans, SDK samples, checks, ingestion diagnostics, code generation, and bundled wiki |
 | Data and tracking | `data-integration` | Inspect, plan, convert, upload, hand off, and reuse local CSV/JSON/Excel data |
 | Community insights | `community` | Community posts, comments, topics, sentiment, livestream, and report workflows |
@@ -143,6 +144,7 @@ The table covers every current root command individually. Use `ae-cli --help` fo
 | Agent platform | `context` | Read the current product-page context authorized for the active Agent Run |
 | Agent platform | `memory` | AgentSpace memory, drafts, shared review, extraction jobs, revisions, and state transitions |
 | Agent platform | `team` | Agent Team and TeamRun execution, chat, results, and artifacts |
+| Agent platform | `evaluation` | Agent Evaluation datasets, LLM judge evaluators, runs, case results, exports, schedules, and model/agent configs |
 | Agent platform | `system` | Root/admin management of members, sandboxes, tools, models, usage, quotas, and channels |
 | General tools | `capability` | Capability discovery, schema inspection, validation, dry-run, and generic execution |
 | General tools | `auth` | Host-scoped login, status, and multi-account management |
@@ -156,6 +158,8 @@ The table covers every current root command individually. Use `ae-cli --help` fo
 | Agent platform | `automation` | Automation configuration, execution, history, and results |
 <!-- root-command-surface:end -->
 
+Evaluation commands follow the current AE Host in personal terminals and sandboxes; use `--host` to select another host. Evaluation requests use the HTTP or HTTPS scheme configured for that AE Host, consistent with other AE commands. Legacy `--endpoint` and `AE_EVAL_BASE_URL` values may only match the current AE Host; other values fail before credentials are sent. Remove these settings and use `--host` to select a host. Outside a sandbox, export `AE_EVAL_ACCESS_TOKEN` with a platform session token; sandboxes can obtain a session automatically. See [endpoint and authentication rules](skills/ae-evaluation/SKILL.md#endpoint-and-authentication).
+
 ## Capability Gateway
 
 Capability Gateway is the preferred entry point for operations that do not need a dedicated curated command:
@@ -168,6 +172,10 @@ ae-cli capability validate analysis.report.list --input input.json
 ae-cli capability dry-run analysis.report.list --input input.json
 ae-cli capability run analysis.report.list --input input.json
 ```
+
+Administrators can set each member's daily CLI call limit in External Access Management.
+
+For asynchronous exports, omit `--timeout-seconds` to use the server's default timeout. See the [export guide](skills/ae-analysis/references/analysis_data_export.md) for submitting, waiting for, and downloading results.
 
 `--input` accepts inline JSON, a JSON file path, `@<path>`, or `-` for stdin.
 
@@ -194,7 +202,7 @@ ae-cli auth status --host https://host-a.example.com
 # Import a CLI token copied from External Access Management (hidden prompt)
 ae-cli auth set-token --host https://host-a.example.com
 # Non-interactive input for local scripts or tests
-printf '%s' "$AE_CLI_TOKEN" | ae-cli auth set-token --host https://host-a.example.com --token-stdin
+printf '%s' "$IMPORTED_CLI_TOKEN" | ae-cli auth set-token --host https://host-a.example.com --token-stdin
 # For the uncommon case where one Host needs multiple accounts
 ae-cli auth login --host https://host-a.example.com --add
 ae-cli auth list --host https://host-a.example.com
@@ -216,9 +224,28 @@ A regular `auth login` keeps the simple one-Host/one-account behavior and replac
 
 `auth set-token` is for local use with a `cli_` token copied from External Access Management. It prompts without echo by default; `--token-stdin` supports non-interactive local testing. The CLI validates the token against the target Host before replacing the stored credential, encrypts it in the existing per-Host vault, and never includes the value in command output. Add `--add` to retain other accounts for the same Host.
 
+Inject credentials into the current CLI invocation through environment variables or a specified file without changing stored machine accounts. This supports automation scripts, CI/CD, shared Agents, and other workflows:
+
+```bash
+AE_CLI_TOKEN="$CALLER_CLI_TOKEN" AE_CLI_TOKEN_HOST=https://host-a.example.com ae-cli auth status
+AE_CLI_TOKEN_FILE=/secure/caller-token.json ae-cli auth status
+ae-cli --cli-token-file /secure/caller-token.json auth status
+```
+
+The token file is a read-only JSON object: `{"url":"https://host-a.example.com","token":"cli_REPLACE_WITH_USER_TOKEN"}`. The historical `cli-token` key is also accepted. Keep the file private to its owner (for example, mode `600`). Files must be regular JSON files no larger than 64 KiB. The file URL or `AE_CLI_TOKEN_HOST` selects the host for this invocation; an explicit `--host` must match it. External tokens are sent only to that origin; alternate service origins and HTTP redirects are rejected.
+
+Credential precedence is `--cli-token-file` > `AE_CLI_TOKEN` with required `AE_CLI_TOKEN_HOST` > `AE_CLI_TOKEN_FILE` > the existing stored-account/sandbox sources. An explicitly selected source that is empty, malformed, unreadable, or bound to a different host returns `EXTERNAL_CLI_TOKEN_INVALID`; it never falls back to another identity. External credentials also take precedence over sandbox identity headers for Agent calls. `auth status` reports `environment-cli-token` or `file-cli-token`, account and expiration when available, and never reveals the token. Authentication failures do not replace or delete stored credentials.
+
+External mode does not write the token or renewal state to the local credential vault. Renewal is best effort, uses the `cli-token` header, and is limited per host/token per process day; older servers without header-based renewal can still authenticate business calls but cannot automatically extend external tokens. `auth`, `auth login`, `auth set-token`, `auth use`, and `auth logout` return `EXTERNAL_CLI_TOKEN_ACTIVE` while external credentials are selected. Remove these process settings before managing machine accounts; `auth list` continues to list local accounts.
+
 The new CLI persists only CLI tokens, never access or refresh tokens. Multiple accounts live in an encrypted V1 vault while the active account is projected into the historical file shape for automatic downgrades. When the CLI upgrades again, it reconciles login, switch, or logout changes made by the old CLI.
 
 Login uses a cross-platform device-code flow. Use `--no-browser` when the environment cannot open a browser.
+
+On upgraded 6.1 deployments, authorization always uses the UBA device endpoints and the platform `/#/cli/device-activate` page, independently of Kubernetes or Agent state. Only an explicit missing authorization endpoint (HTTP 404) selects the supported legacy Agent flow; network failures, HTML responses and permission denials never change the issuer. Use `auth login --no-wait`, then resume with the returned `--device-code` and the same `--host` for non-interactive authorization. Existing host accounts, CLI tokens and command flags remain compatible.
+
+The CLI calls business endpoints directly; services enforce product License and user/project permissions. An unavailable component returns the actual API error. HTTP 404 can also mean a missing resource or an unsupported route, so it does not by itself establish that a component is not deployed.
+
 Trial guidance is emitted only when no Host is configured; normal commands and authentication flows for configured environments do not display it.
 
 ## Output and Safety
@@ -381,6 +408,7 @@ npm test
 npm run qa-changed
 npm run self-check
 npm run check:release
+npm run verify:experiment-tools
 npm run verify:readme
 npm run verify:auth-credentials
 npm run verify:update-check

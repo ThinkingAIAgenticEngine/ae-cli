@@ -13,7 +13,8 @@ Domain: **TeamRun execution / read**
 - `--id` is required. Obtain the real run ID from a previous `+run-start` or `+run-chat` response.
 - Check the **exit code** to determine what happened — do not guess from output alone.
 - When exit code is `2` (`waiting_user`): read `pendingQuestion` from stdout, present it to the user, collect their answer, call `+run-reply`, then re-run `+run-watch`.
-- Network drops are handled automatically (up to 10 reconnects with 2s delay). Do NOT retry `+run-watch` on exit 1 unless you have confirmed the run itself failed via `+run-result`.
+- Connection failures, premature EOF, and SSE read failures share a maximum of 10 reconnects, with a 2s delay before each retry. Reconnects carry the last complete log timestamp in `afterLog`; an incomplete event is discarded. HTTP rejections and SSE `error` events exit immediately without reconnecting.
+- Exit 1 alone does not mean the server-side run failed. After a connection error or exhausted retries, check `+run-result --id <run_id>`. Resume watching the same run if it is still active; do not start a duplicate run merely because its stream disconnected.
 
 ## Command
 ```bash
@@ -37,16 +38,17 @@ ae-cli team +run-watch --id <run_id> --after-log <lastTimestamp>
 | Code | Meaning | Action |
 |---|---|---|
 | `0` | `completed` or `partial_success` | Proceed to `+run-artifacts` |
-| `1` | `failed`, `cancelled`, `stale`, or connection error | Inspect `errorMessage` in stdout JSON; report to user |
+| `1` | `failed`, `cancelled`, `stale`, or connection error | Inspect the terminal entity or error; for connection errors, check the same run with `+run-result` |
 | `2` | `waiting_user` | Read `pendingQuestion` from stdout JSON, present to user, then `+run-reply` → re-run `+run-watch` |
 
 ## Output
-stdout always receives the final `TeamRunEntity` as a standard JSON envelope:
+When a terminal or `waiting_user` event is received, stdout receives its `TeamRunEntity` as a standard JSON envelope:
 ```json
 { "ok": true, "data": { "id": "...", "status": "...", "pendingQuestion": "...", ... } }
 ```
 - Exit 0/1: the entity from the `final` SSE event (terminal state)
-- Exit 2: the entity from the `update` SSE event at the moment `waiting_user` was detected
+- Exit 2: the entity from the `snapshot` or `update` SSE event at the moment `waiting_user` was detected
+- Connection failures and SSE `error` events emit an error on stderr and may have no entity on stdout. A connection error does not cancel the run.
 
 stderr receives real-time log lines and status changes (suppressed with `--quiet`).
 
@@ -75,7 +77,7 @@ ae-cli team +run-watch --id <run_id>
 
 ## Next Steps on Failure
 - Exit 1 + `status = failed`: read `errorMessage` in the JSON output; ask user whether to retry with `+run-start`.
-- Connection drop before `final`: re-run `+run-watch --id <run_id> --after-log <lastTimestamp>`.
+- Connection error before `final`: let automatic reconnects finish. If the command exits 1, check `+run-result --id <run_id>` first. For an active run, resume with `+run-watch --id <run_id> --after-log <lastTimestamp>`; omit `--after-log` if no cursor was retained.
 
 ## Recommended Chaining
 - `+run-start` → `+run-watch` → exit 0 → `+run-artifacts`

@@ -675,8 +675,8 @@ assert.match(visualSqlPage, /definition_state: unknown/);
 assert.match(visualSqlPage, /runtime_policy: block/);
 assert.doesNotMatch(visualSqlPage, /semantic_plan_plus_cli_fact_fallback/);
 assert.match(visualSqlPage, /用途：通过 SQL 查询“Visual SQL report”相关明细/);
-assert.match(visualSqlPage, /返回数量限制：required=true/);
-assert.doesNotMatch(visualSqlPage, /Variable2|select \*/i);
+assert.match(visualSqlPage, /返回数量限制（`Variable2`）：required=true/);
+assert.doesNotMatch(visualSqlPage, /select \*/i);
 assert.match(visualSqlPage, /源表全字段输出，字段清单需回源表 payment_summary 当前结构确认/);
 assert.doesNotMatch(visualSqlPage, /## 计算上下文/);
 

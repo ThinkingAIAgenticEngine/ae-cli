@@ -16,14 +16,15 @@ import { logger } from '../core/logger.js';
 import { PermissionError } from '../core/errors.js';
 import { missingAeHostGuidance, missingAeHostHint } from '../core/host-guidance.js';
 import { MultiselectCancelled, promptSingleSelect } from '../core/multiselect.js';
+import { ExternalCliTokenError, readExternalCliToken } from '../core/external-cli-token.js';
 import {
   runDeviceFlow,
-  authorizeDevice,
   pollDeviceFlow,
   buildVerificationUrl,
   DeviceFlowUnsupportedError,
   type DeviceTokenResponse,
 } from '../core/device-auth.js';
+import { authorizeLoginDevice, resolveDeviceSessionRoute, resolveLegacyLoginBase } from '../core/login-device-flow.js';
 import {
   activateCredential,
   assertCredentialsReadable,
@@ -42,6 +43,10 @@ import {
 const HOST_OPTION_DESC = 'Override active AE host URL (e.g., https://ta.thinkingdata.cn)';
 
 type AuthHostOpts = { host?: string };
+
+function shellArgument(value: string): string {
+  return `'${value.replace(/'/g, `'\\''`)}'`;
+}
 
 type SetTokenOpts = AuthHostOpts & {
   add?: boolean;
@@ -67,7 +72,7 @@ type ValidationState = {
   details: CliTokenValidationResult;
 };
 
-async function validateExistingCliToken(host: string, cliToken: string): Promise<ValidationState> {
+async function validateExistingCliToken(host: string, cliToken: string, external = false): Promise<ValidationState> {
   try {
     return { valid: true, trusted: false, details: await validateCliTokenOnServer(host, cliToken) };
   } catch (error) {
@@ -84,7 +89,9 @@ async function validateExistingCliToken(host: string, cliToken: string): Promise
     printError(
       'auth',
       error.message,
-      `Run: ae-cli auth logout --host ${host}, then ae-cli auth login --host ${host}`,
+      external
+        ? 'Replace the external CLI token with a valid token for this host.'
+        : `Run: ae-cli auth logout --host ${host}, then ae-cli auth login --host ${host}`,
     );
     process.exitCode = 1;
     return { valid: false, trusted: false, details: {} };
@@ -345,9 +352,7 @@ function manualTokenSummary(host: string, credential: StoredCredential) {
 }
 
 export function resolveLoginTeClaudeBase(host: string): string {
-  const base = host.replace(/\/+$/, '');
-  const basePath = process.env.TE_CLAUDE_BASE_PATH || '/agent';
-  return base.endsWith(basePath) ? base : base + basePath;
+  return resolveLegacyLoginBase(host);
 }
 
 export function registerAuth(program: Command): void {
@@ -355,6 +360,12 @@ export function registerAuth(program: Command): void {
     .command('auth')
     .description('Manage authentication or switch the active account interactively')
     .hook('preAction', (_command, actionCommand) => {
+      if (['auth', 'login', 'set-token', 'use', 'logout'].includes(actionCommand.name()) && readExternalCliToken()) {
+        throw new ExternalCliTokenError(
+          'Stored-account changes are unavailable while an external CLI token is selected.',
+          'EXTERNAL_CLI_TOKEN_ACTIVE',
+        );
+      }
       if (['login', 'set-token'].includes(actionCommand.name())) {
         const host = resolveAuthHost(program, actionCommand.opts());
         if (host) assertCredentialsReadable(host);
@@ -390,12 +401,12 @@ export function registerAuth(program: Command): void {
 
       const noBrowser = !opts.browser;
       const format = program.opts().format || 'json';
-      const teClaudeBase = resolveLoginTeClaudeBase(host);
       const emit = (message: string) => process.stderr.write(`[ae-cli] ${message}\n`);
 
       try {
         if (opts.deviceCode) {
-          const tokens = await pollDeviceFlow(teClaudeBase, opts.deviceCode, {}, emit);
+          const route = resolveDeviceSessionRoute(host, opts.deviceCode);
+          const tokens = await pollDeviceFlow(route.baseUrl, opts.deviceCode, { protocol: route.protocol }, emit);
           const saved = await persistDeviceTokens(host, tokens, { add: opts.add });
           activateHostAfterLogin(host, explicitHost);
           emit('Login successful! CLI token saved securely.');
@@ -403,21 +414,24 @@ export function registerAuth(program: Command): void {
           return;
         }
 
+        const session = await authorizeLoginDevice(host);
+        const authResp = session.authorization;
         if (opts.wait === false) {
-          const authResp = await authorizeDevice(teClaudeBase);
           const addFlag = opts.add ? ' --add' : '';
           await printOutput({
             device_code: authResp.device_code,
             user_code: authResp.user_code,
-            verification_url: buildVerificationUrl(teClaudeBase, authResp.user_code),
+            verification_url: buildVerificationUrl(session.baseUrl, authResp.user_code, session.protocol),
             interval: authResp.interval,
             expires_in: authResp.expires_in,
-            next: `Open verification_url in a browser to authorize, then run: ae-cli auth login${addFlag} --device-code ${authResp.device_code}`,
+            next: `Open verification_url in a browser to authorize, then run: ae-cli auth login${addFlag} --host ${shellArgument(host)} --device-code ${shellArgument(authResp.device_code)}`,
           }, format);
           return;
         }
 
-        const tokens = await runDeviceFlow(teClaudeBase, { noBrowser }, emit);
+        const tokens = await runDeviceFlow(session.baseUrl, {
+          noBrowser, protocol: session.protocol, authorization: authResp,
+        }, emit);
         const saved = await persistDeviceTokens(host, tokens, { add: opts.add });
         activateHostAfterLogin(host, explicitHost);
         emit('Login successful! CLI token saved securely.');
@@ -513,6 +527,23 @@ export function registerAuth(program: Command): void {
           host: '(none)',
           hint: missingAeHostHint(),
           next_steps: missingAeHostGuidance(),
+        }, program.opts().format || 'json');
+        return;
+      }
+
+      const external = readExternalCliToken(host);
+      if (external) {
+        const state = await validateExistingCliToken(host, external.token, true);
+        if (!state.valid) return;
+        await printOutput({
+          authenticated: true,
+          host,
+          source: external.source,
+          cli_token: {
+            status: state.trusted ? 'trusted' : 'valid',
+            ...(state.details.cliTokenExpiresAt ? { expires_at: state.details.cliTokenExpiresAt } : {}),
+          },
+          ...(state.details.account ? { account: accountOutput(state.details.account) } : {}),
         }, program.opts().format || 'json');
         return;
       }
