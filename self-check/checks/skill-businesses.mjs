@@ -5,7 +5,7 @@ import { createRequire } from 'node:module';
 import path from 'node:path';
 
 const require = createRequire(import.meta.url);
-const COMPONENTS = new Set(['base', 'analysis', 'dataops', 'engage', 'agent', 'community', 'experiment']);
+const COMPONENTS = new Set(['base', 'analysis', 'dataops', 'engage', 'agent', 'community']);
 const REGISTRY = 'src/core/skill-businesses.json';
 
 export function checkSkillBusinesses(root) {

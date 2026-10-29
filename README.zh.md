@@ -2,7 +2,7 @@
 
 # ae-cli
 
-`ae-cli` 是 ThinkingAI AgenticEngine（AE）平台的命令行客户端，为 AI Agent 和人工操作提供稳定、结构化的接口，覆盖分析、实验、项目配置、元数据、埋点、本地数据接入、运营、DataOps、知识库、Agent 资源、用户记忆及系统管理。
+`ae-cli` 是 ThinkingAI AgenticEngine（AE）平台的命令行客户端，为 AI Agent 和人工操作提供稳定、结构化的接口，覆盖分析与项目配置、元数据、埋点、本地数据接入、运营、DataOps、知识库、Agent 资源、用户记忆及系统管理。
 
 CLI 的核心设计包括：
 
@@ -123,13 +123,12 @@ ae-cli capability list --domain analysis --jq '.data.capabilities[] | .id'
 | 类别 | 根命令 | 用途 |
 |---|---|---|
 | 分析与项目 | `analysis` | 报告、看板、即席分析、下钻、详情、告警、标签和分群 |
-| 分析与项目 | `experiment` | Atlas 实验、报表、流量层、分桶、Feature、指标和操作日志 |
 | 分析与项目 | `analysis-meta` | 事件/属性目录、指标、虚拟元数据、埋点治理和项目分析配置 |
 | 分析与项目 | `analysis-governance` | 数据资产搜索、血缘、影响分析、认证和治理 |
 | 分析与项目 | `project` | 项目信息、成员、角色、权限、实体、时区和交接配置 |
 | 分析与项目 | `metadata` | 基于 Capability Gateway 的数据表、属性及维度表绑定 |
 | 分析与项目 | `personal-semantic-preference` | 当前用户按项目维护轻量个人语义偏好 |
-| 分析与项目 | `project-semantic` | 项目语义治理、知识库资产包、候选校验、审核和发布 |
+| 分析与项目 | `project-semantic` | 导出用于知识库构建的项目资产包 |
 | 数据与埋点 | `tracking` | 埋点方案、SDK 示例、检查、采集诊断、代码生成和内置 Wiki |
 | 数据与埋点 | `data-integration` | 检查、规划、转换、上传、交接和复用本地 CSV/JSON/Excel 数据 |
 | 社区洞察 | `community` | 社区帖子、评论、话题、情感、直播和报告工作流 |
@@ -168,18 +167,6 @@ ae-cli capability list --domain analysis --jq '.data.capabilities[] | .id'
 使用 `ae-cli analysis scenario list --project-id 1 --days 7` 查询已采集的分析问题，由 `ae-analysis` Skill 指导 Agent 去重、判断 badcase 并简要说明原因和证据。详见[分析问题复盘指南](skills/ae-analysis/references/scenario_list.md)。 回答可附带耗时；使用 `ae-cli analysis scenario get --help` 查看关联命令执行明细的查询方式。
 
 评测命令在普通终端和沙箱中均跟随当前 AE Host，可通过 `--host` 切换。评测请求沿用该 AE Host 配置的 HTTP 或 HTTPS 协议，与其他 AE 命令一致。旧 `--endpoint` 和 `AE_EVAL_BASE_URL` 只能与当前 AE Host 一致，其他值会在发送凭证前报错；请移除这些配置，统一使用 `--host` 切换。沙箱外需设置 `AE_EVAL_ACCESS_TOKEN` 平台 session token，沙箱内可自动获取会话。详见 [地址与鉴权规则](skills/ae-evaluation/SKILL.md#endpoint-and-authentication)。
-
-### Feature 实验定时开启
-
-对于已完成配置的 Feature 实验，保存开始时间和可选的固定截止时间，检查就绪状态后提交：
-
-```bash
-ae-cli experiment experiment save --project-id 1 --req '{"expId":"exp_123"}' --start-time '2026-11-01T16:00:00+08:00' --fixed-end-time '2026-11-08T16:00:00+08:00'
-ae-cli experiment experiment ready-check --project-id 1 --exp-id exp_123
-ae-cli experiment experiment manage --project-id 1 --exp-id exp_123 --target-status pending
-```
-
-仅保存不会开启实验，服务端每半小时检查已提交的实验。使用 `experiment experiment get` 确认状态；流量冲突检查、时间修改与手动开启规则见 [Feature 时间配置](skills/ae-experiment/references/save_experiment.md#feature-timing)。
 
 ## Capability Gateway
 
@@ -262,11 +249,6 @@ Token 文件是只读 JSON 对象：`{"url":"https://host-a.example.com","token"
 新版 CLI 只持久化 CLI Token，不保存 access token 或 refresh token。多账号保存在加密的 V1 凭据文件中，同时维护旧文件格式的当前账号投影，保证 CLI 自动降级后仍可登录；再次升级时会合并旧 CLI 对投影的登录、切换或退出变更。
 
 登录使用跨平台设备码流程。当前环境无法打开浏览器时，可使用 `--no-browser`。
-
-已改造的 6.1 环境统一使用 UBA 设备授权接口与平台 `/#/cli/device-activate` 页面，不随 K8s 或 Agent 状态切换。只有授权端点明确不存在（HTTP 404）时才兼容旧 Agent 流程；网络失败、HTML 响应和权限拒绝均不会更换授权方。非交互环境使用 `auth login --no-wait`，再携带返回的 `--device-code` 和同一个 `--host` 继续授权。原有 Host 多账号、CLI Token 与命令参数保持兼容。
-
-CLI 直接请求对应业务接口，由服务端校验产品 License 和用户/项目权限。组件不可用时会返回实际接口错误；HTTP 404 也可能表示资源不存在或路由不支持，不能据此直接判断组件未部署。
-
 试用引导仅在尚未配置 Host 时出现；已配置环境的正常命令和认证流程不会展示该提示。
 
 ## 输出与安全
@@ -429,7 +411,6 @@ npm test
 npm run qa-changed
 npm run self-check
 npm run check:release
-npm run verify:experiment-tools
 npm run verify:readme
 npm run verify:auth-credentials
 npm run verify:update-check

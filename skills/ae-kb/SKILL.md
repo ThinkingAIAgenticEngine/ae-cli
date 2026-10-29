@@ -637,6 +637,7 @@ Transport: `POST /agent/api/external/knowledge-bases/sources/check-updates`, bod
 - Review after: 2026-10-16.
 - Exit condition: once the Gateway exposes equivalent authorization and detector semantics, migrate the typed command to L2 or use L3 if it adds no value.
 
+
 ### Submit an ordinary URL update check
 
 ```bash

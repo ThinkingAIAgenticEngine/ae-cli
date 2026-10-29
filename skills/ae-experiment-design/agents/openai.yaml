@@ -1,4 +1,0 @@
-interface:
-  display_name: "Experiment Design & Integration"
-  short_description: "Design AE experiments with optional SDK guidance"
-  default_prompt: "Use $ae-experiment-design to design an A/B experiment and prepare an AE draft; include SDK guidance only when I explicitly request it."

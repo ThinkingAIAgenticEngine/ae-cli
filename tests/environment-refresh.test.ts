@@ -128,16 +128,16 @@ function childEnvironment(home: string): NodeJS.ProcessEnv {
 async function withLoginServer(
   body: (host: string, requests: string[]) => Promise<void>,
   configAvailable = false,
-  businesses: () => Record<string, boolean> = () => ({ dataops: false, engage: false, agent: false, community: false, experiment: false }),
+  businesses: () => Record<string, boolean> = () => ({ dataops: false, engage: false, agent: false, community: false }),
 ): Promise<void> {
   const requests: string[] = [];
   const server = http.createServer((request, response) => {
     const pathname = new URL(request.url!, 'http://localhost').pathname;
     requests.push(pathname);
     response.setHeader('content-type', 'application/json');
-    if (pathname === '/v1/ta/cli/auth/device/authorize') {
-      response.end(JSON.stringify({ device_code: 'uba_fixture_device', user_code: 'FIXTURE', interval: 1, expires_in: 300 }));
-    } else if (pathname === '/v1/ta/cli/auth/device/token') {
+    if (pathname === '/agent/api/auth/device/authorize') {
+      response.end(JSON.stringify({ device_code: 'fixture-device', user_code: 'FIXTURE', interval: 0, expires_in: 300 }));
+    } else if (pathname === '/agent/api/auth/device/token') {
       response.end(JSON.stringify({ access_token: 'fixture-one-time-access', token_type: 'bearer', expires_in: 72000 }));
     } else if (pathname === '/v1/ta/cli/token/generate') {
       response.end(JSON.stringify({ return_code: 0, data: { userSecret: 'cli_login_refresh_fixture' } }));
@@ -167,8 +167,8 @@ test('requesting only a device code neither fetches config nor synchronizes Skil
       const result = await execute(process.execPath, ['--import', 'tsx', 'src/index.ts', 'auth', 'login', '--host', host, '--no-browser', '--no-wait'], {
         cwd: repository, env: childEnvironment(home), timeout: 20_000,
       });
-      assert.equal(JSON.parse(result.stdout).data.device_code, 'uba_fixture_device');
-      assert.deepEqual(requests, ['/v1/ta/cli/auth/device/authorize']);
+      assert.equal(JSON.parse(result.stdout).data.device_code, 'fixture-device');
+      assert.deepEqual(requests, ['/agent/api/auth/device/authorize']);
       assert.equal(fs.existsSync(path.join(home, '.ae-cli', 'business-skill-context.json')), false);
       assert.equal(fs.existsSync(path.join(home, '.agents', 'skills')), false);
     });
@@ -284,7 +284,7 @@ test('real Skills tool restores the complete enabled Agent group and DataOps aft
   const agentSkills = fs.readdirSync(path.join(repository, 'skills'))
     .filter(name => businessForSkill(name) === 'agent').sort();
   assert.ok(agentSkills.includes('ae-agent') && agentSkills.includes('ae-page-context') && agentSkills.includes('ae-kb'));
-  const optionalSkills = ['ae-dataops', 'ae-engage', 'ae-community', 'ae-experiment', 'ae-experiment-design', 'ae-experiment-insight', ...agentSkills];
+  const optionalSkills = ['ae-dataops', 'ae-engage', 'ae-community', ...agentSkills];
   const agentDomains = ['agent', 'kb', 'team', 'memory', 'automation', 'things', 'workspace', 'evaluation', 'sync', 'model', 'context'];
   const files = (directory: string): [string, string][] => {
     const entries: [string, string][] = [];
@@ -301,7 +301,7 @@ test('real Skills tool restores the complete enabled Agent group and DataOps aft
     visit('');
     return entries.sort(([a], [b]) => a.localeCompare(b));
   };
-  let states: Record<string, boolean> = { dataops: false, engage: false, agent: false, community: false, experiment: false };
+  let states: Record<string, boolean> = { dataops: false, engage: false, agent: false, community: false };
   try {
     // Seed optional groups in canonical and legacy locations without a ledger.
     for (const root of roots) {
@@ -321,7 +321,7 @@ test('real Skills tool restores the complete enabled Agent group and DataOps aft
         assert.equal(fs.existsSync(path.join(root, 'ae-analysis', 'SKILL.md')), installRoots.includes(root));
       }
       const closedHelp = await cli(['--help']);
-      assert.doesNotMatch(closedHelp.stdout, /^  (?:dataops_flow|agent|kb|engage-flow|community|experiment)\s/m);
+      assert.doesNotMatch(closedHelp.stdout, /^  (?:dataops_flow|agent|kb|engage-flow|community)\s/m);
       for (const name of agentDomains) assert.doesNotMatch(closedHelp.stdout, new RegExp(`^  ${name}(?:\\s|\\[)`, 'm'));
       states = { ...states, dataops: true };
       const refresh = JSON.parse((await cli(['config', 'refresh'])).stdout).data;

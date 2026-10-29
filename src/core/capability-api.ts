@@ -48,7 +48,6 @@ export class CapabilityGatewayError extends Error {
     readonly hint?: string,
     readonly meta?: Record<string, unknown>,
     readonly type: 'api' | 'validation' = 'api',
-    readonly details?: Record<string, unknown>,
   ) {
     super(message);
     this.name = 'CapabilityGatewayError';
@@ -105,7 +104,7 @@ async function permissionError(resp: Response): Promise<PermissionError> {
   const body = safeJsonParse(await codeResponse.text());
   const error = isRecord(body?.error) ? body.error : undefined;
   const code = nonEmptyString(error?.code) ?? nonEmptyString(body?.code);
-  return new PermissionError(message, code, nonEmptyString(error?.hint) ?? nonEmptyString(body?.hint), undefined,
+  return new PermissionError(message, code, nonEmptyString(error?.hint), undefined,
     isRecord(body?.meta) ? body.meta : undefined);
 }
 
@@ -152,7 +151,6 @@ function parseCapabilityEnvelope(body: any, acceptCommunityLegacyEnvelope = fals
       hint,
       isRecord(body.meta) ? body.meta : undefined,
       err.type === 'validation' ? 'validation' : 'api',
-      isRecord(err.details) ? err.details : undefined,
     );
   }
   const legacyReturnCode = acceptCommunityLegacyEnvelope ? body.return_code ?? body.returnCode : undefined;
@@ -213,7 +211,6 @@ function buildCapabilityHttpError(resp: Response, body: any): CapabilityGatewayE
         hint,
         isRecord(body.meta) ? body.meta : undefined,
         err.type === 'validation' ? 'validation' : 'api',
-        isRecord(err.details) ? err.details : undefined,
       );
     }
   }
