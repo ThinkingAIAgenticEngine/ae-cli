@@ -9,8 +9,8 @@ Mapping command: `ae-cli community +get_comments_summary`
 
 | Flag | Type | Required | Description |
 |------|------|------|------|
-| `--space-id` | number | yes | community space ID |
-| `--game-id` | number | yes | game/space ID |
+| `--space-id` | int64 | yes | Community space ID returned by `community spaces list` |
+| `--game-id` | int64 | no | Deprecated compatibility alias; omit it, or make it equal to `--space-id` |
 | `--channel-id` | number | yes | channel ID |
 | `--uuid` | string | yes | content UUID |
 | `--start-time` | string | No | Earliest comment publish date, format yyyy-MM-dd, default is the publishing time of the post |
@@ -21,12 +21,12 @@ Mapping command: `ae-cli community +get_comments_summary`
 ```bash
 # Get comment summary
 ae-cli community +get_comments_summary \
-  --space-id 1 --game-id 1 \
+  --space-id 1 \
   --channel-id 1 --uuid <uuid>
 
 #Specify time range
 ae-cli community +get_comments_summary \
-  --space-id 1 --game-id 1 \
+  --space-id 1 \
   --channel-id 1 --uuid <uuid> \
   --start-time 2024-01-01 --end-time 2024-01-07
 ```

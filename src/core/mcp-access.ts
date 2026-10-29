@@ -1,10 +1,11 @@
+import { isKbQueryPath, kbReadHeaders, readKbExecutionContext } from "./kb-read-context.js";
 import type { RuntimeContext } from "../framework/types.js";
 import { CapabilityGatewayError } from "./capability-api.js";
 import { PermissionError } from "./errors.js";
 import { getCliToken } from "./cli-token.js";
 import { SecureStoreAuthError } from "./secure-store.js";
 import { safeJsonParse } from "./json-utils.js";
-import { externalCliTokenRequestOptions } from './external-cli-token.js';
+import { externalCliTokenRequestOptions } from "./external-cli-token.js";
 
 function buildUrl(
   host: string,
@@ -325,19 +326,33 @@ export async function kbApi(
   body?: any,
   options: KbApiOptions = {},
 ): Promise<any> {
-  const host = ctx.host();
-
   const upperMethod = method.toUpperCase();
+  const isQuery = isKbQueryPath(upperMethod, path);
+  const execution = isQuery ? readKbExecutionContext() : undefined;
+  const host = execution ? (ctx.hostOverride?.() || execution.origin) : ctx.host();
+  // A supplied explicit host must match the execution origin even for direct API callers.
+  const selectedHost = execution && !ctx.hostOverride ? ctx.host() : host;
+  const url = buildUrl(selectedHost, path, params);
+  const queryHeaders = isQuery ? kbReadHeaders(url, ctx.str('read-context')) : undefined;
+  const init: RequestInit = {
+    method: upperMethod,
+    headers: { 'Content-Type': 'application/json', ...queryHeaders },
+    body: upperMethod === 'GET' ? undefined : JSON.stringify(body ?? {}),
+  };
+  if (execution) {
+    const response = await fetch(url, { ...init, redirect: 'error' });
+    const text = await response.text();
+    if (!response.ok) {
+      let code = 'KB_READ_CONTEXT_REQUEST_FAILED';
+      try { const value = responseErrorMetadata(safeJsonParse(text)).code; if (value?.startsWith('KB_READ_CONTEXT_')) code = value; } catch { /* Body-free errors. */ }
+      throw new KbHttpError(code, code, response.status);
+    }
+    return parseKbResponse(response, text, { ...options, redactErrorDetails: true });
+  }
   return requestWithCliToken(
     host,
-    buildUrl(host, path, params),
-    {
-      method: upperMethod,
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: upperMethod === "GET" ? undefined : JSON.stringify(body ?? {}),
-    },
+    url,
+    init,
     options,
   );
 }

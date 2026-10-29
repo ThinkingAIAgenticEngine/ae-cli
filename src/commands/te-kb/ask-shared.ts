@@ -16,9 +16,17 @@ export const ASK_MAX_TRANSIENT_POLL_FAILURES = 3;
 export type AskExecutionStatus = 'running' | 'completed' | 'failed';
 
 export interface AskSourceRef {
-  scope: string;
-  name: string;
+  knowledgeBaseKey: string;
   path: string;
+  readView?: {
+    resourceKey: string;
+    viewKind: 'legacy' | 'snapshot' | 'imported' | 'system';
+    consistency: 'version_pinned' | 'legacy_live' | 'imported_readonly' | 'system_live';
+    readIdentity: string;
+    versionId: string | null;
+    versionNumber: number | null;
+  };
+  reference?: { executionId: string; sourceIndex: number };
 }
 
 /** Pass-through of the server `Record<modelId, ModelUsage>` object. */

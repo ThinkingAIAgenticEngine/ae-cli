@@ -12,7 +12,7 @@ const invoke = (bin, args) => spawnSync(process.execPath, [bin, ...args], {
   encoding: 'utf8', env: { ...process.env, AE_CLI_NO_COMPAT_CHECK: '1' }, timeout: 30_000,
 });
 
-test('built package bin exposes install, dry-run and stable JSON', () => {
+test('built package bin exposes install and retains root-level JSON report fields', () => {
   const bin = path.join(root, 'bin', 'ae-cli.js');
   const help = invoke(bin, ['install', '--help']);
   assert.equal(help.status, 0, help.stderr);
@@ -24,8 +24,22 @@ test('built package bin exposes install, dry-run and stable JSON', () => {
   const body = JSON.parse(dry.stdout);
   assert.equal(body.ok, true);
   assert.equal(body.cli.package, '@tant/ae-cli');
+  assert.equal(typeof body.cli.version, 'string');
+  assert.ok(body.cli.path === null || typeof body.cli.path === 'string');
   assert.equal(body.cli.verified, false);
   assert.match(body.skills.directory, /\.agents[\\/]skills$/);
+  assert.equal(typeof body.skills.expected_count, 'number');
+  assert.equal(typeof body.skills.installed_count, 'number');
+  assert.ok(Array.isArray(body.skills.missing));
+  assert.ok(body.skills.source === null || typeof body.skills.source === 'string');
+  assert.equal(typeof body.skills.version, 'string');
+  assert.ok(Array.isArray(body.skills.failures));
+  assert.ok(Array.isArray(body.skills.attempts));
+  assert.ok(body.auth.host === null || typeof body.auth.host === 'string');
+  assert.ok(body.auth.authenticated === null || typeof body.auth.authenticated === 'boolean');
+  assert.ok(Array.isArray(body.next_steps));
+  assert.ok(Array.isArray(body.commands) && body.commands.length > 0);
+  assert.ok(body.commands.every(command => typeof command === 'string' && command.length > 0));
   assert.equal(body.dry_run, true);
 });
 
@@ -58,6 +72,8 @@ test('npm pack includes installer chunks, Skills and the public npx single-bin e
   assert.equal(result.status, 0, result.stderr);
   const body = JSON.parse(result.stdout);
   assert.equal(body.cli.package, '@thinkingai/ae-cli');
-  assert.match(body.commands[0], /@thinkingai\/ae-cli@/);
-  assert.match(body.commands[2], /ThinkingAIAgenticEngine\/ae-cli#v/);
+  assert.ok(Array.isArray(body.commands) && body.commands.length > 0);
+  assert.ok(body.commands.every(command => typeof command === 'string' && command.length > 0));
+  assert.ok(body.commands.some(command => /npm install -g @thinkingai\/ae-cli@/.test(command)));
+  assert.doesNotMatch(body.commands.join(' '), /skills@.* add|#v/);
 });

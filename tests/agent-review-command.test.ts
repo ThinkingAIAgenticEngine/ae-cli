@@ -537,7 +537,7 @@ test('Skill separates submission authorization, unattended operation and dedupli
   assert.match(skill, /If the user declines, do not write or repeatedly suggest submission/);
   assert.match(skill, /preauthorized unattended task may submit review proposals only/);
   assert.match(reference, /Same key with different content is a conflict/);
-  assert.match(reference, /ignore incidental new run IDs and timestamps/);
+  assert.match(reference, /deliberate new authorized recommendation uses a new request key/);
   assert.match(reference, /does not send another notification separately/);
 });
 
@@ -546,7 +546,7 @@ test('Skill documents dynamic expansion and pending-only visible topics for recu
   const exportReference = readFileSync(new URL('../skills/ae-analysis/references/governance_recommendation_export.md', import.meta.url), 'utf8');
   const submitReference = readFileSync(new URL('../skills/ae-analysis/references/agent_review_submit_to_page.md', import.meta.url), 'utf8');
 
-  assert.match(skill, /filter out already completed\/authenticated, deferred, or in-flight assets as pending work/);
+  assert.match(skill, /select currently uncertified assets by business value and evidence/);
   assert.match(skill, /target about 20-50 pending review assets/);
   assert.match(skill, /hard cap around 80/);
   assert.match(skill, /overflow left for later batches/);
@@ -861,4 +861,173 @@ test('topic semantic basis keeps legacy packets compatible and rejects empty or 
     business_question: 'How many messages are received?', grouping_reason: 'Counts the same message process',
     evidence_item_ids: ['report_1'],
   }))));
+});
+
+test('ordinary recommendation submits concise core meaning once without requiring audit-only fields', async () => {
+  const conciseItem = {
+    ...item,
+    ai_summary: {
+      summary: 'Review the received-message count because it is used by the support workload board.',
+      analysis_explanation: {
+        measures: [{
+          statement: 'Counts received-message events, rather than distinct users.',
+          evidence_refs: ['evidence_snapshot.analysis.measures[0]'],
+          inferred: false,
+        }],
+      },
+    },
+  };
+  const original = globalThis.fetch;
+  const calls: Array<{ url: string; input: Record<string, unknown> }> = [];
+  setCliTokenManual('test-agent-review-token', host);
+  globalThis.fetch = async (request, init) => {
+    calls.push({ url: String(request), input: JSON.parse(String(init?.body)).input });
+    return new Response(JSON.stringify({ ok: true, data: { id: batchId } }));
+  };
+  try {
+    await agentReviewSubmitToPage.execute(ctx({ ...create, items: [conciseItem] }));
+    assert.equal(calls.length, 1);
+    assert.match(calls[0].url, /metadata\.agent_review\.create\/execute$/);
+    assert.deepEqual(calls[0].input.items, [conciseItem]);
+    assert.deepEqual(calls[0].input.presentation_snapshot, create['presentation-snapshot']);
+  } finally {
+    globalThis.fetch = original;
+    clearCliToken(host);
+  }
+});
+
+test('concise recommendation still rejects purpose-only reports, foreign analysis refs and missing source links', () => {
+  const packet = (explanation: Record<string, unknown>) => ({
+    ...create,
+    items: [{ ...item, ai_summary: { summary: 'Review the message count.', analysis_explanation: explanation } }],
+  });
+  assert.throws(() => agentReviewSubmitToPage.preflight!(ctx(packet({
+    business_purpose: 'Shows message activity.',
+  }))), /calculations or measures/);
+  assert.throws(() => agentReviewSubmitToPage.preflight!(ctx(packet({
+    measures: [{ statement: 'Counts messages.', evidence_refs: ['evidence_snapshot.analysis.missing[0]'] }],
+  }))), /resolvable/);
+  assert.throws(() => agentReviewSubmitToPage.preflight!(ctx({
+    ...create, items: [{ ...item, source_link: '', evidence_links: [{ url: '' }] }],
+  })), /source_link or evidence_links/);
+});
+
+test('subtopic evidence must resolve inside its group rather than elsewhere in the topic', () => {
+  const second = { ...item, client_item_id: 'report_2', target_ref: { type: 'report', key: '2' } };
+  const basis = {
+    business_question: 'How many messages are received?',
+    grouping_reason: 'Groups reports counting received messages rather than their source boards.',
+    evidence_item_ids: ['report_1'],
+  };
+  const packet = (groupBasis: unknown) => ({
+    ...create,
+    items: [item, second],
+    'presentation-snapshot': { topics: [{
+      id: 'adoption', name: 'Adoption',
+      groups: [
+        { id: 'messages', name: 'Messaging', items: [{ id: 'report_1' }], semantic_basis: groupBasis },
+        { id: 'configuration', name: 'Configuration', items: [{ id: 'report_2' }] },
+      ],
+    }] },
+  });
+  assert.doesNotThrow(() => agentReviewSubmitToPage.preflight!(ctx(packet(undefined))));
+  assert.doesNotThrow(() => agentReviewSubmitToPage.preflight!(ctx(packet(basis))));
+  for (const invalid of [
+    null,
+    { ...basis, business_question: '' },
+    { ...basis, grouping_reason: ' ' },
+    { ...basis, evidence_item_ids: [] },
+    { ...basis, evidence_item_ids: ['report_2'] },
+    { ...basis, evidence_item_ids: ['unknown'] },
+  ]) {
+    assert.throws(() => agentReviewSubmitToPage.preflight!(ctx(packet(invalid))), /semantic_basis/);
+  }
+});
+
+test('submission preserves multiple dashboards under one business subtopic and keeps legacy grouping compatible', async () => {
+  const dashboards = [1, 2].map((id) => ({
+    ...item,
+    client_item_id: `dashboard_${id}`,
+    target_ref: { type: 'dashboard', key: String(id) },
+  }));
+  const basis = {
+    business_question: 'How broadly is messaging adopted?',
+    grouping_reason: 'Both boards measure received messages from complementary populations.',
+    evidence_item_ids: ['report_1'],
+  };
+  const presentation = {
+    topics: [{ id: 'adoption', name: 'Adoption', groups: [{
+      id: 'messages', name: 'Messaging', semantic_basis: basis,
+      items: [...dashboards, item].map(({ client_item_id: id }) => ({ id })),
+    }] }],
+    relations: dashboards.map(({ client_item_id: parent }) => ({ parent, child: 'report_1', type: 'contains' })),
+  };
+  const original = globalThis.fetch;
+  const calls: Array<Record<string, unknown>> = [];
+  setCliTokenManual('test-agent-review-token', host);
+  globalThis.fetch = async (_request, init) => {
+    calls.push(JSON.parse(String(init?.body)).input);
+    return new Response(JSON.stringify({ ok: true, data: { id: batchId } }));
+  };
+  try {
+    await agentReviewSubmitToPage.execute(ctx({
+      ...create, items: [...dashboards, item], 'presentation-snapshot': presentation,
+    }));
+    assert.deepEqual(calls[0].presentation_snapshot, presentation);
+    const legacy = { topics: [{ id: 'adoption', name: 'Adoption', groups: dashboards.map((dashboard) => ({
+      id: dashboard.client_item_id, name: dashboard.client_item_id,
+      items: [{ id: dashboard.client_item_id }],
+    })) }] };
+    await agentReviewSubmitToPage.execute(ctx({
+      ...create, items: dashboards, 'presentation-snapshot': legacy,
+    }));
+    assert.deepEqual(calls[1].presentation_snapshot, legacy);
+  } finally {
+    globalThis.fetch = original;
+    clearCliToken(host);
+  }
+});
+
+test('manual recommendation guidance selects current uncertified assets without historical exclusion', () => {
+  const sources = [
+    metadataGovernanceRecommendationExport.helpText ?? '',
+    agentReviewSubmitToPage.helpText ?? '',
+    readFileSync(new URL('../skills/ae-analysis/SKILL.md', import.meta.url), 'utf8'),
+    readFileSync(new URL('../skills/ae-analysis/references/governance_recommendation_export.md', import.meta.url), 'utf8'),
+    readFileSync(new URL('../skills/ae-analysis/references/agent_review_submit_to_page.md', import.meta.url), 'utf8'),
+  ];
+  for (const source of sources) {
+    assert.match(source, /Do not query review history to select candidates/);
+    assert.doesNotMatch(source, /filter out completed\/rejected\/deferred\/in-flight|items already in an unfinished review batch|hide each same-definition rejected dashboard/);
+  }
+});
+
+test('manual export preserves current uncertified candidates regardless of historical review state without history reads', async () => {
+  const candidates = ['PENDING', 'PREVIOUSLY_REJECTED', 'DEFERRED'].map((state, index) => ({
+    client_item_id: `report_${index}`,
+    target_ref: { type: 'report', key: String(index + 1) },
+    action_state: state,
+    actionable: state === 'PENDING',
+    previous_decision: { decision: state },
+    evidence_snapshot: { asset: { authentication_status: 0 } },
+  }));
+  const packet = { run_id: 'rec_current', review_material_package: { candidate_assets: candidates } };
+  const original = globalThis.fetch;
+  const calls: string[] = [];
+  setCliTokenManual('test-agent-review-token', host);
+  globalThis.fetch = async (request) => {
+    calls.push(String(request));
+    return new Response(JSON.stringify({ ok: true, data: packet }));
+  };
+  try {
+    const result = unwrapOutputData(await metadataGovernanceRecommendationExport.execute(ctx({ 'project-id': 1, limit: 20 })));
+    assert.deepEqual(JSON.parse(JSON.stringify(result.review_material_package.candidate_assets)), candidates);
+    const gatewayCalls = calls.filter((url) => url.includes('/capabilities/'));
+    assert.equal(gatewayCalls.length, 1);
+    assert.match(gatewayCalls[0], /metadata\.governance_recommendation\.export\/execute$/);
+    assert.ok(calls.every((url) => !url.includes('metadata.agent_review.')));
+  } finally {
+    globalThis.fetch = original;
+    clearCliToken(host);
+  }
 });

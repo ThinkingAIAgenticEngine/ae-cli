@@ -4,11 +4,13 @@ Command: `ae-cli analysis scenario collect`. Capability: `analysis.scenario.coll
 
 ## Project opt-in
 
-The source analysis project's `agent_analysis_scenario_collection_enabled` configuration defaults to `off`. Only explicit `on` permits scenario samples. Read its live value through `ae-cli project info get --project-id <id>` (`data.analysis_scenario_collection_enabled`); do not reuse a grant across scenarios or appends. The curated command checks again before sending content, without a persistent cache, and the service rechecks before emitting a sample. Ordinary invocation/intent logs remain unchanged.
+The source analysis project's `agent_analysis_scenario_collection_enabled` configuration defaults to `off`. Only explicit `on` permits scenario samples. Read its live value through `ae-cli project info get --project-id <id>` (`data.analysis_scenario_collection_enabled`); do not reuse a grant across scenarios or appends. The curated command checks again before sending content, without a persistent cache, and the service rechecks before emitting a sample. Ordinary invocation/intent event reporting remains unchanged; the same switch also gates the Common HDFS call archive.
 
 The optional `--project-id` flag remains accepted for compatibility, but omission skips collection (`PROJECT_REQUIRED`). Disabled/missing/invalid configuration skips with `PROJECT_COLLECTION_DISABLED`; unavailable configuration skips with `PROJECT_COLLECTION_CONFIG_UNAVAILABLE`. A normal skip has `ok=true`, `accepted=false`, `skipped=true`, and `reason`; no scenario event is emitted. A returned `event_name` identifies the sample type, not proof of emission. Missing policy fields on an older backend are treated as disabled by the new CLI. No force override, automatic configuration writes, retry, historical backfill, or legacy-feedback bypass is permitted. `--validate` and `--dry-run` retain their side-effect-free parameter-checking contracts.
 
 Read [append](scenario_append.md) for later user feedback and answer revisions. Both commands support `--validate` and `--dry-run`, which do not emit collection events.
+
+Pass the original text to `--answer`; never pre-encode it. The CLI automatically sends `answer` as UTF-8 Base64 with `content_encoding=base64` for execute, validate and dry-run. Common decodes a copy for validation and collection; encoded requests and validation responses retain the wire representation. This is reversible encoding, not encryption. Only `answer` is encoded by collect; other fields retain their existing representation. Deploy Common support before upgrading the CLI. New Common accepts legacy unmarked plain-text requests; older Common rejects the encoding marker, and the CLI never retries with plain text. On rejection, follow the existing collection-failure behavior and answer normally.
 
 ## Collection only
 
@@ -28,8 +30,14 @@ ae-cli analysis scenario collect --question-id '<original-user-turn-id>' \
   --project-id 196
 ```
 
-The cli_analysis_scenario event has collection_source=external_agent and query_path_json containing the ordered references. Resolve them against existing cli_gateway_call events using authenticated user/session plus invocation_id or client_request_id; verify capability_id matches and report missing, ambiguous or truncated records. No new call telemetry is introduced. A path records how the answer was obtained; it does not prove source numbers or overall correctness. A separate task follows [the evaluation guide](scenario_evaluation.md).
+The cli_analysis_scenario event has collection_source=external_agent and query_path_json containing the ordered references. Use scenario get to resolve them against archived cli_gateway_call events using authenticated user/session plus invocation_id or client_request_id; verify capability_id matches and report missing, ambiguous or truncated records. The archive reuses existing gateway telemetry. A path records how the answer was obtained; it does not prove source numbers or overall correctness. A separate task follows [the evaluation guide](scenario_evaluation.md).
 
 Existing SDK trackFirst uses authenticated user/session/question as its stable key, independent of answer wording. This is downstream deduplication, not a transactional guarantee. One distinct question_id represents one scenario; revisions and feedback are supplemental entries, not new scenarios. No collection-time good/bad label exists.
 
 accepted=true, delivery=best_effort means endpoint acceptance, not confirmed ingestion. Do not automatically retry/login or delay business work if collection is unavailable. Do not claim it was saved on failure. This Skill needs a collection tool call before the final response because an external CLI cannot run after an arbitrary Agent's final response. It does not promise zero latency or token overhead.
+
+## One question-to-answer duration
+
+At the start of analysis run `ae-cli analysis scenario begin`. It only returns the local clock as `data.start_time`: no server call, file, or question content is written. Retain this exact value and pass `--start-time <value>` to collect when the answer is ready. The CLI computes `duration_ms`; never estimate it with the model or sum command costs. The boundary is the start marker to collection of the prepared answer, not confirmed UI delivery. Earlier time before the marker is not measured. Missing markers must stay missing, including old data; do not substitute zero or backfill timestamps. The timestamp must be valid, not future, and at most 90 days old.
+
+New Common accepts legacy collect/append without duration_ms. Deploy the new Common (with the new gateway dependency) before distributing the timing Skill. An older server rejects the new field; do not retry with a modified payload. Answer normally and report collection failure only when needed.

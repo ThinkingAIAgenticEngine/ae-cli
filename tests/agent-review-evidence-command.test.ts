@@ -180,11 +180,12 @@ test("Skill reads current evidence before drafting and distinguishes source path
   assert.match(skill, /agent-review evidence/);
   const steps = [
     "Resolve the project",
-    "Generate the review draft from",
-    "Fetch `analysis-meta agent-review evidence` only",
-    "Draft AI explanations",
+    "Apply the daily review capacity before drafting",
+    "Read the selected assets",
+    "Escalate only concrete uncertainties",
+    "Run one programmatic structure/evidence pass",
     "With current submission authorization",
-    "Read detail",
+    "read detail and compare the stored packet",
   ];
   let previous = -1;
   for (const step of steps) {

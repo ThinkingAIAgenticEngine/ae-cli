@@ -48,7 +48,7 @@ A shareable archive is written next to the package root: `<parent>/ae-data-integ
 
 ## Pipeline descriptor
 
-`pipeline.json` declares the three stages and their types. Only `source: local_file` and `sink: restful_sync_json` are implemented today; the `type` fields reserve logbus / datax / mysql for later phases. `bin/run.sh` and `bin/upload.sh` read the descriptor and dispatch each stage by its `type` to `ae-cli data-integration inspect / convert / upload` — they are executors, not a second runtime engine.
+`pipeline.json` declares the three stages and their types. Only `source: local_file` and `sink: restful_sync_json` are implemented today; the `type` fields reserve logbus / datax / mysql for later phases. `bin/run.sh` and `bin/upload.sh` read the descriptor and dispatch each stage by its `type` to `ae-cli data-integration inspect / convert / upload` — they are executors, not a second runtime engine. A Parquet source runs the same `local_file` path: `bin/run.sh` converts it to `valid.ue.jsonl` on disk. When the destination is LogBus2 (or any file-watch sink), hand the runs directory to it and **never run `bin/upload.sh`**, which posts to the RESTful receiver.
 
 ## Recorded destination
 

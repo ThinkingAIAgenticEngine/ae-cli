@@ -32,6 +32,7 @@ export function requestApprovalCli<T>(
     body as Record<string, unknown> | undefined,
     {
       apiBaseUrl: resolveApprovalApiBaseUrl(ctx.host()),
+      includeClientContextInBody: false,
       ...options,
       retryOnInvalidTokenForbidden: false,
     },

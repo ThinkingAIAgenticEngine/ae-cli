@@ -2,7 +2,7 @@
 
 # ae-cli
 
-`ae-cli` is the command-line client for the ThinkingAI AgenticEngine (AE) platform. It provides stable, structured interfaces for both AI Agents and human operators across analytics and project configuration, metadata, tracking, local-data ingestion, Engage, DataOps, knowledge bases, Agent resources, user memory, and system administration.
+`ae-cli` is the command-line client for the ThinkingAI AgenticEngine (AE) platform. It provides stable, structured interfaces for both AI Agents and human operators across analytics, experimentation, project configuration, metadata, tracking, local-data ingestion, Engage, DataOps, knowledge bases, Agent resources, user memory, and system administration.
 
 The CLI is designed around:
 
@@ -17,7 +17,6 @@ The CLI is designed around:
 - Node.js 20 or later.
 - macOS, Linux, or native Windows (PowerShell / Command Prompt); WSL is optional.
 - Access to the npm registry for CLI installation.
-- Access to GitHub only when the bundled Skills source cannot be used.
 
 ## Installation
 
@@ -30,7 +29,7 @@ npx @thinkingai/ae-cli@latest install
 npx @thinkingai/ae-cli@latest install --format json
 ```
 
-The installer checks Node.js 20+, installs and verifies the CLI, then installs matching Skills globally in `~/.agents/skills`, writing the shared files once before automatically distributing copies to clients that need their own directory. No Agent selection is needed; Codex and Cursor can share these Skills even when installed later. `--dry-run`, `--format json`, and optional `--host <AE_HOST>` are supported. Unrelated project-only client warnings are hidden after successful verification; missing files and YAML errors remain failures. Being logged out is not an installation failure. See the [installation guide](./cli-installation-guide.md).
+The installer checks Node.js 20+, installs and verifies the CLI, then uses the bundled Skills tool to install matching global Skills for supported clients. First installation includes all bundled Skills when no business state has been confirmed. `--dry-run`, `--format json`, and optional `--host <AE_HOST>` are supported. Being logged out is not an installation failure. See the [installation guide](./cli-installation-guide.md).
 
 The Skills teach supported coding Agents, including Claude Code, Codex, Cursor, and similar tools, how to discover and call `ae-cli`.
 
@@ -51,6 +50,10 @@ ae-cli auth status
 
 Use the AE URL supplied by your AgenticEngine administrator. If no Host is configured, `ae-cli` guides existing customers to obtain that URL first. Only users without an AgenticEngine environment are directed to [request a trial](https://thinkingai.cn/request-demo).
 
+Business-based command filtering and Skill selection apply only to local CLI use by external Agents; built-in TE Agent sandboxes keep the complete command and Skill sets. After successful login, the CLI filters `--help` and capability discovery by the active environment’s enabled businesses and synchronizes managed global Skills. Analysis remains available by default. Run `ae-cli config refresh` after enabling a business to fetch its state and restore its Skills. Switching the active environment or account synchronizes again; a one-off `--host` query does not change global Skills.
+
+Only explicitly disabled businesses are removed. Older servers, missing states, and network failures do not trigger removal. Legacy client links to a verified, unmodified managed shared Skill are migrated automatically; other modified or unrecognized copies are preserved and reported. Start a new Agent session after synchronization; existing conversation context is retained.
+
 ## Environment-Bound Updates
 
 Each AE environment returns the exact `aeCliVersion` it expects. Use the unified update command to install that CLI version and its matching Skills:
@@ -64,9 +67,9 @@ Updates use the same global Skills installation and verification as `install`. O
 
 Automatic synchronization runs during normal commands after login; host version checks are cached for up to one hour. `ae-cli update --host <AE_HOST>` checks immediately. After a downgrade, future updates run the older CLI's own updater, including its historical limitations. To use the new installer logic while following an older host, run `npx @thinkingai/ae-cli@latest update --host <AE_HOST>`; the target remains the host-required version.
 
-`ae-cli update` installs the exact version required by the active host rather than npm `latest`. It synchronizes Skills from the installed npm package first and uses the matching GitHub tag only as a fallback.
+`ae-cli update` installs the exact version required by the active host rather than npm `latest`. Skills are synchronized from the verified target package; modified or unrecognized copies are preserved and reported.
 
-Starting with the `6.0.37` and `6.1.9` release lines, ordinary business commands can automatically upgrade or downgrade the CLI to the host-required version, including switching from `6.0.x` to `6.1.x`. Automatic synchronization requires stable `major.minor.patch` versions at both ends; development and other nonstandard versions are skipped. After a successful synchronization, the old process exits with `AE_CLI_VERSION_SYNCED`; re-run the original command so it executes with the new CLI and Skills. Installation failures are reported without replacing the business command's JSON output.
+Starting with the `6.0.37` and `6.1.9` release lines, ordinary business commands can automatically upgrade or downgrade the CLI to the host-required version, including switching from `6.0.x` to `6.1.x`. Automatic synchronization requires stable `major.minor.patch` versions at both ends; development and other nonstandard versions are skipped. After successful synchronization, the new CLI automatically executes the original command once and returns its result and exit code. Arguments, piped input, working directory, and confirmation behavior are preserved. If the new CLI cannot start, `AE_CLI_VERSION_SYNCED` asks you to re-run manually; an executed command is never retried automatically. Installation failures are reported without replacing the business command's JSON output.
 
 Useful controls:
 
@@ -116,12 +119,13 @@ The table covers every current root command individually. Use `ae-cli --help` fo
 | Category | Root command | Purpose |
 |---|---|---|
 | Analysis and projects | `analysis` | Reports, dashboards, ad-hoc analysis, drilldowns, details, alerts, tags, and cohorts |
+| Analysis and projects | `experiment` | Atlas experiments, reports, traffic layers, buckets, Features, metrics, and operation logs |
 | Analysis and projects | `analysis-meta` | Event/property catalogs, metrics, virtual metadata, tracking governance, and project analysis settings |
 | Analysis and projects | `analysis-governance` | Data-asset search, lineage, impact analysis, certification, and governance |
 | Analysis and projects | `project` | Project information, members, roles, permissions, entities, time zones, and handover settings |
 | Analysis and projects | `metadata` | Capability-backed data-table, property, and dimension-table binding operations |
 | Analysis and projects | `personal-semantic-preference` | Project-scoped lightweight semantic preferences for the current user |
-| Analysis and projects | `project-semantic` | Export project asset packages for knowledge-base builds |
+| Analysis and projects | `project-semantic` | Governed project semantics, knowledge-base asset packages, candidate validation, review, and publishing |
 | Data and tracking | `tracking` | Tracking plans, SDK samples, checks, ingestion diagnostics, code generation, and bundled wiki |
 | Data and tracking | `data-integration` | Inspect, plan, convert, upload, hand off, and reuse local CSV/JSON/Excel data |
 | Community insights | `community` | Community posts, comments, topics, sentiment, livestream, and report workflows |
@@ -157,7 +161,21 @@ The table covers every current root command individually. Use `ae-cli --help` fo
 | Agent platform | `automation` | Automation configuration, execution, history, and results |
 <!-- root-command-surface:end -->
 
+Review collected analysis questions with `ae-cli analysis scenario list --project-id 1 --days 7`. The `ae-analysis` Skill can deduplicate questions and assess badcases with concise, evidence-based reasons. See the [scenario review guide](skills/ae-analysis/references/scenario_list.md). Answers can include elapsed time; use `ae-cli analysis scenario get --help` to query linked command execution details.
+
 Evaluation commands follow the current AE Host in personal terminals and sandboxes; use `--host` to select another host. Evaluation requests use the HTTP or HTTPS scheme configured for that AE Host, consistent with other AE commands. Legacy `--endpoint` and `AE_EVAL_BASE_URL` values may only match the current AE Host; other values fail before credentials are sent. Remove these settings and use `--host` to select a host. Outside a sandbox, export `AE_EVAL_ACCESS_TOKEN` with a platform session token; sandboxes can obtain a session automatically. See [endpoint and authentication rules](skills/ae-evaluation/SKILL.md#endpoint-and-authentication).
+
+### Scheduled Feature experiments
+
+For a configured Feature experiment, save its start time and optional fixed deadline, check readiness, then submit it:
+
+```bash
+ae-cli experiment experiment save --project-id 1 --req '{"expId":"exp_123"}' --start-time '2026-11-01T16:00:00+08:00' --fixed-end-time '2026-11-08T16:00:00+08:00'
+ae-cli experiment experiment ready-check --project-id 1 --exp-id exp_123
+ae-cli experiment experiment manage --project-id 1 --exp-id exp_123 --target-status pending
+```
+
+Saving alone does not start an experiment. The server checks submitted experiments every half hour. Use `experiment experiment get` to verify status; see [Feature timing](skills/ae-experiment/references/save_experiment.md#feature-timing) for traffic checks, timing updates, and manual starts.
 
 ## Capability Gateway
 
@@ -240,6 +258,11 @@ External mode does not write the token or renewal state to the local credential 
 The new CLI persists only CLI tokens, never access or refresh tokens. Multiple accounts live in an encrypted V1 vault while the active account is projected into the historical file shape for automatic downgrades. When the CLI upgrades again, it reconciles login, switch, or logout changes made by the old CLI.
 
 Login uses a cross-platform device-code flow. Use `--no-browser` when the environment cannot open a browser.
+
+On upgraded 6.1 deployments, authorization always uses the UBA device endpoints and the platform `/#/cli/device-activate` page, independently of Kubernetes or Agent state. Only an explicit missing authorization endpoint (HTTP 404) selects the supported legacy Agent flow; network failures, HTML responses and permission denials never change the issuer. Use `auth login --no-wait`, then resume with the returned `--device-code` and the same `--host` for non-interactive authorization. Existing host accounts, CLI tokens and command flags remain compatible.
+
+The CLI calls business endpoints directly; services enforce product License and user/project permissions. An unavailable component returns the actual API error. HTTP 404 can also mean a missing resource or an unsupported route, so it does not by itself establish that a component is not deployed.
+
 Trial guidance is emitted only when no Host is configured; normal commands and authentication flows for configured environments do not display it.
 
 ## Output and Safety
@@ -265,6 +288,9 @@ Commands return a stable envelope:
 JSON flags generally accept inline JSON, `@file`, a file path, or `-` for stdin. Check command help for the exact accepted forms.
 
 ## Knowledge Bases
+
+Use `ae-cli kb candidate changes --name <name> --candidate <id>` to review changed sources, Wiki and Index before approving a company compilation. See [Publication previews](skills/ae-kb/references/publication.md) for entry details and bounded text diffs.
+For large approval previews, use `kb candidate changes --group wiki --search payment --offset 0 --limit 50`. The first successful compilation publishes automatically; later company KB updates require approval.
 
 Manage the server-side knowledge-base lifecycle:
 
@@ -402,6 +428,7 @@ npm test
 npm run qa-changed
 npm run self-check
 npm run check:release
+npm run verify:experiment-tools
 npm run verify:readme
 npm run verify:auth-credentials
 npm run verify:update-check

@@ -51,3 +51,7 @@ Current transport: CLI-token REST `/api/resource-packages/**`
 Gateway target: TBD
 Review after: 2027-01-16
 Exit condition: equivalent stable Gateway capabilities cover task control and the upload/download workflow; retain CLI orchestration and compatibility for published commands.
+
+## Knowledge base export view
+
+`resource-package export` accepts `--view working|published` (default `working`). Working exports include editable sources and schema without stale generated wiki. Published exports require a verifiable formal snapshot and use its matching source metadata; retries retain the same frozen version and dependency closure. A missing formal version fails explicitly. Editable imported KBs have pending sources and no formal version until compilation/publication completes. See [KB publication](../../ae-kb/references/publication.md).

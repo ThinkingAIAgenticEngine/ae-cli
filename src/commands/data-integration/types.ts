@@ -1,4 +1,4 @@
-export type LocalDataFormat = 'csv' | 'tsv' | 'json' | 'jsonl' | 'xls' | 'xlsx';
+export type LocalDataFormat = 'csv' | 'tsv' | 'json' | 'jsonl' | 'xls' | 'xlsx' | 'parquet';
 
 /**
  * Cells that reached a row carrying no value this tool may use. Their values are read as missing

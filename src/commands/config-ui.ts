@@ -10,6 +10,7 @@ import {
 import { MultiselectCancelled, promptSingleSelect } from '../core/multiselect.js';
 import { normalizeUrl } from '../core/url-utils.js';
 import { AE_TRIAL_URL } from '../core/host-guidance.js';
+import { invalidateBusinessSkillSynchronization, refreshEnvironmentAfterLogin } from '../core/environment-refresh.js';
 
 interface MenuItem {
   type: 'host' | 'add';
@@ -58,7 +59,9 @@ export async function runConfigUI(): Promise<void> {
         process.stderr.write(`\nAlready active: \x1B[1m${item.host.label}\x1B[0m\n`);
         return;
       }
+      invalidateBusinessSkillSynchronization();
       setActiveHost(item.host.url);
+      await refreshEnvironmentAfterLogin(item.host.url);
       process.stderr.write(`\n\x1B[32m✓\x1B[0m Active environment: \x1B[1m${item.host.label}\x1B[0m ${item.host.url}\n`);
       process.stderr.write(`  Authenticate if needed: ae-cli auth login --host ${item.host.url}\n`);
       return;
@@ -92,12 +95,14 @@ async function promptAddEnvironment(): Promise<void> {
   const label = labelInput || defaultLabel;
 
   try {
+    invalidateBusinessSkillSynchronization();
     addHost(url, label);
     const active = listHosts().find(host => host.url === url)?.active;
     process.stderr.write(
       `\n\x1B[32m✓\x1B[0m Added${active ? ' and activated' : ''}: \x1B[1m${label}\x1B[0m ${url}\n`,
     );
     if (active) {
+      await refreshEnvironmentAfterLogin(url);
       process.stderr.write(`  Authenticate if needed: ae-cli auth login --host ${url}\n`);
     }
   } catch (err: any) {
@@ -146,10 +151,12 @@ async function promptRemoveEnvironment(host: ConfiguredHost): Promise<void> {
     return;
   }
 
+  invalidateBusinessSkillSynchronization();
   if (replacement) setActiveHost(replacement.url);
   removeHost(host.url);
   process.stderr.write(`\x1B[32m✓\x1B[0m Removed: ${host.label}\n`);
   if (replacement) {
+    await refreshEnvironmentAfterLogin(replacement.url);
     process.stderr.write(`  Active environment: ${replacement.label} ${replacement.url}\n`);
   } else if (listHosts().length === 0) {
     process.stderr.write('  No AE environments remain.\n');

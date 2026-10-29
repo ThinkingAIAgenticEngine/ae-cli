@@ -1,6 +1,6 @@
 ---
 name: ae-kb
-version: 1.0.4
+version: 1.0.8
 description: 'AE knowledge base CLI manual for creating, importing read-only compiled snapshots, querying, LLM-powered ask, listing accessible knowledge bases and their sources, deterministic index/grep/read retrieval, checking status, ZIP source upload and directory management, raw child-file reading, revision-checked child updates and deletion, compiling, schema generation, URL sources, source deletion, ordinary text source creation, full reads and revision-checked editing, file/ZIP source draft replacement and restoration, and knowledge base deletion. Use when the user asks to manage AE (Agentic Engine) knowledge bases, import a compiled Markdown ZIP snapshot, upload documents or URLs to a knowledge base, query knowledge, ask knowledge bases with an LLM, list accessible knowledge bases or source metadata, inspect knowledge base indexes, search knowledge base pages, read a specific knowledge base page, check knowledge base status, generate schemas, compile knowledge, remove sources, create or edit text sources, or delete a knowledge base. To choose which knowledge base is worth searching, use the ae-kb-discovery skill first; this skill runs the retrieval once a target is chosen. Must use ae-cli kb commands and must not guess knowledge base names, scopes, page paths, source IDs, source display names, JSON payload shapes, or URL formats.'
 ---
 
@@ -16,6 +16,10 @@ AE CLI (`ae-cli`) knowledge base commands are invoked through:
 ae-cli kb +<command> [options]
 ae-cli kb source <create-text|read-text|replace|restore|preview|commit|cancel|check-updates|check-url-updates> [options]
 ```
+
+## Formal publication and pinned reads
+
+Read [Publication and read contexts](references/publication.md) for company approval, personal auto-publication, candidate inspection and changed-only approval previews (`kb candidate changes`), explicit published queries, or consistent multi-command retrieval. Compile success can mean a candidate awaiting approval; use `kb publication get` to verify formal publication. Never treat the working build status as proof that the formal version changed.
 
 ## Global Rules
 
@@ -41,7 +45,8 @@ ae-cli kb source <create-text|read-text|replace|restore|preview|commit|cancel|ch
 | `source check-url-updates` | write | Submit an asynchronous check for one compiled custom URL source; success means accepted only. |
 | `source check-updates` | write | Check one compiled Feishu source with the scheduled detector; mark changes without compiling. |
 | `+ask` | read | LLM-powered Q&A over knowledge bases; for multi-page synthesis or multi-hop questions. |
-| `+ask-status` | read | Query the current status of an ask execution by `--execution-id` without polling. |
+| `+ask-status` | read | Query an ask execution, or revisit its original versioned citation with `--source-index`. |
+| `project-target get` | read | Resolve the authoritative company project semantic target by project ID, including tag conflicts, disabled and restricted states. |
 | `+list` | read | List accessible knowledge bases filtered by buildStatus (default: compiled). |
 | `+list-sources` | read | List source metadata for one knowledge base so exact source identifiers can be discovered safely. |
 | `+index` | read | List accessible knowledge bases and their `index.md` navigation maps. |
@@ -58,6 +63,26 @@ ae-cli kb source <create-text|read-text|replace|restore|preview|commit|cancel|ch
 | `usage list` | read | List one page of compilation usage logs, including elapsed time in milliseconds. |
 | `+rm-source` | high-risk-write | Delete one source from a knowledge base by stable ID; exact display name is legacy compatibility only. |
 | `+remove` | write | Delete an entire knowledge base. |
+
+## Project Semantic Target
+
+```bash
+ae-cli kb project-target get --project-id <project_id> --host <host>
+ae-cli kb +new --scope company --name <name> --project-id <project_id> --purpose project-semantic
+```
+
+Use `project-target get` for project semantic maintenance; `+list` remains a visible catalog and cannot prove that a project target is missing. The server verifies project access and considers all undeleted company candidates bound to that project, without filtering by enabled state or build state. One candidate is reused for legacy compatibility. With several candidates, exactly one fixed business tag `项目语义` selects the target; zero returns `multiple/untagged`, several returns `multiple/tag_conflict`. With no binding, the authoritative exact name `<project_name> 项目语义知识库` without another project binding is the legacy fallback, using the same tag rule.
+
+`available` returns the exact target identity and access capabilities. `restricted`, `disabled`, and `multiple` stop maintenance; never select a different visible KB or create a replacement. Only `missing` permits creation. A query/auth failure or HTTP 404 from an older server is terminal; do not infer absence. Existing explicit target IDs, including stored automation targets, must not be silently switched.
+
+`+new --purpose project-semantic` is optional and company-only, requires one valid project ID, presets the fixed tag on both client and server, and rechecks the target under the server KB write lock. User tags are preserved within the existing total limit of two; overflow fails explicitly. A 409 means refresh the target, not retry with a different name. Ordinary creation without `--purpose` retains its existing behavior. The tag classifies purpose and never grants access. Deploy the supporting Agent API before using the new CLI/Skill path; old CLI requests remain accepted by the new server.
+
+Transition status: transitional
+Owning module: te-claude Project Semantic Knowledge Base API
+Current transport: authenticated Agent REST via `kbApi`
+Gateway target: TBD (project semantic target resolution and purpose-aware creation)
+Review after: 2027-01-27
+Exit condition: migrate when the KB Gateway equivalent exists, preserving target identity, project isolation, tag and state semantics.
 
 ## Compilation Usage Logs
 
@@ -81,7 +106,7 @@ Exit condition: migrate to the Gateway equivalent when available, preserving typ
 
 ## Published Version History
 
-Use the nine version commands described in [`references/versions.md`](references/versions.md) to inspect immutable published history, compare source changes, and explicitly roll back an earlier version as a new publication. These commands manage history; `+index/+grep/+read/+ask` continue to use current published content.
+Use the nine version commands described in [`references/versions.md`](references/versions.md) to inspect immutable published history, compare source changes, and explicitly roll back an earlier version as a new publication. These commands manage history. Ordinary queries resolve formal published content; Agent/Ask executions and explicit read contexts keep the formal versions captured at the start of that execution or context. Use the returned `readView` to identify the content actually read.
 
 | Command | Risk | Purpose |
 | --- | --- | --- |
@@ -250,7 +275,7 @@ ae-cli kb +schema --name engineering-handbook --scope company
 
 Use `--force` only when `+status` reports `schema_generating` and the user explicitly wants to replace the current generation attempt. The replacement may consume additional tokens.
 
-Schema and Compile accept the same optional model reference. Prefer the model record `id` returned by `ae-cli agent +list-models` (`Model.id`). Historical `modelId` and the unambiguous `modelId::scope` form remain compatible. A model `displayName` is presentation text, not a stable reference.
+Schema and Compile accept the same optional model reference. By default, omit `--model` / `--model-id` and keep the existing KB default selection. Preserve an explicit choice from the user or task configuration. Never infer a model reference from the assistant's self-description. `company-auto` means the Company Auto routing policy, not a physical model; use the canonical reference `virtual:company-auto:v1` for compatibility with older servers. Prefer the model record `id` returned by `ae-cli agent +list-models` (`Model.id`). Historical `modelId` and the unambiguous `modelId::scope` form remain compatible. A model `displayName` is presentation text, not a stable reference.
 
 To add one-time guidance for this generation without changing stored knowledge base metadata, pass `--custom-instructions`. The server trims the value, treats whitespace-only input as absent, and accepts up to 10,000 Unicode characters. Do not include secrets or credentials.
 
@@ -258,7 +283,6 @@ To add one-time guidance for this generation without changing stored knowledge b
 ae-cli kb +schema \
   --name engineering-handbook \
   --scope company \
-  --model <model-ref> \
   --custom-instructions "Prioritize troubleshooting workflows and preserve command examples"
 ```
 
@@ -267,7 +291,7 @@ Use `--dry-run` to inspect the request body before sending it. While generation 
 Compile after sources and schema are ready:
 
 ```bash
-ae-cli kb +compile --name engineering-handbook --scope company --mode incremental --model <model-ref>
+ae-cli kb +compile --name engineering-handbook --scope company --mode incremental
 ```
 
 Valid compile modes are `incremental` and `full`; default is `incremental`.
@@ -440,6 +464,9 @@ ae-cli kb +ask-status --execution-id <id>
 ```
 
 - `--execution-id`: required. The execution ID returned by `+ask` submission.
+- `--source-index`: optional zero-based `sourceIndex` from `sources[].reference`. Returns that saved page's `content`, `path`, and public `readView`, at the original published version even after a new publication. Uses your current user permissions; query credentials are not revived. Legacy or old sources without an immutable version return `KB_REFERENCE_UNVERSIONED`; do not replace this with a fresh `+read` and call it the original citation.
+- Completed Ask sources preserve `{knowledgeBaseKey, path, readView?, reference?}`. Keep `readView.versionId/versionNumber` when citing them. To revisit: `ae-cli kb +ask-status --execution-id <reference.executionId> --source-index <reference.sourceIndex>`.
+- Historical source reads are unavailable inside an execution that requires a fixed KB context (`KB_READ_CONTEXT_REFERENCE_FORBIDDEN`). Do not bypass this by removing execution context or using an ordinary token. Revisit outside that execution with current user credentials. Ordinary `+ask-status` polling without `--source-index` remains available.
 - Output: Returns one successful CLI envelope snapshot. For a failed execution, the stable server code remains at `data.error.code`: `{"ok":true,"data":{"executionId":"...","status":"failed","error":{"code":"retrieval_error","message":"..."}}}`. Does not poll.
 
 ### `+list`
@@ -609,7 +636,6 @@ Transport: `POST /agent/api/external/knowledge-bases/sources/check-updates`, bod
 - Gateway target: TBD; reuse an equivalent source update-check capability when available.
 - Review after: 2026-10-16.
 - Exit condition: once the Gateway exposes equivalent authorization and detector semantics, migrate the typed command to L2 or use L3 if it adds no value.
-
 
 ### Submit an ordinary URL update check
 

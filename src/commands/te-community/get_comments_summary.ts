@@ -6,18 +6,18 @@ export const getCommentsSummary: Command = {
   command: '+get_comments_summary',
   description: 'Comment analytics summary for a post: sentiment mix and time trends. Aggregate stats only—no raw comment list.',
   flags: [
-    { name: 'space-id', type: 'number', required: true, desc: 'Identifier of the community space. SpaceId' },
-    { name: 'game-id', type: 'number', required: true, desc: 'Identifier of the community space. SpaceId' },
-    { name: 'channel-id', type: 'number', required: true, desc: 'Channel ID from search_posts results.' },
+    { name: 'space-id', type: 'int64', required: true, min: 1, desc: 'Community space ID. Discover it with: ae-cli community spaces list' },
+    { name: 'game-id', type: 'int64', required: false, min: 1, desc: 'Deprecated compatibility alias; defaults to --space-id and must match it.' },
+    { name: 'channel-id', type: 'int64', required: true, min: 1, desc: 'Channel ID from search_posts results.' },
     { name: 'uuid', type: 'string', required: true, desc: 'Content UUID from search_posts results.' },
     { name: 'start-time', type: 'string', required: false, desc: 'Comment publish time lower bound; defaults to this post\'s publishTime from search_posts/get_post_detail.' },
     { name: 'end-time', type: 'string', required: false, desc: 'Comment publish time upper bound. Format: yyyy-MM-dd.' },
   ],
   risk: 'read',
   execute: async (ctx: RuntimeContext) => {
-    const spaceId = ctx.num('space-id');
-    const gameId = ctx.num('game-id');
-    const channelId = ctx.num('channel-id');
+    const spaceId = ctx.int64('space-id');
+    const gameId = ctx.optionalInt64('game-id') ?? spaceId;
+    const channelId = ctx.int64('channel-id');
     const uuid = ctx.str('uuid');
     const host = ctx.host();
 

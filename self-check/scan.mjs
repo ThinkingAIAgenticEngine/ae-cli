@@ -25,6 +25,7 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import { execSync } from 'child_process';
 import { checkSkillFrontmatter } from './checks/skill-frontmatter.mjs';
+import { checkSkillBusinesses } from './checks/skill-businesses.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const args = process.argv.slice(2);
@@ -41,6 +42,7 @@ const DOMAIN_TO_SKILL = {
   'te-audience': 'ae-analysis',
   'te-common': 'ae-analysis',
   'te-engage': 'ae-engage',
+  'te-experiment': 'ae-experiment',
   'te-dataops': 'ae-dataops',
   'te-community': 'ae-community',
   'te-kb': 'ae-kb',
@@ -360,6 +362,10 @@ const focus = changedDomains();
 
 checkRegistration(domains);
 checkPairing(domains, focus);
+// Component coverage is global, including when --since limits command documentation checks.
+for (const f of checkSkillBusinesses(ROOT).findings) {
+  add(f.level, f.dim || 'D2', f.msg);
+}
 checkSkills(domains, focus);
 checkDocs(domains);
 checkEngineering(domains);

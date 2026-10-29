@@ -1,11 +1,12 @@
 import { readFileSync } from 'node:fs';
-import { safeJsonParse } from '../../core/json-utils.js';
+import { parseJsonRequest } from '../../core/json-utils.js';
 import {
   findGatewayDomain,
   listCapabilityDiscoveryPrefixes,
   listRegisteredCapabilityDomains,
   resolveGatewayDomain,
 } from '../../core/capability-routing.js';
+import { businessForCapability, type BusinessStates } from '../../core/businesses.js';
 
 export interface CapabilitySummary {
   id: string;
@@ -56,7 +57,7 @@ export function resolveCapabilityGatewayDomain(capabilityId: string, domainOverr
   return resolveGatewayDomain(cliDomain, findGatewayDomain(cliDomain) ?? cliDomain);
 }
 
-export function resolveCapabilityListDomain(cliDomain: string): string {
+export function resolveCapabilityListDomain(cliDomain: string, businesses: BusinessStates = {}): string {
   if (!cliDomain) {
     throw new CapabilityCommandValidationError(
       'Cannot determine the capability domain.',
@@ -65,7 +66,10 @@ export function resolveCapabilityListDomain(cliDomain: string): string {
   }
   const gatewayDomain = findGatewayDomain(cliDomain);
   if (gatewayDomain === undefined) {
-    const registeredDomains = listRegisteredCapabilityDomains();
+    const registeredDomains = listRegisteredCapabilityDomains().filter((domain) => {
+      const business = businessForCapability(domain);
+      return !business || businesses[business] !== false;
+    });
     const registeredHint = registeredDomains.length > 0
       ? `Registered domains: ${registeredDomains.join(', ')}.`
       : 'No capability domains are registered in this ae-cli process.';
@@ -123,11 +127,14 @@ export function filterCapabilities(
   capabilities: CapabilitySummary[],
   domain: string,
   query?: string,
+  businesses: BusinessStates = {},
 ): CapabilitySummary[] {
   const prefixes = listCapabilityDiscoveryPrefixes(domain);
   const terms = query?.trim().toLowerCase().split(/\s+/).filter(Boolean) ?? [];
 
   return capabilities.filter((capability) => {
+    const business = businessForCapability(capability.id);
+    if (business && businesses[business] === false) return false;
     if (RETIRED_CAPABILITY_REPLACEMENTS[capability.id.toLowerCase()]) {
       return false;
     }
@@ -152,12 +159,12 @@ export function parseCapabilityInput(raw?: string): Record<string, unknown> {
   let parsed: unknown;
   try {
     if (trimmed === '-') {
-      parsed = safeJsonParse(readFileSync(0, 'utf8'));
+      parsed = parseJsonRequest(readFileSync(0, 'utf8'));
     } else if (trimmed.startsWith('{') || trimmed.startsWith('[')) {
-      parsed = safeJsonParse(trimmed);
+      parsed = parseJsonRequest(trimmed);
     } else {
       const path = trimmed.startsWith('@') ? trimmed.slice(1) : trimmed;
-      parsed = safeJsonParse(readFileSync(path, 'utf8'));
+      parsed = parseJsonRequest(readFileSync(path, 'utf8'));
     }
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);

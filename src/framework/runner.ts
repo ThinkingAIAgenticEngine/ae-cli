@@ -1,3 +1,4 @@
+import { readKbExecutionContext } from "../core/kb-read-context.js";
 import * as readline from 'readline';
 import type { Command, Flag, RuntimeContext, GlobalOptions, OutputFormat } from './types.js';
 import { printOutput, printError } from './output.js';
@@ -108,7 +109,7 @@ export async function runCommand(cmd: Command, opts: Record<string, any>, global
     }
 
     // Custom validation
-    if (cmd.validate) {
+    if (cmd.validate && cmd.service !== 'community') {
       cmd.validate(ctx);
     }
 
@@ -130,6 +131,31 @@ export async function runCommand(cmd: Command, opts: Record<string, any>, global
         continue;
       }
 
+      if (flag.type === 'int64') {
+        if (val === undefined || val === null || val === '') continue;
+        const raw = String(val);
+        if (!/^-?(?:0|[1-9]\d*)$/.test(raw)) {
+          printError('validation', `--${flag.name} must be a base-10 integer (got: ${val})`);
+          process.exit(1);
+        }
+        const parsed = BigInt(raw);
+        const minInt64 = -(1n << 63n);
+        const maxInt64 = (1n << 63n) - 1n;
+        if (parsed < minInt64 || parsed > maxInt64) {
+          printError('validation', `--${flag.name} must fit in a signed 64-bit integer (got: ${val})`);
+          process.exit(1);
+        }
+        if (flag.min !== undefined && parsed < BigInt(flag.min)) {
+          printError('validation', `--${flag.name} must be at least ${flag.min} (got: ${val})`);
+          process.exit(1);
+        }
+        if (flag.max !== undefined && parsed > BigInt(flag.max)) {
+          printError('validation', `--${flag.name} must be at most ${flag.max} (got: ${val})`);
+          process.exit(1);
+        }
+        continue;
+      }
+
       if (flag.type !== 'number') continue;
       if (flag.variadic) continue;
       if (val === undefined || val === null || val === '') continue;
@@ -138,7 +164,8 @@ export async function runCommand(cmd: Command, opts: Record<string, any>, global
         printError('validation', `--${flag.name} must be a number (got: ${val})`);
         process.exit(1);
       }
-      const isLimitFlag = LIMIT_FLAG_PATTERNS.some((p) => p.test(flag.name));
+      const isLimitFlag = LIMIT_FLAG_PATTERNS.some((p) => p.test(flag.name))
+        || (cmd.service === 'community' && /page[-_]?(?:size|num)|row[-_]?limit/i.test(flag.name));
       if (isLimitFlag) {
         const min = flag.min ?? 1;
         const max = flag.max ?? 10000;
@@ -171,6 +198,10 @@ export async function runCommand(cmd: Command, opts: Record<string, any>, global
       }
     }
 
+    if (cmd.validate && cmd.service === 'community') {
+      cmd.validate(ctx);
+    }
+
     // --validate and --dry-run are mutually exclusive
     if (globalOpts.validate && globalOpts.dryRun) {
       printError(
@@ -186,6 +217,10 @@ export async function runCommand(cmd: Command, opts: Record<string, any>, global
       if (cmd.validateInput) {
         const validateResult = await cmd.validateInput(ctx);
         await printOutput(validateResult, globalOpts.format, globalOpts.jq);
+      } else if (cmd.service === 'community') {
+        throw new CliValidationError(`--validate is not supported for ${cmdName}`, {
+          hint: 'Run without --validate, or inspect the underlying capability for server validation.',
+        });
       } else {
         await printOutput(
           { message: 'No --validate implementation for this command (capability gateway commands only)' },
@@ -200,6 +235,10 @@ export async function runCommand(cmd: Command, opts: Record<string, any>, global
       if (cmd.dryRun) {
         const dryResult = await cmd.dryRun(ctx);
         await printOutput(dryResult, globalOpts.format, globalOpts.jq);
+      } else if (cmd.service === 'community') {
+        throw new CliValidationError(`--dry-run is not supported for ${cmdName}`, {
+          hint: 'Run the read-only command without --dry-run; this command has no request preview.',
+        });
       } else {
         await printOutput({ message: 'No dry-run implementation for this command' }, globalOpts.format);
       }
@@ -261,7 +300,8 @@ export async function runCommand(cmd: Command, opts: Record<string, any>, global
     } else if (err instanceof CliApiError) {
       printError('api', message, err.hint, err.code, err.meta);
     } else if (err instanceof CapabilityGatewayError) {
-      printError(err.type, message, err.hint ?? capabilityGatewayHint(err), err.code, err.meta);
+      printError(err.type, message, err.hint ?? capabilityGatewayHint(err), err.code, err.meta,
+        { details: err.details });
     } else if (err instanceof CommunityReportError) {
       // The message/hint may come from the ingestion response. Keep it visible to the caller but
       // never persist it to CLI logs; the dedicated client records only URL/status/byte counts.
@@ -337,7 +377,7 @@ export function capabilityGatewayHint(err: CapabilityGatewayError): string | und
   }
   if (err.httpStatus === 404 && !err.code) {
     const base =
-      'The current host returned 404 for this capability route. Do not keep retrying the same command; verify the backend route/capability deployment.';
+      'The current host returned 404 for this capability route. Do not keep retrying the same command; verify the backend route/capability deployment. If --host points directly to a local Common service instead of the deployed gateway, scope AE_CLI_CAPABILITY_GATEWAY_DOMAIN= to this command so it uses /api/cli/v1.';
     return compatExtra ? `${base}\n${compatExtra}` : base;
   }
   return undefined;
@@ -391,8 +431,22 @@ export function createRuntimeContext(cmd: Command, opts: Record<string, any>, gl
       if (val === undefined || val === null || val === '') return undefined;
       return Number(val);
     },
+    int64(name: string): bigint {
+      const val = opts[camelCase(name)];
+      if (val === undefined || val === null || val === '') return 0n;
+      return BigInt(String(val));
+    },
+    optionalInt64(name: string): bigint | undefined {
+      const val = opts[camelCase(name)];
+      if (val === undefined || val === null || val === '') return undefined;
+      return BigInt(String(val));
+    },
     bool(name: string): boolean {
       return Boolean(opts[camelCase(name)]);
+    },
+    optionalBool(name: string): boolean | undefined {
+      const val = opts[camelCase(name)];
+      return typeof val === 'boolean' ? val : undefined;
     },
     json(name: string): any {
       const val = opts[camelCase(name)];
@@ -432,6 +486,10 @@ export function createRuntimeContext(cmd: Command, opts: Record<string, any>, gl
     },
 
     host(): string {
+      if (cmd.service === 'kb' && ['+list', '+index', '+grep', '+read'].includes(cmd.command)) {
+        const context = readKbExecutionContext();
+        if (context) return globalOpts.host || context.origin;
+      }
       if (globalOpts.host) return globalOpts.host;
       return getActiveHost();
     },

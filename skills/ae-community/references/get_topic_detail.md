@@ -9,8 +9,8 @@ Mapping command: `ae-cli community +get_topic_detail`
 
 | Flag | Type | Required | Description |
 |------|------|------|------|
-| `--space-id` | number | yes | community space ID |
-| `--game-id` | number | yes | game/space ID |
+| `--space-id` | int64 | yes | Community space ID returned by `community spaces list` |
+| `--game-id` | int64 | no | Deprecated compatibility alias; omit it, or make it equal to `--space-id` |
 | `--topic-id` | string | yes | Topic ID, obtained from get_hot_topics |
 | `--start-time` | string | Yes | Statistics start date, format yyyy-MM-dd, priority is given to the start time of the topic |
 | `--end-time` | string | Yes | Statistics end date, format yyyy-MM-dd, priority is given to the end time of the topic |
@@ -20,7 +20,7 @@ Mapping command: `ae-cli community +get_topic_detail`
 ```bash
 # Get topic details
 ae-cli community +get_topic_detail \
-  --space-id 1 --game-id 1 \
+  --space-id 1 \
   --topic-id <topic-id> \
   --start-time 2024-01-01 --end-time 2024-01-07
 ```

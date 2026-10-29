@@ -32,7 +32,7 @@ export async function runCompanyKb(command, args, invoke) {
   if (command === '+import' && args.some((arg) => arg === '--model' || arg.startsWith('--model=') || arg === '--custom-instructions-file' || arg.startsWith('--custom-instructions-file='))) {
     throw new Error('Snapshot import does not run the KB compiler; do not pass compiler model or custom rules.');
   }
-  const preparedArgs = expandCustomInstructionsFile(args);
+  const preparedArgs = [...expandCustomInstructionsFile(args)];
   if (preparedArgs.some((arg) => ['--scope', '--source', '--sources', '--format', '--jq'].some(
     (key) => arg === key || arg.startsWith(`${key}=`)))) {
     throw new Error('Scope/output overrides are not allowed; use company JSON output.');
@@ -46,6 +46,19 @@ export async function runCompanyKb(command, args, invoke) {
     }
     return result;
   };
+  if (command === '+resolve') {
+    if (!preparedArgs.includes('--project-id') || !/^[1-9]\d{0,15}$/.test(value(preparedArgs, '--project-id'))) throw new Error('--project-id is required.');
+    const result = await call('project-target', ['get', ...preparedArgs]);
+    const target = result.data;
+    if (!target || !['available', 'missing', 'restricted', 'disabled', 'multiple'].includes(target.state)) throw new Error('Unexpected project target response; stop.');
+    if (target.state === 'available' && (target.item?.scope !== 'company' || !target.item?.dbId || !target.item?.name)) throw new Error('Unexpected project target identity; stop.');
+    return result;
+  }
+  if (command === '+new') {
+    if (preparedArgs.some((arg) => arg === '--purpose' || arg.startsWith('--purpose='))) throw new Error('Project KB purpose is preset; do not override it.');
+    if (!preparedArgs.includes('--project-id') || !value(preparedArgs, '--project-id')) throw new Error('--project-id is required.');
+    preparedArgs.push('--purpose', 'project-semantic');
+  }
   if (command === '+list') {
     const result = await call(command, preparedArgs);
     if (!Array.isArray(result.data)) throw new Error('Unexpected KB list response.');

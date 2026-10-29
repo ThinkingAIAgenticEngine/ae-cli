@@ -6,7 +6,7 @@
  */
 
 import { clearCliTokenCache, getCliToken } from './cli-token.js';
-import { safeJsonParse } from './json-utils.js';
+import { safeJsonParse, stringifyJsonRequest } from './json-utils.js';
 import { PermissionError } from './errors.js';
 import { SecureStoreAuthError } from './secure-store.js';
 import { internalCallSourceHeaders } from './internal-call-source.js';
@@ -48,6 +48,7 @@ export class CapabilityGatewayError extends Error {
     readonly hint?: string,
     readonly meta?: Record<string, unknown>,
     readonly type: 'api' | 'validation' = 'api',
+    readonly details?: Record<string, unknown>,
   ) {
     super(message);
     this.name = 'CapabilityGatewayError';
@@ -104,7 +105,7 @@ async function permissionError(resp: Response): Promise<PermissionError> {
   const body = safeJsonParse(await codeResponse.text());
   const error = isRecord(body?.error) ? body.error : undefined;
   const code = nonEmptyString(error?.code) ?? nonEmptyString(body?.code);
-  return new PermissionError(message, code, nonEmptyString(error?.hint), undefined,
+  return new PermissionError(message, code, nonEmptyString(error?.hint) ?? nonEmptyString(body?.hint), undefined,
     isRecord(body?.meta) ? body.meta : undefined);
 }
 
@@ -123,7 +124,12 @@ function parseCapabilityResponse(text: string): any {
   }
 }
 
-function parseCapabilityEnvelope(body: any): CapabilityGatewaySuccess {
+function isCommunityGatewayRequest(domain: string, pathAfterV1: string): boolean {
+  return domain.replace(/^\/+|\/+$/g, '') === 'community'
+    || /^capabilities\/community\./.test(pathAfterV1.replace(/^\/+/, ''));
+}
+
+function parseCapabilityEnvelope(body: any, acceptCommunityLegacyEnvelope = false): CapabilityGatewaySuccess {
   if (body == null) {
     throw new CapabilityGatewayError('Empty capability gateway response');
   }
@@ -146,13 +152,39 @@ function parseCapabilityEnvelope(body: any): CapabilityGatewaySuccess {
       hint,
       isRecord(body.meta) ? body.meta : undefined,
       err.type === 'validation' ? 'validation' : 'api',
+      isRecord(err.details) ? err.details : undefined,
     );
+  }
+  const legacyReturnCode = acceptCommunityLegacyEnvelope ? body.return_code ?? body.returnCode : undefined;
+  if (legacyReturnCode !== undefined && Number(legacyReturnCode) !== 0) {
+    const code = String(legacyReturnCode);
+    const rawMessage = nonEmptyString(body.return_message)
+      ?? nonEmptyString(body.returnMessage)
+      ?? nonEmptyString(body.message);
+    const message = safeLegacyErrorMessage(rawMessage, code);
+    throw new CapabilityGatewayError(
+      message,
+      code,
+      undefined,
+      'The community service returned a legacy error envelope. Verify that the capability gateway route is deployed on the current host.',
+      { legacy_return_code: legacyReturnCode },
+    );
+  }
+  if (legacyReturnCode !== undefined && Number(legacyReturnCode) === 0 && 'data' in body) {
+    return { ok: true, data: body.data };
   }
   return { ok: true, data: body };
 }
 
-function unwrapCapabilityEnvelope(body: any): any {
-  return parseCapabilityEnvelope(body).data;
+function safeLegacyErrorMessage(message: string | undefined, code: string): string {
+  if (!message || /\n\s*at\s|stacktrace|\.java:\d+/i.test(message)) {
+    return `Capability service request failed (legacy return code ${code})`;
+  }
+  return message.slice(0, 500);
+}
+
+function unwrapCapabilityEnvelope(body: any, acceptCommunityLegacyEnvelope = false): any {
+  return parseCapabilityEnvelope(body, acceptCommunityLegacyEnvelope).data;
 }
 
 function nonEmptyString(value: unknown): string | undefined {
@@ -181,6 +213,7 @@ function buildCapabilityHttpError(resp: Response, body: any): CapabilityGatewayE
         hint,
         isRecord(body.meta) ? body.meta : undefined,
         err.type === 'validation' ? 'validation' : 'api',
+        isRecord(err.details) ? err.details : undefined,
       );
     }
   }
@@ -221,7 +254,7 @@ async function requestOnce(
   const init: RequestInit = { method, headers };
   if (body !== undefined && method !== 'GET') {
     headers['Content-Type'] = 'application/json';
-    init.body = JSON.stringify(includeClientContextInBody ? withCliAgentContextBody(body, agentContext) : body);
+    init.body = stringifyJsonRequest(includeClientContextInBody ? withCliAgentContextBody(body, agentContext) : body);
   }
   return fetch(url, { ...init, ...externalCliTokenRequestOptions(url) });
 }
@@ -295,7 +328,9 @@ async function callGatewayWithEnvelope(
     await throwCapabilityHttpError(resp);
   }
 
-  return parseCapabilityEnvelope(parseCapabilityResponse(await resp.text()));
+  return parseCapabilityEnvelope(
+    parseCapabilityResponse(await resp.text()), isCommunityGatewayRequest(domain, pathAfterV1),
+  );
 }
 
 export async function fetchCapabilityGateway(
@@ -333,7 +368,9 @@ export async function requestCapabilityGateway(
   body?: any,
 ): Promise<any> {
   const resp = await fetchCapabilityGateway(host, domain, pathAfterV1, method, body);
-  return unwrapCapabilityEnvelope(parseCapabilityResponse(await resp.text()));
+  return unwrapCapabilityEnvelope(
+    parseCapabilityResponse(await resp.text()), isCommunityGatewayRequest(domain, pathAfterV1),
+  );
 }
 
 export async function requestCapabilityGatewayWithEnvelope(
@@ -344,7 +381,9 @@ export async function requestCapabilityGatewayWithEnvelope(
   body?: any,
 ): Promise<CapabilityGatewaySuccess> {
   const resp = await fetchCapabilityGateway(host, domain, pathAfterV1, method, body);
-  return parseCapabilityEnvelope(parseCapabilityResponse(await resp.text()));
+  return parseCapabilityEnvelope(
+    parseCapabilityResponse(await resp.text()), isCommunityGatewayRequest(domain, pathAfterV1),
+  );
 }
 
 export async function listCapabilities(host: string, domain: string, projectId?: number): Promise<any> {
@@ -497,7 +536,9 @@ export async function uploadInputFileBytes(
     await throwCapabilityHttpError(resp);
   }
 
-  return unwrapCapabilityEnvelope(parseCapabilityResponse(await resp.text()));
+  return unwrapCapabilityEnvelope(
+    parseCapabilityResponse(await resp.text()), isCommunityGatewayRequest(domain, 'input-files'),
+  );
 }
 
 export interface CapabilityArtifactDownload {

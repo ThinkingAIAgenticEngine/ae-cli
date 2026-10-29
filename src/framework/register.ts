@@ -39,10 +39,11 @@ export function registerCommands(program: CommanderCommand, commands: Command[])
       // Register flags
       for (const flag of cmd.flags) {
         const flagStr = buildFlagString(flag);
+        const description = flag.required ? `${flag.desc} (required)` : flag.desc;
         if (flag.variadic) {
-          sub.option(flagStr, flag.desc, collectVariadic, []);
+          sub.option(flagStr, description, collectVariadic, []);
         } else if (flag.type === 'boolean') {
-          const option = sub.createOption(flagStr, flag.desc);
+          const option = sub.createOption(flagStr, description);
           // Declarative flags keep their literal names, including "no-wait".
           // Commander otherwise turns it into "wait: false", which RuntimeContext cannot read.
           if (flag.name.startsWith('no-')) {
@@ -52,9 +53,9 @@ export function registerCommands(program: CommanderCommand, commands: Command[])
           option.argParser((value: string | undefined) => parseBooleanValue(value, flag.name));
           sub.addOption(option);
         } else if (flag.default !== undefined) {
-          sub.option(flagStr, flag.desc, String(flag.default));
+          sub.option(flagStr, description, String(flag.default));
         } else {
-          sub.option(flagStr, flag.desc);
+          sub.option(flagStr, description);
         }
       }
 

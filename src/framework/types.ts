@@ -1,4 +1,4 @@
-export type FlagType = 'string' | 'number' | 'boolean' | 'json';
+export type FlagType = 'string' | 'number' | 'int64' | 'boolean' | 'json';
 export type RiskLevel = 'read' | 'write' | 'high-risk-write';
 export type OutputFormat = 'json' | 'table';
 
@@ -64,7 +64,10 @@ export interface RuntimeContext {
   str(name: string): string;
   num(name: string): number;
   optionalNum(name: string): number | undefined;
+  int64(name: string): bigint;
+  optionalInt64(name: string): bigint | undefined;
   bool(name: string): boolean;
+  optionalBool(name: string): boolean | undefined;
   json(name: string): any;
   /** Repeated flag values in order. Empty array when absent. */
   list(name: string): string[];

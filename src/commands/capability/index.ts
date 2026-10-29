@@ -29,6 +29,8 @@ import {
 } from './helpers.js';
 import { normalizeRiskLevel, requiresConfirmation } from '../../core/capability-risk.js';
 import { ExternalCliTokenError } from '../../core/external-cli-token.js';
+import { assertBusinessEnabled, readBusinessConfigForExecution, readCurrentBusinessConfig } from '../../core/business-config.js';
+import { businessForCapability } from '../../core/businesses.js';
 
 type GlobalCapabilityOptions = {
   format?: OutputFormat;
@@ -55,11 +57,16 @@ export function registerCapability(program: Command): void {
     .option('--project-id <project-id>', 'Filter by project membership, permissions, and enabled features')
     .action(async (opts: { domain: string; projectId?: string }) => {
       await executeAndPrint(program, async (host) => {
-        const gatewayDomain = resolveCapabilityListDomain(opts.domain);
+        const business = businessForCapability(opts.domain);
+        const businesses = business ? await readBusinessConfigForExecution(host) : readCurrentBusinessConfig(host);
+        const gatewayDomain = resolveCapabilityListDomain(opts.domain, businesses);
         const projectId = parseOptionalProjectId(opts.projectId);
+        if (business && businesses[business] === false) {
+          return { domain: opts.domain, count: 0, capabilities: [], warning: `The '${business}' business is not enabled for the current environment.` };
+        }
         const envelope = await listCapabilitiesWithEnvelope(host, gatewayDomain, projectId);
         const catalog = normalizeCapabilityList(envelope.data);
-        const capabilities = filterCapabilities(catalog, opts.domain);
+        const capabilities = filterCapabilities(catalog, opts.domain, undefined, businesses);
         const warning = emptyCapabilityCatalogWarning(catalog);
         return withOutputMetadata({
           domain: opts.domain,
@@ -80,15 +87,25 @@ export function registerCapability(program: Command): void {
     .command('search')
     .description('Search capability IDs and descriptions in a domain')
     .argument('<query>', 'Case-insensitive search terms')
-    .requiredOption('--domain <domain>', 'Capability namespace, such as analysis or metadata')
+    .requiredOption(
+      '--domain <domain>',
+      'Capability namespace. One of: analysis, project, system, tracking, metadata, '
+      + 'experiment, engage-flow, engage-task, engage-setting, engage-scene, '
+      + 'engage-activity, engage-workbench, community',
+    )
     .option('--project-id <project-id>', 'Filter by project membership, permissions, and enabled features')
     .action(async (query: string, opts: { domain: string; projectId?: string }) => {
       await executeAndPrint(program, async (host) => {
-        const gatewayDomain = resolveCapabilityListDomain(opts.domain);
+        const business = businessForCapability(opts.domain);
+        const businesses = business ? await readBusinessConfigForExecution(host) : readCurrentBusinessConfig(host);
+        const gatewayDomain = resolveCapabilityListDomain(opts.domain, businesses);
         const projectId = parseOptionalProjectId(opts.projectId);
+        if (business && businesses[business] === false) {
+          return { domain: opts.domain, query, count: 0, capabilities: [], warning: `The '${business}' business is not enabled for the current environment.` };
+        }
         const envelope = await listCapabilitiesWithEnvelope(host, gatewayDomain, projectId);
         const catalog = normalizeCapabilityList(envelope.data);
-        const capabilities = filterCapabilities(catalog, opts.domain, query);
+        const capabilities = filterCapabilities(catalog, opts.domain, query, businesses);
         const warning = emptyCapabilityCatalogWarning(catalog);
         return withOutputMetadata({
           domain: opts.domain,
@@ -101,9 +118,25 @@ export function registerCapability(program: Command): void {
     })
     .addHelpText(
       'after',
+      '\nDomains (--domain):\n' +
+      '  analysis, project, system, tracking, metadata,\n' +
+      '  experiment, engage-flow, engage-task, engage-setting,\n' +
+      '  engage-scene, engage-activity, engage-workbench, community\n' +
       '\nExamples:\n' +
       '  ae-cli capability search "dashboard list" --domain analysis\n' +
-      '  ae-cli capability search "dashboard list" --domain analysis --project-id 1',
+      '  ae-cli capability search "dashboard list" --domain analysis --project-id 1\n' +
+      '  ae-cli capability search "info list" --domain project\n' +
+      '  ae-cli capability search "usage" --domain system\n' +
+      '  ae-cli capability search "plan" --domain tracking\n' +
+      '  ae-cli capability search "data_table" --domain metadata\n' +
+      '  ae-cli capability search "report" --domain experiment\n' +
+      '  ae-cli capability search "flow" --domain engage-flow\n' +
+      '  ae-cli capability search "task" --domain engage-task\n' +
+      '  ae-cli capability search "channel" --domain engage-setting\n' +
+      '  ae-cli capability search "strategy" --domain engage-scene\n' +
+      '  ae-cli capability search "topic" --domain engage-activity\n' +
+      '  ae-cli capability search "workbench" --domain engage-workbench\n' +
+      '  ae-cli capability search "post" --domain community',
     );
 
   capability
@@ -115,6 +148,7 @@ export function registerCapability(program: Command): void {
     .action(async (capabilityId: string, opts: { domain?: string; projectId?: string }) => {
       await executeAndPrint(program, async (host) => {
         assertCapabilityIsNotRetired(capabilityId);
+        await assertCapabilityBusinessEnabled(capabilityId, host);
         const gatewayDomain = resolveCapabilityGatewayDomain(capabilityId, opts.domain);
         return gatewayOutput(await inspectCapabilityWithEnvelope(host, gatewayDomain, capabilityId, parseOptionalProjectId(opts.projectId)), host);
       });
@@ -140,6 +174,7 @@ export function registerCapability(program: Command): void {
     .action(async (capabilityId: string, opts: { domain?: string; input?: string }) => {
       await executeAndPrint(program, async (host) => {
         assertCapabilityIsNotRetired(capabilityId);
+        await assertCapabilityBusinessEnabled(capabilityId, host);
         const gatewayDomain = resolveCapabilityGatewayDomain(capabilityId, opts.domain);
         return gatewayOutput(await validateCapabilityWithEnvelope(host, gatewayDomain, capabilityId, parseCapabilityInput(opts.input)), host);
       });
@@ -172,6 +207,7 @@ export function registerCapability(program: Command): void {
     .action(async (capabilityId: string, opts: { domain?: string; input?: string }) => {
       await executeAndPrint(program, async (host) => {
         assertCapabilityIsNotRetired(capabilityId);
+        await assertCapabilityBusinessEnabled(capabilityId, host);
         const gatewayDomain = resolveCapabilityGatewayDomain(capabilityId, opts.domain);
         return gatewayOutput(await dryRunCapabilityWithEnvelope(host, gatewayDomain, capabilityId, parseCapabilityInput(opts.input)), host);
       });
@@ -192,6 +228,7 @@ export function registerCapability(program: Command): void {
     .action(async (capabilityId: string, opts: { domain?: string; input?: string }) => {
       await executeAndPrint(program, async (host, globalOpts) => {
         assertCapabilityIsNotRetired(capabilityId);
+        await assertCapabilityBusinessEnabled(capabilityId, host);
         const gatewayDomain = resolveCapabilityGatewayDomain(capabilityId, opts.domain);
         const input = parseCapabilityInput(opts.input);
 
@@ -231,6 +268,10 @@ export function registerCapability(program: Command): void {
       '  ae-cli capability run analysis.dashboard.list --input \'{"project_id":1}\'\n' +
       '  ae-cli capability run analysis.dashboard.list --input input.json',
     );
+}
+
+async function assertCapabilityBusinessEnabled(capabilityId: string, host: string): Promise<void> {
+  await assertBusinessEnabled(businessForCapability(capabilityId), host);
 }
 
 function gatewayOutput(envelope: CapabilityGatewaySuccess, host: string): unknown {
@@ -287,7 +328,7 @@ function printCapabilityError(error: unknown, host: string): void {
     return;
   }
   if (error instanceof PermissionError) {
-    printError('permission', error.message, undefined, error.code);
+    printError('permission', error.message, error.hint, error.code);
     return;
   }
   if (error instanceof CapabilityGatewayError) {

@@ -8,6 +8,7 @@ import {
   postApprovalCli,
   resolveApprovalApiBaseUrl,
 } from '../src/commands/te-agent/approval-cli-client.ts';
+import { runWithCliAgentContext } from '../src/core/cli-agent-context.ts';
 import { CapabilityGatewayError } from '../src/core/capability-api.ts';
 import { clearCliToken } from '../src/core/cli-token.ts';
 import { PermissionError } from '../src/core/errors.ts';
@@ -99,10 +100,17 @@ try {
   assert.equal(capturedHeaders.get('Content-Type'), null);
 
   responseBody = { ok: true, data: { request: { id: 'request-1' } } };
-  const result = await postApprovalCli(context(), 'requests', {
-    type_id: 'skill.publish@1',
-    resource_id: 'skill-1',
-  });
+  const result = await runWithCliAgentContext(
+    { agent_client: 'approval-contract-test' },
+    () => postApprovalCli(context(), 'requests', {
+      type_id: 'skill.publish@1',
+      resource_id: 'skill-1',
+    }),
+  );
+  assert.equal(
+    capturedHeaders.get('X-TA-CLI-Agent-Client'),
+    Buffer.from('approval-contract-test').toString('base64url'),
+  );
   assert.equal(capturedUrl, `${host}/agent/api/cli/approval/v1/requests`);
   assert.equal(capturedMethod, 'POST');
   assert.equal(capturedHeaders.get('Content-Type'), 'application/json');

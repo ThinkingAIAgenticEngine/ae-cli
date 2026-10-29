@@ -1,5 +1,16 @@
 # Sink — resolve destination and upload
 
+## Choose the sink path first
+
+Two sinks exist, and the choice is the user's — never a default:
+
+| Sink | When | Deliverable |
+| --- | --- | --- |
+| RESTful `/sync_json` | one-time / small load | uploads rows to the receiver directly |
+| File / LogBus2 | recurring / high-volume (daily/weekly exports) | `valid.ue.jsonl` written to a watched directory; **never uploads** |
+
+Ask the user which one applies before resolving any destination. The user supplying an endpoint/APPID does not settle it — a file that will recur usually belongs on LogBus2, and the same rows must not go through both paths. **File / LogBus2 mode skips the rest of this file:** run `convert` with `--output-dir` pointed at the directory LogBus2 watches, then stop — no endpoint, no APPID, no `upload`.
+
 ## Resolve the destination
 
 Use the current AE CLI project commands; never guess IDs:

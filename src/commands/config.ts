@@ -18,6 +18,8 @@ import { normalizeUrl } from '../core/url-utils.js';
 import { missingAeHostHint } from '../core/host-guidance.js';
 import { printError, printOutput } from '../framework/output.js';
 import { runConfigUI } from './config-ui.js';
+import { invalidateBusinessSkillSynchronization, refreshEnvironmentConfig, refreshEnvironmentAfterLogin } from '../core/environment-refresh.js';
+import { readCurrentBusinessConfig } from '../core/business-config.js';
 
 type HostView = ConfiguredHost;
 
@@ -51,6 +53,20 @@ export function registerConfig(program: Command): void {
     });
 
   configCmd
+    .command('refresh')
+    .description('Refresh business configuration and synchronize managed Skills for the active environment')
+    .action(async () => {
+      const host = program.opts().host || getActiveHost();
+      if (!host) {
+        failConfig('No active AE environment configured.', missingAeHostHint());
+        return;
+      }
+      const result = await refreshEnvironmentConfig(host, { synchronizeSkills: !program.opts().host });
+      await printOutput(result, program.opts().format || 'json', program.opts().jq);
+      if (result.source === 'unavailable' || ['failed', 'partial', 'busy'].includes(result.skills.status)) process.exitCode = 1;
+    });
+
+  configCmd
     .command('show')
     .description('Show effective configuration for the selected AE host and account')
     .action(async () => {
@@ -62,6 +78,7 @@ export function registerConfig(program: Command): void {
       await printOutput(
         {
           host: host || null,
+          businesses: readCurrentBusinessConfig(host),
           routing: { knowledge_base: feature.enabled ? 'auto' : 'explicit' },
           source: feature.source,
         },
@@ -110,8 +127,10 @@ export function registerConfig(program: Command): void {
       try {
         const normalized = normalizeUrl(url);
         const label = opts.label || normalized;
+        invalidateBusinessSkillSynchronization();
         addHost(normalized, label);
         setActiveHost(normalized);
+        await refreshEnvironmentAfterLogin(normalized);
         await printOutput(
           { activeHost: normalized, label: label.trim() },
           program.opts().format || 'json',
@@ -164,7 +183,9 @@ async function useConfigEnv(program: Command, env: string): Promise<void> {
     return;
   }
 
+  invalidateBusinessSkillSynchronization();
   setActiveHost(target.host.url);
+  await refreshEnvironmentAfterLogin(target.host.url);
   await printOutput({ activeHost: target.host.url, label: target.host.label }, program.opts().format || 'json', program.opts().jq);
 }
 
@@ -184,8 +205,10 @@ async function addConfigEnv(
   }
 
   try {
+    invalidateBusinessSkillSynchronization();
     addHost(normalized, opts.label);
     if (opts.use) setActiveHost(normalized);
+    if (getActiveHost() === normalized) await refreshEnvironmentAfterLogin(normalized);
     const saved = loadConfig();
     await printOutput(
       {
@@ -255,6 +278,7 @@ async function removeConfigEnv(program: Command, env: string, skipConfirmation: 
     }
   }
 
+  invalidateBusinessSkillSynchronization();
   removeHost(target.host.url);
   await printOutput(
     {

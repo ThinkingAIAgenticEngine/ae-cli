@@ -6,9 +6,9 @@ export const getPostDetail: Command = {
   command: '+get_post_detail',
   description: 'Full detail for one post/video: body, media, subtitles, danmu, sentiment, keywords, topics, tag values, and comment pager.',
   flags: [
-    { name: 'space-id', type: 'number', required: true, desc: 'Identifier of the community space. SpaceId' },
-    { name: 'game-id', type: 'number', required: true, desc: 'Identifier of the community space. SpaceId' },
-    { name: 'channel-id', type: 'number', required: true, desc: 'Channel ID.' },
+    { name: 'space-id', type: 'int64', required: true, min: 1, desc: 'Community space ID. Discover it with: ae-cli community spaces list' },
+    { name: 'game-id', type: 'int64', required: false, min: 1, desc: 'Deprecated compatibility alias; defaults to --space-id and must match it.' },
+    { name: 'channel-id', type: 'int64', required: true, min: 1, desc: 'Channel ID.' },
     { name: 'uuid', type: 'string', required: true, desc: 'Content UUID (unique id).' },
     { name: 'resource-type', type: 'number', required: true, desc: 'Resource type: 0 post, 1 video.' },
     { name: 'danmu-order-by', type: 'number', required: false, desc: 'Sort for danmu: 0 video timestamp desc, 1 publish time desc.' },
@@ -20,33 +20,33 @@ export const getPostDetail: Command = {
   ],
   risk: 'read',
   execute: async (ctx: RuntimeContext) => {
-    const spaceId = ctx.num('space-id');
-    const gameId = ctx.num('game-id');
-    const channelId = ctx.num('channel-id');
+    const spaceId = ctx.int64('space-id');
+    const gameId = ctx.optionalInt64('game-id') ?? spaceId;
+    const channelId = ctx.int64('channel-id');
     const uuid = ctx.str('uuid');
     const resourceType = ctx.num('resource-type');
     const host = ctx.host();
 
     const param: Record<string, any> = { gameId, channelId, uuid, resourceType };
 
-    const danmuOrderBy = ctx.num('danmu-order-by');
-    const danmuPageNum = ctx.num('danmu-page-num');
-    const danmuPageSize = ctx.num('danmu-page-size');
-    if (danmuOrderBy !== undefined || danmuPageNum || danmuPageSize) {
+    const danmuOrderBy = ctx.optionalNum('danmu-order-by');
+    const danmuPageNum = ctx.optionalNum('danmu-page-num');
+    const danmuPageSize = ctx.optionalNum('danmu-page-size');
+    if (danmuOrderBy !== undefined || danmuPageNum !== undefined || danmuPageSize !== undefined) {
       param.danmuPagerHeader = {};
       if (danmuOrderBy !== undefined) param.danmuPagerHeader.orderBy = danmuOrderBy;
-      if (danmuPageNum) param.danmuPagerHeader.pageNum = danmuPageNum;
-      if (danmuPageSize) param.danmuPagerHeader.pageSize = danmuPageSize;
+      if (danmuPageNum !== undefined) param.danmuPagerHeader.pageNum = danmuPageNum;
+      if (danmuPageSize !== undefined) param.danmuPagerHeader.pageSize = danmuPageSize;
     }
 
-    const replyOrderBy = ctx.num('reply-order-by');
-    const replyPageNum = ctx.num('reply-page-num');
-    const replyPageSize = ctx.num('reply-page-size');
-    if (replyOrderBy !== undefined || replyPageNum || replyPageSize) {
+    const replyOrderBy = ctx.optionalNum('reply-order-by');
+    const replyPageNum = ctx.optionalNum('reply-page-num');
+    const replyPageSize = ctx.optionalNum('reply-page-size');
+    if (replyOrderBy !== undefined || replyPageNum !== undefined || replyPageSize !== undefined) {
       param.replyPagerHeader = {};
       if (replyOrderBy !== undefined) param.replyPagerHeader.orderBy = replyOrderBy;
-      if (replyPageNum) param.replyPagerHeader.pageNum = replyPageNum;
-      if (replyPageSize) param.replyPagerHeader.pageSize = replyPageSize;
+      if (replyPageNum !== undefined) param.replyPagerHeader.pageNum = replyPageNum;
+      if (replyPageSize !== undefined) param.replyPagerHeader.pageSize = replyPageSize;
     }
 
     const args = { spaceId, param };

@@ -145,6 +145,7 @@ function referenceName(command: Command): string {
 
 function commandContract(command: Command): string {
   if (command.capabilityId) return command.capabilityId;
+  if (command.usesAeHost === false) return 'local utility';
   if (command.resource && !command.command.startsWith('+')) return 'gateway lifecycle';
   return 'legacy/MCP';
 }

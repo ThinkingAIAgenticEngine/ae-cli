@@ -1,0 +1,45 @@
+{
+  "base": [
+    "ae-capability"
+  ],
+  "analysis": [
+    "ae-analysis",
+    "ae-analysis-global",
+    "ae-data-integration",
+    "ae-data-integration-helper",
+    "ae-generate-tracking-code",
+    "ae-generate-tracking-plan",
+    "ae-metadata",
+    "ae-migrate-tracking-code"
+  ],
+  "dataops": [
+    "ae-dataops"
+  ],
+  "engage": [
+    "ae-engage"
+  ],
+  "community": [
+    "ae-community"
+  ],
+  "experiment": [
+    "ae-experiment",
+    "ae-experiment-design",
+    "ae-experiment-insight"
+  ],
+  "agent": [
+    "ae-agent",
+    "ae-automation",
+    "ae-current-context",
+    "ae-evaluation",
+    "ae-kb",
+    "ae-kb-discovery",
+    "ae-page-context",
+    "ae-system",
+    "ae-team",
+    "ae-things",
+    "ae-things-progress",
+    "ae-things-review",
+    "ae-use-agent",
+    "ae-workspace"
+  ]
+}

@@ -19,6 +19,7 @@ const THROUGHPUT_BYTES_PER_SECOND: Record<Exclude<LocalDataFormat, 'xls'>, numbe
   csv: 4 * 1024 * 1024,
   tsv: 4 * 1024 * 1024,
   xlsx: 2 * 1024 * 1024,
+  parquet: 8 * 1024 * 1024,
 };
 
 /** CJK text encodings decode through iconv-lite (pure JS), roughly half the throughput. */
@@ -91,6 +92,9 @@ function largeFileMemoryWarning(format: LocalDataFormat): string | null {
   }
   if (format === 'json') {
     return 'Memory risk: a JSON root object or a very large record may be materialized in memory during inspection, so peak memory can substantially exceed the file size.';
+  }
+  if (format === 'parquet') {
+    return 'Memory risk: Parquet input is decoded whole-file into memory (the reader materializes the full table), so peak memory can be a multiple of the file size. Split large files by row group or partition.';
   }
   return null;
 }

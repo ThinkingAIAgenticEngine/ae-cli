@@ -9,8 +9,8 @@ Mapping command: `ae-cli community +get_livestream_detail`
 
 | Flag | Type | Required | Description |
 |------|------|------|------|
-| `--space-id` | number | yes | community space ID |
-| `--game-id` | number | yes | game/space ID |
+| `--space-id` | int64 | yes | Community space ID returned by `community spaces list` |
+| `--game-id` | int64 | no | Deprecated compatibility alias; omit it, or make it equal to `--space-id` |
 | `--stream-id` | string | Yes | Live session ID, obtained from get_livestream_list |
 | `--activity-types` | string | No | Interaction type filtering: 0 danmaku, 1 gift, 2 eye-catching message, 3 premium, comma separated |
 | `--anchor-time` | string | No | Interaction anchor time, format yyyy-MM-dd HH:mm |
@@ -24,10 +24,10 @@ Mapping command: `ae-cli community +get_livestream_detail`
 ```bash
 # Get livestream details
 ae-cli community +get_livestream_detail \
-  --space-id 1 --game-id 1 --stream-id <stream-id>
+  --space-id 1 --stream-id <stream-id>
 
 # Filter danmaku types
 ae-cli community +get_livestream_detail \
-  --space-id 1 --game-id 1 --stream-id <stream-id> \
+  --space-id 1 --stream-id <stream-id> \
   --activity-types 0,1
 ```

@@ -6,8 +6,8 @@ export const getLivestreamDetail: Command = {
   command: '+get_livestream_detail',
   description: 'One live session detail: interaction leaderboards and paginated interaction feed.',
   flags: [
-    { name: 'space-id', type: 'number', required: true, desc: 'Identifier of the community space. SpaceId' },
-    { name: 'game-id', type: 'number', required: true, desc: 'Identifier of the community space. SpaceId' },
+    { name: 'space-id', type: 'int64', required: true, min: 1, desc: 'Community space ID. Discover it with: ae-cli community spaces list' },
+    { name: 'game-id', type: 'int64', required: false, min: 1, desc: 'Deprecated compatibility alias; defaults to --space-id and must match it.' },
     { name: 'stream-id', type: 'string', required: true, desc: 'Live session ID (streamId) from +get_livestream_list.' },
     { name: 'activity-types', type: 'string', required: false, desc: 'Activity type codes to filter details: 0 danmu, 1 gift, 2 superchat, 3 premium. Comma-separated.' },
     { name: 'anchor-time', type: 'string', required: false, desc: 'Anchor time for interactions. Format: yyyy-MM-dd HH:mm.' },
@@ -18,8 +18,8 @@ export const getLivestreamDetail: Command = {
   ],
   risk: 'read',
   execute: async (ctx: RuntimeContext) => {
-    const spaceId = ctx.num('space-id');
-    const gameId = ctx.num('game-id');
+    const spaceId = ctx.int64('space-id');
+    const gameId = ctx.optionalInt64('game-id') ?? spaceId;
     const streamId = ctx.str('stream-id');
     const host = ctx.host();
 
@@ -34,14 +34,14 @@ export const getLivestreamDetail: Command = {
     const searchWord = ctx.str('search-word');
     if (searchWord) param.searchWord = searchWord;
 
-    const orderBy = ctx.num('order-by');
-    const pageNum = ctx.num('page-num');
-    const pageSize = ctx.num('page-size');
-    if (orderBy !== undefined || pageNum || pageSize) {
+    const orderBy = ctx.optionalNum('order-by');
+    const pageNum = ctx.optionalNum('page-num');
+    const pageSize = ctx.optionalNum('page-size');
+    if (orderBy !== undefined || pageNum !== undefined || pageSize !== undefined) {
       param.pagerHeader = {};
       if (orderBy !== undefined) param.pagerHeader.orderBy = orderBy;
-      if (pageNum) param.pagerHeader.pageNum = pageNum;
-      if (pageSize) param.pagerHeader.pageSize = pageSize;
+      if (pageNum !== undefined) param.pagerHeader.pageNum = pageNum;
+      if (pageSize !== undefined) param.pagerHeader.pageSize = pageSize;
     }
 
     const args = { spaceId, param };

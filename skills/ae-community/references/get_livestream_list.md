@@ -9,8 +9,8 @@ Mapping command: `ae-cli community +get_livestream_list`
 
 | Flag | Type | Required | Description |
 |------|------|------|------|
-| `--space-id` | number | yes | community space ID |
-| `--game-id` | number | yes | game/space ID |
+| `--space-id` | int64 | yes | Community space ID returned by `community spaces list` |
+| `--game-id` | int64 | no | Deprecated compatibility alias; omit it, or make it equal to `--space-id` |
 | `--channel-id` | number | no | Channel ID (obtain via `get_livestream_rooms`) |
 | `--room-id` | string | No | Room ID (obtain via `get_livestream_rooms`) |
 | `--start-time` | string | No | Start date for statistics, format yyyy-MM-dd |
@@ -21,5 +21,5 @@ Mapping command: `ae-cli community +get_livestream_list`
 ```bash
 # Get the livestream session list
 ae-cli community +get_livestream_list \
-  --space-id 1 --game-id 1 --channel-id 1
+  --space-id 1 --channel-id 1
 ```

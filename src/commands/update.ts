@@ -12,6 +12,7 @@ import {
 import { printError, printOutput } from '../framework/output.js';
 import { getLocalCliPackageInfo } from '../core/package-info.js';
 import { exactVersion, installHost } from '../core/install-process.js';
+import { rememberBusinessConfig } from '../core/business-config.js';
 
 const HOST_OPTION_DESC = 'Override active AE host URL (e.g., https://ta.thinkingdata.cn)';
 
@@ -24,7 +25,7 @@ type UpdatePlan = {
   target: string;
   host?: string;
   commands: string[];
-  skillsSources: Array<'installed-package' | 'github-fallback'>;
+  skillsSources: Array<'installed-package'>;
 };
 
 export function registerUpdate(program: Command): void {
@@ -104,6 +105,7 @@ async function resolveTargetVersion(program: Command, opts: UpdateOptions): Prom
   const token = peekCliToken(host);
   if (token) {
     const remote = await fetchCliConfig(host, token);
+    if (remote) rememberBusinessConfig(host, token, remote.businesses);
     if (remote?.aeCliVersion) {
       return validateTarget(remote.aeCliVersion);
     }

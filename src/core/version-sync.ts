@@ -126,9 +126,11 @@ export function evaluateAutoAttempt(
 ): AutoAttemptDecision {
   const today = localDay(now);
   const entry =
-    !existing || existing.target !== target || existing.attemptDay !== today
+    !existing || existing.target !== target
       ? freshAttemptEntry(target, now)
-      : { ...existing };
+      : existing.attemptDay !== today
+        ? { ...freshAttemptEntry(target, now), pendingSkills: existing.pendingSkills, lastFailureStage: existing.lastFailureStage }
+        : { ...existing };
 
   if (entry.attemptsToday >= MAX_AUTO_ATTEMPTS_PER_DAY) {
     return { allowed: false, reason: 'daily_limit', entry };
@@ -213,10 +215,10 @@ export function isPublicAeCliPackage(packageName: string): boolean {
 export function buildVersionInstallPlan(targetRaw: string, globalRoot = '<npm-root>', packageName = OPEN_SOURCE_AE_CLI_PACKAGE): {
   target: string;
   commands: string[];
-  skillsSources: Array<'installed-package' | 'github-fallback'>;
+  skillsSources: Array<'installed-package'>;
 } {
   const target = normalizeCliVersion(targetRaw);
-  return { target, commands: installPlan(packageName, target, globalRoot), skillsSources: ['installed-package', 'github-fallback'] };
+  return { target, commands: installPlan(packageName, target, globalRoot), skillsSources: ['installed-package'] };
 }
 
 export function friendlyVersionSyncFailure(
@@ -280,7 +282,7 @@ export function installVersion(targetRaw: string, options: VersionInstallOptions
   const run = (): VersionInstallResult => {
     const report = runInstallation({ ...options, target: targetRaw });
     const cliInstalled = report.cli.verified || report.cli.action === 'installed';
-    if (report.ok) return { ok: true, cliInstalled, skillsSource: report.skills.source === 'installed-package' ? 'local' : 'github', report };
+    if (report.ok) return { ok: true, cliInstalled, skillsSource: 'local', report };
     return { ok: false, stage: report.error?.stage as VersionSyncStage ?? 'environment', cliInstalled,
       skillsPending: cliInstalled, cause: report.error?.cause as VersionSyncFailureCause ?? 'validation',
       message: report.error?.message ?? 'Installation failed.', report };

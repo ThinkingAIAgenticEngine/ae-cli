@@ -39,7 +39,7 @@ console.log('community data report skill contract tests');
 
 test('revision and frontmatter trigger reporting and WeCom ingestion requests', () => {
   const frontmatter = getFrontmatter(skill);
-assert.match(skill, /^Skill revision: 2\.4\.2\.$/m);
+  assert.match(skill, /^Skill revision: 2\.7\.0\.$/m);
   assert.match(frontmatter, /data reporting/i);
   assert.match(frontmatter, /ingestion\/import\/submission/i);
   assert.match(frontmatter, /WeCom chat data integration/i);
@@ -63,7 +63,7 @@ test('reporting uses an explicit endpoint and never derives it from host', () =>
   const workflow = sectionBetween(
     skill,
     '### Data Reporting Workflow',
-    '## Dry-run debugging',
+    '## Validation behavior',
   );
   assert.match(workflow, /complete `\/sync_content` endpoint/);
   assert.match(workflow, /Never guess, derive, or concatenate it/);

@@ -20,13 +20,13 @@ Node.js 20 or later, npm, and npx must be available. The installer does not chan
 
 The running package determines the exact CLI version to install. The global executable is verified with `ae-cli --version`; PATH problems include the verified absolute path. Local npm links are protected by a small guard. Other installation conflicts use normal npm errors; the installer does not migrate existing installations.
 
-Skills are installed globally in `~/.agents/skills`. The shared files are installed once, then the Skills tool automatically distributes copies to detected clients that require their own directory. Shared-directory targets are skipped during distribution. Existing per-Skill links are replaced with copies when needed. Codex and Cursor support this shared directory, so installing Cursor later does not require a separate copy of the Skills. A client that only reads its own directory may need the same install command run again after that client is installed. User-global installation does not promise availability in remote/cloud clients or for every future client.
+The pinned Skills tool resolves supported global client directories, including the shared `~/.agents/skills` directory. AE does not maintain a separate client path table. A client that only reads its own directory may need the same install command run again after that client is installed. Project-only clients, unknown clients, remote/cloud clients, and manually imported Skills are outside automatic global synchronization. Overlapping source directories and unverified links are protected rather than replaced.
 
 The external tool is pinned to `skills@1.5.12` to preserve Node 20 support and skip copying a Skill onto its own source directory. The installer does not maintain its own Agent catalog, ask users to select clients, or select clients based on the invoking AI. Unrelated user Skills are retained.
 
 ## Verification and output
 
-The installed CLI package's `skills/` directory defines the expected Skills and contents at runtime, including for historical packages without an installer or generated manifest. A failed shared-directory installation can retry the exact release tag `ThinkingAIAgenticEngine/ae-cli#v<CLI_VERSION>`; it never falls back to the default branch. Missing or invalid bundled Skills are reported rather than guessing the expected set from another version. Client distribution failures do not trigger a source download retry. If the local source and fallback both fail, the top-level error retains the first cause, and `skills.attempts` records both attempts with their stage, source, cause, and failures.
+The verified target CLI package's complete `skills/` directory defines the expected contents, including for historical packages without an installer or generated manifest. The synchronizer uses this source for installation and restoration. Missing or invalid package sources, modified copies, ownership conflicts, and tool failures are reported; they do not trigger an unrestricted remote installation retry. `skills.attempts` retains the attempted source and failure details.
 
 Verification parses YAML/frontmatter and compares expected files in the shared global directory with the target package. Merely finding a directory, an `ae-*` name, or an exit code of zero is insufficient. Failures reported by the pinned tool for supported clients are also treated as failures, even when shared files exist.
 
@@ -36,6 +36,12 @@ Verification parses YAML/frontmatter and compares expected files in the shared g
 - YAML errors, missing or stale files, supported-client installation errors, CLI version mismatch, and unsuccessful processes remain failures.
 
 `--format json` emits one report on stdout. Progress goes to stderr; raw subprocess logs are not forwarded. Reports include `ok`, `dry_run`, `cli.package/version/path/verified`, `skills.directory/expected_count/installed_count/missing/source/version/failures/attempts`, `auth.host/authenticated`, and `next_steps`. Counts refer to unique Skills in the global directory. Use `--format table` for a human summary. Dry runs make no subprocess calls or installation/configuration writes.
+
+`install --dry-run --format json` returns that report directly, with a root-level `commands` array. `update --dry-run --format json` keeps the command envelope (`ok` and `data`); its `data` includes `action`, `dryRun`, `target`, optional `host`, `commands`, and `skillsSources`.
+
+Each `commands` array describes the current installation plan; `skillsSources` lists the current source choices. Array lengths and contents can change with the installer. Automation should run the complete `install` or `update` command, check its exit code and `ok`, and inspect the installation report. Do not depend on fixed array indexes or execute individual entries as a replacement for the installer.
+
+The managed synchronizer uses the verified package source. Replaying historical GitHub fallback or `skills add --copy` commands would bypass business selection and copy protection.
 
 ## Host and login
 
@@ -53,6 +59,21 @@ ae-cli auth status --host <AE_HOST>
 ```
 
 Never print, copy, or manually save any token.
+
+## Business selection after login
+
+First installation without confirmed business state installs all bundled Skills. After successful login, `config refresh`, an account switch, or an active-environment switch, config determines the optional business selection. Analysis and foundation Skills remain available. Only pristine managed copies of explicitly disabled businesses are removed; enabled businesses are restored from the package. Unknown states preserve existing copies. Installation, update, and automatic version synchronization reuse this selection, so an upgrade does not restore disabled Skills.
+
+```bash
+ae-cli config refresh
+ae-cli config show
+```
+
+The global selection follows one active local environment. An explicit `--host` refresh reads that environment's config without changing global Skills, even when its URL matches the active host. External-token and sandbox invocations do not manage local global Skills. Failed config or Skill synchronization does not revoke successful authentication. Partial synchronization reports protected or failed paths; resolve the reported conflict and retry. Existing copies are adopted once only when they exactly match a known package source. No regular backup is needed because the CLI package retains the complete resources.
+
+Older Skills installations may have created client links to the shared global directory. The synchronizer migrates an existing same-name link only when its destination is a managed shared Skill whose contents still match both its ownership record and the installed package. A confirmed disabled business removes the verified links before its shared copy; an enabled business replaces them with managed copies. Unknown business states leave links unchanged. Custom targets, modified shared contents, and links to package sources remain protected.
+
+Start a new Agent session after synchronization. Descriptions already loaded into a conversation cannot be withdrawn.
 
 ## Host-compatible upgrades and downgrades
 
@@ -73,7 +94,7 @@ To use the newer installer while still respecting the current host version, incl
 npx @thinkingai/ae-cli@latest update --host <AE_HOST>
 ```
 
-The newer command orchestrates the work; the installed target remains the host-required version. Required package versions and fallback tags must be published and accessible. Global CLI installation follows one target at a time; switching between differently versioned hosts can switch that installation again.
+The newer command orchestrates the work; the installed target remains the host-required version. Required package versions must be published and accessible. Global CLI installation follows one target at a time; switching between differently versioned hosts can switch that installation again.
 
 ## Advanced manual troubleshooting
 

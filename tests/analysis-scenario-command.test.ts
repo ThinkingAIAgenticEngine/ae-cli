@@ -83,7 +83,8 @@ await test('Dry-run never executes collection; unavailable/older backend does no
       const body = JSON.parse(String(init?.body));
       if (path.includes('project.info.get')) return new Response(JSON.stringify({ ok: true, data: { analysis_scenario_collection_enabled: true } }));
       if (path.includes('analysis.scenario.collect')) {
-        assert.equal(body.input.answer, 'Users fell 12%.');
+        assert.equal(body.input.answer, Buffer.from('Users fell 12%.', 'utf8').toString('base64'));
+        assert.equal(body.input.content_encoding, 'base64');
         assert.deepEqual(body.input.query_path, queryPath);
         assert.equal(body.input.evidence, undefined);
         assert.equal(body.input.result, undefined);
@@ -107,6 +108,110 @@ await test('Dry-run never executes collection; unavailable/older backend does no
     clearCliTokenCache(host);
     if (prevRoot === undefined) delete process.env.SANDBOX_RUNTIME_ROOT;
     else process.env.SANDBOX_RUNTIME_ROOT = prevRoot;
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+await test('Execute, validate and dry-run encode initial answers, feedback and revisions without changing CLI input', async () => {
+  const dir = mkdtempSync(join(tmpdir(), 'scenario-base64-'));
+  const host = 'https://scenario-base64.invalid';
+  const previousRoot = process.env.SANDBOX_RUNTIME_ROOT;
+  const previousFetch = globalThis.fetch;
+  const requests: { path: string; input: Record<string, unknown> }[] = [];
+  try {
+    mkdirSync(join(dir, '.ae-config'));
+    writeFileSync(join(dir, '.ae-config/cli-token.json'), JSON.stringify({ url: host, token: 'fixture-only-token' }));
+    process.env.SANDBOX_RUNTIME_ROOT = dir;
+    globalThis.fetch = async (url, init) => {
+      const path = new URL(String(url)).pathname;
+      if (path.includes('/token/renew')) return new Response('{}', { status: 404 });
+      const input = JSON.parse(String(init?.body)).input;
+      if (path.includes('project.info.get')) return new Response(JSON.stringify({ ok: true, data: { analysis_scenario_collection_enabled: true } }));
+      requests.push({ path, input });
+      return new Response(JSON.stringify({ ok: true, data: { accepted: true, delivery: 'best_effort' } }));
+    };
+    await runWithCliAgentContext({ agent_session_id: 's1', agent_turn_id: 't4' }, async () => {
+      const cases = [
+        { command: scenarioCollect, flags: { answer: '用'.repeat(16382) + '😀' }, field: 'answer' },
+        { command: scenarioAppend, flags: { 'entry-type': 'user_feedback', 'question-id': 'q1', 'target-answer-id': 'a1',
+          'query-path': undefined, text: '错'.repeat(4096) }, field: 'text' },
+        { command: scenarioAppend, flags: { 'entry-type': 'answer_revision', 'question-id': 'q1', 'target-answer-id': 'a1',
+          'user-message': 'Please recheck.', text: '修订答案：\n收入下降 12%。😀' }, field: 'text' },
+      ];
+      for (const { command, flags, field } of cases) {
+        const ctx = { ...context(flags), host: () => host } as RuntimeContext;
+        const original = scenarioInput(ctx, command === scenarioAppend);
+        for (const action of [command.execute, command.validateInput!, command.dryRun!]) {
+          await action(ctx);
+          const request = requests.at(-1)!;
+          const expected = Buffer.from(original[field] as string, 'utf8').toString('base64');
+          assert.deepEqual(request.input, { ...original, [field]: expected, content_encoding: 'base64' });
+          assert.equal(Buffer.from(request.input[field] as string, 'base64').toString('utf8'), original[field]);
+          assert.ok(!JSON.stringify(request.input).includes(original[field] as string));
+        }
+        assert.deepEqual(scenarioInput(ctx, command === scenarioAppend), original);
+      }
+      assert.equal(requests.length, 9);
+      assert.equal((requests[0].input.answer as string).length, 65536);
+      for (const field of ['answer', 'text']) {
+        const command = field === 'answer' ? scenarioCollect : scenarioAppend;
+        const flags = field === 'answer' ? { answer: '\uD800' } : {
+          'entry-type': 'user_feedback', 'question-id': 'q1', 'target-answer-id': 'a1', 'query-path': undefined, text: '\uD800',
+        };
+        assert.throws(() => command.preflight!({ ...context(flags), host: () => host } as RuntimeContext), /valid Unicode/);
+      }
+    });
+  } finally {
+    globalThis.fetch = previousFetch;
+    clearCliTokenCache(host);
+    if (previousRoot === undefined) delete process.env.SANDBOX_RUNTIME_ROOT;
+    else process.env.SANDBOX_RUNTIME_ROOT = previousRoot;
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+await test('An older Common schema rejects encoded collection once; the CLI never retries with plaintext', async () => {
+  const dir = mkdtempSync(join(tmpdir(), 'scenario-old-common-'));
+  const host = 'https://scenario-old-common.invalid';
+  const previousRoot = process.env.SANDBOX_RUNTIME_ROOT;
+  const previousFetch = globalThis.fetch;
+  const attempts: Record<string, unknown>[] = [];
+  try {
+    mkdirSync(join(dir, '.ae-config'));
+    writeFileSync(join(dir, '.ae-config/cli-token.json'), JSON.stringify({ url: host, token: 'fixture-only-token' }));
+    process.env.SANDBOX_RUNTIME_ROOT = dir;
+    globalThis.fetch = async (url, init) => {
+      const path = new URL(String(url)).pathname;
+      if (path.includes('/token/renew')) return new Response('{}', { status: 404 });
+      if (path.includes('project.info.get')) return new Response(JSON.stringify({ ok: true, data: { analysis_scenario_collection_enabled: true } }));
+      if (path.includes('analysis.scenario.')) {
+        attempts.push(JSON.parse(String(init?.body)).input);
+        return new Response(JSON.stringify({ ok: false, error: { type: 'validation', code: 'INVALID_CAPABILITY_INPUT',
+          message: 'Invalid input: unknown field content_encoding' } }), { status: 400 });
+      }
+      return new Response(JSON.stringify({ ok: true, data: {} }));
+    };
+    await runWithCliAgentContext({ agent_session_id: 's1', agent_turn_id: 'q1' }, async () => {
+      const cases = [
+        { command: scenarioCollect, flags: {}, field: 'answer', original: 'Users fell 12%.' },
+        { command: scenarioAppend, flags: { 'entry-type': 'user_feedback', 'question-id': 'q1', 'target-answer-id': 'a1',
+          'query-path': undefined, text: 'Check this.' }, field: 'text', original: 'Check this.' },
+      ];
+      for (const { command, flags, field, original } of cases) {
+        const before = attempts.length;
+        await assert.rejects(() => command.execute({ ...context(flags), host: () => host } as RuntimeContext), /unknown field content_encoding/);
+        assert.equal(attempts.length, before + 1);
+        assert.equal(attempts.at(-1)!.content_encoding, 'base64');
+        assert.equal(attempts.at(-1)![field], Buffer.from(original, 'utf8').toString('base64'));
+      }
+      await executeCapability(host, 'analysis', 'analysis.report_data.run', { project_id: 1, report_ids: [901] });
+      assert.equal(attempts.length, 2);
+    });
+  } finally {
+    globalThis.fetch = previousFetch;
+    clearCliTokenCache(host);
+    if (previousRoot === undefined) delete process.env.SANDBOX_RUNTIME_ROOT;
+    else process.env.SANDBOX_RUNTIME_ROOT = previousRoot;
     rmSync(dir, { recursive: true, force: true });
   }
 });
@@ -232,4 +337,19 @@ await test('Project opt-in gates both commands before sending sample content and
     else process.env.SANDBOX_RUNTIME_ROOT = previousRoot;
     rmSync(dir, { recursive: true, force: true });
   }
+});
+
+
+await test('Duration is optional for old callers and computed independently for each answer', async () => {
+  await runWithCliAgentContext({ agent_session_id: 's1', agent_turn_id: 't2' }, async () => {
+    assert.equal(scenarioInput(context()).duration_ms, undefined);
+    const start = new Date(Date.now() - 42000).toISOString();
+    const timed = scenarioInput(context({ 'start-time': start }));
+    assert.ok(Number(timed.duration_ms) >= 42000 && Number(timed.duration_ms) < 43000);
+    const revision = scenarioInput(context({ 'question-id': 'q1', 'entry-type': 'answer_revision',
+      'target-answer-id': 'a1', text: 'Revised answer', 'start-time': new Date(Date.now() - 1000).toISOString() }), true);
+    assert.ok(Number(revision.duration_ms) < Number(timed.duration_ms));
+    assert.throws(() => scenarioInput(context({ 'question-id': 'q1', 'entry-type': 'user_feedback',
+      'target-answer-id': 'a1', text: 'Check this', 'query-path': undefined, 'start-time': start }), true));
+  });
 });

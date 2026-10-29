@@ -294,7 +294,14 @@ await test('auth set-token reads stdin, validates, stores metadata, and never pr
   const cliToken = 'cli_manual_secret';
   const expiresAt = '2026-10-04T08:00:00.000Z';
   let validationCalls = 0;
+  let configCalls = 0;
   const server = http.createServer((request, response) => {
+    if (request.url?.startsWith('/v1/ta/cli/config?')) {
+      configCalls += 1;
+      response.statusCode = 503;
+      response.end('Optional CLI configuration unavailable');
+      return;
+    }
     validationCalls += 1;
     assert.equal(request.method, 'GET');
     assert.equal(request.url, '/v1/ta/cli/token/validate');
@@ -319,6 +326,7 @@ await test('auth set-token reads stdin, validates, stores metadata, and never pr
     const result = await runCli(home, ['auth', 'set-token', '--host', host, '--token-stdin'], `${cliToken}\n`);
     assert.equal(result.code, 0, result.stderr);
     assert.equal(validationCalls, 1);
+    assert.equal(configCalls, 1);
     assert.doesNotMatch(`${result.stdout}\n${result.stderr}`, new RegExp(cliToken));
     const output = parseOutput(result.stdout);
     assert.equal(output.data.authenticated, true);
@@ -327,6 +335,9 @@ await test('auth set-token reads stdin, validates, stores metadata, and never pr
     assert.equal(output.data.account.login_name, alice.loginName);
     assert.equal(output.data.cli_token.status, 'valid');
     assert.equal(output.data.cli_token.expires_at, expiresAt);
+    assert.equal(output.data.environment.source, 'unavailable');
+    assert.equal(output.data.environment.skills.status, 'skipped');
+    assert.equal(fs.existsSync(path.join(home, '.agents', 'skills')), false);
     const stored = activeCredential(home, host);
     assert.equal(stored.cliToken, cliToken);
     assert.equal(stored.account.loginName, alice.loginName);

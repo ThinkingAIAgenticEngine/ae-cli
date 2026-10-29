@@ -21,23 +21,26 @@ const SUBMIT_TO_PAGE_HELP = [
   '- This command creates an asset certification review draft for humans. It never approves, certifies, retries, or creates metrics.',
   '- Use --input-file for real drafts. The file is JSON; --project-id and --client-request-id come from CLI flags so replays keep one stable operation key.',
   '- Build the file from review_material_package, preserving candidate assets, heat evidence, source_link/evidence_links, relations, report/AI-model definitions, target_revision, and hashes.',
-  '- For dashboard items, preserve optional space_id/space_name from the material package into evidence_snapshot.definition.config when present. Not every dashboard has a space; do not invent or require one.',
+  '- For dashboard items, preserve optional space_id/space_name only from the authoritative packaged evidence_snapshot.definition.config, together with target_revision. Never synthesize or patch definition from space display facts. For older exports missing dashboard definition/revision, fetch analysis-meta agent-review evidence first. Not every dashboard has a space; do not invent or require one.',
   '- For recurring recommendation jobs, build the draft from the latest sufficient export: start at top-20 hot dashboards, expand to top-50/top-100 only when filtering leaves too few pending review assets or visible business domains, and record the final scope in batch ai_summary.',
+  '- Do not query review history to select candidates. Select currently uncertified assets by business value and evidence, regardless of earlier recommendations or review decisions. Submission creates human review material only.',
   '- Expansion is for coverage, not unlimited workload. Target about 20-50 pending assets per daily batch, cap around 80, and balance roughly 3-6 visible domains with per-domain quotas before adding context.',
   '- If more pending candidates exist, submit the ranked slice and record overflow counts/domains in batch ai_summary for later batches.',
   '- presentation_snapshot should display only business-domain topics that contain pending review assets. Authenticated/completed assets may appear as context under those topics, but must not create standalone zero-pending topics.',
   '- Do not author long page-visible AI summaries for hidden topics or pure authenticated context. Copy evidence, links, signals, and relations for context; spend Agent interpretation on visible domains and pending review assets.',
   '- Scripts may assemble transport JSON and copy evidence, but page-visible ai_summary and analysis_explanation text must be Agent-written interpretation from verified evidence, not generated boilerplate.',
-  '- Follow agent_review_preflight.md: independent Agent review, at most 3 corrections, then submit with unresolved-quality warnings only when already authorized. LOCAL_ONLY never submits. Business meaning and visible-text quality are Agent review responsibilities; this command enforces only transport structure and evidence references.',
-  '- Follow agent_review_priorities_comparisons.md: item ai_summary includes recommendation.priority/priority_reason/evidence_refs, classified comparisons with both-side evidence, and comparison_review coverage. LOW is review urgency, not a defer decision; only POSSIBLE_CONFLICT merits a conflict badge. These assessments share the same 3-correction budget.',
-  '- Each new topic must include semantic_basis with business_question, grouping_reason, and evidence_item_ids from that topic. These are Agent-authored business interpretations; legacy packets without this optional field remain accepted.',
+  '- Ordinary recommendations use concise item reasons and core report meaning. Follow agent_review_preflight.md for one focused independent review of every business topic/subtopic and identified risks, plus whole-packet programmatic evidence checks. Do not repeat a full definition audit or polish copy through routine correction rounds. Full audits require explicit audit intent; LOCAL_ONLY never submits.',
+  '- Priorities are optional for ordinary recommendations. Load agent_review_priorities_comparisons.md only for a priority request, concrete comparison/conflict clues, or a full audit. Do not require comparisons or comparison_review for unexamined ordinary items; absence never proves no conflict. Supplied comparisons retain both-side evidence and classification; only POSSIBLE_CONFLICT merits a conflict badge.',
+  '- Each new topic and second-level business subtopic must include semantic_basis with business_question, grouping_reason, and evidence_item_ids from that topic or group respectively. These are Agent-authored interpretations; legacy packets without these optional fields remain accepted.',
+  '- Follow the Business Topics and Subtopics contract in agent_review_submit_to_page.md: business domain -> business subtopic -> dashboards -> reports -> metadata. Group dashboards answering the same subtopic question together; never create one group per source dashboard by iteration or just rename those groups. Single-dashboard groups need a definition-based reason, not a minimum-count workaround.',
   '- presentation_snapshot.topics is one or more business-domain topics. Each topic must use groups[].items; do not use top-level topics[].items or raw Common work_units as the page grouping.',
   '- relations should let the page render dashboard -> report -> metadata with contains/uses edges. Use an empty relations array only when the package truly has no known parent-child evidence.',
   '- Each submitted item must keep source_link or evidence_links[].url so reviewers can jump to source evidence.',
   '- item.ai_summary.summary is the per-item recommendation reason. It must cite concrete item evidence, not generic review boilerplate. batch ai_summary.summary is only the batch overview.',
   '- When submitting manual_review_handoff leftovers, copy manual_review_handoff.auto_review_trace into source_metadata.auto_review_trace so page audit records include the assets already certified automatically.',
-  '- For reports and SQL reports, item.ai_summary.analysis_explanation must explain reviewer-readable calculations or measures from packaged evidence_snapshot.analysis. A purpose-only summary is incomplete and is rejected locally before dispatch.',
-  '- Reviewer-visible text should follow the project-KB source style: one business Chinese Agent summary that explains purpose, calculation caliber, filters, time scope, boundaries, and concrete reviewer questions. Keep raw SQL, parser labels, temporary aliases, parameter placeholders, hashes, and evidence paths in evidence_snapshot only; independent Agent preflight flags visible implementation terms as quality findings.',
+  '- For ordinary reports, one concise, factual core measure or calculation with resolvable evidence_snapshot.analysis refs is sufficient. Preserve packaged analysis and target_revision; do not require exhaustive SQL projection explanations. A purpose-only summary is incomplete and is rejected locally before dispatch.',
+  '- Write concise business Chinese describing purpose, recommendation basis, core meaning and known material risks; metadata dependencies need only their role and specific risks. Keep raw SQL and implementation details in evidence_snapshot. Complete field-by-field explanations remain available for explicitly requested full audits.',
+  '- Run local structure/evidence checks once, then submit once and read detail once. Remote --validate or --dry-run remains available for uncertain inputs or new contracts, not a routine extra step. Authorization, source links, identity, and core report evidence checks remain enforced.',
   '- The command output includes review_page_url when review_url is present. Return review_page_url to the user; do not prepend the Common/API host to review_url yourself.',
   '',
   'Input-file JSON shape:',
@@ -57,8 +60,9 @@ const SUBMIT_TO_PAGE_HELP = [
   '      "name": "<business-domain-name>",',
   '      "groups": [{',
   '        "id": "<second-level-group-id>",',
-  '        "name": "<second-level group or source dashboard>",',
-  '        "items": [{ "id": "<client_item_id>" }]',
+  '        "name": "<business-subtopic-name>",',
+  '        "semantic_basis": { "business_question": "<specific business question>", "grouping_reason": "<shared meaning and boundary from sibling subtopics>", "evidence_item_ids": ["<supporting item id in this group>"] },',
+  '        "items": [{ "id": "<dashboard item id>" }, { "id": "<another related dashboard item id>" }, { "id": "<report item id>" }]',
   '      }]',
   '    }],',
   '    "relations": [{ "parent": "<dashboard item id>", "child": "<report item id>", "type": "contains" }, { "parent": "<report item id>", "child": "<metadata item id>", "type": "uses" }],',
@@ -262,6 +266,7 @@ function validatePresentation(presentation: Record<string, unknown>, itemIds: Se
     }
     for (const groupValue of array(topic.groups, 'presentation_snapshot.topics[].groups')) {
       const group = object(groupValue, 'presentation_snapshot.topics[].groups[]');
+      const groupItemIds = new Set<string>();
       if (typeof group.id !== 'string' || !group.id.trim()
         || typeof group.name !== 'string' || !group.name.trim()) {
         throw new Error('presentation_snapshot.topics[].groups[] requires nonempty string id and name.');
@@ -276,6 +281,19 @@ function validatePresentation(presentation: Record<string, unknown>, itemIds: Se
         }
         displayed.add(item.id);
         topicItemIds.add(item.id);
+        groupItemIds.add(item.id);
+      }
+      if (group.semantic_basis !== undefined) {
+        const basis = object(group.semantic_basis, 'presentation_snapshot.topics[].groups[].semantic_basis');
+        for (const field of ['business_question', 'grouping_reason']) {
+          if (typeof basis[field] !== 'string' || !basis[field].trim()) {
+            throw new Error(`group.semantic_basis.${field} must explain the business meaning of this subtopic.`);
+          }
+        }
+        const references = array(basis.evidence_item_ids, 'group.semantic_basis.evidence_item_ids');
+        if (!references.length || references.some((id) => typeof id !== 'string' || !groupItemIds.has(id))) {
+          throw new Error('group.semantic_basis.evidence_item_ids must reference items displayed in the same group.');
+        }
       }
     }
     if (topic.semantic_basis !== undefined) {

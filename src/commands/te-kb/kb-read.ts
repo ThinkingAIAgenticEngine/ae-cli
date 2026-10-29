@@ -56,6 +56,7 @@ export const kbRead: Command = {
   description:
     'Read a full knowledge base page (or a line window) via POST /agent/api/external/knowledge-bases/read. Use after +index / +grep locate a candidate page. Pass --outline to get only the page heading tree (no content) and pick a section to read.',
   flags: [
+    { name: 'read-context', type: 'string', required: false, desc: 'Pin reads to an existing read context' },
     {
       name: 'source',
       type: 'json',

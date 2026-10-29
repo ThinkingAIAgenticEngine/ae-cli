@@ -50,6 +50,7 @@ the user decide — never to guess an encoding or structure and retry silently.
 | `LOCAL_DATA_INPUT_NOT_FOUND` | Path is not a readable file | Ask for the correct path |
 | `LOCAL_DATA_FILE_TOO_LARGE` | XLS over 1 GB | Convert to XLSX or split the workbook |
 | `LOCAL_DATA_INPUT_INVALID` | Generic parse failure (malformed CSV/TSV/JSON/XLS) | Verify encoding and structure, then retry without changing the source |
+| `LOCAL_DATA_PARQUET_INVALID` | File cannot be read as Parquet | Verify the file is a valid Parquet file and retry without changing the source |
 | `LOCAL_DATA_JSONL_INVALID` | A JSONL line is not valid JSON (`location.record` names the line) | Point at the offending record |
 | `LOCAL_DATA_JSON_ROOT_INVALID` | JSON root is not an object or array | Check the file's top-level shape |
 | `LOCAL_DATA_XLSX_INVALID` | Workbook metadata missing / no readable sheets / worksheet entry missing | Re-export the workbook (sheet recognition accepts `<sheet>` and namespaced `<x:sheet>` alike, so this is a real metadata gap) |

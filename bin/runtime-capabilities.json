@@ -1,0 +1,5 @@
+{
+  "protocol": "ae-cli-runtime-capabilities",
+  "version": 1,
+  "features": ["kb_read_context_v1"]
+}

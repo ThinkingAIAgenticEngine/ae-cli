@@ -1,3 +1,4 @@
+import { redactKbReadCredential } from "./kb-read-context.js";
 import fs from 'node:fs';
 import { normalizeUrl } from './url-utils.js';
 
@@ -90,5 +91,5 @@ export function redactExternalCliToken(value: string): string {
   try { readExternalCliToken(); } catch { /* Retain redaction when the selected source was rotated or removed. */ }
   const forms = [...diagnosticSecrets].flatMap(token => [token, JSON.stringify(token).slice(1, -1), encodeURIComponent(token)]);
   for (const form of [...new Set(forms)].sort((a, b) => b.length - a.length)) value = value.split(form).join('[REDACTED]');
-  return value;
+  return redactKbReadCredential(value);
 }

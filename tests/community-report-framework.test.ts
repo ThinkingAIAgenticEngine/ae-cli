@@ -88,7 +88,7 @@ assert.equal(reportError.httpStatus, 400);
 
 assert.match(outputSource, /options: \{ log\?: boolean(?:;[^}]*)? \} = \{\}/);
 assert.match(outputSource, /if \(options\.log !== false\)/);
-assert.match(runnerSource, /if \(!\(err instanceof CommunityReportError\)\)/);
+assert.match(runnerSource, /if \(!\(err instanceof CommunityReportError\) && !\(err instanceof EvalApiError\)\)/);
 assert.match(
   runnerSource,
   /printError\('api', message, err\.hint, err\.code, err\.meta, \{ log: false \}\)/,

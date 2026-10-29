@@ -27,7 +27,7 @@ Required structure:
 }
 ```
 
-Use `distinct_id_field` when no account field exists. `mixed` requires `record_type_field`. Track requires `event_name_field` or a reviewed `default_event_name`. `source.format` is one of `csv`, `tsv`, `json`, `jsonl`, `xls`, `xlsx`. For a multi-file template mapping, `source.sha256` may be the wildcard `*`.
+Use `distinct_id_field` when no account field exists. `mixed` requires `record_type_field`. Track requires `event_name_field` or a reviewed `default_event_name`. `source.format` is one of `csv`, `tsv`, `json`, `jsonl`, `xls`, `xlsx`, `parquet`. For a multi-file template mapping, `source.sha256` may be the wildcard `*`.
 
 ## Record types
 

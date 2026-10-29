@@ -9,8 +9,8 @@ Mapping command: `ae-cli community +get_post_detail`
 
 | Flag | Type | Required | Description |
 |------|------|------|------|
-| `--space-id` | number | yes | community space ID |
-| `--game-id` | number | yes | game/space ID |
+| `--space-id` | int64 | yes | Community space ID returned by `community spaces list` |
+| `--game-id` | int64 | no | Deprecated compatibility alias; omit it, or make it equal to `--space-id` |
 | `--channel-id` | number | yes | channel ID |
 | `--uuid` | string | yes | content UUID |
 | `--resource-type` | number | Yes | Resource type: `0` for posts, `1` for videos |
@@ -26,12 +26,12 @@ Mapping command: `ae-cli community +get_post_detail`
 ```bash
 # Get post details
 ae-cli community +get_post_detail \
-  --space-id 1 --game-id 1 \
+  --space-id 1 \
   --channel-id 1 --uuid <uuid> --resource-type 0
 
 # Get video details and page comments
 ae-cli community +get_post_detail \
-  --space-id 1 --game-id 1 \
+  --space-id 1 \
   --channel-id 1 --uuid <uuid> --resource-type 1 \
   --reply-page-num 1 --reply-page-size 20
 ```

@@ -59,7 +59,7 @@ export function validateMapping(value: unknown, options?: { sourceWildcard?: boo
       : /^[a-f0-9]{64}$/i.test(value.source.sha256));
   if (!isRecord(value.source)
     || !sha256Valid
-    || !['csv', 'tsv', 'json', 'jsonl', 'xls', 'xlsx'].includes(String(value.source.format))
+    || !['csv', 'tsv', 'json', 'jsonl', 'xls', 'xlsx', 'parquet'].includes(String(value.source.format))
     || typeof value.source.data_set !== 'string'
     || !value.source.data_set) {
     throw mappingError('Mapping source fingerprint and data set are required.');

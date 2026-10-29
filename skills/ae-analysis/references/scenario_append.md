@@ -1,5 +1,7 @@
 # analysis scenario append
 
+Pass original text to `--text`; never pre-encode it. The CLI automatically sends `text` as UTF-8 Base64 with `content_encoding=base64`, for both user feedback and answer revisions and for execute, validate and dry-run. Common collects the exact decoded text. Other fields, including `--user-message`, retain their existing representation. Encoding is reversible and is not encryption. Deploy Common support first; old unmarked requests remain accepted by new Common. An older Common rejects the new marker; do not retry or fall back to plain text.
+
 Command: `ae-cli analysis scenario append`. Capability: `analysis.scenario.append`. Risk: `write`.
 
 ## Project opt-in
@@ -23,3 +25,7 @@ ae-cli analysis scenario append --question-id '<original-question-id>' \
 cli_analysis_scenario_entry links by authenticated user + agent_session_id + question_id, and target_answer_id links the actual answer. Entry deduplication uses the same scope plus entry_id. A separate evaluator determines whether the feedback is supported and whether a later revision resolves the original problem. Preserve both versions even if the latest is correct. Collection does not validate historical ID existence; unresolved links must be marked unknown by evaluation, not treated as verified associations.
 
 Output contains accepted, question_id, event_name and delivery. On unavailable capability, permission/auth failure or transport failure, continue normal answering; do not login, automatically retry or claim recording. accepted=true with delivery=best_effort is not ingestion proof. An older explicit standalone satisfaction command remains available but do not double-report the same collected-scenario feedback through it.
+
+## Answer duration
+
+For a substantive follow-up, capture a fresh local `ae-cli analysis scenario begin` when processing that follow-up starts. Pass its exact `data.start_time` as `--start-time` on answer_revision. Keep the original question_id but use the new answer_id. This measures only that answer; do not include time spent waiting for the user or add earlier answer durations. User feedback accepts no start-time or duration_ms. Omit timing when no start marker was captured.

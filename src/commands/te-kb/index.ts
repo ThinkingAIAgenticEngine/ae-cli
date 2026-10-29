@@ -1,3 +1,7 @@
+import { projectTargetGet } from './project-target.js';
+export { projectTargetGet } from './project-target.js';
+import { publicationCommands } from './publication.js';
+export * from './publication.js';
 import { sourceCheckUrlUpdates } from "./source-check-url-updates.js";
 import { schemaImportCommands } from "./schema-import.js";
 export * from "./schema-import.js";
@@ -28,6 +32,8 @@ import { sourceLs, sourceRead, sourcePut, sourceRm } from './source-directory.js
 import { versions, versionShow, versionSources, versionDiff, versionTree, versionRead, versionDownload, rollback, rollbackStatus } from './version-management.js';
 
 const commands: Command[] = [
+  projectTargetGet,
+  ...publicationCommands,
   usageList,
   ...schemaImportCommands,
   sourceCheckUpdates,

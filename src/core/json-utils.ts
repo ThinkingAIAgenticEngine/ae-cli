@@ -7,6 +7,12 @@ const JSONbig = require('json-bigint');
 // is enabled. Compare its lossless result with the native parse so only bare
 // unsafe integers stay strings; decimal and exponent tokens remain numbers.
 const jsonParser = JSONbig({ storeAsString: true });
+const requestJsonStringifier = JSONbig({ useNativeBigInt: true });
+const requestJsonParser = JSONbig({
+  useNativeBigInt: true,
+  protoAction: 'error',
+  constructorAction: 'error',
+});
 const INTEGER_TOKEN = /^-?(?:0|[1-9]\d*)$/;
 
 function normalizeParsedNumbers(lossless: any, native: any): any {
@@ -62,4 +68,18 @@ export function safeJsonStringify(obj: any, space?: number | string): string {
     }
     return value;
   }, space);
+}
+
+/**
+ * Serializes an HTTP request body without rounding native bigint values.
+ * Bigints are emitted as bare JSON integer tokens so integer/int64 schemas keep
+ * their numeric contract while JavaScript callers retain exact values.
+ */
+export function stringifyJsonRequest(obj: any): string {
+  return requestJsonStringifier.stringify(obj);
+}
+
+/** Parses request JSON so unsafe bare integer tokens become bigint instead of rounded strings. */
+export function parseJsonRequest(text: string): any {
+  return requestJsonParser.parse(text);
 }

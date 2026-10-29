@@ -29,7 +29,7 @@ Walk the table item by item:
 
 Before saving, present the complete mapping for a final sign-off on one grouped page — system fields (`#type`/mode, `#account_id`, `#distinct_id`, `#time` + source timezone, `#zone_offset`, `#event_name`, `#ip`/`#uuid`), then the property table (source column → target AE name → type), then excluded columns — and wait for an explicit yes. Never dump the raw mapping JSON at the user.
 
-Save the reviewed `ae-data-integration-mapping/v1` JSON to `.ae-cli/data-integration/mapping.json` (project workspace). Convert into a new output directory:
+Save the reviewed `ae-data-integration-mapping/v1` JSON to `.ae-cli/data-integration/mapping.json` (project workspace). Ask the user where the output should land before converting — never pick it silently. Offer the default `.ae-cli/data-integration/runs/<run-id>`; for file / LogBus2 delivery the `--output-dir` must be the directory LogBus2 watches. Convert into a new output directory:
 
 ```bash
 ae-cli data-integration convert \

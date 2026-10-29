@@ -1,6 +1,6 @@
 ---
 name: ae-metadata
-version: 1.0.4
+version: 1.0.5
 description: "AE metadata capability-gateway CLI: list, inspect, create, update, delete and download metadata data tables; bind an existing dimension table to a property or create and bind a CSV dimension table. Local file upload and event/property discovery are separate prerequisite capabilities."
 ---
 
@@ -14,7 +14,7 @@ Use this skill for gateway-backed data-table and property dimension-table operat
 
 - Responsibilities: data-table management and dimension-table bindings through the commands below.
 - Inputs: verified project, table/property identifiers and operation-specific parameters; local CSV workflows need a valid uploaded input-file identifier and purpose.
-- Outputs: table/binding operation results, resource identifiers, or download run/artifact status. A submitted asynchronous download is not yet a completed file.
+- Outputs: table/binding operation results, resource identifiers, or download run/artifact status. Data-table get can include saved SQL definitions, parameters, and schedule configuration on supported servers; read its reference for availability and execution-value limits. A submitted asynchronous download is not yet a completed file.
 - Boundaries: local input-file upload, event/property detail and discovery, metric CRUD, virtual metadata, batch metadata, project configuration and tracking plans are separate capabilities.
 - Completion: the requested table or binding result is verified, or pending/blocked work and its remaining requirements are reported.
 

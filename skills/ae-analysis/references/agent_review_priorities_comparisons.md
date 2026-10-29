@@ -1,6 +1,8 @@
 # Review Priority and Definition Comparisons
 
-Read after interpreting individual assets and before [independent preflight](agent_review_preflight.md). These are Agent assessments inside each item's `ai_summary`, not new Common admission rules, certification decisions or server evidence. Generate them in LOCAL_ONLY rehearsals too, without submitting anything.
+Read only when the user requests prioritization/comparison or a full audit, or when concrete evidence suggests related/conflicting definitions. Ordinary recommendation does not require this pass for every item. These are Agent assessments inside `ai_summary`, not Common admission rules, certification decisions or server evidence. LOCAL_ONLY keeps any requested assessments local.
+
+The exhaustive per-item requirements below apply to an explicit full audit. For ordinary recommendations, priority is optional and comparisons cover only actually examined peers. Do not fill empty comparison/coverage records or grades merely for completeness. Missing comparison fields mean no documented assessment, never verified absence of conflicts. If supplied, preserve the evidence, classification and reciprocity rules below.
 
 ## Per-Asset Review Priority
 
@@ -55,7 +57,7 @@ In the current page contract, actionable peer links require both assets in the r
 
 ## Explicit Coverage, Not Empty-by-Default
 
-Every item also carries `comparison_review`:
+For a full audit, every item also carries `comparison_review`. For an ordinary recommendation, add it only when an actual comparison was performed; unexamined items may omit it or explicitly use NOT_REVIEWED, never COMPLETE:
 
 ```json
 {
@@ -71,6 +73,6 @@ Every item also carries `comparison_review`:
 
 ## Preflight and Bounded Repair
 
-The independent reviewer checks per-item priority coverage and evidence, cross-chunk candidate selection, both definitions for each pair, classifications, reciprocal conflict edges, identity/refs and whether the wording claims more coverage than was checked. It must challenge both false conflict badges and likely missed conflicts. Record counts by priority (including unassessed), comparison outcome, unique unordered conflict pairs, affected items, and incomplete comparisons. Count pair A-B once, not twice because of reciprocal entries.
+Within the requested or triggered comparison scope, the independent reviewer checks priority coverage and evidence, cross-chunk candidate selection, both definitions for each pair, classifications, reciprocal conflict edges, identity/refs and whether the wording claims more coverage than was checked. It must challenge both false conflict badges and likely missed conflicts. Record counts by priority (including unassessed), comparison outcome, unique unordered conflict pairs, affected items, and incomplete comparisons. Count pair A-B once, not twice because of reciprocal entries.
 
 Use the same logical-packet correction budget in preflight: at most 3 corrections total, not 3 for each priority, pair or reviewer. On exhausted quality corrections, preserve the findings and follow authorized warning continuation. LOCAL_ONLY always ends with local files. Missing priority, incomplete comparison, and poor rationale are Agent quality findings, not new CLI/Common rejection rules.

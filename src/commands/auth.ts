@@ -11,6 +11,7 @@ import {
   type CliTokenValidationResult,
 } from '../core/cli-token.js';
 import { runHostCompatCheck } from '../core/compat-check.js';
+import { invalidateBusinessSkillSynchronization, refreshEnvironmentAfterLogin } from '../core/environment-refresh.js';
 import { getLocalCliPackageInfo } from '../core/package-info.js';
 import { logger } from '../core/logger.js';
 import { PermissionError } from '../core/errors.js';
@@ -19,12 +20,12 @@ import { MultiselectCancelled, promptSingleSelect } from '../core/multiselect.js
 import { ExternalCliTokenError, readExternalCliToken } from '../core/external-cli-token.js';
 import {
   runDeviceFlow,
-  authorizeDevice,
   pollDeviceFlow,
   buildVerificationUrl,
   DeviceFlowUnsupportedError,
   type DeviceTokenResponse,
 } from '../core/device-auth.js';
+import { authorizeLoginDevice, resolveDeviceSessionRoute, resolveLegacyLoginBase } from '../core/login-device-flow.js';
 import {
   activateCredential,
   assertCredentialsReadable,
@@ -43,6 +44,10 @@ import {
 const HOST_OPTION_DESC = 'Override active AE host URL (e.g., https://ta.thinkingdata.cn)';
 
 type AuthHostOpts = { host?: string };
+
+function shellArgument(value: string): string {
+  return `'${value.replace(/'/g, `'\\''`)}'`;
+}
 
 type SetTokenOpts = AuthHostOpts & {
   add?: boolean;
@@ -158,6 +163,7 @@ export function promptHiddenCliToken(): Promise<string> {
 
 /** After a successful login with an explicit --host, make that host the active one. */
 export function activateHostAfterLogin(host: string, explicitHostOverride?: string): void {
+  invalidateBusinessSkillSynchronization();
   if (!explicitHostOverride) return;
   const normalized = normalizeUrl(host);
   const config = loadConfig();
@@ -254,12 +260,15 @@ async function switchActiveAccount(
   }
 
   try {
+    invalidateBusinessSkillSynchronization();
     const selected = activateCredential(host, account);
     clearCliTokenCache(host);
+    const environment = await refreshEnvironmentAfterLogin(host);
     await printOutput({
       host,
       active: true,
       account: accountOutput(selected.account!),
+      ...(environment ? { environment } : {}),
     }, program.opts().format || 'json');
   } catch (error: any) {
     if (error instanceof CredentialStoreUnreadableError) throw error;
@@ -289,6 +298,7 @@ export async function persistDeviceTokens(
   }
   let saved: StoredCredential;
   try {
+    invalidateBusinessSkillSynchronization();
     saved = saveCredential(host, {
       cliToken,
       ...(validation.account ? { account: validation.account } : {}),
@@ -312,6 +322,7 @@ export async function persistManualCliToken(
   const validation = await validateCliTokenOnServer(host, cliToken);
   let saved: StoredCredential;
   try {
+    invalidateBusinessSkillSynchronization();
     saved = saveCredential(host, {
       cliToken,
       ...(validation.account ? { account: validation.account } : {}),
@@ -348,9 +359,7 @@ function manualTokenSummary(host: string, credential: StoredCredential) {
 }
 
 export function resolveLoginTeClaudeBase(host: string): string {
-  const base = host.replace(/\/+$/, '');
-  const basePath = process.env.TE_CLAUDE_BASE_PATH || '/agent';
-  return base.endsWith(basePath) ? base : base + basePath;
+  return resolveLegacyLoginBase(host);
 }
 
 export function registerAuth(program: Command): void {
@@ -399,38 +408,43 @@ export function registerAuth(program: Command): void {
 
       const noBrowser = !opts.browser;
       const format = program.opts().format || 'json';
-      const teClaudeBase = resolveLoginTeClaudeBase(host);
       const emit = (message: string) => process.stderr.write(`[ae-cli] ${message}\n`);
 
       try {
         if (opts.deviceCode) {
-          const tokens = await pollDeviceFlow(teClaudeBase, opts.deviceCode, {}, emit);
+          const route = resolveDeviceSessionRoute(host, opts.deviceCode);
+          const tokens = await pollDeviceFlow(route.baseUrl, opts.deviceCode, { protocol: route.protocol }, emit);
           const saved = await persistDeviceTokens(host, tokens, { add: opts.add });
           activateHostAfterLogin(host, explicitHost);
+          const environment = await refreshEnvironmentAfterLogin(host);
           emit('Login successful! CLI token saved securely.');
-          await printOutput(loginSummary(host, saved), format);
+          await printOutput({ ...loginSummary(host, saved), ...(environment ? { environment } : {}) }, format);
           return;
         }
 
+        const session = await authorizeLoginDevice(host);
+        const authResp = session.authorization;
         if (opts.wait === false) {
-          const authResp = await authorizeDevice(teClaudeBase);
           const addFlag = opts.add ? ' --add' : '';
           await printOutput({
             device_code: authResp.device_code,
             user_code: authResp.user_code,
-            verification_url: buildVerificationUrl(teClaudeBase, authResp.user_code),
+            verification_url: buildVerificationUrl(session.baseUrl, authResp.user_code, session.protocol),
             interval: authResp.interval,
             expires_in: authResp.expires_in,
-            next: `Open verification_url in a browser to authorize, then run: ae-cli auth login${addFlag} --device-code ${authResp.device_code}`,
+            next: `Open verification_url in a browser to authorize, then run: ae-cli auth login${addFlag} --host ${shellArgument(host)} --device-code ${shellArgument(authResp.device_code)}`,
           }, format);
           return;
         }
 
-        const tokens = await runDeviceFlow(teClaudeBase, { noBrowser }, emit);
+        const tokens = await runDeviceFlow(session.baseUrl, {
+          noBrowser, protocol: session.protocol, authorization: authResp,
+        }, emit);
         const saved = await persistDeviceTokens(host, tokens, { add: opts.add });
         activateHostAfterLogin(host, explicitHost);
+        const environment = await refreshEnvironmentAfterLogin(host);
         emit('Login successful! CLI token saved securely.');
-        await printOutput(loginSummary(host, saved), format);
+        await printOutput({ ...loginSummary(host, saved), ...(environment ? { environment } : {}) }, format);
       } catch (error: any) {
         if (error instanceof CredentialStoreUnreadableError) throw error;
         if (error instanceof DeviceFlowUnsupportedError) {
@@ -485,8 +499,9 @@ export function registerAuth(program: Command): void {
       try {
         const saved = await persistManualCliToken(host, cliToken, { add: opts.add });
         activateHostAfterLogin(host, explicitHost);
+        const environment = await refreshEnvironmentAfterLogin(host);
         process.stderr.write(`[ae-cli] CLI token verified and saved securely for ${host}\n`);
-        await printOutput(manualTokenSummary(host, saved), program.opts().format || 'json');
+        await printOutput({ ...manualTokenSummary(host, saved), ...(environment ? { environment } : {}) }, program.opts().format || 'json');
       } catch (error: any) {
         if (error instanceof CredentialStoreUnreadableError) throw error;
         if (error instanceof PermissionError) {
@@ -624,18 +639,21 @@ export function registerAuth(program: Command): void {
         process.exit(1);
       }
       clearCliTokenCache(host);
+      invalidateBusinessSkillSynchronization();
       if (opts.all) {
         clearAllCredentials(host);
         await printOutput({ cleared: true, all: true, host }, program.opts().format || 'json');
         return;
       }
       const result = removeActiveCredential(host);
+      const environment = result.active ? await refreshEnvironmentAfterLogin(host) : undefined;
       await printOutput({
         cleared: !!result.removed,
         all: false,
         host,
         remaining_accounts: listCredentials(host).length,
         ...(result.active?.account ? { active_account: accountOutput(result.active.account) } : {}),
+        ...(environment ? { environment } : {}),
       }, program.opts().format || 'json');
     });
 }

@@ -140,7 +140,20 @@ A revision or access-context change requires revalidation, not silent reuse.
 5. **Assess coverage, then answer or iterate.** Map the user's question into
    subquestions and check each one against the sections you actually read. If a
    subquestion is covered, answer with citations (knowledge base + page path +
-   section). If a gap remains, go back to step 2 with another set of `--paths`
+   section, plus the returned `readView.versionId/versionNumber` for snapshots).
+   For `version_pinned` results, describe consistency within that captured view.
+   Unchanged `versionId/readIdentity` proves that the reads used the same snapshot;
+   it does not establish whether a newer publication or rollback occurred outside
+   the execution. Claims about the latest formal version require separate current
+   publication evidence obtained through an authorized management workflow.
+   Preserve version identity with the reference; a fresh read of the same path is
+   not a historical citation read. For completed Ask sources with `reference`, use
+   `ae-cli kb +ask-status --execution-id <reference.executionId> --source-index <reference.sourceIndex>`
+   to reopen the original version under current permissions. An unversioned source
+   has no guaranteed historical snapshot; do not label its current content historical.
+   Historical source reads are rejected inside a required fixed-context execution;
+   never remove that context or fall back to an ordinary token to bypass its KB set.
+   If a gap remains, go back to step 2 with another set of `--paths`
    **copied** from current navigation, or return to discovery for the next candidate.
    For a knowledge-only question, missing evidence after the allowed search
    means "not covered by the knowledge base" — do not attach a confident fact

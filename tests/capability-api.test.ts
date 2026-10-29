@@ -20,6 +20,8 @@ import {
   executeCapabilityWithEnvelope,
   inspectCapability,
   listCapabilities,
+  requestCapabilityGateway,
+  requestCapabilityGatewayWithEnvelope,
   uploadInputFileBytes,
   validateCapability,
 } from '../src/core/capability-api.ts';
@@ -1021,6 +1023,162 @@ await test('executeCapability: legacy 403 invalid CLI token is auth failure with
     assert.equal(apiCallCount, 1);
     assert.deepEqual(seenTokens, ['stale-token']);
     assert.equal(loadCliToken(host), 'stale-token');
+  } finally {
+    globalThis.fetch = prevFetch;
+    clearCliToken(host);
+  }
+});
+
+await test('executeCapability sends native bigint inputs as exact numeric tokens', async () => {
+  const host = 'https://test-cap-bigint-input.internal';
+  clearCliToken(host);
+  setCliTokenManual('cli-bigint-token', host);
+  const previousEnv = saveAndClearEnv(ALL_AGENT_ENV_KEYS);
+  disableContextFileDiscovery();
+
+  let capturedBody = '';
+  const prevFetch = globalThis.fetch;
+  globalThis.fetch = (async (_url, init) => {
+    capturedBody = String(init?.body ?? '');
+    return new Response(JSON.stringify({ ok: true, data: {} }), { status: 200 });
+  }) as typeof fetch;
+
+  try {
+    await executeCapability(host, 'community', 'community.analysis.channel_info', {
+      game_id: 1940327799817117696n,
+    });
+    assert.equal(capturedBody, '{"input":{"game_id":1940327799817117696}}');
+  } finally {
+    globalThis.fetch = prevFetch;
+    restoreEnv(previousEnv);
+    clearCliToken(host);
+  }
+});
+
+await test('non-community legacy success envelopes retain their existing shape', async () => {
+  const host = 'https://test-cap-other-legacy-success.internal';
+  const body = { return_code: 0, data: { value: 7 } };
+  setCliTokenManual('synthetic-other-legacy-token', host);
+  const prevFetch = globalThis.fetch;
+  globalThis.fetch = (async () => new Response(JSON.stringify(body), { status: 200 })) as typeof fetch;
+  try {
+    assert.deepEqual(JSON.parse(JSON.stringify(await executeCapability(host, 'analysis', 'analysis.run.inspect', {}))), body);
+    assert.deepEqual(JSON.parse(JSON.stringify(await requestCapabilityGateway(host, '', 'capabilities/engage.query.inspect'))), body);
+    assert.deepEqual(JSON.parse(JSON.stringify((await requestCapabilityGatewayWithEnvelope(host, 'custom', 'capabilities/metadata.property.get')).data)), body);
+  } finally {
+    globalThis.fetch = prevFetch;
+    clearCliToken(host);
+  }
+});
+
+await test('non-community legacy error payloads retain their existing data semantics', async () => {
+  const host = 'https://test-cap-other-legacy-error.internal';
+  const body = { return_code: 42, return_message: 'Existing domain payload', data: null };
+  setCliTokenManual('synthetic-other-legacy-token', host);
+  const prevFetch = globalThis.fetch;
+  globalThis.fetch = (async () => new Response(JSON.stringify(body), { status: 200 })) as typeof fetch;
+  try {
+    assert.deepEqual(JSON.parse(JSON.stringify(await executeCapability(host, 'things', 'things.item.read', {}))), body);
+  } finally {
+    globalThis.fetch = prevFetch;
+    clearCliToken(host);
+  }
+});
+
+await test('community legacy envelopes work through root and custom gateway routes', async () => {
+  const host = 'https://test-cap-community-legacy-routes.internal';
+  setCliTokenManual('synthetic-community-legacy-token', host);
+  const prevFetch = globalThis.fetch;
+  globalThis.fetch = (async () => new Response(JSON.stringify({ return_code: 0, data: { value: 7 } }), { status: 200 })) as typeof fetch;
+  try {
+    assert.deepEqual(JSON.parse(JSON.stringify(await executeCapability(host, '', 'community.visual.metadata', {}))), { value: 7 });
+    assert.deepEqual(JSON.parse(JSON.stringify(await requestCapabilityGateway(host, 'custom', 'capabilities/community.visual.metadata'))), { value: 7 });
+    assert.deepEqual(JSON.parse(JSON.stringify((await requestCapabilityGatewayWithEnvelope(host, 'custom', 'capabilities/community.visual.metadata')).data)), { value: 7 });
+  } finally {
+    globalThis.fetch = prevFetch;
+    clearCliToken(host);
+  }
+});
+
+await test('legacy non-zero return_code is an error and stack text is not exposed', async () => {
+  const host = 'https://test-cap-legacy-error.internal';
+  clearCliToken(host);
+  setCliTokenManual('cli-legacy-error-token', host);
+
+  const prevFetch = globalThis.fetch;
+  globalThis.fetch = (async () => new Response(JSON.stringify({
+    return_code: -1004,
+    return_message: 'java.lang.IllegalStateException\n\tat Example.run(Example.java:42)',
+  }), { status: 200 })) as typeof fetch;
+
+  try {
+    await assert.rejects(
+      () => executeCapability(host, 'community', 'community.chat.overview', {}),
+      (err: Error) => {
+        assert.ok(err instanceof CapabilityGatewayError);
+        assert.equal(err.code, '-1004');
+        assert.doesNotMatch(err.message, /Example\.java|IllegalStateException/);
+        return true;
+      },
+    );
+  } finally {
+    globalThis.fetch = prevFetch;
+    clearCliToken(host);
+  }
+});
+
+
+await test('community transport retains error details for HTTP and success-status failure envelopes', async () => {
+  const host = 'https://test-community-error-details.internal';
+  setCliTokenManual('synthetic-community-error-details-token', host);
+  const prevFetch = globalThis.fetch;
+  const details = { invalid_fields: ['game_id'], retryable: false };
+  try {
+    for (const status of [200, 422]) {
+      globalThis.fetch = (async () => new Response(JSON.stringify({
+        ok: false,
+        error: { code: 'INVALID_QUERY', message: 'Query is invalid.', type: 'validation', details },
+      }), { status })) as typeof fetch;
+      await assert.rejects(
+        () => executeCapability(host, 'community', 'community.visual.query', {}),
+        (err: Error) => {
+          assert.ok(err instanceof CapabilityGatewayError);
+          assert.deepEqual(JSON.parse(JSON.stringify(err.details)), details);
+          assert.equal(err.type, 'validation');
+          return true;
+        },
+      );
+    }
+  } finally {
+    globalThis.fetch = prevFetch;
+    clearCliToken(host);
+  }
+});
+
+await test('community permission rejection preserves the root hint and performs one request', async () => {
+  const host = 'https://test-community-permission-hint.internal';
+  setCliTokenManual('synthetic-community-permission-hint-token', host);
+  const prevFetch = globalThis.fetch;
+  let requests = 0;
+  globalThis.fetch = (async () => {
+    requests++;
+    return new Response(JSON.stringify({
+      ok: false,
+      error: { code: 'SPACE_FORBIDDEN', message: 'Access denied.' },
+      hint: 'Select an authorized community space.',
+    }), { status: 403 });
+  }) as typeof fetch;
+  try {
+    await assert.rejects(
+      () => executeCapability(host, 'community', 'community.visual.query', {}),
+      (err: Error) => {
+        assert.ok(err instanceof PermissionError);
+        assert.equal(err.hint, 'Select an authorized community space.');
+        assert.equal(err.code, 'SPACE_FORBIDDEN');
+        return true;
+      },
+    );
+    assert.equal(requests, 1);
   } finally {
     globalThis.fetch = prevFetch;
     clearCliToken(host);

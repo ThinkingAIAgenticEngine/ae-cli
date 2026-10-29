@@ -37,7 +37,12 @@ const workflow = readFileSync(
 );
 
 assert.match(skill, /community-chat-analysis\.md/);
-assert.match(skill, /Skill revision: 2\.4\.1\./);
+assert.match(skill, /Skill revision: 2\.7\.0\./);
+assert.match(skill, /community spaces list/);
+assert.match(skill, /community sources list/);
+assert.match(skill, /community-scenario-capabilities\.md/);
+assert.match(skill, /community\.chat\.top_keywords/);
+assert.match(skill, /Large IDs/);
 assert.match(workflow, /## Customer-service DMs/);
 assert.match(workflow, /## Customer after-sales groups/);
 assert.match(workflow, /## In-game chat/);
@@ -142,3 +147,30 @@ assert.match(workflow, /Do not claim a server-by-room-type intent comparison/);
 process.stdout.write(
   'OK: ae-community enforces call-scoped identity discovery and guarded service metrics.\n',
 );
+
+const scenarios = readFileSync(
+  'skills/ae-community/references/community-scenario-capabilities.md',
+  'utf-8',
+);
+for (const capabilityId of [
+  'community.content.list_comments',
+  'community.live.follower_trend',
+  'community.dashboard.preset_catalog',
+  'community.visual.metadata',
+  'community.visual.analysis',
+  'community.visual.drilldown',
+  'community.tag.detail',
+  'community.hot.summary_dates',
+  'community.hot.hotspot_evidence',
+  'community.hot.topic_resources',
+  'community.risk.type_catalog',
+  'community.source.list',
+  'community.keyword.groups',
+]) {
+  assert.ok(scenarios.includes(capabilityId), `scenario matrix missing ${capabilityId}`);
+}
+assert.match(scenarios, /Do not add yet/);
+assert.match(scenarios, /Do not invent/);
+assert.match(scenarios, /no stable comment-image field/);
+assert.match(scenarios, /`0` processing, `1` finished, `2` ready, `3` error/);
+process.stdout.write('OK: ae-community scenario capability matrix is complete and evidence-first.\n');

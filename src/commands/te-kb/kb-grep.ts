@@ -27,6 +27,7 @@ export const kbGrep: Command = {
   description:
     'Keyword-search knowledge base pages via POST /agent/api/external/knowledge-bases/grep. Returns a page-level results array: one entry per page with hitCount (full match count), pageKind (content/catalog), up to 4 sections previews (breadcrumb, sectionStartLine/sectionEndLine, text excerpt) and moreSections. Copy --paths from +index (wiki pages, module catalog pages, or subdirectories); read the matched section range with +read.',
   flags: [
+    { name: 'read-context', type: 'string', required: false, desc: 'Pin reads to an existing read context' },
     {
       name: 'query',
       type: 'string',

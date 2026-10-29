@@ -45,7 +45,9 @@ const GOVERNANCE_RECOMMENDATION_EXPORT_HELP = [
   '- The Agent turns that package into a submit-to-page draft with batch ai_summary, presentation_snapshot, per-item ai_summary/reasons, copied evidence_snapshot, copied source links, and relations.',
   '- work_units are deterministic evidence containers from Common. They are not final page groups; the Agent clusters selected assets into one or more business-domain topics.',
   '- For report and SQL items, use packaged evidence_snapshot.analysis first. Call analysis-meta agent-review evidence only for explicit definition/analysis gaps or draft validation.',
-  '- For real page-review submission, start with --limit 20, filter out completed/rejected/deferred/in-flight items, and expand to --limit 50 then --limit 100 only when the remaining pending review assets or visible business domains are too few.',
+  '- Ordinary recommendations need concise reasons, a core evidence-backed report measure/calculation, business-domain/subtopic grouping, and a focused page-material review. Full definition audits, per-item comparisons and exhaustive SQL explanations are not the default; use them only for explicit audit intent or affected risk items.',
+  '- For real page-review submission, start with --limit 20, select currently uncertified assets by business value and evidence, and expand to --limit 50 then --limit 100 only when the remaining pending review assets or visible business domains are too few.',
+  '- Do not query review history to select candidates. Previously recommended, pending, rejected, or deferred proposals do not exclude a currently uncertified asset from manual recommendation.',
   '- Expansion increases business-domain coverage; it must not submit every pending asset found. Keep a daily review capacity target such as 20-50 pending assets, hard cap around 80, and select about 3-6 visible domains.',
   '- When candidates exceed the cap, rank by impact, heat, user count, dependency breadth, and under-covered domains; keep only direct context needed for selected pending assets and report overflow for later batches.',
   '- Draft only business domains with pending review assets. Completed/authenticated assets are necessary context under those visible domains, not standalone work and not a reason to display a zero-pending domain.',
@@ -59,14 +61,24 @@ export const metadataGovernanceRecommendationExport = createAnalysisMetaCapabili
   capabilityId: 'metadata.governance_recommendation.export',
   description: 'Export the material package for CLI Agent asset-authentication and metric-recommendation review.',
   helpText: GOVERNANCE_RECOMMENDATION_EXPORT_HELP,
-  flags: [projectIdFlag, windowDaysFlag, limitFlag, includeCompletedFlag],
+  flags: [projectIdFlag, windowDaysFlag, limitFlag, includeCompletedFlag,
+    { name: 'track-run', type: 'boolean', required: false, desc: 'Track the complete recommendation workflow through page submission or explicit run-update. Default: false for compatibility.' },
+    { name: 'run-id', type: 'string', required: false, desc: 'Continue the same tracked workflow when expanding evidence. Requires --track-run true.' },
+  ],
   risk: 'read',
-  buildInput: (ctx) => compactInput({
+  buildInput: (ctx) => {
+    if (ctx.str('run-id') && optionalBoolean(ctx, 'track-run') !== true) {
+      throw new Error('--run-id requires --track-run true.');
+    }
+    return compactInput({
     ...projectInput(ctx),
     window_days: optionalNumber(ctx, 'window-days'),
     limit: optionalNumber(ctx, 'limit'),
     include_completed: optionalBoolean(ctx, 'include-completed'),
-  }),
+    track_run: optionalBoolean(ctx, 'track-run'),
+    run_id: ctx.str('run-id') || undefined,
+    });
+  },
   postProcess: (result, _input, ctx) => {
     normalizeResourceUrlFields(result, resolvePublicWebHost(ctx.host()), ctx.host());
     return result;

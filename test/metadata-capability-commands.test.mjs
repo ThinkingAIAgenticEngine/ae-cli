@@ -182,6 +182,120 @@ await test('metadata data-table list maps to analysis gateway component', async 
   assert.deepEqual(body, { input: { project_id: 1, limit: 100, offset: 200 } });
 });
 
+await test('metadata data-table get preserves its existing flags risk and request contract', async () => {
+  const cmd = await importCmd('src/commands/metadata/data-table/get.ts', 'dataTableGet');
+  assert.equal(cmd.risk, 'read');
+  assert.deepEqual(cmd.flags.map(({ name, type, required }) => ({ name, type, required })), [
+    { name: 'project-id', type: 'number', required: true },
+    { name: 'data-table-id', type: 'number', required: true },
+    { name: 'include-preview', type: 'boolean', required: false },
+  ]);
+  for (const includePreview of [undefined, false, true]) {
+    const { url, body } = await captureCapabilityDryRun(cmd, {
+      projectId: 1, dataTableId: 42, includePreview,
+    });
+    assert.equal(url, `${HOST}/api/cli/analysis/v1/capabilities/metadata.data_table.get/dry-run`);
+    assert.deepEqual(body.input, {
+      project_id: 1,
+      data_table_id: 42,
+      ...(includePreview === undefined ? {} : { include_preview: includePreview }),
+    });
+  }
+});
+
+await test('metadata data-table get preserves SQL definitions parameters and schedule in JSON and jq', async () => {
+  const cmd = await importCmd('src/commands/metadata/data-table/get.ts', 'dataTableGet');
+  const { formatOutput } = await import(pathToFileURL(path.join(ROOT, 'src/framework/output.ts')).href);
+  const definitions = {
+    create_qp: {
+      taSqlVo: { sql: "select '1' as id", sqlVoParams: [] },
+      taSqlView: {},
+    },
+    update_qp: {
+      taSqlVo: {
+        sql: 'select ${id} as id',
+        sqlVoParams: [{ name: 'id', value: '${saved_expression}', extension: { retained: true } }],
+      },
+      taSqlView: { sqlViewParams: [{ name: 'source', value: 'saved_view_value' }] },
+      extension: { nestedCamelKey: ['original', null, 0, false] },
+    },
+    create_zone_offset: 8,
+    update_zone_offset: 5.5,
+    strategy: 'overwrite',
+    update_cron: '0 0 * * * ?',
+    update_conf_status: 'ENABLE',
+  };
+  for (const includePreview of [undefined, true]) {
+    const responseData = {
+      data_table_id: 42,
+      data_table_name: 'datatable_1_saved_sql',
+      create_type: 'MANUAL_SQL',
+      columns: [{ column_name: 'id', column_type: 'string' }],
+      bindings: [],
+      ...definitions,
+      ...(includePreview ? { preview_rows: [{ id: '1' }] } : {}),
+    };
+    const { url, body, result } = await captureCapabilityExecute(cmd, {
+      projectId: 1, dataTableId: 42, includePreview,
+    }, responseData);
+    assert.equal(url, `${HOST}/api/cli/analysis/v1/capabilities/metadata.data_table.get/execute`);
+    assert.deepEqual(body.input, {
+      project_id: 1,
+      data_table_id: 42,
+      ...(includePreview === undefined ? {} : { include_preview: includePreview }),
+    });
+    assert.deepEqual(JSON.parse(await formatOutput(result, 'json')).data, responseData);
+    const projection = '{create_qp, update_qp, create_zone_offset, update_zone_offset, strategy, update_cron, update_conf_status}';
+    assert.deepEqual(JSON.parse(await formatOutput(result, 'json', projection)).data, definitions);
+    assert.deepEqual(
+      JSON.parse(await formatOutput(result, 'json', '.update_qp.taSqlVo.sqlVoParams')).data,
+      definitions.update_qp.taSqlVo.sqlVoParams,
+    );
+  }
+});
+
+await test('metadata data-table get preserves missing and unavailable SQL configuration', async () => {
+  const cmd = await importCmd('src/commands/metadata/data-table/get.ts', 'dataTableGet');
+  const { formatOutput } = await import(pathToFileURL(path.join(ROOT, 'src/framework/output.ts')).href);
+  const responseData = {
+    data_table_id: 42,
+    data_table_name: 'datatable_1_saved_sql',
+    create_type: 'MANUAL_SQL',
+    columns: [],
+    bindings: [],
+  };
+  const { result } = await captureCapabilityExecute(cmd, { projectId: 1, dataTableId: 42 }, responseData);
+  assert.deepEqual(JSON.parse(await formatOutput(result, 'json')).data, responseData);
+  assert.equal(Object.hasOwn(result, 'create_qp'), false);
+  assert.deepEqual(JSON.parse(await formatOutput(result, 'json', '.update_qp')).data, null);
+  const unavailable = {
+    ...responseData,
+    create_qp: null,
+    update_qp: null,
+    create_zone_offset: null,
+    update_zone_offset: null,
+    strategy: null,
+    update_cron: null,
+    update_conf_status: null,
+  };
+  const missingDefinition = await captureCapabilityExecute(cmd, { projectId: 1, dataTableId: 42 }, unavailable);
+  assert.deepEqual(JSON.parse(await formatOutput(missingDefinition.result, 'json')).data, unavailable);
+  assert.deepEqual(JSON.parse(await formatOutput(missingDefinition.result, 'json', '.update_qp')).data, null);
+});
+
+await test('metadata data-table get help explains configuration availability and full JSON reads', async () => {
+  const result = spawnSync('npx', ['tsx', 'src/index.ts', 'metadata', 'data-table', 'get', '--help'], {
+    cwd: ROOT,
+    encoding: 'utf-8',
+  });
+  assert.equal(result.status, 0, result.stderr || result.stdout);
+  assert.match(result.stdout, /create_qp\/update_qp/);
+  assert.match(result.stdout, /saved values/);
+  assert.match(result.stdout, /not the cron schedule timezone/);
+  assert.match(result.stdout, /--format json/);
+  assert.match(result.stdout, /Older servers may omit/);
+});
+
 await test('analysis-meta datatable version-list sends shared pagination', async () => {
   const cmd = await importCmd(
     'src/commands/te-analysis/meta/datatable/version-list.ts',

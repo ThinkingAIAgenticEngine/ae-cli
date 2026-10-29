@@ -235,8 +235,12 @@ test('ae-kb skill contract > documents compile and schema model references', () 
   assert.match(management, /model record `id`/);
   assert.match(management, /`modelId`/);
   assert.match(management, /`modelId::scope`/);
-  assert.match(management, /ae-cli kb \+schema[\s\S]*--model <model-ref>/);
-  assert.match(management, /ae-cli kb \+compile[\s\S]*--model <model-ref>/);
+  assert.match(management, /ae-cli kb \+schema --name engineering-handbook --scope company\n/);
+  assert.match(management, /ae-cli kb \+compile --name engineering-handbook --scope company --mode incremental\n/);
+  assert.match(management, /By default, omit `--model` \/ `--model-id`/);
+  assert.match(management, /Preserve an explicit choice from the user or task configuration/);
+  assert.match(management, /Never infer a model reference from the assistant's self-description/);
+  assert.match(management, /`virtual:company-auto:v1`/);
   assert.doesNotMatch(management, /model display name/i);
 });
 

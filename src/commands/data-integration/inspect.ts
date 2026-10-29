@@ -6,6 +6,7 @@ import { detectHeaderRow, detectLeadingTitleRows, inspectLocalDataInput, peekDel
 import type { ExcelSheetHeaders, LocalDataInput } from './input.js';
 import { buildColumnUnion, detectColumnTypeConflicts } from './multi.js';
 import type { MultiFileProfile } from './multi.js';
+import { readParquetSchema } from './parquet.js';
 import { profileLocalData } from './profile.js';
 import type { HeaderDetection, LocalDataSet } from './types.js';
 
@@ -16,9 +17,9 @@ export const dataIntegrationInspect: Command = {
   service: 'data-integration',
   command: 'inspect',
   usesAeHost: false,
-  description: 'Stream one or more local CSV, TSV, TXT, JSON, JSONL, XLS, or XLSX files and recommend a UE mapping.',
+  description: 'Stream one or more local CSV, TSV, TXT, JSON, JSONL, XLS, XLSX, or Parquet files and recommend a UE mapping.',
   flags: [
-    { name: 'input-file', type: 'string', required: true, sensitive: true, variadic: true, desc: 'Local CSV, TSV, TXT, JSON, JSONL, XLS, or XLSX file. Repeat for multiple files.' },
+    { name: 'input-file', type: 'string', required: true, sensitive: true, variadic: true, desc: 'Local CSV, TSV, TXT, JSON, JSONL, XLS, XLSX, or Parquet file. Repeat for multiple files.' },
     { name: 'data-set', type: 'string', sensitive: true, desc: 'Sheet or JSON Path ID returned by a discovery-only inspection.' },
     { name: 'source-timezone', type: 'string', default: 'Asia/Shanghai', desc: 'IANA timezone used to interpret source times without an offset.' },
     { name: 'headers', type: 'string', sensitive: true, desc: 'Comma-separated explicit column names for a headerless file; the first row is data.' },
@@ -108,6 +109,10 @@ export const dataIntegrationInspect: Command = {
     }
 
     const files: MultiFileProfile[] = [];
+    if (inputFiles.every((file) => resolveLocalDataInputMeta(file).format === 'parquet')) {
+      const checked = await inspectParquetFiles(inputFiles, sourceTimezone);
+      if (checked) return checked;
+    }
     for (const inputFile of inputFiles) {
       const input = await inspectLocalDataInput(inputFile);
       const dataSet = selectDataSet(input);
@@ -142,6 +147,50 @@ export const dataIntegrationInspect: Command = {
     };
   },
 };
+
+/**
+ * Fast multi-file path for all-parquet inputs. One file (the first) is fully profiled; the rest are
+ * verified schema-identical via the footer (`readParquetSchema`) without decoding data, so a directory
+ * of same-shape partitions costs one profile instead of N. Returns `undefined` when any schema differs,
+ * signalling the caller to fall back to the full per-file loop (which surfaces type conflicts).
+ *
+ * Footer equality checks column names + Arrow types only, not values: a UTF8 column whose values look
+ * numeric/datetime/JSON can still infer differently across files. That drift is rare for files from one
+ * export pipeline and is caught at convert time; it is documented in source-inspect.md.
+ */
+export async function inspectParquetFiles(
+  inputFiles: string[],
+  sourceTimezone: string,
+): Promise<Record<string, unknown> | undefined> {
+  const firstPath = inputFiles[0];
+  const firstSchema = await readParquetSchema(firstPath);
+  const first = await inspectLocalDataInput(firstPath);
+  const profile = await profileLocalData(first, selectDataSet(first), sourceTimezone, {
+    collectSamples: true,
+    collectNestedTree: true,
+  });
+
+  const files: Array<{ file: string; row_count: number; size_bytes: number }> = [];
+  let totalRowCount = 0;
+  let totalSizeBytes = 0;
+  for (const inputFile of inputFiles) {
+    const meta = resolveLocalDataInputMeta(inputFile);
+    const schema = inputFile === firstPath ? firstSchema : await readParquetSchema(inputFile);
+    if (schema.signature !== firstSchema.signature) return undefined;
+    files.push({ file: basename(inputFile), row_count: schema.numRows, size_bytes: meta.sizeBytes });
+    totalRowCount += schema.numRows;
+    totalSizeBytes += meta.sizeBytes;
+  }
+
+  return {
+    version: 'ae-local-data-profile/v1',
+    schema_checked: true,
+    representative: { file: basename(firstPath), profile },
+    files,
+    total_row_count: totalRowCount,
+    total_size_bytes: totalSizeBytes,
+  };
+}
 
 /**
  * Name the data sets that were kept out of the candidates — currently hidden XLSX worksheets.

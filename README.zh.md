@@ -2,7 +2,7 @@
 
 # ae-cli
 
-`ae-cli` 是 ThinkingAI AgenticEngine（AE）平台的命令行客户端，为 AI Agent 和人工操作提供稳定、结构化的接口，覆盖分析与项目配置、元数据、埋点、本地数据接入、运营、DataOps、知识库、Agent 资源、用户记忆及系统管理。
+`ae-cli` 是 ThinkingAI AgenticEngine（AE）平台的命令行客户端，为 AI Agent 和人工操作提供稳定、结构化的接口，覆盖分析、实验、项目配置、元数据、埋点、本地数据接入、运营、DataOps、知识库、Agent 资源、用户记忆及系统管理。
 
 CLI 的核心设计包括：
 
@@ -17,7 +17,6 @@ CLI 的核心设计包括：
 - Node.js 20 或更高版本。
 - 支持 macOS、Linux 和原生 Windows（PowerShell / CMD），无需安装 WSL。
 - 安装 CLI 时能够访问 npm 仓库。
-- 内置 Skills 来源不可用时，能够访问 GitHub。
 
 ## 安装
 
@@ -34,7 +33,7 @@ npx @thinkingai/ae-cli@latest install
 npx @thinkingai/ae-cli@latest install --format json
 ```
 
-安装器检查 Node.js 20+、安装并验证 CLI，再将同版本 Skills 全局安装到 `~/.agents/skills`，公共文件只写入一次，再自动向需要独立目录的客户端分发副本，无需选择 Agent；之后安装的 Codex、Cursor 也可共享这些 Skills。支持 `--dry-run`、`--format json` 和可选的 `--host <AE_HOST>`。验证成功后不显示无关的项目级客户端告警；文件缺失和 YAML 错误仍判为失败。未登录不算安装失败。详见[安装指南](./cli-installation-guide.md)。
+安装器检查 Node.js 20+、安装并验证 CLI，再通过内置的 Skills 工具向支持的客户端安装同版本全局 Skills。首次安装且尚无已确认业务状态时安装全量内置 Skills。支持 `--dry-run`、`--format json` 和可选的 `--host <AE_HOST>`。未登录不算安装失败。详见[安装指南](./cli-installation-guide.md)。
 
 Skills 会帮助 Claude Code、Codex、Cursor 等编码 Agent 理解、发现并调用 `ae-cli`。
 
@@ -55,6 +54,10 @@ ae-cli auth status
 
 请使用 AgenticEngine 管理员提供的 AE 地址。未配置 Host 时，`ae-cli` 会先引导已有客户向管理员获取地址；只有确认尚无 AgenticEngine 环境的用户，才会看到[申请试用](https://thinkingai.cn/request-demo)入口。
 
+按业务过滤命令和剪裁 Skills 仅适用于外部 Agent 使用的本机 CLI；TE Agent 内置沙箱始终保留完整命令与全部 Skills。登录成功后，CLI 按当前环境已开通的业务过滤 `--help` 和能力发现，并同步受管的全局 Skills；分析能力默认保留。后续开通业务时，执行 `ae-cli config refresh` 即可重新获取状态并补装对应 Skills。切换活动环境或账号会重新同步；单次 `--host` 查询不改变全局 Skills。
+
+仅明确关闭的业务会被移除；旧服务端、缺失状态或网络失败不会触发删除。指向已核验、未修改的受管共享 Skill 的客户端历史链接会自动迁移；其他用户修改和来源不明的副本保留并报告。同步后请新开 Agent 会话，已有会话的上下文不会被撤回。
+
 ## 环境版本同步
 
 每个 AE 环境都会返回其要求的精确 `aeCliVersion`。使用统一更新命令安装对应版本的 CLI 和 Skills：
@@ -68,9 +71,9 @@ ae-cli update --dry-run
 
 自动同步在登录后的普通命令中触发，集群版本检查最长缓存 1 小时；`ae-cli update --host <AE_HOST>` 可立即查询。降级后，后续更新由旧版 CLI 自身执行，也受旧版实现限制。需要用新安装逻辑匹配旧集群时，可运行 `npx @thinkingai/ae-cli@latest update --host <AE_HOST>`，目标仍是集群要求的版本。
 
-`ae-cli update` 安装当前 Host 要求的精确版本，不依赖 npm `latest`。更新时优先从已安装的 npm 包同步 Skills，本地来源失败后才回退到对应的 GitHub tag。
+`ae-cli update` 安装当前 Host 要求的精确版本，不依赖 npm `latest`。Skills 从已验证的目标包同步；用户修改或来源不明的副本会保留并报告。
 
-从 `6.0.37` 和 `6.1.9` 维护线开始，普通业务命令可以自动升级或降级到环境要求的版本，包括从 `6.0.x` 切换到 `6.1.x`。自动同步要求本地和目标均为 `主版本.次版本.补丁号` 格式的正式版本，开发版等不规则版本会跳过。同步成功后，旧进程会返回 `AE_CLI_VERSION_SYNCED`；重新执行原命令，即可使用新的 CLI 和 Skills。安装失败会给出提示，但不会用安装输出污染业务命令的 JSON 结果。
+从 `6.0.37` 和 `6.1.9` 维护线开始，普通业务命令可以自动升级或降级到环境要求的版本，包括从 `6.0.x` 切换到 `6.1.x`。自动同步要求本地和目标均为 `主版本.次版本.补丁号` 格式的正式版本，开发版等不规则版本会跳过。同步成功后，新版 CLI 会自动执行原命令一次，并返回该命令的结果和退出码；参数、管道输入、工作目录和确认行为保持不变。如果新版 CLI 无法启动，会返回 `AE_CLI_VERSION_SYNCED` 并提示手动重跑；已经执行的命令不会自动重试。安装失败会给出提示，但不会用安装输出污染业务命令的 JSON 结果。
 
 常用控制方式：
 
@@ -120,12 +123,13 @@ ae-cli capability list --domain analysis --jq '.data.capabilities[] | .id'
 | 类别 | 根命令 | 用途 |
 |---|---|---|
 | 分析与项目 | `analysis` | 报告、看板、即席分析、下钻、详情、告警、标签和分群 |
+| 分析与项目 | `experiment` | Atlas 实验、报表、流量层、分桶、Feature、指标和操作日志 |
 | 分析与项目 | `analysis-meta` | 事件/属性目录、指标、虚拟元数据、埋点治理和项目分析配置 |
 | 分析与项目 | `analysis-governance` | 数据资产搜索、血缘、影响分析、认证和治理 |
 | 分析与项目 | `project` | 项目信息、成员、角色、权限、实体、时区和交接配置 |
 | 分析与项目 | `metadata` | 基于 Capability Gateway 的数据表、属性及维度表绑定 |
 | 分析与项目 | `personal-semantic-preference` | 当前用户按项目维护轻量个人语义偏好 |
-| 分析与项目 | `project-semantic` | 导出用于知识库构建的项目资产包 |
+| 分析与项目 | `project-semantic` | 项目语义治理、知识库资产包、候选校验、审核和发布 |
 | 数据与埋点 | `tracking` | 埋点方案、SDK 示例、检查、采集诊断、代码生成和内置 Wiki |
 | 数据与埋点 | `data-integration` | 检查、规划、转换、上传、交接和复用本地 CSV/JSON/Excel 数据 |
 | 社区洞察 | `community` | 社区帖子、评论、话题、情感、直播和报告工作流 |
@@ -161,7 +165,21 @@ ae-cli capability list --domain analysis --jq '.data.capabilities[] | .id'
 | Agent 平台 | `automation` | 自动化配置、执行、历史和结果 |
 <!-- root-command-surface:end -->
 
+使用 `ae-cli analysis scenario list --project-id 1 --days 7` 查询已采集的分析问题，由 `ae-analysis` Skill 指导 Agent 去重、判断 badcase 并简要说明原因和证据。详见[分析问题复盘指南](skills/ae-analysis/references/scenario_list.md)。 回答可附带耗时；使用 `ae-cli analysis scenario get --help` 查看关联命令执行明细的查询方式。
+
 评测命令在普通终端和沙箱中均跟随当前 AE Host，可通过 `--host` 切换。评测请求沿用该 AE Host 配置的 HTTP 或 HTTPS 协议，与其他 AE 命令一致。旧 `--endpoint` 和 `AE_EVAL_BASE_URL` 只能与当前 AE Host 一致，其他值会在发送凭证前报错；请移除这些配置，统一使用 `--host` 切换。沙箱外需设置 `AE_EVAL_ACCESS_TOKEN` 平台 session token，沙箱内可自动获取会话。详见 [地址与鉴权规则](skills/ae-evaluation/SKILL.md#endpoint-and-authentication)。
+
+### Feature 实验定时开启
+
+对于已完成配置的 Feature 实验，保存开始时间和可选的固定截止时间，检查就绪状态后提交：
+
+```bash
+ae-cli experiment experiment save --project-id 1 --req '{"expId":"exp_123"}' --start-time '2026-11-01T16:00:00+08:00' --fixed-end-time '2026-11-08T16:00:00+08:00'
+ae-cli experiment experiment ready-check --project-id 1 --exp-id exp_123
+ae-cli experiment experiment manage --project-id 1 --exp-id exp_123 --target-status pending
+```
+
+仅保存不会开启实验，服务端每半小时检查已提交的实验。使用 `experiment experiment get` 确认状态；流量冲突检查、时间修改与手动开启规则见 [Feature 时间配置](skills/ae-experiment/references/save_experiment.md#feature-timing)。
 
 ## Capability Gateway
 
@@ -244,6 +262,11 @@ Token 文件是只读 JSON 对象：`{"url":"https://host-a.example.com","token"
 新版 CLI 只持久化 CLI Token，不保存 access token 或 refresh token。多账号保存在加密的 V1 凭据文件中，同时维护旧文件格式的当前账号投影，保证 CLI 自动降级后仍可登录；再次升级时会合并旧 CLI 对投影的登录、切换或退出变更。
 
 登录使用跨平台设备码流程。当前环境无法打开浏览器时，可使用 `--no-browser`。
+
+已改造的 6.1 环境统一使用 UBA 设备授权接口与平台 `/#/cli/device-activate` 页面，不随 K8s 或 Agent 状态切换。只有授权端点明确不存在（HTTP 404）时才兼容旧 Agent 流程；网络失败、HTML 响应和权限拒绝均不会更换授权方。非交互环境使用 `auth login --no-wait`，再携带返回的 `--device-code` 和同一个 `--host` 继续授权。原有 Host 多账号、CLI Token 与命令参数保持兼容。
+
+CLI 直接请求对应业务接口，由服务端校验产品 License 和用户/项目权限。组件不可用时会返回实际接口错误；HTTP 404 也可能表示资源不存在或路由不支持，不能据此直接判断组件未部署。
+
 试用引导仅在尚未配置 Host 时出现；已配置环境的正常命令和认证流程不会展示该提示。
 
 ## 输出与安全
@@ -269,6 +292,9 @@ Token 文件是只读 JSON 对象：`{"url":"https://host-a.example.com","token"
 JSON 参数通常支持内联 JSON、`@file`、文件路径或通过 `-` 从 stdin 读取，具体以命令帮助为准。
 
 ## 知识库
+
+公司知识库编译审批前，可用 `ae-cli kb candidate changes --name <name> --candidate <id>` 查看数据源、Wiki 和 Index 的变化。条目详情和文本差异用法见[审批预览](skills/ae-kb/references/publication.md)。
+审批变化较多时，可用 `kb candidate changes --group wiki --search payment --offset 0 --limit 50` 分页检索；首次成功编译自动发布，后续公司知识库更新进入审批。
 
 管理服务端知识库生命周期：
 
@@ -403,6 +429,7 @@ npm test
 npm run qa-changed
 npm run self-check
 npm run check:release
+npm run verify:experiment-tools
 npm run verify:readme
 npm run verify:auth-credentials
 npm run verify:update-check

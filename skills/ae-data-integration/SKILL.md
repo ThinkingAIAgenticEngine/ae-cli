@@ -1,6 +1,6 @@
 ---
 name: ae-data-integration
-description: "Bring local CSV, TSV, TXT, JSON, JSONL (NDJSON), XLS, and XLSX files — and Feishu sheet / Bitable (多维表格) URLs — into AE end-to-end: identify the source's business meaning, generate and confirm a tracking plan, transform rows into UE records, and upload. Also supports privacy-preserving local analysis and handing a small file to AE Agent. Use whenever a user wants to import offline/local data or a Feishu sheet / Bitable into AE, or analyze a file without uploading it. Trigger words: 本地数据导入 / 离线数据 / 数据文件 / 文件导入 / 文件上报 / CSV 导入 / Excel 导入 / TSV 导入 / JSON 导入 / 飞书表格导入 / 在线表格导入 / 飞书多维表格导入 / 多维表格导入 / 在线多维表格导入 / 导入到 AE / 导入到 ThinkingAI / local data import / import local file / import Feishu sheet / import Feishu Bitable."
+description: "Bring local CSV, TSV, TXT, JSON, JSONL (NDJSON), XLS, XLSX, and Parquet files — and Feishu sheet / Bitable (多维表格) URLs — into AE end-to-end: identify the source's business meaning, generate and confirm a tracking plan, transform rows into UE records, and upload. Also supports privacy-preserving local analysis and handing a small file to AE Agent. Use whenever a user wants to import offline/local data or a Feishu sheet / Bitable into AE, or analyze a file without uploading it. Trigger words: 本地数据导入 / 离线数据 / 数据文件 / 文件导入 / 文件上报 / CSV 导入 / Excel 导入 / TSV 导入 / JSON 导入 / Parquet 导入 / 飞书表格导入 / 在线表格导入 / 飞书多维表格导入 / 多维表格导入 / 在线多维表格导入 / 导入到 AE / 导入到 ThinkingAI / local data import / import local file / parquet import / import Feishu sheet / import Feishu Bitable."
 ---
 
 # AE Data Integration
@@ -11,7 +11,7 @@ When remaining work is outside this skill's scope, or a necessary prerequisite n
 
 Turn local/offline files and Feishu sheet / Bitable (多维表格) URLs into AE data through one fixed pipeline of four submodules: **Source → Tracking plan → Transform → Sink**. A file or sheet is never uploaded merely because it is present: its business meaning is understood, confirmed once by a human, and only then ingested. The tracking plan is generated and confirmed **before** ingestion (data governance shift-left) — see [references/tracking-plan.md](references/tracking-plan.md).
 
-Two entrances lead here: the AE Agent dialog (attach / plus-button upload) and `ae-cli`. Two sink paths exist: RESTful API for one-time/small loads (current phase), and LogBus / DataX for recurring/high-volume loads (next phase). Source and Sink are pluggable — adding one does not change the main pipeline.
+Two entrances lead here: the AE Agent dialog (attach / plus-button upload) and `ae-cli`. Two sink paths exist: RESTful `/sync_json` upload for one-time/small loads, and file / LogBus2 delivery (convert-only — writes `valid.ue.jsonl` to a watched directory, never uploads) for recurring/high-volume loads. Which path applies is always the user's choice, never a default. Source and Sink are pluggable — adding one does not change the main pipeline.
 
 ## Mandatory safety rules
 
@@ -31,7 +31,7 @@ Two entrances lead here: the AE Agent dialog (attach / plus-button upload) and `
 
 ## When to use / When NOT to use
 
-Use this skill when the user wants to bring a **local data file** (CSV/TSV/TXT/JSON/JSONL/XLS/XLSX) or a **Feishu sheet / Bitable (多维表格) URL** into AE, or analyze a local file without uploading.
+Use this skill when the user wants to bring a **local data file** (CSV/TSV/TXT/JSON/JSONL/XLS/XLSX/Parquet) or a **Feishu sheet / Bitable (多维表格) URL** into AE, or analyze a local file without uploading.
 
 | User intent | Use this instead |
 | --- | --- |
@@ -53,7 +53,9 @@ Walk the four submodules in order. Each submodule is its own reference; follow i
 2. **Reuse check.** If the profile is `ue_eligible`, read [references/reuse.md](references/reuse.md) and match the recommended mapping against the handoff index. `reuse` searches the current directory's `.ae-cli/data-integration/` upward, then `~/.ae-cli/data-integration/`, so a package written elsewhere is still found. A match proposes a frozen package; after one explicit confirmation, run the returned `transform.mjs` command and jump to Sink (step 5). No match → continue.
 3. **Tracking plan.** Read [references/tracking-plan.md](references/tracking-plan.md). The plan is generated from the mapping (`plan --mapping`), so confirm the recommended mapping's key system fields with the user first — `mode`, `#account_id`/`#distinct_id`, `#time` + timezone, `#event_name`, `#ip`/`#uuid` (see [references/transform.md](references/transform.md) steps 1–5) — then generate the event/property plan and get a single explicit confirmation from the user before touching data. The plan is a separate, required deliverable from the transform mapping: a user who supplies a column→field mapping directly has **not** completed this step, so build the plan from the confirmed mapping anyway. `user_set` still requires a plan (no events; every property becomes a user property). This step runs for **every** file: a second or later file merges its new events and properties into the existing project plan (tracking-plan.md step 4) — an existing plan is never a reason to skip it.
 4. **Transform.** Read [references/transform.md](references/transform.md). Map columns to AE system fields and properties, convert, and quarantine dirty rows per [references/ue-mapping.md](references/ue-mapping.md).
-5. **Sink — upload.** Read [references/sink-upload.md](references/sink-upload.md). Resolve the destination, dry-run, confirm, then upload per [references/sync-json-upload.md](references/sync-json-upload.md). `receiver_accepted` is not persistence: after a ~1-minute ingestion delay, verify the data landed with ae-cli (`tracking live-data list` / `tracking ingest summary` / `tracking ingest-error list`) rather than telling the user to check the console.
+5. **Sink — choose the path first, then act.** Read [references/sink-upload.md](references/sink-upload.md). Before resolving any destination, ask the user which sink path this data takes — never default one silently (the user handing you an endpoint/APPID is not a sink decision):
+   - **RESTful `/sync_json` upload** — one-time / small loads. Resolve the destination, dry-run, confirm, then upload per [references/sync-json-upload.md](references/sync-json-upload.md). `receiver_accepted` is not persistence: after a ~1-minute ingestion delay, verify the data landed with ae-cli (`tracking live-data list` / `tracking ingest summary` / `tracking ingest-error list`) rather than telling the user to check the console.
+   - **File / LogBus2 mode — JSONL only, never uploads** — recurring / high-volume loads (e.g. daily parquet exports). Run `convert` (or the handoff `bin/run.sh`) so `valid.ue.jsonl` lands in the directory LogBus2 watches — never `upload.sh`, which posts to the RESTful receiver. Use the output directory confirmed in step 4. The same rows must not go through both paths: RESTful upload plus LogBus2 pickup double-ingests.
 6. **Handoff.** Read [references/handoff.md](references/handoff.md). Export the reusable package (pipeline descriptor + frozen mappings + stage executors + docs) and a shareable zip; in the completion response, state the absolute zip path, the package directory, and the one-line way to run the next same-shape file.
 
 ## Error handling

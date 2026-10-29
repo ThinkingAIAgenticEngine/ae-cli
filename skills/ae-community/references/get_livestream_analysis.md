@@ -9,14 +9,14 @@ Mapping command: `ae-cli community +get_livestream_analysis`
 
 | Flag | Type | Required | Description |
 |------|------|------|------|
-| `--space-id` | number | yes | community space ID |
-| `--game-id` | number | yes | game/space ID |
+| `--space-id` | int64 | yes | Community space ID returned by `community spaces list` |
+| `--game-id` | int64 | no | Deprecated compatibility alias; omit it, or make it equal to `--space-id` |
 | `--stream-id` | string | Yes | Livestream session ID, streamId from `get_livestream_list` |
 
 ## Example
 
 ```bash
 ae-cli community +get_livestream_analysis \
-  --space-id 1 --game-id 1 \
+  --space-id 1 \
   --stream-id <stream-id>
 ```

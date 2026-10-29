@@ -1,4 +1,4 @@
-import type { Command } from '../../framework/types.js';
+import type { Command, RuntimeContext } from '../../framework/types.js';
 import { registerCapabilityGatewayRoute } from '../../core/capability-routing.js';
 import { registerMcpMappings } from '../../core/mcp.js';
 import { getChannelInfo } from './get_channel_info.js';
@@ -21,6 +21,10 @@ import { getCommentTagAnalysis } from './get_comment_tag_analysis.js';
 import { getCorpusTags } from './get_corpus_tags.js';
 import { getRiskContent } from './get_risk_content.js';
 import { communityDataReport } from './data/index.js';
+import { communitySpacesList } from './spaces-list.js';
+import { communitySourcesList } from './sources-list.js';
+import { communityEvidenceFetch, communityEvidenceFetchAlias } from './evidence-fetch.js';
+import { validateCommunityCommand } from './support.js';
 
 registerCapabilityGatewayRoute('community', { gatewayDomain: 'community' });
 
@@ -31,8 +35,7 @@ registerMcpMappings({
   'community_hot': { componentName: 'community', mappingPath: 'hot' },
 });
 
-const commands: Command[] = [
-  communityDataReport,
+const communityReadCommands: Command[] = [
   // Content commands
   getLivestreamList,
   getLivestreamDetail,
@@ -55,6 +58,21 @@ const commands: Command[] = [
   getDailySummary,
   getHotTopics,
   getTopicDetail,
+];
+
+const commands: Command[] = [
+  communityDataReport,
+  communityEvidenceFetch,
+  communityEvidenceFetchAlias,
+  communitySpacesList,
+  communitySourcesList,
+  ...communityReadCommands.map((command) => ({
+    ...command,
+    validate: (ctx: RuntimeContext) => {
+      validateCommunityCommand(ctx, command);
+      command.validate?.(ctx);
+    },
+  })),
 ];
 
 export default commands;

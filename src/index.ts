@@ -1,8 +1,11 @@
+import { kbExecutionContextRequired, readKbExecutionContext } from "./core/kb-read-context.js";
 import { Command as CommanderCommand, Option } from 'commander';
 import { createRequire } from 'module';
+import { constants as osConstants } from 'node:os';
 import { registerCommands } from './framework/register.js';
 import type { Command } from './framework/types.js';
 import { runHostCompatCheck } from './core/compat-check.js';
+import { resumeSyncedCommand } from './core/resume-command.js';
 import { runFeatureConfigCheck } from './core/feature-config-check.js';
 import { getLocalCliPackageInfo } from './core/package-info.js';
 import { registerTracking } from './commands/tracking/index.js';
@@ -11,6 +14,7 @@ import { printError } from './framework/output.js';
 import { registerInstall } from './commands/install.js';
 import { ExternalCliTokenError, readExternalCliToken, setExternalCliTokenFile } from './core/external-cli-token.js';
 import { CliValidationError } from './core/errors.js';
+import { configureBusinessCommands } from './framework/business-filter.js';
 
 const require = createRequire(import.meta.url);
 const pkg = require('../package.json');
@@ -70,6 +74,12 @@ async function loadCommands(): Promise<Command[]> {
     commands.push(...engage.default);
   } catch (err) {
     warnLoadFailure('domain te-engage', err);
+  }
+  try {
+    const experiment = await import('./commands/te-experiment/index.js');
+    commands.push(...experiment.default);
+  } catch (err) {
+    warnLoadFailure('domain te-experiment', err);
   }
   try {
     const community = await import('./commands/te-community/index.js');
@@ -225,21 +235,40 @@ async function registerUpdateCommand(): Promise<void> {
 }
 
 async function main() {
+  const args = process.argv.slice(2);
+  if (args.length === 1 && args[0] === '--runtime-capabilities') {
+    process.stdout.write(JSON.stringify(require('../bin/runtime-capabilities.json')) + '\n');
+    return;
+  }
+  const kbIndex = args.indexOf('kb');
+  const executionQuery = kbExecutionContextRequired() && kbIndex >= 0 && ['+list', '+index', '+grep', '+read'].includes(args[kbIndex + 1]);
+  if (executionQuery) readKbExecutionContext();
+  const helpRequested = isHelpInvocation(args);
   setExternalCliTokenFile(globalOptionValue(process.argv.slice(2), '--cli-token-file'));
-  if (!process.argv.slice(2).some((arg) => ['--help', '-h', '--version', '-V'].includes(arg))) {
+  if (!executionQuery && !helpRequested && !process.argv.slice(2).some((arg) => ['--version', '-V'].includes(arg))) {
     readExternalCliToken(globalOptionValue(process.argv.slice(2), '--host'));
   }
   const pkgInfo = getLocalCliPackageInfo();
-  if (!isRootUpdateCommand(process.argv.slice(2))) {
+  if (!executionQuery && !helpRequested && !isRootUpdateCommand(process.argv.slice(2))) {
     const compat = await runHostCompatCheck(
       pkgInfo,
       globalOptionValue(process.argv.slice(2), '--host'),
     );
     if (compat.status === 'synced') {
+      const resumed = await resumeSyncedCommand(compat.entrypoint);
+      if (resumed.status === 'exited') {
+        process.exitCode = resumed.code;
+        return;
+      }
+      if (resumed.status === 'signaled') {
+        process.exitCode = 128 + osConstants.signals[resumed.signal];
+        process.kill(process.pid, resumed.signal);
+        return;
+      }
       const message =
         compat.direction === 'skills'
-          ? `Skills were synchronized for ae-cli ${compat.expected}.`
-          : `ae-cli changed from ${compat.current} to ${compat.expected} for this host.`;
+          ? `Skills synchronization for ae-cli ${compat.expected} succeeded, but the synchronized CLI could not be started. The requested command was not executed.`
+          : `CLI and Skills synchronization from ${compat.current} to ${compat.expected} succeeded, but the synchronized CLI could not be started. The requested command was not executed.`;
       printError(
         'config',
         message,
@@ -250,6 +279,8 @@ async function main() {
           expected: compat.expected,
           cluster: compat.cluster,
           direction: compat.direction,
+          versionSyncSucceeded: true,
+          originalCommandExecuted: false,
           retryOriginalCommand: true,
         },
         { log: false },
@@ -258,7 +289,7 @@ async function main() {
       return;
     }
   }
-  await runFeatureConfigCheck(globalOptionValue(process.argv.slice(2), '--host'));
+  if (!executionQuery && !helpRequested) await runFeatureConfigCheck(globalOptionValue(process.argv.slice(2), '--host'));
 
   const commands = await loadCommands();
   registerCommands(program, commands);
@@ -270,8 +301,23 @@ async function main() {
   await registerUpdateCommand();
   registerInstall(program);
   registerTracking(program);
+  if (!executionQuery) configureBusinessCommands(program, { hostOverride: globalOptionValue(process.argv.slice(2), '--host') });
   rejectUnknownHelpCommandPath(program, process.argv.slice(2));
   await parseProgram(program);
+}
+
+function isHelpInvocation(args: string[]): boolean {
+  if (args.length === 0 || args.includes('--help') || args.includes('-h')) return true;
+  for (let index = 0; index < args.length; index += 1) {
+    const token = args[index];
+    if (token === '--') return false;
+    if (token.startsWith('-')) {
+      if (optionConsumesValue(token)) index += 1;
+      continue;
+    }
+    if (token === 'help') return true;
+  }
+  return false;
 }
 
 try {

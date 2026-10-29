@@ -49,21 +49,26 @@ export function readOutputMetadata(value: any): Record<string, unknown> | undefi
   return isOutputWithMetadata(value) ? value.meta : undefined;
 }
 
-function findArrayField(data: any): any[] | null {
-  if (Array.isArray(data)) return data;
+interface ArrayField {
+  key?: string;
+  rows: any[];
+}
+
+function findArrayField(data: any): ArrayField | null {
+  if (Array.isArray(data)) return { rows: data };
   if (typeof data !== 'object' || data === null) return null;
   for (const key of KNOWN_ARRAY_FIELDS) {
-    if (Array.isArray(data[key])) return data[key];
+    if (Array.isArray(data[key])) return { key, rows: data[key] };
   }
   for (const key of Object.keys(data)) {
-    if (Array.isArray(data[key])) return data[key];
+    if (Array.isArray(data[key])) return { key, rows: data[key] };
   }
   return null;
 }
 
 function formatTable(data: any): string {
   if (Array.isArray(data?.title) && data.title.length > 0 && Array.isArray(data?.rows)) {
-    const headers = data.title.map((value: unknown) => String(value));
+    const headers: string[] = data.title.map((value: unknown) => String(value));
     const table = new Table({ head: headers, wordWrap: true });
     for (const row of data.rows) {
       const values = Array.isArray(row) ? row : [row];
@@ -76,10 +81,11 @@ function formatTable(data: any): string {
     }
     return table.toString();
   }
-  const rows = findArrayField(data);
-  if (!rows || rows.length === 0) {
+  const arrayField = findArrayField(data);
+  if (!arrayField || arrayField.rows.length === 0) {
     return JSON.stringify(data, null, 2);
   }
+  const rows = arrayField.rows;
   const allKeys = new Set<string>();
   for (const row of rows) {
     if (typeof row === 'object' && row !== null) {
@@ -98,7 +104,19 @@ function formatTable(data: any): string {
       return String(v);
     }));
   }
-  return table.toString();
+  const sections: string[] = [];
+  if (arrayField.key && typeof data === 'object' && data !== null) {
+    const summaryEntries = Object.entries(data).filter(([key]) => key !== arrayField.key);
+    if (summaryEntries.length > 0) {
+      const summary = new Table({ head: ['field', 'value'], wordWrap: true });
+      for (const [key, value] of summaryEntries) {
+        summary.push([key, typeof value === 'object' && value !== null ? JSON.stringify(value) : String(value ?? '')]);
+      }
+      sections.push(summary.toString());
+    }
+  }
+  sections.push(table.toString());
+  return sections.join('\n\n');
 }
 
 /**

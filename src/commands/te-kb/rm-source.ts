@@ -21,7 +21,10 @@ function buildBody(ctx: RuntimeContext): Record<string, unknown> {
   };
   const scope = getExternalKnowledgeBaseTargetScope(ctx);
   if (scope) body.scope = scope;
-  return { ...body, ...sourceSelector(ctx) };
+  const cancelCandidate = ctx.bool('cancel-candidate');
+  const expectedCandidateId = ctx.str('expected-candidate-id');
+  if (cancelCandidate !== Boolean(expectedCandidateId)) throw new CliValidationError('--cancel-candidate and --expected-candidate-id must be supplied together.');
+  return { ...body, ...sourceSelector(ctx), ...(cancelCandidate ? { cancelCandidate, expectedCandidateId } : {}) };
 }
 
 export const rmSource: Command = {
@@ -29,6 +32,8 @@ export const rmSource: Command = {
   command: '+rm-source',
   description: 'Delete one source from a knowledge base by ID or exact display name.',
   flags: [
+    { name: 'cancel-candidate', type: 'boolean', desc: 'Atomically cancel the pending candidate approval before deleting its source' },
+    { name: 'expected-candidate-id', type: 'string', desc: 'Exact active candidate ID; required with --cancel-candidate' },
     { name: 'name', type: 'string', required: true, desc: 'Knowledge base name (looked up personal → company)' },
     { name: 'scope', type: 'string', required: false, desc: 'Exact knowledge base scope: personal | company (omit for personal → company fallback)' },
     { name: 'id', type: 'string', required: false, desc: 'Source ID copied from +list-sources (preferred)' },
@@ -37,7 +42,7 @@ export const rmSource: Command = {
   risk: 'high-risk-write',
   validate: (ctx) => {
     getExternalKnowledgeBaseTargetScope(ctx);
-    sourceSelector(ctx);
+    buildBody(ctx);
   },
   dryRun: (ctx) => ({
     method: 'DELETE',

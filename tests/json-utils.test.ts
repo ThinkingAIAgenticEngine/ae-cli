@@ -6,7 +6,7 @@
  */
 
 import assert from 'node:assert/strict';
-import { safeJsonParse } from '../src/core/json-utils.ts';
+import { parseJsonRequest, safeJsonParse, stringifyJsonRequest } from '../src/core/json-utils.ts';
 
 let passed = 0;
 let failed = 0;
@@ -76,6 +76,26 @@ test('keeps exponent and decimal tokens as numbers', () => {
 test('supports top-level numeric primitives', () => {
   assert.equal(safeJsonParse('9007199254740992'), '9007199254740992');
   assert.equal(typeof safeJsonParse('5401.925531914893'), 'number');
+});
+
+test('serializes native bigint request values as exact JSON integer tokens', () => {
+  const serialized = stringifyJsonRequest({
+    spaceId: 1940327799817117696n,
+    param: { gameId: 1940327799817117696n, channelIdList: [1940327799817117697n] },
+  });
+  assert.equal(
+    serialized,
+    '{"spaceId":1940327799817117696,"param":{"gameId":1940327799817117696,"channelIdList":[1940327799817117697]}}',
+  );
+});
+
+test('parses unsafe request integers as bigint while preserving quoted IDs', () => {
+  const parsed = parseJsonRequest(
+    '{"game_id":1940327799817117696,"quoted":"1940327799817117696","limit":100}',
+  );
+  assert.equal(parsed.game_id, 1940327799817117696n);
+  assert.equal(parsed.quoted, '1940327799817117696');
+  assert.equal(parsed.limit, 100);
 });
 
 test('preserves parser object safety and rejects malformed input', () => {

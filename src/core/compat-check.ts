@@ -1,5 +1,7 @@
 import fs from 'fs';
 import path from 'path';
+import { createHash } from 'node:crypto';
+import { Agent } from 'undici';
 import { getActiveHost, getConfigDir } from './config.js';
 import { peekCliToken } from './cli-token.js';
 import { isAeSandboxRuntime } from './sandbox-runtime.js';
@@ -25,6 +27,10 @@ import {
 import { normalizeUrl } from './url-utils.js';
 import { rememberKbAutoDiscoveryFeature } from './feature-config.js';
 import { externalCliTokenRequestOptions, readExternalCliToken } from './external-cli-token.js';
+import { normalizeBusinesses, type BusinessStates } from './businesses.js';
+import { rememberBusinessConfig } from './business-config.js';
+import { canManageGlobalSkills } from './local-skill-context.js';
+import { isBusinessSkillContextCurrent, reserveBusinessSkillContext } from './business-skill-sync.js';
 
 const CHECK_INTERVAL_MS = 60 * 60 * 1000;
 const NOTIFY_INTERVAL_MS = 24 * 60 * 60 * 1000;
@@ -68,6 +74,7 @@ export type HostCompatCheckResult =
       expected: string;
       cluster: string;
       direction: 'upgrade' | 'downgrade' | 'switch' | 'skills';
+      entrypoint?: string;
     };
 
 function cacheFilePath(): string {
@@ -143,6 +150,7 @@ export function shouldSkipAutoSync(argv: string[] = process.argv): boolean {
 }
 
 type CliConfigPayload = {
+  businesses?: unknown;
   versions?: {
     clusterVersion?: string;
     aeCliVersion?: string;
@@ -158,6 +166,7 @@ export interface CliConfigResult {
   clusterVersion: string | null;
   aeCliVersion: string | null;
   projectSemanticKbAutoDiscovery?: boolean;
+  businesses?: BusinessStates;
 }
 
 export async function fetchCliConfig(
@@ -168,13 +177,23 @@ export async function fetchCliConfig(
   const external = readExternalCliToken(host)?.token === cliToken;
   if (!external) url.searchParams.set('cli-token', cliToken);
   const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
+  // Abort alone may leave a TLS handshake alive until the default connection timeout.
+  const dispatcher = new Agent({ connect: { timeout: FETCH_TIMEOUT_MS } });
+  let cleanup: Promise<void> | undefined;
+  const destroy = (): Promise<void> => cleanup ??= dispatcher.destroy().catch(() => {});
+  const timer = setTimeout(() => {
+    controller.abort();
+    void destroy();
+  }, FETCH_TIMEOUT_MS);
+  let resp: Response | undefined;
   try {
-    const resp = await fetch(url.toString(), {
+    const options = {
+      dispatcher,
       signal: controller.signal,
       headers: { Accept: 'application/json', ...(external ? { 'cli-token': cliToken } : {}) },
       ...externalCliTokenRequestOptions(url.toString()),
-    });
+    };
+    resp = await fetch(url.toString(), options);
     if (!resp.ok) return null;
     const body = (await resp.json()) as { data?: CliConfigPayload } & CliConfigPayload;
     const data = body.data ?? body;
@@ -186,6 +205,9 @@ export async function fetchCliConfig(
     return {
       clusterVersion: clusterVersion?.trim() || null,
       aeCliVersion: aeCliVersion?.trim() || null,
+      ...(data.businesses && typeof data.businesses === 'object' && !Array.isArray(data.businesses)
+        ? { businesses: normalizeBusinesses(data.businesses) }
+        : {}),
       ...(typeof data.features?.projectSemanticKbAutoDiscovery === 'boolean'
         ? { projectSemanticKbAutoDiscovery: data.features.projectSemanticKbAutoDiscovery }
         : {}),
@@ -194,6 +216,10 @@ export async function fetchCliConfig(
     return null;
   } finally {
     clearTimeout(timer);
+    // Start destroying our own connections before awaiting an unread response body.
+    const destroyed = destroy();
+    if (resp?.body && !resp.bodyUsed) await Promise.allSettled([resp.body.cancel(), destroyed]);
+    else await destroyed;
   }
 }
 
@@ -299,7 +325,10 @@ async function refreshAndMaybeNotify(
 
   if (isCompatCacheStale(existing)) {
     const remote = await fetchCliConfig(host, token);
-    if (remote) rememberKbAutoDiscoveryFeature(host, token, remote.projectSemanticKbAutoDiscovery ?? false);
+    if (remote) {
+      rememberKbAutoDiscoveryFeature(host, token, remote.projectSemanticKbAutoDiscovery ?? false);
+      rememberBusinessConfig(host, token, remote.businesses);
+    }
     if (!remote?.aeCliVersion) {
       return { status: 'continue' };
     }
@@ -346,9 +375,27 @@ async function refreshAndMaybeNotify(
     && isAutoSyncTargetEligible(expected);
 
   if (canAutoSync) {
+    const isCurrentLocalIdentity = (): boolean => {
+      try {
+        return canManageGlobalSkills()
+          && normalizeUrl(getActiveHost()) === key
+          && peekCliToken(host) === token;
+      } catch { return false; }
+    };
+    const context = isCurrentLocalIdentity()
+      ? { host, tokenFingerprint: createHash('sha256').update(token).digest('hex') }
+      : undefined;
+    // A newer refresh or identity change must supersede a slow confirmation.
+    const generation = context ? reserveBusinessSkillContext(context) : undefined;
     // Never mutate a global installation from a cached target alone.
     const confirmed = await fetchCliConfig(host, token);
-    if (confirmed) rememberKbAutoDiscoveryFeature(host, token, confirmed.projectSemanticKbAutoDiscovery ?? false);
+    if (context && generation && !isBusinessSkillContextCurrent({
+      ...context, generation, isCurrentContext: isCurrentLocalIdentity,
+    })) return { status: 'continue' };
+    if (confirmed) {
+      rememberKbAutoDiscoveryFeature(host, token, confirmed.projectSemanticKbAutoDiscovery ?? false);
+      rememberBusinessConfig(host, token, confirmed.businesses);
+    }
     if (confirmed?.aeCliVersion) {
       expected = confirmed.aeCliVersion;
       cluster = confirmed.clusterVersion ?? cluster ?? '';
@@ -387,18 +434,26 @@ async function refreshAndMaybeNotify(
                   : 'switching';
           printNotice(
             `[ae-cli] Current version ${pkg.version}; this host requires ${expected}. `
-            + `Automatically ${verb} CLI and Skills, please wait...`,
+            + `Automatically ${verb} the CLI installation; global Skills will be synchronized when this local context allows it. Please wait...`,
           );
           const result = installVersion(expected, {
             skipCliInstall: verdict.kind === 'ok' && pendingSkills,
             progress: printNotice,
           });
+          const globalSkillsSkipped = result.ok && result.report?.skills.status === 'skipped';
+          if (globalSkillsSkipped && direction === 'skills') {
+            printNotice('[ae-cli] Global Skills were not changed for this external-token or sandbox context. '
+              + 'This command will continue; refresh Skills from a local signed-in environment.');
+            pendingHostCompatNotice = undefined;
+            pendingUpdateNotice = undefined;
+            return { status: 'continue' };
+          }
           recordVersionSyncResult(host, expected, result);
 
           if (result.ok) {
-            printNotice(
-              `[ae-cli] Synchronized to ${expected}. Re-run the previous command to use the new version.`,
-            );
+            printNotice(globalSkillsSkipped
+              ? `[ae-cli] CLI changed from ${pkg.version} to ${expected}; global Skills were preserved. Starting the original command with the synchronized CLI...`
+              : `[ae-cli] Synchronized to ${expected}. Starting the original command with the synchronized CLI...`);
             pendingHostCompatNotice = undefined;
             pendingUpdateNotice = undefined;
             return {
@@ -407,6 +462,7 @@ async function refreshAndMaybeNotify(
               expected,
               cluster: cluster || '',
               direction,
+              entrypoint: result.report?.cli.verified ? result.report.cli.entrypoint ?? undefined : undefined,
             };
           }
 

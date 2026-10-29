@@ -1,22 +1,30 @@
 import fs from 'node:fs';
 import path from 'node:path';
+import crypto from 'node:crypto';
 import { getLocalCliPackageInfo } from './package-info.js';
-import { globalSkillsDirectory, readBundledSkills, verifyGlobalSkills, skillProcessProblem, type SkillFailure, type BundledSkill } from './skills-install.js';
+import { globalSkillsDirectory, readBundledSkills, verifyGlobalSkills, type SkillFailure } from './skills-install.js';
+import { getActiveHost, getConfigDir } from './config.js';
+import { peekCliToken } from './cli-token.js';
+import { readBusinessConfig } from './business-config.js';
+import { canManageGlobalSkills } from './local-skill-context.js';
+import { OPTIONAL_BUSINESSES, getSkillBusinessState, type BusinessStates } from './businesses.js';
+import { isBusinessSkillContextCurrent, reserveBusinessSkillContext, syncBusinessSkills, type BusinessSkillSyncReport } from './business-skill-sync.js';
 import {
   commandSucceeded, classifyInstallFailure, defaultInstallRunner, exactVersion, installHost,
-  resolveNodeTool, INSTALL_TIMEOUT_MS, SKILLS_TOOL, type ProcessRunner, type ProcessResult,
+  resolveNodeTool, INSTALL_TIMEOUT_MS, type ProcessRunner,
 } from './install-process.js';
 
 export interface InstallationReport {
   ok: boolean;
   dry_run: boolean;
-  cli: { package: string; version: string; path: string | null; verified: boolean; action: 'pending' | 'installed' | 'skipped'; warnings: string[] };
+  cli: { package: string; version: string; path: string | null; entrypoint: string | null; verified: boolean; action: 'pending' | 'installed' | 'skipped'; warnings: string[] };
   skills: {
     directory: string; expected_count: number; installed_count: number; missing: string[];
     source: string | null; version: string;
-    status: 'pending' | 'success' | 'partial' | 'failed';
+    status: 'pending' | 'success' | 'partial' | 'failed' | 'skipped';
     failures: SkillFailure[];
     attempts: Array<{ source: string; stage: string; cause: string | null; failures: SkillFailure[] }>;
+    synchronization?: BusinessSkillSyncReport;
   };
   auth: { host: string | null; authenticated: boolean | null; warnings: string[] };
   next_steps: string[];
@@ -36,6 +44,11 @@ export interface InstallationOptions {
   platform?: NodeJS.Platform;
   skillsDirectory?: string;
   env?: NodeJS.ProcessEnv;
+  /** Explicit snapshot injection; an empty object keeps optional businesses unknown. */
+  businesses?: BusinessStates;
+  syncSkills?: typeof syncBusinessSkills;
+  skillStateDirectory?: string;
+  skillContext?: { host: string; tokenFingerprint: string; isCurrentContext?: () => boolean };
 }
 
 export function distribution(packageName: string): { registry: string; repository: string } {
@@ -47,7 +60,7 @@ export function distribution(packageName: string): { registry: string; repositor
 export function newInstallationReport(packageName: string, version: string, dryRun = false): InstallationReport {
   return {
     ok: false, dry_run: dryRun,
-    cli: { package: packageName, version, path: null, verified: false, action: 'pending', warnings: [] },
+    cli: { package: packageName, version, path: null, entrypoint: null, verified: false, action: 'pending', warnings: [] },
     skills: { directory: globalSkillsDirectory(), expected_count: 0, installed_count: 0, missing: [], source: null,
       version, status: 'pending', failures: [], attempts: [] },
     auth: { host: null, authenticated: null, warnings: [] }, next_steps: [],
@@ -64,32 +77,26 @@ export function failInstallation(report: InstallationReport, stage: string, mess
 export function installPlan(packageName: string, version: string, root = '<npm-root>'): string[] {
   const config = distribution(packageName);
   const target = exactVersion(version);
-  const source = path.join(root, packageName, 'skills');
+  const executable = path.join(root, packageName, 'bin', 'ae-cli.js');
   return [
     `npm install -g ${packageName}@${target} --registry=${config.registry}`,
-    `npx -y ${SKILLS_TOOL} add ${JSON.stringify(source)} -g -y --agent universal`,
-    `npx -y ${SKILLS_TOOL} add ${config.repository}#v${target} -g -y --agent universal`,
-    `npx -y ${SKILLS_TOOL} add ${JSON.stringify(globalSkillsDirectory())} -g -y --copy`,
+    `node ${JSON.stringify(executable)} install`,
   ];
 }
 
-function verifySkillsAttempt(report: InstallationReport, skills: BundledSkill[], result: ProcessResult, stage: string, source: string): boolean {
-  const problem = skillProcessProblem(result);
-  report.skills.failures = verifyGlobalSkills(skills, report.skills.directory);
-  if (problem) {
-    for (const skill of skills) {
-      if (!report.skills.failures.some(failure => failure.skill === skill.name)) {
-        report.skills.failures.push({ skill: skill.name, reason: problem });
-      }
-    }
+function currentSkillIdentity(): { host: string; tokenFingerprint: string } {
+  const host = getActiveHost();
+  const token = host ? peekCliToken(host) : undefined;
+  return { host, tokenFingerprint: token ? crypto.createHash('sha256').update(token).digest('hex') : '' };
+}
+
+function skipGlobalSkillReason(): string | undefined {
+  try {
+    if (canManageGlobalSkills()) return undefined;
+  } catch {
+    // Invalid injected credentials cannot grant ownership over the host's Skills.
   }
-  report.skills.missing = report.skills.failures.map(failure => failure.skill);
-  report.skills.installed_count = skills.length - report.skills.missing.length;
-  const cause = commandSucceeded(result) ? 'validation' : classifyInstallFailure(result);
-  report.skills.attempts.push({ source, stage,
-    cause: report.skills.missing.length ? cause : null, failures: [...report.skills.failures] });
-  report.skills.status = !report.skills.missing.length ? 'success' : report.skills.installed_count ? 'partial' : 'failed';
-  return report.skills.status === 'success';
+  return 'An external-token or AE sandbox execution context is selected; global Skills were left unchanged.';
 }
 
 function readPackage(root: string): { name?: string; version?: string } | null {
@@ -159,6 +166,37 @@ export function runInstallation(options: InstallationOptions = {}): Installation
     const env = options.env ?? process.env;
     const installedBefore = readPackage(packageRoot);
     if (linked(packageRoot) && !options.skipCliInstall) return failInstallation(report, stage, 'The global CLI is npm-linked to source. Preserve the link; use a separate npm prefix for a packaged installation.');
+    const syncSkills = options.syncSkills ?? syncBusinessSkills;
+    const skipSkills = skipGlobalSkillReason();
+    let context: { host: string; tokenFingerprint: string; stateDirectory: string; generation: string; isCurrentContext: () => boolean } | undefined;
+    if (!skipSkills) {
+      const stateDirectory = options.skillStateDirectory ?? getConfigDir();
+      const identity = options.skillContext ?? currentSkillIdentity();
+      const isCurrentContext = (): boolean => {
+        if (skipGlobalSkillReason()) return false;
+        if (options.skillContext) return options.skillContext.isCurrentContext?.() ?? true;
+        try {
+          const current = currentSkillIdentity();
+          return current.host === identity.host && current.tokenFingerprint === identity.tokenFingerprint;
+        } catch { return false; }
+      };
+      const generation = reserveBusinessSkillContext({ ...identity, stateDirectory });
+      context = { ...identity, stateDirectory, generation, isCurrentContext };
+      // Only the first ledger migration can adopt copies matching the old installed package.
+      // Capture it before npm replaces the source; later manual copies remain unowned.
+      if (!fs.existsSync(path.join(stateDirectory, 'business-skills.json')) && installedBefore?.name === packageName) {
+        const previousSkills = path.join(packageRoot, 'skills');
+        try {
+          readBundledSkills(previousSkills);
+          syncSkills({ ...context, skillsDirectory: previousSkills, businesses: {}, mode: 'adopt', packageVersion: installedBefore.version });
+        } catch {
+          report.next_steps.push('Existing Skills could not be adopted from the previous package; unmatched copies will be preserved.');
+        }
+      }
+      if (!isBusinessSkillContextCurrent(context)) {
+        return failInstallation(report, 'skills_local', 'The active environment changed before installation. Re-run install or update for the current environment.');
+      }
+    }
     if (options.skipCliInstall || (installedBefore?.name === packageName && installedBefore.version === target && fs.existsSync(bin))) {
       report.cli.action = 'skipped';
       progress('[ae-cli] [2/4] Verifying the existing CLI...');
@@ -176,6 +214,7 @@ export function runInstallation(options: InstallationOptions = {}): Installation
     if (!cliBinBelongsToPackage(bin, packageRoot, platform)) return failInstallation(report, stage, 'The global executable does not belong to the installed CLI package.');
     const versionResult = runner(bin, ['--version'], 15_000);
     if (!commandSucceeded(versionResult) || versionResult.stdout.trim() !== target) return failInstallation(report, stage, 'ae-cli --version did not return the requested version. Refresh the shell command cache and check npm bin links.');
+    report.cli.entrypoint = fs.realpathSync(path.join(packageRoot, 'bin', 'ae-cli.js'));
     report.cli.verified = true;
     const pathKey = platform === 'win32' ? Object.keys(env).find(key => key.toLowerCase() === 'path') : 'PATH';
     const installedPathBin = (env[pathKey ?? 'PATH'] ?? '').split(platform === 'win32' ? ';' : path.delimiter)
@@ -186,33 +225,42 @@ export function runInstallation(options: InstallationOptions = {}): Installation
       report.next_steps.push(`Use the verified executable at ${bin}, or correct PATH before invoking ae-cli.`);
     }
 
-    stage = 'skills_local';
-    const skillsPath = path.join(packageRoot, 'skills');
-    const skills = readBundledSkills(skillsPath);
-    report.skills.expected_count = skills.length;
-    for (const source of [skillsPath, `${config.repository}#v${target}`]) {
-      stage = source === skillsPath ? 'skills_local' : 'skills_github';
-      report.skills.source = source === skillsPath ? 'installed-package' : source;
-      progress('[ae-cli] [3/4] Installing and verifying global Skills...');
-      const result = runner(resolveNodeTool('npx', process.execPath, platform), ['-y', SKILLS_TOOL, 'add', source, '-g', '-y', '--agent', 'universal',
-        '--skill', ...skills.map(skill => skill.name)], INSTALL_TIMEOUT_MS);
-      if (verifySkillsAttempt(report, skills, result, stage, report.skills.source)) break;
-    }
-    if (report.skills.status !== 'success') {
-      report.skills.status = report.skills.installed_count ? 'partial' : 'failed';
-      const first = report.skills.attempts[0];
-      return failInstallation(report, first.stage,
-        'Global Skills installation is incomplete. See skills.attempts for the original and fallback failures.', first.cause ?? 'validation');
-    }
-    stage = 'skills_clients';
-    progress('[ae-cli] [3/4] Distributing Skills to detected clients...');
-    // Universal targets read the source itself and are skipped by the pinned tool.
-    // Other clients receive independent copies without rewriting the shared directory.
-    const clientResult = runner(resolveNodeTool('npx', process.execPath, platform),
-      ['-y', SKILLS_TOOL, 'add', report.skills.directory, '-g', '-y', '--copy', '--skill', ...skills.map(skill => skill.name)], INSTALL_TIMEOUT_MS);
-    if (!verifySkillsAttempt(report, skills, clientResult, stage, report.skills.directory)) {
-      return failInstallation(report, stage, 'Global Skills were installed, but client distribution is incomplete. See skills.attempts for details.',
-        report.skills.attempts.at(-1)!.cause ?? 'validation');
+    if (skipSkills) {
+      report.skills.status = 'skipped';
+      report.next_steps.push(skipSkills);
+      progress(`[ae-cli] [3/4] ${skipSkills}`);
+    } else if (context) {
+      stage = 'skills_local';
+      const skillsPath = path.join(packageRoot, 'skills');
+      const skills = readBundledSkills(skillsPath);
+      if (!isBusinessSkillContextCurrent(context)) {
+        return failInstallation(report, stage, 'The active environment changed during CLI installation. Re-run install or update to synchronize its Skills.');
+      }
+      // Read after npm completes so a newer config snapshot cannot be undone by an upgrade.
+      const token = context.host ? peekCliToken(context.host) : undefined;
+      const knownBusinesses = options.businesses ?? (token ? readBusinessConfig(context.host, token) : undefined);
+      const businesses = knownBusinesses ?? Object.fromEntries(OPTIONAL_BUSINESSES.map(business => [business, true]));
+      const expected = skills.filter(skill => getSkillBusinessState(skill.name, businesses) === true);
+      report.skills.expected_count = expected.length;
+      report.skills.source = 'installed-package';
+      progress('[ae-cli] [3/4] Synchronizing managed Skills for the current environment...');
+      const synchronized = syncSkills({ ...context, skillsDirectory: skillsPath, businesses, packageVersion: target });
+      report.skills.synchronization = synchronized;
+      report.skills.failures = verifyGlobalSkills(expected, report.skills.directory);
+      report.skills.missing = report.skills.failures.map(failure => failure.skill);
+      report.skills.installed_count = expected.length - report.skills.missing.length;
+      for (const item of [...synchronized.failed, ...synchronized.skipped]) {
+        if (!report.skills.failures.some(failure => failure.skill === item.skill)) {
+          report.skills.failures.push({ skill: item.skill, reason: item.reason ?? 'Managed Skill synchronization did not complete.' });
+        }
+      }
+      report.skills.status = synchronized.status === 'success' && !report.skills.failures.length ? 'success'
+        : report.skills.installed_count || synchronized.installed.length || synchronized.removed.length ? 'partial' : 'failed';
+      report.skills.attempts.push({ source: 'installed-package', stage, cause: report.skills.status === 'success' ? null : 'validation', failures: [...report.skills.failures] });
+      if (report.skills.status !== 'success') {
+        return failInstallation(report, stage, 'Managed Skill synchronization is incomplete. User-modified and unowned copies were preserved; see skills.synchronization for details.',
+          synchronized.status === 'busy' ? 'busy' : 'validation');
+      }
     }
     progress('[ae-cli] [4/4] Checking authentication guidance...');
     if (report.auth.host) {

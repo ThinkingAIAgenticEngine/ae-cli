@@ -92,7 +92,7 @@ const artifactDownload = readFileSync(new URL('../skills/ae-analysis/references/
 const assetUrl = readFileSync(new URL('../skills/ae-analysis/references/asset_url_get.md', import.meta.url), 'utf8');
 const aiCommon = readFileSync(new URL('../skills/ae-analysis/references/ai_models.md', import.meta.url), 'utf8');
 const modelRefs = [...aiCommon.matchAll(/\]\((ai_models\/[^)]+\.md)\)/g)].map((match) => match[1]);
-assert.equal(modelRefs.length, 13, 'all supported models have directly readable references');
+assert.equal(modelRefs.length, 14, 'all supported models have directly readable references');
 const modelDocs = modelRefs.map((ref) => readFileSync(join(analysisRoot, 'references', ref), 'utf8'));
 const aiModels = [aiCommon, ...modelDocs].join('\n');
 const audienceModels = readFileSync(
@@ -202,7 +202,8 @@ assert.match(skill, /asset-authentication rows and metric-candidate rows in the 
 assert.match(skill, /Default recommendation export includes completed\/authenticated context/);
 assert.match(skill, /place returned `\[已认证\]` and `\[未认证\]` asset rows together/);
 assert.match(skill, /not an Agent-side pending-only filter/);
-assert.match(skill, /filter out already completed\/authenticated, deferred, or in-flight assets as pending work/);
+assert.match(skill, /select currently uncertified assets by business value and evidence/);
+assert.match(skill, /Do not query review history to select candidates/);
 assert.match(skill, /target about 20-50 pending review assets/);
 assert.match(skill, /hard cap around 80/);
 assert.match(skill, /overflow left for later batches/);

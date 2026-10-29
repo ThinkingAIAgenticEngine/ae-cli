@@ -152,12 +152,11 @@ test('auth status trusts a stored CLI token when server-side validation is unava
     authenticated: true,
     host,
     source: 'sandbox-cli-token',
-    hasCliToken: true,
-    note: 'sandbox-provisioned cli-token.json; no user access token in secure-store',
+    cli_token: { status: 'trusted' },
   });
 });
 
-test('auth logout clears credentials without removing the configured host', () => {
+test('auth logout preserves the configured host when no credentials are stored', () => {
   const home = tempHome();
   const config = {
     activeHost: 'https://ta.prod.example',
@@ -170,10 +169,11 @@ test('auth logout clears credentials without removing the configured host', () =
   const result = runCli(home, ['auth', 'logout']);
   assert.equal(result.status, 0, result.stderr);
   assert.deepEqual(parseJson(result.stdout).data, {
-    cleared: true,
+    cleared: false,
+    all: false,
     host: 'https://ta.prod.example',
+    remaining_accounts: 0,
   });
-  assert.match(result.stderr, /Credentials cleared for https:\/\/ta\.prod\.example/);
   assert.doesNotMatch(result.stderr, /config cleared/i);
   assert.deepEqual(readConfig(home), config);
 });

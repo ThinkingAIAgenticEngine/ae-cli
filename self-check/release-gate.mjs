@@ -20,6 +20,7 @@ const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 /** Ordered list of checks under ./checks/<id>.mjs */
 const RELEASE_CHECKS = [
   'skill-frontmatter',
+  'skill-businesses',
   'skill-risk-examples',
   'skill-preset-mcp',
   'skill-internal-distribution',

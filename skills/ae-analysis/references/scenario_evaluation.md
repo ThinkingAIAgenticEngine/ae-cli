@@ -8,23 +8,11 @@ Evaluate the original question, confirmed clarifications, final answer and query
 
 Check whether the path addresses the requested subquestions and whether the answer covers them. A visible scope mismatch, a contradiction within the answer, or an arithmetic error using the answer's own stated operands can demonstrate a specific defect; arithmetic consistency does not prove those operands are true. A failed call does not establish that all other calls failed. A user's objection is a separate signal: preserve and assess it, never automatically treat it as proof of error or dismiss it because the path appears reasonable. When the only way to confirm or refute feedback is missing result data, its support is unknown.
 
-Use verdicts correct, partial, incorrect, unknown. incorrect requires a demonstrable defect relevant to the scenario. partial means a demonstrable substantive omission or unresolved subquestion, even when honestly acknowledged. correct requires adequate support for the actual requested outcome; a plausible path alone cannot establish a numeric analysis answer as correct. unknown means the available path/answer/feedback cannot establish correctness. Do not turn path compliance into an overall success label. A later revision never erases an earlier defect or the original goal. Label each answer independently, then give the latest verdict.
+Assess answers as correct, incomplete, wrong, or unverifiable internally. A wrong answer requires a demonstrable defect relevant to the scenario. An incomplete answer has a demonstrable substantive omission or unresolved subquestion, even when honestly acknowledged. A correct answer requires adequate support for the actual requested outcome; a plausible path alone cannot establish a numeric analysis answer as correct. Unverifiable means the available path/answer/feedback cannot establish correctness. Do not turn path compliance into an overall success label. A later revision never erases an earlier defect or the original goal. Judge each answer against the confirmed requirements at that point; a newly added requirement is not retroactively an omission.
 
-For each question return:
-
-```json
-{
-  "question_id": "<source id>",
-  "answers": [{
-    "answer_id": "<source answer id>",
-    "verdict": "correct|partial|incorrect|unknown",
-    "reason": "Short source-supported explanation",
-    "limitations": ["What cannot be verified from available path and call records"],
-    "evidence_refs": ["<answer/path-step/call-record/entry IDs or precise source paths>"],
-    "user_feedback": [{"entry_id":"<source entry id>","support":"supported|unsupported|unknown","reason":"Source-supported explanation"}]
-  }],
-  "latest_verdict": "correct|partial|incorrect|unknown"
-}
-```
+For project archive review, follow [scenario list](scenario_list.md) for pagination, semantic deduplication and compact output. Include wrong and substantively incomplete answers as badcases. For Chinese output, label them "回答有误" and "回答不完整". Every badcase needs a concrete reason integrating the necessary source evidence, such as the contradictory numbers or the requested-but-missing subquestion. Keep answer/entry IDs and feedback-support checks internally for traceability, rather than dumping them into the final answer. Do not output internal verdict codes, a separate evidence list, raw JSON, or the latest/fixed status. Group repeated questions/defects with distinct-scenario occurrence counts. Briefly count unverifiable scenarios separately; never treat them as confirmed badcases or proven correct answers.
 
 These are independent model judgments, not certified ground truth. Keep evaluations separate from immutable collection; human review can calibrate them. When samples are supplied as local files, read only those files, supplied call records and this guide, never hidden fixtures, test expectations or the collector's private reasoning.
+
+
+Use [scenario list and detail](scenario_list.md#answer-duration-and-cli-execution-detail) when inspecting execution evidence. Add the measured question-to-answer duration to the concise review when available; otherwise state it was not collected. Use call evidence to explain a relevant execution error, but do not infer numeric answer correctness from a successful call or treat every transient failed attempt as a badcase. Preserve each occurrence's timing and invocation provenance when grouping.

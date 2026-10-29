@@ -9,8 +9,8 @@ Mapping command: `ae-cli community +get_risk_content`
 
 | Flag | Type | Required | Description |
 |------|------|------|------|
-| `--space-id` | number | yes | community space ID |
-| `--game-id` | number | yes | game/space ID |
+| `--space-id` | int64 | yes | Community space ID returned by `community spaces list` |
+| `--game-id` | int64 | no | Deprecated compatibility alias; omit it, or make it equal to `--space-id` |
 | `--start-time` | string | Yes | Lower limit of release time for risky content, format yyyy-MM-dd |
 | `--end-time` | string | yes | upper limit of release time for risky content, format yyyy-MM-dd |
 | `--risk-codes` | string | No | List of risk type codes, comma separated |
@@ -25,18 +25,18 @@ Mapping command: `ae-cli community +get_risk_content`
 ```bash
 # Query risk content
 ae-cli community +get_risk_content \
-  --space-id 1 --game-id 1 \
+  --space-id 1 \
   --start-time 2024-01-01 --end-time 2024-01-07
 
 # Filter by risk type
 ae-cli community +get_risk_content \
-  --space-id 1 --game-id 1 \
+  --space-id 1 \
   --start-time 2024-01-01 --end-time 2024-01-07 \
   --risk-codes 1,2
 
 # Keyword search
 ae-cli community +get_risk_content \
-  --space-id 1 --game-id 1 \
+  --space-id 1 \
   --start-time 2024-01-01 --end-time 2024-01-07 \
 --search-word "violating keywords"
 ```

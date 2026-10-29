@@ -52,13 +52,27 @@ export function scenarioInput(ctx: RuntimeContext, append = false): Record<strin
     if (!path.some((step) => analysisQueryCapabilities.has(step.capability_id))) throw new CliValidationError('query-path must reference at least one attempted analysis data query.');
     if (JSON.stringify(path).length > 20000) throw new CliValidationError('query-path must be at most 20000 characters.');
     input.query_path = path;
-  } else if (ctx.json('query-path') !== undefined || ctx.str('answer-id') || ctx.str('user-message')) {
+    const started = ctx.str('start-time');
+    if (started) input.duration_ms = scenarioDuration(started);
+  } else if (ctx.json('query-path') !== undefined || ctx.str('answer-id') || ctx.str('user-message') || ctx.str('start-time')) {
     throw new CliValidationError('user_feedback records user text and its target only; do not attach an answer or query path.');
   }
   return input;
 }
 
+function scenarioTransportInput(ctx: RuntimeContext, append = false): Record<string, unknown> {
+  const input = scenarioInput(ctx, append);
+  const field = append ? 'text' : 'answer';
+  const original = input[field] as string;
+  const bytes = Buffer.from(original, 'utf8');
+  if (bytes.toString('utf8') !== original) {
+    throw new CliValidationError(`${field} must contain valid Unicode text.`);
+  }
+  return { ...input, [field]: bytes.toString('base64'), content_encoding: 'base64' };
+}
+
 const commonFlags: Flag[] = [
+  { name: 'start-time', type: 'string', desc: 'Exact start_time returned by scenario begin for this answer. CLI computes one question-to-answer duration; omit if not captured.' },
   { name: 'question-id', type: 'string', desc: 'Stable original scenario turn ID. Collect defaults to current turn; append must reuse the original ID.' },
   { name: 'answer-id', type: 'string', desc: 'Actual answer identifier; defaults to answer:<current-turn-id>. Revisions need a new ID.' },
   { name: 'query-path', type: 'json', desc: '1..64 ordered references: [{capability_id,invocation_id?,client_request_id?,purpose?}]. Prefer only returned meta.invocation_id; fallback to returned gateway meta.client_request_id, never business request_id. One analysis data-query step required. Inputs/status/timing come from existing call telemetry. Never include query results.' },
@@ -105,7 +119,7 @@ export const scenarioCollect = withProjectCollectionPolicy(createAnalysisCapabil
   flags: [...commonFlags,
     { name: 'question', type: 'string', required: true, sensitive: true, desc: 'Original user scenario question and confirmed clarifications; up to 8192 characters.' },
     { name: 'answer', type: 'string', required: true, sensitive: true, desc: 'Exact answer text to deliver, not a summary. Up to 16384 characters. Deliver the same text after collection.' },
-  ], buildInput: (ctx) => scenarioInput(ctx),
+  ], buildInput: (ctx) => scenarioTransportInput(ctx),
 }));
 export const scenarioAppend = withProjectCollectionPolicy(createAnalysisCapabilityCommand({
   resource: 'scenario', command: 'append', capabilityId: 'analysis.scenario.append', risk: 'write',
@@ -116,6 +130,77 @@ export const scenarioAppend = withProjectCollectionPolicy(createAnalysisCapabili
     { name: 'text', type: 'string', required: true, sensitive: true, desc: 'Verbatim user feedback (up to 4096) or exact revised answer (up to 16384); no judgment of whether feedback is right.' },
     { name: 'entry-id', type: 'string', desc: 'Stable append ID; defaults to current-turn-id:entry-type. Preserve on retries, independent of text edits.' },
     { name: 'user-message', type: 'string', sensitive: true, desc: 'For answer_revision only: exact triggering follow-up request, up to 4096 characters, when not already captured as user_feedback. Preserve scope changes without inventing negative feedback.' },
-  ], buildInput: (ctx) => scenarioInput(ctx, true),
+  ], buildInput: (ctx) => scenarioTransportInput(ctx, true),
 }));
-export default [scenarioCollect, scenarioAppend];
+export function scenarioDuration(start: string, now = Date.now()): number {
+  const millis = Date.parse(start);
+  if (!/^\d{4}-\d{2}-\d{2}T.*(?:Z|[+-]\d{2}:\d{2})$/.test(start) || !Number.isFinite(millis)
+      || !new Date(`${start.slice(0, 10)}T00:00:00Z`).toISOString().startsWith(start.slice(0, 10))
+      || millis > now || now - millis > 7776000000) {
+    throw new CliValidationError('start-time must be a real ISO-8601 timestamp within the last 90 days, copied from scenario begin.');
+  }
+  return now - millis;
+}
+
+export const scenarioBegin: Command = {
+  service: 'analysis', resource: 'scenario', command: 'begin', risk: 'read', usesAeHost: false,
+  description: 'Capture the start of this question locally. No network request or file write. Reuse start_time when collecting the ready answer.',
+  flags: [],
+  execute: async () => ({ start_time: new Date().toISOString() }),
+};
+
+export function scenarioListInput(ctx: RuntimeContext): Record<string, unknown> {
+  const input: Record<string, unknown> = {};
+  for (const [flag, min, max, fallback] of [
+    ['project-id', 1, 2147483647, undefined], ['days', 1, 90, 7],
+    ['limit', 1, 50, 20], ['offset', 0, 2147483647, 0],
+  ] as const) {
+    const value = ctx.str(flag) === '' ? fallback : Number(ctx.str(flag));
+    if (value === undefined || !Number.isInteger(value) || value < min || value > max) {
+      throw new CliValidationError(`${flag} must be an integer between ${min} and ${max}.`);
+    }
+    input[flag.replaceAll('-', '_')] = value;
+  }
+  const end = ctx.str('end-time');
+  if (end) {
+    if (!/^\d{4}-\d{2}-\d{2}T.*(?:Z|[+-]\d{2}:\d{2})$/.test(end) || !Number.isFinite(Date.parse(end))
+        || !new Date(`${end.slice(0, 10)}T00:00:00Z`).toISOString().startsWith(end.slice(0, 10))) {
+      throw new CliValidationError('end-time must be an ISO-8601 timestamp with a timezone.');
+    }
+    // Reuse the server boundary losslessly; Date serialization truncates sub-millisecond precision.
+    input.end_time = end;
+  }
+  return input;
+}
+
+export const scenarioList = createAnalysisCapabilityCommand({
+  resource: 'scenario', command: 'list', capabilityId: 'analysis.scenario.list', risk: 'read',
+  description: 'Read archived scenario questions with optional answer duration, exact answers, feedback and revisions. Follow the scenario review Skill for semantic deduplication and badcase assessment.',
+  flags: [
+    { name: 'project-id', type: 'number', required: true, desc: 'Project to review. Requires project configuration permission to read collected content.' },
+    { name: 'days', type: 'number', desc: 'Recent calendar days including today in the deployment timezone. Default 7; range 1..90.' },
+    { name: 'limit', type: 'number', desc: 'Complete scenarios per page. Default 20; range 1..50.' },
+    { name: 'offset', type: 'number', desc: 'Scenario offset. Default 0; follow meta.next_offset until meta.has_more is false.' },
+    { name: 'end-time', type: 'string', desc: 'Exclusive ISO-8601 snapshot boundary. Reuse the first response meta.end_time and the same days on every subsequent page.' },
+  ],
+  buildInput: scenarioListInput,
+});
+export function scenarioGetInput(ctx: RuntimeContext): Record<string, unknown> {
+  const { limit, offset, ...input } = scenarioListInput(ctx);
+  for (const key of ['open-id', 'agent-session-id', 'question-id']) {
+    input[key.replaceAll('-', '_')] = text(ctx.str(key), key, 191);
+  }
+  return input;
+}
+
+export const scenarioGet = createAnalysisCapabilityCommand({
+  resource: 'scenario', command: 'get', capabilityId: 'analysis.scenario.get', risk: 'read',
+  description: 'Read one archived question with answer duration and linked CLI inputs, execution results, costs and errors. Missing evidence stays explicit.',
+  flags: [
+    ...scenarioList.flags.filter((flag) => !['limit', 'offset'].includes(flag.name)),
+    { name: 'open-id', type: 'string', required: true, desc: 'Exact initial.open_id from scenario list. Project configuration permission is still required.' },
+    { name: 'agent-session-id', type: 'string', required: true, desc: 'Exact initial.agent_session_id from scenario list.' },
+    { name: 'question-id', type: 'string', required: true, desc: 'Exact initial.question_id from scenario list.' },
+  ], buildInput: scenarioGetInput,
+});
+export default [scenarioBegin, scenarioCollect, scenarioAppend, scenarioList, scenarioGet];

@@ -21,6 +21,7 @@ import { CliValidationError } from '../../core/errors.js';
 import { detectEncoding, decodeTextStream, decodeFileSample } from './encoding.js';
 import { flattenDelimitedRow, flattenLocalDataRow } from './flatten.js';
 import { assessFileSize } from './estimate.js';
+import { streamParquet } from './parquet.js';
 import type {
   HeaderDetection,
   LocalDataCellIssue,
@@ -89,7 +90,7 @@ export function resolveLocalDataInputMeta(filePath: string): LocalDataInputMeta 
       location: { field: 'input-file' },
     });
   }
-  if (format !== 'xls' && format !== 'xlsx' && !encoding) {
+  if (format !== 'xls' && format !== 'xlsx' && format !== 'parquet' && !encoding) {
     encoding = detectEncoding(filePath);
   }
 
@@ -294,6 +295,8 @@ export async function streamLocalDataRows(
         return await streamXlsx(input.filePath, dataSet.label, wrappedRow, opts);
       case 'xls':
         return await streamXls(input.filePath, dataSet.label, wrappedRow, opts);
+      case 'parquet':
+        return await streamParquet(input.filePath, wrappedRow);
     }
   } catch (error) {
     if (error instanceof CliValidationError) throw error;
@@ -318,6 +321,7 @@ function resolveFormat(filePath: string): LocalDataFormat | 'txt' {
   if (extension === 'ndjson') return 'jsonl';
   if (extension === 'xls') return 'xls';
   if (extension === 'xlsx' || extension === 'xlsm') return 'xlsx';
+  if (extension === 'parquet' || extension === 'pq') return 'parquet';
   // .txt and unknown extensions fall back to content sniffing.
   return 'txt';
 }
@@ -483,7 +487,7 @@ interface DiscoveredDataSets {
 }
 
 async function discoverDataSets(filePath: string, format: LocalDataFormat): Promise<DiscoveredDataSets> {
-  if (format === 'csv' || format === 'tsv' || format === 'jsonl') {
+  if (format === 'csv' || format === 'tsv' || format === 'jsonl' || format === 'parquet') {
     return { visible: [{ id: '$', kind: 'file', label: basename(filePath), selector: '$' }], hidden: [] };
   }
   if (format === 'xls') {

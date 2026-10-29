@@ -23,6 +23,7 @@ export const kbIndex: Command = {
   description:
     'List accessible knowledge bases and their index.md navigation maps via POST /agent/api/external/knowledge-bases/index. Call this first to see the layout, then use +grep to locate and +read to open pages.',
   flags: [
+    { name: 'read-context', type: 'string', required: false, desc: 'Pin reads to an existing read context' },
     {
       name: 'sources',
       type: 'json',

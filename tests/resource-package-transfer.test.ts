@@ -30,8 +30,8 @@ let chunkHeadersValid = false;
 const originalFetch = globalThis.fetch;
 globalThis.fetch = async (input, init) => {
   const url = String(input);
-  if (url.includes('/v1/ta/cli/token/renew')) return new Response('', { status: 404 });
   const headers = new Headers(init?.headers);
+  if (url.includes('/v1/ta/cli/token/renew')) return new Response('', { status: 404 });
   assert.equal(headers.get('cli-token'), 'cli_test_token');
   if (url.endsWith('/api/resource-packages/uploads') && init?.method === 'POST') {
     initializations += 1;

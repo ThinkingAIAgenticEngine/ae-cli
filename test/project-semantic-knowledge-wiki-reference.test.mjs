@@ -1155,7 +1155,7 @@ assert.equal(capturedCompanyCalls[0][capturedCompanyCalls[0].indexOf('--scope') 
 assert.ok(capturedCompanyCalls[0].includes('--custom-instructions'));
 assert.equal(capturedCompanyCalls[0][capturedCompanyCalls[0].indexOf('--custom-instructions') + 1], 'Keep README files as filing guides only.');
 assert.ok(!capturedCompanyCalls[0].includes('--custom-instructions-file'));
-await assert.rejects(() => runCompanyKb('+new', ['--name', 'Forbidden KB'], async () => ({
+await assert.rejects(() => runCompanyKb('+new', ['--name', 'Forbidden KB', '--project-id', '196'], async () => ({
   ok: false,
   error: { code: 'forbidden' },
 })), /personal fallback/);

@@ -2,7 +2,7 @@ import fs from 'fs';
 import { getActiveHost } from './config.js';
 import { getCliToken } from './cli-token.js';
 import { SecureStoreAuthError } from './secure-store.js';
-import { safeJsonParse } from './json-utils.js';
+import { safeJsonParse, stringifyJsonRequest } from './json-utils.js';
 import { logger } from './logger.js';
 import { PermissionError } from './errors.js';
 import { internalCallSourceHeaders } from './internal-call-source.js';
@@ -178,7 +178,7 @@ async function mcpRequest(
   const resp = await fetch(url, {
     method: 'POST',
     headers,
-    body: JSON.stringify(body),
+    body: stringifyJsonRequest(body),
     ...externalCliTokenRequestOptions(url),
   });
 

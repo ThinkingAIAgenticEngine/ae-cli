@@ -158,19 +158,19 @@ if (!/rename a BI dashboard/i.test(biPanelUpdate.description)) {
   fail('BI panel update description must disclose rename-only behavior');
 }
 
-const EXPECTED_GATEWAY_LIFECYCLE_COUNT = 6;
+const EXPECTED_GATEWAY_LIFECYCLE_COUNT = 7;
 if (gatewayLifecycleCommands.length !== EXPECTED_GATEWAY_LIFECYCLE_COUNT) {
   fail(`analysis gateway lifecycle command count mismatch: expected ${EXPECTED_GATEWAY_LIFECYCLE_COUNT}, got ${gatewayLifecycleCommands.length}`);
 }
 
-const EXPECTED_CAPABILITY_COUNT = 349;
+const EXPECTED_CAPABILITY_COUNT = 353;
 if (capabilityCommands.length !== EXPECTED_CAPABILITY_COUNT) {
   fail(`analysis capability command count mismatch: expected ${EXPECTED_CAPABILITY_COUNT}, got ${capabilityCommands.length}`);
 }
 
 const EXPECTED_CAPABILITY_COUNTS_BY_SERVICE = {
-  analysis: 122,
-  'analysis-meta': 65,
+  analysis: 125,
+  'analysis-meta': 66,
   'analysis-governance': 23,
   project: 51,
   system: 61,

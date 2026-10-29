@@ -184,12 +184,14 @@ function exportBody(ctx: RuntimeContext) {
     requestKey: ctx.str('requestKey') || randomUUID(), kind: 'export', scope: scope(ctx),
     payload: {
       roots: references(ctx, 'roots'), excluded: references(ctx, 'excluded'),
+      ...(ctx.str('view') ? {view:ctx.str('view')} : {}),
       ...(ctx.str('fileNameBase') ? { fileNameBase: ctx.str('fileNameBase') } : {}),
     },
   };
 }
 
 function validateExport(ctx: RuntimeContext): void {
+  if(ctx.str('view') && !['working','published'].includes(ctx.str('view')))throw new CliValidationError('--view must be working or published');
   exportBody(ctx);
   if (ctx.str('requestKey')) id(ctx, 'requestKey', 'request-key');
   const base = ctx.str('fileNameBase');
@@ -207,6 +209,7 @@ export const exportResourcePackage: Command = {
     { name: 'scope', type: 'string', required: true, desc: 'Export scope: personal or company' },
     { name: 'roots', type: 'string', required: true, desc: 'JSON, @file, or stdin (-) array of root resources' },
     { name: 'excluded', type: 'string', desc: 'JSON or @file array of dependencies to exclude' },
+    { name: 'view', type: 'string', desc: 'Knowledge base content: working (default) or published' },
     { name: 'file-name-base', type: 'string', desc: 'Optional output ZIP base name' },
     { name: 'request-key', type: 'string', desc: 'Optional idempotency key; reuse only for the same export' },
     { name: 'output', type: 'string', desc: 'Local ZIP path; defaults to the artifact filename' },

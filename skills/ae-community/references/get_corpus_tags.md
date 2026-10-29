@@ -9,12 +9,12 @@ Mapping command: `ae-cli community +get_corpus_tags`
 
 | Flag | Type | Required | Description |
 |------|------|------|------|
-| `--space-id` | number | yes | community space ID |
-| `--game-id` | number | yes | game/space ID |
+| `--space-id` | int64 | yes | Community space ID returned by `community spaces list` |
+| `--game-id` | int64 | no | Deprecated compatibility alias; omit it, or make it equal to `--space-id` |
 
 ## Example
 
 ```bash
 # Get the tag list
-ae-cli community +get_corpus_tags --space-id 1 --game-id 1
+ae-cli community +get_corpus_tags --space-id 1
 ```

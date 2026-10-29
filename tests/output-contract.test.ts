@@ -21,6 +21,14 @@ assert.match(sqlTable, /one/);
 assert.match(sqlTable, /two/);
 assert.doesNotMatch(sqlTable, /^\[\s*"n"/);
 
+const tableWithSummary = await formatOutput(
+  { total: 2, positive: 1, channels: [{ channelId: '1940327799817117696', count: 2 }] },
+  'table',
+);
+assert.match(tableWithSummary, /total/);
+assert.match(tableWithSummary, /positive/);
+assert.match(tableWithSummary, /1940327799817117696/);
+
 assert.deepEqual(
   await json({ data: { items: [{ id: 2 }] } }, '.data.items'),
   { ok: true, data: [{ id: 2 }] },

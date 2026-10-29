@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
-import { readFileSync } from 'node:fs';
+import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
+import os from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
 import { fileURLToPath } from 'node:url';
@@ -17,15 +18,20 @@ const END_MARKER = '<!-- root-command-surface:end -->';
 
 function rootCommandsFromHelp() {
   const tsxCli = path.join(ROOT, 'node_modules', 'tsx', 'dist', 'cli.mjs');
-  const output = execFileSync(
-    process.execPath,
-    [tsxCli, path.join(ROOT, 'src', 'index.ts'), '--no-update-check', '--help'],
-    {
-      cwd: ROOT,
-      encoding: 'utf8',
-      env: { ...process.env, NO_COLOR: '1' },
-    },
-  );
+  const home = mkdtempSync(path.join(os.tmpdir(), 'ae-readme-surface-'));
+  const env = { ...process.env, HOME: home, USERPROFILE: home, NO_COLOR: '1' };
+  for (const key of ['AE_CLI_TOKEN', 'AE_CLI_TOKEN_HOST', 'AE_CLI_TOKEN_FILE', 'TE_AGENT_CLI_CONFIG_DIR']) delete env[key];
+  let output;
+  try {
+    // The complete command catalog must not depend on the developer's active business selection.
+    output = execFileSync(
+      process.execPath,
+      [tsxCli, path.join(ROOT, 'src', 'index.ts'), '--no-update-check', '--help'],
+      { cwd: ROOT, encoding: 'utf8', env },
+    );
+  } finally {
+    rmSync(home, { recursive: true, force: true });
+  }
   const commandsBlock = output.split('\nCommands:\n')[1];
   assert.ok(commandsBlock, 'root help must include a Commands section');
   return commandsBlock

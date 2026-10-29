@@ -6,10 +6,13 @@ import test, { type TestContext } from 'node:test';
 import { runInNewContext } from 'node:vm';
 import ts from 'typescript';
 import { runInstallation, type InstallationOptions } from '../src/core/installation.js';
-import { defaultInstallRunner, exactVersion, installHost, SKILLS_TOOL, type ProcessRunner } from '../src/core/install-process.js';
+import { defaultInstallRunner, exactVersion, installHost, type ProcessRunner } from '../src/core/install-process.js';
+import { reserveBusinessSkillContext, syncBusinessSkills } from '../src/core/business-skill-sync.js';
+import { skillCopyHash, type SkillsTool, type SkillsToolOperation } from '../src/core/skills-tool.js';
+import { setExternalCliTokenFile } from '../src/core/external-cli-token.js';
 
 function fixture(t: TestContext, packageName = '@thinkingai/ae-cli', platform = process.platform) {
-  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'ae-install-test-'));
+  const tmp = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'ae-install-test-')));
   t.after(() => fs.rmSync(tmp, { recursive: true, force: true }));
   const source = path.join(tmp, 'source');
   const prefix = path.join(tmp, 'prefix with spaces & 中文');
@@ -17,23 +20,24 @@ function fixture(t: TestContext, packageName = '@thinkingai/ae-cli', platform = 
   const root = path.join(globalRoot, packageName);
   const bin = platform === 'win32' ? path.join(prefix, 'ae-cli.cmd') : path.join(prefix, 'bin', 'ae-cli');
   const skillsDirectory = path.join(tmp, 'home', '.agents', 'skills');
+  const clientDirectory = path.join(tmp, 'home', '.claude', 'skills');
+  const stateDirectory = path.join(tmp, 'state');
+  const names = ['ae-agent', 'ae-analysis', 'ae-dataops'];
   fs.mkdirSync(path.join(source, 'bin'), { recursive: true });
   fs.mkdirSync(path.join(source, 'dist'));
   fs.writeFileSync(path.join(source, 'bin', 'ae-cli.js'), '#!/usr/bin/env node\n');
   fs.writeFileSync(path.join(source, 'package.json'), JSON.stringify({ name: packageName, version: '6.1.9' }));
-  for (const name of ['ae-agent', 'mcp2cli']) {
+  for (const name of names) {
     const dir = path.join(source, 'skills', name);
     fs.mkdirSync(path.join(dir, 'references'), { recursive: true });
     fs.writeFileSync(path.join(dir, 'SKILL.md'), `---\nname: ${name}\ndescription: "Test Skill"\n---\nBody\n`);
     fs.writeFileSync(path.join(dir, 'references', 'usage.md'), 'Exact release reference\n');
   }
-  const names = ['ae-agent', 'mcp2cli'];
   const state = {
-    calls: [] as Array<{ command: string; args: string[] }>, installed: false, installedVersion: '',
-    installCalls: 0, addCalls: 0, missing: [] as string[], corrupt: [] as string[], stale: [] as string[],
-    localFails: false, allFail: false, addStatus: 0, addOutput: '', stderr: '',
-    npmError: '', wrongVersion: false, noBin: false, invalidList: false, listNamesOnly: false,
-    missingSource: false, auth: false,
+    calls: [] as Array<{ command: string; args: string[] }>, installedVersion: '', installCalls: 0,
+    syncCalls: [] as string[], operations: [] as SkillsToolOperation[], missing: [] as string[], corrupt: [] as string[],
+    npmError: '', wrongVersion: false, noBin: false, auth: false, failClients: false, failTool: false,
+    afterNpm: undefined as (() => void) | undefined,
   };
   function install(version = '6.1.9') {
     fs.mkdirSync(root, { recursive: true });
@@ -41,12 +45,9 @@ function fixture(t: TestContext, packageName = '@thinkingai/ae-cli', platform = 
     fs.writeFileSync(path.join(root, 'package.json'), JSON.stringify({ name: packageName, version }));
     fs.mkdirSync(path.dirname(bin), { recursive: true });
     if (!state.noBin && !fs.existsSync(bin)) {
-      if (platform === 'win32') {
-        fs.writeFileSync(bin, `@ECHO off\r\nnode "%dp0%\\node_modules\\${packageName.replace(/\//g, '\\')}\\bin\\ae-cli.js" %*\r\n`);
-      } else fs.symlinkSync(path.join(root, 'bin', 'ae-cli.js'), bin);
+      if (platform === 'win32') fs.writeFileSync(bin, `@node "%dp0%\\node_modules\\${packageName.replace(/\//g, '\\')}\\bin\\ae-cli.js" %*`);
+      else fs.symlinkSync(path.join(root, 'bin', 'ae-cli.js'), bin);
     }
-    if (state.missingSource) fs.rmSync(path.join(root, 'skills'), { recursive: true });
-    state.installed = true;
     state.installedVersion = version;
   }
   const runner: ProcessRunner = (command, args) => {
@@ -58,340 +59,323 @@ function fixture(t: TestContext, packageName = '@thinkingai/ae-cli', platform = 
     if (args[0] === 'install') {
       state.installCalls++;
       if (state.npmError) return { status: 1, stdout: '', stderr: state.npmError };
-      install(args[2].split('@').at(-1)!); return ok();
-    }
-    if (args.includes('add')) {
-      assert.equal(args[1], SKILLS_TOOL);
-      if (args.includes('--copy')) {
-        assert.equal(args[3], skillsDirectory);
-        assert.ok(!args.includes('--agent'));
-      } else assert.deepEqual(args.slice(6, 8), ['--agent', 'universal']);
-      assert.ok(!args.includes('promptscript'));
-      state.addCalls++;
-      const remote = args[3].includes('#v');
-      if (state.allFail || (state.localFails && !remote && !args.includes('--copy'))) return { status: 1, stdout: '', stderr: 'network timeout' };
-      for (const name of names) {
-        if (state.missing.includes(name)) continue;
-        const target = path.join(skillsDirectory, name);
-        fs.mkdirSync(target, { recursive: true });
-        fs.cpSync(path.join(source, 'skills', name), target, { recursive: true });
-        if (state.corrupt.includes(name)) fs.writeFileSync(path.join(target, 'SKILL.md'), '---\nname: mcp2cli\ndescription: broken: YAML\n---\n');
-        if (state.stale.includes(name)) fs.writeFileSync(path.join(target, 'references', 'usage.md'), 'Old release reference');
-      }
-      return { status: state.addStatus, stdout: state.addOutput, stderr: state.stderr };
+      install(args[2].split('@').at(-1)!); state.afterNpm?.(); return ok();
     }
     if (args.includes('status')) return ok(JSON.stringify({ ok: true, data: { authenticated: state.auth, token: 'MUST_NOT_LEAK' } }));
     throw new Error('Unexpected subprocess');
   };
-  const options: InstallationOptions = { target: '6.1.9', packageName, runner,
-    skillsDirectory, nodeVersion: '20.19.5', platform, env: { PATH: path.dirname(bin) } };
-  return { tmp, source, root, globalRoot, prefix, bin, skillsDirectory, state, install, runner,
-    run: (overrides: InstallationOptions = {}) => runInstallation({ ...options, ...overrides }) };
+  const tool: SkillsTool = {
+    targets: () => {
+      if (state.failTool) throw new Error('Private tool failure token=SECRET');
+      return [{ agent: 'universal', directory: skillsDirectory, detected: true, installable: true },
+        { agent: 'fixture-client', directory: clientDirectory, detected: true, installable: true }];
+    },
+    apply: operations => operations.map(operation => {
+      state.operations.push(operation);
+      const target = path.join(operation.target.directory, operation.skill);
+      const receipt = { action: operation.action, skill: operation.skill, agent: operation.target.agent, path: target };
+      if (state.missing.includes(operation.skill) || (state.failClients && operation.target.agent === 'fixture-client')) {
+        return { ...receipt, status: 'failed', reason: 'tool_operation_failed' };
+      }
+      if (operation.action === 'remove') fs.rmSync(target, { recursive: true });
+      else {
+        fs.mkdirSync(path.dirname(target), { recursive: true });
+        fs.rmSync(target, { recursive: true, force: true });
+        fs.cpSync(operation.source, target, { recursive: true });
+        if (state.corrupt.includes(operation.skill)) fs.writeFileSync(path.join(target, 'SKILL.md'), '---\nname: broken\ndescription: broken: yaml\n---');
+      }
+      return { ...receipt, status: 'success', ...(operation.action === 'install' ? { hash: skillCopyHash(target)! } : {}) };
+    }),
+  };
+  const options: InstallationOptions = { target: '6.1.9', packageName, runner, skillsDirectory,
+    skillStateDirectory: stateDirectory, nodeVersion: '20.19.5', platform, env: { PATH: path.dirname(bin) },
+    skillContext: { host: '', tokenFingerprint: '' },
+    syncSkills: options => { state.syncCalls.push(options.mode ?? 'sync'); return syncBusinessSkills({ ...options, tool }); } };
+  return { tmp, source, root, globalRoot, prefix, bin, skillsDirectory, clientDirectory, stateDirectory, names, state, runner,
+    install, run: (extra: InstallationOptions = {}) => runInstallation({ ...options, ...extra }) };
 }
 
-test('Node below 20 fails before subprocesses', t => {
-  const f = fixture(t);
-  assert.match(f.run({ nodeVersion: '18.20.8' }).error!.message, /Node.js 20/);
-  assert.equal(f.state.calls.length, 0);
-});
-
-test('fresh install verifies actual global bin and every expected Skill', t => {
+test('first installation selects all Skills without an availability snapshot and uses only the managed tool', t => {
   const f = fixture(t); const result = f.run();
   assert.equal(result.ok, true, JSON.stringify(result));
+  assert.equal(result.cli.action, 'installed');
   assert.equal(result.cli.verified, true);
   assert.equal(result.cli.path, f.bin);
-  assert.equal(result.skills.installed_count, 2);
+  assert.equal(result.cli.entrypoint, fs.realpathSync(path.join(f.root, 'bin', 'ae-cli.js')));
+  assert.equal(result.skills.expected_count, 3);
+  assert.equal(result.skills.installed_count, 3);
   assert.equal(result.skills.source, 'installed-package');
-  assert.ok(f.state.calls.some(call => call.command === f.bin && call.args[0] === '--version'));
-  assert.equal(f.state.installCalls, 1);
-  const addArgs = f.state.calls.find(call => call.args.includes('add'))!.args;
-  assert.deepEqual(addArgs.slice(addArgs.indexOf('--skill') + 1), ['ae-agent', 'mcp2cli']);
+  assert.deepEqual(f.state.syncCalls, ['sync']);
+  assert.equal(f.state.operations.length, 6);
+  assert.equal(f.state.calls.some(call => call.args.includes('add')), false);
+  assert.equal(fs.existsSync(path.join(f.stateDirectory, 'business-config.json')), false);
 });
 
-test('shared Skills are installed once before automatic client distribution', t => {
-  const f = fixture(t);
-  assert.equal(f.run().ok, true);
-  const adds = f.state.calls.filter(call => call.args.includes('add'));
-  assert.equal(adds.length, 2);
-  assert.deepEqual(adds[0].args.slice(6, 8), ['--agent', 'universal']);
-  assert.equal(adds[1].args[3], f.skillsDirectory);
-  assert.ok(adds[1].args.includes('--copy'));
-  assert.ok(!adds[1].args.includes('--agent'));
+for (const mode of ['environment', 'invalid-environment', 'file-environment', 'file-option', 'sandbox-root', 'sandbox-config', 'fallback-token'] as const) {
+  test(`${mode} credentials skip every global Skill stage while keeping CLI verification`, t => {
+    const keys = ['HOME', 'AE_CLI_TOKEN', 'AE_CLI_TOKEN_HOST', 'AE_CLI_TOKEN_FILE', 'SANDBOX_RUNTIME_ROOT', 'TE_AGENT_CLI_CONFIG_DIR'];
+    const previous = Object.fromEntries(keys.map(key => [key, process.env[key]]));
+    for (const key of keys) delete process.env[key];
+    const f = fixture(t); f.install();
+    const external = path.join(f.tmp, 'external.json');
+    fs.writeFileSync(external, JSON.stringify({ url: 'https://external.example', token: 'cli_external_install_fixture' }));
+    if (mode === 'environment' || mode === 'invalid-environment') {
+      process.env.AE_CLI_TOKEN = mode === 'environment' ? 'cli_external_install_fixture' : '';
+      process.env.AE_CLI_TOKEN_HOST = 'https://external.example';
+    } else if (mode === 'file-environment') process.env.AE_CLI_TOKEN_FILE = external;
+    else if (mode === 'file-option') setExternalCliTokenFile(external);
+    else if (mode === 'sandbox-root') process.env.SANDBOX_RUNTIME_ROOT = path.join(f.tmp, 'sandbox');
+    else if (mode === 'sandbox-config') process.env.TE_AGENT_CLI_CONFIG_DIR = path.join(f.tmp, 'sandbox-config');
+    else {
+      process.env.HOME = f.tmp;
+      const fallback = path.join(f.tmp, '.ae-config', 'cli-token.json');
+      fs.mkdirSync(path.dirname(fallback), { recursive: true });
+      fs.writeFileSync(fallback, JSON.stringify({ url: 'https://sandbox.example', token: 'cli_session_install_fixture' }));
+    }
+    try {
+      // Invalid/missing package Skills must not matter when all global Skill work is skipped.
+      fs.rmSync(path.join(f.root, 'skills'), { recursive: true });
+      fs.mkdirSync(f.stateDirectory, { recursive: true });
+      const context = path.join(f.stateDirectory, 'business-skill-context.json');
+      const ledger = path.join(f.stateDirectory, 'business-skills.json');
+      fs.writeFileSync(context, 'Existing context');
+      fs.writeFileSync(ledger, 'Existing ledger');
+      const unrelated = path.join(f.skillsDirectory, 'ae-agent', 'SKILL.md');
+      fs.mkdirSync(path.dirname(unrelated), { recursive: true });
+      fs.writeFileSync(unrelated, 'Existing global Skill');
+      let calls = 0;
+      const result = f.run({ syncSkills: () => { calls += 1; throw new Error('Must not synchronize'); } });
+      assert.equal(result.ok, true, JSON.stringify(result));
+      assert.equal(result.cli.verified, true);
+      assert.equal(result.skills.status, 'skipped');
+      assert.equal(result.skills.source, null);
+      assert.equal(result.skills.expected_count, 0);
+      assert.equal(result.skills.attempts.length, 0);
+      assert.equal(calls, 0);
+      assert.equal(fs.readFileSync(context, 'utf8'), 'Existing context');
+      assert.equal(fs.readFileSync(ledger, 'utf8'), 'Existing ledger');
+      assert.equal(fs.readFileSync(unrelated, 'utf8'), 'Existing global Skill');
+      assert.doesNotMatch(JSON.stringify(result), /cli_external_install_fixture/);
+    } finally {
+      setExternalCliTokenFile(undefined);
+      for (const key of keys) {
+        if (previous[key] === undefined) delete process.env[key];
+        else process.env[key] = previous[key];
+      }
+    }
+  });
+}
+
+test('external credentials do not create a previously absent Skill ledger or context', t => {
+  const previousToken = process.env.AE_CLI_TOKEN, previousHost = process.env.AE_CLI_TOKEN_HOST;
+  process.env.AE_CLI_TOKEN = 'cli_external_install_fixture';
+  process.env.AE_CLI_TOKEN_HOST = 'https://external.example';
+  try {
+    const f = fixture(t);
+    assert.equal(f.run().skills.status, 'skipped');
+    assert.equal(fs.existsSync(f.stateDirectory), false);
+    assert.equal(fs.existsSync(f.skillsDirectory), false);
+  } finally {
+    if (previousToken === undefined) delete process.env.AE_CLI_TOKEN; else process.env.AE_CLI_TOKEN = previousToken;
+    if (previousHost === undefined) delete process.env.AE_CLI_TOKEN_HOST; else process.env.AE_CLI_TOKEN_HOST = previousHost;
+  }
 });
 
-test('client distribution failure retains the shared install and does not retry git', t => {
-  const f = fixture(t);
-  const result = f.run({ runner: (command, args, timeout) => {
-    if (args.includes('--copy')) return { status: 1, stdout: '', stderr: 'EPERM token=SECRET' };
-    return f.runner(command, args, timeout);
-  } });
-  assert.equal(result.ok, false);
-  assert.equal(result.error?.stage, 'skills_clients');
-  assert.equal(result.error?.cause, 'permission');
-  assert.ok(fs.existsSync(path.join(f.skillsDirectory, 'ae-agent', 'SKILL.md')));
-  assert.ok(!f.state.calls.some(call => call.args.some(arg => arg.includes('#v'))));
-  assert.doesNotMatch(JSON.stringify(result), /SECRET/);
-});
-
-test('same version skips npm installation and repeated runs are idempotent', t => {
+test('same version is idempotent and never adopts new copies after the ledger exists', t => {
   const f = fixture(t); f.install();
-  assert.equal(f.run().cli.action, 'skipped');
   assert.equal(f.run().ok, true);
+  assert.deepEqual(f.state.syncCalls, ['adopt', 'sync']);
+  const operations = f.state.operations.length;
+  assert.equal(f.run().ok, true);
+  assert.equal(f.state.operations.length, operations);
+  assert.deepEqual(f.state.syncCalls, ['adopt', 'sync', 'sync']);
   assert.equal(f.state.installCalls, 0);
 });
 
-test('older installed version is upgraded', t => {
-  const f = fixture(t); f.install('6.1.8');
+test('an upgrade cannot reinstall explicitly closed businesses and unknown preserves their absence', t => {
+  const f = fixture(t);
   assert.equal(f.run().ok, true);
-  assert.equal(f.state.installCalls, 1);
+  assert.equal(f.run({ businesses: { agent: false, dataops: false } }).ok, true);
+  assert.equal(fs.existsSync(path.join(f.skillsDirectory, 'ae-agent')), false);
+  fs.writeFileSync(path.join(f.source, 'skills', 'ae-analysis', 'references', 'usage.md'), 'New release');
+  const result = f.run({ target: '6.1.10', businesses: { agent: false, dataops: false } });
+  assert.equal(result.ok, true, JSON.stringify(result));
+  assert.equal(result.skills.expected_count, 1);
+  assert.equal(fs.existsSync(path.join(f.skillsDirectory, 'ae-agent')), false);
+  assert.equal(fs.existsSync(path.join(f.clientDirectory, 'ae-dataops')), false);
+  assert.equal(f.run({ target: '6.1.10', businesses: {} }).ok, true);
+  assert.equal(fs.existsSync(path.join(f.skillsDirectory, 'ae-agent')), false);
 });
 
-
-
-test('PromptScript false failure is silent after complete global verification', t => {
-  const f = fixture(t); f.state.addStatus = 1;
-  f.state.addOutput = '✗ ae-agent → PromptScript: PromptScript does not support global skill installation\n✗ mcp2cli → PromptScript: PromptScript does not support global skill installation\nFailed to install 2';
+test('old exact copies are adopted against the previous package before npm replaces it', t => {
+  const f = fixture(t); f.install('6.1.8');
+  fs.cpSync(path.join(f.root, 'skills'), f.skillsDirectory, { recursive: true });
+  fs.writeFileSync(path.join(f.source, 'skills', 'ae-agent', 'references', 'usage.md'), 'New release');
   const result = f.run();
-  assert.equal(result.ok, true);
-  assert.doesNotMatch(JSON.stringify(result), /PromptScript|unrelated Agent|Failed to install/);
-  assert.equal(result.skills.installed_count, 2);
+  assert.equal(result.ok, true, JSON.stringify(result));
+  assert.deepEqual(f.state.syncCalls, ['adopt', 'sync']);
+  assert.equal(fs.readFileSync(path.join(f.skillsDirectory, 'ae-agent', 'references', 'usage.md'), 'utf8'), 'New release');
 });
 
+test('user-modified copies survive upgrades and return a named partial result', t => {
+  const f = fixture(t); assert.equal(f.run().ok, true);
+  const file = path.join(f.skillsDirectory, 'ae-agent', 'references', 'usage.md');
+  fs.writeFileSync(file, 'My instructions');
+  fs.writeFileSync(path.join(f.source, 'skills', 'ae-agent', 'references', 'usage.md'), 'New release');
+  const result = f.run({ target: '6.1.10' });
+  assert.equal(result.ok, false);
+  assert.equal(result.skills.status, 'partial');
+  assert.equal(fs.readFileSync(file, 'utf8'), 'My instructions');
+  assert.ok(result.skills.synchronization?.skipped.some(item => item.skill === 'ae-agent' && item.reason === 'copy_modified'));
+});
 
-test('YAML corruption is a named partial failure even when add exits zero', t => {
-  const f = fixture(t); f.state.corrupt = ['mcp2cli'];
+test('legacy migration refuses extra files and later runs do not claim new manual copies', t => {
+  const f = fixture(t); f.install();
+  fs.cpSync(path.join(f.root, 'skills'), f.skillsDirectory, { recursive: true });
+  const note = path.join(f.skillsDirectory, 'ae-agent', 'user-note.md');
+  fs.writeFileSync(note, 'Mine');
+  const first = f.run({ businesses: { agent: false, dataops: false } });
+  assert.equal(first.ok, false);
+  assert.equal(fs.readFileSync(note, 'utf8'), 'Mine');
+  fs.rmSync(path.join(f.skillsDirectory, 'ae-agent'), { recursive: true });
+  fs.cpSync(path.join(f.root, 'skills', 'ae-agent'), path.join(f.skillsDirectory, 'ae-agent'), { recursive: true });
+  const second = f.run({ businesses: { agent: false, dataops: false } });
+  assert.equal(second.ok, false);
+  assert.ok(second.skills.synchronization?.skipped.some(item => item.reason === 'copy_not_managed'));
+  assert.equal(fs.existsSync(path.join(f.skillsDirectory, 'ae-agent')), true);
+  assert.equal(f.state.syncCalls.filter(mode => mode === 'adopt').length, 1);
+});
+
+test('a newer environment reserved during npm prevents the old install from synchronizing Skills', t => {
+  const f = fixture(t);
+  f.state.afterNpm = () => { reserveBusinessSkillContext({ stateDirectory: f.stateDirectory, host: 'https://newer.example' }); };
   const result = f.run();
   assert.equal(result.ok, false);
   assert.equal(result.cli.verified, true);
+  assert.match(result.error!.message, /active environment changed/);
+  assert.equal(f.state.operations.length, 0);
+});
+
+test('client failures and malformed installed content cannot pass global verification', t => {
+  const f = fixture(t); f.state.failClients = true;
+  const result = f.run();
+  assert.equal(result.ok, false);
   assert.equal(result.skills.status, 'partial');
-  assert.equal(result.skills.installed_count, 1);
-  assert.deepEqual(result.skills.missing, ['mcp2cli']);
-  assert.match(result.skills.failures[0].reason, /YAML/);
+  assert.equal(fs.existsSync(path.join(f.skillsDirectory, 'ae-analysis', 'SKILL.md')), true);
+  assert.equal(f.state.calls.some(call => call.args.some(arg => arg.includes('#v'))), false);
+  const other = fixture(t); other.state.corrupt = ['ae-agent'];
+  const corrupt = other.run();
+  assert.equal(corrupt.ok, false);
+  assert.ok(corrupt.skills.failures.some(item => item.skill === 'ae-agent' && /YAML/.test(item.reason)));
 });
 
-test('zero exit and names-only lists cannot hide missing Skills', t => {
-  const f = fixture(t); f.state.missing = ['mcp2cli']; f.state.listNamesOnly = true;
-  const result = f.run();
+test('missing copies and managed adapter failures report safe errors without fallback writes', t => {
+  const f = fixture(t); f.state.missing = ['ae-agent'];
+  assert.deepEqual(f.run().skills.missing, ['ae-agent']);
+  const other = fixture(t); other.state.failTool = true;
+  const result = other.run();
   assert.equal(result.ok, false);
-  assert.deepEqual(result.skills.missing, ['mcp2cli']);
+  assert.equal(result.error!.stage, 'skills_local');
+  assert.doesNotMatch(JSON.stringify(result), /SECRET/);
 });
 
-test('stale reference files cannot pass as the matching Skills version', t => {
-  const f = fixture(t); f.state.stale = ['mcp2cli'];
-  assert.match(f.run().skills.failures[0].reason, /files do not match/);
-});
-
-test('local failure recovers only through the exact release fallback', t => {
-  const f = fixture(t); f.state.localFails = true;
-  const result = f.run();
-  assert.equal(result.ok, true);
-  assert.equal(result.skills.source, 'ThinkingAIAgenticEngine/ae-cli#v6.1.9');
-  assert.equal(f.state.addCalls, 3);
-});
-
-test('a bundled Skills timeout is not replaced by a fallback network failure', t => {
-  const f = fixture(t, '@tant/ae-cli', 'win32');
-  const result = f.run({ runner: (command, args, timeout) => {
-    if (!args.includes('add')) return f.runner(command, args, timeout);
-    if (args[3].includes('#v')) return { status: 1, stdout: '', stderr: 'HTTP 502 network error' };
-    return { status: null, stdout: '', stderr: '', error: Object.assign(new Error('spawn ETIMEDOUT'), { code: 'ETIMEDOUT' }) };
-  } });
-  assert.equal(result.ok, false);
-  assert.equal(result.error?.cause, 'timeout');
-  assert.equal(result.error?.stage, 'skills_local');
-  assert.deepEqual(result.skills.attempts.map(attempt => attempt.cause), ['timeout', 'network']);
-  assert.equal(result.skills.attempts[0].source, 'installed-package');
-  assert.match(result.skills.attempts[1].source, /#v6\.1\.9$/);
-});
-
-
-
-test('YAML error diagnostics cannot be masked by old complete files', t => {
-  const f = fixture(t); f.state.addOutput = 'SKILL.md YAML parse error';
-  assert.equal(f.run().ok, false);
-});
-
-test('dry-run makes no subprocess or installation writes', t => {
+test('dry-run is write-free and describes managed package installation rather than raw add commands', t => {
   const f = fixture(t); const result = f.run({ dryRun: true });
   assert.equal(result.ok, true); assert.equal(result.dry_run, true);
-  assert.equal(result.cli.verified, false);
-  assert.equal(f.state.calls.length, 0);
-  assert.equal(fs.existsSync(f.prefix), false);
-  assert.equal(result.commands!.length, 4);
+  assert.equal(result.cli.verified, false); assert.equal(f.state.calls.length, 0);
+  assert.equal(fs.existsSync(f.prefix), false); assert.equal(fs.existsSync(f.stateDirectory), false);
+  assert.equal(result.commands!.length, 2);
+  assert.doesNotMatch(result.commands!.join(' '), /skills@.* add|#v/);
 });
 
-test('structured results and logs never forward secrets from subprocesses', t => {
+test('structured reports and logs never forward process secrets', t => {
   const f = fixture(t); const logs: string[] = [];
-  f.state.stderr = 'token=SECRET cookie=COOKIE app_secret=APP_SECRET';
   const result = f.run({ host: 'https://ae.example.com', progress: message => logs.push(message) });
   assert.equal(result.ok, true);
   assert.equal(result.auth.authenticated, false);
-  assert.doesNotMatch(JSON.stringify([result, logs]), /SECRET|COOKIE|MUST_NOT_LEAK/);
-  assert.deepEqual(Object.keys(result).sort(), ['auth', 'cli', 'dry_run', 'next_steps', 'ok', 'skills']);
+  assert.doesNotMatch(JSON.stringify([result, logs]), /MUST_NOT_LEAK/);
   f.state.npmError = 'EACCES token=SECRET';
   fs.rmSync(f.root, { recursive: true }); fs.unlinkSync(f.bin);
   assert.doesNotMatch(JSON.stringify(f.run()), /SECRET/);
 });
 
-test('version and host injection inputs are rejected before executing', t => {
+test('version and host injection inputs are rejected before execution', t => {
   const f = fixture(t);
   for (const version of ['6.1.9;echo secret', '6.1.9-$(whoami)', '--help', 'latest']) assert.throws(() => exactVersion(version));
   for (const host of ['https://user:SECRET@ae.example', 'https://ae.example?token=SECRET', 'file:///tmp/ae']) assert.throws(() => installHost(host));
   assert.equal(f.state.calls.length, 0);
 });
 
-test('version mismatch and npm links are actionable failures', t => {
+test('npm links, executable ownership and wrong versions remain actionable failures', t => {
   const f = fixture(t); f.state.wrongVersion = true;
   assert.match(f.run().error!.message, /--version/);
-  f.state.wrongVersion = false;
-  fs.rmSync(f.root, { recursive: true });
+  f.state.wrongVersion = false; fs.rmSync(f.root, { recursive: true });
   fs.symlinkSync(f.source, f.root, 'junction');
   assert.match(f.run().error!.message, /npm-linked/);
 });
 
-test('PATH absence warns after absolute executable validation', t => {
-  const f = fixture(t); const result = f.run({ env: {} });
-  assert.equal(result.ok, true);
-  assert.match(result.cli.warnings.join(' '), /PATH/);
-});
-
-
-test('other Skills survive installation', t => {
+test('PATH absence warns after absolute executable validation and unrelated Skills survive', t => {
   const f = fixture(t); const unrelated = path.join(f.skillsDirectory, 'user-skill', 'SKILL.md');
   fs.mkdirSync(path.dirname(unrelated), { recursive: true }); fs.writeFileSync(unrelated, 'User content');
-  assert.equal(f.run().ok, true);
+  const result = f.run({ env: {} });
+  assert.equal(result.ok, true); assert.match(result.cli.warnings.join(' '), /PATH/);
   assert.equal(fs.readFileSync(unrelated, 'utf8'), 'User content');
 });
 
-test('internal installs preserve package, registry, and exact internal fallback', t => {
-  const f = fixture(t, '@tant/ae-cli'); f.state.localFails = true;
-  const result = f.run();
+test('internal distribution keeps the official package and registry', t => {
+  const f = fixture(t, '@tant/ae-cli'); const result = f.run();
   assert.equal(result.ok, true, JSON.stringify(result));
   assert.equal(result.cli.package, '@tant/ae-cli');
   const npm = f.state.calls.find(call => call.args[0] === 'install')!;
   assert.deepEqual(npm.args, ['install', '-g', '@tant/ae-cli@6.1.9', '--registry', 'https://npm.thinkingdata.cn:3443']);
-  assert.equal(result.skills.source, 'http://10.27.249.150:8888/te-ai/te-cli.git#v6.1.9');
+  assert.equal(result.skills.source, 'installed-package');
 });
 
-test('missing npm bin link is not reported as successful installation', t => {
+test('missing executable links and invalid bundled YAML fail before controlled synchronization', t => {
   const f = fixture(t); f.state.noBin = true;
-  const result = f.run();
-  assert.equal(result.ok, false);
-  assert.match(result.error!.message, /bin-links/);
+  assert.match(f.run().error!.message, /bin-links/);
+  const other = fixture(t);
+  fs.writeFileSync(path.join(other.source, 'skills', 'ae-agent', 'SKILL.md'), '---\nname: ae-agent\ndescription: broken: yaml\n---');
+  assert.match(other.run().error!.message, /ae-agent.*YAML/);
+  assert.equal(other.state.operations.length, 0);
 });
 
-test('authentication checks reuse the verified executable and do not initiate login', t => {
+test('auth guidance reuses the verified executable and never starts login', t => {
   const f = fixture(t); f.state.auth = true;
   const result = f.run({ host: 'ae.example.com/' });
   assert.equal(result.auth.host, 'https://ae.example.com');
   assert.equal(result.auth.authenticated, true);
-  assert.ok(f.state.calls.some(call => call.command === f.bin && call.args.includes('status') && call.args.includes('https://ae.example.com')));
+  assert.ok(f.state.calls.some(call => call.command === f.bin && call.args.includes('status')));
   assert.equal(f.state.calls.some(call => call.args.includes('login')), false);
 });
 
-
-
-test('a supported client failure is real even when shared Skills exist and the tool exits zero', t => {
-  const f = fixture(t);
-  f.state.addOutput = 'Failed to install 1\n✗ ae-agent → Claude Code: EACCES';
-  const result = f.run();
-  assert.equal(result.ok, false);
-  assert.match(result.skills.failures[0].reason, /supported client/);
-});
-
-test('unrelated warnings do not hide another client error', t => {
-  const f = fixture(t);
-  f.state.addOutput = 'Failed to install 2\n✗ ae-agent → PromptScript: PromptScript does not support global skill installation\n✗ ae-agent → Claude Code: EACCES';
-  assert.equal(f.run().ok, false);
-});
-
-test('global installs do not depend on the invoking Agent or a generated manifest', t => {
-  const f = fixture(t);
-  assert.equal(f.run({ env: {} }).ok, true);
-  assert.equal(fs.existsSync(path.join(f.skillsDirectory, 'ae-agent', 'SKILL.md')), true);
-  assert.equal(fs.existsSync(path.join(f.root, 'dist', 'skills-manifest.json')), false);
-});
-
-test('invalid bundled YAML fails before running the Skills tool', t => {
-  const f = fixture(t);
-  fs.writeFileSync(path.join(f.source, 'skills', 'mcp2cli', 'SKILL.md'), '---\nname: mcp2cli\ndescription: broken: yaml\n---');
-  const result = f.run();
-  assert.equal(result.ok, false);
-  assert.match(result.error!.message, /mcp2cli.*YAML/);
-  assert.equal(f.state.addCalls, 0);
-});
-
-test('switches 6.0.50 to 6.0.40 and back using each target package without requiring its install command', t => {
-  const f = fixture(t);
-  f.install('6.0.50');
-  const source = path.join(f.source, 'skills', 'ae-agent', 'references', 'usage.md');
-  const installed = path.join(f.skillsDirectory, 'ae-agent', 'references', 'usage.md');
-  fs.writeFileSync(source, '6.0.40 reference');
-  const down = f.run({ target: '6.0.40' });
-  assert.equal(down.ok, true, JSON.stringify(down));
-  assert.equal(down.cli.version, '6.0.40');
-  assert.equal(fs.readFileSync(installed, 'utf8'), '6.0.40 reference');
-  fs.writeFileSync(source, '6.0.50 reference');
-  const up = f.run({ target: '6.0.50' });
-  assert.equal(up.ok, true, JSON.stringify(up));
-  assert.equal(up.cli.version, '6.0.50');
-  assert.equal(fs.readFileSync(installed, 'utf8'), '6.0.50 reference');
-  assert.deepEqual(f.state.calls.filter(call => call.args[0] === 'install').map(call => call.args[2]),
-    ['@thinkingai/ae-cli@6.0.40', '@thinkingai/ae-cli@6.0.50']);
-});
-
 for (const packageName of ['@tant/ae-cli', '@thinkingai/ae-cli']) {
-  test(`Windows installs and repeats ${packageName} using npm shims and the prefix directory`, t => {
+  test(`Windows shim checks and repeated managed installation work for ${packageName}`, t => {
     const f = fixture(t, packageName, 'win32');
     const first = f.run({ env: { Path: `"${f.prefix}"` }, host: 'https://ae.example.com' });
     assert.equal(first.ok, true, JSON.stringify(first));
     assert.equal(first.cli.path, path.join(f.prefix, 'ae-cli.cmd'));
+    assert.equal(first.cli.entrypoint, fs.realpathSync(path.join(f.root, 'bin', 'ae-cli.js')));
     assert.equal(first.cli.verified, true);
     assert.deepEqual(first.cli.warnings, []);
-    assert.equal(first.skills.installed_count, 2);
-    assert.ok(f.state.calls.some(call => call.command.endsWith('npm.cmd') && call.args[0] === 'install'));
-    assert.ok(f.state.calls.some(call => call.command.endsWith('npx.cmd') && call.args.includes('add')));
-    assert.ok(f.state.calls.some(call => call.command === f.bin && call.args[0] === '--version'));
-    assert.ok(f.state.calls.some(call => call.command === f.bin && call.args.includes('status')));
+    assert.equal(first.skills.installed_count, 3);
     assert.equal(f.run().cli.action, 'skipped');
     assert.equal(f.state.installCalls, 1);
+    fs.writeFileSync(f.bin, fs.readFileSync(f.bin, 'utf8').replace('%dp0%', '%~dp0'));
+    assert.equal(f.run().ok, true);
+    fs.writeFileSync(f.bin, '@node "%dp0%\\node_modules\\another-cli\\bin\\ae-cli.js" %*');
+    assert.match(f.run().error!.message, /does not belong/);
   });
 }
 
-test('Windows dry-run requires no subprocesses or installed tools', t => {
-  const f = fixture(t, '@tant/ae-cli', 'win32');
-  assert.equal(f.run({ dryRun: true }).ok, true);
-  assert.equal(f.state.calls.length, 0);
-  assert.equal(fs.existsSync(f.prefix), false);
-});
-
-test('Windows verifies shim ownership and actual version, including historical npm shims', t => {
-  const f = fixture(t, '@tant/ae-cli', 'win32');
-  f.install();
-  fs.writeFileSync(f.bin, fs.readFileSync(f.bin, 'utf8').replace('%dp0%', '%~dp0'));
-  assert.equal(f.run().ok, true);
-  f.state.wrongVersion = true;
-  assert.match(f.run().error!.message, /--version/);
-  f.state.wrongVersion = false;
-  fs.writeFileSync(f.bin, '@node "%dp0%\\node_modules\\another-cli\\bin\\ae-cli.js" %*');
-  assert.match(f.run().error!.message, /does not belong/);
-  f.state.noBin = true;
-  fs.unlinkSync(f.bin);
-  assert.match(f.run().error!.message, /bin-links/);
-});
-
-test('Windows shared installation upgrades and downgrades CLI and Skills together', t => {
-  const f = fixture(t, '@tant/ae-cli', 'win32');
-  f.install('6.0.50');
+test('upgrade and downgrade keep matching managed Skill references', t => {
+  const f = fixture(t); assert.equal(f.run().ok, true);
   for (const version of ['6.0.40', '6.0.50']) {
     fs.writeFileSync(path.join(f.source, 'skills', 'ae-agent', 'references', 'usage.md'), version);
     const result = f.run({ target: version });
     assert.equal(result.ok, true, JSON.stringify(result));
-    assert.equal(result.cli.version, version);
-    assert.equal(result.cli.verified, true);
     assert.equal(fs.readFileSync(path.join(f.skillsDirectory, 'ae-agent', 'references', 'usage.md'), 'utf8'), version);
   }
-  assert.equal(f.state.installCalls, 2);
 });
 
 test('process runner preserves argument boundaries and nonzero exit codes', () => {

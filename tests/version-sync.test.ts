@@ -3,9 +3,11 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 
-const testHome = fs.mkdtempSync(path.join(os.tmpdir(), 'ae-version-sync-'));
+const testHome = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'ae-version-sync-')));
 process.on('exit', () => fs.rmSync(testHome, { recursive: true, force: true }));
 process.env.HOME = testHome;
+const { syncBusinessSkills } = await import('../src/core/business-skill-sync.js');
+const { skillCopyHash } = await import('../src/core/skills-tool.js');
 
 const {
   buildVersionInstallPlan,
@@ -81,20 +83,28 @@ const dailyLimited = evaluateAutoAttempt(
 assert.equal(dailyLimited.allowed, false);
 assert.equal(dailyLimited.reason, 'daily_limit');
 assert.equal(evaluateAutoAttempt(dailyLimited.entry, '6.1.10', now).allowed, true);
+const nextDayRepair = evaluateAutoAttempt({ target: '6.1.9', attemptDay: '2000-01-01', attemptsToday: 3,
+  pendingSkills: true, lastFailureStage: 'skills_clients' }, '6.1.9', now);
+assert.equal(nextDayRepair.allowed, true);
+assert.equal(nextDayRepair.entry.attemptsToday, 0);
+assert.equal(nextDayRepair.entry.pendingSkills, true);
+assert.equal(nextDayRepair.entry.lastFailureStage, 'skills_clients');
+assert.equal(evaluateAutoAttempt(nextDayRepair.entry, '6.1.10', now).entry.pendingSkills, undefined);
 
 const plan = buildVersionInstallPlan('6.1.9', path.join('/tmp', 'npm root with spaces'));
 assert.equal(plan.target, '6.1.9');
 assert.match(plan.commands[0], /npm install -g @thinkingai\/ae-cli@6\.1\.9/);
 assert.match(plan.commands[0], /--registry=https:\/\/registry\.npmjs\.org/);
 assert.match(plan.commands[1], /npm root with spaces/);
-assert.match(plan.commands[2], /ThinkingAIAgenticEngine\/ae-cli#v6\.1\.9/);
-assert.deepEqual(plan.skillsSources, ['installed-package', 'github-fallback']);
+assert.equal(plan.commands.length, 2);
+assert.doesNotMatch(plan.commands.join(' '), /skills@.* add|#v/);
+assert.deepEqual(plan.skillsSources, ['installed-package']);
 assert.equal(
   resolveNodeTool('npm', path.join('/missing node', 'node.exe'), 'win32'),
   'npm.cmd',
 );
 
-function scenario(mode: 'local' | 'fallback' | 'skip' | 'mismatch' | 'timeout', platform = process.platform) {
+function scenario(mode: 'local' | 'skip' | 'mismatch' | 'failed', platform = process.platform) {
   const fixture = fs.mkdtempSync(path.join(testHome, 'package-'));
   const root = platform === 'win32' ? path.join(fixture, 'node_modules') : path.join(fixture, 'lib', 'node_modules');
   const packageRoot = path.join(root, '@thinkingai', 'ae-cli');
@@ -114,6 +124,21 @@ function scenario(mode: 'local' | 'fallback' | 'skip' | 'mismatch' | 'timeout', 
   const result = installVersion('6.1.9', {
     packageName: '@thinkingai/ae-cli', skillsDirectory: target, nodeVersion: '20.19.5', platform,
     env: { PATH: path.dirname(bin) },
+    skillStateDirectory: path.join(fixture, 'state'),
+    skillContext: { host: '', tokenFingerprint: '' },
+    syncSkills: options => syncBusinessSkills({ ...options, tool: {
+      targets: () => {
+        if (mode === 'failed') throw new Error('Private adapter failure');
+        return [{ agent: 'universal', directory: target, detected: true, installable: true }];
+      },
+      apply: operations => operations.map(operation => {
+        const destination = path.join(operation.target.directory, operation.skill);
+        fs.rmSync(destination, { recursive: true, force: true });
+        if (operation.action === 'install') fs.cpSync(operation.source, destination, { recursive: true });
+        return { action: operation.action, skill: operation.skill, agent: operation.target.agent,
+          path: destination, status: 'success', hash: skillCopyHash(destination) ?? undefined };
+      }),
+    } }),
     skipCliInstall: mode === 'skip',
     runner: (command, args) => {
       calls.push(args);
@@ -121,35 +146,28 @@ function scenario(mode: 'local' | 'fallback' | 'skip' | 'mismatch' | 'timeout', 
       if (args[0] === 'root') return ok(root);
       if (args[0] === 'prefix') return ok(fixture);
       if (args[0] === '--version') return ok(command === bin ? (mode === 'mismatch' ? '6.1.8' : '6.1.9') : '10.8.2');
-      if (args.includes('add')) {
-        if (mode === 'timeout' || (mode === 'fallback' && !args[3].includes('#v') && !args.includes('--copy'))) return { status: 1, stdout: '', stderr: 'network timeout' };
-        fs.cpSync(skills, path.join(target, 'ae-agent'), { recursive: true });
-        return ok();
-      }
       throw new Error('Unexpected process invocation');
     },
   });
   return { result, calls };
 }
 for (const platform of new Set([process.platform, 'win32'] as const)) {
-  for (const mode of ['local', 'fallback', 'skip'] as const) {
+  for (const mode of ['local', 'skip'] as const) {
     const { result, calls } = scenario(mode, platform);
     assert.equal(result.ok, true, JSON.stringify(result));
-    if (result.ok) assert.equal(result.skillsSource, mode === 'fallback' ? 'github' : 'local');
+    if (result.ok) assert.equal(result.skillsSource, 'local');
     assert.equal(calls.some(args => args[0] === 'install'), false);
     assert.equal(result.report?.skills.installed_count, 1);
     const adds = calls.filter(args => args.includes('add'));
-    assert.ok(adds.every(args => args.includes('-g')));
-    assert.ok(adds.at(-1)!.includes('--copy'));
-    assert.ok(!adds.at(-1)!.includes('--agent'));
+    assert.equal(adds.length, 0);
   }
   const mismatch = scenario('mismatch', platform).result;
   assert.equal(mismatch.ok, false);
   if (!mismatch.ok) assert.equal(mismatch.stage, 'package_validation');
-  const timeout = scenario('timeout', platform).result;
+  const timeout = scenario('failed', platform).result;
   assert.equal(timeout.ok, false);
   if (!timeout.ok) {
-    assert.equal(timeout.cause, 'timeout');
+    assert.equal(timeout.cause, 'validation');
     assert.equal(timeout.skillsPending, true);
     assert.equal(timeout.stage, 'skills_local');
   }

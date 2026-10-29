@@ -9,8 +9,8 @@ Mapping command: `ae-cli community +get_daily_summary`
 
 | Flag | Type | Required | Description |
 |------|------|------|------|
-| `--space-id` | number | yes | community space ID |
-| `--game-id` | number | yes | game/space ID |
+| `--space-id` | int64 | yes | Community space ID returned by `community spaces list` |
+| `--game-id` | int64 | no | Deprecated compatibility alias; omit it, or make it equal to `--space-id` |
 | `--date` | string | Yes | Date, format yyyy-MM-dd |
 
 ## Example
@@ -18,5 +18,5 @@ Mapping command: `ae-cli community +get_daily_summary`
 ```bash
 # Get daily report
 ae-cli community +get_daily_summary \
-  --space-id 1 --game-id 1 --date 2024-01-01
+  --space-id 1 --date 2024-01-01
 ```

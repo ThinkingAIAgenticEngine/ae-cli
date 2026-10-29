@@ -41,7 +41,17 @@ function buildBody(ctx: RuntimeContext): Record<string, unknown> {
   const description = ctx.str('description');
   if (description) body.description = description;
 
-  const tags = normalizeTags(ctx.json('tags'));
+  const purpose = ctx.str('purpose');
+  if (purpose) {
+    if (purpose !== 'project-semantic' || getScope(ctx) !== 'company' || !/^[1-9]\d{0,15}$/.test(ctx.str('project-id')))
+      throw new Error('--purpose project-semantic requires company scope and a valid --project-id.');
+    body.purpose = purpose;
+  }
+  // This fixed tag is business data and must not be translated.
+  const supplied = normalizeTags(ctx.json('tags'));
+  const tags = purpose ? [...new Set(['项目语义', ...(supplied ?? [])])] : supplied;
+  if (tags && (tags.length > 2 || tags.some((tag) => tag.length > 15)))
+    throw new Error('Tags must contain at most 2 entries, each at most 15 characters.');
   if (tags && tags.length > 0) body.tags = tags;
 
   const projectId = ctx.str('project-id');
@@ -62,13 +72,13 @@ export const create: Command = {
     { name: 'name', type: 'string', required: true, desc: 'Knowledge base name (≤30 chars, unique per scope)' },
     { name: 'description', type: 'string', required: false, desc: 'Optional description (≤200 chars)' },
     { name: 'tags', type: 'json', required: false, desc: 'Optional JSON array of tags (max 2, each ≤15 chars). Example: \'["t1","t2"]\'' },
+    { name: 'purpose', type: 'string', required: false, desc: 'Optional project-semantic purpose: presets the fixed semantic tag and checks the existing project target before creation' },
     { name: 'project-id', type: 'string', required: false, desc: 'Optional project ID to bind' },
     { name: 'project-name', type: 'string', required: false, desc: 'Optional project display name' },
   ],
   risk: 'write',
   validate: (ctx) => {
-    getScope(ctx);
-    normalizeTags(ctx.json('tags'));
+    buildBody(ctx);
   },
   dryRun: (ctx) => ({
     method: 'POST',
