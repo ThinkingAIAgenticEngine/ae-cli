@@ -6,15 +6,15 @@ Open the selected model file directly from the registry and construct `definitio
 
 ## Capability coverage
 
-- `analysis adhoc run/export`: supports the 13 analysis models only.
-- `analysis report create/update`: supports the same 13 analysis models plus `tag` for saved tag report data.
+- `analysis adhoc run/export`: supports the 12 analysis models only.
+- `analysis report create/update`: supports the same 12 analysis models plus `tag` for saved tag report data.
 - `analysis report-data run/export`, `analysis dashboard-report-data run/export`, and `analysis bi-panel-page-data run/export`: execute existing saved assets. They do not accept `model_type`; use their own command references.
 
 Do not pass raw QP, `events`, `eventView`, `visualView`, frontend DTOs, schema-generated payloads, `scenario`, `history_tag`, or `cluster` as AI-facing `definition` or `model_type`.
 
 ## Model type registry
 
-Common analysis models (10):
+Common analysis models (9):
 
 - [`event`](ai_models/event.md): event analysis
 - [`retention`](ai_models/retention.md): retention analysis
@@ -25,7 +25,6 @@ Common analysis models (10):
 - [`path`](ai_models/path.md): path analysis
 - [`prop_analysis`](ai_models/prop_analysis.md): property analysis
 - [`sql`](ai_models/sql.md): SQL analysis
-- [`session`](ai_models/session.md): session analysis
 
 Scenario analysis models (3):
 

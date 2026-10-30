@@ -7,7 +7,7 @@ const reference = fs.readFileSync(new URL('../skills/ae-workspace/references/com
 const spec = fs.readFileSync(new URL('../docs/specs/agent-space-workspace-cli.md', import.meta.url), 'utf8');
 
 assert.match(skill, /^name: ae-workspace$/m);
-assert.match(skill, /^version: 1\.1\.2$/m);
+assert.match(skill, /^version: 1\.1\.0$/m);
 assert.match(skill, /AgentSpace\.id/);
 assert.match(skill, /Never fall back to an account default/);
 assert.match(skill, /Transition status: transitional/);

@@ -216,9 +216,9 @@ try {
     globalThis.fetch = (async (input, init) => {
       const url = String(input); const headers = new Headers(init?.headers);
       assert.ok(url.startsWith(host));
+      assert.equal(headers.get('cli-token'), 'cli_transport_identity');
       assert.equal(headers.get('X-Sandbox-Id'), null); assert.equal(headers.get('X-Sandbox-Secret-Key'), null);
       assert.equal(headers.get('Authorization'), null); assert.equal(init?.redirect, 'error');
-      assert.equal(headers.get('cli-token'), 'cli_transport_identity');
       if (url.endsWith('/token/renew')) return new Response(JSON.stringify({ return_code: 0 }));
       calls.push(url);
       if (url.endsWith('/mcp')) return new Response(JSON.stringify({ jsonrpc: '2.0', id: 1, result: { content: [{ type: 'text', text: '{}' }] } }));
@@ -272,8 +272,7 @@ try {
     for (const status of [401, 403]) {
       const calls: string[] = [];
       globalThis.fetch = (async (input, init) => {
-        const headers = new Headers(init?.headers);
-        assert.equal(headers.get('cli-token'), 'cli_rejected_external');
+        assert.equal(new Headers(init?.headers).get('cli-token'), 'cli_rejected_external');
         if (String(input).includes('/token/renew')) return new Response(JSON.stringify({ return_code: 0 }));
         calls.push(String(input));
         return new Response(JSON.stringify({ error: { code: status === 401 ? 'UNAUTHORIZED' : 'PERMISSION_DENIED', message: 'Rejected' } }), { status });
