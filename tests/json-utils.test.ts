@@ -7,6 +7,7 @@
 
 import assert from 'node:assert/strict';
 import { parseJsonRequest, safeJsonParse, stringifyJsonRequest } from '../src/core/json-utils.ts';
+import { parseCapabilityInput } from '../src/commands/capability/helpers.ts';
 
 let passed = 0;
 let failed = 0;
@@ -96,6 +97,24 @@ test('parses unsafe request integers as bigint while preserving quoted IDs', () 
   assert.equal(parsed.game_id, 1940327799817117696n);
   assert.equal(parsed.quoted, '1940327799817117696');
   assert.equal(parsed.limit, 100);
+});
+
+test('preserves request decimal and exponent inputs alongside exact integer IDs', () => {
+  for (const parse of [parseJsonRequest, parseCapabilityInput]) {
+    const parsed = parse(
+      '{"id":1940327799817117696,"safe":9007199254740991,'
+        + '"values":[0.1234567890123456,1.234567890123456e+2,-9007199254740992,"1940327799817117696"]}',
+    );
+    assert.equal(parsed.id, 1940327799817117696n);
+    assert.equal(parsed.safe, Number.MAX_SAFE_INTEGER);
+    assert.deepEqual(parsed.values, [
+      0.1234567890123456, 1.234567890123456e+2, -9007199254740992n, '1940327799817117696',
+    ]);
+    assert.equal(Object.getPrototypeOf(parsed), null);
+    assert.throws(() => parse('{"__proto__":{}}'));
+    assert.throws(() => parse('{"constructor":{}}'));
+    assert.throws(() => parse('{"value":}'));
+  }
 });
 
 test('preserves parser object safety and rejects malformed input', () => {

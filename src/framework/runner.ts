@@ -300,7 +300,8 @@ export async function runCommand(cmd: Command, opts: Record<string, any>, global
     } else if (err instanceof CliApiError) {
       printError('api', message, err.hint, err.code, err.meta);
     } else if (err instanceof CapabilityGatewayError) {
-      printError(err.type, message, err.hint ?? capabilityGatewayHint(err), err.code, err.meta);
+      printError(err.type, message, err.hint ?? capabilityGatewayHint(err), err.code, err.meta,
+        { details: err.details });
     } else if (err instanceof CommunityReportError) {
       // The message/hint may come from the ingestion response. Keep it visible to the caller but
       // never persist it to CLI logs; the dedicated client records only URL/status/byte counts.
@@ -376,7 +377,7 @@ export function capabilityGatewayHint(err: CapabilityGatewayError): string | und
   }
   if (err.httpStatus === 404 && !err.code) {
     const base =
-      'The current host returned 404 for this capability route. Do not keep retrying the same command; verify the backend route/capability deployment.';
+      'The current host returned 404 for this capability route. Do not keep retrying the same command; verify the backend route/capability deployment. If --host points directly to a local Common service instead of the deployed gateway, scope AE_CLI_CAPABILITY_GATEWAY_DOMAIN= to this command so it uses /api/cli/v1.';
     return compatExtra ? `${base}\n${compatExtra}` : base;
   }
   return undefined;

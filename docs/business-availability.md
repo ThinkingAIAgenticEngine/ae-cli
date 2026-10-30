@@ -14,7 +14,7 @@
 
 命令映射在 `src/core/businesses.ts`；Skill 组件归属统一登记到 `src/core/skill-businesses.json`，运行时与门禁共用。data-integration 归分析；kb/team/agent/memory/automation/things/workspace/evaluation/sync/model/context 和 system 的 Agent 管理叶子归 agent。system 的分析叶子保留。未知新命令/Skill 在运行时默认保留兼容，不依名称前缀猜业务。
 
-新增 `skills/*/SKILL.md` 必须按 frontmatter 中的实际 `name` 在上述 JSON 显式登记一个组件；分析 Skill 使用 `analysis`，跨组件的基础能力使用 `base`，二者仍始终可用。`npm run check:release` 和 `npm run self-check` 均全量校验组件覆盖，漏配、重复归属、未知组件或非法映射结构按 P1 阻断；`self-check --since` 不缩小这项检查。`.agents/skills` 中的研发维护 Skill 不在随包检查范围。未随当前发行包发布的历史或内部映射可以保留。新增组件还须同步 `OPTIONAL_BUSINESSES` 与门禁支持的组件枚举。
+新增 `skills/*/SKILL.md` 必须按 frontmatter 中的实际 `name` 在上述 JSON 显式登记一个组件；分析 Skill 使用 `analysis`，跨组件的基础能力使用 `base`，二者仍始终可用。`npm run check:release` 和 `npm run self-check` 均全量校验组件覆盖，漏配、重复归属、未知组件或非法映射结构按 P1 阻断；`self-check --since` 不缩小这项检查。`.agents/skills` 中的研发维护 Skill 不在随包检查范围。未随当前发行包发布的历史或内部映射可以保留。新增组件还须同步 `OPTIONAL_BUSINESSES` 与门禁支持的组件枚举。6.1 的 `experiment` 分组登记 `ae-experiment`、`ae-experiment-design`、`ae-experiment-insight`，独立于 `engage` 控制。
 
 2026-10-23 确认的 Agent 规则：License 不存在 `te_agent_enabled`，不得将该字段作为开通条件。6.0 强制部署 Agent，且没有 `k8s_enabled` 配置，后端默认返回 `businesses.agent=true`；6.1 仅由现有 businessconf SDK 读取的 `k8s_enabled` 决定，沿用 SDK 默认值，明确 true/false 对应开启/关闭，状态服务返回 null 或读取异常才保持 unknown 并省略 `agent`。当前 SDK 缺少配置时默认 false，不将其改写为 unknown。CLI 只消费后端归一化结论，不读取 SDK、不组合 License，也不通过接口探活推断部署。
 
@@ -80,11 +80,33 @@ Windows 原生客户端由用户补测；6.1 环境由用户验证。测试文�
 
 6.1仅本地分支适配和测试；本次不部署。Windows真实文件句柄锁、USERPROFILE无HOME、npm .cmd入口、客户端目录与junction边界留给用户补测。
 
+## 6.1 专项实现与验证
+
+6.1 从最新 `release/6.1` 建立 `feat/cli-business-skill-sync-6.1`，以 merge commit `bb3ddb85` 合入 6.0 功能提交 `c97db279`，保留公共实现的来源关系。
+
+已在业务枚举和统一映射中增加 `experiment`：37 个现有实验命令及 `experiment.*` 能力 ID 由 `businesses.experiment` 控制；`ae-experiment`、`ae-experiment-design`、`ae-experiment-insight` 三个正式 Skill 共用同一状态，名称、正文、职责和资源路径不变。实验 HTTP 仍路由到 `engage` 网关，实验 license 与运营 license 独立；`experiment=true / engage=false` 可以发现和调用实验能力。
+
+能力执行按 capability ID 的业务归属检查开关，`--domain` 只改变网关路由。分析和 metadata 能力经 `--domain engage` 路由不会被运营开关误拦；关闭的 DataOps 也不能通过 `--domain analysis` 绕过。该修复对两条版本线均适用，后续作为公共修复按 6.0 → 6.1 合入，不增加 experiment 特判。
+
+保留 6.1 原有 UBA 设备授权协商和 issuer 固定逻辑、明确 404 时的 legacy 回退以及 optional-agent transport 行为。新业务登录测试使用真实 CLI 的 UBA authorize/token 协议：`uba_` 设备码、合法轮询间隔、同 Host Token mint/validate，再验证 config 与 Skill 生命周期；没有修改生产登录协议或增加 Agent 部署探活。
+
+同期只修复实验外部保存命令中原有的 TypeScript narrowing 问题：将重复索引的 `expGroupId` 先存入局部常量，再做同一类型/非空判断，运行语义与公开参数不变。原实验契约测试只在捕获请求时剔除独立验证的可选 `client_context` 遥测，避免宿主 Agent 上下文污染业务输入断言，没有改变生产遥测行为。
+
+2026-10-22（Asia/Shanghai）实际本地验证通过：
+
+- `npm run verify:businesses`：33 项，包含根/子/help 帮助、本地状态缓存、实验独立于运营路由、关闭域零组件请求、UBA 登录后 config/Skill 生命周期与身份并发。
+- `npm run verify:business-skills`：规范目录修复后31项通过、1项原生Windows跳过。三份实验Skill预置于共享/Claude Code规范目录与Codex/Cursor旧目录的12份副本均可关闭移除；重新开通只恢复两个规范目录的6份副本。使用固定Skills工具执行和逐份摘要验证。
+- `npm run verify:experiment-tools`：37 个 L2、2 个 L3 能力静态校验及既有实验命令契约通过。
+- `npm run verify:optional-agent`：37 项通过；`npx tsc --noEmit`、`npm run build`、`npm test`、`git diff --check` 通过。
+
+后续合并必须保留：6.1 的 experiment 枚举/命令/三 Skill 映射及独立路由回归；后端 6.1 仅使用 businessconf SDK `k8s_enabled` 的 Agent 三态结论、实验开关与期限规则；6.1 原有 UBA 授权和 optional-agent 行为。6.0 Agent 默认开启，不增加 experiment 或 Agent 部署条件，也不能把 6.0 文件整份覆盖到 6.1。
+
+上述是本地真实 CLI、固定 Skills 工具和模拟业务状态的验证；没有部署到 6.1 环境。6.1 实际组件 License、Agent K8s/config 联调与 Windows 原生客户端由用户验证，不使用同步2的 6.0 部署结果代替。
 公共复核修复：capability按ID的逻辑业务归属检查，`--domain`只决定路由。分析/metadata经其它route不能被该route业务license误拦，已关闭dataops也不能改route旁路。新增通用回归，6.0业务专项现32例。该修复从6.0功能分支merge回6.1，保留实验的独立业务与engage共享route。
 
 规范目录修复：6.0业务专项32例、受管Skill专项30例通过+1原生Windows跳过；首次安装不创建Codex/Cursor旧目录，独立客户端沿用上游目标；已有旧副本迁移、更新、关闭删除与只恢复规范目录均通过。旧副本的修改保护、unknown保留、源码重叠、链接与逐副本失败回归保持通过。安装30例通过+1原生Windows跳过、入口/打包2例、自动同步29例及原版本测试通过，TypeScript检查通过。关闭业务的本地HTTP登录回归使用完整发行资源，并预置四类可选Skill的规范和旧目录代表副本；不声称每个完整Skill都经过旧副本登录迁移。
 
-2026-10-23 补强 Agent 恢复回归：`tests/environment-refresh.test.ts` 使用隔离 HOME、本地 HTTP config 服务、真实 CLI 和固定 Skills 工具，先关闭 Agent 并移除完整组，再返回 `agent=true`。当前包的 14 个 Agent Skill、共 135 个源文件恢复到共享与 Claude Code 两个规范目标，逐文件核对内容；11 个 Agent 根命令域和 system 的 Agent 管理叶子重新可见，已移除的 Codex/Cursor 旧副本不重建。该用例验证客户端消费布尔状态后的恢复链路，不代替 6.0 默认开启或 6.1 businessconf SDK 状态来源的后端验证，也没有改动开发者的真实登录态或全局 Skill。
+2026-10-23 补强 Agent 恢复回归：`tests/environment-refresh.test.ts` 使用隔离 HOME、本地 HTTP config 服务、真实 CLI 和固定 Skills 工具，先关闭 Agent 并移除完整组，再返回 `agent=true`。当前包的 14 个 Agent Skill、共 136 个源文件恢复到共享与 Claude Code 两个规范目标，逐文件核对内容；11 个 Agent 根命令域和 system 的 Agent 管理叶子重新可见，已移除的 Codex/Cursor 旧副本不重建。该用例验证客户端消费布尔状态后的恢复链路，不代替 6.0 默认开启或 6.1 businessconf SDK 状态来源的后端验证，也没有改动开发者的真实登录态或全局 Skill。
 
 ## 2026-10-23 内置沙箱边界补充
 

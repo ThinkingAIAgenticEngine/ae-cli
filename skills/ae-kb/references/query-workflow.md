@@ -11,11 +11,12 @@ Everything below is server-side LLM-free.
 
 ## The loop
 
-This picks up **after** `ae-kb-discovery` has listed accessible knowledge bases
-and ranked candidates. Start here with a chosen candidate; scope every `+index`
-/ `+grep` / `+read` call to it with `--sources` / `--source`. If the candidate
-turns out not to cover the question, go back to `ae-kb-discovery` for the next
-candidate rather than searching everything blindly.
+This picks up **after** `ae-kb-discovery` has chosen a candidate from trusted active sources or `+list`.
+An explicit reference skips `+list` and stays within the referenced list, even when page evidence is insufficient.
+Preferred candidates are searched only when relevant; clearly unrelated candidates or evidence gaps can lead to `+list`.
+After `+list`, retrieve from at most three distinct newly discovered knowledge bases; count every new source in a multi-source `+ask` separately. Explicit references and preferred candidates do not consume that budget.
+Start here with a chosen candidate; scope every `+index` / `+grep` / `+read` call to it with `--sources` / `--source`. If the candidate turns out not to cover the question, go back to `ae-kb-discovery` for the next allowed candidate rather than searching everything blindly.
+When using `+ask` with explicit references or preferred candidates, always pass `--sources` containing only the relevant authorized sources from that active list; never omit it or include unrelated sources. For an explicit reference, insufficient evidence does not authorize expansion to another knowledge base.
 
 **Known-page fast path:** within the same host, identity, KB and published revision,
 reuse navigation and read evidence already obtained in this task. Copy exact

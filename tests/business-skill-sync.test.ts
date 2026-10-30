@@ -133,6 +133,31 @@ test('true restores canonical copies without recreating removed legacy copies', 
   }
 });
 
+test('6.1 experiment switches all three Skills independently of the Engage business', t => {
+  const f = fixture(t);
+  const names = ['ae-experiment', 'ae-experiment-design', 'ae-experiment-insight'];
+  for (const name of names) {
+    const directory = path.join(f.source, name);
+    fs.mkdirSync(directory);
+    fs.writeFileSync(path.join(directory, 'SKILL.md'), `---\nname: ${name}\ndescription: An experiment Skill\n---\n`);
+    f.installFixture(name);
+  }
+  assert.equal(f.run({ mode: 'adopt' }).status, 'success');
+  const removed = f.run({ businesses: { experiment: false, engage: true } });
+  assert.equal(removed.status, 'success', JSON.stringify(removed));
+  assert.equal(removed.removed.filter(copy => names.includes(copy.skill)).length, 12);
+  const restored = f.run({ businesses: { experiment: true, engage: false } });
+  assert.equal(restored.status, 'success', JSON.stringify(restored));
+  assert.equal(restored.installed.filter(copy => names.includes(copy.skill)).length, 6);
+  for (const target of f.targets) for (const name of names) {
+    if (!target.installable) {
+      assert.equal(fs.existsSync(path.join(target.directory, name)), false);
+      continue;
+    }
+    assert.equal(skillCopyHash(path.join(target.directory, name)), skillCopyHash(path.join(f.source, name), true));
+  }
+});
+
 test('large synchronization requests drain the complete UTF-8 pipe before parsing', t => {
   const f = fixture(t);
   const source = path.join(f.root, 'package', 'skills-\u4e1a\u52a1\u76ee\u5f55');

@@ -8,24 +8,19 @@ const JSONbig = require('json-bigint');
 // unsafe integers stay strings; decimal and exponent tokens remain numbers.
 const jsonParser = JSONbig({ storeAsString: true });
 const requestJsonStringifier = JSONbig({ useNativeBigInt: true });
-const requestJsonParser = JSONbig({
-  useNativeBigInt: true,
-  protoAction: 'error',
-  constructorAction: 'error',
-});
 const INTEGER_TOKEN = /^-?(?:0|[1-9]\d*)$/;
 
-function normalizeParsedNumbers(lossless: any, native: any): any {
+function normalizeParsedNumbers(lossless: any, native: any, useBigInt = false): any {
   if (typeof lossless === 'string' && typeof native === 'number') {
     if (INTEGER_TOKEN.test(lossless) && !Number.isSafeInteger(native)) {
-      return lossless;
+      return useBigInt ? BigInt(lossless) : lossless;
     }
     return native;
   }
 
   if (Array.isArray(lossless) && Array.isArray(native)) {
     for (let index = 0; index < lossless.length; index++) {
-      lossless[index] = normalizeParsedNumbers(lossless[index], native[index]);
+      lossless[index] = normalizeParsedNumbers(lossless[index], native[index], useBigInt);
     }
     return lossless;
   }
@@ -33,7 +28,7 @@ function normalizeParsedNumbers(lossless: any, native: any): any {
   if (lossless !== null && native !== null
     && typeof lossless === 'object' && typeof native === 'object') {
     for (const key of Object.keys(lossless)) {
-      lossless[key] = normalizeParsedNumbers(lossless[key], native[key]);
+      lossless[key] = normalizeParsedNumbers(lossless[key], native[key], useBigInt);
     }
   }
   return lossless;
@@ -81,5 +76,5 @@ export function stringifyJsonRequest(obj: any): string {
 
 /** Parses request JSON so unsafe bare integer tokens become bigint instead of rounded strings. */
 export function parseJsonRequest(text: string): any {
-  return requestJsonParser.parse(text);
+  return normalizeParsedNumbers(jsonParser.parse(text), JSON.parse(text), true);
 }

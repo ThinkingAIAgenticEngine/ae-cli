@@ -5,6 +5,7 @@ import { fileURLToPath } from 'node:url';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const skill = readFileSync(path.join(ROOT, 'skills/ae-kb/SKILL.md'), 'utf8');
+const discovery = readFileSync(path.join(ROOT, 'skills/ae-kb-discovery/SKILL.md'), 'utf8');
 const readme = readFileSync(path.join(ROOT, 'README.md'), 'utf8');
 const readmeZh = readFileSync(path.join(ROOT, 'README.zh.md'), 'utf8');
 const openSourceReadme = readFileSync(
@@ -35,6 +36,17 @@ function sectionBetween(source, startHeading, endHeading) {
 }
 
 console.log('kb skill query workflow tests');
+
+test('trusted explicit and preferred sources use separate discovery routes', () => {
+  assert.match(discovery, /explicitly referenced[\s\S]*do not call `\+list`/);
+  assert.match(discovery, /preferred candidates[\s\S]*call `\+list`/);
+  assert.match(discovery, /Metadata never counts as answer evidence/);
+  assert.match(discovery, /at most three distinct newly discovered knowledge bases/);
+  assert.match(discovery, /multi-source `\+ask`/);
+  assert.match(workflow, /Explicit references and preferred candidates do not consume that budget/);
+  assert.match(workflow, /\+ask.*always pass `--sources` containing only the relevant authorized sources/);
+  assert.match(skill, /trusted active-source context or `\+list` output/);
+});
 
 test('main skill delegates query flow to the reference', () => {
   const explore = sectionBetween(
@@ -241,6 +253,7 @@ test('ae-kb skill contract > documents compile and schema model references', () 
   assert.match(management, /Preserve an explicit choice from the user or task configuration/);
   assert.match(management, /Never infer a model reference from the assistant's self-description/);
   assert.match(management, /`virtual:company-auto:v1`/);
+  assert.doesNotMatch(management, /--model <model-ref>/);
   assert.doesNotMatch(management, /model display name/i);
 });
 

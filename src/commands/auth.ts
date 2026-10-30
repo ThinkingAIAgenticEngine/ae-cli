@@ -20,12 +20,12 @@ import { MultiselectCancelled, promptSingleSelect } from '../core/multiselect.js
 import { ExternalCliTokenError, readExternalCliToken } from '../core/external-cli-token.js';
 import {
   runDeviceFlow,
-  authorizeDevice,
   pollDeviceFlow,
   buildVerificationUrl,
   DeviceFlowUnsupportedError,
   type DeviceTokenResponse,
 } from '../core/device-auth.js';
+import { authorizeLoginDevice, resolveDeviceSessionRoute, resolveLegacyLoginBase } from '../core/login-device-flow.js';
 import {
   activateCredential,
   assertCredentialsReadable,
@@ -44,6 +44,10 @@ import {
 const HOST_OPTION_DESC = 'Override active AE host URL (e.g., https://ta.thinkingdata.cn)';
 
 type AuthHostOpts = { host?: string };
+
+function shellArgument(value: string): string {
+  return `'${value.replace(/'/g, `'\\''`)}'`;
+}
 
 type SetTokenOpts = AuthHostOpts & {
   add?: boolean;
@@ -355,9 +359,7 @@ function manualTokenSummary(host: string, credential: StoredCredential) {
 }
 
 export function resolveLoginTeClaudeBase(host: string): string {
-  const base = host.replace(/\/+$/, '');
-  const basePath = process.env.TE_CLAUDE_BASE_PATH || '/agent';
-  return base.endsWith(basePath) ? base : base + basePath;
+  return resolveLegacyLoginBase(host);
 }
 
 export function registerAuth(program: Command): void {
@@ -406,12 +408,12 @@ export function registerAuth(program: Command): void {
 
       const noBrowser = !opts.browser;
       const format = program.opts().format || 'json';
-      const teClaudeBase = resolveLoginTeClaudeBase(host);
       const emit = (message: string) => process.stderr.write(`[ae-cli] ${message}\n`);
 
       try {
         if (opts.deviceCode) {
-          const tokens = await pollDeviceFlow(teClaudeBase, opts.deviceCode, {}, emit);
+          const route = resolveDeviceSessionRoute(host, opts.deviceCode);
+          const tokens = await pollDeviceFlow(route.baseUrl, opts.deviceCode, { protocol: route.protocol }, emit);
           const saved = await persistDeviceTokens(host, tokens, { add: opts.add });
           activateHostAfterLogin(host, explicitHost);
           const environment = await refreshEnvironmentAfterLogin(host);
@@ -420,21 +422,24 @@ export function registerAuth(program: Command): void {
           return;
         }
 
+        const session = await authorizeLoginDevice(host);
+        const authResp = session.authorization;
         if (opts.wait === false) {
-          const authResp = await authorizeDevice(teClaudeBase);
           const addFlag = opts.add ? ' --add' : '';
           await printOutput({
             device_code: authResp.device_code,
             user_code: authResp.user_code,
-            verification_url: buildVerificationUrl(teClaudeBase, authResp.user_code),
+            verification_url: buildVerificationUrl(session.baseUrl, authResp.user_code, session.protocol),
             interval: authResp.interval,
             expires_in: authResp.expires_in,
-            next: `Open verification_url in a browser to authorize, then run: ae-cli auth login${addFlag} --device-code ${authResp.device_code}`,
+            next: `Open verification_url in a browser to authorize, then run: ae-cli auth login${addFlag} --host ${shellArgument(host)} --device-code ${shellArgument(authResp.device_code)}`,
           }, format);
           return;
         }
 
-        const tokens = await runDeviceFlow(teClaudeBase, { noBrowser }, emit);
+        const tokens = await runDeviceFlow(session.baseUrl, {
+          noBrowser, protocol: session.protocol, authorization: authResp,
+        }, emit);
         const saved = await persistDeviceTokens(host, tokens, { add: opts.add });
         activateHostAfterLogin(host, explicitHost);
         const environment = await refreshEnvironmentAfterLogin(host);

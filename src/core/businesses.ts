@@ -1,12 +1,12 @@
 import skillBusinesses from './skill-businesses.json' with { type: 'json' };
 
 /** Analysis and recovery commands are always available and need no config flag. */
-export const OPTIONAL_BUSINESSES = ['dataops', 'engage', 'agent', 'community'] as const;
+export const OPTIONAL_BUSINESSES = ['dataops', 'engage', 'agent', 'community', 'experiment'] as const;
 export type OptionalBusiness = typeof OPTIONAL_BUSINESSES[number];
 export type BusinessStates = Partial<Record<OptionalBusiness, boolean>>;
 
-// Merge note for release/6.1: add experiment to the optional businesses and map
-// its command and Skill entries together. release/6.0 does not ship that component.
+// Keep the 6.1 experiment entries when merging shared fixes from release/6.0.
+// Experiment shares the Engage gateway route but has its own business license.
 const COMMAND_BUSINESSES: Record<string, OptionalBusiness> = {
   dataops_datatable: 'dataops',
   dataops_flow: 'dataops',
@@ -22,6 +22,7 @@ const COMMAND_BUSINESSES: Record<string, OptionalBusiness> = {
   'engage-workbench': 'engage',
   'engage-query': 'engage',
   community: 'community',
+  experiment: 'experiment',
   kb: 'agent',
   team: 'agent',
   agent: 'agent',

@@ -1,5 +1,6 @@
 ---
 name: ae-kb-discovery
+version: 1.0.0
 description: >
   Discover which AE (Agentic Engine) knowledge bases accessible to the current user are worth searching, and decide whether to search at all, through read-only operations. Use when the user explicitly asks to search knowledge bases, internal documentation, or company materials. Also use when a task requires internal facts or business context, or when ae-analysis sees an enabled KB auto-discovery company switch before choosing its query route. Use internal context to explain data analysis results, anomalies, or trends and form evidence-backed conclusions. Do not use if the user explicitly asks not to access knowledge bases. This skill covers discovery and candidate selection; run the actual `+index` / `+grep` / `+read` / `+ask` retrieval with the `ae-kb` skill.
 ---
@@ -32,9 +33,17 @@ Do not use this skill when:
 
 ## Discovery Workflow
 
-### 1. Get the List of Accessible Knowledge Bases
+### 1. Use Trusted Active Sources Before Discovery
 
-First, get the lightweight list of knowledge bases accessible to the current user:
+If the current turn's trusted system context supplies **explicitly referenced** knowledge bases with exact `scope` and display `name`, use only relevant references from that list. Hand them directly to `ae-kb` for scoped `+index` / `+grep` / `+read` retrieval; do not call `+list` or search an unreferenced knowledge base. If retrieved pages leave a gap, report it. A knowledge base named only in user text is not a trusted active reference.
+
+If trusted context instead supplies **preferred candidates**, compare their names, descriptions and bindings with the question. Search only relevant candidates first. If all are clearly unrelated, or their retrieved pages leave a gap, call `+list` for other accessible sources. Metadata never counts as answer evidence. Preferred candidates are not a search limit and do not consume the newly discovered source budget below.
+
+When no trusted active sources are supplied, discover accessible knowledge bases with `+list` as usual. Copy exact `scope` and display `name` from trusted context or `+list`; never derive a CLI `--sources` name from a slug alone.
+
+### 2. Get the List of Accessible Knowledge Bases When Needed
+
+When discovery is needed, get the lightweight list of knowledge bases accessible to the current user:
 
 ```bash
 ae-cli kb +list
@@ -44,7 +53,7 @@ Use the exact `scope` and knowledge base name returned by the command, together 
 
 If `+list` is unavailable or fails, do not guess which knowledge bases exist. If the user explicitly requested a knowledge base search, explain that discovery cannot currently be completed. Otherwise, return to the original task and reassess the capabilities currently available.
 
-### 2. Rank Candidate Knowledge Bases
+### 3. Rank Candidate Knowledge Bases
 
 Rank candidates in this order:
 
@@ -54,9 +63,9 @@ Rank candidates in this order:
 
 Compare `targetId` with the corresponding current ID or code first. Use `targetName` only as a secondary signal when an ID or code is unavailable; do not replace a conflicting ID match with a name match. A candidate with no bindings or no current-context match remains eligible for semantic ranking. A binding to another project or space lowers implicit priority but does not exclude the candidate, and an explicit user choice still takes precedence.
 
-Select one preferred knowledge base by default. When several candidates are highly relevant, retain no more than three and try them one at a time in priority order. Do not read the indexes of all candidates in advance. A binding, name, description, tag, or language match only indicates that a knowledge base is worth searching; it does not prove a content match, grant access, or count as knowledge base evidence.
+Select one candidate to search at a time. After `+list`, retrieve from at most three distinct newly discovered knowledge bases in this task; stop when page evidence is sufficient. Every new source used by `+index`, `+grep`, `+read` or `+ask` counts once, including each source in a multi-source `+ask`. Explicit references and preferred candidates do not count toward this budget. Do not read the indexes of all candidates in advance. A binding, name, description, tag, or language match only indicates that a knowledge base is worth searching; it does not prove a content match, grant access, or count as knowledge base evidence.
 
-### 3. Hand Off to Retrieval
+### 4. Hand Off to Retrieval
 
 Once a preferred knowledge base is selected, hand off to the `ae-kb` skill and follow its `references/query-workflow.md` for the entire retrieval procedure — including when `+ask` is appropriate.
 
@@ -98,7 +107,7 @@ When using internal context to explain data analysis results, anomalies, or tren
 When knowledge base evidence provides only partial coverage, is entirely absent, or retrieval fails:
 
 1. Stop repeating searches against the same candidate knowledge base.
-2. If ranked candidates remain, switch to the next candidate. Search no more than three knowledge bases in one task.
+2. If ranked candidates remain, switch to the next candidate. After `+list`, retrieve from no more than three distinct newly discovered knowledge bases; explicit references and preferred candidates do not consume that budget.
 3. When all candidates provide no coverage, return to the user's original request instead of remaining in the knowledge base retrieval subtask.
 4. Reassess the capabilities currently available and choose the next path that best serves the original task. Do not hard-code a fixed fallback.
 5. Retain verified background evidence when useful, but never attribute conclusions drawn from other sources to a knowledge base.

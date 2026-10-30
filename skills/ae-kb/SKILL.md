@@ -1,6 +1,6 @@
 ---
 name: ae-kb
-version: 1.0.8
+version: 1.0.9
 description: 'AE knowledge base CLI manual for creating, importing read-only compiled snapshots, querying, LLM-powered ask, listing accessible knowledge bases and their sources, deterministic index/grep/read retrieval, checking status, ZIP source upload and directory management, raw child-file reading, revision-checked child updates and deletion, compiling, schema generation, URL sources, source deletion, ordinary text source creation, full reads and revision-checked editing, file/ZIP source draft replacement and restoration, and knowledge base deletion. Use when the user asks to manage AE (Agentic Engine) knowledge bases, import a compiled Markdown ZIP snapshot, upload documents or URLs to a knowledge base, query knowledge, ask knowledge bases with an LLM, list accessible knowledge bases or source metadata, inspect knowledge base indexes, search knowledge base pages, read a specific knowledge base page, check knowledge base status, generate schemas, compile knowledge, remove sources, create or edit text sources, or delete a knowledge base. To choose which knowledge base is worth searching, use the ae-kb-discovery skill first; this skill runs the retrieval once a target is chosen. Must use ae-cli kb commands and must not guess knowledge base names, scopes, page paths, source IDs, source display names, JSON payload shapes, or URL formats.'
 ---
 
@@ -29,7 +29,7 @@ Read [Publication and read contexts](references/publication.md) for company appr
 - Read operations can run directly after required inputs are known. Write operations require explicit user intent. Only `high-risk-write` commands require the CLI confirmation prompt; use `--yes` after explicit authorization.
 - Prefer `--dry-run` before destructive or broad writes when the user has not already validated the target.
 - Do not invent knowledge base names, scopes, source IDs, source display names, or JSON payloads. Ask the user or query known context when values are missing.
-- When building a `--sources` ref (or `+read --source`), copy the exact `scope` and `name` from `+list` output — run `ae-cli kb +list` first when the scope of a named knowledge base is unknown.
+- When building a `--sources` ref (or `+read --source`), copy the exact `scope` and display `name` from trusted active-source context or `+list` output. Run `ae-cli kb +list` when neither supplies the exact scope and name; never use a slug as the display name.
 - JSON flags must be valid JSON strings, usually wrapped in single quotes in shell commands.
 - Successful commands return JSON by default. Use `--format table` only when a table is easier for a human to scan. Envelope may include optional `_notice.host_compat`.
 - `--host <url>` overrides the active AE host. It is available on every command and may be placed after the subcommand, e.g. `ae-cli kb +<command> --host <url>`.
@@ -348,7 +348,9 @@ Use the deterministic retrieval primitives when an agent needs to explore knowle
 
 **Before running a real query, read [`references/query-workflow.md`](references/query-workflow.md)** — it selects the next useful retrieval step without crawling. It covers candidate indexing, copied-path grep, direct bounded reads of linked short pages, same-page read windows, linked-page re-grep when needed, optional outline-derived ranges, and coverage assessment. This section below is the per-command reference the workflow draws on.
 
-Start with `+list` or `+index` to discover accessible knowledge bases. Use `+index` when you also need navigation maps:
+Start with the trusted active sources described by `ae-kb-discovery`. Explicit references go straight to scoped retrieval without `+list`; relevant preferred candidates go first, with `+list` only if unrelated or insufficient. When no trusted active sources exist, use `+list` to discover accessible knowledge bases. Use `+index` when you also need navigation maps:
+
+When discovery is needed:
 
 ```bash
 ae-cli kb +list
@@ -636,7 +638,6 @@ Transport: `POST /agent/api/external/knowledge-bases/sources/check-updates`, bod
 - Gateway target: TBD; reuse an equivalent source update-check capability when available.
 - Review after: 2026-10-16.
 - Exit condition: once the Gateway exposes equivalent authorization and detector semantics, migrate the typed command to L2 or use L3 if it adds no value.
-
 
 ### Submit an ordinary URL update check
 
