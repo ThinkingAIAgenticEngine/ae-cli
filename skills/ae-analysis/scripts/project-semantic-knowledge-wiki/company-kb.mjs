@@ -9,11 +9,11 @@ const requestScoped = new Set(['+import-status']);
 const directory = new Set(['+source-ls', '+source-read', '+source-put', '+source-rm']);
 const value = (args, key) => args[args.indexOf(key) + 1];
 
-export function invokeCompanyKbCli(flags, { spawn = spawnSync, localCli = path.resolve(import.meta.dirname, '../../../../bin/ae-cli.js') } = {}) {
+export function invokeCompanyKbCli(flags, { spawn = spawnSync, localCli = path.resolve(import.meta.dirname, '../../../../bin/ae-cli.js'), timeoutMs } = {}) {
   // Packaged/project scripts use their matching CLI; standalone installed Skills retain PATH lookup.
   const bundled = fs.existsSync(localCli);
   const child = spawn(bundled ? process.execPath : 'ae-cli', bundled ? [localCli, ...flags] : flags,
-    { encoding: 'utf8', stdio: ['inherit', 'pipe', 'pipe'] });
+    { encoding: 'utf8', stdio: ['inherit', 'pipe', 'pipe'], ...(timeoutMs === undefined ? {} : { timeout: timeoutMs }) });
   if (child.stderr) process.stderr.write(child.stderr);
   if (child.error) throw child.error;
   if (child.status === 0) return JSON.parse(child.stdout);

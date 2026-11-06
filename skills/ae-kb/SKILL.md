@@ -1,6 +1,6 @@
 ---
 name: ae-kb
-version: 1.0.9
+version: 1.0.12
 description: 'AE knowledge base CLI manual for creating, importing read-only compiled snapshots, querying, LLM-powered ask, listing accessible knowledge bases and their sources, deterministic index/grep/read retrieval, checking status, ZIP source upload and directory management, raw child-file reading, revision-checked child updates and deletion, compiling, schema generation, URL sources, source deletion, ordinary text source creation, full reads and revision-checked editing, file/ZIP source draft replacement and restoration, and knowledge base deletion. Use when the user asks to manage AE (Agentic Engine) knowledge bases, import a compiled Markdown ZIP snapshot, upload documents or URLs to a knowledge base, query knowledge, ask knowledge bases with an LLM, list accessible knowledge bases or source metadata, inspect knowledge base indexes, search knowledge base pages, read a specific knowledge base page, check knowledge base status, generate schemas, compile knowledge, remove sources, create or edit text sources, or delete a knowledge base. To choose which knowledge base is worth searching, use the ae-kb-discovery skill first; this skill runs the retrieval once a target is chosen. Must use ae-cli kb commands and must not guess knowledge base names, scopes, page paths, source IDs, source display names, JSON payload shapes, or URL formats.'
 ---
 
@@ -169,7 +169,7 @@ ae-cli kb +compile --name handbook --mode incremental
 - `--expected-revision` is mandatory for writes. A 409 conflict is returned with its server error code; the command never refreshes and retries the write automatically.
 - `+source-rm` keeps the parent source. Nonempty directory removal requires `--recursive`; deletion follows the CLI confirmation gate. Use `--yes` only when automated deletion of the exact target is already authorized. `+rm-source --id` deletes the entire parent.
 - A mutation marks the parent changed but does not start compilation or regenerate Schema. Run incremental compilation explicitly; wait for successful publication before the next test stage.
-- `+status` is the existing aggregate status query; it is not a per-run event or ZIP Diff reader. Do not interpret its compilation submission response as successful publication.
+- `+status` without `--run-id` is the existing aggregate status query; `--run-id` selects an exact compile run lifecycle result. It is not a per-run event or ZIP Diff reader. Do not interpret its compilation submission response as successful publication.
 - No Gateway equivalent is registered in the current KB implementation. These commands reuse the typed External source APIs.
 
 Transition status: transitional
@@ -581,8 +581,10 @@ ae-cli kb +compile --name "<name>" [--scope personal|company] [--mode incrementa
 ### `+status`
 
 ```bash
-ae-cli kb +status --name "<name>" [--scope personal|company]
+ae-cli kb +status --name "<name>" [--scope personal|company] [--run-id <compile-run-id>]
 ```
+
+With `--run-id`, output contains `knowledgeBase` and `compileRun` (`id`, `status`, `errorMessage`, `startedAt`, `finishedAt`) instead of the aggregate lifecycle fields. Copy the ID from `+compile`; wait only for `queued`/`running`, and stop on `succeeded`/`failed`/`cancelled`. A failed run remains failed even when an older published version is available. Exact-run diagnostics require the same compile-run permission as the KB run-detail view, and error text is redacted. The run must belong to the resolved, authorized KB; unknown and cross-KB IDs return `KB_COMPILE_RUN_NOT_FOUND`. Existing calls without `--run-id` are unchanged. Older servers may reject the optional field; do not fall back to aggregate polling for exact-run completion. Run success is separate from publication completeness and content acceptance.
 
 ### `+list-sources`
 
@@ -638,7 +640,6 @@ Transport: `POST /agent/api/external/knowledge-bases/sources/check-updates`, bod
 - Gateway target: TBD; reuse an equivalent source update-check capability when available.
 - Review after: 2026-10-16.
 - Exit condition: once the Gateway exposes equivalent authorization and detector semantics, migrate the typed command to L2 or use L3 if it adds no value.
-
 
 ### Submit an ordinary URL update check
 

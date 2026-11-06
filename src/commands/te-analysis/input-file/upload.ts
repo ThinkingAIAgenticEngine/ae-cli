@@ -36,7 +36,7 @@ export const inputFileUpload: Command = {
     return {
       ...result,
       inspect_path: typeof inputFileId === 'string'
-        ? `/api/cli/analysis/v1/input-files/${inputFileId}`
+        ? new URL(buildCapabilityGatewayUrl(ctx.host(), resolveGatewayDomain('analysis'), `input-files/${inputFileId}`)).pathname
         : result?.inspect_path,
       inspect_command: typeof inputFileId === 'string'
         ? `ae-cli analysis input-file inspect --input-file-id ${inputFileId}`

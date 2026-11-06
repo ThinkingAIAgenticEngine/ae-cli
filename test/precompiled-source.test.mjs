@@ -26,3 +26,11 @@ test('source sync ignores build metadata but detects semantic changes', async ()
   assert.equal(normalizeSourceForHash(first), normalizeSourceForHash(next));
   assert.notEqual(normalizeSourceForHash(first), normalizeSourceForHash(next.replace('filter: paid', 'filter: refunded')));
 });
+
+test('source sync ignores semantic conflict candidate ordering only', async () => {
+  const { normalizeSourceForHash } = await import('../skills/ae-analysis/scripts/project-semantic-knowledge-wiki/precompiled-source.mjs');
+  const first = '## 语义冲突\n\n- B：语义“账户id”存在 2 个元数据候选，但口径不同：“账户ID”（id=#account_id，事件属性 #account_id table_type=0）；“账户ID”（id=#account_id，用户属性 #account_id table_type=1）。Agent 不应仅凭名称选择，需要优先使用业务域/召回卡或让用户确认。\n- A：语义“用户id”存在 2 个元数据候选，但口径不同：“用户ID”（id=#user_id，事件属性 #user_id table_type=0）；“用户ID”（id=#user_id，用户属性 #user_id table_type=1）。Agent 不应仅凭名称选择，需要优先使用业务域/召回卡或让用户确认。\n\n## 缺少源标题的元数据\n\n- `z`\n- `a`\n';
+  const reordered = '## 语义冲突\n\n- A：语义“用户id”存在 2 个元数据候选，但口径不同：“用户ID”（id=#user_id，用户属性 #user_id table_type=1）；“用户ID”（id=#user_id，事件属性 #user_id table_type=0）。Agent 不应仅凭名称选择，需要优先使用业务域/召回卡或让用户确认。\n- B：语义“账户id”存在 2 个元数据候选，但口径不同：“账户ID”（id=#account_id，用户属性 #account_id table_type=1）；“账户ID”（id=#account_id，事件属性 #account_id table_type=0）。Agent 不应仅凭名称选择，需要优先使用业务域/召回卡或让用户确认。\n\n## 缺少源标题的元数据\n\n- `a`\n- `z`\n';
+  assert.equal(normalizeSourceForHash(first), normalizeSourceForHash(reordered));
+  assert.notEqual(normalizeSourceForHash(first), normalizeSourceForHash(reordered.replace('table_type=1', 'table_type=2')));
+});

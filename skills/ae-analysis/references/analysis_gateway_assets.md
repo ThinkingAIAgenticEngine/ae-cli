@@ -73,3 +73,5 @@ Choose the shortest path that preserves the requested business semantics:
 6. A failed query surface is not evidence that another surface is healthy. Do not switch among saved report, dashboard, ad-hoc, or export merely to re-prove a terminal failure in the same verified failure domain.
 
 Do not call removed QP builders or schema helpers for ad-hoc analysis. `--definition` is the AI-facing contract from `ai_models.md`, not raw QP or a frontend DTO.
+
+Sharing and ownership changes use `high-risk-write`. Use the operation reference for scope preview and explicit user confirmation; after authorization, non-interactive execution requires global `--yes`.

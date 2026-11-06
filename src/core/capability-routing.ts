@@ -53,10 +53,15 @@ export function listCapabilityDiscoveryPrefixes(cliService: string): string[] {
 
 /**
  * Resolve gateway route domain for a CLI service.
- * Priority: env (`AE_CLI_CAPABILITY_GATEWAY_DOMAIN[_SERVICE]`) > call-site override > registered route.
+ * AI Monitor is deployed below the `/ai-monitor` base path and must keep that
+ * prefix, so its route is fixed. Other services use this priority:
+ * env (`AE_CLI_CAPABILITY_GATEWAY_DOMAIN[_SERVICE]`) > call-site override > registered route.
  * Empty env value means root gateway `/api/cli/v1` (direct Hermes without nginx domain segment).
  */
 export function resolveGatewayDomain(cliService: string, override?: string): string {
+  if (cliService === 'ai-monitor') {
+    return 'ai-monitor';
+  }
   // Env must win over call-site override: engage-* commands always pass gatewayDomain:'engage',
   // which would otherwise make AE_CLI_CAPABILITY_GATEWAY_DOMAIN= unusable for local Hermes.
   const envDomain = envGatewayDomain(cliService);

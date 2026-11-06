@@ -3,6 +3,7 @@ import { open, unlink } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { CliValidationError } from './errors.js';
 import { resolveEvaluationHost } from './eval-endpoint.js';
+import { buildEvaluationOnboardingPayload, evaluationResponseStatus, type EvalOnboardingPayload } from './eval-onboarding.js';
 
 const DEFAULT_TIMEOUT_MS = 30_000;
 
@@ -12,6 +13,7 @@ export interface EvalApiErrorOptions {
   hint?: string;
   details?: Record<string, unknown>;
   sensitiveValues?: string[];
+  onboarding?: EvalOnboardingPayload;
 }
 
 export class EvalApiError extends Error {
@@ -19,6 +21,7 @@ export class EvalApiError extends Error {
   readonly httpStatus: number;
   readonly hint?: string;
   readonly details?: Record<string, unknown>;
+  readonly onboarding?: EvalOnboardingPayload;
 
   constructor(message: string, options: EvalApiErrorOptions) {
     const redact = evaluationErrorRedactor([
@@ -31,6 +34,7 @@ export class EvalApiError extends Error {
     this.httpStatus = options.httpStatus;
     this.hint = options.hint === undefined ? undefined : redact(options.hint);
     this.details = options.details === undefined ? undefined : redact(options.details);
+    this.onboarding = options.onboarding === undefined ? undefined : redact(options.onboarding);
   }
 }
 
@@ -108,7 +112,8 @@ export async function evalRequest(options: EvalRequestOptions): Promise<any> {
       redirect: 'error',
       signal: controller.signal,
     });
-    if (response.ok && options.responseType === 'bytes') {
+    if (response.ok && options.responseType === 'bytes'
+      && !response.headers.get('content-type')?.toLowerCase().includes('text/html')) {
       bytes = new Uint8Array(await response.arrayBuffer());
     } else {
       responseText = await response.text();
@@ -121,12 +126,14 @@ export async function evalRequest(options: EvalRequestOptions): Promise<any> {
         code: 'EVAL_API_TIMEOUT',
         httpStatus: 0,
         hint: 'Verify the evaluation platform is reachable at the configured endpoint.',
+        onboarding: buildEvaluationOnboardingPayload('availability_unknown', options.baseUrl),
       });
     }
     throw new EvalApiError('Evaluation API request failed before a response was received.', {
       code: 'EVAL_API_NETWORK_ERROR',
       httpStatus: 0,
-      hint: 'Verify the --endpoint URL and network path.',
+      hint: 'Verify the --host URL and network path.',
+      onboarding: buildEvaluationOnboardingPayload('availability_unknown', options.baseUrl),
     });
   } finally {
     clearTimeout(timeout);
@@ -134,7 +141,25 @@ export async function evalRequest(options: EvalRequestOptions): Promise<any> {
 
   logEvalRequest(options.method, url, response.status);
   if (bytes !== undefined) return bytes;
-  const responseBody = parseEvalResponseBody(responseText, response.status);
+  let responseBody;
+  try {
+    // Reject HTML by media type even when its body happens to be valid JSON.
+    if (response.headers.get('content-type')?.toLowerCase().includes('text/html')) {
+      throw new EvalApiError('Evaluation API returned an HTML response instead of the requested API data.', {
+        code: 'EVAL_API_INVALID_RESPONSE',
+        httpStatus: response.status,
+      });
+    }
+    responseBody = parseEvalResponseBody(responseText, response.status);
+  } catch (error) {
+    if (!(error instanceof EvalApiError)) throw error;
+    const status = evaluationResponseStatus(response.status, response.headers.get('content-type'), undefined);
+    throw new EvalApiError(error.message, {
+      code: error.code, httpStatus: error.httpStatus, hint: error.hint,
+      sensitiveValues: Object.values(options.headers).flatMap((value) => [value, value.replace(/^Bearer\s+/i, '')]),
+      onboarding: buildEvaluationOnboardingPayload(status ?? 'availability_unknown', options.baseUrl),
+    });
+  }
 
   if (!response.ok) {
     const sensitiveValues = Object.values(options.headers).flatMap((value) => [value, value.replace(/^Bearer\s+/i, '')]);
@@ -143,7 +168,9 @@ export async function evalRequest(options: EvalRequestOptions): Promise<any> {
         if (typeof options.body[key] === 'string') sensitiveValues.push(options.body[key]);
       }
     }
-    throw evalErrorFromBody(responseBody, response.status, sensitiveValues);
+    const status = evaluationResponseStatus(response.status, response.headers.get('content-type'), responseBody);
+    throw evalErrorFromBody(responseBody, response.status, sensitiveValues,
+      status ? buildEvaluationOnboardingPayload(status, options.baseUrl) : undefined);
   }
 
   return responseBody;
@@ -209,7 +236,7 @@ function parseEvalResponseBody(text: string, httpStatus: number): any {
   }
 }
 
-function evalErrorFromBody(body: any, httpStatus: number, sensitiveValues: string[]): EvalApiError {
+function evalErrorFromBody(body: any, httpStatus: number, sensitiveValues: string[], onboarding?: EvalOnboardingPayload): EvalApiError {
   const error = body?.error;
   if (isRecord(error) && typeof error.message === 'string' && error.message.trim()) {
     return new EvalApiError(error.message.trim(), {
@@ -219,11 +246,13 @@ function evalErrorFromBody(body: any, httpStatus: number, sensitiveValues: strin
       hint: typeof error.details === 'string' ? error.details : undefined,
       details: isRecord(error.details) ? error.details : undefined,
       sensitiveValues,
+      onboarding,
     });
   }
   return new EvalApiError(`Evaluation API returned HTTP ${httpStatus}.`, {
     code: `EVAL_API_HTTP_${httpStatus}`,
     httpStatus,
+    onboarding,
     hint: httpStatus >= 500
       ? 'The server response was suppressed. Check the evaluation platform logs; the CLI did not retry.'
       : undefined,

@@ -3,6 +3,7 @@ import {
   createAnalysisMetaCapabilityCommand,
   optionalJson,
   optionalString,
+  optionalStringPreserveEmpty,
   projectIdFlag,
   projectInput,
 } from '../../capability-shared.js';
@@ -30,7 +31,7 @@ export const metadataMetricUpdate = createAnalysisMetaCapabilityCommand({
     metric_id: ctx.num('metric-id'),
     metric_name: optionalString(ctx, 'metric-name'),
     metric_desc: optionalString(ctx, 'metric-desc'),
-    metric_remark: optionalString(ctx, 'metric-remark'),
+    metric_remark: optionalStringPreserveEmpty(ctx, 'metric-remark'),
     metric_mode: optionalMetricMode(ctx),
     metric_events: optionalJson(ctx, 'metric-events'),
     metric_params: optionalJson(ctx, 'metric-params'),

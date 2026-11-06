@@ -10,7 +10,7 @@ If the page has `has_more: true` and there is no strong candidate in `items[]`, 
 
 Do not use it to query report/dashboard result data; it discovers saved report and analysis dashboard records only. It does not return metrics, events, properties, clusters, tags, alerts, or BI dashboards.
 
-Prefer this command over `analysis report list` or `analysis dashboard list` for viewing, finding, or selecting assets. Those list commands are manageable-asset directories and intentionally exclude read-only shared assets.
+Prefer this command over `analysis report list` or `analysis dashboard list` for viewing, finding, or selecting assets. Use the corresponding list with `--manageable-only` when selecting editable targets for a management workflow.
 
 Command:
 

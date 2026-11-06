@@ -6,11 +6,11 @@ Do not use it for ID-file value replacement or to create a missing tag. A change
 
 The response distinguishes both paths. An update that triggers recomputation returns `computation.triggered_automatically=true`, `result_freshness.is_stale=true`, and `next_action=poll_get` with an exact capability/input pair. An unchanged definition or display-name/remark-only update returns `computation.status=not_triggered`, `result_freshness.status=fresh`, and `next_action=none`.
 
-Flags: `--project-id`, `--tag-name` required. Optional: `--display-name`, `--definition-request`, `--authenticated-only`, `--remark`, `--zone-offset`, `--enable-auto-refresh`, `--auto-refresh-schedule`, `--auto-refresh-cron`. The tag type comes from `definition_request.type` when the definition changes.
+Flags: `--project-id`, `--tag-name` required. Optional: `--display-name`, `--definition-request`, `--authenticated-only`, `--remark`, `--zone-offset`, `--enable-auto-refresh`, `--enable-history-tag-backup`, `--auto-refresh-schedule`, `--auto-refresh-cron`. The tag type comes from `definition_request.type` when the definition changes.
 
 `display_name` is at most 80 characters and `remark` is at most 400 characters. The CLI rejects violations before dispatch. `tag_name` is an existing exact identifier and cannot be renamed by update.
 
-Read `user_tag_models.md` before changing the definition. The backend validates and compiles `definition_request` inside update and refuses to modify the tag if clarification is required.
+Read `user_tag_models.md` before changing the definition. For SQL, check the replacement query against the existing tag's entity using the [SQL tag subject selection rules](user_tag_models.md#sql-tag). The backend validates and compiles `definition_request` inside update and refuses to modify the tag if clarification is required.
 
 ```bash
 ae-cli analysis user-tag update --project-id <project_id> --tag-name user_level --display-name "User Level v2"
@@ -29,3 +29,6 @@ ae-cli analysis user-tag update --project-id <project_id> --tag-name user_level 
 ```
 
 Read `user-tag get` after updating to verify `enable_auto_refresh` (1=enabled, 0=disabled), `scheduler_ui_config`, and `cluster_zone_offset`. Schedule-only updates return `computation.status=not_triggered` and `next_action=none`.
+
+Use `--enable-history-tag-backup true|false` to switch historical backups independently. Enabling requires periodic refresh already active or a schedule in the same update. Omitting the flag preserves the saved switch. A backup-only update keeps the schedule and does not start a calculation.
+Read the tag with `user-tag get`: `enable_history_tag_backup=1` means enabled; the native read may omit the field or return null when disabled. Use `history-tag list` to check for a completed historical version after a scheduled refresh.

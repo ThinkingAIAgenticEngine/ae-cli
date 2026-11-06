@@ -1,5 +1,7 @@
 # project member-handover run
 
+This is a `high-risk-write` operation because it changes access, ownership, or authentication policy. Preview the affected scope with `--dry-run`, obtain explicit user confirmation, then use global `--yes` for non-interactive execution. Validation and dry-run do not apply the change.
+
 Use when the user needs to run project member asset handover.
 
 Do not use it for unrelated project-management actions or for fields not present in the common-service capability schema. Do not send camelCase aliases.
@@ -7,7 +9,7 @@ Do not use it for unrelated project-management actions or for fields not present
 Command:
 
 ```bash
-ae-cli project member-handover run --project-id <project_id> --payload '{"to_user_id":<user_id>,"single_submit":true,"asset_list":[{"asset_id":<asset_id>,"asset_type":"report","asset_name":"<asset_name>"}]}'
+ae-cli project member-handover run --project-id <project_id> --payload '{"to_user_id":<user_id>,"single_submit":true,"asset_list":[{"asset_id":<asset_id>,"asset_type":"report","asset_name":"<asset_name>"}]}' --yes
 ```
 
 Capability id: `project.member_handover.run`.

@@ -3,9 +3,11 @@ import {
   certificationScopeInput,
   compactInput,
   createAnalysisCapabilityCommand,
+  manageableOnlyFlag,
   directoryLimitFlag,
   directoryOffsetFlag,
   listInput,
+  optionalBoolean,
   projectIdFlag,
 } from '../capability-shared.js';
 import { queriesFlag, validateQueriesFlag } from '../catalog-list.js';
@@ -14,10 +16,11 @@ export const dashboardList = createAnalysisCapabilityCommand({
   resource: 'dashboard',
   command: 'list',
   capabilityId: 'analysis.dashboard.list',
-  description: 'List dashboards the current user can update or manage. Read-only dashboards are excluded; use analysis asset search for readable asset discovery.',
+  description: 'List readable dashboards. For management workflows use --manageable-only. Use analysis asset search for asset discovery.',
   flags: [
     projectIdFlag,
     queriesFlag,
+    manageableOnlyFlag,
     {
       name: 'fields',
       type: 'json',
@@ -33,6 +36,7 @@ export const dashboardList = createAnalysisCapabilityCommand({
   validate: validateQueriesFlag,
   buildInput: (ctx) => compactInput({
     ...listInput(ctx),
+    manageable_only: optionalBoolean(ctx, 'manageable-only'),
     certification_scope: certificationScopeInput(ctx),
   }),
 });

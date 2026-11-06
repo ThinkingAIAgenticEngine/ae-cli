@@ -186,3 +186,84 @@ test('formula metrics with the same expression retain distinct operand windows i
     assert.doesNotMatch(summary, /聚合方式未暴露|事件“formula”/);
   } finally { fs.rmSync(f.root, { recursive: true, force: true }); }
 });
+
+test('recall evidence retains calculation constraints beyond the first rule', () => {
+  const f = fixture();
+  try {
+    f.plan.sql_report_semantics[0].calculation_rules = [
+      { meaning: 'Rows identify inventory observations.', evidence: 'from inventory' },
+      { meaning: 'The owner column is returned under an alias.', evidence: 'owner AS CSM' },
+    ];
+    const page = fs.readFileSync(path.join(f.build(), 'wiki/recall-cards/service-capacity.md'), 'utf8');
+    assert.ok(page.includes(f.plan.sql_report_semantics[0].calculation_rules[1].meaning));
+  } finally { fs.rmSync(f.root, { recursive: true, force: true }); }
+});
+
+test('a versioned card exposes target conversion and clarification before asset discovery', () => {
+  const f = fixture();
+  try {
+    const card = f.plan.domains[0].recall_cards[0];
+    const source = card.routing.branches[0].asset_refs;
+    card.routing.contract_version = 1;
+    card.routing.answer_grain = 'Inventory owner in the requested window';
+    card.routing.branches = [
+      { when: 'Owner inventory is requested', outcome: 'transform', asset_refs: source, reason: 'The report exposes cluster and owner.',
+        source_grain: 'One inventory row per cluster', action: 'Group cluster identities by owner within the bound period.',
+        checks: ['Verify unique cluster identity and complete mapping before comparison.'] },
+      { when: 'The identity requested is ambiguous', outcome: 'clarify', asset_refs: [], reason: 'Owner and operator differ.', action: 'Ask which role is intended.' },
+    ];
+    const read = () => fs.readFileSync(path.join(f.build(), 'wiki/recall-cards/service-capacity.md'), 'utf8');
+    const summary = read().split('## Agent 使用摘要')[1].split('\n## ')[0];
+    for (const fact of [card.routing.answer_grain, card.routing.branches[0].source_grain, card.routing.branches[0].action,
+      ...card.routing.branches[0].checks, card.routing.branches[1].action]) assert.ok(summary.includes(fact), fact);
+    card.routing.branches[0].asset_refs.push(card.fallback_asset_refs[0]);
+    card.routing.branches[0].combination = { compatibility: 'unknown', reason: 'No verified time alignment' };
+    assert.throws(read, /unverified combination/);
+    card.routing.branches[0].asset_refs.pop();
+    delete card.routing.branches[0].combination;
+    delete card.routing.branches[0].checks;
+    assert.throws(read, /checks/);
+    card.preferred_asset_refs = [];
+    card.fallback_asset_refs = [];
+    card.routing.branches = [{ when: 'A future event probability is requested', outcome: 'unsupported', asset_refs: [],
+      reason: 'Only historical observations exist.', action: 'Report observed changes and identify the missing forecast evidence.' }];
+    assert.ok(read().includes(card.routing.branches[0].action));
+    card.excluded_asset_refs = source;
+    card.routing.branches[0].asset_refs = source;
+    assert.ok(read().includes(card.routing.branches[0].reason));
+    const manifest = JSON.parse(fs.readFileSync(path.join(f.root, 'wiki-kb-upload-sources/kb-upload-manifest.json')));
+    const publishedSource = manifest.sources.find(row => row.source_kind === 'recall-card' && row.asset_key === card.card_id);
+    assert.ok(publishedSource.semantic_plan_fragment_refs.includes('report:a:sql_semantics'));
+  } finally { fs.rmSync(f.root, { recursive: true, force: true }); }
+});
+
+test('daily distinct measures support daily reporting and preserve the boundary on period totals', () => {
+  const f = fixture();
+  try {
+    const report = f.reports[1];
+    report.metric_occurrences = [{ event_name: 'sample_received', display_name: 'Samples',
+      aggregation_name: 'Distinct instruments', entity_grain: 'instrument_id' }];
+    report.calculation_context.group_by = [{ columnName: 'day' }];
+    f.index('indexes/report-catalog.jsonl', f.reports);
+    const card = f.plan.domains[0].recall_cards[0];
+    const refs = card.fallback_asset_refs.slice(0, 1);
+    card.preferred_asset_refs = refs;
+    card.fallback_asset_refs = [];
+    const daily = { when: 'Daily instrument counts', outcome: 'direct', source_grain: 'One row per observed day',
+      reason: 'The measure counts distinct instruments, despite the Samples label.', action: 'Read the observed daily counts.',
+      checks: ['Verify effective dates and the distinct instrument key.'], asset_refs: refs };
+    const monthly = { when: 'Distinct instruments over the full period', outcome: 'unsupported', answer_grain: 'One full period',
+      reason: 'The same instrument can appear on multiple days.', action: 'Only daily counts are supported without period-wide deduplication.', asset_refs: refs };
+    card.routing = { ...card.routing, contract_version: 1, answer_grain: 'One observed day', branches: [daily, monthly] };
+    const read = () => fs.readFileSync(path.join(f.build(), 'wiki/recall-cards/service-capacity.md'), 'utf8');
+    const page = read();
+    const summary = page.split('## Agent 使用摘要')[1].split('\n## ')[0];
+    for (const fact of [daily.reason, daily.checks[0], monthly.when, monthly.reason, monthly.action]) assert.ok(summary.includes(fact), fact);
+    assert.match(page, /Samples: Distinct instruments: event=sample_received: entity="instrument_id"/);
+    daily.asset_refs = [];
+    assert.throws(read, /asset_refs/);
+    daily.asset_refs = refs;
+    delete card.routing.contract_version;
+    assert.throws(read, /contract_version/);
+  } finally { fs.rmSync(f.root, { recursive: true, force: true }); }
+});

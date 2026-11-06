@@ -1,6 +1,6 @@
 ---
 name: ae-capability
-version: 1.3.15
+version: 1.3.16
 description: "AE capability gateway discovery and generic invocation with ae-cli. Use when the user needs to list or search available capabilities, inspect an unknown capability schema/risk/auth contract, optionally validate complex input or dry-run before execute, or invoke a long-tail capability that has no curated ae-cli command. Always discover and inspect before composing input; never guess capability IDs or input fields. Prefer on-demand validate OR dry-run — do not stack both by default."
 ---
 
@@ -18,7 +18,7 @@ Use this skill for progressive capability discovery and generic gateway invocati
 2. Otherwise search the capability catalog.
 3. Inspect the selected capability before constructing input.
 4. **Optionally** pre-check — pick **at most one** path from the table below (do not stack validate + dry-run by default).
-5. Execute (`capability run` / curated command). Chat confirmation only for delete (`high-risk-write`).
+5. Execute (`capability run` / curated command). Obtain explicit user confirmation for `high-risk-write`, including deletion, cancellation, sharing, ownership, permission, and authentication-policy changes.
 
 Never guess a capability ID, input field, enum value, resource ID, or project ID.
 
@@ -102,9 +102,9 @@ Hard rule: **for the same final input, do not run both validate and dry-run by d
 | Situation | What to call | Then |
 | --- | --- | --- |
 | Simple / familiar input (typical `read`, few scalar fields) | **Neither** — skip pre-check | `run` directly |
-| Complex `qp` / nested `payload` / share maps; still iterating shape | **`--validate` / `capability validate` only** (may repeat while fixing) | After `valid=true`, **`run` directly** — skip dry-run unless below applies |
-| Need risk / `output_mode` / `supports_cancel`, or `high-risk-write` delete gate | **`--dry-run` / `capability dry-run` only** (once on final input) | Then confirm (delete) / `run`. Do **not** validate first on the same final payload |
-| Rare exception: many validate iterations, then still need delete confirmation | validate while drafting → **one** dry-run on the **final** input | Then chat confirm → `run --yes` |
+| Complex `qp` / nested `payload` / share maps; still iterating shape | **`--validate` / `capability validate` only** (may repeat while fixing) | After `valid=true`, run following the inspected risk and authorization requirements; skip dry-run unless below applies |
+| Need risk / `output_mode` / `supports_cancel`, or `high-risk-write` gate | **`--dry-run` / `capability dry-run` only** (once on final input) | Then confirm the high-risk change / `run`. Do **not** validate first on the same final payload |
+| Rare exception: many validate iterations, then still need high-risk confirmation | validate while drafting → **one** dry-run on the **final** input | Then chat confirm → `run --yes` |
 
 Do **not** treat `validate → dry-run → run` as the normal path. That stack is the rare exception in the last row only.
 
@@ -148,6 +148,8 @@ ae-cli capability run <capability-id> --input '<json-object>'
 The capability namespace is inferred from `<capability-id>` for `inspect`, `validate`, `dry-run`, and `run`. Use `--domain <domain>` only to override routing. For `list`, `search`, and `inspect`, omit `--project-id` for company License/Feature visibility; pass it to include project membership, project Feature, and user permission filtering.
 
 ## validate vs dry-run
+
+The built-in `--jq`/`capability ... --jq` filter receives the command payload before the outer `{ok,data,meta}` envelope. For example, `capability list` uses `.capabilities[]`; only external jq over saved final JSON uses `.data.capabilities[]`.
 
 | | `validate` / `--validate` | `dry-run` / `--dry-run` |
 | --- | --- | --- |
@@ -231,3 +233,5 @@ ae-cli capability validate metadata.data_table.sql_write --input input.json
 ae-cli capability dry-run analysis.folder.delete --input '{"project_id":1,"folder_ids":[1001]}'
 ae-cli capability run analysis.dashboard.list --input input.json
 ```
+
+For non-interactive high-risk execution, obtain explicit authorization and pass global `--yes`. Piped answers do not replace this flag. An interactive prompt ending at EOF aborts cleanly. Gateway permission errors retain `meta.request_id` and `meta.invocation_id` for diagnosis.

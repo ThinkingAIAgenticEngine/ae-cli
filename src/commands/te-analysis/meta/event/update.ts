@@ -2,6 +2,7 @@ import {
   compactInput,
   createAnalysisMetaCapabilityCommand,
   optionalString,
+  optionalStringPreserveEmpty,
   projectIdFlag,
   projectInput,
 } from '../../capability-shared.js';
@@ -18,5 +19,5 @@ export const metadataEventUpdate = createAnalysisMetaCapabilityCommand({
     { name: 'remark', type: 'string', required: false, desc: 'Event remark.' },
   ],
   risk: 'write',
-  buildInput: (ctx) => (compactInput({ ...projectInput(ctx), event_name: ctx.str('event-name'), event_desc: optionalString(ctx, 'event-desc'), remark: optionalString(ctx, 'remark') })),
+  buildInput: (ctx) => (compactInput({ ...projectInput(ctx), event_name: ctx.str('event-name'), event_desc: optionalString(ctx, 'event-desc'), remark: optionalStringPreserveEmpty(ctx, 'remark') })),
 });

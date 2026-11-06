@@ -5,6 +5,7 @@
  */
 
 import assert from 'node:assert/strict';
+import { spawnSync } from 'node:child_process';
 import { chmodSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -141,6 +142,7 @@ function byId(capabilityId: string): Command {
 async function dryInput(
   command: Command,
   values: Record<string, unknown>,
+  allowedInputFields?: readonly string[],
 ): Promise<Record<string, unknown>> {
   clearCapabilityGatewayRoutesForTest();
   registerCapabilityGatewayRoute('analysis', { gatewayDomain: 'analysis' });
@@ -152,6 +154,15 @@ async function dryInput(
     const url = typeof request === 'string' ? request : request.url;
     assert.match(url, /\/api\/cli\/analysis\/v1\/capabilities\//);
     body = init?.body ? JSON.parse(String(init.body)) : undefined;
+    if (allowedInputFields) {
+      const unsupported = Object.keys(body.input).filter((field) => !allowedInputFields.includes(field));
+      if (unsupported.length > 0) {
+        return new Response(JSON.stringify({ ok: false, error: {
+          code: 'UNSUPPORTED_INPUT_FIELDS',
+          message: `Fields are not accepted by the capability schema: ${unsupported.join(', ')}`,
+        } }), { status: 400 });
+      }
+    }
     return new Response(JSON.stringify({ ok: true, data: { dry_run: true } }), { status: 200 });
   }) as typeof fetch;
   try {
@@ -211,6 +222,8 @@ await test('high-risk system commands rely on the global confirmation gate', () 
     'system.smtp.delete',
     'system.receiver_address.delete',
     'system.third_party_login.disable',
+    'system.third_party_login.upsert',
+    'system.oauth2.update',
     'system.seat.update',
   ]);
   assert.deepEqual(
@@ -219,6 +232,74 @@ await test('high-risk system commands rely on the global confirmation gate', () 
   );
   for (const command of systemCommands.filter((item) => item.risk === 'high-risk-write')) {
     assert.equal(command.flags.some((flag) => flag.name === 'yes'), false);
+  }
+});
+
+await test('OAuth2 changes retain high-risk confirmation without adding an unsupported wire field', async () => {
+  const command = byId('system.oauth2.update');
+  assert.equal(command.risk, 'high-risk-write');
+  for (const enabled of [true, false]) {
+    assert.deepEqual(await dryInput(command, { 'company-id': 7, 'enable-oauth2': enabled },
+      ['company_id', 'enable_oauth2']), { company_id: 7, enable_oauth2: enabled });
+  }
+});
+
+await test('global yes dispatches authentication changes against their strict server input contracts', () => {
+  const secret = protectedSecretFile('synthetic-login-secret');
+  const folder = mkdtempSync(join(tmpdir(), 'ae-cli-system-wire-'));
+  const host = 'https://system-wire-contract.example.invalid';
+  const cases = [
+    { capabilityId: 'system.oauth2.update', args: ['system', 'oauth2', 'update', '--company-id', '7', '--enable-oauth2', 'true'],
+      expected: { company_id: 7, enable_oauth2: true } },
+    { capabilityId: 'system.oauth2.update', args: ['system', 'oauth2', 'update', '--company-id', '7', '--enable-oauth2', 'false'],
+      expected: { company_id: 7, enable_oauth2: false } },
+    { capabilityId: 'system.third_party_login.upsert', args: ['system', 'third-party-login', 'upsert', '--company-id', '7',
+      '--login-type', 'feishu', '--app-id', 'synthetic-app', '--app-secret-file', secret.file],
+      expected: { company_id: 7, login_type: 'feishu', app_id: 'synthetic-app', app_secret: 'synthetic-login-secret' } },
+    { capabilityId: 'system.smtp.delete', args: ['system', 'smtp', 'delete', '--company-id', '7'],
+      expected: { company_id: 7, yes: true } },
+  ];
+  try {
+    for (const scenario of cases) {
+      const code = `
+        const { Command } = await import('commander');
+        const { registerCommands } = await import('./src/framework/register.ts');
+        const { default: commands } = await import('./src/commands/te-analysis/system/index.ts');
+        const { registerCapabilityGatewayRoute } = await import('./src/core/capability-routing.ts');
+        const { logger } = await import('./src/core/logger.ts');
+        logger.command = () => {}; logger.info = () => {}; logger.error = () => {}; logger.warn = () => {};
+        const command = commands.find(item => item.capabilityId === ${JSON.stringify(scenario.capabilityId)});
+        const expected = ${JSON.stringify(scenario.expected)};
+        registerCapabilityGatewayRoute('analysis', { gatewayDomain: 'analysis' });
+        let executions = 0;
+        globalThis.fetch = async (url, init = {}) => {
+          if (!String(url).endsWith('/execute')) throw new Error('Unexpected request in strict contract test');
+          executions += 1;
+          const input = JSON.parse(String(init.body)).input;
+          const invalid = Object.keys(input).some(key => !Object.hasOwn(expected, key))
+            || Object.keys(expected).some(key => input[key] !== expected[key]);
+          if (invalid) return new Response(JSON.stringify({ ok: false, error: {
+            code: 'UNSUPPORTED_INPUT_FIELDS', message: 'Request does not match the strict capability contract',
+          } }), { status: 400 });
+          return new Response(JSON.stringify({ ok: true, data: { accepted: true } }), { status: 200 });
+        };
+        const program = new Command(); program.option('--yes').option('--host <host>').option('--format <format>');
+        registerCommands(program, [command]);
+        await program.parseAsync(['node', 'test', '--host', ${JSON.stringify(host)}, '--yes', ...${JSON.stringify(scenario.args)}]);
+        if (executions !== 1) throw new Error('Expected exactly one authorized execute request');
+      `;
+      const env = { ...Object.fromEntries(Object.entries(process.env)
+        .filter(([key]) => key !== 'TE_AGENT_CLI_CONFIG_DIR' && !key.startsWith('AE_CLI_TOKEN'))),
+      TE_AGENT_CLI_CONFIG_DIR: folder, TA_CLI_CONTEXT_FILE: join(folder, 'absent-context.json'),
+      AE_CLI_TOKEN: 'cli_synthetic_system_wire_token', AE_CLI_TOKEN_HOST: host, AE_CLI_NO_COMPAT_CHECK: '1' };
+      const child = spawnSync(process.execPath, ['--import', 'tsx', '--input-type=module', '-e', code],
+        { env, encoding: 'utf8', input: '', timeout: 10_000 });
+      assert.equal(child.status, 0, `${scenario.capabilityId}: ${child.stderr}`);
+      assert.deepEqual(JSON.parse(child.stdout).data, { accepted: true });
+    }
+  } finally {
+    rmSync(secret.dir, { recursive: true, force: true });
+    rmSync(folder, { recursive: true, force: true });
   }
 });
 
@@ -583,6 +664,7 @@ await test('third-party login secrets are read only from protected sources', asy
   const scan = protectedSecretFile('scan-secret-value');
   try {
     const command = byId('system.third_party_login.upsert');
+    assert.equal(command.risk, 'high-risk-write');
     assert.equal(command.flags.some((flag) => flag.name === 'app-secret'), false);
     assert.equal(command.flags.some((flag) => flag.name === 'dd-scan-app-secret'), false);
     assert.deepEqual(await dryInput(command, {
@@ -594,7 +676,8 @@ await test('third-party login secrets are read only from protected sources', asy
       'dd-scan-app-id': 'scan-app-id',
       'app-secret-file': app.file,
       'dd-scan-app-secret-file': scan.file,
-    }), {
+    }, ['company_id', 'login_type', 'app_id', 'corp_id', 'agent_id', 'dd_scan_app_id',
+      'app_secret', 'dd_scan_app_secret']), {
       company_id: 7,
       login_type: 'dingtalk',
       app_id: 'app-id',

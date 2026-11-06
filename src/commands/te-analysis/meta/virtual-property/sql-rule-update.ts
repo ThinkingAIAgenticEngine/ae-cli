@@ -19,7 +19,7 @@ export const metadataVirtualPropertySqlRuleUpdate = createAnalysisMetaCapability
     { name: 'properties', type: 'json', required: false, desc: 'Dependent property JSON array.' },
     { name: 'sql-event-relation-type', type: 'string', required: false, desc: 'relation_default, relation_always, or relation_by_setting.' },
     { name: 'related-events', type: 'json', required: false, desc: 'Related events JSON array when using relation_by_setting.' },
-    { name: 'tag-date-policies', type: 'json', required: false, desc: 'Optional tag date policies JSON array.' },
+    { name: 'tag-date-policies', type: 'json', required: false, desc: 'Event SQL tag policies: [{tag_name,cluster_date_policy,specified_cluster_date?}]. LATEST or AUTO omit the date; SPECIFIED requires yyyy-MM-dd.' },
     { name: 'replace-remark', type: 'string', required: false, desc: 'Replacement remark.' },
     { name: 'replace-suggestion', type: 'string', required: false, desc: 'Replacement suggestion.' },
   ],

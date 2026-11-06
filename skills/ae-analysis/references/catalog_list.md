@@ -42,3 +42,5 @@ Online rows also contain `matched_query`, `matched_field`, and `match_type`. Res
 | `--resource-types` | Online mode | JSON array containing only `event`, `metric`, `event_property`, `user_property`, `cluster`, or `tag`. |
 | `--limit-per-type` | No | Online result limit per selected resource type; default 20, maximum 200. |
 Use the task's terms and relevant English words in the same batch, deduplicated; split only when more than 20 are needed. Match applies literally to `resource_key`, `display_name` and `remark`, without automatic translation. Suitable candidates advance to definition inspection or confirmation. A missing match does not imply metadata is absent; choose the next lookup for the specific missing information. [Catalog export](catalog_export.md) is for complete-directory requests.
+
+Tag rows include boolean `has_history_versions` and `is_cross_source`. Use the resource key as the exact tag name. If the requested policy is SPECIFIED for a local tag, query [user-tag get](user_tag_get.md) for its selectable dates.

@@ -95,7 +95,9 @@ export const adhocRunFlags = [
 ] as const;
 
 export const adhocExportFlags = [
-  ...adhocBaseFlags,
+  ...adhocBaseFlags.map(flag => flag.name === 'use-cache'
+    ? { ...flag, desc: 'Deprecated compatibility no-op. Exports always bypass query cache; true and false are accepted without changing execution.' }
+    : flag),
   artifactFormatFlag,
   asyncTimeoutSecondsFlag,
 ] as const;

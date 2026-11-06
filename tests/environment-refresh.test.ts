@@ -77,7 +77,7 @@ test('a changed active identity prevents a slow refresh from synchronizing globa
   const host = 'https://identity-refresh.example';
   credentials(host, 'cli_identity_old_fixture');
   let finish!: (value: any) => void;
-  const resultPromise = refreshEnvironmentConfig(host, { fetchConfig: () => new Promise((resolve) => { finish = resolve; }) });
+  const resultPromise = refreshEnvironmentConfig(host, { onlyIfChanged: true, fetchConfig: () => new Promise((resolve) => { finish = resolve; }) });
   credentials(host, 'cli_identity_new_fixture');
   finish({ clusterVersion: '6.0', aeCliVersion: '6.0.56', businesses: { agent: false } });
   const result = await resultPromise;
@@ -128,16 +128,16 @@ function childEnvironment(home: string): NodeJS.ProcessEnv {
 async function withLoginServer(
   body: (host: string, requests: string[]) => Promise<void>,
   configAvailable = false,
-  businesses: () => Record<string, boolean> = () => ({ dataops: false, engage: false, agent: false, community: false }),
+  businesses: () => Record<string, boolean> = () => ({ dataops: false, engage: false, agent: false, community: false, experiment: false }),
 ): Promise<void> {
   const requests: string[] = [];
   const server = http.createServer((request, response) => {
     const pathname = new URL(request.url!, 'http://localhost').pathname;
     requests.push(pathname);
     response.setHeader('content-type', 'application/json');
-    if (pathname === '/agent/api/auth/device/authorize') {
-      response.end(JSON.stringify({ device_code: 'fixture-device', user_code: 'FIXTURE', interval: 0, expires_in: 300 }));
-    } else if (pathname === '/agent/api/auth/device/token') {
+    if (pathname === '/v1/ta/cli/auth/device/authorize') {
+      response.end(JSON.stringify({ device_code: 'uba_fixture_device', user_code: 'FIXTURE', interval: 1, expires_in: 300 }));
+    } else if (pathname === '/v1/ta/cli/auth/device/token') {
       response.end(JSON.stringify({ access_token: 'fixture-one-time-access', token_type: 'bearer', expires_in: 72000 }));
     } else if (pathname === '/v1/ta/cli/token/generate') {
       response.end(JSON.stringify({ return_code: 0, data: { userSecret: 'cli_login_refresh_fixture' } }));
@@ -167,8 +167,8 @@ test('requesting only a device code neither fetches config nor synchronizes Skil
       const result = await execute(process.execPath, ['--import', 'tsx', 'src/index.ts', 'auth', 'login', '--host', host, '--no-browser', '--no-wait'], {
         cwd: repository, env: childEnvironment(home), timeout: 20_000,
       });
-      assert.equal(JSON.parse(result.stdout).data.device_code, 'fixture-device');
-      assert.deepEqual(requests, ['/agent/api/auth/device/authorize']);
+      assert.equal(JSON.parse(result.stdout).data.device_code, 'uba_fixture_device');
+      assert.deepEqual(requests, ['/v1/ta/cli/auth/device/authorize']);
       assert.equal(fs.existsSync(path.join(home, '.ae-cli', 'business-skill-context.json')), false);
       assert.equal(fs.existsSync(path.join(home, '.agents', 'skills')), false);
     });
@@ -271,7 +271,7 @@ test('credential persistence invalidates an old worker before waiting for compat
   assert.equal(compatibilityChecked, true);
 });
 
-test('real Skills tool restores the complete enabled Agent group and DataOps after login in isolated client directories', async () => {
+test('terminal summaries hide Skill paths while explicit JSON and captured output retain complete reports', async () => {
   const home = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'ae-login-real-skills-')));
   const env = { ...childEnvironment(home), USERPROFILE: home, XDG_CONFIG_HOME: path.join(home, '.config'),
     CODEX_HOME: path.join(home, '.codex'), CLAUDE_CONFIG_DIR: path.join(home, '.claude'),
@@ -284,7 +284,7 @@ test('real Skills tool restores the complete enabled Agent group and DataOps aft
   const agentSkills = fs.readdirSync(path.join(repository, 'skills'))
     .filter(name => businessForSkill(name) === 'agent').sort();
   assert.ok(agentSkills.includes('ae-agent') && agentSkills.includes('ae-page-context') && agentSkills.includes('ae-kb'));
-  const optionalSkills = ['ae-dataops', 'ae-engage', 'ae-community', ...agentSkills];
+  const optionalSkills = ['ae-dataops', 'ae-engage', 'ae-community', 'ae-experiment', 'ae-experiment-design', 'ae-experiment-insight', ...agentSkills];
   const agentDomains = ['agent', 'kb', 'team', 'memory', 'automation', 'things', 'workspace', 'evaluation', 'sync', 'model', 'context'];
   const files = (directory: string): [string, string][] => {
     const entries: [string, string][] = [];
@@ -301,7 +301,7 @@ test('real Skills tool restores the complete enabled Agent group and DataOps aft
     visit('');
     return entries.sort(([a], [b]) => a.localeCompare(b));
   };
-  let states: Record<string, boolean> = { dataops: false, engage: false, agent: false, community: false };
+  let states: Record<string, boolean> = { dataops: false, engage: false, agent: false, community: false, experiment: false };
   try {
     // Seed optional groups in canonical and legacy locations without a ledger.
     for (const root of roots) {
@@ -309,27 +309,47 @@ test('real Skills tool restores the complete enabled Agent group and DataOps aft
       for (const name of optionalSkills) fs.cpSync(path.join(repository, 'skills', name), path.join(root, name), { recursive: true });
     }
     await withLoginServer(async (host) => {
-      const cli = (args: string[]) => execute(process.execPath, ['--import', 'tsx', 'src/index.ts', ...args], {
+      const terminalOutput = `Object.defineProperty(process.stdout, 'isTTY', { value: true });
+Object.defineProperty(process.stderr, 'isTTY', { value: true });`;
+      const cli = (args: string[], terminal = false) => execute(process.execPath, ['--import', 'tsx',
+        ...(terminal ? ['--import', `data:text/javascript,${encodeURIComponent(terminalOutput)}`] : []), 'src/index.ts', ...args], {
         cwd: repository, env, timeout: 40_000, maxBuffer: 4 * 1024 * 1024,
       });
-      const login = await cli(['auth', 'login', '--host', host, '--no-browser']);
+      const assertSummary = (skills: Record<string, unknown>, stdout: string): void => {
+        assert.deepEqual(Object.keys(skills).sort(), ['installed_count', 'removed_count', 'status']);
+        assert.equal(skills.status, 'success');
+        assert.equal(typeof skills.installed_count, 'number');
+        assert.equal(typeof skills.removed_count, 'number');
+        assert.doesNotMatch(stdout, /"(?:installed|removed|adopted|skipped|failed)"\s*:\s*\[|"path"\s*:/);
+        assert.ok(!stdout.includes(home), 'Terminal summaries must not contain any client discovery directory');
+      };
+      const login = await cli(['auth', 'login', '--host', host, '--no-browser'], true);
       const authenticated = JSON.parse(login.stdout).data;
       assert.equal(authenticated.authenticated, true);
       assert.equal(authenticated.environment.skills.status, 'success', JSON.stringify(authenticated.environment.skills) + login.stderr);
+      assertSummary(authenticated.environment.skills, login.stdout);
+      assert.ok(authenticated.environment.skills.installed_count > 0);
+      assert.ok(authenticated.environment.skills.removed_count > 0);
+      assert.doesNotMatch(login.stderr, /Reading environment configuration|Synchronizing managed Skills/);
       for (const root of roots) {
         for (const name of optionalSkills) assert.equal(fs.existsSync(path.join(root, name)), false, `${root}/${name}`);
         assert.equal(fs.existsSync(path.join(root, 'ae-analysis', 'SKILL.md')), installRoots.includes(root));
       }
       const closedHelp = await cli(['--help']);
-      assert.doesNotMatch(closedHelp.stdout, /^  (?:dataops_flow|agent|kb|engage-flow|community)\s/m);
+      assert.doesNotMatch(closedHelp.stdout, /^  (?:dataops_flow|agent|kb|engage-flow|community|experiment)\s/m);
       for (const name of agentDomains) assert.doesNotMatch(closedHelp.stdout, new RegExp(`^  ${name}(?:\\s|\\[)`, 'm'));
       states = { ...states, dataops: true };
-      const refresh = JSON.parse((await cli(['config', 'refresh'])).stdout).data;
+      const refreshed = await cli(['config', 'refresh'], true);
+      const refresh = JSON.parse(refreshed.stdout).data;
       assert.equal(refresh.skills.status, 'success', JSON.stringify(refresh.skills));
+      assertSummary(refresh.skills, refreshed.stdout);
+      assert.equal(refresh.skills.installed_count, installRoots.length);
+      assert.equal(refresh.skills.removed_count, 0);
+      assert.equal(refreshed.stderr, '', 'Refresh reports its terminal result once in stdout');
       for (const root of roots) assert.equal(fs.existsSync(path.join(root, 'ae-dataops', 'SKILL.md')), installRoots.includes(root));
       assert.match((await cli(['--help'])).stdout, /^  dataops_flow\s/m);
       states = { ...states, agent: true };
-      const restored = JSON.parse((await cli(['config', 'refresh'])).stdout).data;
+      const restored = JSON.parse((await cli(['config', 'refresh', '--format', 'json'], true)).stdout).data;
       assert.equal(restored.skills.status, 'success', JSON.stringify(restored.skills));
       assert.equal(restored.skills.installed.length, agentSkills.length * installRoots.length);
       for (const name of agentSkills) {
@@ -344,6 +364,19 @@ test('real Skills tool restores the complete enabled Agent group and DataOps aft
       const reopenedHelp = await cli(['--help']);
       for (const name of agentDomains) assert.match(reopenedHelp.stdout, new RegExp(`^  ${name}(?:\\s|\\[)`, 'm'));
       assert.match((await cli(['system', '--help'])).stdout, /^  \+list-members\s/m);
+      for (const args of [
+        ['auth', 'login', '--host', host, '--no-browser', '--format', 'json'],
+        ['auth', 'login', '--host', host, '--no-browser'],
+      ]) {
+        const detailed = JSON.parse((await cli(args, args.includes('--format'))).stdout).data.environment.skills;
+        assert.equal(detailed.status, 'success');
+        for (const field of ['installed', 'removed', 'adopted', 'skipped', 'failed']) assert.ok(Array.isArray(detailed[field]), field);
+        assert.equal(typeof detailed.managed_count, 'number');
+      }
+      const projected = JSON.parse((await cli(['config', 'refresh', '--jq', '.skills'], true)).stdout).data;
+      assert.equal(projected.status, 'success');
+      for (const field of ['installed', 'removed', 'adopted', 'skipped', 'failed']) assert.ok(Array.isArray(projected[field]), field);
+      assert.equal(typeof projected.managed_count, 'number');
       states = {};
       const unknown = JSON.parse((await cli(['config', 'refresh'])).stdout).data;
       assert.equal(unknown.skills.removed.length, 0);
@@ -377,4 +410,83 @@ test('session-only and fallback-token identities refresh config without global S
     assert.equal(result.skills.status, 'skipped');
     assert.deepEqual(snapshot(), before);
   } finally { fs.rmSync(fallback, { recursive: true, force: true }); }
+});
+
+test('config use reuses an installed policy across hosts while manual refresh keeps full verification', async t => {
+  const first = 'https://switch-policy-first.example';
+  const second = 'https://switch-policy-second.example';
+  credentials(first, 'cli_switch_policy_first_fixture');
+  credentials(second, 'cli_switch_policy_second_fixture', false);
+  saveConfig({ activeHost: first, hosts: { [first]: { label: 'first' }, [second]: { label: 'second' } } });
+  const businesses = { dataops: false, engage: false, agent: false, community: false };
+  let scans = 0;
+  t.mock.method(spawn, 'sync', (_command: string, _args: string[], options: any) => {
+    assert.equal(JSON.parse(options.input).action, 'targets');
+    scans++;
+    return { status: 0, signal: null, stdout: JSON.stringify({ ok: true, data: [] }), stderr: '' };
+  });
+  const configuration = { clusterVersion: '6.0', aeCliVersion: '6.0.56', businesses };
+  assert.equal((await refreshEnvironmentConfig(first, { fetchConfig: async () => configuration })).skills.status, 'success');
+  const initialScans = scans;
+  assert.ok(initialScans > 0);
+  t.mock.method(globalThis, 'fetch', async input => {
+    assert.equal(new URL(String(input)).pathname, '/v1/ta/cli/config');
+    return Response.json({ data: { versions: { clusterVersion: '6.0', aeCliVersion: '6.0.56' }, businesses } });
+  });
+  const { Command } = await import('commander');
+  const { registerConfig } = await import('../src/commands/config.js');
+  const command = () => {
+    const program = new Command();
+    program.option('--format <format>', '', 'json');
+    registerConfig(program);
+    return program;
+  };
+  let stdout = '';
+  let stderr = '';
+  const previousExitCode = process.exitCode;
+  const previousTTY = Object.getOwnPropertyDescriptor(process.stderr, 'isTTY');
+  const originalWrite = process.stdout.write.bind(process.stdout);
+  const output = t.mock.method(process.stdout, 'write', chunk => {
+    if (typeof chunk !== 'string') return originalWrite(chunk);
+    stdout += chunk;
+    return true;
+  });
+  const error = t.mock.method(process.stderr, 'write', chunk => { stderr += String(chunk); return true; });
+  try {
+    process.exitCode = undefined;
+    Object.defineProperty(process.stderr, 'isTTY', { configurable: true, value: true });
+    await command().parseAsync(['config', 'use', 'second'], { from: 'user' });
+    assert.equal(process.exitCode, undefined, stderr);
+    assert.equal(JSON.parse(stdout).data.activeHost, second);
+    assert.equal(scans, initialScans, 'An environment switch with the same installed policy must not rescan clients');
+    assert.equal(stderr, '[ae-cli] Skills synchronized: 0 installed or updated, 0 removed.\n');
+    assert.doesNotMatch(stdout, /Reading environment configuration|Synchronizing managed Skills|Skills synchronized/);
+    stdout = '';
+    stderr = '';
+    Object.defineProperty(process.stderr, 'isTTY', { configurable: true, value: false });
+    await command().parseAsync(['config', 'refresh'], { from: 'user' });
+    assert.equal(process.exitCode, undefined, stderr);
+    assert.equal(JSON.parse(stdout).data.skills.status, 'success');
+    assert.equal(scans, initialScans + 1, 'Manual refresh must keep its full verification and repair behavior');
+    assert.equal(stderr, '', 'Noninteractive JSON callers must not receive terminal progress messages');
+  } finally {
+    process.exitCode = previousExitCode;
+    if (previousTTY) Object.defineProperty(process.stderr, 'isTTY', previousTTY);
+    else delete process.stderr.isTTY;
+    output.mock.restore();
+    error.mock.restore();
+  }
+});
+
+test('refresh progress reports only the terminal result when config is unavailable', async () => {
+  const host = 'https://progress-unavailable.example';
+  credentials(host, 'cli_progress_unavailable_fixture');
+  const progress: string[] = [];
+  const result = await refreshEnvironmentConfig(host, { onlyIfChanged: true,
+    fetchConfig: async () => null, progress: message => progress.push(message) });
+  assert.equal(result.source, 'unavailable');
+  assert.equal(result.skills.status, 'skipped');
+  assert.equal(progress.length, 1);
+  assert.match(progress.at(-1)!, /skipped.*unavailable/i);
+  assert.ok(!progress.some(message => /Reading environment configuration|Synchronizing managed Skills/.test(message)));
 });

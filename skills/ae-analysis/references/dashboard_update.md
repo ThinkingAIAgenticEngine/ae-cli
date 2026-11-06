@@ -8,7 +8,7 @@ Command:
 
 ```bash
 ae-cli analysis dashboard update --project-id <project_id> --operation settings --dashboard-ids '[1001,1002]' [--zone-offset 8] [--payload '{...}']
-ae-cli analysis dashboard update --project-id <project_id> --operation settings --dashboard-id <dashboard_id> --refresh-type 1 --dashboard-status normal --payload '{"dashboard_job_schedule":"0 0 8 * * ?","time_config_open":true,"time_config":{},"cache_config":{},"schedule_ui_config":{}}'
+ae-cli analysis dashboard update --project-id <project_id> --operation settings --dashboard-id <dashboard_id> --refresh-type 0 --dashboard-status normal --payload '{"time_config_open":true,"time_config":{},"cache_config":{}}'
 ae-cli analysis dashboard update --project-id <project_id> --operation note-upsert --dashboard-id <dashboard_id> [--note-id <note_id>] [--note-title <title>] [--description <text>]
 ae-cli analysis dashboard update --project-id <project_id> --operation default-filter --dashboard-id <dashboard_id> --filter-name <name> --filter '{"junction_kind":"and","ta_filters":[{"filter_type":"SIMPLE","column_name":"app","table_type":"1","select_type":"string","calcu_symbol":"C00","ftv":["X"]}]}'
 ae-cli analysis dashboard update --project-id <project_id> --operation personal-default-filter --dashboard-id <dashboard_id> --filter-name <name> --filter '{"junction_kind":"and","ta_filters":[{"filter_type":"SIMPLE","column_name":"app","table_type":"1","select_type":"string","calcu_symbol":"C00","ftv":["X"]}]}'
@@ -21,7 +21,8 @@ For `operation=settings`:
 - `refresh_type` is integer `0` (real-time) or `1` (scheduled);
 - `dashboard_status` is string `normal` or `freeze`;
 - `zone_offset` is an integer hour offset from `-12` to `14`;
-- complex settings belong in snake_case `payload`: `reports_version` string, `dashboard_job_schedule` string, `time_config_open` boolean, and object fields `time_config`, `cache_config`, `schedule_ui_config`; `ui_config` may be a string or object.
+- complex settings belong in snake_case `payload`: `time_config_open` boolean and object fields `time_config`, `cache_config`, `schedule_ui_config`; use `refresh_type:1` with the schedule UI configuration returned by the product for scheduled refresh;
+- legacy `reports_version`, `dashboard_job_schedule`, and settings `ui_config` remain accepted for compatibility but do not change dashboard settings. The server reports them in `meta.deprecated_fields` and `meta.warnings`. Do not use a cron string in place of `schedule_ui_config`. Note-upsert `ui_config` remains effective.
 
 For `operation=note-upsert`, `dashboard_id` is required. Omit `note_id` to create a note attached to that dashboard, or pass it to update an existing note. A created note defaults missing `note_title` and `description` to empty strings. An update preserves `note_title`, `description`, and `ui_config` when the corresponding field is omitted; pass an explicit empty string to clear text. Do not mix note fields with batch settings fields.
 

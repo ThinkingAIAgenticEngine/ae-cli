@@ -1,5 +1,7 @@
 # project role upsert
 
+This is a `high-risk-write` operation because it changes access, ownership, or authentication policy. Preview the affected scope with `--dry-run`, obtain explicit user confirmation, then use global `--yes` for non-interactive execution. Validation and dry-run do not apply the change.
+
 Use when the user needs to create or update a project role.
 
 Do not use it for unrelated project-management actions or for fields not present in the common-service capability schema. Do not send camelCase aliases.
@@ -7,7 +9,7 @@ Do not use it for unrelated project-management actions or for fields not present
 Command:
 
 ```bash
-ae-cli project role upsert --project-id <project_id> --payload <payload>
+ae-cli project role upsert --project-id <project_id> --payload <payload> --yes
 ae-cli project role upsert --validate --project-id <project_id> --payload <payload>
 ae-cli project role upsert --dry-run --project-id <project_id> --payload <payload>
 ```
@@ -30,7 +32,7 @@ Functions omitted from `role_func_list` are completed by the service with their 
 Create example:
 
 ```bash
-ae-cli project role upsert \
+ae-cli project role upsert --yes \
   --project-id 196 \
   --payload '{"role_desc":"Data analyst","role_func_list":[{"function_name":"viewReport","has_power":1}]}'
 ```
@@ -38,7 +40,7 @@ ae-cli project role upsert \
 Update example:
 
 ```bash
-ae-cli project role upsert \
+ae-cli project role upsert --yes \
   --project-id 196 \
   --payload '{"role_name":"custom_role","role_func_list":[{"function_name":"viewReport","has_power":1}]}'
 ```

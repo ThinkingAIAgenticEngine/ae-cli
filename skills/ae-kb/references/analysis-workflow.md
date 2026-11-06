@@ -70,8 +70,9 @@ Rank candidates by semantic coverage, not by primary/backup position alone:
 
 If two candidates encode materially different meanings of the same phrase,
 such as one-way events versus combined inbound and outbound events, do not
-blend them. Select the candidate whose stated question, output shape, and grain
-best match the request, and disclose the chosen definition.
+blend them. When the request resolves the meaning, select the matching definition
+and disclose it. When both meanings remain plausible and change the answer,
+ask for the distinguishing choice or present the supported alternatives separately.
 
 ## Build the analysis execution contract
 
@@ -88,6 +89,10 @@ pages actually read:
 | Authored context | Folder, dashboard name, remarks, notes, and business filters, with their applicable scope |
 | Decision boundaries | Case-only, frontend-only, adoption-only, not revenue, non-generalizable, expired, conflicting, or human-decision-required constraints |
 | KB evidence | Exact KB name, page path, and section actually read |
+
+Bind the matching recall-card branch to the **requested output**, including what one source row measures and what one answer item represents. Resolve a display alias against the actual event, aggregation, distinct key and unit. If meanings still differ materially, clarify the choice. A direct route needs matching object, grain, window and measure. On a transform route, verify the mapping, grouping or time alignment, overlap, excluded rows and additivity required by that operation. Join labels alone do not aggregate measures. A distinct count across overlapping groups needs a shared identity, proven disjointness or an equivalent supported aggregation. Apply the same checks from the live definition on older cards that omit the branch contract.
+
+A clarify or unsupported branch does not authorize executing its evidence links as an answer. Retain the concrete gap and apply the ordinary discovery rules below to any unresolved requirement. Where a proxy is useful, label its actual computation and scope separately from the requested exact result.
 
 Classify each candidate's coverage before querying. These states classify the
 asset, not completion of the original task:
@@ -300,6 +305,10 @@ asset produced a fallback result. An empty or denied KB result remains part of
 the audit record even when the fallback succeeds.
 
 ## Check task completion
+
+Run the selected branch's checks on the actual returned data before drawing its conclusion. Complete any required regrouping, deduplication or recomputation on the covered population **before** comparisons, ranking or limits. Read back effective dates, coverage and state as-of time rather than inferring them from bucket labels. Check raw values, units, denominators and rounding before interpreting zero or absence. After changing exclusions, recompute both windows and verify the direction from the resulting values. If a necessary check fails or cannot be performed, report only the supported result and the missing evidence.
+
+Match the strength of the conclusion to the evidence. An observed change can support a descriptive finding. A causal explanation requires independent support; a forecast requires an applicable rule or model for the proposed event, population and horizon. Preserve an unknown when the returned data only provides a signal.
 
 Before answering, check each requirement of the original question against the
 actual definition and returned data. Finish when it is answered, or when bounded

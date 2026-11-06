@@ -13,3 +13,5 @@ Flags: `--project-id`, `--tag-names` JSON array.
 ```bash
 ae-cli analysis user-tag get --project-id <project_id> --tag-names '["user_level"]'
 ```
+
+Pass `--include-history-dates true` to include `has_history_versions` and `is_cross_source` on each returned tag. Local tags return `available_history_dates` newest first; an empty list has no selectable fixed date. Cross-source tags omit the list because dates are not enumerated locally. Keep this flag omitted for ordinary computation polling.

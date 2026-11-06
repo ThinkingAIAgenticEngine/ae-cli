@@ -134,7 +134,9 @@ A revision or access-context change requires revalidation, not silent reuse.
    until every answered subquestion is backed by sections actually read — not
    until a page "looks like the answer". For business data analysis, read the
    relevant definitions and boundaries, then hand off verified coverage and
-   remaining gaps in step 5; live values do not need KB text as their source.
+   remaining gaps in step 5. Carry the matched branch outcome, source and answer
+   grains, required operation, checks and reason to stop together with its evidence.
+   When a legacy card omits these, read the linked definition before claiming coverage; live values do not need KB text as their source.
    Do not pick a single page by surface similarity between the question wording
    and the page/module name or hit line.
 

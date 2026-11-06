@@ -18,7 +18,7 @@ export const dashboardShare = createAnalysisCapabilityCommand({
     { name: 'member-authorities', type: 'json', required: false, desc: 'Complete user authority map: {"<numeric_user_id>":"READ|EDIT|CREATOR|MAINTAIN"}. An empty object removes all directly shared users.' },
     payloadFlag,
   ],
-  risk: 'write',
+  risk: 'high-risk-write',
   buildInput: (ctx) => compactInput({
     ...projectInput(ctx),
     dashboard_id: ctx.num('dashboard-id'),

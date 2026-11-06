@@ -79,6 +79,7 @@ export async function resolveKbAutoDiscoveryFeature(
   host: string,
   token: string,
   fetchRemote: () => Promise<{ projectSemanticKbAutoDiscovery?: boolean } | null>,
+  isCurrent: () => boolean = () => true,
 ): Promise<AutoDiscoveryFeature> {
   const entry = readStore().entries[cacheKey(host, token)];
   const ttl = entry?.available ? FEATURE_TTL_MS : UNAVAILABLE_TTL_MS;
@@ -87,6 +88,10 @@ export async function resolveKbAutoDiscoveryFeature(
   }
 
   const remote = await fetchRemote().catch(() => null);
+  if (!isCurrent()) {
+    const latest = peekKbAutoDiscoveryFeature(host, token);
+    return latest === undefined ? { enabled: false, source: 'unavailable' } : { enabled: latest, source: 'cache' };
+  }
   if (!remote) {
     remember(host, token, { enabled: false, available: false, fetchedAt: Date.now() });
     return { enabled: false, source: 'unavailable' };

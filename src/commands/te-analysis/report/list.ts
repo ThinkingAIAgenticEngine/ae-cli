@@ -1,6 +1,7 @@
 import {
   certificationScopeFlag,
   createAnalysisCapabilityCommand,
+  manageableOnlyFlag,
   fieldsFlag,
   directoryOffsetFlag,
   projectIdFlag,
@@ -14,10 +15,11 @@ export const reportList = createAnalysisCapabilityCommand({
   resource: 'report',
   command: 'list',
   capabilityId: 'analysis.report.list',
-  description: 'List analysis reports the current user can edit or manage. Read-only reports are excluded; use analysis asset search for readable asset discovery.',
+  description: 'List readable reports. For management workflows use --manageable-only. Use analysis asset search for asset discovery.',
   flags: [
     projectIdFlag,
     queriesFlag,
+    manageableOnlyFlag,
     fieldsFlag,
     reportModelTypesFlag,
     reportListLimitFlag,

@@ -89,10 +89,20 @@ function flagNames(command: Command): string[] {
 
 process.stdout.write('\nanalysis dashboard/audience contract tests\n');
 
-await test('dashboard list is documented as a manageable-asset directory', () => {
-  assert.match(dashboardList.description, /update or manage/);
-  assert.match(dashboardList.description, /Read-only dashboards are excluded/);
-  assert.match(dashboardList.description, /analysis asset search/);
+await test('dashboard list preserves the legacy payload and forwards explicit management scope', async () => {
+  const legacy = await dryBody(dashboardList, { 'project-id': 1 });
+  assert.deepEqual(legacy.body.input, { project_id: 1 });
+  for (const value of [true, false]) {
+    const scoped = await dryBody(dashboardList, { 'project-id': 1, 'manageable-only': value });
+    assert.deepEqual(scoped.body.input, { project_id: 1, manageable_only: value });
+  }
+});
+
+await test('tag detail requests local history dates only when asked', async () => {
+  const cmd = user('user-tag', 'get');
+  const flags = { 'project-id': 1, 'tag-names': ['local', 'remote'] };
+  assert.equal((await dryBody(cmd, flags)).body.input.include_history_dates, undefined);
+  assert.equal((await dryBody(cmd, { ...flags, 'include-history-dates': true })).body.input.include_history_dates, true);
 });
 
 await test('result cluster has one canonical capability', () => {
@@ -326,6 +336,18 @@ await test('tag create and update forward schedules and preserve an explicit fal
     const schedule = { frequency: 'weekly', time: '02:30', weekdays: [1, 7] };
     const scheduled = await dryBody(command, { ...args, 'auto-refresh-schedule': schedule });
     assert.deepEqual(scheduled.body.input.auto_refresh_schedule, schedule);
+    for (const backup of [true, false]) {
+      const result = await dryBody(command, { ...args, 'auto-refresh-schedule': schedule, 'enable-history-tag-backup': backup });
+      assert.equal(result.body.input.enable_history_tag_backup, backup);
+    }
+    assert.equal('enable_history_tag_backup' in scheduled.body.input, false);
+    await assert.rejects(dryBody(command, { ...args, 'enable-history-tag-backup': true, 'enable-auto-refresh': false }), /requires periodic refresh/);
+    if (action === 'create') {
+      await assert.rejects(dryBody(command, { ...args, 'enable-history-tag-backup': true }), /requires periodic refresh/);
+    } else {
+      const result = await dryBody(command, { 'project-id': 1, 'tag-name': 'scheduled_tag', 'enable-history-tag-backup': true });
+      assert.equal(result.body.input.enable_history_tag_backup, true);
+    }
     const disabled = await dryBody(command, { ...args, 'enable-auto-refresh': false });
     assert.equal(disabled.body.input.enable_auto_refresh, false);
     const omitted = await dryBody(command, args);
@@ -510,15 +532,27 @@ await test('dashboard report-data help warns that SQL reports ignore shared over
   }
 });
 
-await test('dashboard report-data export omits cache controls while run retains them', async () => {
-  assert.equal(flagNames(dashboardReportDataExport).includes('use-cache'), false);
+await test('dashboard report-data export retains deprecated cache input while run keeps cache selection', async () => {
+  assert.equal(flagNames(dashboardReportDataExport).includes('use-cache'), true);
   assert.equal(flagNames(dashboardReportDataRun).includes('use-cache'), true);
+  const exportCache = dashboardReportDataExport.flags.find((flag) => flag.name === 'use-cache')!;
+  const runCache = dashboardReportDataRun.flags.find((flag) => flag.name === 'use-cache')!;
+  assert.equal(exportCache.type, 'boolean');
+  assert.equal(exportCache.required, false);
+  assert.match(exportCache.desc, /deprecated.*no.op/i);
+  assert.match(exportCache.desc, /bypass query cache/i);
+  assert.match(runCache.desc, /Default: true/);
+  assert.doesNotMatch(runCache.desc, /deprecated|no.op/i);
 
-  const args = { 'project-id': 5, 'dashboard-id': 903, 'use-cache': false };
-  const run = await dryBody(dashboardReportDataRun, args);
-  const exported = await dryBody(dashboardReportDataExport, args);
-  assert.equal(run.body.input.use_cache, false);
-  assert.equal(Object.hasOwn(exported.body.input, 'use_cache'), false);
+  for (const cache of [true, false, undefined]) {
+    const args = { 'project-id': 5, 'dashboard-id': 903,
+      ...(cache === undefined ? {} : { 'use-cache': cache }) };
+    for (const command of [dashboardReportDataRun, dashboardReportDataExport]) {
+      const { body } = await dryBody(command, args);
+      assert.equal(Object.hasOwn(body.input, 'use_cache'), cache !== undefined, command.capabilityId);
+      assert.equal(body.input.use_cache, cache, command.capabilityId);
+    }
+  }
 });
 
 await test('dashboard report-data run and export expose and forward the unified timezone override', async () => {

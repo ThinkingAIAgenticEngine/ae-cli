@@ -15,7 +15,7 @@ export const dashboardHandover = createAnalysisCapabilityCommand({
     { name: 'dashboard-ids', type: 'json', required: true, desc: 'Dashboard ID array.' },
     { name: 'to-user-id', type: 'number', required: true, desc: 'Target user ID.' },
   ],
-  risk: 'write',
+  risk: 'high-risk-write',
   buildInput: (ctx) => ({
     ...projectInput(ctx),
     dashboard_ids: jsonArray(ctx, 'dashboard-ids'),

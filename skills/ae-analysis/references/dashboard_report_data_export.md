@@ -8,7 +8,7 @@ For full data, read [export handling](analysis_data_export.md) and use this `exp
 
 Do not use this command for bounded inline previews; use `dashboard-report-data run` when the requested result fits the sync data retrieval rule.
 
-Export uses the native full-download path and does not accept `--use-cache`; cache selection only applies to bounded `dashboard-report-data run` queries.
+Export uses the native full-download path and always bypasses query cache. The published `--use-cache true|false` flag remains a deprecated compatibility no-op; the server reports it in `meta.deprecated_fields`, `meta.ignored_fields`, and `meta.warnings` when supplied. Cache selection remains effective for bounded `dashboard-report-data run` queries.
 
 Command:
 

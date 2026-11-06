@@ -22,6 +22,8 @@ function fixture(t: TestContext, packageName = '@thinkingai/ae-cli', platform = 
   const skillsDirectory = path.join(tmp, 'home', '.agents', 'skills');
   const clientDirectory = path.join(tmp, 'home', '.claude', 'skills');
   const stateDirectory = path.join(tmp, 'state');
+  const env = { PATH: path.dirname(bin), HOME: path.join(tmp, 'home'), USERPROFILE: path.join(tmp, 'home'),
+    XDG_STATE_HOME: path.join(tmp, 'home', '.local', 'state') };
   const names = ['ae-agent', 'ae-analysis', 'ae-dataops'];
   fs.mkdirSync(path.join(source, 'bin'), { recursive: true });
   fs.mkdirSync(path.join(source, 'dist'));
@@ -88,10 +90,10 @@ function fixture(t: TestContext, packageName = '@thinkingai/ae-cli', platform = 
     }),
   };
   const options: InstallationOptions = { target: '6.1.9', packageName, runner, skillsDirectory,
-    skillStateDirectory: stateDirectory, nodeVersion: '20.19.5', platform, env: { PATH: path.dirname(bin) },
+    skillStateDirectory: stateDirectory, nodeVersion: '20.19.5', platform, env,
     skillContext: { host: '', tokenFingerprint: '' },
-    syncSkills: options => { state.syncCalls.push(options.mode ?? 'sync'); return syncBusinessSkills({ ...options, tool }); } };
-  return { tmp, source, root, globalRoot, prefix, bin, skillsDirectory, clientDirectory, stateDirectory, names, state, runner,
+    syncSkills: options => { state.syncCalls.push(options.mode ?? 'sync'); return syncBusinessSkills({ ...options, tool, env }); } };
+  return { tmp, source, root, globalRoot, prefix, bin, skillsDirectory, clientDirectory, stateDirectory, names, state, runner, env,
     install, run: (extra: InstallationOptions = {}) => runInstallation({ ...options, ...extra }) };
 }
 
@@ -227,6 +229,57 @@ test('user-modified copies survive upgrades and return a named partial result', 
   assert.equal(result.skills.status, 'partial');
   assert.equal(fs.readFileSync(file, 'utf8'), 'My instructions');
   assert.ok(result.skills.synchronization?.skipped.some(item => item.skill === 'ae-agent' && item.reason === 'copy_modified'));
+});
+
+test('an upgrade removes edited CLI-owned copies when their business is explicitly closed', t => {
+  const f = fixture(t);
+  assert.equal(f.run().ok, true);
+  for (const directory of [f.skillsDirectory, f.clientDirectory]) {
+    fs.writeFileSync(path.join(directory, 'ae-agent', 'references', 'usage.md'), 'User instructions');
+    fs.writeFileSync(path.join(directory, 'ae-agent', 'personal.md'), 'User addition');
+  }
+  const result = f.run({ target: '6.1.10', businesses: { agent: false, dataops: true } });
+  assert.equal(result.ok, true, JSON.stringify(result));
+  assert.equal(result.skills.status, 'success');
+  assert.equal(result.skills.synchronization?.removed.filter(item => item.skill === 'ae-agent').length, 2);
+  for (const directory of [f.skillsDirectory, f.clientDirectory]) {
+    assert.equal(fs.existsSync(path.join(directory, 'ae-agent')), false);
+    assert.ok(fs.existsSync(path.join(directory, 'ae-analysis', 'SKILL.md')));
+    assert.ok(fs.existsSync(path.join(directory, 'ae-dataops', 'SKILL.md')));
+  }
+});
+
+test('installation reconciles an owned closed-business copy absent from its current package', t => {
+  const f = fixture(t);
+  assert.equal(f.run().ok, true);
+  fs.rmSync(path.join(f.root, 'skills', 'ae-dataops'), { recursive: true });
+  fs.rmSync(path.join(f.source, 'skills', 'ae-dataops'), { recursive: true });
+  const result = f.run({ businesses: { agent: true, dataops: false } });
+  assert.equal(result.ok, true, JSON.stringify(result));
+  assert.equal(result.skills.synchronization?.removed.filter(item => item.skill === 'ae-dataops').length, 2);
+  for (const directory of [f.skillsDirectory, f.clientDirectory]) {
+    assert.equal(fs.existsSync(path.join(directory, 'ae-dataops')), false);
+    assert.ok(fs.existsSync(path.join(directory, 'ae-analysis', 'SKILL.md')));
+  }
+});
+
+test('installation can recover edited historical CLI copies after its ledger was already created', t => {
+  const f = fixture(t);
+  assert.equal(f.run({ businesses: {} }).ok, true);
+  const canonical = path.join(f.skillsDirectory, 'ae-dataops');
+  fs.cpSync(path.join(f.root, 'skills', 'ae-dataops'), canonical, { recursive: true });
+  fs.writeFileSync(path.join(canonical, 'references', 'usage.md'), 'Historical user edits');
+  fs.symlinkSync(canonical, path.join(f.clientDirectory, 'ae-dataops'), process.platform === 'win32' ? 'junction' : 'dir');
+  const lockFile = path.join(f.env.XDG_STATE_HOME, 'skills', '.skill-lock.json');
+  fs.mkdirSync(path.dirname(lockFile), { recursive: true });
+  const source = path.join(f.root, 'skills');
+  fs.writeFileSync(lockFile, JSON.stringify({ version: 3, skills: { 'ae-dataops': {
+    source, sourceType: 'local', sourceUrl: source, skillPath: 'ae-dataops/SKILL.md', skillFolderHash: '',
+  } } }));
+  const result = f.run({ businesses: { dataops: false } });
+  assert.equal(result.ok, true, JSON.stringify(result));
+  assert.equal(result.skills.synchronization?.removed.filter(item => item.skill === 'ae-dataops').length, 2);
+  for (const directory of [f.skillsDirectory, f.clientDirectory]) assert.throws(() => fs.lstatSync(path.join(directory, 'ae-dataops')), { code: 'ENOENT' });
 });
 
 test('legacy migration refuses extra files and later runs do not claim new manual copies', t => {

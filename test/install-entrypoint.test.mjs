@@ -43,7 +43,7 @@ test('built package bin exposes install and retains root-level JSON report field
   assert.equal(body.dry_run, true);
 });
 
-test('npm pack includes installer chunks, Skills and the public npx single-bin entry', t => {
+test('npm pack includes installer chunks, Skills and the public npx package-name entry', t => {
   const temp = fs.mkdtempSync(path.join(os.tmpdir(), 'ae-public-entry-'));
   t.after(() => fs.rmSync(temp, { recursive: true, force: true }));
   for (const file of ['bin', 'dist', 'skills', 'package.json', 'cli-installation-guide.md']) {
@@ -60,14 +60,19 @@ test('npm pack includes installer chunks, Skills and the public npx single-bin e
   assert.equal(packed.status, 0, packed.stderr);
   const files = new Set(JSON.parse(packed.stdout)[0].files.map(file => file.path));
   assert.ok(files.has('bin/ae-cli.js'));
+  assert.ok(files.has('bin/ai-monitor.js'));
   assert.ok(files.has('dist/index.js'));
+  assert.ok(files.has('dist/ai-monitor.js'));
   assert.ok(files.has('cli-installation-guide.md'));
   assert.ok(files.has('skills/ae-agent/SKILL.md'));
   assert.equal(files.has('skills/ae-page-context/SKILL.md'), false);
-  // npx infers this unique bin from @thinkingai/ae-cli@latest, forwarding "install" unchanged.
-  assert.deepEqual(Object.keys(pkg.bin), ['ae-cli']);
+  // npx selects the bin matching the unscoped package name, forwarding "install" unchanged.
+  const inferredBin = pkg.name.replace(/^@[^/]+\//, '');
+  assert.equal(inferredBin, 'ae-cli');
+  assert.equal(pkg.bin[inferredBin], 'bin/ae-cli.js');
+  assert.equal(pkg.bin['ai-monitor'], 'bin/ai-monitor.js');
   fs.symlinkSync(path.join(root, 'node_modules'), path.join(temp, 'node_modules'), 'junction');
-  const entry = path.join(temp, pkg.bin['ae-cli']);
+  const entry = path.join(temp, pkg.bin[inferredBin]);
   const result = invoke(entry, ['install', '--dry-run', '--format', 'json']);
   assert.equal(result.status, 0, result.stderr);
   const body = JSON.parse(result.stdout);

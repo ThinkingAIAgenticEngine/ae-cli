@@ -12,6 +12,8 @@ ae-cli analysis dashboard-daily-report update --project-id <project_id> --dashbo
 
 The command is a patch-style upsert:
 
+`send_time` supports whole hours only: `9`, `09:00`, or comma-separated hours such as `09:00,18:00`. Nonzero minutes such as `09:30` are rejected by server validation and execution.
+
 - If the dashboard has no saved configuration, the backend creates one and applies defaults for omitted fields.
 - If a configuration exists, omitted fields remain unchanged.
 - Pass an explicit boolean to enable or disable a saved channel.

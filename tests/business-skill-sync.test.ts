@@ -7,6 +7,7 @@ import { createHash } from 'node:crypto';
 import { spawn } from 'node:child_process';
 import { syncBusinessSkills, reserveBusinessSkillContext, isBusinessSkillContextCurrent, type BusinessSkillSyncOptions } from '../src/core/business-skill-sync.js';
 import { createPinnedSkillsTool, skillCopyHash, skillPathProblem, type SkillsTool, type SkillsToolTarget } from '../src/core/skills-tool.js';
+import { readBundledSkills } from '../src/core/skills-install.js';
 
 function fixture(t: TestContext) {
   const root = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'ae-business-skills-')));
@@ -16,7 +17,8 @@ function fixture(t: TestContext) {
   const source = path.join(root, 'package', 'skills');
   fs.mkdirSync(cwd, { recursive: true });
   fs.mkdirSync(home);
-  const env = { ...process.env, HOME: home, USERPROFILE: home, XDG_CONFIG_HOME: path.join(home, '.config'),
+  const env: NodeJS.ProcessEnv = { ...process.env, HOME: home, USERPROFILE: home, XDG_CONFIG_HOME: path.join(home, '.config'),
+    XDG_STATE_HOME: path.join(home, '.local', 'state'),
     CODEX_HOME: path.join(home, '.codex'), CLAUDE_CONFIG_DIR: path.join(home, '.claude'),
     VIBE_HOME: path.join(home, '.vibe'), HERMES_HOME: path.join(home, '.hermes'),
     AUTOHAND_HOME: path.join(home, '.autohand'), APPDATA: path.join(home, 'appdata'),
@@ -39,7 +41,7 @@ function fixture(t: TestContext) {
   const installTargets = targets.filter(target => target.installable);
   const options: BusinessSkillSyncOptions = { skillsDirectory: source, businesses: {}, host: 'https://one.example.test',
     tokenFingerprint: createHash('sha256').update('first account').digest('hex'),
-    stateDirectory: path.join(root, 'state'), tool, packageVersion: '6.0.56' };
+    stateDirectory: path.join(root, 'state'), tool, env, packageVersion: '6.0.56' };
   const copy = (name: string, target: SkillsToolTarget) => {
     fs.mkdirSync(target.directory, { recursive: true });
     fs.cpSync(path.join(source, name), path.join(target.directory, name), { recursive: true });
@@ -74,6 +76,61 @@ test('fresh installations follow upstream canonical paths without creating legac
   assert.ok(fs.existsSync(path.join(independent.directory, 'ae-dataops', 'references', 'usage.md')));
 });
 
+test('AI monitor follows Agent false, true and unknown states after user edits', t => {
+  const f = fixture(t);
+  const source = path.join(f.source, 'ae-ai-monitor');
+  fs.mkdirSync(path.join(source, 'references'), { recursive: true });
+  fs.writeFileSync(path.join(source, 'SKILL.md'), '---\nname: ae-ai-monitor\ndescription: AI monitor availability fixture\n---\nInstructions\n');
+  fs.writeFileSync(path.join(source, 'references', 'usage.md'), 'Package monitor instructions\n');
+  assert.equal(f.run({ businesses: { agent: true } }).status, 'success');
+  for (const target of f.installTargets) {
+    fs.writeFileSync(path.join(target.directory, 'ae-ai-monitor', 'references', 'usage.md'), 'User monitor instructions');
+  }
+  const closed = f.run({ businesses: { agent: false } });
+  assert.equal(closed.status, 'success', JSON.stringify(closed));
+  assert.equal(closed.removed.filter(copy => copy.skill === 'ae-ai-monitor').length, f.installTargets.length);
+  for (const target of f.installTargets) assert.equal(fs.existsSync(path.join(target.directory, 'ae-ai-monitor')), false);
+  const opened = f.run({ businesses: { agent: true } });
+  assert.equal(opened.status, 'success', JSON.stringify(opened));
+  assert.equal(opened.installed.filter(copy => copy.skill === 'ae-ai-monitor').length, f.installTargets.length);
+  for (const target of f.installTargets) assert.equal(skillCopyHash(path.join(target.directory, 'ae-ai-monitor')), skillCopyHash(source, true));
+  const retained = path.join(f.installTargets[0].directory, 'ae-ai-monitor', 'references', 'usage.md');
+  fs.writeFileSync(retained, 'Personal monitor guidance');
+  const missing = path.join(f.installTargets[1].directory, 'ae-ai-monitor');
+  fs.rmSync(missing, { recursive: true });
+  const unknown = f.run({ businesses: {} });
+  assert.equal(unknown.status, 'success', JSON.stringify(unknown));
+  assert.equal(unknown.removed.filter(copy => copy.skill === 'ae-ai-monitor').length, 0);
+  assert.equal(unknown.installed.filter(copy => copy.skill === 'ae-ai-monitor').length, 0);
+  assert.equal(fs.readFileSync(retained, 'utf8'), 'Personal monitor guidance');
+  assert.equal(fs.existsSync(missing), false);
+});
+
+test('AI monitor mapping invalidates a successful base-policy snapshot before removing edited owned copies', t => {
+  const f = fixture(t);
+  const source = path.join(f.source, 'ae-ai-monitor');
+  fs.mkdirSync(path.join(source, 'references'), { recursive: true });
+  fs.writeFileSync(path.join(source, 'SKILL.md'), '---\nname: ae-ai-monitor\ndescription: Former base Skill fixture\n---\nInstructions\n');
+  fs.writeFileSync(path.join(source, 'references', 'usage.md'), 'Package monitor instructions\n');
+  assert.equal(f.run({ businesses: { agent: false } }).status, 'success');
+  for (const target of f.installTargets) f.copy('ae-ai-monitor', target);
+  assert.equal(f.run({ mode: 'adopt' }).status, 'success');
+  const file = path.join(f.options.stateDirectory!, 'business-skills.json');
+  const ledger = JSON.parse(fs.readFileSync(file, 'utf8'));
+  // Frozen successful 6.0 base mapping before ae-ai-monitor moved to Agent.
+  const oldBasePolicy = 'a8f3342e5d39eface563b04a68184a81544ad47677ddf3190e7cdd19d42416a0';
+  ledger.last_applied.policy_hash = oldBasePolicy;
+  fs.writeFileSync(file, JSON.stringify(ledger));
+  for (const target of f.installTargets) {
+    fs.writeFileSync(path.join(target.directory, 'ae-ai-monitor', 'references', 'usage.md'), 'Edited former base Skill');
+  }
+  const report = f.run({ businesses: { agent: false }, onlyIfChanged: true });
+  assert.equal(report.status, 'success', JSON.stringify(report));
+  assert.equal(report.removed.filter(copy => copy.skill === 'ae-ai-monitor').length, f.installTargets.length);
+  for (const target of f.installTargets) assert.equal(fs.existsSync(path.join(target.directory, 'ae-ai-monitor')), false);
+  assert.notEqual(JSON.parse(fs.readFileSync(file, 'utf8')).last_applied.policy_hash, oldBasePolicy);
+});
+
 test('the worker refuses new copies in a legacy registry target', t => {
   const f = fixture(t);
   const target = f.targets.find(target => !target.installable)!;
@@ -99,19 +156,256 @@ test('adopts every matching registry copy without using the merged list output',
   assert.ok(!fs.existsSync(path.join(f.cwd, '.promptscript')));
 });
 
-test('false removes safe managed copies using the tool and preserves extra user files', t => {
+test('false removes CLI-owned copies even after the user adds files', t => {
   const f = fixture(t);
   f.installFixture();
   assert.equal(f.run({ mode: 'adopt' }).status, 'success');
   const modified = path.join(f.targets.find(target => target.agent === 'codex')!.directory, 'ae-dataops');
   fs.writeFileSync(path.join(modified, 'personal.md'), 'Keep this addition');
   const report = f.run({ businesses: { dataops: false } });
-  assert.equal(report.status, 'partial', JSON.stringify(report));
-  assert.equal(report.removed.filter(copy => copy.skill === 'ae-dataops').length, 3);
-  assert.equal(report.skipped.find(copy => copy.path === modified)?.reason, 'copy_modified');
-  assert.equal(fs.readFileSync(path.join(modified, 'personal.md'), 'utf8'), 'Keep this addition');
-  assert.equal(fs.existsSync(path.join(f.targets[0].directory, 'ae-dataops')), false);
+  assert.equal(report.status, 'success', JSON.stringify(report));
+  assert.equal(report.removed.filter(copy => copy.skill === 'ae-dataops').length, 4);
+  assert.equal(report.skipped.length, 0);
+  for (const target of f.targets) assert.equal(fs.existsSync(path.join(target.directory, 'ae-dataops')), false);
   assert.ok(!fs.existsSync(path.join(f.cwd, '.promptscript')));
+});
+
+test('false removes edited CLI-owned metadata and internal links without following their targets', t => {
+  const f = fixture(t);
+  f.installFixture();
+  assert.equal(f.run({ mode: 'adopt' }).status, 'success');
+  const external = path.join(f.root, 'personal-reference');
+  fs.mkdirSync(external);
+  fs.writeFileSync(path.join(external, 'usage.md'), 'Independent user reference\n');
+  for (const target of f.targets) {
+    const copy = path.join(target.directory, 'ae-dataops');
+    fs.writeFileSync(path.join(copy, 'SKILL.md'), 'User replaced the installed instructions');
+    fs.symlinkSync(external, path.join(copy, 'references', 'personal'), process.platform === 'win32' ? 'junction' : 'dir');
+  }
+  const report = f.run({ businesses: { dataops: false } });
+  assert.equal(report.status, 'success', JSON.stringify(report));
+  assert.equal(report.removed.filter(copy => copy.skill === 'ae-dataops').length, f.targets.length);
+  for (const target of f.targets) assert.equal(fs.existsSync(path.join(target.directory, 'ae-dataops')), false);
+  assert.equal(fs.readFileSync(path.join(external, 'usage.md'), 'utf8'), 'Independent user reference\n');
+});
+
+test('false removes an owned mapped copy that is absent from the current bundle', t => {
+  const f = fixture(t);
+  f.installFixture();
+  f.copy('ae-analysis', f.targets[0]);
+  assert.equal(f.run({ mode: 'adopt' }).status, 'success');
+  fs.rmSync(path.join(f.source, 'ae-dataops'), { recursive: true });
+  const report = f.run({ businesses: { dataops: false } });
+  assert.equal(report.status, 'success', JSON.stringify(report));
+  assert.equal(report.removed.filter(copy => copy.skill === 'ae-dataops').length, f.targets.length);
+  for (const target of f.targets) assert.equal(fs.existsSync(path.join(target.directory, 'ae-dataops')), false);
+  assert.ok(fs.existsSync(path.join(f.targets[0].directory, 'ae-analysis', 'SKILL.md')));
+});
+
+function writeHistoricalSkillLock(f: ReturnType<typeof fixture>, entries: Record<string, object>): void {
+  const file = f.env.XDG_STATE_HOME ? path.join(f.env.XDG_STATE_HOME, 'skills', '.skill-lock.json')
+    : path.join(f.home, '.agents', '.skill-lock.json');
+  fs.mkdirSync(path.dirname(file), { recursive: true });
+  fs.writeFileSync(file, JSON.stringify({ version: 3, skills: entries }));
+}
+
+function installHistoricalSkillLinks(f: ReturnType<typeof fixture>, name = 'ae-dataops'): void {
+  const canonicalTarget = f.targets.find(target => target.agent === 'universal')!;
+  f.copy(name, canonicalTarget);
+  const canonical = path.join(canonicalTarget.directory, name);
+  for (const target of f.targets.filter(item => item !== canonicalTarget)) {
+    const linked = path.join(target.directory, name);
+    fs.mkdirSync(target.directory, { recursive: true });
+    fs.symlinkSync(process.platform === 'win32' ? canonical : path.relative(target.directory, canonical), linked,
+      process.platform === 'win32' ? 'junction' : 'dir');
+  }
+}
+
+for (const xdg of [false, true]) {
+  test(`historical ${xdg ? 'XDG' : 'home'} CLI provenance fills an existing ledger without requiring pristine contents`, t => {
+    const f = fixture(t);
+    if (!xdg) delete f.env.XDG_STATE_HOME;
+    f.copy('ae-analysis', f.targets[0]);
+    assert.equal(f.run({ mode: 'adopt' }).status, 'success');
+    installHistoricalSkillLinks(f);
+    fs.writeFileSync(path.join(f.targets[0].directory, 'ae-dataops', 'references', 'usage.md'), 'Edited historical CLI copy\n');
+    writeHistoricalSkillLock(f, { 'ae-dataops': {
+      source: f.source, sourceType: 'local', sourceUrl: f.source, skillPath: 'ae-dataops/SKILL.md',
+      skillFolderHash: xdg ? '' : 'f'.repeat(40), installedAt: '2026-09-01T00:00:00Z', updatedAt: '2026-09-01T00:00:00Z',
+    } });
+    const report = f.run({ businesses: { dataops: false } });
+    assert.equal(report.status, 'success', JSON.stringify(report));
+    assert.equal(report.removed.filter(copy => copy.skill === 'ae-dataops').length, f.targets.length);
+    for (const target of f.targets) assert.throws(() => fs.lstatSync(path.join(target.directory, 'ae-dataops')), { code: 'ENOENT' });
+    assert.ok(fs.existsSync(path.join(f.targets[0].directory, 'ae-analysis', 'SKILL.md')));
+  });
+}
+
+for (const existingLock of [false, true]) {
+  test(`${existingLock ? 'updated' : 'new'} historical CLI provenance invalidates an unchanged-business fast path`, t => {
+    const f = fixture(t);
+    if (existingLock) writeHistoricalSkillLock(f, { 'ae-dataops': {
+      source: 'https://github.com/example/personal-skills', sourceType: 'git',
+      sourceUrl: 'https://github.com/example/personal-skills', skillPath: 'ae-dataops/SKILL.md', skillFolderHash: '',
+    } });
+    assert.equal(f.run({ businesses: { dataops: false } }).status, 'success');
+    installHistoricalSkillLinks(f);
+    fs.writeFileSync(path.join(f.targets[0].directory, 'ae-dataops', 'personal.md'), 'Historical user edit');
+    writeHistoricalSkillLock(f, { 'ae-dataops': {
+      source: f.source, sourceType: 'local', sourceUrl: f.source, skillPath: 'ae-dataops/SKILL.md',
+      skillFolderHash: '', updatedAt: '2026-11-05T10:00:00Z',
+    } });
+    const report = f.run({ businesses: { dataops: false }, onlyIfChanged: true });
+    assert.equal(report.status, 'success', JSON.stringify(report));
+    assert.equal(report.removed.filter(copy => copy.skill === 'ae-dataops').length, f.targets.length);
+    for (const target of f.targets) assert.throws(() => fs.lstatSync(path.join(target.directory, 'ae-dataops')), { code: 'ENOENT' });
+    const repeated = f.run({ businesses: { dataops: false }, onlyIfChanged: true });
+    assert.equal(repeated.status, 'success', JSON.stringify(repeated));
+    assert.equal(repeated.removed.length, 0);
+    assert.equal(repeated.installed.length, 0);
+  });
+}
+
+test('historical CLI package provenance can remove a retired mapped Skill with user edits', t => {
+  const f = fixture(t);
+  f.copy('ae-analysis', f.targets[0]);
+  assert.equal(f.run({ mode: 'adopt' }).status, 'success');
+  installHistoricalSkillLinks(f);
+  const previousPackage = path.join(f.root, 'previous-cli-package');
+  const previousSkills = path.join(previousPackage, 'skills');
+  fs.mkdirSync(previousSkills, { recursive: true });
+  fs.writeFileSync(path.join(previousPackage, 'package.json'), JSON.stringify({
+    name: '@tant/ae-cli', version: '6.0.45', bin: { 'ae-cli': 'bin/ae-cli.js' },
+  }));
+  fs.writeFileSync(path.join(f.targets[0].directory, 'ae-dataops', 'personal.md'), 'Personal addition');
+  fs.rmSync(path.join(f.source, 'ae-dataops'), { recursive: true });
+  writeHistoricalSkillLock(f, { 'ae-dataops': {
+    source: previousSkills, sourceType: 'local', sourceUrl: previousSkills, skillPath: 'ae-dataops/SKILL.md', skillFolderHash: '',
+  } });
+  const report = f.run({ businesses: { dataops: false } });
+  assert.equal(report.status, 'success', JSON.stringify(report));
+  assert.equal(report.removed.filter(copy => copy.skill === 'ae-dataops').length, f.targets.length);
+  for (const target of f.targets) assert.throws(() => fs.lstatSync(path.join(target.directory, 'ae-dataops')), { code: 'ENOENT' });
+});
+
+test('a global CLI source record cannot claim an independent ordinary client copy', t => {
+  const f = fixture(t);
+  const canonicalTarget = f.targets.find(target => target.agent === 'universal')!;
+  f.copy('ae-dataops', canonicalTarget);
+  assert.equal(f.run({ mode: 'adopt' }).status, 'success');
+  const independentTarget = f.targets.find(target => target.agent === 'claude-code')!;
+  f.copy('ae-dataops', independentTarget);
+  const independent = path.join(independentTarget.directory, 'ae-dataops');
+  fs.writeFileSync(path.join(independent, 'references', 'usage.md'), 'Independently installed personal instructions');
+  writeHistoricalSkillLock(f, { 'ae-dataops': {
+    source: f.source, sourceType: 'local', sourceUrl: f.source, skillPath: 'ae-dataops/SKILL.md', skillFolderHash: '',
+  } });
+  const report = f.run({ businesses: { dataops: false } });
+  assert.equal(report.status, 'partial', JSON.stringify(report));
+  assert.equal(report.removed.filter(copy => copy.skill === 'ae-dataops').length, 1);
+  assert.equal(fs.existsSync(path.join(canonicalTarget.directory, 'ae-dataops')), false);
+  assert.ok(report.skipped.some(copy => copy.path === independent && copy.reason === 'copy_not_managed'));
+  assert.ok(fs.lstatSync(independent).isDirectory());
+  assert.equal(fs.readFileSync(path.join(independent, 'references', 'usage.md'), 'utf8'), 'Independently installed personal instructions');
+});
+
+test('a bridge-parent link that only lexically names the owned canonical Skill is not an installer link',
+  { skip: process.platform === 'win32' }, t => {
+    const f = fixture(t);
+    const canonicalTarget = f.targets.find(target => target.agent === 'universal')!;
+    f.copy('ae-dataops', canonicalTarget);
+    assert.equal(f.run({ mode: 'adopt' }).status, 'success');
+    const canonical = path.join(canonicalTarget.directory, 'ae-dataops');
+    const externalRoot = path.join(f.root, 'independent-skills');
+    fs.mkdirSync(path.join(externalRoot, 'bridge-child'), { recursive: true });
+    const external = path.join(externalRoot, 'ae-dataops');
+    fs.cpSync(path.join(f.source, 'ae-dataops'), external, { recursive: true });
+    const externalContent = 'Independent Skill reached through POSIX symlink traversal';
+    fs.writeFileSync(path.join(external, 'references', 'usage.md'), externalContent);
+    fs.symlinkSync(path.join(externalRoot, 'bridge-child'), path.join(canonicalTarget.directory, 'bridge'), 'dir');
+    const client = f.targets.find(target => target.agent === 'claude-code')!;
+    fs.mkdirSync(client.directory, { recursive: true });
+    const linked = path.join(client.directory, 'ae-dataops');
+    const linkText = `${path.relative(client.directory, canonicalTarget.directory)}/bridge/../ae-dataops`;
+    fs.symlinkSync(linkText, linked, 'dir');
+    assert.equal(path.resolve(client.directory, linkText), canonical);
+    assert.equal(fs.realpathSync.native(linked), external);
+    assert.equal(fs.readFileSync(path.join(linked, 'references', 'usage.md'), 'utf8'), externalContent);
+    writeHistoricalSkillLock(f, { 'ae-dataops': {
+      source: f.source, sourceType: 'local', sourceUrl: f.source, skillPath: 'ae-dataops/SKILL.md', skillFolderHash: '',
+    } });
+    const report = f.run({ businesses: { dataops: false } });
+    assert.equal(report.status, 'partial', JSON.stringify(report));
+    assert.equal(report.removed.filter(copy => copy.skill === 'ae-dataops').length, 1);
+    assert.equal(fs.existsSync(canonical), false);
+    assert.ok(report.skipped.some(copy => copy.path === linked));
+    assert.ok(fs.lstatSync(linked).isSymbolicLink());
+    assert.equal(fs.readlinkSync(linked), linkText);
+    assert.equal(fs.realpathSync.native(linked), external);
+    assert.equal(fs.readFileSync(path.join(external, 'references', 'usage.md'), 'utf8'), externalContent);
+  });
+
+for (const source of ['https://github.com/example/personal-skills', 'independent-local-source']) {
+  test(`a historical lock from ${source} cannot claim same-named user Skills`, t => {
+    const f = fixture(t);
+    assert.equal(f.run({ mode: 'adopt' }).status, 'success');
+    f.installFixture();
+    const sourceUrl = source.startsWith('https:') ? source : path.join(f.root, source);
+    writeHistoricalSkillLock(f, { 'ae-dataops': {
+      source: sourceUrl, sourceType: source.startsWith('https:') ? 'git' : 'local', sourceUrl,
+      skillPath: 'ae-dataops/SKILL.md', skillFolderHash: '',
+    } });
+    const report = f.run({ businesses: { dataops: false } });
+    assert.equal(report.removed.filter(copy => copy.skill === 'ae-dataops').length, 0);
+    for (const target of f.targets) assert.ok(fs.existsSync(path.join(target.directory, 'ae-dataops', 'SKILL.md')));
+  });
+}
+
+test('CLI provenance does not make an unmapped personal Skill eligible for business removal', t => {
+  const f = fixture(t);
+  assert.equal(f.run({ mode: 'adopt' }).status, 'success');
+  const name = 'ae-personal-guidance';
+  const copy = path.join(f.targets[0].directory, name);
+  fs.mkdirSync(copy, { recursive: true });
+  fs.writeFileSync(path.join(copy, 'SKILL.md'), `---\nname: ${name}\ndescription: Personal guidance\n---\nPersonal instructions\n`);
+  writeHistoricalSkillLock(f, { [name]: {
+    source: f.source, sourceType: 'local', sourceUrl: f.source, skillPath: `${name}/SKILL.md`, skillFolderHash: '',
+  } });
+  const report = f.run({ businesses: { dataops: false, engage: false, agent: false, community: false } });
+  assert.equal(report.removed.filter(item => item.skill === name).length, 0);
+  assert.equal(fs.readFileSync(path.join(copy, 'SKILL.md'), 'utf8'), `---\nname: ${name}\ndescription: Personal guidance\n---\nPersonal instructions\n`);
+});
+
+test('historical CLI provenance cannot claim a same-name link into the package source', t => {
+  const f = fixture(t);
+  assert.equal(f.run({ mode: 'adopt' }).status, 'success');
+  const linked = path.join(f.targets[0].directory, 'ae-dataops');
+  fs.mkdirSync(path.dirname(linked), { recursive: true });
+  fs.symlinkSync(path.join(f.source, 'ae-dataops'), linked, process.platform === 'win32' ? 'junction' : 'dir');
+  writeHistoricalSkillLock(f, { 'ae-dataops': {
+    source: f.source, sourceType: 'local', sourceUrl: f.source, skillPath: 'ae-dataops/SKILL.md', skillFolderHash: '',
+  } });
+  const report = f.run({ businesses: { dataops: false } });
+  assert.equal(report.removed.filter(copy => copy.skill === 'ae-dataops').length, 0);
+  assert.ok(fs.lstatSync(linked).isSymbolicLink());
+  assert.equal(fs.readFileSync(path.join(f.source, 'ae-dataops', 'references', 'usage.md'), 'utf8'), 'Complete source for ae-dataops\n');
+});
+
+test('historical CLI provenance cannot claim copies below a linked parent directory', t => {
+  const f = fixture(t);
+  assert.equal(f.run({ mode: 'adopt' }).status, 'success');
+  const independent = path.join(f.root, 'personal-skills');
+  fs.mkdirSync(independent);
+  fs.cpSync(path.join(f.source, 'ae-dataops'), path.join(independent, 'ae-dataops'), { recursive: true });
+  const target = f.targets.find(item => item.agent === 'claude-code')!;
+  fs.symlinkSync(independent, target.directory, process.platform === 'win32' ? 'junction' : 'dir');
+  writeHistoricalSkillLock(f, { 'ae-dataops': {
+    source: f.source, sourceType: 'local', sourceUrl: f.source, skillPath: 'ae-dataops/SKILL.md', skillFolderHash: '',
+  } });
+  const report = f.run({ businesses: { dataops: false } });
+  assert.equal(report.removed.filter(copy => copy.skill === 'ae-dataops').length, 0);
+  assert.ok(fs.lstatSync(target.directory).isSymbolicLink());
+  assert.equal(fs.readFileSync(path.join(independent, 'ae-dataops', 'references', 'usage.md'), 'utf8'), 'Complete source for ae-dataops\n');
 });
 
 test('true restores canonical copies without recreating removed legacy copies', t => {
@@ -131,6 +425,253 @@ test('true restores canonical copies without recreating removed legacy copies', 
     assert.equal(skillCopyHash(path.join(target.directory, 'ae-dataops')), skillCopyHash(path.join(f.source, 'ae-dataops'), true));
     assert.equal(fs.readFileSync(path.join(target.directory, 'ae-dataops', 'references', 'usage.md'), 'utf8'), 'Complete source for ae-dataops\n');
   }
+});
+
+test('6.1 experiment switches all three Skills independently of the Engage business', t => {
+  const f = fixture(t);
+  const names = ['ae-experiment', 'ae-experiment-design', 'ae-experiment-insight'];
+  for (const name of names) {
+    const directory = path.join(f.source, name);
+    fs.mkdirSync(directory);
+    fs.writeFileSync(path.join(directory, 'SKILL.md'), `---\nname: ${name}\ndescription: An experiment Skill\n---\n`);
+    f.installFixture(name);
+  }
+  assert.equal(f.run({ mode: 'adopt' }).status, 'success');
+  const removed = f.run({ businesses: { experiment: false, engage: true } });
+  assert.equal(removed.status, 'success', JSON.stringify(removed));
+  assert.equal(removed.removed.filter(copy => names.includes(copy.skill)).length, 12);
+  const restored = f.run({ businesses: { experiment: true, engage: false } });
+  assert.equal(restored.status, 'success', JSON.stringify(restored));
+  assert.equal(restored.installed.filter(copy => names.includes(copy.skill)).length, 6);
+  for (const target of f.targets) for (const name of names) {
+    if (!target.installable) {
+      assert.equal(fs.existsSync(path.join(target.directory, name)), false);
+      continue;
+    }
+    assert.equal(skillCopyHash(path.join(target.directory, name)), skillCopyHash(path.join(f.source, name), true));
+  }
+});
+
+test('automatic refresh skips an applied state before discovering targets or scanning copies', t => {
+  const f = fixture(t);
+  assert.equal(f.run({ businesses: { agent: false, dataops: true } }).status, 'success');
+  const ledger = path.join(f.options.stateDirectory!, 'business-skills.json');
+  const before = fs.readFileSync(ledger, 'utf8');
+  const unused: SkillsTool = {
+    targets() { assert.fail('Unchanged businesses must not rescan client targets'); },
+    apply() { assert.fail('Unchanged businesses must not run the installer'); },
+  };
+  assert.equal(f.run({ businesses: { dataops: true, agent: false }, onlyIfChanged: true, tool: unused }).status, 'success');
+  assert.equal(fs.readFileSync(ledger, 'utf8'), before);
+  assert.ok(!before.includes('first account'));
+});
+
+test('a partial transition invalidates the old applied state even if config returns to it', t => {
+  const f = fixture(t);
+  assert.equal(f.run({ businesses: { dataops: false } }).status, 'success');
+  const interrupted: SkillsTool = {
+    targets: () => f.tool.targets(),
+    apply(operations, guard) {
+      return [...f.tool.apply(operations.slice(0, 1), guard), ...operations.slice(1).map(operation => ({
+        action: operation.action, skill: operation.skill, agent: operation.target.agent,
+        path: path.join(operation.target.directory, operation.skill), status: 'failed' as const,
+      }))];
+    },
+  };
+  assert.equal(f.run({ businesses: { dataops: true }, onlyIfChanged: true, tool: interrupted }).status, 'partial');
+  assert.ok(f.installTargets.some(target => fs.existsSync(path.join(target.directory, 'ae-dataops'))));
+  const ledger = path.join(f.options.stateDirectory!, 'business-skills.json');
+  assert.equal(JSON.parse(fs.readFileSync(ledger, 'utf8')).last_applied, undefined);
+  const resources = recordResourceReads(t);
+  assert.equal(f.run({ businesses: { dataops: false }, onlyIfChanged: true }).status, 'success');
+  assert.ok(resources.some(file => file.includes(`${path.sep}ae-analysis${path.sep}`)), 'A partial transition must force a complete verification next time');
+  for (const target of f.installTargets) assert.equal(fs.existsSync(path.join(target.directory, 'ae-dataops')), false);
+  assert.deepEqual(JSON.parse(fs.readFileSync(ledger, 'utf8')).last_applied.businesses, { dataops: false });
+});
+
+test('identity switches reuse the applied policy while package changes require revalidation', t => {
+  const f = fixture(t);
+  assert.equal(f.run({ businesses: { dataops: false } }).status, 'success');
+  let scans = 0;
+  const tool: SkillsTool = { targets() { scans++; return f.tool.targets(); }, apply: (...args) => f.tool.apply(...args) };
+  const tokenFingerprint = createHash('sha256').update('another account').digest('hex');
+  assert.equal(f.run({ businesses: { dataops: false }, onlyIfChanged: true, tokenFingerprint, tool }).status, 'success');
+  assert.equal(scans, 0);
+  assert.equal(f.run({ businesses: { dataops: false }, onlyIfChanged: true, tokenFingerprint, packageVersion: '6.0.57', tool }).status, 'success');
+  assert.equal(scans, 1);
+});
+
+function recordResourceReads(t: TestContext): string[] {
+  const reads: string[] = [];
+  const original = fs.readFileSync;
+  t.mock.method(fs, 'readFileSync', (file, ...args) => {
+    if (typeof file === 'string' && file.includes(`${path.sep}references${path.sep}`)) reads.push(file);
+    return original(file, ...args);
+  });
+  return reads;
+}
+
+test('switching host and token with the same complete policy avoids worker and resource scans', t => {
+  const f = fixture(t);
+  const businesses = { dataops: true, engage: false, agent: false, community: false };
+  assert.equal(f.run({ businesses }).status, 'success');
+  const resources = recordResourceReads(t);
+  const unused: SkillsTool = {
+    targets() { assert.fail('An identical installed policy must not rediscover clients after an identity switch'); },
+    apply() { assert.fail('An identical installed policy must not run a worker after an identity switch'); },
+  };
+  const tokenFingerprint = createHash('sha256').update('next fixture account').digest('hex');
+  const host = 'https://second.example.test';
+  const result = f.run({ businesses, host, tokenFingerprint, onlyIfChanged: true, tool: unused });
+  assert.equal(result.status, 'success', JSON.stringify(result));
+  assert.deepEqual(resources, []);
+  const applied = JSON.parse(fs.readFileSync(path.join(f.options.stateDirectory!, 'business-skills.json'), 'utf8')).last_applied;
+  assert.equal(applied.host, host);
+  assert.equal(applied.token_fingerprint, tokenFingerprint);
+  assert.deepEqual(applied.businesses, businesses);
+});
+
+test('changing only DataOps reads only its source and managed resource files', t => {
+  const f = fixture(t);
+  const closed = { dataops: false, engage: false, agent: false, community: false };
+  assert.equal(f.run({ businesses: closed }).status, 'success');
+  const resources = recordResourceReads(t);
+  const opened = f.run({ businesses: { ...closed, dataops: true }, onlyIfChanged: true });
+  assert.equal(opened.status, 'success', JSON.stringify(opened));
+  assert.equal(opened.installed.length, f.installTargets.length);
+  assert.ok(resources.length > 0);
+  assert.ok(resources.every(file => file.includes(`${path.sep}ae-dataops${path.sep}`)), JSON.stringify(resources));
+  resources.length = 0;
+  const removed = f.run({ businesses: closed, onlyIfChanged: true });
+  assert.equal(removed.status, 'success', JSON.stringify(removed));
+  assert.equal(removed.removed.length, f.installTargets.length);
+  assert.ok(resources.length > 0);
+  assert.ok(resources.every(file => file.includes(`${path.sep}ae-dataops${path.sep}`)), JSON.stringify(resources));
+});
+
+test('an unknown transition retains installed copies without reading resources or discovering clients', t => {
+  const f = fixture(t);
+  assert.equal(f.run({ businesses: { dataops: true, engage: false, agent: false, community: false } }).status, 'success');
+  const resources = recordResourceReads(t);
+  const unused: SkillsTool = {
+    targets() { assert.fail('An unknown state must not rediscover copies to change them'); },
+    apply() { assert.fail('An unknown state must not install or remove copies'); },
+  };
+  const unknown = f.run({ businesses: { engage: false, agent: false, community: false }, onlyIfChanged: true, tool: unused });
+  assert.equal(unknown.status, 'success', JSON.stringify(unknown));
+  assert.deepEqual(resources, []);
+  for (const target of f.installTargets) assert.equal(fs.existsSync(path.join(target.directory, 'ae-dataops')), true);
+  const ledger = JSON.parse(fs.readFileSync(path.join(f.options.stateDirectory!, 'business-skills.json'), 'utf8'));
+  assert.equal(ledger.last_applied.businesses.dataops, undefined);
+});
+
+test('a delta removes edited CLI-owned DataOps copies while leaving unrelated resources unread', t => {
+  const f = fixture(t);
+  const opened = { dataops: true, engage: false, agent: false, community: false };
+  assert.equal(f.run({ businesses: opened }).status, 'success');
+  const personal = path.join(f.installTargets[0].directory, 'ae-dataops', 'references', 'usage.md');
+  fs.writeFileSync(personal, 'Personal guidance');
+  const resources = recordResourceReads(t);
+  const removed = f.run({ businesses: { ...opened, dataops: false }, onlyIfChanged: true });
+  assert.equal(removed.status, 'success', JSON.stringify(removed));
+  assert.equal(removed.removed.length, f.installTargets.length);
+  assert.ok(resources.every(file => file.includes(`${path.sep}ae-dataops${path.sep}`)), JSON.stringify(resources));
+  assert.equal(fs.existsSync(personal), false);
+});
+
+for (const change of ['legacy-marker', 'mapping-policy'] as const) {
+  test(`${change} requires full verification before a policy can be reused`, t => {
+    const f = fixture(t);
+    const businesses = { dataops: false, engage: false, agent: false, community: false };
+    assert.equal(f.run({ businesses }).status, 'success');
+    const file = path.join(f.options.stateDirectory!, 'business-skills.json');
+    const ledger = JSON.parse(fs.readFileSync(file, 'utf8'));
+    if (change === 'legacy-marker') {
+      delete ledger.last_applied.source_root;
+      delete ledger.last_applied.policy_hash;
+    } else ledger.last_applied.policy_hash = '0'.repeat(64);
+    fs.writeFileSync(file, JSON.stringify(ledger));
+    const resources = recordResourceReads(t);
+    let scans = 0;
+    const tool: SkillsTool = { targets() { scans++; return f.tool.targets(); }, apply: (...args) => f.tool.apply(...args) };
+    assert.equal(f.run({ businesses, onlyIfChanged: true, tool }).status, 'success');
+    assert.equal(scans, 1);
+    assert.ok(resources.some(resource => resource.includes(`${path.sep}ae-analysis${path.sep}`)));
+    const applied = JSON.parse(fs.readFileSync(file, 'utf8')).last_applied;
+    assert.equal(applied.source_root, fs.realpathSync(f.source));
+    assert.match(applied.policy_hash, /^[a-f0-9]{64}$/);
+    assert.notEqual(applied.policy_hash, '0'.repeat(64));
+  });
+}
+
+test('a different package source requires full verification even at the same version and business policy', t => {
+  const f = fixture(t);
+  const businesses = { dataops: false, engage: false, agent: false, community: false };
+  assert.equal(f.run({ businesses }).status, 'success');
+  const replacement = path.join(f.root, 'replacement-package', 'skills');
+  fs.cpSync(f.source, replacement, { recursive: true });
+  fs.writeFileSync(path.join(replacement, 'ae-analysis', 'references', 'usage.md'), 'Replacement source guidance');
+  const resources = recordResourceReads(t);
+  const result = f.run({ businesses, skillsDirectory: replacement, onlyIfChanged: true });
+  assert.equal(result.status, 'success', JSON.stringify(result));
+  assert.equal(result.installed.filter(copy => copy.skill === 'ae-analysis').length, f.installTargets.length);
+  assert.ok(resources.some(file => file.includes(`${path.sep}ae-analysis${path.sep}`)));
+  for (const target of f.installTargets) assert.equal(fs.readFileSync(path.join(target.directory, 'ae-analysis', 'references', 'usage.md'), 'utf8'), 'Replacement source guidance');
+});
+
+test('a failed delta clears its reusable policy and the next attempt verifies every business', t => {
+  const f = fixture(t);
+  const closed = { dataops: false, engage: false, agent: false, community: false };
+  assert.equal(f.run({ businesses: closed }).status, 'success');
+  const failed: SkillsTool = { targets: () => f.tool.targets(), apply() { throw new Error('Fixture failure before receipts'); } };
+  assert.equal(f.run({ businesses: { ...closed, dataops: true }, onlyIfChanged: true, tool: failed }).status, 'failed');
+  const resources = recordResourceReads(t);
+  assert.equal(f.run({ businesses: closed, onlyIfChanged: true }).status, 'success');
+  assert.ok(resources.some(file => file.includes(`${path.sep}ae-analysis${path.sep}`)));
+});
+
+test('a superseded generation cannot update identity metadata through the identical-policy fast path', t => {
+  const f = fixture(t);
+  const businesses = { dataops: false };
+  assert.equal(f.run({ businesses }).status, 'success');
+  const generation = reserveBusinessSkillContext(f.options);
+  reserveBusinessSkillContext({ ...f.options, host: 'https://newest.example.test' });
+  const ledger = path.join(f.options.stateDirectory!, 'business-skills.json');
+  const before = fs.readFileSync(ledger, 'utf8');
+  const resources = recordResourceReads(t);
+  const result = f.run({ businesses, generation, onlyIfChanged: true });
+  assert.equal(result.status, 'stale');
+  assert.equal(fs.readFileSync(ledger, 'utf8'), before);
+  assert.deepEqual(resources, []);
+});
+
+test('selective bundle reads use actual header names and do not deep-read unselected references', t => {
+  const f = fixture(t);
+  fs.renameSync(path.join(f.source, 'ae-dataops'), path.join(f.source, 'warehouse-guidance'));
+  const resources = recordResourceReads(t);
+  const selected = readBundledSkills(f.source, name => name === 'ae-dataops');
+  assert.deepEqual(selected.map(skill => skill.name), ['ae-dataops']);
+  assert.equal(selected[0].files.get(path.join('references', 'usage.md'))!.toString(), 'Complete source for ae-dataops\n');
+  assert.ok(resources.length > 0);
+  assert.ok(resources.every(file => file.includes(`${path.sep}warehouse-guidance${path.sep}`)), JSON.stringify(resources));
+});
+
+for (const invalid of ['duplicate-header', 'invalid-header'] as const) {
+  test(`selective bundle reads still reject an unselected ${invalid}`, t => {
+    const f = fixture(t);
+    if (invalid === 'duplicate-header') fs.cpSync(path.join(f.source, 'ae-analysis'), path.join(f.source, 'another-analysis'), { recursive: true });
+    else fs.writeFileSync(path.join(f.source, 'ae-analysis', 'SKILL.md'), '---\nname: [invalid]\ndescription: Invalid fixture\n---\n');
+    assert.throws(() => readBundledSkills(f.source, name => name === 'ae-dataops'), /Invalid bundled Skill|duplicate/);
+  });
+}
+
+test('explicit synchronization repairs missing copies even with an unchanged applied state', t => {
+  const f = fixture(t);
+  assert.equal(f.run({ businesses: { dataops: true } }).status, 'success');
+  const missing = path.join(f.installTargets[0].directory, 'ae-dataops');
+  fs.rmSync(missing, { recursive: true });
+  assert.equal(f.run({ businesses: { dataops: true } }).status, 'success');
+  assert.equal(skillCopyHash(missing), skillCopyHash(path.join(f.source, 'ae-dataops'), true));
 });
 
 test('large synchronization requests drain the complete UTF-8 pipe before parsing', t => {
@@ -172,6 +713,36 @@ test('unknown neither deletes existing optional copies nor installs missing opti
   assert.equal(fs.existsSync(path.join(f.targets[0].directory, 'ae-dataops')), true);
 });
 
+test('unknown preserves edits and installer links to a CLI-owned canonical copy', t => {
+  const f = fixture(t);
+  f.copy('ae-dataops', f.targets[0]);
+  assert.equal(f.run({ mode: 'adopt' }).status, 'success');
+  const canonical = path.join(f.targets[0].directory, 'ae-dataops');
+  fs.writeFileSync(path.join(canonical, 'personal.md'), 'Personal instructions');
+  const linked = path.join(f.targets.find(target => target.agent === 'claude-code')!.directory, 'ae-dataops');
+  fs.mkdirSync(path.dirname(linked), { recursive: true });
+  fs.symlinkSync(canonical, linked, process.platform === 'win32' ? 'junction' : 'dir');
+  const report = f.run({ businesses: {} });
+  assert.equal(report.status, 'success', JSON.stringify(report));
+  assert.equal(report.removed.length, 0);
+  assert.equal(fs.readFileSync(path.join(canonical, 'personal.md'), 'utf8'), 'Personal instructions');
+  assert.ok(fs.lstatSync(linked).isSymbolicLink());
+});
+
+test('a retired owned Skill without an optional-business mapping is not removed', t => {
+  const f = fixture(t);
+  const name = 'ae-personal-guidance';
+  const source = path.join(f.source, name);
+  fs.mkdirSync(source);
+  fs.writeFileSync(path.join(source, 'SKILL.md'), `---\nname: ${name}\ndescription: Unmapped fixture\n---\nPersonal instructions\n`);
+  f.copy(name, f.targets[0]);
+  assert.equal(f.run({ mode: 'adopt' }).status, 'success');
+  fs.rmSync(source, { recursive: true });
+  const report = f.run({ businesses: { dataops: false, agent: false, engage: false, community: false } });
+  assert.equal(report.removed.filter(copy => copy.skill === name).length, 0);
+  assert.ok(fs.existsSync(path.join(f.targets[0].directory, name, 'SKILL.md')));
+});
+
 test('a matching but unowned copy is preserved until an installation explicitly adopts it', t => {
   const f = fixture(t);
   f.installFixture();
@@ -207,14 +778,16 @@ test('package updates replace only copies still matching the previously recorded
   }
 });
 
-test('an extra empty directory protects a managed copy while DS_Store does not', t => {
+test('extra empty directories and Finder metadata do not exempt CLI-owned copies from removal', t => {
   const f = fixture(t);
   f.installFixture();
   f.run({ mode: 'adopt' });
   fs.mkdirSync(path.join(f.targets[1].directory, 'ae-dataops', 'notes'));
   fs.writeFileSync(path.join(f.targets[2].directory, 'ae-dataops', '.DS_Store'), 'Finder metadata');
   const report = f.run({ businesses: { dataops: false } });
-  assert.ok(report.skipped.some(copy => copy.path === path.join(f.targets[1].directory, 'ae-dataops')));
+  assert.equal(report.status, 'success', JSON.stringify(report));
+  assert.equal(report.removed.filter(copy => copy.skill === 'ae-dataops').length, 4);
+  assert.equal(fs.existsSync(path.join(f.targets[1].directory, 'ae-dataops')), false);
   assert.ok(report.removed.some(copy => copy.path === path.join(f.targets[2].directory, 'ae-dataops')));
 });
 
@@ -280,7 +853,7 @@ test('an unowned canonical copy does not grant ownership of its legacy links', t
   assert.ok(fs.existsSync(canonical));
 });
 
-test('modified canonical contents and a changed package preserve legacy links', t => {
+test('edited canonical contents and a changed package do not exempt owned installer links from removal', t => {
   for (const change of ['canonical', 'package']) {
     const f = fixture(t);
     f.copy('ae-dataops', f.targets[0]);
@@ -292,14 +865,13 @@ test('modified canonical contents and a changed package preserve legacy links', 
     const changed = change === 'canonical' ? canonical : path.join(f.source, 'ae-dataops');
     fs.writeFileSync(path.join(changed, 'references', 'usage.md'), 'Changed independently\n');
     const report = f.run({ businesses: { dataops: false } });
-    assert.equal(report.status, 'partial', JSON.stringify(report));
-    assert.equal(report.removed.length, 0);
-    assert.ok(fs.lstatSync(linked).isSymbolicLink());
-    assert.ok(fs.existsSync(canonical));
+    assert.equal(report.status, 'success', JSON.stringify(report));
+    assert.equal(report.removed.filter(copy => copy.skill === 'ae-dataops').length, 2);
+    for (const file of [linked, canonical]) assert.throws(() => fs.lstatSync(file), { code: 'ENOENT' });
   }
 });
 
-test('custom destinations and chained links are never migrated as installer links', t => {
+test('custom destinations and chained aliases are preserved without exempting the owned canonical copy', t => {
   const f = fixture(t);
   f.copy('ae-dataops', f.targets[0]);
   f.run({ mode: 'adopt' });
@@ -318,13 +890,13 @@ test('custom destinations and chained links are never migrated as installer link
   });
   const report = f.run({ businesses: { dataops: false } });
   assert.equal(report.status, 'partial', JSON.stringify(report));
-  assert.equal(report.removed.length, 0);
-  assert.ok(report.skipped.some(copy => copy.path === canonical && copy.reason === 'dependent_unmanaged_link'));
+  assert.equal(report.removed.filter(copy => copy.path === canonical).length, 1);
+  assert.equal(fs.existsSync(canonical), false);
   for (const linked of links) assert.ok(fs.lstatSync(linked).isSymbolicLink());
   assert.equal(skillCopyHash(external), skillCopyHash(path.join(f.source, 'ae-dataops'), true));
 });
 
-test('a custom alias in a registry discovery directory protects the canonical Skill', t => {
+test('a custom alias in a registry discovery directory remains while owned paths are removed', t => {
   const f = fixture(t);
   f.copy('ae-dataops', f.targets[0]);
   f.run({ mode: 'adopt' });
@@ -335,14 +907,15 @@ test('a custom alias in a registry discovery directory protects the canonical Sk
   const linked = path.join(target.directory, 'ae-dataops');
   for (const file of [alias, linked]) fs.symlinkSync(canonical, file, process.platform === 'win32' ? 'junction' : 'dir');
   const report = f.run({ businesses: { dataops: false } });
-  assert.equal(report.status, 'partial', JSON.stringify(report));
+  assert.equal(report.status, 'success', JSON.stringify(report));
   assert.ok(report.removed.some(copy => copy.path === linked));
-  assert.ok(report.skipped.some(copy => copy.path === canonical && copy.reason === 'dependent_unmanaged_link'));
-  assert.ok(fs.existsSync(path.join(alias, 'SKILL.md')));
-  assert.ok(fs.existsSync(canonical));
+  assert.ok(report.removed.some(copy => copy.path === canonical));
+  assert.ok(fs.lstatSync(alias).isSymbolicLink());
+  assert.equal(fs.existsSync(alias), false);
+  assert.equal(fs.existsSync(canonical), false);
 });
 
-test('a custom alias through a legacy link protects both paths on removal and survives materialization', t => {
+test('custom aliases survive removal and later restoration of the CLI-owned paths they reference', t => {
   const f = fixture(t);
   f.copy('ae-dataops', f.targets[0]);
   f.run({ mode: 'adopt' });
@@ -360,13 +933,14 @@ test('a custom alias through a legacy link protects both paths on removal and su
   fs.symlinkSync(linked, indirect, process.platform === 'win32' ? 'junction' : 'dir');
   fs.symlinkSync(indirect, chainedAlias, process.platform === 'win32' ? 'junction' : 'dir');
   const removed = f.run({ businesses: { dataops: false } });
-  assert.equal(removed.status, 'partial', JSON.stringify(removed));
-  assert.ok(removed.skipped.some(copy => copy.path === linked && copy.reason === 'dependent_unmanaged_link'));
-  assert.ok(removed.skipped.some(copy => copy.path === canonical && copy.reason === 'dependent_unmanaged_link'));
-  assert.equal(removed.removed.length, 0);
-  assert.ok(fs.existsSync(path.join(alias, 'SKILL.md')));
-  assert.ok(fs.existsSync(path.join(chainedAlias, 'SKILL.md')));
-  assert.equal(fs.readFileSync(path.join(referencesAlias, 'usage.md'), 'utf8'), 'Complete source for ae-dataops\n');
+  assert.equal(removed.status, 'success', JSON.stringify(removed));
+  assert.equal(removed.removed.filter(copy => copy.skill === 'ae-dataops').length, 2);
+  for (const file of [alias, referencesAlias, chainedAlias]) {
+    assert.ok(fs.lstatSync(file).isSymbolicLink());
+    assert.equal(fs.existsSync(file), false);
+  }
+  assert.equal(fs.existsSync(canonical), false);
+  assert.throws(() => fs.lstatSync(linked), { code: 'ENOENT' });
   const enabled = f.run({ businesses: { dataops: true } });
   assert.equal(enabled.status, 'success', JSON.stringify(enabled));
   assert.ok(fs.lstatSync(linked).isDirectory());
@@ -377,7 +951,7 @@ test('a custom alias through a legacy link protects both paths on removal and su
   assert.equal(fs.readFileSync(path.join(referencesAlias, 'usage.md'), 'utf8'), 'Complete source for ae-dataops\n');
 });
 
-test('parent traversal after a symlink preserves POSIX aliases through canonical and legacy paths', { skip: process.platform === 'win32' }, t => {
+test('parent traversal aliases remain untouched when referenced CLI-owned paths are removed', { skip: process.platform === 'win32' }, t => {
   for (const throughLegacy of [false, true]) {
     const f = fixture(t);
     f.copy('ae-dataops', f.targets[0]);
@@ -394,15 +968,16 @@ test('parent traversal after a symlink preserves POSIX aliases through canonical
     fs.symlinkSync(`${outside}/bridge/../SKILL.md`, alias);
     assert.equal(fs.readFileSync(alias, 'utf8'), fs.readFileSync(path.join(canonical, 'SKILL.md'), 'utf8'));
     const report = f.run({ businesses: { dataops: false } });
-    assert.equal(report.status, 'partial', JSON.stringify(report));
-    assert.ok(fs.existsSync(canonical));
-    if (throughLegacy) assert.ok(fs.lstatSync(linked).isSymbolicLink());
-    assert.equal(fs.readFileSync(alias, 'utf8'), fs.readFileSync(path.join(f.source, 'ae-dataops', 'SKILL.md'), 'utf8'));
+    assert.equal(report.status, 'success', JSON.stringify(report));
+    assert.equal(fs.existsSync(canonical), false);
+    assert.throws(() => fs.lstatSync(linked), { code: 'ENOENT' });
+    assert.ok(fs.lstatSync(alias).isSymbolicLink());
+    assert.equal(fs.existsSync(alias), false);
   }
 });
 
-test('the worker rechecks legacy link destinations, canonical hashes, ownership and context', t => {
-  for (const change of ['link', 'canonical', 'ledger', 'context', 'package']) {
+test('the worker rechecks legacy link destinations, ownership and context', t => {
+  for (const change of ['link', 'ledger', 'context']) {
     const f = fixture(t);
     f.copy('ae-dataops', f.targets[0]);
     f.run({ mode: 'adopt' });
@@ -419,9 +994,7 @@ test('the worker rechecks legacy link destinations, canonical hashes, ownership 
           fs.symlinkSync(canonical, indirect, process.platform === 'win32' ? 'junction' : 'dir');
           fs.unlinkSync(linked);
           fs.symlinkSync(indirect, linked, process.platform === 'win32' ? 'junction' : 'dir');
-        } else if (change === 'canonical') fs.writeFileSync(path.join(canonical, 'personal.md'), 'Edit after planning');
-        else if (change === 'package') fs.writeFileSync(path.join(f.source, 'ae-dataops', 'personal.md'), 'Changed package');
-        else if (change === 'context') reserveBusinessSkillContext({ ...f.options, host: 'https://changed.example.test' });
+        } else if (change === 'context') reserveBusinessSkillContext({ ...f.options, host: 'https://changed.example.test' });
         else fs.writeFileSync(path.join(f.options.stateDirectory!, 'business-skills.json'), JSON.stringify({ schema_version: 1, copies: {} }));
         return f.tool.apply(operations, guard);
       },
@@ -429,9 +1002,9 @@ test('the worker rechecks legacy link destinations, canonical hashes, ownership 
     const report = f.run({ tool, businesses: { dataops: false } });
     assert.equal(report.status, change === 'context' ? 'stale' : 'partial', JSON.stringify(report));
     assert.ok(report.skipped.some(copy => copy.path === linked));
-    assert.equal(report.removed.length, 0);
+    assert.equal(report.removed.length, change === 'link' ? 1 : 0, change);
     assert.ok(fs.lstatSync(linked).isSymbolicLink());
-    assert.ok(fs.existsSync(canonical));
+    assert.equal(fs.existsSync(canonical), change !== 'link', change);
   }
 });
 
@@ -492,9 +1065,10 @@ test('the worker rechecks package overlap after a target parent changes during p
   assert.ok(fs.existsSync(path.join(f.source, 'ae-dataops', 'SKILL.md')));
 });
 
-test('the worker rejects a package source changed after planning', t => {
+test('the worker rejects an installation source changed after planning', t => {
   const f = fixture(t);
   f.installFixture(); f.run({ mode: 'adopt' });
+  fs.writeFileSync(path.join(f.source, 'ae-dataops', 'references', 'usage.md'), 'New package before planning');
   const tool: SkillsTool = {
     targets: () => f.tool.targets(),
     apply: (operations, guard) => {
@@ -502,9 +1076,10 @@ test('the worker rejects a package source changed after planning', t => {
       return f.tool.apply(operations, guard);
     },
   };
-  const report = f.run({ tool, businesses: { dataops: false } });
+  const report = f.run({ tool, businesses: { dataops: true }, packageVersion: '6.0.57' });
   assert.equal(report.status, 'partial');
   assert.equal(report.removed.length, 0);
+  assert.equal(report.installed.filter(copy => copy.skill === 'ae-dataops').length, 0);
   assert.ok(report.skipped.some(copy => copy.reason === 'package_changed'));
   for (const target of f.targets) assert.ok(fs.existsSync(path.join(target.directory, 'ae-dataops')));
 });
@@ -657,7 +1232,7 @@ test('a per-copy installer failure is reported even when the tool does not throw
   } finally { fs.chmodSync(target.directory, 0o700); }
 });
 
-test('an external edit between planning and removal is detected inside the tool process', t => {
+test('an external content edit after planning does not revoke ownership before removal', t => {
   const f = fixture(t);
   f.installFixture(); f.run({ mode: 'adopt' });
   const protectedCopy = path.join(f.targets[0].directory, 'ae-dataops');
@@ -669,9 +1244,29 @@ test('an external edit between planning and removal is detected inside the tool 
     },
   };
   const report = f.run({ tool, businesses: { dataops: false } });
-  assert.equal(report.status, 'partial');
-  assert.ok(report.skipped.some(copy => copy.path === protectedCopy && copy.reason === 'copy_changed'));
-  assert.ok(fs.existsSync(path.join(protectedCopy, 'personal.md')));
+  assert.equal(report.status, 'success', JSON.stringify(report));
+  assert.ok(report.removed.some(copy => copy.path === protectedCopy));
+  assert.equal(fs.existsSync(protectedCopy), false);
+});
+
+test('a replacement directory at an owned path is preserved when it appears after planning', t => {
+  const f = fixture(t);
+  f.installFixture();
+  assert.equal(f.run({ mode: 'adopt' }).status, 'success');
+  const replaced = path.join(f.targets[0].directory, 'ae-dataops');
+  const tool: SkillsTool = {
+    targets: () => f.tool.targets(),
+    apply(operations, guard) {
+      fs.renameSync(replaced, path.join(f.root, 'original-owned-copy'));
+      fs.cpSync(path.join(f.source, 'ae-dataops'), replaced, { recursive: true });
+      fs.writeFileSync(path.join(replaced, 'replacement.md'), 'Independent replacement');
+      return f.tool.apply(operations, guard);
+    },
+  };
+  const report = f.run({ tool, businesses: { dataops: false } });
+  assert.equal(report.status, 'partial', JSON.stringify(report));
+  assert.ok(report.skipped.some(copy => copy.path === replaced));
+  assert.equal(fs.readFileSync(path.join(replaced, 'replacement.md'), 'utf8'), 'Independent replacement');
 });
 
 test('invalid ledgers fail without adopting or deleting same-named installed Skills', t => {

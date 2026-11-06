@@ -43,6 +43,28 @@ export interface SystemCommandSpec {
 
 const secretValues = new WeakMap<RuntimeContext, Map<string, string | undefined>>();
 
+// Server confirmation inputs are capability contracts, independent of the CLI risk gate.
+const backendConfirmationCapabilities = new Set([
+  'system.member_status.update',
+  'system.member_project.batch_update',
+  'system.member_password.reset',
+  'system.member.delete',
+  'system.role.upsert',
+  'system.role.delete',
+  'system.admin.upsert',
+  'system.admin_function.update',
+  'system.admin.remove',
+  'system.seat.update',
+  'system.mfa.update',
+  'system.member_mfa.unbind',
+  'system.query_task.cancel',
+  'system.query_alert_rule.update',
+  'system.ops_alert_contact.delete',
+  'system.smtp.delete',
+  'system.receiver_address.delete',
+  'system.third_party_login.disable',
+]);
+
 export const companyIdField: SystemField = {
   flag: 'company-id',
   input: 'company_id',
@@ -96,7 +118,7 @@ export function defineSystemCommand(spec: SystemCommandSpec): Command {
     risk: spec.risk,
     validate: (ctx) => {
       validateSecretSources(ctx, secrets);
-      const input = buildSystemInput(ctx, fields, [], spec.risk);
+      const input = buildSystemInput(ctx, fields, [], spec.capabilityId);
       for (const secret of secrets) {
         if (ctx.str(`${secret.flag}-file`) || ctx.bool(`${secret.flag}-stdin`)) {
           input[secret.input] = '<provided>';
@@ -106,7 +128,7 @@ export function defineSystemCommand(spec: SystemCommandSpec): Command {
       spec.validate?.(ctx, input);
     },
     buildInput: (ctx) => {
-      const input = buildSystemInput(ctx, fields, secrets, spec.risk);
+      const input = buildSystemInput(ctx, fields, secrets, spec.capabilityId);
       validateFields(fields, input);
       validateSecretSources(ctx, secrets);
       spec.validate?.(ctx, input);
@@ -152,7 +174,7 @@ function buildSystemInput(
   ctx: RuntimeContext,
   fields: readonly SystemField[],
   secrets: readonly SystemSecretField[],
-  risk: RiskLevel,
+  capabilityId: string,
 ): Record<string, unknown> {
   const input: Record<string, unknown> = {};
   for (const field of fields) {
@@ -163,7 +185,7 @@ function buildSystemInput(
     const value = secretValue(ctx, secret);
     if (value !== undefined) input[secret.input] = secret.transform ? secret.transform(value) : value;
   }
-  if (risk === 'high-risk-write') input.yes = true;
+  if (backendConfirmationCapabilities.has(capabilityId)) input.yes = true;
   return compactInput(input);
 }
 

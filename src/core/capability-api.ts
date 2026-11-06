@@ -1,8 +1,10 @@
 /**
  * capability-api.ts — REST transport for capability-gateway commands.
  *
- * CLI calls `/api/cli/<domain>/v1/...`; nginx strips the domain segment and forwards to the
- * backing service at `/api/cli/v1/...`. Auth uses the `cli-token` header (same as MCP transport).
+ * CLI calls the service-specific capability endpoint. Most services use the shared
+ * `/api/cli/<domain>/v1/...` gateway; AI Monitor is deployed under the `/ai-monitor` base path
+ * and intentionally uses `/ai-monitor/api/cli/v1/...` directly. Auth uses the `cli-token`
+ * header (same as MCP transport).
  */
 
 import { clearCliTokenCache, getCliToken } from './cli-token.js';
@@ -22,6 +24,8 @@ import { externalCliTokenRequestOptions } from './external-cli-token.js';
 export type CapabilityApiMethod = 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE';
 
 export type CapabilityApiRequestOptions = {
+  /** Cancel an in-flight request when its caller stops waiting. */
+  signal?: AbortSignal;
   /** Keep strict REST business bodies unchanged while retaining context headers. */
   includeClientContextInBody?: boolean;
   /** Versioned CLI REST contract; existing capability callers remain on v1. */
@@ -48,13 +52,14 @@ export class CapabilityGatewayError extends Error {
     readonly hint?: string,
     readonly meta?: Record<string, unknown>,
     readonly type: 'api' | 'validation' = 'api',
+    readonly details?: Record<string, unknown>,
   ) {
     super(message);
     this.name = 'CapabilityGatewayError';
   }
 }
 
-/** Build `/api/cli/<domain>/v1/<pathAfterV1>` or root `/api/cli/v1/<pathAfterV1>` with optional query params. */
+/** Build a capability endpoint with optional query params. */
 export function buildCapabilityGatewayUrl(
   host: string,
   domain: string,
@@ -65,7 +70,9 @@ export function buildCapabilityGatewayUrl(
   const base = host.replace(/\/+$/, '');
   const cleanDomain = domain.replace(/^\/+|\/+$/g, '');
   const cleanPath = pathAfterV1.replace(/^\/+|\/+$/g, '');
-  const gatewayPrefix = cleanDomain === '' ? `/api/cli/${apiVersion}` : `/api/cli/${cleanDomain}/${apiVersion}`;
+  const gatewayPrefix = cleanDomain === 'ai-monitor'
+    ? '/ai-monitor/api/cli/v1'
+    : cleanDomain === '' ? `/api/cli/${apiVersion}` : `/api/cli/${cleanDomain}/${apiVersion}`;
   const url = new URL(`${base}${gatewayPrefix}/${cleanPath}`);
   for (const [key, value] of Object.entries(queryParams)) {
     if (value !== undefined && value !== null) {
@@ -104,7 +111,7 @@ async function permissionError(resp: Response): Promise<PermissionError> {
   const body = safeJsonParse(await codeResponse.text());
   const error = isRecord(body?.error) ? body.error : undefined;
   const code = nonEmptyString(error?.code) ?? nonEmptyString(body?.code);
-  return new PermissionError(message, code, nonEmptyString(error?.hint), undefined,
+  return new PermissionError(message, code, nonEmptyString(error?.hint) ?? nonEmptyString(body?.hint), undefined,
     isRecord(body?.meta) ? body.meta : undefined);
 }
 
@@ -151,6 +158,7 @@ function parseCapabilityEnvelope(body: any, acceptCommunityLegacyEnvelope = fals
       hint,
       isRecord(body.meta) ? body.meta : undefined,
       err.type === 'validation' ? 'validation' : 'api',
+      isRecord(err.details) ? err.details : undefined,
     );
   }
   const legacyReturnCode = acceptCommunityLegacyEnvelope ? body.return_code ?? body.returnCode : undefined;
@@ -211,6 +219,7 @@ function buildCapabilityHttpError(resp: Response, body: any): CapabilityGatewayE
         hint,
         isRecord(body.meta) ? body.meta : undefined,
         err.type === 'validation' ? 'validation' : 'api',
+        isRecord(err.details) ? err.details : undefined,
       );
     }
   }
@@ -240,6 +249,7 @@ async function requestOnce(
   body: any,
   accept = 'application/json',
   includeClientContextInBody = true,
+  signal?: AbortSignal,
 ): Promise<Response> {
   const agentContext = readCliAgentContext();
   const headers: Record<string, string> = {
@@ -253,7 +263,7 @@ async function requestOnce(
     headers['Content-Type'] = 'application/json';
     init.body = stringifyJsonRequest(includeClientContextInBody ? withCliAgentContextBody(body, agentContext) : body);
   }
-  return fetch(url, { ...init, ...externalCliTokenRequestOptions(url) });
+  return fetch(url, { ...init, ...externalCliTokenRequestOptions(url), signal });
 }
 
 async function requestMultipartOnce(url: string, token: string, form: FormData): Promise<Response> {
@@ -303,14 +313,14 @@ async function callGatewayWithEnvelope(
   options: CapabilityApiRequestOptions = {},
 ): Promise<CapabilityGatewaySuccess> {
   const url = buildCapabilityGatewayUrl(options.apiBaseUrl ?? host, domain, pathAfterV1, queryParams, options.apiVersion);
-  const token = await getCliToken(host);
+  const token = await getCliToken(host, options.signal);
 
-  let resp = await requestOnce(url, method, token, body, 'application/json', options.includeClientContextInBody);
+  let resp = await requestOnce(url, method, token, body, 'application/json', options.includeClientContextInBody, options.signal);
   // Explicit opt-in only: reread host-scoped credentials once without minting or deleting them.
   if (resp.status === 401 && options.retryOnUnauthorized === true) {
     await resp.body?.cancel();
     clearCliTokenCache(host);
-    resp = await requestOnce(url, method, await getCliToken(host), body, 'application/json', options.includeClientContextInBody);
+    resp = await requestOnce(url, method, await getCliToken(host, options.signal), body, 'application/json', options.includeClientContextInBody, options.signal);
   }
   if (resp.status === 403) {
     const error = await permissionError(resp);
@@ -337,11 +347,12 @@ export async function fetchCapabilityGateway(
   method: CapabilityApiMethod = 'GET',
   body?: any,
   accept = 'application/json',
+  options: CapabilityApiRequestOptions = {},
 ): Promise<Response> {
-  const url = buildCapabilityGatewayUrl(host, domain, pathAfterV1);
-  const token = await getCliToken(host);
+  const url = buildCapabilityGatewayUrl(options.apiBaseUrl ?? host, domain, pathAfterV1, {}, options.apiVersion);
+  const token = await getCliToken(host, options.signal);
 
-  const resp = await requestOnce(url, method, token, body, accept);
+  const resp = await requestOnce(url, method, token, body, accept, options.includeClientContextInBody, options.signal);
 
   if (resp.status === 403) {
     const error = await permissionError(resp);
@@ -363,8 +374,9 @@ export async function requestCapabilityGateway(
   pathAfterV1: string,
   method: CapabilityApiMethod = 'GET',
   body?: any,
+  options: CapabilityApiRequestOptions = {},
 ): Promise<any> {
-  const resp = await fetchCapabilityGateway(host, domain, pathAfterV1, method, body);
+  const resp = await fetchCapabilityGateway(host, domain, pathAfterV1, method, body, 'application/json', options);
   return unwrapCapabilityEnvelope(
     parseCapabilityResponse(await resp.text()), isCommunityGatewayRequest(domain, pathAfterV1),
   );
@@ -376,8 +388,9 @@ export async function requestCapabilityGatewayWithEnvelope(
   pathAfterV1: string,
   method: CapabilityApiMethod = 'GET',
   body?: any,
+  options: CapabilityApiRequestOptions = {},
 ): Promise<CapabilityGatewaySuccess> {
-  const resp = await fetchCapabilityGateway(host, domain, pathAfterV1, method, body);
+  const resp = await fetchCapabilityGateway(host, domain, pathAfterV1, method, body, 'application/json', options);
   return parseCapabilityEnvelope(
     parseCapabilityResponse(await resp.text()), isCommunityGatewayRequest(domain, pathAfterV1),
   );

@@ -2,7 +2,7 @@
 
 Versions are immutable successful publications. No historical version is created until the first successful compile. Failed or cancelled compiles do not consume a version number. Existing `+compile`, `+status` and `+list-sources` responses pass through server version labels and draft state; `+index`, `+grep`, `+read` and `+ask` always address current content.
 
-When `+status` returns `wiki_review_required`, inspect `publicationReview.code`, report that administrator review is required, and stop ordinary compile polling. The active Run and write lock remain in place; do not cancel or force another compile. This also covers an interrupted publication after server restart.
+When `+status` returns `wiki_review_required`, inspect `publicationReview.code`, report that administrator review is required, and stop ordinary compile polling. The active Run and write lock remain in place; do not cancel or force another compile. This also covers an interrupted publication after server restart. Exact-run `+status --run-id` returns the same `publicationReview` marker; stop even when `compileRun.status` remains `running`.
 
 Discover exact names/scopes via `kb +list`, then inspect history:
 

@@ -226,6 +226,21 @@ After all source-tree changes succeed, use the source-tree packager's `compile_m
 
 Compiled navigation must follow the five layers: project overview, shared project knowledge, business domains, event and asset catalog, and governance with provenance. Recall cards belong under domains. The homepage should contain a small set of representative titled entries only, not every report/dashboard file or bare numeric IDs. Individual assets belong in their category index or domain context, with title-first link text and IDs as supporting identity. Public event groups are lookup indexes, not business domains.
 
+## Wait for the submitted compile run
+
+`+compile` returns a submission receipt, not completion. Copy its exact `data.runId` and wait in the foreground with the bounded read-only helper:
+
+```bash
+node skills/ae-analysis/scripts/project-semantic-knowledge-wiki/wait-compile-run.mjs \
+  --name '<company_kb_name>' --run-id '<runId returned by +compile>' --host <host>
+```
+
+The helper polls `company-kb.mjs +status --run-id <runId>`, always with company scope. It waits only for `queued`/`running`, returns on `succeeded`, and exits nonzero immediately on `failed`/`cancelled`, preserving the run error. If the exact-run response includes `publicationReview`, stop immediately with its stable code and report that administrator review is required; the run may remain `running` while blocked. Do not cancel or restart it. Timeout exits without cancelling or restarting the run. Keep the exact run ID when resuming. Missing exact-run support is terminal; upgrade the CLI/server before using this helper, never silently fall back to aggregate status or another run. Do not write a background shell loop that only waits for `wiki_compiled` or invented `compile_failed` values.
+
+Aggregate `wiki_pending` with `buildStatus=compiled` and no active run can coexist with a failed compile and an older published Wiki. It is neither a running-run signal nor success for the submitted run. Successful run completion still requires the publication and content readback below. A `failed` run with no publication progress remains a failed run, even when an older version is readable.
+
+If the sync plan is `skip` and compilation was not explicitly requested, no compile run exists to wait for. Read back the existing publication, report the no-business-change result and any current source/draft failures separately; never invent a successful compile or conceal `parse_failed`. If the user explicitly requires compilation, submit once and use the exact-run helper even on a no-change day.
+
 ## Acceptance and readback
 
 Completion requires `status=wiki_compiled`, `buildStatus=compiled`, no failed or partial sources, and complete publication when exposed. Verify both a first build and an actual changed-source incremental compile; a local preview or successful upload is not acceptance.
@@ -238,7 +253,7 @@ node "$KB_RUN" +grep --name '<company_kb_name>' --query '<business question or m
 node "$KB_RUN" +read --name '<company_kb_name>' --path '<path copied from index or grep>' --host <host>
 ```
 
-Do not assume the old local Wiki layout. Inspect actual server paths. Check the project overview can answer: what business system this project observes, who uses it, what business objects exist, how objects relate, what decision chains exist, which assets attach to each chain, and what cannot be answered without live execution. Then check domain judgment models, asset IDs, SQL/calculation fidelity, certification, missing facts, cross-source conflict handling and provenance. Smoke-test a representative reusable asset. After refresh, verify additions, changed current definitions, removal of obsolete assertions and preservation of unchanged facts. Historical definitions may remain only when explicitly marked historical and evidenced. Publish statistics such as `reusedPages` are evidence; incremental mode alone does not prove lower model cost.
+Do not assume the old local Wiki layout. Inspect actual server paths. Check the project overview can answer: what business system this project observes, who uses it, what business objects exist, how objects relate, what decision chains exist, which assets attach to each chain, and what cannot be answered without live execution. Then check domain judgment models, asset IDs, SQL/calculation fidelity, certification, missing facts, cross-source conflict handling and provenance. Read a published recall card through the normal query path. Verify that its opening branch preserves the sourced measure, grain conversion or capability gap and the checks that would change the answer. Inspect a counterexample where a prerequisite fails. Record card fidelity, constraint retrieval and observed execution adherence separately; a page readback covers only the first two. Smoke-test a representative reusable asset. After refresh, verify additions, changed current definitions, removal of obsolete assertions and preservation of unchanged facts. Historical definitions may remain only when explicitly marked historical and evidenced. Publish statistics such as `reusedPages` are evidence; incremental mode alone does not prove lower model cost.
 
 Report target scope/name, requested model, ZIP source ID/revision, compile status/version, source counts and quality findings. Record observed compile duration and usage; small-sample success does not prove a full package will stay below turn limits.
 

@@ -18,7 +18,7 @@ export const projectOwnerUpdate = createAnalysisCapabilityCommand({
     { name: 'project-name', type: 'string', required: false, desc: 'Optional project name update.' },
     { name: 'project-remark', type: 'string', required: false, desc: 'Optional project remark update.' },
   ],
-  risk: 'write',
+  risk: 'high-risk-write',
   buildInput: (ctx) => compactInput({
     project_id: ctx.num('project-id'),
     company_id: ctx.num('company-id'),

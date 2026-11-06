@@ -14,7 +14,7 @@ export const projectMemberBatchUpdate = createAnalysisCapabilityCommand({
     projectIdFlag,
     requiredPayloadFlag,
   ],
-  risk: 'write',
+  risk: 'high-risk-write',
   buildInput: (ctx) => compactInput({
     project_id: ctx.num('project-id'),
     payload: ctx.json('payload'),

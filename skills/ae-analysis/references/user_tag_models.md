@@ -62,10 +62,16 @@ From a fixed date through today:
 
 ## SQL tag
 
+Before creating a SQL tag, identify who receives one tag value. Use `ae-cli project entity list --project-id <project_id>` to find that analysis entity in the target project. If its source field is unclear, inspect it with `project entity get`. Pass the resolved entity ID explicitly as `--entity-id`. When editing an existing SQL tag, read its entity with `analysis user-tag get` and keep that entity.
+
+Trace the first column of the final SELECT through any aliases, CTEs and joins to the selected entity's identifier. Check that the final rows have that entity's grain. A compatible SQL type, a CAST or a matching alias does not establish identity. A reference tag can supply the calculation; reuse its entity only when the request targets the same subject.
+
+For example, a reference SQL grouped by `#account_id` computes one value per account. For an account tag, select the project's account entity. For a user tag, return `#user_id` and compute one value per user using verified project fields or a verified account-to-user mapping. Renaming `#account_id` to `#user_id` still returns account IDs. If the intended entity is ambiguous, ask who should receive the tag. If the entity is clear but the mapping or the rule for combining accounts is unknown, ask for that missing information before issuing the write.
+
 Return one row per distinct analysis-subject ID, with the tag value in the second column; a list tag requires a native SQL `ARRAY(varchar)` value, not a JSON string or repeated scalar rows. The server infers the tag type from that column, so do not add `selectType`; aggregate repeated subjects in the SQL itself, for example with `array_agg(DISTINCT CAST(value AS varchar))` and `GROUP BY` the subject ID.
 
 ```json
-{"type":"sql","sql":"SELECT \"#user_id\", 'payer' AS tag_value FROM hive.ta.v_event_1 WHERE ${PartDate:partdate} AND \"$part_event\"='pay'","params":[{"name":"partdate","type":"part_date","recent_day":"1-7"}]}
+{"type":"sql","sql":"SELECT DISTINCT \"#user_id\", 'payer' AS tag_value FROM hive.ta.v_event_1 WHERE ${PartDate:partdate} AND \"$part_event\"='pay'","params":[{"name":"partdate","type":"part_date","recent_day":"1-7"}]}
 ```
 
 SQL tags support only `${PartDate:name}` dynamic placeholders. Every placeholder requires one `params` item with `type=part_date` and either `recent_day` or `start_time` plus `end_time`. `Text`, `Number`, `Variable`, `Time`, and `Selector` parameters are valid for general SQL analysis but are not valid for SQL tags.
@@ -74,7 +80,7 @@ For `recent_day`, `0-7` means 最近7天 and includes today; `1-7` means 过去7
 `${base_date}` is a separate built-in computation-date macro, not a user-configurable dynamic placeholder. SQL tags may use `${base_date}`, a formatted value such as `${base_date:yyyy-MM-dd}`, or a server-supported offset such as `${base_date:yyyy-MM-dd-1*day}`. Keep the macro in `sql` and do not add it to `params`; it is expanded when the tag is calculated. Expansion produces plain text, so quote the macro when the SQL expression expects a string or date literal:
 
 ```json
-{"type":"sql","sql":"SELECT \"#user_id\", 'payer' AS tag_value FROM hive.ta.v_event_1 WHERE \"$part_date\"='${base_date:yyyy-MM-dd}' AND \"$part_event\"='pay'"}
+{"type":"sql","sql":"SELECT DISTINCT \"#user_id\", 'payer' AS tag_value FROM hive.ta.v_event_1 WHERE \"$part_date\"='${base_date:yyyy-MM-dd}' AND \"$part_event\"='pay'"}
 ```
 
 Before writing a SQL tag, use `analysis sql-table list --project-id <project_id> --usage tag_cluster`, then call `analysis sql-table columns --project-id <project_id> --table-ref <table_ref> --usage tag_cluster`. The `tag_cluster` authorized table set is intentionally different from the general analysis SQL table set; do not reuse a table discovered with the default `usage=analysis`.

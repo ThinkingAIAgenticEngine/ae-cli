@@ -1,5 +1,4 @@
 import { readKbExecutionContext } from "../core/kb-read-context.js";
-import * as readline from 'readline';
 import type { Command, Flag, RuntimeContext, GlobalOptions, OutputFormat } from './types.js';
 import { printOutput, printError } from './output.js';
 import { getActiveHost } from '../core/config.js';
@@ -14,6 +13,9 @@ import { EvalApiError } from '../core/eval-client.js';
 import { requiresConfirmation } from '../core/capability-risk.js';
 import { formatCapabilityMissCompatHint } from '../core/compat-check.js';
 import { ExternalCliTokenError } from '../core/external-cli-token.js';
+import { confirmHighRiskWrite } from './confirmation.js';
+
+export { canPromptForConfirmation } from './confirmation.js';
 
 /** Build message/hint when one or more required flags are missing. */
 export function missingRequiredFlagsError(
@@ -40,13 +42,6 @@ interface TeAgentApiErrorPresentation {
   hint?: string;
   code?: string;
   meta?: Record<string, unknown>;
-}
-
-export function canPromptForConfirmation(
-  input: Pick<NodeJS.ReadStream, 'isTTY'> = process.stdin,
-  output: Pick<NodeJS.WriteStream, 'isTTY'> = process.stderr,
-): boolean {
-  return input.isTTY === true && output.isTTY === true;
 }
 
 function readSkillCurrentVersion(body: unknown): string | undefined {
@@ -251,16 +246,7 @@ export async function runCommand(cmd: Command, opts: Record<string, any>, global
       // parameters surface as validation errors instead of being hidden behind the confirmation.
       cmd.preflight?.(ctx);
       if (!globalOpts.yes) {
-        if (!canPromptForConfirmation()) {
-          throw new CliValidationError(
-            'Non-interactive high-risk writes require global --yes.',
-            {
-              code: 'CONFIRMATION_REQUIRED',
-              hint: 'After explicit authorization, retry with the global --yes flag.',
-            },
-          );
-        }
-        const confirmed = await confirm(`This is a high-risk-write operation (${cmdName}). Continue?`);
+        const confirmed = await confirmHighRiskWrite(`This is a high-risk-write operation (${cmdName}). Continue?`);
         if (!confirmed) {
           process.stderr.write('Aborted.\n');
           process.exit(0);
@@ -300,7 +286,8 @@ export async function runCommand(cmd: Command, opts: Record<string, any>, global
     } else if (err instanceof CliApiError) {
       printError('api', message, err.hint, err.code, err.meta);
     } else if (err instanceof CapabilityGatewayError) {
-      printError(err.type, message, err.hint ?? capabilityGatewayHint(err), err.code, err.meta);
+      printError(err.type, message, err.hint ?? capabilityGatewayHint(err), err.code, err.meta,
+        { details: err.details });
     } else if (err instanceof CommunityReportError) {
       // The message/hint may come from the ingestion response. Keep it visible to the caller but
       // never persist it to CLI logs; the dedicated client records only URL/status/byte counts.
@@ -311,7 +298,11 @@ export async function runCommand(cmd: Command, opts: Record<string, any>, global
       printError('config', message, err.hint, err.code);
     } else if (err instanceof EvalApiError) {
       // Evaluation business errors can contain private response data even after credential redaction.
-      printError('api', message, err.hint, err.code, undefined, { log: false });
+      printError('api', message, err.hint, err.code, undefined, {
+        log: false,
+        // Only locally constructed guidance is public; remote details retain their existing privacy boundary.
+        details: err.onboarding ? { onboarding: err.onboarding } : undefined,
+      });
     } else if (err instanceof SecureStoreAuthError) {
       printError('auth', message, 'Run: ae-cli auth login', err.code);
     } else if (err instanceof TeAgentApiError) {
@@ -376,7 +367,7 @@ export function capabilityGatewayHint(err: CapabilityGatewayError): string | und
   }
   if (err.httpStatus === 404 && !err.code) {
     const base =
-      'The current host returned 404 for this capability route. Do not keep retrying the same command; verify the backend route/capability deployment.';
+      'The current host returned 404 for this capability route. Do not keep retrying the same command; verify the backend route/capability deployment. If --host points directly to a local Common service instead of the deployed gateway, scope AE_CLI_CAPABILITY_GATEWAY_DOMAIN= to this command so it uses /api/cli/v1.';
     return compatExtra ? `${base}\n${compatExtra}` : base;
   }
   return undefined;
@@ -511,14 +502,4 @@ export function createRuntimeContext(cmd: Command, opts: Record<string, any>, gl
 
 function camelCase(str: string): string {
   return str.replace(/-([a-z])/g, (_, c) => c.toUpperCase());
-}
-
-async function confirm(message: string): Promise<boolean> {
-  const rl = readline.createInterface({ input: process.stdin, output: process.stderr });
-  return new Promise((resolve) => {
-    rl.question(`${message} [y/N] `, (answer) => {
-      rl.close();
-      resolve(answer.toLowerCase() === 'y' || answer.toLowerCase() === 'yes');
-    });
-  });
 }

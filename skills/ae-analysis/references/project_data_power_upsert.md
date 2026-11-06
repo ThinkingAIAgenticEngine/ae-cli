@@ -1,5 +1,7 @@
 # project data-power upsert
 
+This is a `high-risk-write` operation because it changes access, ownership, or authentication policy. Preview the affected scope with `--dry-run`, obtain explicit user confirmation, then use global `--yes` for non-interactive execution. Validation and dry-run do not apply the change.
+
 Use when the user needs to create or update a data power.
 
 Do not use it for unrelated project-management actions or for fields not present in the common-service capability schema. Do not send camelCase aliases.
@@ -7,7 +9,7 @@ Do not use it for unrelated project-management actions or for fields not present
 Command:
 
 ```bash
-ae-cli project data-power upsert --project-id <project_id> --payload <payload>
+ae-cli project data-power upsert --project-id <project_id> --payload <payload> --yes
 ```
 
 Capability id: `project.data_power.upsert`.

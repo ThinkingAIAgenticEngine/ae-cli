@@ -1,0 +1,12 @@
+zh:
+  name: "埋点矩阵"
+  description: "统一识别埋点需求，支持方案生成、审核、优化与上传，并引导埋点代码生成、数据验证和用户 ID 绑定诊断。"
+en:
+  name: "Tracking Matrix"
+  description: "Identify tracking needs and guide plan generation, review, optimization and upload, tracking code generation, data verification and user ID binding diagnosis."
+ja:
+  name: "トラッキングマトリクス"
+  description: "トラッキング要件を整理し、プランの生成・レビュー・最適化・アップロード、コード生成、データ検証、ユーザーID紐付け診断を案内します。"
+ko:
+  name: "트래킹 매트릭스"
+  description: "트래킹 요구사항을 파악하고 플랜 생성·검토·최적화·업로드, 트래킹 코드 생성, 데이터 검증 및 사용자 ID 연동 진단을 안내합니다."

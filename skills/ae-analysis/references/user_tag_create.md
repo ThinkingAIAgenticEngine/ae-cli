@@ -6,7 +6,7 @@ Do not use it for uploaded-ID tags; use `user-tag create-id`. A successful creat
 
 The response reports this directly: `computation.triggered_automatically=true`, `computation.status=submitted`, and `result_freshness.is_stale=true`. Follow `next_action`; when it is `poll_get`, invoke `next_capability_id` with the exact `next_input` returned by the command.
 
-Flags: `--project-id`, `--tag-name`, `--display-name`, `--definition-request` required. Optional: `--authenticated-only`, `--zone-offset`, `--entity-id`, `--enable-auto-refresh`, `--auto-refresh-schedule`, `--auto-refresh-cron`. The tag type comes from `definition_request.type`.
+Flags: `--project-id`, `--tag-name`, `--display-name`, `--definition-request` required. Optional: `--authenticated-only`, `--zone-offset`, `--entity-id`, `--enable-auto-refresh`, `--enable-history-tag-backup`, `--auto-refresh-schedule`, `--auto-refresh-cron`. The tag type comes from `definition_request.type`. For a SQL tag, explicitly pass the project entity whose IDs the first result column represents. Follow the [SQL tag subject selection rules](user_tag_models.md#sql-tag) before creating it.
 
 `tag_name` is a machine identifier: 1-80 characters, starts with a letter, and contains only letters, digits, or underscores. `display_name` is 1-80 characters. The CLI rejects violations before dispatch.
 
@@ -51,3 +51,6 @@ Append one of these options to the create command:
 `time` uses 24-hour `HH:mm`. `month_days` accepts 1-31; dates absent from a month are skipped. Weekly/monthly schedules require their respective day array; other frequencies reject those fields. The structured form preserves the page's daily/weekly/monthly frequency selection. Cron uses the page's custom schedule mode and preserves every cron field.
 
 Schedules use the tag timezone. Use the existing `--zone-offset` only with an offset supported by the project; omit it to use the project's default behavior. Inspect `user-tag get` for `enable_auto_refresh` (1=enabled, 0=disabled), `scheduler_ui_config`, and `cluster_zone_offset` after creation.
+
+To retain historical tag values after scheduled refreshes, pass `--enable-history-tag-backup true` together with a schedule, for example `--auto-refresh-schedule '{"frequency":"daily","time":"02:30"}'`. Backup defaults to off.
+Read the tag with `user-tag get`: `enable_history_tag_backup=1` means enabled; the native read may omit the field or return null when disabled. Use `history-tag list` to check for a completed historical version after a scheduled refresh.

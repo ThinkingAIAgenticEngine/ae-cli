@@ -1,5 +1,7 @@
 # analysis dashboard share
 
+This is a `high-risk-write` operation because it changes access, ownership, or authentication policy. Preview the affected scope with `--dry-run`, obtain explicit user confirmation, then use global `--yes` for non-interactive execution. Validation and dry-run do not apply the change.
+
 Use when the user explicitly wants to add, remove, or batch modify dashboard sharing.
 
 Do not use to read sharing only. Use `dashboard share-info`.
@@ -7,7 +9,7 @@ Do not use to read sharing only. Use `dashboard share-info`.
 Command:
 
 ```bash
-ae-cli analysis dashboard share --project-id <project_id> --dashboard-id <dashboard_id> --member-authorities '{"10001":"READ","10002":"EDIT"}'
+ae-cli analysis dashboard share --project-id <project_id> --dashboard-id <dashboard_id> --member-authorities '{"10001":"READ","10002":"EDIT"}' --yes
 ```
 
 Input sends `project_id`, `dashboard_id`, and either `member_authorities` or a documented snake_case `payload`.

@@ -12,6 +12,8 @@ function commandPath(command: Command): string[] {
 
 interface BusinessCommandOptions {
   hostOverride?: string;
+  /** Preserve the service segment when a standalone executable omits it from its command tree. */
+  commandPrefix?: readonly string[];
   readStates?: () => BusinessStates;
   assertEnabled?: (business: OptionalBusiness | undefined, hostOverride?: string) => Promise<void>;
 }
@@ -19,8 +21,9 @@ interface BusinessCommandOptions {
 /** Keep every command registered while using the same policy for all help entry points. */
 export function configureBusinessCommands(program: Command, options: BusinessCommandOptions = {}): void {
   const readStates = options.readStates ?? (() => readCurrentBusinessConfig(options.hostOverride));
+  const commandBusiness = (command: Command) => businessForCommand([...(options.commandPrefix ?? []), ...commandPath(command)]);
   const isVisible = (command: Command): boolean => {
-    const business = businessForCommand(commandPath(command));
+    const business = commandBusiness(command);
     return !business || readStates()[business] !== false;
   };
   const helpConfiguration = {
@@ -29,7 +32,7 @@ export function configureBusinessCommands(program: Command, options: BusinessCom
     },
     formatHelp(this: Help, command: Command, helper: Help) {
       if (!isVisible(command)) {
-        const business = businessForCommand(commandPath(command));
+        const business = commandBusiness(command);
         return `The '${business}' business is not enabled for the current environment.\n`
           + 'Run: ae-cli config refresh\n';
       }
@@ -43,13 +46,13 @@ export function configureBusinessCommands(program: Command, options: BusinessCom
   configureHelp(program);
   program.on('beforeAllHelp', (context: { command: Command; write: (text: string) => void }) => {
     if (isVisible(context.command)) return;
-    const business = businessForCommand(commandPath(context.command));
+    const business = commandBusiness(context.command);
     context.write(`The '${business}' business is not enabled for the current environment.\nRun: ae-cli config refresh\n`);
     // Suppress command-specific examples as well as the built-in command help.
     context.write = () => {};
   });
   program.hook('preAction', async (_root, actionCommand) => {
-    const business = businessForCommand(commandPath(actionCommand));
+    const business = commandBusiness(actionCommand);
     if (!business) return;
     const opts = actionCommand.optsWithGlobals<{ host?: string }>();
     await (options.assertEnabled ?? assertBusinessEnabled)(business, opts.host ?? options.hostOverride);

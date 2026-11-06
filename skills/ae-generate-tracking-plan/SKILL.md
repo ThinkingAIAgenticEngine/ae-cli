@@ -1,5 +1,6 @@
 ---
 name: ae-generate-tracking-plan
+version: 1.0.1
 description: "Interactive generation of an AE tracking plan and upload. Trigger words: 埋点方案、埋点模板、tracking plan、AE 方案生成、create tracking plan、トラッキングプラン、트래킹 플랜. Follows anchor → draft → refine → token → upload five-phase workflow. Deliverable is a real tracking plan created in the AE platform."
 ---
 
@@ -1304,6 +1305,10 @@ Decide based on conflict detection results:
 | No conflicts | Upload directly |
 | Advisory only (Type B) | Upload after user confirmation |
 | Severe conflict (Type A) | User fixes or switches to replace |
+
+Before previewing an upload or an entire-plan deletion, check the installed subcommand with `AE_LANG=<user_lang> ae-cli tracking plan upload --help` or `AE_LANG=<user_lang> ae-cli tracking plan delete --help`. Its help must explicitly say **Local --dry-run preview**. Older clients accept the global flag but can execute the write. If the marker is missing, describe the intended changes from the local draft and stop before invoking the write command.
+
+For replacement or entire-plan deletion, run the selected command with `--dry-run`, show the target host, project and operations, and wait for explicit confirmation before executing the same command without `--dry-run`. Replacement deletes the old plan before uploading the XLSX. For a preview-only request, stop after showing the preview, including in append mode.
 
 Upload command:
 ```bash

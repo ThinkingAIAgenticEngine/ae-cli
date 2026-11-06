@@ -1,6 +1,6 @@
 ---
 name: ae-evaluation
-version: 2.4.5
+version: 2.4.7
 description: "Operate the Agent Evaluation (agent-test) platform through ae-cli: manage evaluation assets, configure and run Agent or preset-output evaluations, and analyze results. Use for platform evaluation tasks and their model, credential, integration, or schedule setup."
 ---
 
@@ -33,8 +33,23 @@ References contain command inputs, JSON contracts, and task-specific workflows; 
 - Use the online platform. Do not suggest localhost/loopback endpoints or obtain tokens from a local `agent-test/.env`.
 - Authentication uses `AE_EVAL_ACCESS_TOKEN` when explicitly set; it is sent only as `Authorization: Bearer` and must never appear in command arguments or output.
 - In an AE sandbox, when `AE_EVAL_ACCESS_TOKEN` is unset, ae-cli automatically exchanges the sandbox-provisioned `cli-token` through te-claude for a short-lived evaluation session. The CLI token is never sent to Agent Evaluation. If the token can access multiple TE projects, set `AE_EVAL_TE_PROJECT_ID` to the authorized TE project id.
-- Outside a sandbox, obtain a session token through the platform web console (`sessionStorage.getItem('agent.evaluation.session-token')`) or `POST /agenteval/api/v1/auth/session`. An unset token produces `EVAL_ACCESS_TOKEN_MISSING`.
+- Outside a sandbox, when the token is unset, the CLI immediately returns `EVAL_ACCESS_TOKEN_MISSING` with `token_missing` onboarding guidance and sends no network request. Module availability and service health remain unchecked. Direct the user to obtain a session token through the platform web console (`sessionStorage.getItem('agent.evaluation.session-token')`) or `POST /agenteval/api/v1/auth/session`. Never request tokens in chat.
 - Successful commands return JSON by default; use the actual error envelope to diagnose failures.
+
+### Evaluation availability and onboarding
+
+AI Evaluation Center is an optional deployment module. CLI command/Skill availability does not establish that the server module is installed or that the user has access.
+
+- When an error includes `error.details.onboarding`, follow the status-specific scope below. Do not blindly repeat the failed operation, change flags, refresh tokens, or use direct HTTP calls to bypass a denial. This is a host-Agent instruction, not a persistent CLI circuit breaker. Independent local work can continue.
+- First preserve local work: when asked to organize and upload a dataset, finish and save the local CSV/JSON if possible. Confirm its actual file path. If a write times out, loses its response, or receives a gateway/server failure, explain that the write result is unconfirmed: the server may already have accepted it. Do not claim either success or failure and do not resubmit blindly. Once connectivity is restored, use authorized read-only status checks with any known resource/import ID to reconcile the result. If no reliable identifier or lookup exists, ask the administrator/support to verify before another write.
+- Read `onboarding.status`, explain the evidence in the user's language, and follow its `next_steps`:
+  - `module_not_detected`: stop further evaluation commands on the affected host until deployment/routing is verified. The API route was not detected (generic route 404 or HTML fallback). The optional module may be missing or its routing may be wrong. Contact the ThinkingData service representative (CSM or Technical Support) to verify deployment/routing, install the module if needed, and grant access. Do not assert that installation is certainly absent.
+  - `access_not_granted`: stop only the denied operation. Independent authorized operations may continue; for example, a denied delete does not prohibit an authorized dataset read. Do not run other commands just to probe or bypass the denial. Stop a whole project or module only when that access scope is confirmed. Ask the administrator or ThinkingData support to check the required permission (READER / EDITOR / ADMIN as appropriate). A 403 alone proves neither cluster-wide denial nor module installation; do not recommend reinstallation or token rotation.
+  - `token_missing`: stop remote evaluation operations on this host until a token is configured. The external terminal has no token; no request was sent and endpoint availability was not checked. Follow the conditional web-console instructions; if the app launcher entry is missing, request administrator/support verification instead of sending the user to a nonexistent page. This status does not establish the health of every evaluation service.
+  - `availability_unknown`: stop blind retries of the failed operation. Network errors, timeouts, server failures, invalid responses, and missing sandbox session routes cannot establish installation state. Ask for host/network/service/routing verification; do not present an outage as an installation requirement. After connectivity is restored, authorized read-only status checks may reconcile an unconfirmed write; they must not resubmit it.
+- Briefly relate the three capabilities to the user's task: **Datasets** manage single/multi-turn test cases and versions, with CSV/JSON imports and AI Monitor traces; **Evaluators** provide templates/custom LLM judges, human calibration, and prompt optimization; **Evaluation Runs** test live Agents or score preset outputs, schedule regressions, and inspect low-score cases and traces. Translate this explanation naturally for Chinese or English users; CLI envelopes remain English.
+- If the user asks only about capabilities, explain them without a network call. If they also request current datasets/runs, apply the status-specific stop scope above when the first call reports onboarding; do not make another call just to demonstrate another capability.
+- Existing business error codes, error type (`api`), and exit code remain unchanged. Onboarding is additive; ordinary business 404 errors (such as `DATASET_NOT_FOUND`) do not indicate a missing module. Older CLIs may omit onboarding; use their diagnostic evidence cautiously and do not infer installation from a bare 404/5xx.
 
 ## IDs, versions, and mutations
 

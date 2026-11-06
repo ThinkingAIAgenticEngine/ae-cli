@@ -13,7 +13,7 @@ export const queryCancel = createAnalysisCapabilityCommand({
     { name: 'run-id', type: 'string', required: true, desc: 'Async run ID returned by an export capability.' },
     { name: 'reason', type: 'string', required: false, desc: 'Optional cancellation reason.' },
   ],
-  risk: 'write',
+  risk: 'high-risk-write',
   buildInput: (ctx) => compactInput({
     run_id: ctx.str('run-id'),
     reason: optionalString(ctx, 'reason'),

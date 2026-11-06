@@ -31,7 +31,7 @@ export const projectRoleUpsert = createAnalysisCapabilityCommand({
       desc: 'Role payload with role_func_list object items containing function_name and has_power (0 or 1).',
     },
   ],
-  risk: 'write',
+  risk: 'high-risk-write',
   buildInput: (ctx) => compactInput({
     project_id: ctx.num('project-id'),
     payload: ctx.json('payload'),

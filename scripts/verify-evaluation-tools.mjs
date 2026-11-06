@@ -1,6 +1,7 @@
 import fs from 'fs';
 import path from 'path';
 import { spawnSync } from 'child_process';
+import { tmpdir } from 'node:os';
 
 const ROOT = process.cwd();
 const commandsDir = path.join(ROOT, 'src/commands/evaluation');
@@ -55,13 +56,28 @@ for (const file of commandFiles) {
   }
 }
 
-const helpByResource = new Map();
-for (const { command, resource } of commands) {
-  if (!helpByResource.has(resource)) {
+function runCliHelp(resource) {
+  const outputPath = path.join(tmpdir(), `ae-cli-evaluation-help-${process.pid}.txt`);
+  let outputFd;
+  try {
+    // File-backed stdout avoids truncation when Commander exits after large help output.
+    outputFd = fs.openSync(outputPath, 'w');
     const help = spawnSync(process.execPath, ['--import', 'tsx', 'src/index.ts', 'evaluation', ...resource.split(' ').filter(Boolean), '--help'], {
       cwd: ROOT,
       encoding: 'utf-8',
+      stdio: ['ignore', outputFd, 'pipe'],
     });
+    return { status: help.status, stderr: help.stderr, stdout: fs.readFileSync(outputPath, 'utf8') };
+  } finally {
+    if (outputFd !== undefined) fs.closeSync(outputFd);
+    fs.rmSync(outputPath, { force: true });
+  }
+}
+
+const helpByResource = new Map();
+for (const { command, resource } of commands) {
+  if (!helpByResource.has(resource)) {
+    const help = runCliHelp(resource);
     if (help.status !== 0) {
       process.stderr.write(help.stderr || '');
       fail(`failed to run evaluation ${resource} --help`);

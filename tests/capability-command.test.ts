@@ -87,6 +87,19 @@ await test('resolveGatewayDomain env override beats call-site override (local He
   }
 });
 
+await test('AI Monitor always keeps its deployed base-path route', () => {
+  clearCapabilityGatewayRoutesForTest();
+  registerCapabilityGatewayRoute('ai-monitor', { gatewayDomain: 'ai-monitor' });
+  process.env.AE_CLI_CAPABILITY_GATEWAY_DOMAIN = 'custom';
+  process.env.AE_CLI_CAPABILITY_GATEWAY_DOMAIN_AI_MONITOR = '';
+  try {
+    assert.equal(resolveGatewayDomain('ai-monitor', 'custom'), 'ai-monitor');
+  } finally {
+    delete process.env.AE_CLI_CAPABILITY_GATEWAY_DOMAIN;
+    delete process.env.AE_CLI_CAPABILITY_GATEWAY_DOMAIN_AI_MONITOR;
+  }
+});
+
 await test('resolveGatewayDomain throws when cliService is not registered', () => {
   clearCapabilityGatewayRoutesForTest();
   assert.throws(

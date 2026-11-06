@@ -31,6 +31,7 @@ import { normalizeBusinesses, type BusinessStates } from './businesses.js';
 import { rememberBusinessConfig } from './business-config.js';
 import { canManageGlobalSkills } from './local-skill-context.js';
 import { isBusinessSkillContextCurrent, reserveBusinessSkillContext } from './business-skill-sync.js';
+import { beginBusinessSkillRefresh, isBusinessSkillRefreshCurrent, syncRefreshedBusinessSkills } from './business-skill-refresh.js';
 
 const CHECK_INTERVAL_MS = 60 * 60 * 1000;
 const NOTIFY_INTERVAL_MS = 24 * 60 * 60 * 1000;
@@ -311,6 +312,7 @@ async function refreshAndMaybeNotify(
   host: string,
   pkg: CompatPackageInfo,
   allowAutoSync: boolean,
+  synchronizeSkills: boolean,
 ): Promise<HostCompatCheckResult> {
   const token = peekCliToken(host);
   if (!token) return { status: 'continue' };
@@ -324,10 +326,13 @@ async function refreshAndMaybeNotify(
   let fetchedAt = existing?.lastFetchedAt;
 
   if (isCompatCacheStale(existing)) {
+    const refresh = beginBusinessSkillRefresh(host, token, synchronizeSkills && allowAutoSync);
     const remote = await fetchCliConfig(host, token);
+    if (!isBusinessSkillRefreshCurrent(refresh)) return { status: 'continue' };
     if (remote) {
       rememberKbAutoDiscoveryFeature(host, token, remote.projectSemanticKbAutoDiscovery ?? false);
       rememberBusinessConfig(host, token, remote.businesses);
+      syncRefreshedBusinessSkills(refresh, remote.businesses);
     }
     if (!remote?.aeCliVersion) {
       return { status: 'continue' };
@@ -395,6 +400,9 @@ async function refreshAndMaybeNotify(
     if (confirmed) {
       rememberKbAutoDiscoveryFeature(host, token, confirmed.projectSemanticKbAutoDiscovery ?? false);
       rememberBusinessConfig(host, token, confirmed.businesses);
+      if (context && generation && synchronizeSkills) {
+        syncRefreshedBusinessSkills({ ...context, generation, isCurrentContext: isCurrentLocalIdentity }, confirmed.businesses);
+      }
     }
     if (confirmed?.aeCliVersion) {
       expected = confirmed.aeCliVersion;
@@ -534,7 +542,7 @@ export async function runHostCompatCheck(
   const host = hostOverride || getActiveHost();
   if (!host) return { status: 'continue' };
   try {
-    return await refreshAndMaybeNotify(host, pkg, !shouldSkipAutoSync(argv));
+    return await refreshAndMaybeNotify(host, pkg, !shouldSkipAutoSync(argv), !hostOverride);
   } catch {
     // never block CLI
     return { status: 'continue' };

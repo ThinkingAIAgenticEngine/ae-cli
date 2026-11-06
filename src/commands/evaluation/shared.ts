@@ -5,6 +5,7 @@ import { getCliToken } from '../../core/cli-token.js';
 import { isAeSandboxRuntime } from '../../core/sandbox-runtime.js';
 import { requestSandboxEvaluationSession } from '../../core/eval-session.js';
 import { resolveEvaluationHost } from '../../core/eval-endpoint.js';
+import { buildEvaluationOnboardingPayload, type EvalOnboardingPayload } from '../../core/eval-onboarding.js';
 
 export const EVAL_API_PREFIX = '/agenteval/api/v1';
 
@@ -49,13 +50,14 @@ export function evalPathId(ctx: RuntimeContext, name = 'id'): string {
   return encodeURIComponent(value);
 }
 
-export function evalHeaders(environment: NodeJS.ProcessEnv = process.env): Record<string, string> {
+export function evalHeaders(environment: NodeJS.ProcessEnv = process.env, onboarding?: EvalOnboardingPayload): Record<string, string> {
   const accessToken = environment.AE_EVAL_ACCESS_TOKEN?.trim();
   if (!accessToken) {
     throw new EvalApiError('AE_EVAL_ACCESS_TOKEN is not set.', {
       code: 'EVAL_ACCESS_TOKEN_MISSING',
       httpStatus: 0,
       hint: 'Export AE_EVAL_ACCESS_TOKEN with an Agent Evaluation platform session token (POST /agenteval/api/v1/auth/session on the platform web console).',
+      onboarding,
     });
   }
   return { Authorization: `Bearer ${accessToken}` };
@@ -64,20 +66,25 @@ export function evalHeaders(environment: NodeJS.ProcessEnv = process.env): Recor
 async function resolveEvalHeaders(
   ctx: RuntimeContext,
   environment: NodeJS.ProcessEnv = process.env,
+  teProjectId?: string,
 ): Promise<Record<string, string>> {
   if (environment.AE_EVAL_ACCESS_TOKEN?.trim()) return evalHeaders(environment);
-  if (!isAeSandboxRuntime()) return evalHeaders(environment);
+  if (!isAeSandboxRuntime()) {
+    const baseUrl = resolveEvalBaseUrl(ctx, environment);
+    return evalHeaders(environment, buildEvaluationOnboardingPayload('token_missing', baseUrl));
+  }
   const cliToken = await getCliToken(ctx.host());
   const sessionToken = await requestSandboxEvaluationSession(
     ctx.host(),
     cliToken,
-    environment.AE_EVAL_TE_PROJECT_ID?.trim(),
+    teProjectId ?? environment.AE_EVAL_TE_PROJECT_ID?.trim(),
   );
   return { Authorization: `Bearer ${sessionToken}` };
 }
 
 export interface EvalCallOptions {
   idempotencyKey?: string;
+  teProjectId?: string;
 }
 
 export async function evalDownload(ctx: RuntimeContext, path: string, output: string) {
@@ -99,7 +106,7 @@ export async function evalApi(
 ): Promise<any> {
   return evalRequest({
     baseUrl: resolveEvalBaseUrl(ctx),
-    headers: await resolveEvalHeaders(ctx),
+    headers: await resolveEvalHeaders(ctx, process.env, options.teProjectId),
     method,
     path: `${EVAL_API_PREFIX}${path}`,
     params,

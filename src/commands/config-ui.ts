@@ -61,7 +61,7 @@ export async function runConfigUI(): Promise<void> {
       }
       invalidateBusinessSkillSynchronization();
       setActiveHost(item.host.url);
-      await refreshEnvironmentAfterLogin(item.host.url);
+      await refreshEnvironmentAfterLogin(item.host.url, { onlyIfChanged: true, progress: refreshProgress });
       process.stderr.write(`\n\x1B[32m✓\x1B[0m Active environment: \x1B[1m${item.host.label}\x1B[0m ${item.host.url}\n`);
       process.stderr.write(`  Authenticate if needed: ae-cli auth login --host ${item.host.url}\n`);
       return;
@@ -102,7 +102,7 @@ async function promptAddEnvironment(): Promise<void> {
       `\n\x1B[32m✓\x1B[0m Added${active ? ' and activated' : ''}: \x1B[1m${label}\x1B[0m ${url}\n`,
     );
     if (active) {
-      await refreshEnvironmentAfterLogin(url);
+      await refreshEnvironmentAfterLogin(url, { onlyIfChanged: true, progress: refreshProgress });
       process.stderr.write(`  Authenticate if needed: ae-cli auth login --host ${url}\n`);
     }
   } catch (err: any) {
@@ -156,11 +156,15 @@ async function promptRemoveEnvironment(host: ConfiguredHost): Promise<void> {
   removeHost(host.url);
   process.stderr.write(`\x1B[32m✓\x1B[0m Removed: ${host.label}\n`);
   if (replacement) {
-    await refreshEnvironmentAfterLogin(replacement.url);
+    await refreshEnvironmentAfterLogin(replacement.url, { onlyIfChanged: true, progress: refreshProgress });
     process.stderr.write(`  Active environment: ${replacement.label} ${replacement.url}\n`);
   } else if (listHosts().length === 0) {
     process.stderr.write('  No AE environments remain.\n');
   }
+}
+
+function refreshProgress(message: string): void {
+  if (process.stderr.isTTY) process.stderr.write(`[ae-cli] ${message}\n`);
 }
 
 function promptEnvironmentAction(items: MenuItem[], initialIndex: number): Promise<MenuResult> {

@@ -324,7 +324,12 @@ function validateSemanticPlan() {
       if (!asArray(card.questions).map(clean).filter(Boolean).length || !clean(card.intent)) fail(`Recall card ${cardId} requires questions and intent.`);
       assertAgentAuthoredRecallCard(card, domainId);
       const preferred = asArray(card.preferred_asset_refs);
-      if (!preferred.length) fail(`Recall card ${cardId} requires at least one preferred asset.`);
+      const routing = asObject(card.routing);
+      if (routing.contract_version !== undefined && routing.contract_version !== 1) fail(`Recall card ${cardId} has an unsupported routing contract version.`);
+      const branches = asArray(routing.branches);
+      const hasOnlyDecisions = routing.contract_version === 1 && branches.length > 0 &&
+        branches.every(branch => isDecisionOnly(branch.outcome));
+      if (!preferred.length && !hasOnlyDecisions) fail(`Recall card ${cardId} requires at least one preferred asset.`);
       for (const ref of [...preferred, ...asArray(card.fallback_asset_refs)]) {
         validateAssetRef(ref, cardId);
         const type = clean(ref.resource_type);
@@ -335,26 +340,33 @@ function validateSemanticPlan() {
         if (!inDomain) fail(`Recall card ${cardId} references ${type}:${key} outside domain ${domainId}.`);
         if (preferred.includes(ref)) addMulti(preferredByAsset, `${type}:${key}`, cardId);
       }
-      const routing = asObject(card.routing);
       if (card.routing != null) {
         for (const field of ['applicable_when', 'answer_grain', 'stop_when', 'fallback_when_unavailable', 'evidence_boundary']) {
           if (!clean(routing[field])) fail(`Recall card ${cardId} routing requires ${field}.`);
         }
         if (!asArray(routing.branches).length) fail(`Recall card ${cardId} routing requires branches.`);
-        for (const branch of asArray(routing.branches)) {
-          if (!clean(branch.when) || !asArray(branch.asset_refs).length) {
+        for (const branch of branches) {
+          if (branch.outcome !== undefined && routing.contract_version !== 1) fail(`Recall card ${cardId} branch outcome requires routing contract_version 1.`);
+          if (routing.contract_version === 1) validateAnswerBranch(branch, cardId);
+          const decisionOnly = routing.contract_version === 1 && isDecisionOnly(branch.outcome);
+          if (!clean(branch.when) || (!decisionOnly && !asArray(branch.asset_refs).length)) {
             fail(`Recall card ${cardId} routing branch requires when and asset_refs.`);
           }
+          const allowedRefs = [...preferred, ...asArray(card.fallback_asset_refs)];
+          if (decisionOnly) allowedRefs.push(...asArray(card.excluded_asset_refs));
           for (const ref of asArray(branch.asset_refs)) {
             validateAssetRef(ref, cardId);
-            if (![...preferred, ...asArray(card.fallback_asset_refs)].some((allowed) =>
+            if (!allowedRefs.some((allowed) =>
               clean(allowed.resource_type) === clean(ref.resource_type) && clean(allowed.resource_key) === clean(ref.resource_key))) {
-              fail(`Recall card ${cardId} routing branch references an asset outside preferred/fallback refs.`);
+              fail(`Recall card ${cardId} routing branch references an asset outside its allowed card references.`);
             }
           }
           const combination = asObject(branch.combination);
           if (branch.combination != null) {
             if (!['compatible', 'incompatible', 'unknown'].includes(clean(combination.compatibility))) fail(`Recall card ${cardId} has invalid combination compatibility.`);
+            if (routing.contract_version === 1 && !decisionOnly && combination.compatibility !== 'compatible') {
+              fail(`Recall card ${cardId} executable branch cannot rely on an unverified combination.`);
+            }
             if (!clean(combination.reason)) fail(`Recall card ${cardId} combination requires an evidence-based reason.`);
             if (combination.compatibility === 'compatible'
               && (!asArray(combination.join_keys).length || !clean(combination.time_alignment))) {
@@ -614,6 +626,24 @@ function normalizePlanAssetRef(value, label) {
   return { resource_type: type, resource_key: key };
 }
 
+function isDecisionOnly(outcome) {
+  return outcome === 'clarify' || outcome === 'unsupported';
+}
+
+function validateAnswerBranch(branch, cardId) {
+  const hasText = value => typeof value === 'string' && value.trim().length > 0;
+  const invalid = message => fail(`Recall card ${cardId} routing branch ${message}.`);
+  if (!['direct', 'transform', 'clarify', 'unsupported'].includes(branch.outcome)) invalid('requires a valid outcome');
+  if (!hasText(branch.when) || !hasText(branch.reason) || !hasText(branch.action)) invalid('requires when, reason and action');
+  if (!Array.isArray(branch.asset_refs)) invalid('requires an asset_refs array');
+  if (branch.answer_grain !== undefined && !hasText(branch.answer_grain)) invalid('has invalid answer_grain');
+  if (branch.source_grain !== undefined && !hasText(branch.source_grain)) invalid('has invalid source_grain');
+  if (branch.checks !== undefined && (!Array.isArray(branch.checks) || !branch.checks.every(hasText))) invalid('has invalid checks');
+  if (isDecisionOnly(branch.outcome)) return;
+  if (!hasText(branch.source_grain)) invalid('requires source_grain');
+  if (!branch.checks?.length) invalid('requires evidence-based checks');
+}
+
 function assertAgentAuthoredRecallCard(card, domainId) {
   const cardId = clean(card.card_id);
   const values = [card.intent, card.live_execution_reason, ...asArray(card.questions)].map(clean);
@@ -772,14 +802,24 @@ ${asArray(values).map((ref) => {
     return `- [${escapeLink(recallAssetLabel(ref))}](${linkPath})：${clean(ref.reason)}`;
   }).join('\n') || '- 无'}`;
   const routing = asObject(card.routing);
+  const versioned = routing.contract_version === 1;
   const branches = asArray(routing.branches).map((branch) => {
     const item = asObject(branch);
     const targets = asArray(item.asset_refs).map(ref => `[${escapeLink(recallAssetLabel(ref))}](${assetPath(clean(ref.resource_type), clean(ref.resource_key))})`).join('、') || '回到业务域核对资产';
     const combination = asObject(item.combination);
     const combinationNote = asArray(item.asset_refs).filter(ref => ref.resource_type !== 'dashboard').length > 1
       ? ` Combination: ${clean(combination.compatibility) || 'unknown'}; ${clean(combination.reason) || 'Verify common population, stable identity, grain and time before combining.'}${asArray(combination.join_keys).length ? ` Keys: ${asArray(combination.join_keys).join(', ')}.` : ''}${clean(combination.time_alignment) ? ` Time: ${clean(combination.time_alignment)}.` : ''}${asArray(combination.missing_coverage).length ? ` Gaps: ${asArray(combination.missing_coverage).join('; ')}.` : ''}` : '';
+    if (versioned) {
+      const lines = [`- **${item.when}** (${item.outcome}) — ${item.reason}`];
+      if (item.source_grain) lines.push(`  - Source grain: ${item.source_grain}`);
+      lines.push(`  - Answer grain: ${item.answer_grain || routing.answer_grain}`, `  - Action: ${item.action}`);
+      for (const check of asArray(item.checks)) lines.push(`  - Check: ${check}`);
+      if (item.asset_refs.length) lines.push(`  - Evidence: ${targets}${combinationNote}`);
+      return lines.join('\n');
+    }
     return `- 当${clean(item.when)}：使用 ${targets}。${clean(item.reason)}${combinationNote}`;
   });
+  const openingRoutes = [...branches, `- If prerequisites fail: ${routing.fallback_when_unavailable}`].join('\n');
   return `---
 type: project-semantic-recall-card
 card_id: ${yaml(card.card_id)}
@@ -794,10 +834,10 @@ requires_live_execution: ${Boolean(card.requires_live_execution)}
 
 - 适用问题：${title}
 - 意图：${clean(card.intent) || '未说明'}
-- 首选资产：${asArray(card.preferred_asset_refs).map(recallAssetLabel).join('、') || '无'}
+${versioned ? openingRoutes : `- 首选资产：${asArray(card.preferred_asset_refs).map(recallAssetLabel).join('、') || '无'}
 - 备选资产：${asArray(card.fallback_asset_refs).map(recallAssetLabel).join('、') || '无'}
 - 排除资产：${asArray(card.excluded_asset_refs).map(recallAssetLabel).join('、') || '无'}
-- 实时执行：${Boolean(card.requires_live_execution) ? `需要，${clean(card.live_execution_reason) || '当前数值、客户名单、趋势或明细需要实时执行。'}` : '不强制，但当前数值仍需按具体资产能力实时确认。'}
+- 实时执行：${Boolean(card.requires_live_execution) ? `需要，${clean(card.live_execution_reason) || '当前数值、客户名单、趋势或明细需要实时执行。'}` : '不强制，但当前数值仍需按具体资产能力实时确认。'}`}
 
 ## 用户问法
 
@@ -812,7 +852,7 @@ ${clean(card.intent)}
 - 适用条件：${clean(routing.applicable_when) || clean(card.intent)}
 - 答案对象与粒度：${clean(routing.answer_grain) || '先按用户问法确认对象、统计粒度与时间范围。'}
 - 必要参数：${asArray(routing.required_parameters).map(clean).filter(Boolean).join('、') || '按首选资产的输入定义核对。'}
-${branches.join('\n') || `- 问法和资产定义匹配时使用首选资产；不匹配时先回到业务域确认对象与口径，再考虑备选资产。`}
+${versioned ? '' : branches.join('\n') || `- 问法和资产定义匹配时使用首选资产；不匹配时先回到业务域确认对象与口径，再考虑备选资产。`}
 - 停止条件：${clean(routing.stop_when) || '取得对象、粒度、范围、时间和权威状态均匹配的最小证据后停止扩搜。'}
 - 无匹配或不可用时：${clean(routing.fallback_when_unavailable) || '回到业务域按对象、粒度、过滤和时间筛选域内资产；仍不匹配则说明缺口。'}
 - 执行边界：${clean(routing.evidence_boundary) || '排除资产不能作为当前答案；当前数值、客户名单、趋势或明细必须实时执行。'}
@@ -828,7 +868,7 @@ ${renderRecallEvidence(card)}
 ## 实时执行边界
 
 - 是否需要执行实时数据：${Boolean(card.requires_live_execution)}
-- 原因：${clean(card.live_execution_reason) || '未说明'}
+- 原因：${clean(card.live_execution_reason) || '未说明'}${versioned ? '\n- Execute only a supported branch. Other evidence links explain the clarification or limitation.' : ''}
 ${renderTargetedKnowledge('recall_card', clean(card.card_id), '../personal-semantics/')}
 `;
 }
@@ -859,7 +899,8 @@ function renderRecallEvidence(card) {
     const facts = report ? reportContract(report) : null;
     const parameters = summary ? asArray(summary.input_parameters).map(item => `${clean(item.name)}: ${clean(item.meaning)}`) : [];
     const measures = summary ? [] : asArray(report?.metric_occurrences).map(item =>
-      [clean(item.display_name || item.event_title || item.event_name), clean(item.aggregation_name || item.aggregation_code)].filter(Boolean).join(': '));
+      [clean(item.display_name || item.event_title || item.event_name), clean(item.aggregation_name || item.aggregation_code),
+        item.event_name && `event=${item.event_name}`, item.entity_grain != null && `entity=${JSON.stringify(item.entity_grain)}`].filter(Boolean).join(': '));
     const savedScope = !summary && facts && Object.keys(facts.time).length ? ` Saved time scope: ${JSON.stringify(facts.time)}.` : '';
     const reportSource = summary ? readText(path.join(buildIr, 'reports', fileName('report', clean(ref.resource_key)))) : '';
     const outputs = summary ? asArray(summary.output_fields).map(item => {
@@ -874,7 +915,7 @@ function renderRecallEvidence(card) {
       return `${name}${unverified ? ' (identity unknown)' : ''}`;
     }) : [];
     const reminders = summary ? [
-      ...asArray(summary.calculation_rules).slice(0, 1).map(item => clean(item.meaning)),
+      ...asArray(summary.calculation_rules).map(item => clean(item.meaning)),
       ...['time_semantics', 'coverage_gaps'].flatMap(key => asArray(summary[key]).map(item => clean(item.meaning))),
     ] : [];
     lines.push(`- [${escapeLink(recallAssetLabel(ref))}](${assetPath(ref.resource_type, clean(ref.resource_key))}): ${clean(summary?.business_purpose) || clean(ref.reason)} Grain: ${clean(summary?.statistical_grain) || (facts ? JSON.stringify(facts.groups) : 'verify the asset definition')}.${parameters.length ? ` Parameters: ${parameters.join('; ')}.` : ''}${outputs.length ? ` Outputs: ${outputs.join(', ')}.` : ''}${measures.length ? ` Measures (verify result column identities): ${measures.join('; ')}.` : ''}${savedScope}${reminders.length ? ` Reminders: ${reminders.join('; ')}.` : ''}`);
@@ -1545,7 +1586,8 @@ function semanticPlanFragmentRefsForSource(identity, rel) {
   if (sourceKind === 'recall-card' && assetKey) {
     refs.add(`recall-card:${assetKey}`);
     const card = planModel.cards.find(card => clean(card.card_id) === assetKey);
-    for (const ref of [...asArray(card?.preferred_asset_refs), ...asArray(card?.fallback_asset_refs)]) {
+    const branchRefs = asArray(card?.routing?.branches).flatMap(branch => asArray(branch.asset_refs));
+    for (const ref of [...asArray(card?.preferred_asset_refs), ...asArray(card?.fallback_asset_refs), ...branchRefs]) {
       if (ref.resource_type === 'report' && planModel.sqlByReportId.has(clean(ref.resource_key))) {
         refs.add(`report:${clean(ref.resource_key)}:sql_semantics`);
       }

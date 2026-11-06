@@ -2,7 +2,7 @@
 
 # ae-cli
 
-`ae-cli` is the command-line client for the ThinkingAI AgenticEngine (AE) platform. It provides stable, structured interfaces for both AI Agents and human operators across analytics and project configuration, metadata, tracking, local-data ingestion, Engage, DataOps, knowledge bases, Agent resources, user memory, and system administration.
+`ae-cli` is the command-line client for the ThinkingAI AgenticEngine (AE) platform. It provides stable, structured interfaces for both AI Agents and human operators across analytics, experimentation, project configuration, metadata, tracking, local-data ingestion, Engage, DataOps, knowledge bases, Agent resources, user memory, and system administration.
 
 The CLI is designed around:
 
@@ -50,9 +50,9 @@ ae-cli auth status
 
 Use the AE URL supplied by your AgenticEngine administrator. If no Host is configured, `ae-cli` guides existing customers to obtain that URL first. Only users without an AgenticEngine environment are directed to [request a trial](https://thinkingai.cn/request-demo).
 
-Business-based command filtering and Skill selection apply only to local CLI use by external Agents; built-in TE Agent sandboxes keep the complete command and Skill sets. After successful login, the CLI filters `--help` and capability discovery by the active environment’s enabled businesses and synchronizes managed global Skills. Analysis remains available by default. Run `ae-cli config refresh` after enabling a business to fetch its state and restore its Skills. Switching the active environment or account synchronizes again; a one-off `--host` query does not change global Skills.
+Business-based command filtering and Skill selection apply only to local CLI use by external Agents; built-in TE Agent sandboxes keep the complete command and Skill sets. After successful login, the CLI filters `--help` and capability discovery by the active environment’s enabled businesses and synchronizes managed global Skills. Analysis remains available by default. Subsequent normal commands automatically synchronize managed Skills when a configuration refresh detects business changes; run `ae-cli config refresh` to refresh and synchronize immediately. Switching the active environment refreshes its business state and synchronizes only affected Skills, reusing the current set when no changes are needed. Terminal output summarizes Skill synchronization status and installation/removal counts; use `--format json` for per-directory details. Switching accounts synchronizes again; a one-off `--host` query does not change global Skills.
 
-Only explicitly disabled businesses are removed. Older servers, missing states, and network failures do not trigger removal. Legacy client links to a verified, unmodified managed shared Skill are migrated automatically; other modified or unrecognized copies are preserved and reported. Start a new Agent session after synchronization; existing conversation context is retained.
+When a business is explicitly disabled, the CLI uses the Skill business mapping to remove CLI-installed copies and their legacy client links, even if their contents were edited or their versions are older. Base and analysis Skills remain available. AI Monitor belongs to the Agent component and follows its availability. Older servers, missing states, and network failures do not trigger removal; unrecognized copies are preserved and reported. Start a new Agent session after synchronization; existing conversation context is retained.
 
 ## Environment-Bound Updates
 
@@ -67,7 +67,7 @@ Updates use the same global Skills installation and verification as `install`. O
 
 Automatic synchronization runs during normal commands after login; host version checks are cached for up to one hour. `ae-cli update --host <AE_HOST>` checks immediately. After a downgrade, future updates run the older CLI's own updater, including its historical limitations. To use the new installer logic while following an older host, run `npx @thinkingai/ae-cli@latest update --host <AE_HOST>`; the target remains the host-required version.
 
-`ae-cli update` installs the exact version required by the active host rather than npm `latest`. Skills are synchronized from the verified target package; modified or unrecognized copies are preserved and reported.
+`ae-cli update` installs the exact version required by the active host rather than npm `latest`. Skills are synchronized from the verified target package. Installation and updates preserve and report user-edited or unrecognized copies; explicitly disabled businesses still remove CLI-installed copies as described above.
 
 Starting with the `6.0.37` and `6.1.9` release lines, ordinary business commands can automatically upgrade or downgrade the CLI to the host-required version, including switching from `6.0.x` to `6.1.x`. Automatic synchronization requires stable `major.minor.patch` versions at both ends; development and other nonstandard versions are skipped. After successful synchronization, the new CLI automatically executes the original command once and returns its result and exit code. Arguments, piped input, working directory, and confirmation behavior are preserved. If the new CLI cannot start, `AE_CLI_VERSION_SYNCED` asks you to re-run manually; an executed command is never retried automatically. Installation failures are reported without replacing the business command's JSON output.
 
@@ -108,7 +108,7 @@ ae-cli capability dry-run analysis.dashboard.list --input '{"project_id":1}'
 ae-cli capability run analysis.dashboard.list --input '{"project_id":1}'
 
 # Filter structured output
-ae-cli capability list --domain analysis --jq '.data.capabilities[] | .id'
+ae-cli capability list --domain analysis --jq '.capabilities[] | .id'
 ```
 
 ## Command Map
@@ -119,12 +119,14 @@ The table covers every current root command individually. Use `ae-cli --help` fo
 | Category | Root command | Purpose |
 |---|---|---|
 | Analysis and projects | `analysis` | Reports, dashboards, ad-hoc analysis, drilldowns, details, alerts, tags, and cohorts |
+| Analysis and projects | `experiment` | Atlas experiments, reports, traffic layers, buckets, Features, metrics, and operation logs |
 | Analysis and projects | `analysis-meta` | Event/property catalogs, metrics, virtual metadata, tracking governance, and project analysis settings |
 | Analysis and projects | `analysis-governance` | Data-asset search, lineage, impact analysis, certification, and governance |
 | Analysis and projects | `project` | Project information, members, roles, permissions, entities, time zones, and handover settings |
 | Analysis and projects | `metadata` | Capability-backed data-table, property, and dimension-table binding operations |
 | Analysis and projects | `personal-semantic-preference` | Project-scoped lightweight semantic preferences for the current user |
-| Analysis and projects | `project-semantic` | Export project asset packages for knowledge-base builds |
+| Analysis and projects | `project-semantic` | Governed project semantics, knowledge-base asset packages, candidate validation, review, and publishing |
+| Observability | `ai-monitor` | Read traces, conversations, Bad Traces, metrics, cost, security and existing diagnosis reports; export verified ZIPs ([guide](skills/ae-ai-monitor/SKILL.md)) |
 | Data and tracking | `tracking` | Tracking plans, SDK samples, checks, ingestion diagnostics, code generation, and bundled wiki |
 | Data and tracking | `data-integration` | Inspect, plan, convert, upload, hand off, and reuse local CSV/JSON/Excel data |
 | Community insights | `community` | Community posts, comments, topics, sentiment, livestream, and report workflows |
@@ -162,7 +164,22 @@ The table covers every current root command individually. Use `ae-cli --help` fo
 
 Review collected analysis questions with `ae-cli analysis scenario list --project-id 1 --days 7`. The `ae-analysis` Skill can deduplicate questions and assess badcases with concise, evidence-based reasons. See the [scenario review guide](skills/ae-analysis/references/scenario_list.md). Answers can include elapsed time; use `ae-cli analysis scenario get --help` to query linked command execution details.
 
+To save and review Bad Cases, use `ae-cli analysis bad-case --help`. The Agent semantically deduplicates each batch against all historical states. Review in CLI or explicitly submit to the page; each batch reports discovered, duplicate, and new counts. Notes are optional. Approval adds the case to the bound AE dataset; revoking approval removes it. See the [Bad Case workflow](skills/ae-analysis/references/bad_case_review.md).
+
 Evaluation commands follow the current AE Host in personal terminals and sandboxes; use `--host` to select another host. Evaluation requests use the HTTP or HTTPS scheme configured for that AE Host, consistent with other AE commands. Legacy `--endpoint` and `AE_EVAL_BASE_URL` values may only match the current AE Host; other values fail before credentials are sent. Remove these settings and use `--host` to select a host. Outside a sandbox, export `AE_EVAL_ACCESS_TOKEN` with a platform session token; sandboxes can obtain a session automatically. See [endpoint and authentication rules](skills/ae-evaluation/SKILL.md#endpoint-and-authentication).
+
+### Scheduled Feature experiments
+
+For a configured Feature experiment, save its start time and optional fixed deadline, check readiness, then submit it:
+
+```bash
+ae-cli experiment experiment save --project-id 1 --req '{"expId":"exp_123"}' --start-time '2026-11-01T16:00:00+08:00' --fixed-end-time '2026-11-08T16:00:00+08:00'
+ae-cli experiment experiment ready-check --project-id 1 --exp-id exp_123
+ae-cli experiment experiment manage --project-id 1 --exp-id exp_123 --target-status pending
+ae-cli experiment experiment get --project-id 1 --exp-id exp_123
+```
+
+This submission path works on older and approval-enabled servers. Saving a draft does not start it; where approval is supported, an eligible approver must approve it first. Approval can start a due experiment immediately, while scheduled starts are checked every half hour. Verify runtime status with `experiment experiment get`. Before using dedicated approval commands, check support as described in [server compatibility](skills/ae-experiment/references/experiment_approval.md#server-compatibility); submit only once. See [Feature timing](skills/ae-experiment/references/save_experiment.md#feature-timing) for scheduling.
 
 ## Capability Gateway
 
@@ -245,6 +262,11 @@ External mode does not write the token or renewal state to the local credential 
 The new CLI persists only CLI tokens, never access or refresh tokens. Multiple accounts live in an encrypted V1 vault while the active account is projected into the historical file shape for automatic downgrades. When the CLI upgrades again, it reconciles login, switch, or logout changes made by the old CLI.
 
 Login uses a cross-platform device-code flow. Use `--no-browser` when the environment cannot open a browser.
+
+On upgraded 6.1 deployments, authorization always uses the UBA device endpoints and the platform `/#/cli/device-activate` page, independently of Kubernetes or Agent state. Only an explicit missing authorization endpoint (HTTP 404) selects the supported legacy Agent flow; network failures, HTML responses and permission denials never change the issuer. Use `auth login --no-wait`, then resume with the returned `--device-code` and the same `--host` for non-interactive authorization. Existing host accounts, CLI tokens and command flags remain compatible.
+
+The CLI calls business endpoints directly; services enforce product License and user/project permissions. An unavailable component returns the actual API error. HTTP 404 can also mean a missing resource or an unsupported route, so it does not by itself establish that a component is not deployed.
+
 Trial guidance is emitted only when no Host is configured; normal commands and authentication flows for configured environments do not display it.
 
 ## Output and Safety
@@ -262,6 +284,7 @@ Commands return a stable envelope:
 - `--format json` is the default and is recommended for Agents.
 - `--format table` is available for supported human-facing list commands.
 - `--jq <expr>` applies jq 1.8 filtering to the business payload before the output envelope is printed.
+- The jq input is the command payload, not the outer `{ok,data,meta}` envelope. Use `.capabilities[] | .id` inside the CLI; use `.data.capabilities[]` only with an external jq over saved final JSON.
 - `--validate` normalizes Capability Gateway input without business execution.
 - `--dry-run` previews an operation without executing its business logic.
 - `--yes` skips interactive confirmation for explicitly marked high-risk writes.
@@ -288,6 +311,7 @@ ae-cli kb +rm-source --name engineering-handbook --scope company --display-name 
 ae-cli kb +schema --name engineering-handbook --scope company --model <model-ref>
 ae-cli kb +compile --name engineering-handbook --scope company --model <model-ref>
 ae-cli kb +status --name engineering-handbook --scope company
+ae-cli kb +status --name engineering-handbook --scope company --run-id <compile-run-id>
 ae-cli kb +ask -q "How is the sandbox configured?"
 # Submit only, poll later:
 ae-cli kb +ask -q "Another question" --no-wait
@@ -410,6 +434,7 @@ npm test
 npm run qa-changed
 npm run self-check
 npm run check:release
+npm run verify:experiment-tools
 npm run verify:readme
 npm run verify:auth-credentials
 npm run verify:update-check

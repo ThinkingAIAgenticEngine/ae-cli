@@ -6,6 +6,8 @@ import { writeDraftXlsx, validateDraft } from '../../tracking/xlsx/write.js';
 import type { Locale } from '../../tracking/i18n/xlsx.js';
 import { t } from '../../tracking/i18n/translate.js';
 import { detectCliLocale } from '../../tracking/i18n/locale.js';
+import { CliValidationError } from '../../core/errors.js';
+import { printOutput } from '../../framework/output.js';
 import { createTrackingClient } from '../../core/tracking-client.js';
 import { fetchPlan } from '../../tracking/te-plan/fetch.js';
 import { injectAutotrackEvents } from '../../tracking/plan/draft.js';
@@ -17,6 +19,35 @@ import { getTemplateDirs, listTrackingTemplates } from '../../tracking/templates
 import { HOST_OPTION_DESC, resolveTrackingHost, assertOutputFilePath, assertInputFilePath } from './shared.js';
 
 const MAX_FIX_RETRIES = 3;
+
+const PLAN_PREVIEW_HELP = 'Local --dry-run preview: show the target and operations without changing the plan.';
+
+async function previewPlanWrite(
+  program: Command,
+  host: string,
+  projectId: number,
+  upload?: { xlsx: string; replace: boolean },
+): Promise<boolean> {
+  const { dryRun, validate, format, jq } = program.opts();
+  if (validate) {
+    throw new CliValidationError(dryRun
+      ? 'Cannot combine --validate and --dry-run.'
+      : '--validate is not supported for plan writes. Use --dry-run to preview the operation.');
+  }
+  if (!dryRun) return false;
+
+  const operations = [];
+  if (!upload || upload.replace) operations.push('delete_entire_plan');
+  if (upload) operations.push('upload_xlsx', 'save_plan');
+  await printOutput({
+    dry_run: true,
+    host,
+    project_id: projectId,
+    operations,
+    ...(upload && { xlsx: upload.xlsx }),
+  }, format, jq);
+  return true;
+}
 
 export function registerPlan(cmd: Command, rootProgram: Command): void {
   cmd.description('manage AE tracking plans');
@@ -127,6 +158,7 @@ export function registerPlan(cmd: Command, rootProgram: Command): void {
     });
 
   cmd.command('upload')
+    .addHelpText('after', PLAN_PREVIEW_HELP)
     .description('Upload xlsx tracking plan to AE (conflict check, auto-fix retry)')
     .requiredOption('-p, --project <id>', 'AE projectId', (v: string) => parseInt(v, 10))
     .requiredOption('--xlsx <path>', 'xlsx file')
@@ -139,9 +171,9 @@ export function registerPlan(cmd: Command, rootProgram: Command): void {
       assertInputFilePath(opts.draft, '--draft');
       assertInputFilePath(opts.xlsx, '--xlsx');
       const host = resolveTrackingHost(rootProgram, opts);
-      let client = await createTrackingClient(host);
-
       const draftPre: Draft = JSON.parse(await readFile(opts.draft, 'utf8'));
+      if (await previewPlanWrite(rootProgram, host, opts.project, opts)) return;
+      let client = await createTrackingClient(host);
 
       if (!opts.replace) {
         console.log(t('plan.checking_conflicts'));
@@ -316,11 +348,13 @@ export function registerPlan(cmd: Command, rootProgram: Command): void {
     });
 
   cmd.command('delete')
+    .addHelpText('after', PLAN_PREVIEW_HELP)
     .description('Delete the entire tracking plan from an AE project')
     .requiredOption('-p, --project <id>', 'AE projectId', (v: string) => parseInt(v, 10))
     .option('--host <url>', HOST_OPTION_DESC)
     .action(async (opts: { project: number; host?: string }) => {
       const host = resolveTrackingHost(rootProgram, opts);
+      if (await previewPlanWrite(rootProgram, host, opts.project)) return;
       const client = await createTrackingClient(host);
       const res = await client.deleteProgram(opts.project);
       console.log(JSON.stringify(res, null, 2));

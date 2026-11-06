@@ -1,5 +1,6 @@
 ---
 name: ae-migrate-tracking-code
+version: 1.0.1
 description: "Migrate existing third-party SDK tracking code (Firebase, Amplitude, Sensors Data, Mixpanel, GA4) to the AE SDK (数数 / ThinkingAI / Agentic Engine / AE SDK) — switch (replace) or add alongside existing tracking (dual-write). Trigger words: 埋点迁移、埋点切换、第三方埋点迁移、第三方埋点切换、迁移埋点到数数、把 xx SDK 切换到数数、把已有埋点用数数实现一遍、用数数替换 xx SDK、集成数数并参考已有 xx SDK 埋点、Firebase 迁移、Amplitude 迁移、Mixpanel 迁移、神策迁移、Sensors Data 迁移、GA4 迁移、gtag 迁移、双写、tracking migration、migrate Firebase/Amplitude/Mixpanel/Sensors Data/GA4 to AE、switch xx SDK to ThinkingAI、replace xx SDK with AE、replace logEvent with track、re-implement existing tracking with ThinkingAI、add AE tracking alongside existing analytics、dual-write. Provider-agnostic core with per-provider adapters; reuses ae-generate-tracking-plan and ae-generate-tracking-code."
 ---
 
@@ -108,7 +109,7 @@ Hand off to `ae-generate-tracking-plan` using the codebase/draft already produce
 
 1. `ae-cli tracking plan draft --in .ae-cli/draft.json --out .ae-cli/draft.xlsx`
 2. `ae-cli tracking plan validate --in .ae-cli/draft.json --fix`
-3. Resolve AE host/login/projectId per the plan skill, then `ae-cli tracking plan upload ...` (ask the user before uploading; append vs replace per that skill's conflict detection).
+3. Resolve AE host/login/projectId per the plan skill, then `ae-cli tracking plan upload ...` (choose append or replace after conflict detection and ask before uploading. For replacement or a preview-only request, follow the CLI help check and confirmation steps in Phase 4.3 of the plan skill).
 
 ## Phase 4 — Insert AE SDK code (switch or add)
 

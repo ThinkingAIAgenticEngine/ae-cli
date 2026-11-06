@@ -2,9 +2,9 @@ import { randomBytes } from 'node:crypto';
 import { verifyDefinitionIntent, type DefinitionIntentConfig } from './definition-intent.js';
 import type { Command, Flag, RiskLevel, RuntimeContext } from '../framework/types.js';
 import {
-  dryRunCapability,
+  dryRunCapabilityWithEnvelope,
   executeCapabilityWithEnvelope,
-  validateCapability,
+  validateCapabilityWithEnvelope,
 } from './capability-api.js';
 import { resolveGatewayDomain } from './capability-routing.js';
 import { withOutputMetadata } from '../framework/output.js';
@@ -29,6 +29,8 @@ export interface CreateCapabilityCommandConfig {
   validate?: (ctx: RuntimeContext) => void;
   intentConsistency?: DefinitionIntentConfig;
   buildInput: (ctx: RuntimeContext) => Record<string, unknown>;
+  /** Optional async input resolver for service-specific discovery (kept out of generic commands). */
+  prepareInput?: (ctx: RuntimeContext, input: Record<string, unknown>) => Promise<Record<string, unknown>>;
   postProcess?: (
     result: unknown,
     input: Record<string, unknown>,
@@ -61,28 +63,33 @@ export function createCapabilityCommand(config: CreateCapabilityCommandConfig): 
       const gatewayDomain = resolveGatewayDomain(config.cliService, config.gatewayDomain);
       const requestHost = config.requestHost ?? ctx.host();
       const input = withLifecycleRequestId(config, config.buildInput(ctx));
+      const preparedInput = config.prepareInput ? await config.prepareInput(ctx, input) : input;
       const evidence = config.intentConsistency ? verifyDefinitionIntent(ctx, config.intentConsistency) : undefined;
       const intentMeta = evidence ? { intent_consistency: evidence } : undefined;
-      return withOutputMetadata(await validateCapability(requestHost, gatewayDomain, config.capabilityId, input), intentMeta);
+      const result = await validateCapabilityWithEnvelope(requestHost, gatewayDomain, config.capabilityId, preparedInput);
+      return withOutputMetadata(result.data, { ...result.meta, ...intentMeta });
     },
     dryRun: async (ctx) => {
       const gatewayDomain = resolveGatewayDomain(config.cliService, config.gatewayDomain);
       const requestHost = config.requestHost ?? ctx.host();
       const input = withLifecycleRequestId(config, config.buildInput(ctx));
+      const preparedInput = config.prepareInput ? await config.prepareInput(ctx, input) : input;
       const evidence = config.intentConsistency ? verifyDefinitionIntent(ctx, config.intentConsistency) : undefined;
       const intentMeta = evidence ? { intent_consistency: evidence } : undefined;
-      return withOutputMetadata(await dryRunCapability(requestHost, gatewayDomain, config.capabilityId, input), intentMeta);
+      const result = await dryRunCapabilityWithEnvelope(requestHost, gatewayDomain, config.capabilityId, preparedInput);
+      return withOutputMetadata(result.data, { ...result.meta, ...intentMeta });
     },
     execute: async (ctx) => {
       const gatewayDomain = resolveGatewayDomain(config.cliService, config.gatewayDomain);
       const requestHost = config.requestHost ?? ctx.host();
       const input = withLifecycleRequestId(config, config.buildInput(ctx));
+      const preparedInput = config.prepareInput ? await config.prepareInput(ctx, input) : input;
       const evidence = config.intentConsistency ? verifyDefinitionIntent(ctx, config.intentConsistency) : undefined;
       const intentMeta = evidence ? { intent_consistency: evidence } : undefined;
-      announceDispatch(config.capabilityId, input);
-      const result = await executeCapabilityWithEnvelope(requestHost, gatewayDomain, config.capabilityId, input);
+      announceDispatch(config.capabilityId, preparedInput);
+      const result = await executeCapabilityWithEnvelope(requestHost, gatewayDomain, config.capabilityId, preparedInput);
       const data = config.postProcess
-        ? await config.postProcess(result.data, input, ctx)
+        ? await config.postProcess(result.data, preparedInput, ctx)
         : result.data;
       return withOutputMetadata(data, { ...result.meta, ...intentMeta });
     },

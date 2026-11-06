@@ -1,5 +1,5 @@
 import type { Command } from '../../../framework/types.js';
-import { requestCapabilityGateway } from '../../../core/capability-api.js';
+import { buildCapabilityGatewayUrl, requestCapabilityGateway } from '../../../core/capability-api.js';
 import { resolveGatewayDomain } from '../../../core/capability-routing.js';
 
 export const inputFileInspect: Command = {
@@ -13,7 +13,7 @@ export const inputFileInspect: Command = {
   risk: 'read',
   dryRun: (ctx) => ({
     method: 'GET',
-    url: `${ctx.host()}/api/cli/${resolveGatewayDomain('analysis')}/v1/input-files/${ctx.str('input-file-id')}`,
+    url: buildCapabilityGatewayUrl(ctx.host(), resolveGatewayDomain('analysis'), `input-files/${ctx.str('input-file-id')}`),
   }),
   execute: async (ctx) => {
     const inputFileId = ctx.str('input-file-id');
@@ -24,7 +24,7 @@ export const inputFileInspect: Command = {
     );
     return {
       ...result,
-      inspect_path: `/api/cli/analysis/v1/input-files/${inputFileId}`,
+      inspect_path: new URL(buildCapabilityGatewayUrl(ctx.host(), resolveGatewayDomain('analysis'), `input-files/${inputFileId}`)).pathname,
       inspect_command: `ae-cli analysis input-file inspect --input-file-id ${inputFileId}`,
     };
   },

@@ -20,6 +20,8 @@ export interface EnvironmentRefreshResult {
 
 export interface EnvironmentRefreshOptions {
   synchronizeSkills?: boolean;
+  onlyIfChanged?: boolean;
+  progress?: (message: string) => void;
   fetchConfig?: typeof fetchCliConfig;
 }
 
@@ -38,7 +40,19 @@ export async function refreshEnvironmentConfig(
   options: EnvironmentRefreshOptions = {},
 ): Promise<EnvironmentRefreshResult> {
   const normalized = normalizeUrl(host);
-  const skipped = (reason: string): EnvironmentRefreshResult => ({
+  const progress = options.progress ?? (() => {});
+  const finish = (result: EnvironmentRefreshResult): EnvironmentRefreshResult => {
+    const skills = result.skills;
+    if (skills.status === 'success') {
+      progress(`Skills synchronized: ${skills.installed.length} installed or updated, ${skills.removed.length} removed.`);
+    } else if (skills.status === 'skipped') {
+      progress(`Skill synchronization skipped: ${skills.reason}`);
+    } else {
+      progress(`Skill synchronization incomplete (${skills.status}). Run: ae-cli config refresh`);
+    }
+    return result;
+  };
+  const skipped = (reason: string): EnvironmentRefreshResult => finish({
     host: normalized, businesses: {}, source: 'unavailable', skills: { status: 'skipped', reason },
   });
   let token: string | null | undefined;
@@ -66,8 +80,8 @@ export async function refreshEnvironmentConfig(
   if (generation && !isBusinessSkillContextCurrent({
     host: normalized, tokenFingerprint: fingerprint, generation, isCurrentContext: localActiveEnvironment,
   })) {
-    return { host: normalized, businesses: {}, source: 'remote',
-      skills: { status: 'skipped', reason: 'A newer environment refresh superseded this response.' } };
+    return finish({ host: normalized, businesses: {}, source: 'remote',
+      skills: { status: 'skipped', reason: 'A newer environment refresh superseded this response.' } });
   }
   rememberBusinessConfig(normalized, token, config.businesses);
   const result: EnvironmentRefreshResult = {
@@ -78,9 +92,9 @@ export async function refreshEnvironmentConfig(
   };
   if (config.businesses === undefined) {
     result.skills = { status: 'skipped', reason: 'This server does not provide business states; existing Skills were preserved.' };
-    return result;
+    return finish(result);
   }
-  if (!synchronize || !localActiveEnvironment()) return result;
+  if (!synchronize || !localActiveEnvironment()) return finish(result);
   try {
     const syncOptions = {
       skillsDirectory: path.join(getLocalCliPackageInfo().root, 'skills'),
@@ -88,6 +102,7 @@ export async function refreshEnvironmentConfig(
       tokenFingerprint: fingerprint,
       businesses: config.businesses,
       packageVersion: getLocalCliPackageInfo().version,
+      onlyIfChanged: options.onlyIfChanged,
       generation,
       isCurrentContext: localActiveEnvironment,
     };
@@ -96,20 +111,23 @@ export async function refreshEnvironmentConfig(
       const adoption = syncBusinessSkills({ ...syncOptions, mode: 'adopt' });
       if (['failed', 'busy', 'stale'].includes(adoption.status)) {
         result.skills = adoption;
-        return result;
+        return finish(result);
       }
     }
     result.skills = syncBusinessSkills(syncOptions);
   } catch {
     result.skills = { status: 'failed', reason: 'Skill synchronization could not complete. Retry: ae-cli config refresh' };
   }
-  return result;
+  return finish(result);
 }
 
 /** Authentication remains successful even if optional config or Skill synchronization fails. */
-export async function refreshEnvironmentAfterLogin(host: string): Promise<EnvironmentRefreshResult | undefined> {
+export async function refreshEnvironmentAfterLogin(
+  host: string,
+  options: EnvironmentRefreshOptions = {},
+): Promise<EnvironmentRefreshResult | undefined> {
   try {
-    const result = await refreshEnvironmentConfig(host);
+    const result = await refreshEnvironmentConfig(host, options);
     if (!['success', 'skipped'].includes(result.skills.status)) {
       process.stderr.write('[ae-cli] Some Skills could not be synchronized. Run: ae-cli config refresh\n');
     }

@@ -7,6 +7,7 @@ import { PermissionError } from './errors.js';
 import { normalizeUrl } from './url-utils.js';
 import { normalizeBusinesses, type BusinessStates, type OptionalBusiness } from './businesses.js';
 import { isSandboxExecutionContext } from './local-skill-context.js';
+import { beginBusinessSkillRefresh, isBusinessSkillRefreshCurrent, syncRefreshedBusinessSkills } from './business-skill-refresh.js';
 
 export const BUSINESS_CONFIG_TTL_MS = 10 * 60 * 1000;
 const UNAVAILABLE_TTL_MS = 5 * 60 * 1000;
@@ -89,10 +90,13 @@ export async function resolveBusinessConfig(
   token: string,
   fetchRemote: () => Promise<{ businesses?: unknown } | null>,
   now = Date.now(),
+  synchronizeSkills = true,
 ): Promise<BusinessStates> {
   const cached = peekBusinessConfig(host, token, now);
   if (cached !== undefined) return cached;
+  const refresh = beginBusinessSkillRefresh(host, token, synchronizeSkills);
   const config = await fetchRemote().catch(() => null);
+  if (!isBusinessSkillRefreshCurrent(refresh)) return peekBusinessConfig(host, token) ?? {};
   if (!config) {
     // A failed refresh cannot keep an old false value blocking commands indefinitely.
     const previous = readStore().entries[cacheKey(host, token)];
@@ -105,6 +109,7 @@ export async function resolveBusinessConfig(
   }
   const businesses = normalizeBusinesses(config.businesses);
   rememberBusinessConfig(host, token, businesses, now);
+  syncRefreshedBusinessSkills(refresh, config.businesses);
   return businesses;
 }
 
@@ -119,7 +124,7 @@ export class BusinessDisabledError extends PermissionError {
   }
 }
 
-export async function readBusinessConfigForExecution(hostOverride?: string): Promise<BusinessStates> {
+export async function readBusinessConfigForExecution(hostOverride?: string, synchronizeSkills = !hostOverride): Promise<BusinessStates> {
   try {
     if (isSandboxExecutionContext()) return {};
     const host = hostOverride || getActiveHost();
@@ -129,15 +134,17 @@ export async function readBusinessConfigForExecution(hostOverride?: string): Pro
     return await resolveBusinessConfig(host, token, async () => {
       const { fetchCliConfig } = await import('./compat-check.js');
       return fetchCliConfig(host, token);
-    });
+    }, Date.now(), synchronizeSkills);
   } catch {
     // The business API remains authoritative when optional config is unavailable.
     return {};
   }
 }
 
-export async function assertBusinessEnabled(business: OptionalBusiness | undefined, hostOverride?: string): Promise<void> {
-  if (business && (await readBusinessConfigForExecution(hostOverride))[business] === false) {
+export async function assertBusinessEnabled(
+  business: OptionalBusiness | undefined, hostOverride?: string, synchronizeSkills = !hostOverride,
+): Promise<void> {
+  if (business && (await readBusinessConfigForExecution(hostOverride, synchronizeSkills))[business] === false) {
     throw new BusinessDisabledError(business);
   }
 }

@@ -16,6 +16,12 @@ export interface SkillsToolTarget {
   /** False for registry compatibility paths that may only contain existing copies. */
   installable: boolean;
 }
+export interface SkillPathIdentity {
+  dev: string;
+  ino: string;
+  type: 'directory' | 'file' | 'symlink' | 'other';
+  link?: string;
+}
 export interface SkillsToolOperation {
   action: 'install' | 'remove';
   skill: string;
@@ -24,7 +30,9 @@ export interface SkillsToolOperation {
   source_root: string;
   expected_hash: string | null;
   source_hash: string;
-  /** A legacy installer link proven to reference a pristine managed canonical copy. */
+  /** The node observed when planning removal, independently of its edited contents. */
+  expected_node?: SkillPathIdentity | null;
+  /** A same-name installer link referencing a managed canonical copy. */
   legacy_link?: { target: string; text: string };
 }
 export interface SkillsToolReceipt {
@@ -42,6 +50,19 @@ export interface SkillsTool {
   apply(operations: SkillsToolOperation[], guard: SkillsToolGuard): SkillsToolReceipt[];
 }
 
+/** Snapshot the installed node without reading or following its contents. */
+export function skillPathIdentity(file: string): SkillPathIdentity | null {
+  try {
+    const stat = fs.lstatSync(file, { bigint: true });
+    return { dev: String(stat.dev), ino: String(stat.ino),
+      type: stat.isSymbolicLink() ? 'symlink' : stat.isDirectory() ? 'directory' : stat.isFile() ? 'file' : 'other',
+      ...(stat.isSymbolicLink() ? { link: fs.readlinkSync(file) } : {}) };
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === 'ENOENT') return null;
+    throw error;
+  }
+}
+
 /** Resolve missing children through the nearest existing ancestor as well. */
 function realSkillPath(file: string): string {
   try { return fs.realpathSync(file); }
@@ -57,7 +78,7 @@ function realSkillPath(file: string): string {
 export function skillPathProblem(targetDirectory: string, skill: string, sourceRoot: string): string | null {
   try {
     const target = realSkillPath(path.resolve(targetDirectory, skill));
-    const source = fs.realpathSync(sourceRoot);
+    const source = realSkillPath(path.resolve(sourceRoot));
     const overlaps = (a: string, b: string): boolean => a === b || a.startsWith(b + path.sep);
     if (overlaps(target, source) || overlaps(source, target)) return 'package_source_overlap';
     let parent = path.resolve(targetDirectory);
@@ -116,6 +137,8 @@ function adaptedToolSource(source: string, entry: string): string {
   let remove = source.slice(removeStart, removeEnd);
   remove = replaceOnce(remove, 'const agentResult = await detectAgent();', 'const agentResult = { isAgent: false };');
   remove = replaceOnce(remove, 'const spinner = Y();', 'const spinner = { start() {}, stop() {} };');
+  remove = replaceOnce(remove, 'for (const entry of entries) if (entry.isDirectory()) skillNamesSet.add(entry.name);',
+    'for (const entry of entries) if (entry.isDirectory() || options.__aeCliAllowedPaths.has(join(dir, entry.name))) skillNamesSet.add(entry.name);');
   remove = replaceOnce(remove, 'if (pathToCleanup === canonicalPath) continue;',
     'if (pathToCleanup === canonicalPath || !options.__aeCliAllowedPaths.has(pathToCleanup)) continue;');
   remove = replaceOnce(remove, 'if (await lstat(pathToCleanup).catch(() => null)) await rm(pathToCleanup, {',
@@ -145,7 +168,6 @@ function adaptedToolSource(source: string, entry: string): string {
 // The worker uses the upstream registry, installer and remover. It never resolves client paths itself.
 const WORKER_SOURCE = String.raw`
 import * as __aeCliFs from 'node:fs';
-import * as __aeCliPath from 'node:path';
 const __aeCliQuiet = () => {};
 let __aeCliTargetOverride = null;
 let __aeCliBeforeInstallMutation = null;
@@ -161,7 +183,7 @@ function __aeCliRealPath(file) {
 function __aeCliPathProblem(targetDirectory, skill, sourceRoot) {
   try {
     const target = __aeCliRealPath(resolve(targetDirectory, skill));
-    const source = __aeCliFs.realpathSync(sourceRoot);
+    const source = __aeCliRealPath(resolve(sourceRoot));
     const overlaps = (a, b) => a === b || a.startsWith(b + sep);
     if (overlaps(target, source) || overlaps(source, target)) return 'package_source_overlap';
     let parent = resolve(targetDirectory);
@@ -194,46 +216,49 @@ function __aeCliHash(directory, source = false) {
   visit('');
   return hash.digest('hex');
 }
+function __aeCliDirectInstallerLink(text, file, target) {
+  if (typeof text !== 'string') return false;
+  let value = text;
+  if (process.platform === 'win32') {
+    if (value.toUpperCase().startsWith('\\\\?\\UNC\\')) value = '\\\\' + value.slice(8);
+    else if (value.startsWith('\\\\?\\') || value.startsWith('\\??\\')) value = value.slice(4);
+    return [target, relative(dirname(file), target)].some(expected => value.toLowerCase() === expected.toLowerCase());
+  }
+  return value === target || value === relative(dirname(file), target);
+}
 function __aeCliLegacyLinkProblem(operation, targetPath, targets, guard) {
   try {
     const canonical = resolve(getCanonicalSkillsDir(true));
     const canonicalTarget = targets.find(target => target.agent === 'universal' && target.directory === canonical);
     const link = operation.legacy_link;
+    const removing = operation.action === 'remove';
     if (!canonicalTarget || link.target !== join(canonical, operation.skill) || targetPath === link.target
-      || !guard.ledger_file || operation.expected_hash !== operation.source_hash) return 'legacy_link_not_managed';
+      || !guard.ledger_file || (!removing && operation.expected_hash !== operation.source_hash)) return 'legacy_link_not_managed';
     const pathProblem = __aeCliPathProblem(canonical, operation.skill, operation.source_root);
     if (pathProblem) return pathProblem;
     const ledger = JSON.parse(__aeCliFs.readFileSync(guard.ledger_file, 'utf8'));
     const owned = ledger.schema_version === 1 && ledger.copies?.[link.target];
     if (!owned || owned.skill !== operation.skill || owned.agent !== canonicalTarget.agent
-      || owned.hash !== operation.source_hash) return 'legacy_link_not_managed';
+      || (!removing && owned.hash !== operation.source_hash)) return 'legacy_link_not_managed';
     if (!__aeCliFs.lstatSync(targetPath).isSymbolicLink() || __aeCliFs.readlinkSync(targetPath) !== link.text
-      || resolve(dirname(targetPath), link.text) !== link.target
-      || __aeCliFs.realpathSync(targetPath) !== __aeCliFs.realpathSync(link.target)) return 'legacy_link_changed';
-    if (__aeCliHash(link.target) !== operation.source_hash) return 'legacy_link_target_modified';
+      || !__aeCliDirectInstallerLink(link.text, targetPath, link.target)
+      || (!removing && __aeCliFs.realpathSync(targetPath) !== __aeCliFs.realpathSync(link.target))) return 'legacy_link_changed';
+    if (!removing && __aeCliHash(link.target) !== operation.source_hash) return 'legacy_link_target_modified';
     return null;
   } catch { return 'legacy_link_unreadable'; }
 }
-function __aeCliLinkDependsOn(file, dependency) {
-  const absolute = resolve(file);
-  let cursor = __aeCliPath.parse(absolute).root;
-  const pending = absolute.slice(cursor.length).split(sep);
-  let links = 0;
-  while (pending.length) {
-    const part = pending.shift();
-    if (!part || part === '.') continue;
-    if (part === '..') { cursor = dirname(cursor); continue; }
-    cursor = join(cursor, part);
-    if (cursor === dependency || cursor.startsWith(dependency + sep)) return true;
-    if (!__aeCliFs.lstatSync(cursor).isSymbolicLink()) continue;
-    if (++links > 64) throw new Error('Skill link chain is too deep.');
-    const text = __aeCliFs.readlinkSync(cursor);
-    const root = __aeCliPath.parse(text).root;
-    cursor = root || dirname(cursor);
-    // Expand a link before applying subsequent '..' components, matching filesystem lookup.
-    pending.unshift(...text.slice(root.length).split(sep));
-  }
-  return false;
+function __aeCliRemovalProblem(operation, targetPath, guard) {
+  try {
+    const ledger = guard.ledger_file && JSON.parse(__aeCliFs.readFileSync(guard.ledger_file, 'utf8'));
+    const owned = ledger?.schema_version === 1 && ledger.copies?.[targetPath];
+    if (!owned || owned.skill !== operation.skill || owned.agent !== operation.target.agent) return 'copy_not_managed';
+    const expected = operation.expected_node;
+    const current = __aeCliFs.lstatSync(targetPath, { bigint: true });
+    const type = current.isSymbolicLink() ? 'symlink' : current.isDirectory() ? 'directory' : current.isFile() ? 'file' : 'other';
+    if (!expected || expected.dev !== String(current.dev) || expected.ino !== String(current.ino) || expected.type !== type
+      || (type === 'symlink' && expected.link !== __aeCliFs.readlinkSync(targetPath))) return 'copy_changed';
+    return null;
+  } catch { return 'copy_unreadable'; }
 }
 async function __aeCliTargets() {
   const detected = new Set(await detectInstalledAgents());
@@ -281,24 +306,16 @@ async function __aeCliMain() {
           blockedReason = 'legacy_target_missing'; return false;
         }
         if (candidate !== targetPath) { blockedReason = 'copy_changed'; return false; }
-        if (__aeCliHash(operation.source, true) !== operation.source_hash) { blockedReason = 'package_changed'; return false; }
+        if (operation.action === 'remove') {
+          const problem = __aeCliRemovalProblem(operation, targetPath, request.guard);
+          if (problem) { blockedReason = problem; return false; }
+        } else {
+          if (__aeCliHash(operation.source, true) !== operation.source_hash) { blockedReason = 'package_changed'; return false; }
+          if (!operation.legacy_link && __aeCliHash(targetPath) !== operation.expected_hash) { blockedReason = 'copy_changed'; return false; }
+        }
         if (operation.legacy_link) {
           const problem = __aeCliLegacyLinkProblem(operation, targetPath, targets, request.guard);
           if (problem) { blockedReason = problem; return false; }
-        } else if (__aeCliHash(targetPath) !== operation.expected_hash) { blockedReason = 'copy_changed'; return false; }
-        if (operation.action === 'remove') for (const other of targets) {
-          try {
-            // Preserve custom aliases too; only exact same-name installer links are migrated.
-            for (const name of __aeCliFs.readdirSync(other.directory)) {
-              const otherPath = join(other.directory, name);
-              if (otherPath === targetPath) continue;
-              try {
-                if (__aeCliFs.lstatSync(otherPath).isSymbolicLink() && __aeCliLinkDependsOn(otherPath, targetPath)) {
-                  blockedReason = 'dependent_unmanaged_link'; return false;
-                }
-              } catch (error) { if (error.code !== 'ENOENT') throw error; }
-            }
-          } catch (error) { if (error.code !== 'ENOENT') { blockedReason = 'dependent_copy_unreadable'; return false; } }
         }
         return true;
       } catch { blockedReason = 'copy_unreadable'; return false; }

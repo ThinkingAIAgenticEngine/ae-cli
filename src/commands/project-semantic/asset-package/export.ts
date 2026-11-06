@@ -1,11 +1,12 @@
 import type { Command, RuntimeContext } from '../../../framework/types.js';
 import {
-  dryRunCapability,
+  dryRunCapabilityWithEnvelope,
   executeCapabilityWithEnvelope,
-  validateCapability,
+  validateCapabilityWithEnvelope,
 } from '../../../core/capability-api.js';
 import { resolveGatewayDomain } from '../../../core/capability-routing.js';
 import { withAsyncArtifactLifecycle } from '../../../core/analysis-async-artifact.js';
+import { withOutputMetadata } from '../../../framework/output.js';
 import {
   materializeProjectSemanticAssetPackage,
   preflightAssetPackageOutput,
@@ -39,18 +40,18 @@ const assetPackageExportCommand: Command = {
     },
   ],
   risk: 'read',
-  validateInput: (ctx) => validateCapability(
+  validateInput: (ctx) => validateCapabilityWithEnvelope(
     ctx.host(),
     resolveGatewayDomain(GATEWAY_DOMAIN, GATEWAY_DOMAIN),
     ASSET_PACKAGE_EXPORT_CAPABILITY,
     { project_id: ctx.num('project-id'), asset_scope: assetScope(ctx) },
-  ),
-  dryRun: (ctx) => dryRunCapability(
+  ).then((response) => withOutputMetadata(response.data, response.meta)),
+  dryRun: (ctx) => dryRunCapabilityWithEnvelope(
     ctx.host(),
     resolveGatewayDomain(GATEWAY_DOMAIN, GATEWAY_DOMAIN),
     ASSET_PACKAGE_EXPORT_CAPABILITY,
     { project_id: ctx.num('project-id'), asset_scope: assetScope(ctx) },
-  ),
+  ).then((response) => withOutputMetadata(response.data, response.meta)),
   execute: async (ctx) => {
     const projectId = ctx.num('project-id');
     const scope = assetScope(ctx);
@@ -60,7 +61,7 @@ const assetPackageExportCommand: Command = {
       ASSET_PACKAGE_EXPORT_CAPABILITY,
       { project_id: projectId, asset_scope: scope },
     );
-    return response.data;
+    return withOutputMetadata(response.data, response.meta);
   },
 };
 

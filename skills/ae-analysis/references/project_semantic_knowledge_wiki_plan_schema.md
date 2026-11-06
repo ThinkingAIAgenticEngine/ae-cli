@@ -1,6 +1,6 @@
 # Project semantic knowledge Wiki plan
 
-The Agent authors exactly one plan per asset-package snapshot. The builder validates every referenced asset against the package. New plans must fill `recall_cards[].routing` from verified evidence. Older 2.0 plans without routing still compile with a conservative domain fallback; branches may only target assets already listed in that card's preferred or fallback references.
+The Agent authors exactly one plan per asset-package snapshot. The builder validates every referenced asset against the package. New plans must fill `recall_cards[].routing` from verified evidence. Older 2.0 plans without routing still compile with a conservative domain fallback; executable branches may only target assets already listed in that card's preferred or fallback references.
 
 ```json
 {
@@ -89,12 +89,17 @@ The Agent authors exactly one plan per asset-package snapshot. The builder valid
           ],
           "fallback_asset_refs": [],
           "routing": {
+            "contract_version": 1,
             "applicable_when": "问法、对象与范围何时适用本卡",
             "answer_grain": "答案对象与统计粒度",
             "required_parameters": ["时间范围或过滤参数"],
             "branches": [
               {
                 "when": "满足哪种已核验的问法和口径",
+                "outcome": "direct",
+                "source_grain": "What one source row represents",
+                "action": "Source-backed operation for this intent",
+                "checks": ["The observable condition that must hold before reporting the result"],
                 "asset_refs": [{"resource_type": "dashboard", "resource_key": "1234", "reason": "分支采用该资产的证据"}],
                 "reason": "为什么该分支使用这些资产"
               }
@@ -194,3 +199,11 @@ The Agent authors exactly one plan per asset-package snapshot. The builder valid
 - Explain SQL fields in business language while preserving original parameter and output identifiers. Keep exact SQL anchors and saved structural facts in clearly scoped evidence sections; do not replace identities with display labels or expose unrelated parser/debug markers as business explanations.
 - The generated Markdown must not expose build-process markers such as `CLI Agent 基于同一资产快照生成`, `摘要来源`, `semantic_plan`, parser fallback labels, or builder/debug terminology. Keep those only in local artifacts when needed for audit.
 - The plan contains no query results, customer rows, users, tokens, credentials, or conversation text.
+
+### Answer branches
+
+For every new or revised card author `routing.contract_version: 1`. On refresh, recheck dependent branches when a referenced measure, identity, window or coverage condition changes. Reuse an unchanged legacy card on an ordinary refresh. For an explicit rules upgrade, re-review affected cards against the current assets before upgrading them. Missing evidence remains unknown.
+
+Choose one outcome per branch using the user's intent and the actual definition. For `direct` and `transform`, supply the verified asset references, `source_grain`, `action` and nonempty `checks`. The target defaults to the card's `answer_grain`; override it on a branch when the target differs. Use `reason` for the source-backed justification. For `transform`, the action specifies the mapping, order and computation; checks establish required identity, additivity, coverage and time alignment as applicable. Keep the few conditions whose failure changes this answer in the branch, with the full calculation on the referenced asset. A route relying on a combined measure must also provide a verified compatible combination. When compatibility is unknown or incompatible, keep the separate observations or declare the combined answer unsupported. State the narrower deliverable or missing evidence in the fallback. Preserve distinct source labels and measured entities, including conflicts. Never infer a conversion from a label.
+
+For `clarify`, the action is the specific unresolved business choice. For `unsupported`, explain the missing prerequisite and state what can still be reported. Either may use an empty `asset_refs` list; any supplied references only document the decision and may point to an explicitly excluded asset. A card containing only these outcomes may have no preferred asset. Do not invent an executable alternative. State-only, causal and predictive claims require evidence appropriate to each claim. For conditional transformations or estimates, record how to verify them at execution time, including the effective window, raw precision and denominator when relevant.

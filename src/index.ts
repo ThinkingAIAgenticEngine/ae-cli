@@ -76,6 +76,12 @@ async function loadCommands(): Promise<Command[]> {
     warnLoadFailure('domain te-engage', err);
   }
   try {
+    const experiment = await import('./commands/te-experiment/index.js');
+    commands.push(...experiment.default);
+  } catch (err) {
+    warnLoadFailure('domain te-experiment', err);
+  }
+  try {
     const community = await import('./commands/te-community/index.js');
     commands.push(...community.default);
   } catch (err) {
@@ -160,6 +166,12 @@ async function loadCommands(): Promise<Command[]> {
     commands.push(...context.default);
   } catch (err) {
     warnLoadFailure('domain context', err);
+  }
+  try {
+    const aiMonitor = await import('./commands/ai-monitor/index.js');
+    commands.push(...aiMonitor.default);
+  } catch (err) {
+    warnLoadFailure('domain ai-monitor', err);
   }
   try {
     const evaluation = await import('./commands/evaluation/index.js');

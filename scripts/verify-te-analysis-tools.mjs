@@ -158,18 +158,18 @@ if (!/rename a BI dashboard/i.test(biPanelUpdate.description)) {
   fail('BI panel update description must disclose rename-only behavior');
 }
 
-const EXPECTED_GATEWAY_LIFECYCLE_COUNT = 7;
+const EXPECTED_GATEWAY_LIFECYCLE_COUNT = 8;
 if (gatewayLifecycleCommands.length !== EXPECTED_GATEWAY_LIFECYCLE_COUNT) {
   fail(`analysis gateway lifecycle command count mismatch: expected ${EXPECTED_GATEWAY_LIFECYCLE_COUNT}, got ${gatewayLifecycleCommands.length}`);
 }
 
-const EXPECTED_CAPABILITY_COUNT = 352;
+const EXPECTED_CAPABILITY_COUNT = 361;
 if (capabilityCommands.length !== EXPECTED_CAPABILITY_COUNT) {
   fail(`analysis capability command count mismatch: expected ${EXPECTED_CAPABILITY_COUNT}, got ${capabilityCommands.length}`);
 }
 
 const EXPECTED_CAPABILITY_COUNTS_BY_SERVICE = {
-  analysis: 124,
+  analysis: 133,
   'analysis-meta': 66,
   'analysis-governance': 23,
   project: 51,
@@ -289,7 +289,8 @@ for (const item of [...capabilityCommands, ...gatewayLifecycleCommands]) {
 }
 
 const criticalReferenceTokens = {
-  'skills/ae-analysis/references/dashboard_list.md': ['dashboard_id', 'dashboard_name', 'remark', 'snake_case', 'update or manage', 'shared read-only', 'analysis asset search'],
+  'skills/ae-analysis/SKILL.md': ['omit `--asset-types` on the first search', 'analysis report list --manageable-only', 'analysis dashboard list --manageable-only'],
+  'skills/ae-analysis/references/dashboard_list.md': ['dashboard_id', 'dashboard_name', 'remark', 'snake_case', '--manageable-only', 'all readable dashboards', 'shared read-only', 'analysis asset search'],
   'skills/ae-analysis/references/dashboard_share.md': ['numeric user ID', 'READ', 'EDIT', 'complete directly shared user map'],
   'skills/ae-analysis/references/dashboard_update.md': ['refresh_type', '0', '1', 'dashboard_status', 'normal', 'freeze', 'dashboard_job_schedule'],
   'skills/ae-analysis/references/audience_models.md': ['Operators', 'Property reference', 'Time range', 'Filter group'],
@@ -313,7 +314,7 @@ const criticalReferenceTokens = {
   'skills/ae-analysis/references/analysis_data_export.md': ['Omit `--timeout-seconds` to use the server default (normally 21600 seconds / 6 hours)', 'typed flag still accepts explicit values only in `1..21600`', 'inspect the selected capability', 'QUERY_DAILY_LIMIT_EXCEEDED', 'resume_command'],
   'skills/ae-analysis/references/report_create.md': ['SQL dynamic parameter', '"use_timezone":true', 'boolean definition field', 'If the user also requests report data', '`report_id` returned by this exact create response'],
   'skills/ae-analysis/references/report_update.md': ['read the current `version` exactly once', 'query directly with the requested'],
-  'skills/ae-analysis/references/report_list.md': ['group known names into one `--queries` call or narrow with `--model-types`', 'do not issue one list call per name', 'edit or manage', 'shared read-only', 'analysis asset search'],
+  'skills/ae-analysis/references/report_list.md': ['group known names into one `--queries` call or narrow with `--model-types`', 'do not issue one list call per name', '--manageable-only', 'all readable reports', 'shared read-only', 'analysis asset search'],
   'skills/ae-analysis/references/asset_search.md': ['shared read-only assets', 'shared editable assets', 'analysis report list', 'analysis dashboard list'],
   'skills/ae-analysis/references/report_data_run.md': ['omit it when the saved defaults are requested', 'pass the requested value overrides directly through `--sql-params`', '"recent_day":"1-7"', '`effective_zone_offset`'],
   'skills/ae-analysis/references/report_data_export.md': ['same export response'],
@@ -329,9 +330,10 @@ const criticalReferenceTokens = {
     'only valid for `part_date`',
   ],
   'skills/ae-analysis/references/ai_models/path.md': [
-    '`second`: `1..999`',
-    '`minute`: `1..999`',
-    '`hour`: `1..24`',
+    '`second`: `1..3600`',
+    '`minute`: `1..1440`',
+    '`hour`: `1..168`',
+    '`day`: `1..180`',
     'never relabel it as `user_property`',
   ],
 };

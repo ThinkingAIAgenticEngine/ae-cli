@@ -45,3 +45,5 @@ Do not route either request to a definition-version workflow. `LATEST`, `AUTO`, 
 3. Select only a returned exact value; do not normalize spelling or invent a synonym.
 4. Put that value into `report-data run`, `dashboard-report-data run`, or `adhoc run`.
 5. Verify the result scope and, when needed, follow the returned synchronous query context into drilldown.
+
+When looking up values for a model tag filter, use the same snapshot policy as the filter. Discover the tag with `analysis-meta catalog list`. For a local fixed date, select a date returned by `analysis user-tag get --include-history-dates true`. Pass it as `--specified-cluster-date` only with `--cluster-date-policy SPECIFIED`.

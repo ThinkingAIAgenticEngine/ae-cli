@@ -33,6 +33,7 @@ Global parameters:
 | `--host <url>` | Override the active AE host. Available on every command and may be placed after the subcommand, e.g. `ae-cli engage-flow flow list --host <url>`. |
 
 Output and errors:
+- Built-in `--jq` receives the business payload before the outer `{ok,data,meta}` envelope. Use payload fields directly inside the CLI; use `.data...` only with external jq over saved final JSON.
 - Successful commands return machine-readable JSON by default. Envelope may include optional `_notice.host_compat`.
 - Failed commands return `{ "ok": false, "error": { "type": "...", "message": "...", "hint": "..." } }` and exit non-zero.
 - **CRITICAL — Host compat (do this first):** After each `ae-cli` run, check stderr and `_notice.host_compat`. If either is present, open the user reply with a short ⚠️ version warning and **quote the `npm i -g` / `npx skills add` (or update-cluster) lines verbatim**, then present the business result. Soft tip; `ok: true` can still carry the notice.
@@ -410,6 +411,8 @@ When the user wants to "create a flow / generate a flow canvas / save a flow", d
 3. Build condition-related nodes with semantic `targetDefinitionRequest` and
    `triggerDefinition` objects. Resolve real event and property names through Analysis metadata;
    do not create an intermediate cluster merely to obtain persisted QP.
+   For `ab_split_flow` indicators, use `indicatorsDef[].eventDefinition`; always provide the
+   aggregate `operator`/`value` and every event-property filter's `operator`/`values`.
 
 4. Before building touchpoint nodes such as `message_push`, `wechat_push`, or `webhook_push`, you must call:
 

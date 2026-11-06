@@ -87,7 +87,7 @@ export type WaitOptions = {
   signal?: AbortSignal;
   now?: () => number;
   sleep?: (milliseconds: number, signal?: AbortSignal) => Promise<void>;
-  inspect?: (host: string, runId: string) => Promise<AsyncRunDescriptor>;
+  inspect?: (host: string, runId: string, signal?: AbortSignal) => Promise<AsyncRunDescriptor>;
   waitTimeoutSeconds?: number;
 };
 
@@ -206,6 +206,26 @@ export async function waitForAnalysisRun(
   let lastState = '';
   let materializationStartedAt: number | undefined;
   let descriptor = options.initialDescriptor;
+  let lastDescriptor = descriptor;
+
+  const lifecycleDeadline = () => materializationStartedAt === undefined
+    ? deadline
+    : Math.min(deadline, materializationStartedAt + MATERIALIZATION_GRACE_MS);
+  const checkWaitBoundary = () => {
+    throwIfAborted(options.signal, runId);
+    if (now() < Math.min(clientDeadline, lifecycleDeadline())) return;
+    if (clientDeadline <= lifecycleDeadline()) {
+      throw waitError(
+        `Stopped waiting after ${waitTimeoutSeconds} seconds for run ${runId}. The remote run was not canceled.`,
+        'ASYNC_WAIT_TIMEOUT', runId, undefined, lastDescriptor,
+        { wait_timeout_seconds: waitTimeoutSeconds },
+      );
+    }
+    throw waitError(
+      `Stopped waiting because the server-declared deadline for run ${runId} was reached. The remote run was not canceled.`,
+      'ASYNC_WAIT_DEADLINE_REACHED', runId, undefined, lastDescriptor,
+    );
+  };
 
   while (true) {
     throwIfAborted(options.signal, runId);
@@ -215,10 +235,26 @@ export async function waitForAnalysisRun(
       descriptor = undefined;
     }
     if (descriptor === undefined) {
+      checkWaitBoundary();
+      const controller = new AbortController();
+      const onAbort = () => controller.abort(options.signal?.reason);
+      options.signal?.addEventListener('abort', onAbort, { once: true });
+      if (options.signal?.aborted) onAbort();
+      const signal = controller.signal;
+      const timer = setTimeout(() => controller.abort(), Math.max(1, Math.ceil(Math.min(clientDeadline, lifecycleDeadline()) - now())));
       try {
-        descriptor = asDescriptor(await inspect(host, runId));
+        descriptor = asDescriptor(await abortableRequest(inspect(host, runId, signal), signal));
+        checkWaitBoundary();
+        lastDescriptor = descriptor;
         transientFailures = 0;
       } catch (error) {
+        checkWaitBoundary();
+        if (controller.signal.aborted) {
+          throw waitError('The local inspect wait ended. The remote run was not canceled.',
+            clientDeadline <= lifecycleDeadline() ? 'ASYNC_WAIT_TIMEOUT' : 'ASYNC_WAIT_DEADLINE_REACHED',
+            runId, error, lastDescriptor,
+            clientDeadline <= lifecycleDeadline() ? { wait_timeout_seconds: waitTimeoutSeconds } : {});
+        }
         if (error instanceof PermissionError) throw error;
         if (error instanceof CapabilityGatewayError && error.httpStatus === 404) {
           throw new CapabilityGatewayError(
@@ -237,9 +273,13 @@ export async function waitForAnalysisRun(
             error,
           );
         }
-        await sleep(delayMs, options.signal);
+        await sleep(Math.min(delayMs, Math.max(0, Math.min(clientDeadline, lifecycleDeadline()) - now())), options.signal);
+        checkWaitBoundary();
         delayMs = nextDelay(delayMs);
         continue;
+      } finally {
+        clearTimeout(timer);
+        options.signal?.removeEventListener('abort', onAbort);
       }
     }
 
@@ -288,29 +328,8 @@ export async function waitForAnalysisRun(
     if (runStatus === 'SUCCEEDED' && materializationStartedAt === undefined) {
       materializationStartedAt = now();
     }
-    const lifecycleDeadline = materializationStartedAt === undefined
-      ? deadline
-      : Math.min(deadline, materializationStartedAt + MATERIALIZATION_GRACE_MS);
-    const effectiveDeadline = Math.min(clientDeadline, lifecycleDeadline);
-    if (now() >= effectiveDeadline) {
-      if (clientDeadline <= lifecycleDeadline) {
-        throw waitError(
-          `Stopped waiting after ${waitTimeoutSeconds} seconds for run ${runId}. The remote run was not canceled.`,
-          'ASYNC_WAIT_TIMEOUT',
-          runId,
-          undefined,
-          descriptor,
-          { wait_timeout_seconds: waitTimeoutSeconds },
-        );
-      }
-      throw waitError(
-        `Stopped waiting because the server-declared deadline for run ${runId} was reached. The remote run was not canceled.`,
-        'ASYNC_WAIT_DEADLINE_REACHED',
-        runId,
-        undefined,
-        descriptor,
-      );
-    }
+    checkWaitBoundary();
+    const effectiveDeadline = Math.min(clientDeadline, lifecycleDeadline());
 
     await sleep(Math.min(delayMs, Math.max(0, effectiveDeadline - now())), options.signal);
     delayMs = nextDelay(delayMs);
@@ -328,7 +347,13 @@ export async function downloadAnalysisArtifact(
   const outputPath = resolve(output);
   await assertOutputPathAvailable(outputPath, options.force, { run_id: runId, artifact_id: artifactId });
   if (options.ensureReady !== false) {
-    const descriptor = await inspectAnalysisRun(host, runId);
+    let descriptor: AsyncRunDescriptor;
+    try {
+      descriptor = await abortableRequest(inspectAnalysisRun(host, runId, options.signal), options.signal);
+    } catch (error) {
+      throwIfAborted(options.signal, runId);
+      throw error;
+    }
     ensureCompletedDescriptor(descriptor, runId, artifactId);
   }
 
@@ -340,7 +365,7 @@ export async function downloadAnalysisArtifact(
   let tempPresent = false;
   try {
     throwIfAborted(options.signal, runId);
-    const response = await fetchArtifact(host, runId, artifactId);
+    const response = await abortableRequest(fetchArtifact(host, runId, artifactId, options.signal), options.signal);
     if (!response.body) {
       throw protocolError('Artifact download response has no body.', runId);
     }
@@ -461,11 +486,14 @@ export async function withInterruptSignal<T>(
   }
 }
 
-export async function inspectAnalysisRun(host: string, runId: string): Promise<AsyncRunDescriptor> {
+export async function inspectAnalysisRun(host: string, runId: string, signal?: AbortSignal): Promise<AsyncRunDescriptor> {
   return asDescriptor(await requestCapabilityGateway(
     host,
     resolveGatewayDomain('analysis'),
     `runs/${encodeURIComponent(runId)}`,
+    'GET',
+    undefined,
+    { signal },
   ));
 }
 
@@ -643,6 +671,21 @@ function throwIfAborted(signal: AbortSignal | undefined, runId: string): void {
   if (signal?.aborted) throw interruptedError(runId);
 }
 
+async function abortableRequest<T>(request: Promise<T>, signal?: AbortSignal): Promise<T> {
+  if (!signal) return request;
+  let onAbort: () => void = () => undefined;
+  const aborted = new Promise<never>((_resolve, reject) => {
+    onAbort = () => reject(signal.reason ?? new DOMException('The operation was aborted', 'AbortError'));
+    if (signal.aborted) onAbort();
+    else signal.addEventListener('abort', onAbort, { once: true });
+  });
+  try {
+    return await Promise.race([request, aborted]);
+  } finally {
+    signal.removeEventListener('abort', onAbort);
+  }
+}
+
 async function abortableSleep(milliseconds: number, signal?: AbortSignal): Promise<void> {
   if (milliseconds <= 0) return;
   await new Promise<void>((resolveSleep, reject) => {
@@ -676,7 +719,7 @@ function artifactPath(runId: string, artifactId: string): string {
   return `runs/${encodeURIComponent(runId)}/artifacts/${encodeURIComponent(artifactId)}/download`;
 }
 
-function fetchArtifact(host: string, runId: string, artifactId: string): Promise<Response> {
+function fetchArtifact(host: string, runId: string, artifactId: string, signal?: AbortSignal): Promise<Response> {
   return fetchCapabilityGateway(
     host,
     resolveGatewayDomain('analysis'),
@@ -684,5 +727,6 @@ function fetchArtifact(host: string, runId: string, artifactId: string): Promise
     'GET',
     undefined,
     'application/octet-stream',
+    { signal },
   );
 }

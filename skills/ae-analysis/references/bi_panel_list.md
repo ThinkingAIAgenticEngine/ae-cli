@@ -2,7 +2,7 @@
 
 Use when the user needs to find BI panels they can access.
 
-Do not use for analysis dashboard assets. Use `analysis asset search` for readable dashboard discovery, including shared read-only dashboards; use `analysis dashboard list` only for the manageable-dashboard directory.
+Do not use for analysis dashboard assets. Use `analysis asset search` for readable dashboard discovery, including shared read-only dashboards; use `analysis dashboard list --manageable-only` for dashboard management workflows.
 
 Command:
 

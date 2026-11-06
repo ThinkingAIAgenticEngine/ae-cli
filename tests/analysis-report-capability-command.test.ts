@@ -36,6 +36,7 @@ import { drilldownEntitiesRun } from '../src/commands/te-analysis/drilldown-enti
 import { drilldownEntitiesExport } from '../src/commands/te-analysis/drilldown-entities/export.ts';
 import { drilldownUserEventsRun } from '../src/commands/te-analysis/drilldown-user-events/run.ts';
 import { drilldownUserEventsExport } from '../src/commands/te-analysis/drilldown-user-events/export.ts';
+import { drilldownSessionDetailsRun } from '../src/commands/te-analysis/drilldown-session-details/run.ts';
 import { queryCreateResultCluster } from '../src/commands/te-analysis/query/create-result-cluster.ts';
 import { queryContextGet } from '../src/commands/te-analysis/query-context/get.ts';
 import { filterValueList } from '../src/commands/te-analysis/filter-value/list.ts';
@@ -124,10 +125,13 @@ async function dryBody(
 
 process.stdout.write('\nanalysis report capability command tests\n');
 
-await test('report list is documented as a manageable-asset directory', () => {
-  assert.match(reportList.description, /edit or manage/);
-  assert.match(reportList.description, /Read-only reports are excluded/);
-  assert.match(reportList.description, /analysis asset search/);
+await test('report list preserves the legacy payload and forwards explicit management scope', async () => {
+  const legacy = await dryBody(reportList, { 'project-id': 1 });
+  assert.deepEqual(legacy.body.input, { project_id: 1 });
+  for (const value of [true, false]) {
+    const scoped = await dryBody(reportList, { 'project-id': 1, 'manageable-only': value });
+    assert.deepEqual(scoped.body.input, { project_id: 1, manageable_only: value });
+  }
 });
 
 await test('BI panel v1 create and update expose only the supported shell contract', async () => {
@@ -1054,14 +1058,14 @@ await test('run inspect and artifact download use the configured analysis gatewa
   );
 });
 
-await test('adhoc exposes 12 AI models and report write exposes 12 plus tag', () => {
+await test('adhoc exposes 13 AI models and report write exposes 13 plus tag', () => {
   const modelTypeDesc = adhocRun.flags.find((flag) => flag.name === 'model-type')?.desc ?? '';
   const definitionDesc = adhocRun.flags.find((flag) => flag.name === 'definition')?.desc ?? '';
   const reportCreateModelTypeDesc = reportCreate.flags.find((flag) => flag.name === 'model-type')?.desc ?? '';
   const reportUpdateDefinitionDesc = reportUpdate.flags.find((flag) => flag.name === 'definition')?.desc ?? '';
 
-  assert.equal(AI_MODEL_TYPE_VALUES.length, 12);
-  assert.equal(new Set(AI_MODEL_TYPE_VALUES).size, 12);
+  assert.equal(AI_MODEL_TYPE_VALUES.length, 13);
+  assert.equal(new Set(AI_MODEL_TYPE_VALUES).size, 13);
   assert.deepEqual([...AI_MODEL_TYPE_VALUES], [
     'event',
     'retention',
@@ -1072,14 +1076,16 @@ await test('adhoc exposes 12 AI models and report write exposes 12 plus tag', ()
     'path',
     'prop_analysis',
     'sql',
+    'session',
     'heat_map',
     'rank_list',
     'revenue',
   ]);
   assert.match(modelTypeDesc, /event/);
   assert.match(modelTypeDesc, /revenue/);
-  assert.match(modelTypeDesc, /12 total/);
-  assert.match(modelTypeDesc, /9 common/);
+  assert.match(modelTypeDesc, /13 total/);
+  assert.match(modelTypeDesc, /10 common/);
+  assert.match(modelTypeDesc, /session \(session analysis\)/);
   assert.match(modelTypeDesc, /3 scenario models/);
   assert.match(modelTypeDesc, /not ad-hoc model_type values/);
   assert.doesNotMatch(modelTypeDesc, /generic schema-defined scenario/);
@@ -1091,14 +1097,14 @@ await test('adhoc exposes 12 AI models and report write exposes 12 plus tag', ()
   assert.match(definitionDesc, /each analysis date/);
   assert.match(definitionDesc, /global filters support user_property, cluster, and tag only/);
   assert.match(definitionDesc, /event_property is not supported/);
-  assert.match(definitionDesc, /session_unit accepts second \(1\.\.999\), minute \(1\.\.999\), or hour \(1\.\.24\)/);
-  assert.match(definitionDesc, /express one day as session_interval=24 and session_unit=hour/);
-  assert.equal(REPORT_WRITE_MODEL_TYPE_VALUES.length, 13);
+  assert.match(definitionDesc, /session_interval must be a positive integer/);
+  assert.match(definitionDesc, /session_unit accepts second \(1\.\.3600\), minute \(1\.\.1440\), hour \(1\.\.168\), or day \(1\.\.180\)/);
+  assert.equal(REPORT_WRITE_MODEL_TYPE_VALUES.length, 14);
   assert.deepEqual([...REPORT_WRITE_MODEL_TYPE_VALUES], [
     ...AI_MODEL_TYPE_VALUES,
     'tag',
   ]);
-  assert.match(reportCreateModelTypeDesc, /12 total/);
+  assert.match(reportCreateModelTypeDesc, /13 total/);
   assert.match(reportCreateModelTypeDesc, /tag for saved tag report data/);
   assert.doesNotMatch(reportCreateModelTypeDesc, /history_tag/);
   assert.doesNotMatch(reportCreateModelTypeDesc, /generic schema-defined scenario/);
@@ -1165,6 +1171,20 @@ await test('query follow-up commands use context ids instead of raw QP', async (
       project_id: 1,
       query_context_id: 'ctx_0123456789abcdef0123456789abcdef',
       coordinate: { cohort_date: '2026-07-01', group_values: [], period_index: 1, population: 'retained' },
+    },
+  );
+  assert.deepEqual(
+    (await dryBody(drilldownSessionDetailsRun, {
+      'project-id': 1,
+      'query-context-id': 'ctx_0123456789abcdef0123456789abcdef',
+      coordinate: '{"date":"2026-08-30","group_values":["add_to_cart"]}',
+      'preview-rows': 100,
+    })).body.input,
+    {
+      project_id: 1,
+      query_context_id: 'ctx_0123456789abcdef0123456789abcdef',
+      coordinate: { date: '2026-08-30', group_values: ['add_to_cart'] },
+      preview_rows: 100,
     },
   );
   assert.deepEqual(

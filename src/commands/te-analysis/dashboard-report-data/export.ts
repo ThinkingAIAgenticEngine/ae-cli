@@ -26,11 +26,12 @@ export const dashboardReportDataExport = createAnalysisCapabilityCommand({
     clusterQueryScopeFlag,
     slaveClusterIdFlag,
     { name: 'zone-offset', type: 'number', required: false, desc: reportDataZoneOffsetDescription },
+    { name: 'use-cache', type: 'boolean', required: false, desc: 'Deprecated compatibility no-op. Exports always bypass query cache; true and false are accepted without changing execution.' },
     { name: 'request-id', type: 'string', required: false, desc: 'Optional cli_<32 lowercase hex> request ID. Generated when omitted.' },
     asyncTimeoutSecondsFlag,
     { name: 'artifact-format', type: 'string', required: false, desc: 'Artifact format. Only jsonl is supported.' },
   ],
   risk: 'read',
   validate: validateClusterQueryRouting,
-  buildInput: (ctx) => dashboardReportDataInput(ctx, false),
+  buildInput: dashboardReportDataInput,
 });

@@ -176,7 +176,7 @@ export const systemConfigurationCommands: Command[] = [
     command: 'upsert',
     capabilityId: 'system.third_party_login.upsert',
     description: 'Create or update a third-party login configuration using protected secret sources.',
-    risk: 'write',
+    risk: 'high-risk-write',
     fields: [
       loginType,
       { flag: 'app-id', type: 'string', required: true, desc: 'Provider application ID.' },
@@ -213,7 +213,7 @@ export const systemConfigurationCommands: Command[] = [
     command: 'update',
     capabilityId: 'system.oauth2.update',
     description: 'Enable or disable company OAuth2 login.',
-    risk: 'write',
+    risk: 'high-risk-write',
     fields: [
       { flag: 'enable-oauth2', type: 'boolean', required: true, desc: 'Target OAuth2 login state.' },
     ],

@@ -7,10 +7,13 @@ This is the only analysis-query cancellation command exposed by ae-cli. Cancella
 Command:
 
 ```bash
-ae-cli analysis query cancel --run-id <run_id> [--reason <reason>]
+ae-cli analysis query cancel --run-id <run_id> --dry-run
+ae-cli analysis query cancel --run-id <run_id> [--reason <reason>] --yes
 ```
 
 Input sends `run_id` and optional `reason`.
+
+Cancellation is a high-risk write. Obtain explicit user confirmation before canceling; non-interactive execution requires global `--yes`. Validate and dry-run remain available without confirmation.
 
 Output is the gateway envelope. `data` contains the cancellation result.
 

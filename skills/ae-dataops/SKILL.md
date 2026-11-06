@@ -33,6 +33,7 @@ Global parameters:
 | `--host <url>` | Override the active AE host. Available on every command and may be placed after the subcommand, e.g. `ae-cli dataops_ide +<command> --host <url>`. |
 
 Output and errors:
+- Built-in `--jq` receives the business payload before the outer `{ok,data,meta}` envelope. Use payload fields directly inside the CLI; use `.data...` only with external jq over saved final JSON.
 - JSON results use an outer `ok` and `data`; command errors use `ok:false` with `error.type/message/hint` on stderr and exit non-zero. Inspect both streams.
 - **`ok:true` is not a business completion check.** Legacy commands can return `REJECTED`, `FAILED`, or `CHECK_FAILED` inside `data`. Check the specific result fields described by the reference before proceeding. Reading a failed task's status successfully is different from successfully executing that task.
 - For asynchronous work, preserve the returned ID and query that same operation. Submission is not completion; do not submit again because it is still running. Use bounded polling with backoff; when the wait budget is exhausted, report the ID and current state rather than claiming success or restarting work.

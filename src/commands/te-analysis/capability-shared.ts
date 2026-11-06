@@ -193,6 +193,13 @@ export const directoryOffsetFlag: Flag = {
   min: 0,
 };
 
+export const manageableOnlyFlag: Flag = {
+  name: 'manageable-only',
+  type: 'boolean',
+  required: false,
+  desc: 'Restrict the list to assets the current user can edit or manage. Defaults to all readable assets.',
+};
+
 export const certificationScopeFlag: Flag = {
   name: 'certification-scope',
   type: 'string',
@@ -304,6 +311,7 @@ export function reportListInput(ctx: RuntimeContext): Record<string, unknown> {
   return compactInput({
     ...listInput(ctx),
     model_types: optionalJson(ctx, 'model-types'),
+    manageable_only: optionalBoolean(ctx, 'manageable-only'),
     certification_scope: certificationScopeInput(ctx),
   });
 }

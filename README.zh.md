@@ -2,7 +2,7 @@
 
 # ae-cli
 
-`ae-cli` 是 ThinkingAI AgenticEngine（AE）平台的命令行客户端，为 AI Agent 和人工操作提供稳定、结构化的接口，覆盖分析与项目配置、元数据、埋点、本地数据接入、运营、DataOps、知识库、Agent 资源、用户记忆及系统管理。
+`ae-cli` 是 ThinkingAI AgenticEngine（AE）平台的命令行客户端，为 AI Agent 和人工操作提供稳定、结构化的接口，覆盖分析、实验、项目配置、元数据、埋点、本地数据接入、运营、DataOps、知识库、Agent 资源、用户记忆及系统管理。
 
 CLI 的核心设计包括：
 
@@ -54,9 +54,9 @@ ae-cli auth status
 
 请使用 AgenticEngine 管理员提供的 AE 地址。未配置 Host 时，`ae-cli` 会先引导已有客户向管理员获取地址；只有确认尚无 AgenticEngine 环境的用户，才会看到[申请试用](https://thinkingai.cn/request-demo)入口。
 
-按业务过滤命令和剪裁 Skills 仅适用于外部 Agent 使用的本机 CLI；TE Agent 内置沙箱始终保留完整命令与全部 Skills。登录成功后，CLI 按当前环境已开通的业务过滤 `--help` 和能力发现，并同步受管的全局 Skills；分析能力默认保留。后续开通业务时，执行 `ae-cli config refresh` 即可重新获取状态并补装对应 Skills。切换活动环境或账号会重新同步；单次 `--host` 查询不改变全局 Skills。
+按业务过滤命令和剪裁 Skills 仅适用于外部 Agent 使用的本机 CLI；TE Agent 内置沙箱始终保留完整命令与全部 Skills。登录成功后，CLI 按当前环境已开通的业务过滤 `--help` 和能力发现，并同步受管的全局 Skills；分析能力默认保留。后续业务开通状态变化时，普通命令会在刷新配置后自动同步受管 Skills；也可执行 `ae-cli config refresh` 立即刷新并同步。切换活动环境会刷新业务状态，仅同步受影响的 Skills；无需变化时复用当前集合，终端仅汇总 Skill 同步状态及安装、移除数量；需要目录明细时使用 `--format json`。切换账号会重新同步；单次 `--host` 查询不改变全局 Skills。
 
-仅明确关闭的业务会被移除；旧服务端、缺失状态或网络失败不会触发删除。指向已核验、未修改的受管共享 Skill 的客户端历史链接会自动迁移；其他用户修改和来源不明的副本保留并报告。同步后请新开 Agent 会话，已有会话的上下文不会被撤回。
+业务明确关闭时，CLI 会按 Skill 业务映射移除由 CLI 安装的副本及对应客户端历史链接，即使内容已被用户修改或版本落后；基础和分析 Skills 始终保留；AI Monitor 属于 Agent 组件，随该组件的开通状态提供。旧服务端、缺失状态或网络失败不会触发删除，来源不明的副本也会保留并报告。同步后请新开 Agent 会话，已有会话的上下文不会被撤回。
 
 ## 环境版本同步
 
@@ -71,7 +71,7 @@ ae-cli update --dry-run
 
 自动同步在登录后的普通命令中触发，集群版本检查最长缓存 1 小时；`ae-cli update --host <AE_HOST>` 可立即查询。降级后，后续更新由旧版 CLI 自身执行，也受旧版实现限制。需要用新安装逻辑匹配旧集群时，可运行 `npx @thinkingai/ae-cli@latest update --host <AE_HOST>`，目标仍是集群要求的版本。
 
-`ae-cli update` 安装当前 Host 要求的精确版本，不依赖 npm `latest`。Skills 从已验证的目标包同步；用户修改或来源不明的副本会保留并报告。
+`ae-cli update` 安装当前 Host 要求的精确版本，不依赖 npm `latest`。Skills 从已验证的目标包同步。安装或更新时，用户修改或来源不明的副本会保留并报告；业务明确关闭时，仍按上述规则移除由 CLI 安装的副本。
 
 从 `6.0.37` 和 `6.1.9` 维护线开始，普通业务命令可以自动升级或降级到环境要求的版本，包括从 `6.0.x` 切换到 `6.1.x`。自动同步要求本地和目标均为 `主版本.次版本.补丁号` 格式的正式版本，开发版等不规则版本会跳过。同步成功后，新版 CLI 会自动执行原命令一次，并返回该命令的结果和退出码；参数、管道输入、工作目录和确认行为保持不变。如果新版 CLI 无法启动，会返回 `AE_CLI_VERSION_SYNCED` 并提示手动重跑；已经执行的命令不会自动重试。安装失败会给出提示，但不会用安装输出污染业务命令的 JSON 结果。
 
@@ -112,7 +112,7 @@ ae-cli capability dry-run analysis.dashboard.list --input '{"project_id":1}'
 ae-cli capability run analysis.dashboard.list --input '{"project_id":1}'
 
 # 筛选结构化输出
-ae-cli capability list --domain analysis --jq '.data.capabilities[] | .id'
+ae-cli capability list --domain analysis --jq '.capabilities[] | .id'
 ```
 
 ## 命令地图
@@ -123,12 +123,14 @@ ae-cli capability list --domain analysis --jq '.data.capabilities[] | .id'
 | 类别 | 根命令 | 用途 |
 |---|---|---|
 | 分析与项目 | `analysis` | 报告、看板、即席分析、下钻、详情、告警、标签和分群 |
+| 分析与项目 | `experiment` | Atlas 实验、报表、流量层、分桶、Feature、指标和操作日志 |
 | 分析与项目 | `analysis-meta` | 事件/属性目录、指标、虚拟元数据、埋点治理和项目分析配置 |
 | 分析与项目 | `analysis-governance` | 数据资产搜索、血缘、影响分析、认证和治理 |
 | 分析与项目 | `project` | 项目信息、成员、角色、权限、实体、时区和交接配置 |
 | 分析与项目 | `metadata` | 基于 Capability Gateway 的数据表、属性及维度表绑定 |
 | 分析与项目 | `personal-semantic-preference` | 当前用户按项目维护轻量个人语义偏好 |
-| 分析与项目 | `project-semantic` | 导出用于知识库构建的项目资产包 |
+| 分析与项目 | `project-semantic` | 项目语义治理、知识库资产包、候选校验、审核和发布 |
+| 可观测性 | `ai-monitor` | 查询 Trace、会话、Bad Trace、指标、成本、安全与已有诊断报告，导出校验后的 ZIP（[指南](skills/ae-ai-monitor/SKILL.md)） |
 | 数据与埋点 | `tracking` | 埋点方案、SDK 示例、检查、采集诊断、代码生成和内置 Wiki |
 | 数据与埋点 | `data-integration` | 检查、规划、转换、上传、交接和复用本地 CSV/JSON/Excel 数据 |
 | 社区洞察 | `community` | 社区帖子、评论、话题、情感、直播和报告工作流 |
@@ -166,7 +168,22 @@ ae-cli capability list --domain analysis --jq '.data.capabilities[] | .id'
 
 使用 `ae-cli analysis scenario list --project-id 1 --days 7` 查询已采集的分析问题，由 `ae-analysis` Skill 指导 Agent 去重、判断 badcase 并简要说明原因和证据。详见[分析问题复盘指南](skills/ae-analysis/references/scenario_list.md)。 回答可附带耗时；使用 `ae-cli analysis scenario get --help` 查看关联命令执行明细的查询方式。
 
+需保存并审核 Bad Case 时，使用 `ae-cli analysis bad-case --help`。Agent 按语义对同批及所有历史状态去重；CLI 可直接审核，也可显式提交页面。每批汇报发现、重复、新增数量，补充说明选填。认证后将案例加入已绑定的 AE 评测集，取消认证后移除。详见[Bad Case 工作流](skills/ae-analysis/references/bad_case_review.md)。
+
 评测命令在普通终端和沙箱中均跟随当前 AE Host，可通过 `--host` 切换。评测请求沿用该 AE Host 配置的 HTTP 或 HTTPS 协议，与其他 AE 命令一致。旧 `--endpoint` 和 `AE_EVAL_BASE_URL` 只能与当前 AE Host 一致，其他值会在发送凭证前报错；请移除这些配置，统一使用 `--host` 切换。沙箱外需设置 `AE_EVAL_ACCESS_TOKEN` 平台 session token，沙箱内可自动获取会话。详见 [地址与鉴权规则](skills/ae-evaluation/SKILL.md#endpoint-and-authentication)。
+
+### Feature 实验定时开启
+
+对于已完成配置的 Feature 实验，保存开始时间和可选的固定截止时间，检查就绪状态后提交：
+
+```bash
+ae-cli experiment experiment save --project-id 1 --req '{"expId":"exp_123"}' --start-time '2026-11-01T16:00:00+08:00' --fixed-end-time '2026-11-08T16:00:00+08:00'
+ae-cli experiment experiment ready-check --project-id 1 --exp-id exp_123
+ae-cli experiment experiment manage --project-id 1 --exp-id exp_123 --target-status pending
+ae-cli experiment experiment get --project-id 1 --exp-id exp_123
+```
+
+此提交流程兼容旧服务端和支持审批的服务端。保存草稿不会开启实验；支持审批时，须先由有效审批人通过，批准可能立即开启已到开始时间的实验，预约实验由服务端每半小时检查。使用 `experiment experiment get` 确认运行状态；使用专用审批命令前，按 [服务端兼容性指引](skills/ae-experiment/references/experiment_approval.md#server-compatibility) 确认能力支持，同一次提交只执行一次。时间配置见 [Feature 时间配置](skills/ae-experiment/references/save_experiment.md#feature-timing)。
 
 ## Capability Gateway
 
@@ -249,6 +266,11 @@ Token 文件是只读 JSON 对象：`{"url":"https://host-a.example.com","token"
 新版 CLI 只持久化 CLI Token，不保存 access token 或 refresh token。多账号保存在加密的 V1 凭据文件中，同时维护旧文件格式的当前账号投影，保证 CLI 自动降级后仍可登录；再次升级时会合并旧 CLI 对投影的登录、切换或退出变更。
 
 登录使用跨平台设备码流程。当前环境无法打开浏览器时，可使用 `--no-browser`。
+
+已改造的 6.1 环境统一使用 UBA 设备授权接口与平台 `/#/cli/device-activate` 页面，不随 K8s 或 Agent 状态切换。只有授权端点明确不存在（HTTP 404）时才兼容旧 Agent 流程；网络失败、HTML 响应和权限拒绝均不会更换授权方。非交互环境使用 `auth login --no-wait`，再携带返回的 `--device-code` 和同一个 `--host` 继续授权。原有 Host 多账号、CLI Token 与命令参数保持兼容。
+
+CLI 直接请求对应业务接口，由服务端校验产品 License 和用户/项目权限。组件不可用时会返回实际接口错误；HTTP 404 也可能表示资源不存在或路由不支持，不能据此直接判断组件未部署。
+
 试用引导仅在尚未配置 Host 时出现；已配置环境的正常命令和认证流程不会展示该提示。
 
 ## 输出与安全
@@ -266,6 +288,7 @@ Token 文件是只读 JSON 对象：`{"url":"https://host-a.example.com","token"
 - 默认使用 `--format json`，推荐 Agent 使用。
 - 支持的人工列表命令可使用 `--format table`。
 - `--jq <expr>` 使用 jq 1.8 筛选业务结果，再输出统一信封。
+- CLI 内置 jq 的输入是业务结果，不是外层 `{ok,data,meta}` 信封。CLI 内使用 `.capabilities[] | .id`；只有对最终保存的 JSON 执行外部 jq 时才使用 `.data.capabilities[]`。
 - `--validate` 仅规范化 Capability Gateway 参数，不执行业务逻辑。
 - `--dry-run` 预览操作，不执行业务逻辑。
 - `--yes` 跳过明确标记为高风险写操作的交互确认。
@@ -292,6 +315,7 @@ ae-cli kb +rm-source --name engineering-handbook --scope company --display-name 
 ae-cli kb +schema --name engineering-handbook --scope company --model <model-ref>
 ae-cli kb +compile --name engineering-handbook --scope company --model <model-ref>
 ae-cli kb +status --name engineering-handbook --scope company
+ae-cli kb +status --name engineering-handbook --scope company --run-id <compile-run-id>
 ae-cli kb +ask -q "如何配置沙盒？"
 # 仅提交，后续轮询：
 ae-cli kb +ask -q "另一个问题" --no-wait
@@ -411,6 +435,7 @@ npm test
 npm run qa-changed
 npm run self-check
 npm run check:release
+npm run verify:experiment-tools
 npm run verify:readme
 npm run verify:auth-credentials
 npm run verify:update-check

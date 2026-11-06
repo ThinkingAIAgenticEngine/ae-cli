@@ -28,7 +28,7 @@ export const dashboardUpdate = createAnalysisCapabilityCommand({
     { name: 'note-id', type: 'number', required: false, desc: 'Dashboard note ID. Omit to create a new note attached to the dashboard.' },
     { name: 'note-title', type: 'string', required: false, desc: 'Dashboard note title. Defaults to empty on create; omitted values are preserved on update.' },
     { name: 'description', type: 'string', required: false, desc: 'Dashboard note description. Defaults to empty on create; omitted values are preserved on update.' },
-    { name: 'ui-config', type: 'string', required: false, desc: 'Dashboard or note UI config string. Omitted note style is preserved on update.' },
+    { name: 'ui-config', type: 'string', required: false, desc: 'Note UI config string. Omitted note style is preserved on update. Retained as a deprecated no-op for settings.' },
     { name: 'filter-name', type: 'string', required: false, desc: 'Saved filter name. Required with --operation default-filter or personal-default-filter.' },
     { name: 'filter', type: 'json', required: false, desc: 'Saved filter in snake_case QP form: root junction_kind (and/or) and ta_filters array; SIMPLE conditions use filter_type="SIMPLE", column_name, table_type ("0" event, "1" user, "2" cluster/tag), select_type, calcu_symbol (C00 equals), and ftv. Do not use metadata table names or property_name/values. Common validates the QP format; ae-cli forwards it without local QP validation. Required with --operation default-filter, personal-default-filter, or business-filter. Pass {"junction_kind":"and","ta_filters":[]} to clear a business filter.' },
     payloadFlag,

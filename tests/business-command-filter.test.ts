@@ -95,3 +95,50 @@ test('execution availability receives the selected host override', async () => {
   await result.program.parseAsync(['node', 'ae-cli', '--host', 'https://other.example', 'agent', 'list']);
   assert.deepEqual(result.checkedHosts, ['https://other.example']);
 });
+
+function standaloneFixture(states: BusinessStates) {
+  const program = new Command().name('ai-monitor').option('--host <url>').exitOverride();
+  let output = '';
+  let actions = 0;
+  let checks = 0;
+  program.configureOutput({ writeOut: text => { output += text; }, writeErr: text => { output += text; } });
+  program.command('platform').command('list').action(() => { actions++; });
+  program.command('trace').command('count').action(() => { actions++; }).addHelpText('after', 'Monitor-only instructions');
+  configureBusinessCommands(program, {
+    commandPrefix: ['ai-monitor'],
+    readStates: () => states,
+    assertEnabled: async business => {
+      checks++;
+      if (business && states[business] === false) throw new BusinessDisabledError(business);
+    },
+  });
+  return { program, output: () => output, actions: () => actions, checks: () => checks };
+}
+
+test('standalone command prefixes apply Agent availability to root and nested help without requests', async () => {
+  for (const args of [['--help'], ['trace', '--help'], ['trace', 'count', '--help'], ['help', 'trace']]) {
+    const f = standaloneFixture({ agent: false });
+    try { await f.program.parseAsync(['node', 'ai-monitor', ...args]); }
+    catch (error) {
+      if (!(error instanceof CommanderError) || !['commander.helpDisplayed', 'commander.help'].includes(error.code)) throw error;
+    }
+    assert.match(f.output(), /business is not enabled/);
+    assert.doesNotMatch(f.output(), /Commands:|Monitor-only instructions/);
+    assert.equal(f.checks(), 0);
+    assert.equal(f.actions(), 0);
+  }
+});
+
+test('standalone command prefixes block false before dispatch and preserve true and unknown', async () => {
+  const disabled = standaloneFixture({ agent: false });
+  await assert.rejects(disabled.program.parseAsync(['node', 'ai-monitor', 'trace', 'count']), BusinessDisabledError);
+  assert.equal(disabled.actions(), 0);
+  assert.equal(disabled.checks(), 1);
+  for (const state of [{ agent: true }, {}]) {
+    const f = standaloneFixture(state);
+    await f.program.parseAsync(['node', 'ai-monitor', 'trace', 'count']);
+    assert.equal(f.actions(), 1);
+    assert.equal(f.checks(), 1);
+    assert.match(f.program.helpInformation(), /Commands:/);
+  }
+});

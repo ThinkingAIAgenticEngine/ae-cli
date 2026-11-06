@@ -22,3 +22,5 @@ Output `data.property` contains the event/user property metadata detail.
 | `--project-id` | Yes | Numeric project ID. |
 | `--table-type` | Yes | Property table type. |
 | `--prop-name` | Yes | Property column name. |
+
+For SQL virtual event properties, `data.property.vir_prop_column_rule` contains the expression and `data.property.tag_date_policies` contains the saved per-tag version choices.

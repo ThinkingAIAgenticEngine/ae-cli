@@ -6,15 +6,15 @@ Open the selected model file directly from the registry and construct `definitio
 
 ## Capability coverage
 
-- `analysis adhoc run/export`: supports the 12 analysis models only.
-- `analysis report create/update`: supports the same 12 analysis models plus `tag` for saved tag report data.
+- `analysis adhoc run/export`: supports the 13 analysis models only.
+- `analysis report create/update`: supports the same 13 analysis models plus `tag` for saved tag report data.
 - `analysis report-data run/export`, `analysis dashboard-report-data run/export`, and `analysis bi-panel-page-data run/export`: execute existing saved assets. They do not accept `model_type`; use their own command references.
 
 Do not pass raw QP, `events`, `eventView`, `visualView`, frontend DTOs, schema-generated payloads, `scenario`, `history_tag`, or `cluster` as AI-facing `definition` or `model_type`.
 
 ## Model type registry
 
-Common analysis models (9):
+Common analysis models (10):
 
 - [`event`](ai_models/event.md): event analysis
 - [`retention`](ai_models/retention.md): retention analysis
@@ -25,6 +25,7 @@ Common analysis models (9):
 - [`path`](ai_models/path.md): path analysis
 - [`prop_analysis`](ai_models/prop_analysis.md): property analysis
 - [`sql`](ai_models/sql.md): SQL analysis
+- [`session`](ai_models/session.md): session analysis
 
 Scenario analysis models (3):
 
@@ -171,6 +172,7 @@ Compound filter group:
 
 Tag and cluster result-date policy:
 
+- For tag fields, discover `has_history_versions` and `is_cross_source` with `analysis-meta catalog list`. Only a history-capable tag accepts AUTO or SPECIFIED. For local SPECIFIED, choose from `analysis user-tag get --include-history-dates true`; for cross-source SPECIFIED, use the requested date. Apply these rules to both filter leaves and grouping items, with the policy beside `field`.
 - `cluster_date_policy` is valid only when `field.type` is `tag` or `cluster`.
 - `LATEST` uses the latest computed tag/cluster result and is the default when the field is omitted.
 - `AUTO` dynamically matches the computed result for each analysis date. Use it for historical daily analysis that must evaluate each day against that day's tag or cluster state.

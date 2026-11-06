@@ -75,7 +75,7 @@ export function dailyReportUpdateFlags(): Flag[] {
     { name: 'enable-slack', type: 'boolean', required: false, desc: 'Whether scheduled Slack delivery is enabled.' },
     ...destinationFlags,
     { name: 'send-date', type: 'string', required: false, desc: 'Scheduled weekdays, comma-separated 1..7.' },
-    { name: 'send-time', type: 'string', required: false, desc: 'Scheduled send time, HH:mm.' },
+    { name: 'send-time', type: 'string', required: false, desc: 'Scheduled whole hours: hour or HH:00, optionally comma-separated, for example 9 or 09:00,18:00.' },
     { name: 'enable-send', type: 'boolean', required: false, desc: 'Whether scheduled sending is enabled.' },
   ];
 }

@@ -1,6 +1,7 @@
 import { EvalApiError } from './eval-client.js';
 import { resolveEvaluationHost } from './eval-endpoint.js';
 import { externalCliTokenRequestOptions } from './external-cli-token.js';
+import { buildEvaluationOnboardingPayload, evaluationResponseStatus } from './eval-onboarding.js';
 
 const SESSION_PATH = '/api/sandbox/agent/evaluation/session';
 
@@ -37,14 +38,19 @@ export async function requestSandboxEvaluationSession(
       code: signal.aborted ? 'EVAL_SANDBOX_SESSION_TIMEOUT' : 'EVAL_SANDBOX_SESSION_NETWORK_ERROR',
       httpStatus: 0,
       hint: 'Verify that the AE Host serves the session endpoint directly without redirects.',
+      onboarding: buildEvaluationOnboardingPayload('availability_unknown', host),
     });
   }
   if (!response.ok || typeof body?.session_token !== 'string' || !body.session_token) {
+    const status = evaluationResponseStatus(response.status, response.headers.get('content-type'), body, 'session')
+      // This is a session exchange, so even a coded 404 cannot be treated as a resource lookup.
+      ?? (response.ok || response.status === 404 || body === undefined ? 'availability_unknown' : undefined);
     throw new EvalApiError(
       typeof body?.error === 'string' ? body.error : 'Unable to obtain an evaluation session from the sandbox gateway.',
       {
         code: 'EVAL_SANDBOX_SESSION_FAILED',
         httpStatus: response.status,
+        onboarding: status ? buildEvaluationOnboardingPayload(status, host) : undefined,
         sensitiveValues: [cliToken, typeof body?.session_token === 'string' ? body.session_token : ''],
         hint: response.status === 400
           ? 'Set AE_EVAL_TE_PROJECT_ID when the CLI token is authorized for multiple TE projects.'

@@ -11,6 +11,7 @@ Command:
 ```bash
 ae-cli analysis-meta virtual-property create --project-id <project_id> --property-name '#vp@demo' --table-type event --select-type string --sql-expression 'event_name' --sql-event-relation-type relation_default
 ae-cli analysis-meta virtual-property create --project-id <project_id> --property-name '#vp@demo' --property-desc demo --table-type event --select-type string --sql-expression "CASE WHEN status = 1 THEN 'active' ELSE 'inactive' END" --sql-event-relation-type relation_by_setting --related-events '[{"eventName":"purchase"}]' --property-remark demo
+ae-cli analysis-meta virtual-property create --project-id <project_id> --property-name '#vp@user_tier' --table-type user --select-type string --sql-expression 'ta_tag."vip_level"'
 ae-cli analysis-meta virtual-property create --project-id <project_id> --sql-expression '<sql>' --v-prop '{"property":{"column_name":"#vp@demo","table_type":"event","select_type":"string"}}' --properties '[...]'
 ```
 
@@ -40,7 +41,7 @@ Output is a successful gateway envelope with no business data.
 
 ## Decision Rules
 - `sql_expression` / `related_events` cannot be written from experience alone; they must be built from real project metadata.
-- For first validation, pass only required typed parameters: `--project-id`, `--property-name`, `--table-type`, `--select-type`, `--sql-expression`, and `--sql-event-relation-type`.
+- Start with `--project-id`, `--property-name`, `--table-type`, `--select-type`, and `--sql-expression`. Event relation flags apply only to event properties.
 - If `--sql-event-relation-type=relation_by_setting`, `--related-events` must contain event names from `analysis-meta event list`.
 - Columns starting with `#` or containing `@` should be double-quoted in Trino SQL.
 - Use `--v-prop` only when an exact virtual property DTO is already available.
@@ -49,3 +50,13 @@ Output is a successful gateway envelope with no business data.
 ## Recommended Chain
 - `analysis-meta property list` -> `analysis-meta virtual-property create`
 - `analysis-meta property list` -> `analysis-meta event list` -> `analysis-meta virtual-property create` when using `relation_by_setting`
+
+Both virtual **user** and **event** properties can reference a tag in SQL, for example `ta_tag."vip_level"`. Resolve the tag's resource key with `analysis-meta catalog list`. For a user property, choose a tag based on a user entity.
+
+For an event property, pass each version override once:
+
+```sh
+--tag-date-policies '[{"tag_name":"vip_level","cluster_date_policy":"AUTO"},{"tag_name":"tier","cluster_date_policy":"SPECIFIED","specified_cluster_date":"2026-10-09"}]'
+```
+
+LATEST is the default. Only history-capable tags accept AUTO or SPECIFIED. Only SPECIFIED takes a date. For a local fixed date, choose from `analysis user-tag get --include-history-dates true`. For a cross-source tag, use the requested date.

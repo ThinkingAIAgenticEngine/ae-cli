@@ -79,7 +79,8 @@ function optionalIsoDate(...values: unknown[]): string | undefined {
 
 const cliTokenCache = new Map<string, string>();
 const renewedLocalDate = new Map<string, string>();
-const renewInFlight = new Map<string, Promise<void>>();
+type RenewAttempt = { controller: AbortController; promise: Promise<void>; waiters: number };
+const renewInFlight = new Map<string, RenewAttempt>();
 
 type RenewStore = Record<string, { date: string }>;
 
@@ -255,13 +256,14 @@ export async function validateCliTokenOnServer(
 }
 
 /** Renew is authenticated exclusively by the CLI token itself. */
-async function renewCliTokenOnServer(hostUrl: string, cliToken: string, external = false): Promise<void> {
+async function renewCliTokenOnServer(hostUrl: string, cliToken: string, external = false, signal?: AbortSignal): Promise<void> {
   const url = new URL(`${hostUrl.replace(/\/+$/, '')}${CLI_TOKEN_RENEW_PATH}`);
   if (!external) url.searchParams.set('cli-token', cliToken);
   const resp = await fetch(url.toString(), {
     method: 'GET',
     headers: { Accept: 'application/json', ...(external ? { 'cli-token': cliToken } : {}) },
     ...externalCliTokenRequestOptions(url.toString()),
+    signal,
   });
   const text = await resp.text();
   let data: any;
@@ -272,29 +274,51 @@ async function renewCliTokenOnServer(hostUrl: string, cliToken: string, external
   }
 }
 
-async function maybeRenewCliTokenDaily(hostUrl: string, cliToken: string, external = false): Promise<void> {
+async function maybeRenewCliTokenDaily(hostUrl: string, cliToken: string, external = false, signal?: AbortSignal): Promise<void> {
+  signal?.throwIfAborted();
   const key = renewKey(hostUrl, cliToken);
   const today = localRenewDate();
   if (renewedLocalDate.get(key) === today || (!external && persistedRenewDate(hostUrl, cliToken) === today)) {
     renewedLocalDate.set(key, today);
     return;
   }
-  const existing = renewInFlight.get(key);
-  if (existing) return existing;
-  const attempt = (async () => {
-    try {
-      await renewCliTokenOnServer(hostUrl, cliToken, external);
-      if (external) renewedLocalDate.set(key, today);
-      else markRenewSucceeded(hostUrl, cliToken, today);
-      logger.info(`cli-token: renewed for ${normalizeUrl(hostUrl)} (local day ${today})`);
-    } catch (error: any) {
-      logger.warn(`cli-token: renew failed for ${normalizeUrl(hostUrl)}${external ? '' : `: ${error?.message || error}`}; business call proceeds`);
-    } finally {
-      renewInFlight.delete(key);
+  let attempt = renewInFlight.get(key);
+  if (!attempt || attempt.controller.signal.aborted) {
+    const current: RenewAttempt = { controller: new AbortController(), promise: Promise.resolve(), waiters: 0 };
+    current.promise = (async () => {
+      try {
+        await renewCliTokenOnServer(hostUrl, cliToken, external, current.controller.signal);
+        current.controller.signal.throwIfAborted();
+        if (external) renewedLocalDate.set(key, today);
+        else markRenewSucceeded(hostUrl, cliToken, today);
+        logger.info(`cli-token: renewed for ${normalizeUrl(hostUrl)} (local day ${today})`);
+      } catch (error: any) {
+        if (!current.controller.signal.aborted) {
+          logger.warn(`cli-token: renew failed for ${normalizeUrl(hostUrl)}${external ? '' : `: ${error?.message || error}`}; business call proceeds`);
+        }
+      } finally {
+        if (renewInFlight.get(key) === current) renewInFlight.delete(key);
+      }
+    })();
+    renewInFlight.set(key, current);
+    attempt = current;
+  }
+  attempt.waiters++;
+  let onAbort: () => void = () => undefined;
+  try {
+    const aborted = signal && new Promise<never>((_resolve, reject) => {
+      onAbort = () => reject(signal.reason ?? new DOMException('The operation was aborted', 'AbortError'));
+      if (signal.aborted) onAbort();
+      else signal.addEventListener('abort', onAbort, { once: true });
+    });
+    await (aborted ? Promise.race([attempt.promise, aborted]) : attempt.promise);
+  } finally {
+    signal?.removeEventListener('abort', onAbort);
+    if (--attempt.waiters === 0) {
+      if (renewInFlight.get(key) === attempt) renewInFlight.delete(key);
+      attempt.controller.abort();
     }
-  })();
-  renewInFlight.set(key, attempt);
-  await attempt;
+  }
 }
 
 /** Best-effort read without minting or validation, used before version auto-sync. */
@@ -321,10 +345,12 @@ export function peekCliToken(hostOverride?: string): string | undefined {
   return cliTokenCache.get(normalizedHost) || getFallbackCliToken(normalizedHost) || undefined;
 }
 
-export async function getCliToken(hostOverride?: string): Promise<string> {
+export async function getCliToken(hostOverride?: string, signal?: AbortSignal): Promise<string> {
+  signal?.throwIfAborted();
   const external = readExternalCliToken(hostOverride);
   if (external) {
-    await maybeRenewCliTokenDaily(external.url, external.token, true);
+    await maybeRenewCliTokenDaily(external.url, external.token, true, signal);
+    signal?.throwIfAborted();
     return external.token;
   }
   if (process.env.TE_AGENT_CLI_CONFIG_DIR !== undefined) {
@@ -341,7 +367,8 @@ export async function getCliToken(hostOverride?: string): Promise<string> {
     throw new SecureStoreAuthError(`No stored CLI token for ${hostUrl}. Run: ae-cli auth login --host ${hostUrl}`);
   }
   cliTokenCache.set(hostUrl, token);
-  await maybeRenewCliTokenDaily(hostUrl, token);
+  await maybeRenewCliTokenDaily(hostUrl, token, false, signal);
+  signal?.throwIfAborted();
   return token;
 }
 

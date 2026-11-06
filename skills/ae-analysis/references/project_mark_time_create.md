@@ -24,3 +24,5 @@ Output uses the gateway envelope: success is `ok=true,data,meta`; failure is `ok
 | `--zone-offset` | No | Marker time zone offset. |
 | `--content` | Yes | Marker content. |
 | `--is-visible` | No | Whether the marker is visible. 1 visible, 0 hidden. |
+
+Marker content is limited to 200 characters. When the project enables time zones, fixed offsets are -12..14 and 99 selects stored local time. Omitted offsets and disabled project time zones retain the existing project-default behavior.

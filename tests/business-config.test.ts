@@ -30,8 +30,8 @@ after(() => {
 });
 
 test('only explicit component booleans are normalized and analysis is permanent', () => {
-  assert.deepEqual(normalizeBusinesses({ analysis: false, agent: false, dataops: true, engage: 'false', community: null, future: true }), {
-    agent: false, dataops: true,
+  assert.deepEqual(normalizeBusinesses({ analysis: false, agent: false, dataops: true, engage: 'false', community: null, experiment: false, future: true }), {
+    agent: false, dataops: true, experiment: false,
   });
   for (const value of [undefined, null, [], 'false', false]) assert.deepEqual(normalizeBusinesses(value), {});
   assert.equal(businessForCommand(['data-integration', 'upload']), undefined);
@@ -43,7 +43,7 @@ test('only explicit component booleans are normalized and analysis is permanent'
 test('all actual optional commands and mixed system leaves use the business mapping', async () => {
   for (const [module, expected] of [
     ['te-dataops', 'dataops'], ['te-engage', 'engage'], ['te-community', 'community'], ['te-system', 'agent'],
-    ['te-kb', 'agent'], ['te-team', 'agent'], ['te-agent', 'agent'], ['evaluation', 'agent'], ['context', 'agent'],
+    ['te-kb', 'agent'], ['te-team', 'agent'], ['te-agent', 'agent'], ['evaluation', 'agent'], ['context', 'agent'], ['te-experiment', 'experiment'], ['ai-monitor', 'agent'],
   ] as const) {
     const commands = (await import(`../src/commands/${module}/index.js`)).default;
     assert.ok(commands.length > 0);
@@ -63,6 +63,7 @@ test('all actual optional commands and mixed system leaves use the business mapp
   assert.equal(businessForCapability('system.member.list'), undefined);
   assert.equal(businessForCapability('dataops.table.list'), 'dataops');
   assert.equal(businessForCapability('engage.flow.list'), 'engage');
+  assert.equal(businessForCapability('experiment.experiment.list'), 'experiment');
 });
 
 test('Skill selection removes only explicitly disabled businesses', () => {
@@ -76,8 +77,15 @@ test('Skill selection removes only explicitly disabled businesses', () => {
   assert.equal(businessForSkill('ae-evaluation'), 'agent');
   for (const name of ['ae-capability', 'ae-analysis', 'ae-analysis-global', 'ae-data-integration-helper', 'future-skill']) {
     assert.equal(businessForSkill(name), undefined, name);
-    assert.equal(getSkillBusinessState(name, { dataops: false, engage: false, agent: false, community: false }), true, name);
+    assert.equal(getSkillBusinessState(name, {
+      dataops: false, engage: false, agent: false, community: false, experiment: false,
+    }), true, name);
   }
+  const experiments = ['ae-experiment', 'ae-experiment-design', 'ae-experiment-insight'];
+  for (const skill of experiments) assert.equal(businessForSkill(skill), 'experiment');
+  assert.deepEqual(selectBusinessSkills(experiments, { experiment: false }), []);
+  assert.deepEqual(selectBusinessSkills(experiments, { experiment: true, engage: false }), experiments);
+  assert.deepEqual(selectBusinessSkills(experiments, {}), experiments);
 });
 
 test('cache separates hosts and credentials without persisting tokens', () => {
@@ -121,4 +129,19 @@ test('successful refresh replaces the old state and old servers never mean disab
   });
   assert.deepEqual(await resolveBusinessConfig(host, token, async () => ({}), now + BUSINESS_CONFIG_TTL_MS), {});
   assert.deepEqual(readBusinessConfig(host, token), {});
+});
+
+test('AI Monitor Skill belongs to Agent and follows its availability state', () => {
+  assert.equal(businessForSkill('ae-ai-monitor'), 'agent');
+  assert.equal(getSkillBusinessState('ae-ai-monitor', { agent: false }), false);
+  assert.equal(getSkillBusinessState('ae-ai-monitor', { agent: true }), true);
+  assert.equal(getSkillBusinessState('ae-ai-monitor', {}), undefined);
+  assert.deepEqual(selectBusinessSkills(['ae-ai-monitor', 'ae-capability', 'ae-analysis'], { agent: false }), ['ae-capability', 'ae-analysis']);
+});
+
+test('both AI Monitor entrypoint and capability spellings belong to Agent', () => {
+  assert.equal(businessForCommand(['ai-monitor', 'trace', 'list']), 'agent');
+  for (const id of ['ai-monitor', 'ai_monitor', 'ai_monitor.platform.list', 'ai_monitor.trace.get']) {
+    assert.equal(businessForCapability(id), 'agent', id);
+  }
 });

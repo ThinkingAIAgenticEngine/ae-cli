@@ -35,19 +35,32 @@ function readFiles(root: string, prefix = '', files = new Map<string, Buffer>())
 }
 
 /** Snapshot the target package at runtime; historical releases need no generated manifest. */
-export function readBundledSkills(directory: string): BundledSkill[] {
-  const skills = fs.readdirSync(directory, { withFileTypes: true })
-    .filter(entry => entry.isDirectory() && !entry.name.startsWith('.'))
-    .map(entry => {
-      try {
-        const files = readFiles(path.join(directory, entry.name));
-        return { name: skillName(files.get('SKILL.md')!.toString('utf8')), files };
-      } catch {
-        const name = /^[a-z0-9-]+$/.test(entry.name) ? entry.name : '(invalid name)';
-        throw new Error(`Invalid bundled Skill ${name}: missing files or YAML/frontmatter error.`);
+export function readBundledSkills(directory: string, select?: (name: string) => boolean): BundledSkill[] {
+  const entries = fs.readdirSync(directory, { withFileTypes: true })
+    .filter(entry => entry.isDirectory() && !entry.name.startsWith('.'));
+  const names = new Set<string>();
+  const skills = entries.flatMap(entry => {
+    try {
+      // Validate every catalog header while reading only the selected resource trees.
+      let selectedName: string | undefined;
+      if (select) {
+        const header = path.join(directory, entry.name, 'SKILL.md');
+        if (!fs.lstatSync(header).isFile()) throw new Error('Bundled Skill metadata must be a regular file.');
+        selectedName = skillName(fs.readFileSync(header, 'utf8'));
+        if (names.has(selectedName)) throw new Error('Duplicate bundled Skill name.');
+        names.add(selectedName);
+        if (!select(selectedName)) return [];
       }
-    });
-  if (!skills.length || new Set(skills.map(skill => skill.name)).size !== skills.length) {
+      const files = readFiles(path.join(directory, entry.name));
+      const name = skillName(files.get('SKILL.md')!.toString('utf8'));
+      if (selectedName !== undefined && selectedName !== name) throw new Error('Bundled Skill metadata changed.');
+      return [{ name, files }];
+    } catch {
+      const name = /^[a-z0-9-]+$/.test(entry.name) ? entry.name : '(invalid name)';
+      throw new Error(`Invalid bundled Skill ${name}: missing files or YAML/frontmatter error.`);
+    }
+  });
+  if (!entries.length || (!select && new Set(skills.map(skill => skill.name)).size !== skills.length)) {
     throw new Error('Bundled Skills are empty or contain duplicate names.');
   }
   return skills;

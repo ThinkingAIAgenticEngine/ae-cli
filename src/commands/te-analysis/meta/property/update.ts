@@ -2,6 +2,7 @@ import {
   compactInput,
   createAnalysisMetaCapabilityCommand,
   optionalString,
+  optionalStringPreserveEmpty,
   projectIdFlag,
   projectInput,
 } from '../../capability-shared.js';
@@ -19,5 +20,5 @@ export const metadataPropertyUpdate = createAnalysisMetaCapabilityCommand({
     { name: 'prop-remark', type: 'string', required: false, desc: 'Property remark.' },
   ],
   risk: 'write',
-  buildInput: (ctx) => (compactInput({ ...projectInput(ctx), table_type: ctx.str('table-type'), prop_name: ctx.str('prop-name'), prop_desc: optionalString(ctx, 'prop-desc'), prop_remark: optionalString(ctx, 'prop-remark') })),
+  buildInput: (ctx) => (compactInput({ ...projectInput(ctx), table_type: ctx.str('table-type'), prop_name: ctx.str('prop-name'), prop_desc: optionalString(ctx, 'prop-desc'), prop_remark: optionalStringPreserveEmpty(ctx, 'prop-remark') })),
 });

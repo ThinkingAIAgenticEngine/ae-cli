@@ -152,6 +152,10 @@ const autoRefreshCronFlag: Flag = {
 
 const tagAutoRefreshFlags: Flag[] = [
   {
+    name: 'enable-history-tag-backup', type: 'boolean', required: false,
+    desc: 'Save historical tag versions during scheduled refresh. Enabling requires periodic refresh. Omit on update to preserve the setting.',
+  },
+  {
     name: 'enable-auto-refresh', type: 'boolean', required: false,
     desc: 'Enable or disable periodic refresh. Omit to preserve the setting on update. Enabling on create requires a schedule.',
   },
@@ -359,7 +363,7 @@ function idImportCapability(command: Command): Command {
               },
               {
                 method: 'POST',
-                url: `${ctx.host()}/api/cli/${resolveGatewayDomain('analysis')}/v1/capabilities/${command.capabilityId}/dry-run`,
+                url: buildCapabilityGatewayUrl(ctx.host(), resolveGatewayDomain('analysis'), `capabilities/${command.capabilityId}/dry-run`),
                 body: {
                   input_file_id: '<input_file_id returned by upload step>',
                   note: 'The remaining command flags are sent unchanged after upload.',
@@ -460,6 +464,7 @@ function clusterWriteInput(ctx: RuntimeContext, create: boolean): Record<string,
 function tagWriteInput(ctx: RuntimeContext, create: boolean): Record<string, unknown> {
   const definitionRequest = optionalJson(ctx, 'definition-request');
   validateDefinitionRequest(create, definitionRequest);
+  const backup = optionalBoolean(ctx, 'enable-history-tag-backup');
   const enabled = optionalBoolean(ctx, 'enable-auto-refresh');
   const cron = optionalString(ctx, 'auto-refresh-cron');
   const schedule = optionalJson(ctx, 'auto-refresh-schedule');
@@ -468,6 +473,9 @@ function tagWriteInput(ctx: RuntimeContext, create: boolean): Record<string, unk
   }
   if (enabled === false && (cron !== undefined || schedule !== undefined)) {
     throw new Error('Cannot set a schedule with --enable-auto-refresh false');
+  }
+  if (backup === true && (enabled === false || (create && schedule === undefined && cron === undefined))) {
+    throw new Error('Enabling history tag backup requires periodic refresh with a schedule');
   }
   if (create && enabled === true && cron === undefined && schedule === undefined) {
     throw new Error('Enabling auto refresh on create requires --auto-refresh-schedule or --auto-refresh-cron');
@@ -481,6 +489,7 @@ function tagWriteInput(ctx: RuntimeContext, create: boolean): Record<string, unk
     remark: create ? undefined : optionalString(ctx, 'remark'),
     zone_offset: optionalNumber(ctx, 'zone-offset'),
     enable_auto_refresh: enabled,
+    enable_history_tag_backup: backup,
     auto_refresh_cron: cron,
     auto_refresh_schedule: schedule,
     entity_id: create ? optionalNumber(ctx, 'entity-id') : undefined,
@@ -733,10 +742,12 @@ const commands: Command[] = [
   ),
   capability('user-tag', 'get', 'analysis.user_tag.get', 'Get user tag details by exact tag_name values.', [
     projectIdFlag,
+    { name: 'include-history-dates', type: 'boolean', desc: 'Include selectable local dates. Cross-source dates are not enumerated.' },
     { name: 'tag-names', type: 'json', required: true, desc: 'JSON array of exact tag_name values.' },
   ], 'read', (ctx) => ({
     project_id: ctx.num('project-id'),
     tag_names: ctx.json('tag-names'),
+    ...compactInput({ include_history_dates: optionalBoolean(ctx, 'include-history-dates') }),
   })),
   capability('user-tag-member', 'list', 'analysis.user_tag_member.list', `Run a bounded user tag member query. ${memberDataRunRoutingHelp}`, [
     tagNameFlag,
@@ -755,7 +766,10 @@ const commands: Command[] = [
     tagDefinitionRequestFlag,
     authenticatedOnlyFlag,
     zoneOffsetFlag,
-    entityIdFlag,
+    {
+      ...entityIdFlag,
+      desc: 'For SQL tags, explicitly pass the project entity that receives the tag. Resolve it with project entity list/get and verify the first SQL column identifies that entity. Matching SQL types alone are insufficient.',
+    },
     ...tagAutoRefreshFlags,
   ], 'write', (ctx) => tagWriteInput(ctx, true)),
   capability('user-tag', 'update', 'analysis.user_tag.update', 'Update a user tag. Pass only fields that should change.', [

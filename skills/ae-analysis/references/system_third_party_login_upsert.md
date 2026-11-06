@@ -1,5 +1,7 @@
 # system third-party-login upsert
 
+This is a `high-risk-write` operation because it changes access, ownership, or authentication policy. Preview the affected scope with `--dry-run`, obtain explicit user confirmation, then use global `--yes` for non-interactive execution. Validation and dry-run do not apply the change.
+
 Use when the user needs to create or update a third-party login configuration using protected secret sources.
 
 Do not use it outside the system third-party-login operation or with fields absent from the inspected capability schema.
@@ -7,8 +9,8 @@ Do not use it outside the system third-party-login operation or with fields abse
 Command:
 
 ```bash
-ae-cli system third-party-login upsert --company-id <company_id> --login-type feishu --app-id <app_id> --app-secret-file <chmod_600_file>
-ae-cli system third-party-login upsert --company-id <company_id> --login-type dingtalk --app-id <app_id> --corp-id <corp_id> --agent-id <agent_id> --dd-scan-app-id <scan_app_id> --app-secret-file <chmod_600_file> --dd-scan-app-secret-file <chmod_600_file>
+ae-cli system third-party-login upsert --company-id <company_id> --login-type feishu --app-id <app_id> --app-secret-file <chmod_600_file> --yes
+ae-cli system third-party-login upsert --company-id <company_id> --login-type dingtalk --app-id <app_id> --corp-id <corp_id> --agent-id <agent_id> --dd-scan-app-id <scan_app_id> --app-secret-file <chmod_600_file> --dd-scan-app-secret-file <chmod_600_file> --yes
 ```
 
 Capability id: `system.third_party_login.upsert`.

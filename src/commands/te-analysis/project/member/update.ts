@@ -15,7 +15,7 @@ export const projectMemberUpdate = createAnalysisCapabilityCommand({
     requiredPayloadFlag,
     { name: 'target-user-id', type: 'number', required: true, desc: 'Target user ID.' },
   ],
-  risk: 'write',
+  risk: 'high-risk-write',
   buildInput: (ctx) => compactInput({
     project_id: ctx.num('project-id'),
     payload: ctx.json('payload'),

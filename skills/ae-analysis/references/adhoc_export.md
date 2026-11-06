@@ -39,12 +39,14 @@ For SQL model definitions, use [`sql_table_list.md`](sql_table_list.md) to disco
 
 Rules:
 
-- `export` does not accept `--limit` or `--offset`; use `--fields` for column projection and download the full artifact.
+- `export` does not accept `--limit` or `--offset`; use `--fields` for exact column projection in the requested order and download the full artifact. An unknown column fails the export; no fields preserves the complete result.
 
 ## Input
 
+Exports bypass query cache. `--use-cache true|false` remains a deprecated compatibility no-op; supplied values are reported through `meta.deprecated_fields`, `meta.ignored_fields`, and `meta.warnings`. Query-cache selection remains effective for `adhoc run`.
+
 - `--project-id`: target project ID.
-- `--model-type`: one of the 12 AI-facing model names from [`ai_models.md`](ai_models.md). Do not pass `scenario`, `history_tag`, or `cluster`; tags and cohorts/clusters are separate capabilities.
+- `--model-type`: one of the 13 AI-facing model names from [`ai_models.md`](ai_models.md). Do not pass `scenario`, `history_tag`, or `cluster`; tags and cohorts/clusters are separate capabilities.
 - `--definition`: model-specific AI-facing definition JSON.
 - `--intent-snapshot`: use when the caller supplies an existing snapshot containing `schema_version: 1`, non-empty `requirement`, `definition`, and `model_type`. The CLI checks that its definition and model match the submitted values locally; the snapshot is never sent to Gateway.
 - `--resolutions`: only after user confirmation, pass deterministic bindings keyed by compiler error path while keeping each bound field's path and original wording. Fill the other confirmed model parameters in `--definition`. Follow [`metadata_resolution.md`](metadata_resolution.md).
