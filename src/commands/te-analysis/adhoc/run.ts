@@ -13,7 +13,7 @@ export const adhocRun = createAnalysisCapabilityCommand({
   resource: 'adhoc',
   command: 'run',
   capabilityId: 'analysis.adhoc.run',
-  description: `Run one unified ad-hoc analysis from an AI-facing model definition. Supports 13 AI-facing models: 10 common models plus 3 scenario models. Tags and cohorts/clusters are separate capabilities, not ad-hoc model_type values. Returns query_context_id for Redis-backed query follow-ups. ${analysisDataRunRoutingHelp}`,
+  description: `Run one unified ad-hoc analysis from an AI-facing model definition. Supports 12 AI-facing models: 9 common models plus 3 scenario models. Tags and cohorts/clusters are separate capabilities, not ad-hoc model_type values. Returns query_context_id for Redis-backed query follow-ups. ${analysisDataRunRoutingHelp}`,
   flags: [
     ...adhocRunFlags,
     syncTimeoutSecondsFlag,

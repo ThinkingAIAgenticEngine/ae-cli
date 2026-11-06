@@ -1,6 +1,6 @@
 ---
 name: ae-workspace
-version: 1.1.2
+version: 1.1.0
 description: "Manage AE AgentSpaces with ae-cli: resolve current workspace context, list or update workspace profiles, transfer files, configure Agent/MCP/Skill/knowledge-base capabilities, manage shared-space members, inspect activities, or scope automations and archived conversations. Use for the new Workspace product; legacy sandbox Workspace sync/model behavior is separate."
 ---
 

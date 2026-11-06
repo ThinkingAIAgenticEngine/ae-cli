@@ -163,13 +163,13 @@ if (gatewayLifecycleCommands.length !== EXPECTED_GATEWAY_LIFECYCLE_COUNT) {
   fail(`analysis gateway lifecycle command count mismatch: expected ${EXPECTED_GATEWAY_LIFECYCLE_COUNT}, got ${gatewayLifecycleCommands.length}`);
 }
 
-const EXPECTED_CAPABILITY_COUNT = 361;
+const EXPECTED_CAPABILITY_COUNT = 360;
 if (capabilityCommands.length !== EXPECTED_CAPABILITY_COUNT) {
   fail(`analysis capability command count mismatch: expected ${EXPECTED_CAPABILITY_COUNT}, got ${capabilityCommands.length}`);
 }
 
 const EXPECTED_CAPABILITY_COUNTS_BY_SERVICE = {
-  analysis: 133,
+  analysis: 132,
   'analysis-meta': 66,
   'analysis-governance': 23,
   project: 51,
@@ -330,10 +330,9 @@ const criticalReferenceTokens = {
     'only valid for `part_date`',
   ],
   'skills/ae-analysis/references/ai_models/path.md': [
-    '`second`: `1..3600`',
-    '`minute`: `1..1440`',
-    '`hour`: `1..168`',
-    '`day`: `1..180`',
+    '`second`: `1..999`',
+    '`minute`: `1..999`',
+    '`hour`: `1..24`',
     'never relabel it as `user_property`',
   ],
 };

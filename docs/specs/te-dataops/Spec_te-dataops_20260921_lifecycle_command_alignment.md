@@ -25,7 +25,7 @@ risk_level: P2
 
 同步修改 6.0、6.1 te-cli 的三个命令定义、聚焦测试及 DataOps Skill/reference；四份 README 根命令表同步合并至 datatable。配对 Gaia 只同步既有生命周期 Spec 的当前命令合同，无后端代码、REST 路径、鉴权、锁、权限或数据处理变更。不提交、推送、部署，不操作真实资产。术语和业务模型未变化，不另建 glossary 或 ADR。
 
-6.0 历史授权与实测保留在合入提交 `b569de4f` 的本 Spec：2026-09-22 已完成 ta1-60 字段、发布、回收、分区和 SQL 下载回读；该轮实际彻删 0 次、资产保留，下载 `.part-*` 既有失败及 Google 代理失败单列。其完整证据和 6.0 本地日志不作为 6.1 验证结果；本分支保留下文原有 6.1 本地证据。
+2026-09-22 用户追加授权：本轮提交并推送 6.0 当前分支，配对 Gaia/te-gaia 部署 ta1-60 后验证新版命令；6.1 暂不提交或部署。使用本轮专用表/视图，回收后保留，彻删仅验证预览和拒绝条件，不执行资产清理。
 
 ## 期望行为
 
@@ -57,21 +57,21 @@ risk_level: P2
 | Skill | 两个独立流程；成功后可询问但不自动彻删；失败不继续 | passed | 5个独立离线情景符合约定；链接/锚点及仓库4项release检查通过；通用脚本阻塞单列 |
 | 构建 | 两版 build、npm test、verify:dataops-entity-lifecycle、check:release | passed | 每版55项聚焦回归、build、npm test、4项release检查，以及dist12项入口检查通过 |
 | 幂等/并发 | 不新增锁、重试或业务状态转换 | not-run | 后端不变，本轮不做新并发实验 |
-| 索引收敛 | 普通reference风险表可声明回收高风险；read/write误用yes、回收无声明仍拦截；原index行为兼容 | passed | 6.0 risk-index-red.log复现后同步相同修复；6.1风险检查6组场景全部通过 |
+| 索引收敛 | 普通reference风险表可声明回收高风险；read/write误用yes、回收无声明仍拦截；原index行为兼容 | passed | 6.0 risk-index-red.log复现仅识别索引名的问题；风险检查6组场景全部通过 |
 
-### 本地验证记录（6.1）
+### 本地验证记录（6.0）
 
-- Node v24.19.0；日志目录：/private/tmp/lifecycle-align61-0921.fB8Xg1/。
-- 修改前基线：baseline-authorized.log，原生命周期17 + 字段9 + integration23 = 49项通过。
+- Node v24.19.0；日志目录：/private/tmp/lifecycle-align60-0921.Yu8mDn/。
+- 修改前基线：baseline.log，原生命周期17 + 字段9 + integration23 = 49项通过。
 - 最终聚焦：verify-index-final.log，生命周期17 + 命令入口6 + 字段9 + integration23 = 55项通过，0失败；另有风险检查6组场景全部通过。未删除原业务测试或降低原有断言。
 - build-index-final.log、npm-test-index-final.log、release-index-final.log：索引收敛后重跑build成功；npm test根帮助、retired-api2、sandbox-tools脚本、dependency-hygiene5、README1通过；release gate 4 checks通过。
-- dist-surface.log：实际dist入口3个新帮助、3个旧路径拒绝、6组旧参数拒绝，共12项通过。
+- dist-smoke.log：实际dist入口3个新帮助、3个旧路径拒绝、6组旧参数拒绝，共12项通过。
 - 6.0 red证据：surface-red.log（新回收入口1项失败）→ surface-green-first.log（同1项通过）；surface-red-bin.log（列表/彻删2项失败）→ surface-green-bin.log（3项通过）。6.1不重复宣称独立red：先验证旧49项，再同步同一实现并通过最终55项。
 - 反向测试最初附带--help，而Commander在帮助路径提前返回，不能据此判断参数接受情况；改用实际解析路径并保留空必填输入防止误执行，错误断言仍要求unknown option。产品框架未改。
 - npm test初轮发现4份README保留已移除的dataops根命令；同步README后原测试通过，未改README测试断言。
 - 独立Skill情景阅读：普通回收成功先按ID回读，确认后询问并等待；同名回收对象要求选择；回收冲突不自动清理；dry-run的UNCHANGED不触发彻删邀请；PARTIAL先回读同ID，不盲目重试。5/5符合约定。属于离线行为检查，不宣称真实平台E2E或所有Agent必然遵循。
 - 两版3份命令、2份生命周期测试、2份保留的Skill文件及风险检查器/测试共9份文件逐字一致；独立索引已删除，可从Git历史恢复。git diff --check通过，保留的Skill文档链接有效，独立只读核对未发现本次遗漏。
-- 索引收敛在6.0先红后绿，再同步同一实现至6.1；6.1不宣称独立red。最终聚焦日志包含原3组和新增3组风险检查：普通reference可提供风险声明，仍拒绝read/write误用--yes及没有风险声明的回收示例。只取消检查器的文件名过滤，未添加recycle名称白名单，其他域索引保留。
+- 索引收敛先红后绿：risk-index-red.log证明普通reference中的高风险声明被忽略；仅取消检查器的文件名过滤后risk-index-green-first.log同一用例通过；risk-index-green-final.log及最终聚焦日志包含原3组和新增3组检查。仍拒绝read/write误用--yes，以及没有风险声明的回收示例；未添加recycle名称白名单。其他域索引保留。
 - 通用skill-creator quick_validate.py因当前Python缺少yaml模块阻塞；未安装依赖或改既有frontmatter格式。仓库check:release已通过，二者不混算。
 - ae-sdd Spec校验仍因缺少require_id失败（cli-spec-validation.log、gaia-spec-validation.log）；按用户此前明确豁免记录，未虚构编号、不宣称正式Spec校验通过。
 - Gaia仅修改生命周期Spec当前合同并标记历史命令记录，未修改Java代码，因此本轮未重跑Maven；Base/te-gaia不涉及。
@@ -86,44 +86,31 @@ node dist/index.js --no-update-check dataops_datatable +recycle_bin_list --help
 node dist/index.js --no-update-check dataops_datatable +recycle_bin_delete --help
 ```
 
+### 2026-09-22 提交前复测（仅 6.0）
+
+Node20.20.2；证据 `/private/tmp/cli60-precommit-0922.9wayFo/`。生命周期/入口 23、字段 9、参数/概览 19 均通过；两个 verify 脚本都在 integration 22/23 处退出1，失败为用户已接受的流式下载失败后 `.part-*` 临时文件残留，对应测试和 adapter 本轮未改。保留两次原始失败，不宣称全绿、不为本轮改名修复无关下载问题。
+
+链式短路后的 flow task20、backfill9、variadic、风险示例6组已单独补跑通过。build、npm test、dist入口12项、release4项通过；全量扫描P1/P2为0、既有typecheck缺口P3为1。Skill静态76命令/97示例/32链接/12 JSON通过；diff和21份现存变更文件凭证检查通过。用户授权提交，不等于既有失败已修复。
+
 ## 端到端测试
 
 本轮通过 CLI 公开入口离线验证命令注册、拒绝和帮助，并复用 HTTP 替身验证请求响应；真实 ta1-60/ta1-61 端到端为 blocked（本轮无部署或真实删除授权），不以本地测试冒充线上删除结果。后续如授权部署，由本任务承接人只用专门测试对象验证回收及彻删并独立回读。
 
-## 2026-09-22 合并授权与验证范围
+### 2026-09-22 ta1-60 实测
 
-- 用户已确认将已推送的 `codex/dataops-google-sheets-integration-6.0` 合入现有同名 6.1 集成分支，并先提交本地已确认的命令与 Skill 改动。本节更新此前“不提交、推送、部署”的阶段性范围；最终 push 由跨工程回归协调方执行。
-- 合并前已保存 tracked/index diff、3 个未跟踪文件及 HEAD/status：`/private/tmp/cli61-merge-0922.7xJpyE/`。fresh fetch 确认 6.0 为 `b569de4f6b9e6c7ff0fbb1788da28a9c1d6b9c50`，6.1 为 `e7d864518c2a3f9e2b795d983a6e112dff9cce62`；无额外远端推进。
-- 本轮保留 6.1.24 版本与已有 6.1 能力，不新增业务功能、依赖或全局安装。Node 使用 v20.20.2。Require-Id 沿用用户明确豁免，不虚构编号。
-- 合并前 `verify:dataops-entity-lifecycle` 通过：23 生命周期/入口 + 9 字段 + 23 integration，另有 6 组风险检查；`verify:dataops-flow-params` 通过：19 参数/overview + 23 integration + 20 task + 9 backfill，runner variadic flags 通过。integration 在两脚本重复执行，不重复计为独立用例。日志为上述目录的 `lifecycle-before-merge-authorized.log`、`flow-before-merge-authorized.log`。首次沙箱运行因 tsx IPC `listen EPERM` 未进入测试，提权后成功；不属于产品失败。
-- 合并前检查点提交为 `cb6c9ed2`；合入目标为上述 6.0 精确提交。只有本 Spec 与 Skill 意图 Spec 的 add/add 文档冲突，保留 6.1 本地证据并标注 6.0 历史记录来源；运行时、测试、Skill、依赖和 6.1.24 版本相对检查点无变化。
+上述为首阶段记录。用户补充授权后，使用已提交CLI `44e59b9c`、新部署Gaia SHA256 `ff073937816e8f6ec2f327526779b1528f371df44a4835d055dbdf2d0b146586`，在e2e_merge_0920运行最小真实回归。证据 `/private/tmp/cli60-regression-0922.9xlnqr/summary.json`，`node verify.mjs` 对原始证据执行176条断言通过，不将断言数作为独立E2E用例数。
 
-### 合并后本地验证（6.1，Node v20.20.2）
+- CLI共36次（含部署前4次只读预检），34成功、2次预期ENTITY_NOT_RECYCLED拒绝；12次独立Trino查询通过；5次GUI API回读中4通过，首次IDE目录延迟返回-110003已保留，随后Trino和普通详情证明表真实存在。
+- 新增普通字段、类型与说明同时修改、重复add/modify幂等、删除本轮空列delete_probe、表与视图发布、回收语义预览/执行/再次UNCHANGED均通过。活动对象彻删预览拒绝，已回收对象彻删仅PREVIEW，实际彻删0次。
+- 保留表 `cli60_0922_table_9xlnqr`（c9029a46acfe2d978b2dae36f7366071）、视图 `cli60_0922_view_9xlnqr`（5678d93aa0b119f0a2d38df0843581d2）于DEV/PROD回收站。原活动名无匹配，4个带gaia_soft_del的物理映射均经information_schema和SHOW CREATE确认仍存在；写入开关已关闭。最终字段id bigint、amount bigint及变更说明。回收资产仍受平台保留期约束。
+- 配对分区组验证分区列禁止、默认值/配置/手动/AUTO及25次Trino读回；主线程query task12完成下载，CSV精确回读数字、decimal与中文。这些是受影响路径回归，并非重新执行所有历史DataOps矩阵。
+- 无永久删除、低权限、EXPIRED真实过期对象或极端故障注入。本轮Google现存源连接实测FAIL，旧隧道和Base代理参数已缺失，单列环境问题，不改凭据。
 
-日志均位于 `/private/tmp/cli61-merge-0922.7xJpyE/`；以下是本轮真实重跑，不沿用历史成功。
+## 准出结论
 
-| 命令或范围 | 结果 | 日志 |
-| --- | --- | --- |
-| `npm run verify:dataops-entity-lifecycle` | 23 生命周期/入口 + 9 字段 + 23 integration 全通过，另有风险示例 6 组通过 | `lifecycle-after-merge.log` |
-| `npm run verify:dataops-flow-params` | 19 参数/overview 通过；integration 22/23，既有下载失败后 `.part-*` 残留断言失败，脚本退出 1 | `flow-after-merge.log` |
-| 链式短路后独立补跑 task、backfill、variadic | 20 task、9 backfill 通过；variadic 脚本通过 | `dataops-flow-task-contract.test.log`、`dataops-backfill-contract.test.log`、`runner-variadic-flags.test.log` |
-| `npm run build` | 成功，未安装或升级依赖 | `build.log` |
-| `npm test` | 根帮助、retired API 2 项、sandbox-tools、dependency hygiene 5 项、README 1 项通过 | `npm-test.log` |
-| `npm run check:release` | 4/4 通过 | `release.log` |
-| 实际 dist 命令入口 | 新帮助 3、旧路径拒绝 3、旧参数拒绝 6，共 12 项通过 | `dist-surface.log` |
-| `node node_modules/typescript/bin/tsc --noEmit` | 退出 2，仍为既有 asset-package/export.ts:69 的 Promise 类型及 external-experiment/save-submit.ts:70 的 unknown 错误 | `typecheck.log` |
-| 差异与凭证检查 | `git diff --check` 通过；本次文件未检出私钥/token 形态；未改已接受失败的实现和测试断言 | 合并前核对及最终 staged 检查 |
-
-- 同一 integration 在 lifecycle 本轮为 23/23，在 flow 本轮为 22/23；原始失败保留，不用重复通过覆盖它，也不把重复运行计为新增独立用例。下载问题和两处 TypeScript 错误已由用户接受；本轮不顺带修复，不宣称全绿。
-- 相对初始 6.1 `e7d86451`，上述两处类型错误文件、下载 adapter 与 integration 测试均未变化。合并冲突没有修改任何运行时代码或测试断言。
-- 构建 `dist/index.js` SHA256 为 `5f1b266b82214857db3c526cb342126e855cf369eba44c45d4826c3ca58ffe0f`；`dist/te-dataops-RYKKFMJ6.js` SHA256 为 `ef0a8db18a030405f2e57cbc0b9f89f3465aa5626e0cc866dc92340ae04f9dcd`。
-- 当前准出：本地受影响合同与构建可供 ta1-61 回归，保留已接受失败。未发起线上请求、未安装全局 CLI/Skill、未 push；ta1-61 E2E 和最终 push 由跨工程主任务承接，不能以 6.0 历史记录或本地替身结果代替。
-
-## 首阶段准出结论（2026-09-21 历史记录）
-
-- 阶段：Coding。
-- 结论：两版本地实现、聚焦回归、构建与仓库门禁通过；未部署、未执行真实资产操作。
-- 剩余风险：已接受的后端竞态及既有无关检查问题不在本次范围；Skill 情景检查不代表所有 Agent 的行为保证。
-- 后续验证：如获授权，再部署并使用专门测试对象进行线上回读；不自动提交、推送或部署。
+- 阶段：集成。
+- 结论：6.0已提交推送且上述ta1-60生命周期实际回归通过；并非全绿，提交前既有下载临时文件用例仍失败，Google环境连接失败另列；6.1本轮未提交或部署。
+- 剩余风险：已接受后端竞态/下载清理问题不修；Skill情景检查不保证所有Agent行为，未覆盖项见上。
+- 后续验证：代理恢复待用户确认；彻删、低权限及极端故障不在本轮新增实测范围，资产保留。
 - 验证人：Codex。
-- 日期：2026-09-21。
+- 日期：2026-09-22。

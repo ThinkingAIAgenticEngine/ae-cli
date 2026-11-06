@@ -92,7 +92,7 @@ const artifactDownload = readFileSync(new URL('../skills/ae-analysis/references/
 const assetUrl = readFileSync(new URL('../skills/ae-analysis/references/asset_url_get.md', import.meta.url), 'utf8');
 const aiCommon = readFileSync(new URL('../skills/ae-analysis/references/ai_models.md', import.meta.url), 'utf8');
 const modelRefs = [...aiCommon.matchAll(/\]\((ai_models\/[^)]+\.md)\)/g)].map((match) => match[1]);
-assert.equal(modelRefs.length, 14, 'all supported models have directly readable references');
+assert.equal(modelRefs.length, 13, 'all supported models have directly readable references');
 const modelDocs = modelRefs.map((ref) => readFileSync(join(analysisRoot, 'references', ref), 'utf8'));
 const aiModels = [aiCommon, ...modelDocs].join('\n');
 const audienceModels = readFileSync(
@@ -495,12 +495,10 @@ assert.match(userTagCreate, /Every metric tag requires `metric\.time_range`/);
 assert.match(userTagCreate, /Median metric tag for the previous 30 days[\s\S]*"aggregation":"median"[\s\S]*"time_range":\{"mode":"previous","unit":"day","value":30\}/);
 assert.match(userTagCreate, /First\/last tag for this month/);
 assert.match(userTagCreate, /"mode":"recent","unit":"month","value":1/);
-assert.match(aiModels, /`session_interval` must be a positive integer/);
-assert.match(aiModels, /`second`: `1\.\.3600`/);
-assert.match(aiModels, /`minute`: `1\.\.1440`/);
-assert.match(aiModels, /`hour`: `1\.\.168`/);
-assert.match(aiModels, /`day`: `1\.\.180`/);
-assert.doesNotMatch(aiModels, /Do not use `day`/);
+assert.match(aiModels, /`second`: `1\.\.999`/);
+assert.match(aiModels, /`minute`: `1\.\.999`/);
+assert.match(aiModels, /`hour`: `1\.\.24`/);
+assert.match(aiModels, /Do not use `day`.*`session_interval=24`.*`session_unit=hour`/);
 assert.match(aiModels, /never relabel it as `user_property`/);
 assert.match(aiModels, /`use_timezone`.*boolean.*default.*`false`/i);
 assert.match(aiModels, /only valid for `part_date`/i);
@@ -564,7 +562,7 @@ assert.doesNotMatch(aiModels, /Distribution count-like metrics:.*`total_count`/)
 assert.doesNotMatch(aiModels, /"target_aggregation": "user_count"/);
 assert.match(aiModels, /Do not use top-level `filters` or `relation` in a distribution definition/);
 assert.match(commandIndex, /global filters support user_property, cluster, and tag only/);
-assert.match(commandIndex, /session_unit accepts second \(1\.\.3600\), minute \(1\.\.1440\), hour \(1\.\.168\), or day \(1\.\.180\)/);
+assert.match(commandIndex, /express one day as session_interval=24 and session_unit=hour/);
 assert.match(commandIndex, /Search-only fallback/);
 assert.match(commandIndex, /Never load or print this exhaustive file in full/);
 assert.match(adhocRun, /validate that exact definition once.*run the same definition once/is);
