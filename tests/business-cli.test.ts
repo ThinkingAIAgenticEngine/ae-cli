@@ -17,7 +17,7 @@ const fingerprint = crypto.createHash('sha256').update(token).digest('hex');
 const requests: string[] = [];
 let host = '';
 let configStatus = 200;
-let remoteBusinesses = { dataops: true, engage: false, agent: false, community: false, experiment: false };
+let remoteBusinesses = { dataops: true, engage: false, agent: false, community: false };
 const server = http.createServer((request, response) => {
   const pathname = new URL(request.url!, 'http://localhost').pathname;
   requests.push(pathname);
@@ -27,11 +27,6 @@ const server = http.createServer((request, response) => {
     response.end(JSON.stringify({ data: { versions: { clusterVersion: '6.0', aeCliVersion: '6.0.56' }, businesses: remoteBusinesses } }));
   } else if (pathname.includes('/cli/token/renew')) {
     response.end(JSON.stringify({ return_code: 0 }));
-  } else if (pathname.endsWith('/v1/capabilities')) {
-    response.end(JSON.stringify({ ok: true, data: [
-      { id: 'experiment.experiment.list', description: 'List experiments' },
-      { id: 'engage.flow.list', description: 'List engagement flows' },
-    ] }));
   } else {
     response.end(JSON.stringify({ ok: true, data: { reachedGateway: true } }));
   }
@@ -77,7 +72,7 @@ async function cli(args: string[]) {
   }
 }
 
-const closed = { dataops: false, engage: false, agent: false, community: false, experiment: false };
+const closed = { dataops: false, engage: false, agent: false, community: false };
 
 test('real root help contains analysis and recovery domains only without network or sync', async () => {
   seed(closed, 11 * 60 * 1000);
@@ -122,38 +117,18 @@ test('real direct Commander action is blocked before any Agent request or Skill 
 
 test('disabled capability list/search return empty and invocation fails without component requests', async () => {
   seed(closed);
-  for (const args of [['list', '--domain', 'engage-flow'], ['search', 'flow', '--domain', 'engage-flow'],
-    ['list', '--domain', 'experiment'], ['search', 'experiment', '--domain', 'experiment']]) {
+  for (const args of [['list', '--domain', 'engage-flow'], ['search', 'flow', '--domain', 'engage-flow']]) {
     const result = await cli(['capability', ...args]);
     assert.equal(result.code, 0, result.stderr);
     assert.deepEqual(JSON.parse(result.stdout).data.capabilities, []);
   }
-  for (const args of [['inspect', 'engage.flow.list'], ['run', 'engage.flow.list', '--yes'],
-    ['inspect', 'experiment.experiment.list'], ['run', 'experiment.experiment.list', '--yes']]) {
+  for (const args of [['inspect', 'engage.flow.list'], ['run', 'engage.flow.list', '--yes']]) {
     const result = await cli(['capability', ...args]);
     assert.equal(result.code, 1);
     assert.equal(JSON.parse(result.stderr).error.code, 'BUSINESS_NOT_ENABLED');
     assert.equal(result.stdout, '');
   }
   assert.deepEqual(requests, []);
-});
-
-test('an enabled experiment business is independent of the Engage license and shares its gateway route', async () => {
-  seed({ ...closed, experiment: true });
-  const help = await cli(['--help']);
-  assert.match(help.stdout, /^  experiment\s/m);
-  assert.doesNotMatch(help.stdout, /^  engage-flow\s/m);
-  const list = await cli(['capability', 'list', '--domain', 'experiment']);
-  assert.equal(list.code, 0, list.stderr);
-  assert.deepEqual(JSON.parse(list.stdout).data.capabilities.map((item: any) => item.id), ['experiment.experiment.list']);
-  for (const args of [['capability', 'run', 'experiment.experiment.list', '--domain', 'engage', '--yes'],
-    ['experiment', 'experiment', 'list', '--project-id', '1']]) {
-    const result = await cli(args);
-    assert.equal(result.code, 0, result.stderr);
-    assert.equal(JSON.parse(result.stdout).data.reachedGateway, true);
-  }
-  assert.ok(requests.includes('/api/cli/engage/v1/capabilities'));
-  assert.equal(requests.filter(entry => entry === '/api/cli/engage/v1/capabilities/experiment.experiment.list/execute').length, 2);
 });
 
 test('a routing override does not change a capability business owner', async () => {

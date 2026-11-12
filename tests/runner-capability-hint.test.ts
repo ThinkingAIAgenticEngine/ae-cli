@@ -17,10 +17,6 @@ assert.match(
   /capability route/,
 );
 assert.match(
-  capabilityGatewayHint(new CapabilityGatewayError('not found', undefined, 404)) ?? '',
-  /AE_CLI_CAPABILITY_GATEWAY_DOMAIN=/,
-);
-assert.match(
   capabilityGatewayHint(new CapabilityGatewayError('missing', 'CAPABILITY_NOT_FOUND', 404)) ?? '',
   /does not expose this capability/,
 );
@@ -32,4 +28,4 @@ else process.env.AE_CLI_NO_COMPAT_CHECK = prevNoCompat;
 if (prevCi === undefined) delete process.env.CI;
 else process.env.CI = prevCi;
 
-process.stdout.write('runner capability hint tests: 4/4 passed\n');
+process.stdout.write('runner capability hint tests: 3/3 passed\n');

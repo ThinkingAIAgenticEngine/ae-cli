@@ -200,7 +200,7 @@ Project selection priority is the user's explicit current instruction, the activ
 
 After any project selection or switch, load `personal-semantic-preference list --project-id <id>` before asset discovery or query construction. Read every relevant matched entry in full before using it. Do not carry the previous project's semantics into the new project. Cache directories per host, authenticated account/company, project, and conversation; a new conversation must initialize again. Failure to load either scope is not an empty catalog: report the error and resolve it before analysis continues. A missing global capability requires the new Common deployment; never silently omit global initialization.
 
-### Project Semantic Knowledge Base
+### Project Semantic Knowledge
 
 When the user explicitly asks to build, update, refresh, rebuild, or sync a project semantic knowledge base, open `references/project_semantic_knowledge_wiki.md`. That command-reference workflow starts from `ae-cli project-semantic asset-package export` and then uploads/compiles KB sources. The retired governed project-semantic candidate and release lifecycle is not part of this knowledge-base build path or CLI Agent asset-authentication and metric-recommendation review.
 
