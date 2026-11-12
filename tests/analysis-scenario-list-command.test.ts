@@ -95,7 +95,7 @@ await test('Archive review Skill requires full coverage and concise evidence-bas
   assert.match(review, /Do not claim full coverage until all pages are read/);
   assert.match(review, /different metrics, periods, filters, goals/);
   assert.match(review, /Count distinct scenarios, never retries, revisions or feedback entries/);
-  assert.match(review, /\| 问题 \| 回答耗时 \| 评估结论 \| 原因说明 \| 出现次数 \|/);
+  assert.match(review, /\| 问题 \| 回答耗时 \| 评估结论 \| 发现原因 \| 待补充业务语义 \| 改善标准 \| 出现次数 \|/);
   assert.match(review, /reason is mandatory/);
   assert.match(review, /Do not output verdict codes, raw JSON, a separate evidence dump/);
   assert.match(evaluation, /回答有误/);

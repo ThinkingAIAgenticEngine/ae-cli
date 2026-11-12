@@ -14,7 +14,7 @@ export const projectOwnerUpdate = createAnalysisCapabilityCommand({
   flags: [
     projectIdFlag,
     { name: 'company-id', type: 'number', required: true, desc: 'Company ID.' },
-    { name: 'owner-user-id', type: 'number', required: false, desc: 'New owner user ID. Omit to only downgrade existing owner.' },
+    { name: 'owner-user-id', type: 'number', required: false, desc: 'New owner user ID. Common treats a company root as company-admin management. Omit for the same behavior; the existing owner is downgraded.' },
     { name: 'project-name', type: 'string', required: false, desc: 'Optional project name update.' },
     { name: 'project-remark', type: 'string', required: false, desc: 'Optional project remark update.' },
   ],

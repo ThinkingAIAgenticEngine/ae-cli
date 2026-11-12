@@ -58,7 +58,9 @@ await test('Both entry Skills require active model capture and refresh without b
   for (const source of [capabilitySkill, analysisSkill]) {
     const telemetry = source.split('## Agent Context Telemetry\n')[1]?.split('\n## ')[0];
     assert.ok(telemetry);
-    assert.match(telemetry, /actively obtain.*current model identifier.*write.*`agent_model`/);
+    assert.match(telemetry, /must report `agent_model` before every gateway-backed CLI call/);
+    assert.match(telemetry, /Do not query or translate.*`modelId`.*`currentModelId`/);
+    assert.match(telemetry, /Read back the effective context file/);
     assert.match(telemetry, /model changes.*CLI purpose stays the same/);
     assert.match(telemetry, /`context_capture_status: "partial"`/);
     assert.match(telemetry, /do not block.*business command/);
@@ -89,46 +91,56 @@ await test('File model overrides stale fallback and is refreshed for the same bu
   }
 });
 
-await test('Unknown model with partial context still executes the business request', async () => {
-  const dir = mkdtempSync(join(tmpdir(), 'ae-cli-model-optional-'));
-  const host = 'https://cli-model-context-test.invalid';
-  const previousEnv = new Map<string, string | undefined>();
-  const keys = ['SANDBOX_RUNTIME_ROOT', 'TA_CLI_CONTEXT_FILE', 'TA_CLI_AGENT_MODEL', 'CODEX_MODEL', 'OPENAI_MODEL', 'CLAUDE_CODE_MODEL', 'CLAUDE_MODEL', 'ANTHROPIC_MODEL', 'WORKBUDDY_MODEL', 'WORKBUDDY_AGENT_MODEL'];
-  for (const key of keys) {
-    previousEnv.set(key, process.env[key]);
-    delete process.env[key];
-  }
-  const previousFetch = globalThis.fetch;
-  let businessCalls = 0;
-  try {
-    mkdirSync(join(dir, '.ae-config'));
-    writeFileSync(join(dir, '.ae-config/cli-token.json'), JSON.stringify({ url: host, token: 'test-only-token' }));
-    process.env.SANDBOX_RUNTIME_ROOT = dir;
-    process.env.TA_CLI_CONTEXT_FILE = join(dir, 'context.json');
-    writeFileSync(process.env.TA_CLI_CONTEXT_FILE, JSON.stringify({
-      agent_client: 'test-client', user_intent: 'List project dashboards',
-      intent_source: 'agent_context_file', context_capture_status: 'partial',
-    }));
-    globalThis.fetch = async (url, init) => {
-      if (new URL(String(url)).pathname === '/v1/ta/cli/token/renew') return new Response('{}', { status: 404 });
-      businessCalls += 1;
-      const body = JSON.parse(String(init?.body));
-      assert.deepEqual(body.input, { project_id: 1 });
-      assert.equal(body.client_context.agent_model, undefined);
-      assert.equal(body.client_context.context_capture_status, 'partial');
-      assert.equal((init?.headers as Record<string, string>)['X-TA-CLI-Agent-Model'], undefined);
-      return new Response(JSON.stringify({ ok: true, data: { items: [] } }), { status: 200 });
-    };
-    const result = await executeCapability(host, 'analysis', 'analysis.dashboard.list', { project_id: 1 });
-    assert.deepEqual(result.items, []);
-    assert.equal(businessCalls, 1);
-  } finally {
-    globalThis.fetch = previousFetch;
-    clearCliTokenCache(host);
-    for (const [key, value] of previousEnv) {
-      if (value === undefined) delete process.env[key];
-      else process.env[key] = value;
+for (const modelCase of [
+  { name: 'explicit partial', fields: { context_capture_status: 'partial' } },
+  { name: 'missing without partial marker', fields: {} },
+  { name: 'empty', fields: { agent_model: '' } },
+  { name: 'configuration modelId only', fields: { modelId: 'configured-model-ref', currentModelId: 'configured-model-ref' } },
+]) {
+  await test(`Unknown model (${modelCase.name}) still executes the business request`, async () => {
+    const dir = mkdtempSync(join(tmpdir(), 'ae-cli-model-optional-'));
+    const host = 'https://cli-model-context-test.invalid';
+    const previousEnv = new Map<string, string | undefined>();
+    const keys = ['SANDBOX_RUNTIME_ROOT', 'TA_CLI_CONTEXT_FILE', 'TA_CLI_AGENT_MODEL', 'CODEX_MODEL', 'OPENAI_MODEL', 'CLAUDE_CODE_MODEL', 'CLAUDE_MODEL', 'ANTHROPIC_MODEL', 'WORKBUDDY_MODEL', 'WORKBUDDY_AGENT_MODEL'];
+    for (const key of keys) {
+      previousEnv.set(key, process.env[key]);
+      delete process.env[key];
     }
-    rmSync(dir, { recursive: true, force: true });
-  }
-});
+    const previousFetch = globalThis.fetch;
+    let businessCalls = 0;
+    try {
+      mkdirSync(join(dir, '.ae-config'));
+      writeFileSync(join(dir, '.ae-config/cli-token.json'), JSON.stringify({ url: host, token: 'test-only-token' }));
+      process.env.SANDBOX_RUNTIME_ROOT = dir;
+      process.env.TA_CLI_CONTEXT_FILE = join(dir, 'context.json');
+      writeFileSync(process.env.TA_CLI_CONTEXT_FILE, JSON.stringify({
+        agent_client: 'test-client', user_intent: 'List project dashboards',
+        intent_source: 'agent_context_file', ...modelCase.fields,
+      }));
+      globalThis.fetch = async (url, init) => {
+        if (new URL(String(url)).pathname === '/v1/ta/cli/token/renew') return new Response('{}', { status: 404 });
+        businessCalls += 1;
+        const body = JSON.parse(String(init?.body));
+        assert.deepEqual(body.input, { project_id: 1 });
+        assert.equal(body.client_context.agent_model, undefined);
+        assert.equal(body.client_context.modelId, undefined);
+        assert.equal(body.client_context.currentModelId, undefined);
+        assert.equal(body.client_context.context_capture_status, 'partial');
+        assert.equal((init?.headers as Record<string, string>)['X-TA-CLI-Agent-Model'], undefined);
+        return new Response(JSON.stringify({ ok: true, data: { items: [] } }), { status: 200 });
+      };
+      const result = await executeCapability(host, 'analysis', 'analysis.dashboard.list', { project_id: 1 });
+      assert.deepEqual(result.items, []);
+      assert.equal(businessCalls, 1);
+    } finally {
+      globalThis.fetch = previousFetch;
+      clearCliTokenCache(host);
+      for (const [key, value] of previousEnv) {
+        if (value === undefined) delete process.env[key];
+        else process.env[key] = value;
+      }
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+}

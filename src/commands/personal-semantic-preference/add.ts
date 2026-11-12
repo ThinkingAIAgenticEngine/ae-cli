@@ -13,7 +13,7 @@ export const personalSemanticPreferenceAdd = createPersonalSemanticPreferenceCom
   capabilityId: 'business_semantics.personal_context.add',
   description: 'Add one personal semantic preference for the authenticated user.',
   flags: [
-    { name: 'project-id', type: 'number', required: true, desc: 'Numeric project ID.', alias: 'p', min: 1 },
+    { name: 'project-id', type: 'number', required: true, desc: 'Positive project ID, or -1 for current-user global personal semantics.', alias: 'p' },
     { name: 'context-type', type: 'string', required: true, desc: 'preference | asset_context | experience | background.' },
     { name: 'title', type: 'string', required: true, desc: 'Short preference title.', maxLength: 255 },
     { name: 'summary', type: 'string', required: true, desc: 'Compact preference summary.', maxLength: 1000 },

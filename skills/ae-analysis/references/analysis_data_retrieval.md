@@ -14,7 +14,7 @@ Saved history-tag reports allow at most 1000 tag-value groups per preview. Their
 
 Use the tool response directly for bounded query data and small metadata search results. Save original JSON only when the user requests a file or necessary local processing requires one.
 
-Keep stderr attached to the tool and use the CLI exit status reported by the tool. Do not append `; echo "EXIT:$?"`: the shell would report echo's exit status. Process saved JSON only after the CLI command succeeds. A failure already contains its structured error; correct the reported input before resubmitting. Request IDs, progress and errors are stderr, not JSON data.
+When saving a result, follow the [JSON redirection rule](../SKILL.md#global-ae-cli-rules) and retain stderr separately for diagnostics. Use the CLI exit status reported by the tool. Do not append `; echo "EXIT:$?"` because the shell would report echo's exit status. Process saved JSON only after the CLI command succeeds. On failure, read the structured error from stderr and correct the reported input before resubmitting.
 
 If result files already exist, the optional reader can inspect all needed files together, including event and retention:
 

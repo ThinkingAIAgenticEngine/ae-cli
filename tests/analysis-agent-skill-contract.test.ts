@@ -92,7 +92,7 @@ const artifactDownload = readFileSync(new URL('../skills/ae-analysis/references/
 const assetUrl = readFileSync(new URL('../skills/ae-analysis/references/asset_url_get.md', import.meta.url), 'utf8');
 const aiCommon = readFileSync(new URL('../skills/ae-analysis/references/ai_models.md', import.meta.url), 'utf8');
 const modelRefs = [...aiCommon.matchAll(/\]\((ai_models\/[^)]+\.md)\)/g)].map((match) => match[1]);
-assert.equal(modelRefs.length, 13, 'all supported models have directly readable references');
+assert.equal(modelRefs.length, 14, 'all supported models have directly readable references');
 const modelDocs = modelRefs.map((ref) => readFileSync(join(analysisRoot, 'references', ref), 'utf8'));
 const aiModels = [aiCommon, ...modelDocs].join('\n');
 const audienceModels = readFileSync(
@@ -168,6 +168,11 @@ assert.match(skill, /analysis boards, BI dashboards/);
 assert.match(skill, /native `analysis user-tag \.\.\.` and `analysis user-cluster \.\.\.`/);
 assert.match(analysisDataRetrieval, /member list commands are the exception: omission returns at most 1000 rows/i);
 assert.match(analysisDataRetrieval, /Use the tool response directly.*Save original JSON only when the user requests a file or necessary local processing requires one/);
+const globalCliRules = skill.match(/^## Global AE CLI Rules\n([\s\S]*?)(?=^## )/m)?.[1] ?? '';
+assert.match(globalCliRules, /`> work\/result\.json 2> work\/result\.stderr\.log`/);
+assert.match(globalCliRules, /`> work\/result\.json 2>\/dev\/null`/);
+assert.match(globalCliRules, /Never use `2>&1` or `&>` for JSON files/);
+assert.match(analysisDataRetrieval, /\]\(\.\.\/SKILL\.md#global-ae-cli-rules\)/);
 assert.match(analysisDataRetrieval, /If result files already exist, the optional reader/);
 assert.doesNotMatch(analysisDataRetrieval, /ae-cli analysis adhoc run[^\n]*>\s*query\.json/);
 assert.match(analysisDataRetrieval, /Do not append `; echo "EXIT:\$\?"`/);
@@ -177,11 +182,11 @@ assert.match(skill, /Call `auto-review` only when the user explicitly asks for a
 assert.match(skill, /plain recommendation request and a recommendation-plus-page-submission request must not check the automatic certification project config/i);
 assert.match(skill, /review-page submission.*agent_review_submit_to_page\.md.*agent-review submit-to-page\|list\|detail\|records\|review\|retry/i);
 assert.match(skill, /Common returns the deterministic evidence packet.*Agent owns the fixed human approval display/is);
-assert.match(skill, /do not load project semantics, project KB, or personal semantic preferences as a preflight/i);
-assert.match(skill, /Do not use project-semantic, project-KB, or personal-semantic-preference commands as prerequisite context/);
+assert.match(skill, /Complete the mandatory personal-semantic initialization below/);
+assert.match(skill, /Complete mandatory personal-semantic initialization; do not use project-semantic or project-KB commands as prerequisite governance evidence/);
 assert.match(skill, /open `references\/project_semantic_knowledge_wiki\.md`/);
 assert.match(skill, /The retired governed project-semantic candidate and release lifecycle is not part of this knowledge-base build path/);
-assert.match(skill, /workflow must not load personal semantic preferences as prerequisite context/);
+assert.match(skill, /Personal preferences never authorize certification decisions/);
 assert.match(skill, /Do not bypass curated commands with `ae-cli capability inspect\|validate\|dry-run\|run`/);
 assert.match(skill, /retired split recommendation command or capability.*routing correction only/is);
 assert.match(skill, /business-domain grouping, plain-text status labels, and risk\/conflict explanation/);
@@ -242,7 +247,7 @@ const governanceRecommendationExport = readFileSync(
   'utf8',
 );
 assert.match(governanceRecommendationExport, /top-level grouping must be `业务主题域`/);
-assert.match(governanceRecommendationExport, /Do not call project-semantic, project-KB, or personal-semantic-preference commands as prerequisite context/);
+assert.match(governanceRecommendationExport, /Complete mandatory personal-semantic initialization/);
 assert.match(governanceRecommendationExport, /must transform the returned `work_units` into business-domain review groups before answering/);
 assert.match(governanceRecommendationExport, /Hard output gate/);
 assert.match(governanceRecommendationExport, /invalid if it is grouped by asset type, backend array order, raw `work_units`, source dashboard, source report, or separate top-level asset and metric sections/);
@@ -304,9 +309,9 @@ assert.match(skill, /Never relabel an empty report\/dashboard result as query fa
 assert.match(skill, /`meta\.partial: true` is partial success/);
 assert.match(skill, /`meta\.request_id`, `meta\.invocation_id`, `meta\.stage`/);
 assert.match(skill, /Do not retry an unchanged failed command/);
-assert.match(skill, /once per host.*user.*project.*conversation/i);
-assert.match(skill, /project-scoped request to remember\/save a reusable analysis workflow/i);
-assert.match(skill, /remember the above workflow[\s\S]*context_type=experience/);
+assert.match(skill, /Cache directories per host.*account\/company.*project.*conversation/i);
+assert.match(skill, /Clear user instructions to remember an analysis workflow use this service/);
+assert.match(skill, /`experience`: a confirmed reusable analysis workflow/);
 assert.match(personalSemanticList, /asset_context.*resource_type.*resource_key.*display_name/is);
 assert.match(personalSemanticList, /remember the above workflow[\s\S]*context_type=experience/);
 assert.match(personalSemanticAdd, /remember the above workflow[\s\S]*context_type=experience/);
@@ -495,10 +500,12 @@ assert.match(userTagCreate, /Every metric tag requires `metric\.time_range`/);
 assert.match(userTagCreate, /Median metric tag for the previous 30 days[\s\S]*"aggregation":"median"[\s\S]*"time_range":\{"mode":"previous","unit":"day","value":30\}/);
 assert.match(userTagCreate, /First\/last tag for this month/);
 assert.match(userTagCreate, /"mode":"recent","unit":"month","value":1/);
-assert.match(aiModels, /`second`: `1\.\.999`/);
-assert.match(aiModels, /`minute`: `1\.\.999`/);
-assert.match(aiModels, /`hour`: `1\.\.24`/);
-assert.match(aiModels, /Do not use `day`.*`session_interval=24`.*`session_unit=hour`/);
+assert.match(aiModels, /`session_interval` must be a positive integer/);
+assert.match(aiModels, /`second`: `1\.\.3600`/);
+assert.match(aiModels, /`minute`: `1\.\.1440`/);
+assert.match(aiModels, /`hour`: `1\.\.168`/);
+assert.match(aiModels, /`day`: `1\.\.180`/);
+assert.doesNotMatch(aiModels, /Do not use `day`/);
 assert.match(aiModels, /never relabel it as `user_property`/);
 assert.match(aiModels, /`use_timezone`.*boolean.*default.*`false`/i);
 assert.match(aiModels, /only valid for `part_date`/i);
@@ -562,7 +569,7 @@ assert.doesNotMatch(aiModels, /Distribution count-like metrics:.*`total_count`/)
 assert.doesNotMatch(aiModels, /"target_aggregation": "user_count"/);
 assert.match(aiModels, /Do not use top-level `filters` or `relation` in a distribution definition/);
 assert.match(commandIndex, /global filters support user_property, cluster, and tag only/);
-assert.match(commandIndex, /express one day as session_interval=24 and session_unit=hour/);
+assert.match(commandIndex, /session_unit accepts second \(1\.\.3600\), minute \(1\.\.1440\), hour \(1\.\.168\), or day \(1\.\.180\)/);
 assert.match(commandIndex, /Search-only fallback/);
 assert.match(commandIndex, /Never load or print this exhaustive file in full/);
 assert.match(adhocRun, /validate that exact definition once.*run the same definition once/is);
@@ -641,5 +648,13 @@ for (const row of commandRows.filter(({ risk }) => risk === 'high-risk-write')) 
   assert.match(reference, /--yes/, `${row.command} may use --yes only after confirmation`);
 }
 assert.doesNotMatch(aiModels, /`cluster_name`.*tag-report name field/);
+
+// Guard the initialization and capture requirements independently of command transport tests.
+assert.match(skill, /Before project discovery.*load global personal semantics/is);
+assert.match(skill, /After any project selection or switch, load.*personal-semantic-preference list/is);
+assert.match(skill, /clear user-provided calculation definition is a high-priority capture signal/i);
+assert.match(skill, /If it is unclear whether the information should persist, ask one focused question/);
+assert.match(skill, /After a successful write, tell the user briefly what was saved or updated/);
+assert.match(skill, /temporary project selection does not update the global default/i);
 
 process.stdout.write('analysis agent skill contract tests passed\n');

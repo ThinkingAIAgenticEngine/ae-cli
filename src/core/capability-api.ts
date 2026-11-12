@@ -6,6 +6,7 @@
  * and intentionally uses `/ai-monitor/api/cli/v1/...` directly. Auth uses the `cli-token`
  * header (same as MCP transport).
  */
+import { sourceLoggedFetch } from './source-logged-fetch.js';
 
 import { clearCliTokenCache, getCliToken } from './cli-token.js';
 import { safeJsonParse, stringifyJsonRequest } from './json-utils.js';
@@ -52,6 +53,7 @@ export class CapabilityGatewayError extends Error {
     readonly hint?: string,
     readonly meta?: Record<string, unknown>,
     readonly type: 'api' | 'validation' = 'api',
+    readonly details?: Record<string, unknown>,
   ) {
     super(message);
     this.name = 'CapabilityGatewayError';
@@ -110,7 +112,7 @@ async function permissionError(resp: Response): Promise<PermissionError> {
   const body = safeJsonParse(await codeResponse.text());
   const error = isRecord(body?.error) ? body.error : undefined;
   const code = nonEmptyString(error?.code) ?? nonEmptyString(body?.code);
-  return new PermissionError(message, code, nonEmptyString(error?.hint), undefined,
+  return new PermissionError(message, code, nonEmptyString(error?.hint) ?? nonEmptyString(body?.hint), undefined,
     isRecord(body?.meta) ? body.meta : undefined);
 }
 
@@ -157,6 +159,7 @@ function parseCapabilityEnvelope(body: any, acceptCommunityLegacyEnvelope = fals
       hint,
       isRecord(body.meta) ? body.meta : undefined,
       err.type === 'validation' ? 'validation' : 'api',
+      isRecord(err.details) ? err.details : undefined,
     );
   }
   const legacyReturnCode = acceptCommunityLegacyEnvelope ? body.return_code ?? body.returnCode : undefined;
@@ -217,6 +220,7 @@ function buildCapabilityHttpError(resp: Response, body: any): CapabilityGatewayE
         hint,
         isRecord(body.meta) ? body.meta : undefined,
         err.type === 'validation' ? 'validation' : 'api',
+        isRecord(err.details) ? err.details : undefined,
       );
     }
   }
@@ -260,11 +264,11 @@ async function requestOnce(
     headers['Content-Type'] = 'application/json';
     init.body = stringifyJsonRequest(includeClientContextInBody ? withCliAgentContextBody(body, agentContext) : body);
   }
-  return fetch(url, { ...init, ...externalCliTokenRequestOptions(url), signal });
+  return sourceLoggedFetch(url, { ...init, ...externalCliTokenRequestOptions(url), signal });
 }
 
 async function requestMultipartOnce(url: string, token: string, form: FormData): Promise<Response> {
-  return fetch(url, {
+  return sourceLoggedFetch(url, {
     method: 'POST',
     ...externalCliTokenRequestOptions(url),
     headers: {
@@ -277,7 +281,7 @@ async function requestMultipartOnce(url: string, token: string, form: FormData):
 }
 
 async function requestDownloadOnce(url: string, token: string): Promise<Response> {
-  return fetch(url, {
+  return sourceLoggedFetch(url, {
     method: 'GET',
     ...externalCliTokenRequestOptions(url),
     headers: {

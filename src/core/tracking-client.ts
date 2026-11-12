@@ -1,3 +1,4 @@
+import { internalCallSourceHeaders } from './internal-call-source.js';
 import { getCliToken } from './cli-token.js';
 import { executeCapability, uploadInputFileBytes } from './capability-api.js';
 import { safeJsonParse } from './json-utils.js';
@@ -216,6 +217,7 @@ export class TrackingClient {
     const url = buildUrl(this.host, modulePath, params);
     const headers: Record<string, string> = {
       'cli-token': token,
+      ...internalCallSourceHeaders(),
       accept: 'application/json',
     };
     const init: RequestInit = { method, headers };

@@ -4,6 +4,10 @@ This is a `high-risk-write` operation because it changes access, ownership, or a
 
 Use when the user needs to update project owner.
 
+Omit `--owner-user-id` to use company-admin management without an explicit project owner. This downgrades the existing project owner. The CLI always forwards a supplied user ID unchanged; the fixed Common backend treats a target-company root ID exactly like a null owner and returns success while preserving all root roles. This behavior is shared by the page, CLI, and direct API callers. No company-member lookup or additional member-read permission is required in the CLI.
+
+Deploy the paired Common protection before assigning a root user ID. Older Common versions may still replace privileged roles incorrectly; client upgrades alone cannot repair that backend defect.
+
 Do not use it for unrelated project-management actions or for fields not present in the common-service capability schema. Do not send camelCase aliases.
 
 Command:
@@ -23,6 +27,6 @@ Output uses the gateway envelope: success is `ok=true,data,meta`; failure is `ok
 |---|---|---|
 | `--project-id` | Yes | Numeric project ID. |
 | `--company-id` | Yes | Company ID. |
-| `--owner-user-id` | No | New owner user ID. Omit to only downgrade existing owner. |
+| `--owner-user-id` | No | New owner user ID. Common treats a company root as company-admin management. Omit for the same behavior; the existing owner is downgraded. |
 | `--project-name` | No | Optional project name update. |
 | `--project-remark` | No | Optional project remark update. |

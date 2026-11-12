@@ -1,6 +1,7 @@
 import { EvalApiError } from './eval-client.js';
 import { resolveEvaluationHost } from './eval-endpoint.js';
 import { externalCliTokenRequestOptions } from './external-cli-token.js';
+import { internalCallSourceHeaders } from './internal-call-source.js';
 import { buildEvaluationOnboardingPayload, evaluationResponseStatus } from './eval-onboarding.js';
 
 const SESSION_PATH = '/api/sandbox/agent/evaluation/session';
@@ -20,7 +21,7 @@ export async function requestSandboxEvaluationSession(
     response = await fetchImpl(url, {
       ...credentialOptions,
       method: 'POST',
-      headers: { Accept: 'application/json', 'Content-Type': 'application/json', 'cli-token': cliToken },
+      headers: { Accept: 'application/json', 'Content-Type': 'application/json', 'cli-token': cliToken, ...internalCallSourceHeaders() },
       body: JSON.stringify(teProjectId ? { te_project_id: teProjectId } : {}),
       redirect: 'error',
       signal,

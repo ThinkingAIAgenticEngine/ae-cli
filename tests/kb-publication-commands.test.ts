@@ -105,3 +105,43 @@ test('published list pins and releases an actual context and rejects old Host ca
     clearCliToken(host);
   }
 });
+
+test('candidate context dry-run requires one company KB and leaves the formal body unchanged', async () => {
+  const sources = [{ scope: 'company', name: 'Example' }];
+  assert.deepEqual((await readContextCreate.dryRun!(context({ sources }))).body, { sources });
+  assert.deepEqual(
+    (await readContextCreate.dryRun!(context({ sources, candidate: 'candidate-1' }))).body,
+    { sources, candidateId: 'candidate-1' },
+  );
+  for (const invalid of [undefined, [], [...sources, ...sources], [{ ...sources[0], scope: 'personal' }]]) {
+    assert.throws(() => readContextCreate.validate!(context({ sources: invalid, candidate: 'candidate-1' })));
+  }
+  assert.throws(() => readContextCreate.validate!(context({ sources, candidate: '../candidate' })));
+});
+
+test('candidate create sends its dry-run body and rejects a silent formal fallback', async () => {
+  const { setCliTokenManual, clearCliToken } = await import('../src/core/cli-token.js');
+  const host = 'https://kb-candidate-contract.invalid';
+  const ctx = {
+    ...context({ sources: [{ scope: 'company', name: 'Example' }], candidate: 'candidate-1' }),
+    host: () => host,
+  };
+  const preview = await readContextCreate.dryRun!(ctx);
+  const originalFetch = globalThis.fetch;
+  let received: unknown;
+  let views: unknown[] = [{ viewKind: 'snapshot' }];
+  setCliTokenManual('test-publication-token', host);
+  try {
+    globalThis.fetch = async (_url, init) => {
+      received = JSON.parse(String(init?.body));
+      return Response.json({ readContextId: 'opaque-context', views });
+    };
+    await assert.rejects(readContextCreate.execute(ctx), /candidate read context/);
+    assert.deepEqual(received, preview.body);
+    views = [{ viewKind: 'candidate', candidateId: 'candidate-1' }];
+    assert.equal((await readContextCreate.execute(ctx)).readContextId, 'opaque-context');
+  } finally {
+    globalThis.fetch = originalFetch;
+    clearCliToken(host);
+  }
+});

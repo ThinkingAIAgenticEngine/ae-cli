@@ -33,18 +33,17 @@ The service removes exact retry identities. The Agent performs semantic deduplic
 
 Do not assume relative time windows are equivalent: this calendar week and the trailing seven days can have different boundaries. Merge their questions only when the archive explicitly confirms the same dates; otherwise keep them separate. Conversely, equivalent phrasing with the same explicit dates, metric and defect should be grouped and counted together.
 
-For an ordinary question inventory, return a concise question summary, the initial answer duration and occurrence count; do not assess quality unless requested. For badcases, include demonstrated wrong answers and substantive omissions, including historical defects preserved in later-revised scenarios. Unsupported objections or unavailable numeric proof alone are not confirmed badcases. Judge revisions against the user's confirmed scope at that point, rather than treating a new requirement as an earlier omission.
+For an ordinary question inventory, return a concise question summary, the initial answer duration and occurrence count; do not assess quality unless requested. For badcases, apply the recommendation gate in the independent evaluation guide, including to historical defects preserved in later-revised scenarios. An incomplete or wrong answer alone does not establish a business-semantic defect; apply the evidence-based causal test regardless of how semantics are stored. Keep cases needing verification and operational/data limitations separate from recommendations. Unsupported objections or unavailable numeric proof alone are not confirmed badcases. Judge revisions against the user's confirmed scope at that point, rather than treating a new requirement as an earlier omission.
 
 ## Final response
 
 Use the user's language. For Chinese badcase requests, use this compact table:
 
-| 问题 | 回答耗时 | 评估结论 | 原因说明 | 出现次数 |
-| --- | --- | --- | --- | --- |
-| 查询付费人数变化 | 42.3秒 | 回答有误 | 回答写明人数从100降至80，却说下降10%；按其给出的数值应为20%。 | 1 |
-| 分析收入下降的原因 | 未采集 | 回答不完整 | 用户要求分析下降原因，回答只列收入变化，没有分析原因。 | 1 |
+| 问题 | 回答耗时 | 评估结论 | 发现原因 | 待补充业务语义 | 改善标准 | 出现次数 |
+| --- | --- | --- | --- | --- | --- | --- |
+| 查询新增付费客户 | 42.3秒 | 回答有误 | 回答把新增付费客户理解成支付记录，计入了续费。 | 新增付费客户按首次付费客户去重，排除续费。 | 按首次付费时间限定范围，去重统计客户数。 | 1 |
 
-These are examples, never presumed findings. The reason is mandatory and must integrate the minimum quoted evidence needed to explain the specific defect. Do not output verdict codes, raw JSON, a separate evidence dump, internal IDs, full query paths, all answer versions, or a latest/fixed status by default. Retain provenance internally for a requested drilldown. If evidence is insufficient, exclude that scenario from confirmed badcases and briefly state the number of scenarios that could not be judged. State the actual project/window and review coverage once. A finding is an Agent assessment, not certified ground truth.
+These are examples, never presumed findings. The reason is mandatory: at most two short sentences explaining one primary defect with decisive evidence. Name the business semantics to add or clarify and give one short, testable improvement criterion. A fluent restatement, a generic completeness instruction or an unsupported preferred number is not a semantic repair. Briefly list cases needing verification with the missing evidence, and group exclusions by cause; neither belongs in the recommended table. A compact list with the same finding/semantic-clarification/criterion fields is also suitable when comparing a few supplied cases. Do not output verdict codes, raw JSON, a separate evidence dump, internal IDs, full query paths, all answer versions, or a latest/fixed status by default. Retain provenance internally for a requested drilldown. If evidence is insufficient, exclude that scenario from confirmed badcases and briefly state the number of scenarios that could not be judged. State the actual project/window and review coverage once. A finding is an Agent assessment, not certified ground truth.
 
 ## Answer duration and CLI execution detail
 

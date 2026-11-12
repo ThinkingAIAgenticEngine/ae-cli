@@ -45,3 +45,19 @@ test('Bad Case file validates dedup references without implementing semantic mat
     assert.throws(input);
   } finally { rmSync(dir, { recursive: true }); }
 });
+
+test('discovery findings and improvement criteria reuse the existing reason contract', () => {
+  const dir = mkdtempSync(join(tmpdir(), 'badcase-reason-'));
+  try {
+    const file = join(dir, 'packet.json');
+    for (const reason of ['The confirmed population was not used.',
+      'Finding: The answer included renewals in new customers.\nSemantic clarification: New customers are first-time paying customers, not payment records.\nImprovement: Use first paid orders and deduplicate customers.']) {
+      const candidate = { candidate_id: 'c1',
+        source: { open_id: 'u', agent_session_id: 's', question_id: 'q', answer_id: 'a', days: 7, end_time: '2026-10-29T06:00:00Z' },
+        issue_type: 'INCORRECT', reason };
+      writeFileSync(file, JSON.stringify({ candidates: [candidate] }));
+      const input = badCaseInput('submit', badCaseSubmit.flags, ctx({ 'project-id': 3, 'batch-id': '42', 'input-file': file }));
+      assert.deepEqual(input, { project_id: 3, batch_id: '42', candidates: [candidate] });
+    }
+  } finally { rmSync(dir, { recursive: true }); }
+});

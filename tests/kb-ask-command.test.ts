@@ -271,3 +271,100 @@ try {
 }
 
 process.stdout.write('kb ask command contract tests passed\n');
+
+// Explicit contexts: submission carries selection, polling retains identity without its Header.
+const candidateViews = [{
+  resourceKey: 'kb:kb1', viewKind: 'candidate', consistency: 'candidate_pinned',
+  candidateId: 'candidate1', baseVersion: 'v1', readIdentity: 'candidate-hash',
+  versionId: null, versionNumber: null,
+}];
+assert.equal(ask.flags.some(flag => flag.name === 'read-context'), true);
+const explicitPreview = ask.dryRun!(ctx({ question: QUESTION, 'read-context': 'kb_candidate_parent' }));
+assert.deepEqual(explicitPreview.headers, { 'X-KB-Read-Context': 'kb_candidate_parent' });
+setCliTokenManual('cli-test-token', HOST);
+try {
+  const calls: Array<{ method?: string; header: string | null }> = [];
+  globalThis.fetch = (async (_url: unknown, init?: RequestInit) => {
+    if (!String(_url).includes(ASK_API_PATH)) return new Response('{}', { status: 200 });
+    calls.push({ method: init?.method, header: new Headers(init?.headers).get('X-KB-Read-Context') });
+    return new Response(JSON.stringify(calls.length === 1
+      ? { executionId: 'explicit', status: 'running', readViews: candidateViews }
+      : { ...COMPLETED, executionId: 'explicit', readViews: candidateViews }), { status: calls.length === 1 ? 202 : 200 });
+  }) as typeof fetch;
+  const result = await ask.execute(ctx({ question: QUESTION, 'read-context': 'kb_candidate_parent' }));
+  assert.deepEqual(JSON.parse(JSON.stringify(result.readViews)), candidateViews);
+  assert.deepEqual(calls, [{ method: 'POST', header: 'kb_candidate_parent' }, { method: 'GET', header: null }]);
+
+  globalThis.fetch = (async () => new Response(JSON.stringify({ executionId: 'old', status: 'running' }), { status: 202 })) as typeof fetch;
+  await assert.rejects(() => ask.execute(ctx({ question: QUESTION, 'read-context': 'kb_candidate_parent', 'no-wait': true })), /readViews/);
+
+  let count = 0;
+  globalThis.fetch = (async (url: unknown) => {
+    if (!String(url).includes(ASK_API_PATH)) return new Response('{}', { status: 200 });
+    count++;
+    return new Response(JSON.stringify(count === 1
+      ? { executionId: 'changed', status: 'running', readViews: candidateViews }
+      : { ...COMPLETED, readViews: [{ ...candidateViews[0], readIdentity: 'wrong' }] }), { status: 200 });
+  }) as typeof fetch;
+  await assert.rejects(() => ask.execute(ctx({ question: QUESTION, 'read-context': 'kb_candidate_parent' })), (error: any) => error.code === 'KB_READ_CONTEXT_MISMATCH');
+  assert.equal(count, 2);
+} finally {
+  globalThis.fetch = originalFetch;
+  clearCliToken(HOST);
+}
+process.stdout.write('explicit Ask context contracts passed\n');
+
+
+// The inherited execution environment must not disable ordinary formal Ask with normal auth.
+const oldRequired = process.env.AE_KB_READ_CONTEXT_REQUIRED;
+const oldFile = process.env.AE_KB_READ_CONTEXT_FILE;
+setCliTokenManual('cli-test-token', HOST);
+try {
+  process.env.AE_KB_READ_CONTEXT_REQUIRED = '1';
+  process.env.AE_KB_READ_CONTEXT_FILE = '/missing-parent-file';
+  globalThis.fetch = (async () => new Response(JSON.stringify({ executionId: 'ordinary', status: 'running' }), { status: 202 })) as typeof fetch;
+  const response = await ask.execute(ctx({ question: QUESTION, 'no-wait': true }));
+  assert.equal(response.executionId, 'ordinary');
+} finally {
+  if (oldRequired === undefined) delete process.env.AE_KB_READ_CONTEXT_REQUIRED;
+  else process.env.AE_KB_READ_CONTEXT_REQUIRED = oldRequired;
+  if (oldFile === undefined) delete process.env.AE_KB_READ_CONTEXT_FILE;
+  else process.env.AE_KB_READ_CONTEXT_FILE = oldFile;
+  globalThis.fetch = originalFetch;
+  clearCliToken(HOST);
+}
+
+// Framework output must preserve the protocol mismatch code.
+setCliTokenManual('cli-test-token', HOST);
+try {
+  let responseCount = 0;
+  let errorOutput = '';
+  globalThis.fetch = (async (url: unknown) => {
+    if (!String(url).includes(ASK_API_PATH)) return new Response('{}', { status: 200 });
+    responseCount++;
+    return new Response(JSON.stringify(responseCount === 1
+      ? { executionId: 'mismatch-envelope', status: 'running', readViews: candidateViews }
+      : { ...COMPLETED, readViews: [{ ...candidateViews[0], readIdentity: 'changed' }] }), { status: 200 });
+  }) as typeof fetch;
+  process.stderr.write = ((chunk: string | Uint8Array) => { errorOutput += String(chunk); return true; }) as typeof process.stderr.write;
+  process.exit = ((code?: number) => { throw new Error(`exit:${code}`); }) as typeof process.exit;
+  await assert.rejects(() => runCommand(ask, { question: QUESTION, readContext: 'kb_candidate_parent' }, globalOptions), /exit:1/);
+  assert.equal(JSON.parse(errorOutput).error.code, 'KB_READ_CONTEXT_MISMATCH');
+} finally {
+  globalThis.fetch = originalFetch;
+  process.stderr.write = originalStderrWrite;
+  process.exit = originalExit;
+  clearCliToken(HOST);
+}
+
+setCliTokenManual('cli-test-token', HOST);
+try {
+  globalThis.fetch = (async (url: unknown) => String(url).includes(ASK_API_PATH)
+    ? new Response(JSON.stringify({ error: 'Forbidden candidate', code: 'KB_READ_CONTEXT_FORBIDDEN' }), { status: 403 })
+    : new Response('{}', { status: 200 })) as typeof fetch;
+  await assert.rejects(() => ask.execute(ctx({ question: QUESTION, 'read-context': 'kb_candidate_parent', 'no-wait': true })),
+    (error: any) => error.code === 'KB_READ_CONTEXT_FORBIDDEN');
+} finally {
+  globalThis.fetch = originalFetch;
+  clearCliToken(HOST);
+}

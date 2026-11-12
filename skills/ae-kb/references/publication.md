@@ -79,3 +79,48 @@ The first successful source-managed KB compilation now publishes automatically, 
 Text and Markdown members return changed hunks. Small, unambiguous CSV/TSV changes may additionally include `table` containing only changed rows. ZIP and URL/Feishu sources expose changed frozen members; PDF, Office, images, invalid UTF-8 and oversized content explicitly return metadata/limit status rather than a fabricated textual diff. No source URL is fetched during preview.
 
 Compatibility: deploy the matching server before using new paging flags. Old CLI requests continue to work on the new server. New flags against older servers fail explicitly with `KB_CANDIDATE_PAGING_UNSUPPORTED` when `page` or `filePage` is missing; the CLI never treats an unfiltered old response as a filtered result.
+
+## Evaluate a pending company KB candidate
+
+Use the same explicit `--sources '[{"scope":"company","name":"<verified name>"}]'` in two
+`kb read-context create` calls. Add `--candidate <candidateId>` to the candidate call only.
+Get the ID from publication status. Require the formal view to be snapshot-pinned and its
+non-null `versionId` to equal the candidate view's `baseVersion`; otherwise stop.
+Older Hosts may reject the candidate request; never fall back to a formal view.
+
+Use two fresh local Agent sessions with identical questions, model, prompt and retrieval budget.
+Give each session only its own context and keep the other session's history, answers, references
+and temporary files out of it. Use `+index`, `+grep` and `+read` with that session's
+`--read-context`. Save each creation response, associate each request with its context ID,
+and verify any returned `readView` against the creation identity. Empty grep results are
+valid no-hit evidence for that context; a failed request is not. Keep version identities,
+session IDs, initial settings, answers and cited paths. Compare and score after both sessions
+finish. Stop on a failed or expired context and restart both rounds if trying again. Release
+both contexts after success or failure using `kb read-context release --id`.
+
+The candidate reader accepts one active query per Host process and up to four file reads at a time.
+Its bounds are 1 MiB per file, 8 MiB of selected files and 20,000 lines per request.
+A busy or over-budget query fails explicitly; it does not return a partial comparison.
+Candidate queries count as preview events, outside formal consumption and core activity.
+Formal baseline queries still count as ordinary formal consumption.
+
+
+## Server-side Ask evaluation
+
+After creating the formal and candidate contexts above, use the same question and actual model with each:
+
+```bash
+ae-cli kb +ask --question '<question>' --model-id '<model-id>' --read-context '<formal-context>'
+ae-cli kb +ask --question '<question>' --model-id '<model-id>' --read-context '<candidate-context>' --no-wait
+ae-cli kb +ask-status --execution-id '<execution-id>'
+```
+
+Only submission carries the context Header. Polling uses your normal user credentials and the returned execution ID. Candidate sources may be omitted (only the bound company KB is selected); if supplied, pass exactly that one company KB. A formal context may select a non-empty subset of its bound immutable snapshots. Execution-owned Agent/Ask/automation contexts cannot start another Ask. An older Host or Sandbox that cannot preserve explicit identities fails; do not retry against current published content.
+
+Each Ask creates an independent sandbox session, private working directory and task credential. Run questions serially, keep model/prompt/budget equal, and never pass another round's answer, history or temporary files as input. Compare the formal versionId with candidate baseVersion before starting. Save the creation response and each submission's readViews; match every poll/result to that identity, including sources: [] on a successful no-hit answer. Missing or changed identities invalidate the comparison. Default waiting validates submission/poll identity consistency; asynchronous callers must perform that comparison themselves.
+
+The task does not replace or release your source context. Finish all tasks before releasing it; source release/expiry invalidates unfinished work. Contexts expire after 15 minutes and are not extended; Ask retains its existing 5-minute execution timeout and platform turn limit. If a context expires or any question fails, stop the comparison, clean up your contexts and start both rounds afresh if needed. Candidate tools run serially and retain the per-request budgets above; 429/413 is an execution failure, not no-hit or a partial answer.
+
+Results preserve answer, sources, readViews, modelUsage and modelId. Candidate sources include candidateId, baseVersion and readIdentity, with versionId/versionNumber null. They do not provide a historical reference; +ask-status --source-index fails explicitly for them. Saved results remain available to the execution owner with current company KB consume/edit permission after approval ends or contexts are released, but do not reopen candidate source files. Normal formal historical citations keep their existing behavior.
+
+Candidate Ask and its internal retrieval are non-core preview activity; model usage is still recorded. The formal comparison round still counts as ordinary formal consumption and core Ask activity. This does not add candidate consumption to ordinary platform conversations or automations, or provide automatic grading/approval.

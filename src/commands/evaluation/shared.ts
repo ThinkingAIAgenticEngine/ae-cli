@@ -3,6 +3,7 @@ import { EvalApiError, evalRequest, evalDownloadFile } from '../../core/eval-cli
 import { CliValidationError } from '../../core/errors.js';
 import { getCliToken } from '../../core/cli-token.js';
 import { isAeSandboxRuntime } from '../../core/sandbox-runtime.js';
+import { readExternalCliToken } from '../../core/external-cli-token.js';
 import { requestSandboxEvaluationSession } from '../../core/eval-session.js';
 import { resolveEvaluationHost } from '../../core/eval-endpoint.js';
 import { buildEvaluationOnboardingPayload, type EvalOnboardingPayload } from '../../core/eval-onboarding.js';
@@ -68,6 +69,8 @@ async function resolveEvalHeaders(
   environment: NodeJS.ProcessEnv = process.env,
   teProjectId?: string,
 ): Promise<Record<string, string>> {
+  if (readExternalCliToken(ctx.host())?.taskContext && environment.AE_EVAL_ACCESS_TOKEN?.trim())
+    throw new CliValidationError('Managed executions must use the current user evaluation session, not AE_EVAL_ACCESS_TOKEN.', { code: 'EVAL_MANAGED_TOKEN_OVERRIDE' });
   if (environment.AE_EVAL_ACCESS_TOKEN?.trim()) return evalHeaders(environment);
   if (!isAeSandboxRuntime()) {
     const baseUrl = resolveEvalBaseUrl(ctx, environment);

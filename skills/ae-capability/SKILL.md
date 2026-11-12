@@ -1,6 +1,6 @@
 ---
 name: ae-capability
-version: 1.3.16
+version: 1.3.17
 description: "AE capability gateway discovery and generic invocation with ae-cli. Use when the user needs to list or search available capabilities, inspect an unknown capability schema/risk/auth contract, optionally validate complex input or dry-run before execute, or invoke a long-tail capability that has no curated ae-cli command. Always discover and inspect before composing input; never guess capability IDs or input fields. Prefer on-demand validate OR dry-run — do not stack both by default."
 ---
 
@@ -31,16 +31,20 @@ Hard rule: before running gateway-backed `ae-cli` commands, maintain the current
 Create or update the context file when starting a CLI-backed task and whenever the user's CLI purpose changes. Reuse it while the purpose and model remain unchanged. Use the user's original language for `session_initial_intent`, `user_intent`, and `session_goal`; for example, use Chinese text for a Chinese user request. At minimum, include:
 
 - `agent_client`
-- `agent_model` whenever the current model can be confirmed
+- `agent_model` (required by this Skill; follow the preflight below)
 - stable `agent_session_id`
 - `agent_turn_id` when available
 - `intent_source: "agent_context_file"`
 - concise `user_intent` for the current CLI-triggering purpose
 - current `session_goal`
 
-The Agent must actively obtain the current model identifier and write it explicitly as `agent_model` in the context file. Use trusted runtime context or bounded metadata for the exact current session and turn; for example, Codex's current-session `turn_context.model`. Do not rely solely on a model environment variable being present. Never infer the model from the Agent/product name, a configured default, or another session. This requirement applies to every Agent client. Update the file when the model changes, even if the CLI purpose stays the same.
+**Required Agent preflight:** the Agent must report `agent_model` before every gateway-backed CLI call. This is an Agent responsibility for both AE Agent and external clients, not a required CLI argument.
 
-If the model cannot be confirmed, omit `agent_model`, set `context_capture_status: "partial"`, and continue; do not block or delay the business command or ask the user to identify the model just for telemetry. Once confirmed, write the model and remove the stale partial marker so the CLI can compute capture status from the remaining fields.
+1. Confirm the model actually serving the current session and turn from trusted runtime context or bounded current-session metadata (for example, Codex's `turn_context.model`). Do not query or translate AE configuration `modelId` or `currentModelId` to populate telemetry. Never infer the model from the Agent/product name, a configured default, or another session. A missing model environment variable does not waive this step.
+2. Write the confirmed model explicitly as `agent_model` in the context file. Update the file when the model changes, even if the CLI purpose stays the same. Do not leave the example placeholder in the file.
+3. Read back the effective context file after writing it and verify `agent_model` matches the confirmed current model before invoking the CLI. Respect `TA_CLI_CONTEXT_FILE` when set; otherwise the CLI searches from the working directory upward, checking `.ta/cli-agent-context.json` before `.ae/cli-agent-context.json` in each directory. Update the file that actually wins, not a shadowed copy. Reuse a verified file only while the model and purpose remain unchanged.
+
+Only if trusted current-session information cannot confirm the model after this check, omit `agent_model`, set `context_capture_status: "partial"`, and continue; do not block or delay the business command or ask the user to identify the model just for telemetry. Do not fabricate a model to satisfy this Skill. The CLI accepts a missing model, including from older callers without a partial marker. Once confirmed, write the model and remove the stale partial marker so the CLI can compute capture status from the remaining fields.
 
 Write this JSON object to `.ae/cli-agent-context.json`:
 

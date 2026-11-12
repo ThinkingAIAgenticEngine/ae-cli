@@ -21,6 +21,6 @@ The command does not accept `limit` or `offset` and performs exactly one complet
 
 Export projection always retains `resource_type`, `resource_key`, `display_name`, `authentication_status`, `heat_count90d`, `user_count90d`, and `impact_degree`; `--fields` can add or remove only optional descriptive and owner fields.
 
-Use the sidecar `snapshot_hash` with `update --expected-snapshot-hash` when the selected asset set was derived from this export.
+The sidecar `snapshot_hash` identifies the exported authentication set for reference only. Updates use explicit asset references and do not validate a project-wide snapshot.
 
 Do not use this export to rank assets locally and present those rows as recommendations.

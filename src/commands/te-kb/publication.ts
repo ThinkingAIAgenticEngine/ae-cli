@@ -198,7 +198,15 @@ function createBody(ctx: RuntimeContext) {
       ))
   )
     throw new CliValidationError('--sources must be an array of {scope,name}');
+  const candidateId = ctx.str('candidate');
+  if (candidateId || ctx.has?.('candidate')) {
+    if (!/^[A-Za-z0-9_-]{1,191}$/.test(candidateId))
+      throw new CliValidationError('Invalid --candidate');
+    if (!Array.isArray(sources) || sources.length !== 1 || sources[0].scope !== 'company')
+      throw new CliValidationError('--candidate requires exactly one company KB in --sources');
+  }
   return {
+    ...(candidateId ? { candidateId } : {}),
     ...(sources ? { sources } : {}),
     ...(ctx.str('locale') ? { locale: ctx.str('locale') } : {}),
   };
@@ -208,13 +216,14 @@ export const readContextCreate: Command = {
   resource: 'read-context',
   command: 'create',
   risk: 'read',
-  description: 'Pin the current authorized formal KB views for subsequent reads (15 minutes).',
+  description: 'Pin authorized formal KB views or one pending candidate for subsequent reads (15 minutes).',
   flags: [
     {
       name: 'sources',
       type: 'json',
       desc: 'Optional array of {scope,name}; omit to discover authorized published KBs',
     },
+    { ...candidate, required: false },
     { name: 'locale', type: 'string', desc: 'zh | en | ja | ko' },
   ],
   validate: (ctx) => {
@@ -225,7 +234,23 @@ export const readContextCreate: Command = {
     url: ctx.host().replace(/\/$/, '') + `${root}/read-contexts`,
     body: createBody(ctx),
   }),
-  execute: (ctx) => kbApi(ctx, 'POST', `${root}/read-contexts`, {}, createBody(ctx), options),
+  execute: async (ctx) => {
+    const body = createBody(ctx);
+    const result = await kbApi(ctx, 'POST', `${root}/read-contexts`, {}, body, options);
+    if (
+      body.candidateId &&
+      (!result?.readContextId ||
+        !Array.isArray(result.views) ||
+        result.views.length !== 1 ||
+        result.views[0]?.viewKind !== 'candidate' ||
+        result.views[0]?.candidateId !== body.candidateId)
+    )
+      throw new CliApiError('This server did not return the requested candidate read context.', {
+        code: 'KB_CANDIDATE_READ_CONTEXT_UNSUPPORTED',
+        hint: 'Use a Host that supports candidate read contexts.',
+      });
+    return result;
+  },
 };
 export const readContextRelease: Command = {
   service: 'kb',

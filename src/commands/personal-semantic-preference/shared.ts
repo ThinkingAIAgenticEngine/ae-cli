@@ -2,16 +2,43 @@ import {
   createCapabilityCommand,
   type CreateCapabilityCommandConfig,
 } from '../../core/capability-command.js';
-import type { RuntimeContext } from '../../framework/types.js';
+import type { Command, RuntimeContext } from '../../framework/types.js';
 
 type PersonalSemanticPreferenceCommandConfig = Omit<CreateCapabilityCommandConfig, 'cliService' | 'gatewayDomain'>;
 
-export function createPersonalSemanticPreferenceCommand(config: PersonalSemanticPreferenceCommandConfig) {
-  return createCapabilityCommand({
+export function createPersonalSemanticPreferenceCommand(config: PersonalSemanticPreferenceCommandConfig): Command {
+  const projectCommand = createCapabilityCommand({
     ...config,
     cliService: 'personal-semantic-preference',
     gatewayDomain: 'analysis',
   });
+  if (!['list', 'get', 'add', 'update', 'delete'].includes(config.command)) return projectCommand;
+  const globalCommand = createCapabilityCommand({
+    ...config,
+    capabilityId: config.capabilityId.replace('.personal_context.', '.global_personal_context.'),
+    cliService: 'personal-semantic-preference',
+    gatewayDomain: 'analysis',
+  });
+  const scoped = (ctx: RuntimeContext) => ctx.num('project-id') === -1 ? globalCommand : projectCommand;
+  return {
+    ...projectCommand,
+    validate: (ctx) => {
+      const projectId = ctx.num('project-id');
+      if (!Number.isSafeInteger(projectId) || (projectId !== -1 && projectId <= 0)) {
+        throw new Error('--project-id must be a positive integer or -1 for global personal semantics.');
+      }
+      projectCommand.validate?.(ctx);
+      if (projectId === -1 && ['add', 'update'].includes(config.command)) {
+        const refs = optionalResourceRefs(ctx);
+        if (refs?.some((ref) => ref.resource_type !== 'project')) {
+          throw new Error('Global asset_context references must use resource_type=project and an authorized project ID.');
+        }
+      }
+    },
+    validateInput: (ctx) => scoped(ctx).validateInput!(ctx),
+    dryRun: (ctx) => scoped(ctx).dryRun!(ctx),
+    execute: (ctx) => scoped(ctx).execute(ctx),
+  };
 }
 
 export function optionalString(ctx: RuntimeContext, name: string): string | undefined {
@@ -65,6 +92,9 @@ export function optionalResourceRefs(ctx: RuntimeContext): ResourceRef[] | undef
       throw new Error('--resource-refs items must contain only resource_type, resource_key, and display_name.');
     }
     const ref = item as Record<string, unknown>;
+    if (typeof ref.resource_type === 'string' && ref.resource_type.trim().toLowerCase() === 'virtual_property') {
+      throw new Error('Virtual properties use resource_type=event_property or user_property and the canonical property name. Copy resource_type/resource_key from analysis-meta catalog list; do not use a virtual property ID.');
+    }
     if (typeof ref.resource_type !== 'string'
       || !/^[a-z][a-z0-9_]{0,63}$/i.test(ref.resource_type.trim())) {
       throw new Error('resource_type must use lower snake_case.');

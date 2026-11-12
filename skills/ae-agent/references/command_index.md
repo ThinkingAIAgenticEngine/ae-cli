@@ -32,3 +32,14 @@ This index provides command-level risk metadata for Agent distribution and gener
 | `ae-cli agent resource-package download` | CLI-token resource package REST | read | resource-package.md |
 | `ae-cli agent resource-package cancel` | CLI-token resource package REST | high-risk-write | resource-package.md |
 | `ae-cli agent resource-package retry` | CLI-token resource package REST | write | resource-package.md |
+
+## A2A invocation
+
+| CLI command | Transport | Risk | Reference |
+| --- | --- | --- | --- |
+| `ae-cli agent a2a +card` | A2A 1.0 Bearer CLI token | read | a2a.md |
+| `ae-cli agent a2a +send` | A2A 1.0 JSON-RPC | write | a2a.md |
+| `ae-cli agent a2a +get` | A2A 1.0 JSON-RPC | read | a2a.md |
+| `ae-cli agent a2a list` | A2A 1.0 JSON-RPC | read | a2a.md |
+| `ae-cli agent a2a cancel` | A2A 1.0 JSON-RPC | high-risk-write | a2a.md |
+| `ae-cli agent a2a delete-context` | A2A context lifecycle extension | high-risk-write | a2a.md |

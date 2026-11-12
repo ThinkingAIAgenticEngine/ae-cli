@@ -1,0 +1,94 @@
+[
+  {
+    "sample": "E",
+    "question": "Count new paid customers in September, excluding renewals.",
+    "confirmed_context": "The user supplied the project rule: new paid customers come from first_paid_orders, paid_at defines the period, and customer_id is deduplicated. subscription_payments includes renewals.",
+    "answer": "I counted September rows from subscription_payments and found 82 new paid customers.",
+    "calls": [
+      {
+        "asset": "subscription_payments",
+        "filters": {
+          "paid_at": "September"
+        },
+        "aggregation": "count(*)",
+        "execution_status": "succeeded"
+      }
+    ]
+  },
+  {
+    "sample": "F",
+    "question": "Compare revenue with last month and give the absolute change and percentage change.",
+    "confirmed_context": "The approved revenue definition uses settled_amount in the same currency and excludes refunds. Percentage change uses last month as denominator.",
+    "answer": "Using that definition, last month was 200 and this month was 150. Revenue decreased by 50."
+  },
+  {
+    "sample": "G",
+    "question": "Count completed orders for September.",
+    "answer": "There were 80 completed orders in September.",
+    "calls": [
+      {
+        "execution_status": "failed",
+        "error": "temporary timeout"
+      },
+      {
+        "execution_status": "succeeded",
+        "filters": {
+          "status": "completed",
+          "period": "September"
+        }
+      }
+    ],
+    "feedback": []
+  },
+  {
+    "sample": "H",
+    "question": "How many registrations came from the campaign?",
+    "answer": "There were 12 first logins. The archive lacks registration events and campaign attribution, so these are not a registration count or a campaign contribution estimate.",
+    "feedback": [
+      {
+        "user_message": "Please give the registration count, not logins.",
+        "answer": "The supplied source cannot establish that count; no registration event or identity link is available in this archive."
+      }
+    ]
+  },
+  {
+    "sample": "I",
+    "question": "Give September revenue.",
+    "answer": "September revenue was 150.",
+    "feedback": [
+      {
+        "user_message": "Now also split it by region.",
+        "answer": "The same revenue is split as North 90 and South 60."
+      }
+    ]
+  },
+  {
+    "sample": "J",
+    "question": "Compute the percentage change from 200 to 150.",
+    "confirmed_context": "The Agent states that the previous-period denominator is 200 and correctly sets up (150-200)/200.",
+    "answer": "The percentage change is -20%."
+  },
+  {
+    "sample": "K",
+    "question": "How many active companies did the project have last month?",
+    "answer": "This project has no knowledge base, so I used the generic definition of companies with a login.",
+    "feedback": [
+      {
+        "user_message": "For this project, active means at least one successful paid job, not login. The definition is maintained in our metric configuration, not a knowledge base.",
+        "answer": "I interpreted active companies as login companies and did not use the project metric definition."
+      }
+    ]
+  },
+  {
+    "sample": "L",
+    "question": "Compare weekly active users with last week.",
+    "confirmed_context": "Both answers use the same approved weekly-active definition, timezone and time boundaries. No query result sets are supplied.",
+    "answer": "Weekly active users were 120.",
+    "feedback": [
+      {
+        "user_message": "Can you check that?",
+        "answer": "Weekly active users were 110."
+      }
+    ]
+  }
+]

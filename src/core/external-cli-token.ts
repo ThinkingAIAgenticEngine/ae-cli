@@ -15,6 +15,13 @@ export interface ExternalCliToken {
   url: string;
   token: string;
   source: 'environment-cli-token' | 'file-cli-token';
+  taskContext?: {
+    version: 1;
+    grant: string;
+    executionId: string;
+    sandboxId: string;
+    companyId: string;
+  };
 }
 
 let explicitTokenFile: string | undefined;
@@ -55,15 +62,29 @@ export function readExternalCliToken(hostOverride?: string): ExternalCliToken | 
     let data: any;
     try {
       const stat = fs.statSync(file);
-      if (!stat.isFile() || stat.size > 64 * 1024) throw new Error();
+      if (!stat.isFile() || stat.size > 96 * 1024) throw new Error();
       data = JSON.parse(fs.readFileSync(file, 'utf8'));
     } catch {
-      throw new ExternalCliTokenError('The external CLI token file must be a readable JSON file no larger than 64 KiB.');
+      throw new ExternalCliTokenError('The external CLI token file must be a readable JSON file no larger than 96 KiB.');
     }
     if (!data || typeof data !== 'object' || Array.isArray(data)) {
       throw new ExternalCliTokenError('The external CLI token file must contain an object with url and token.');
     }
+    if (data.blocked !== undefined) {
+      const code = ['PI_CLI_NOT_READY', 'PI_CLI_AUTH_REQUIRED', 'PI_CLI_PERMISSION_DENIED', 'PI_CLI_TIMEOUT'].includes(data.blocked) ? data.blocked : 'PI_CLI_NOT_READY';
+      throw new ExternalCliTokenError('The runtime could not prepare CLI credentials for this execution.', code);
+    }
     entry = credential(data.url, data.token ?? data['cli-token'], 'file-cli-token');
+    if (data.taskContext !== undefined) {
+      const context = data.taskContext;
+      if (!context || typeof context !== 'object' || Array.isArray(context) || context.version !== 1
+        || typeof context.grant !== 'string' || context.grant.length > 65_536 || !/^[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/.test(context.grant)
+        || ['executionId', 'sandboxId', 'companyId'].some(key => typeof context[key] !== 'string' || !/^[^\s\x00-\x1f\x7f]{1,191}$/.test(context[key]))) {
+        throw new ExternalCliTokenError('The runtime CLI context is invalid.');
+      }
+      entry.taskContext = { version: 1, grant: context.grant, executionId: context.executionId, sandboxId: context.sandboxId, companyId: context.companyId };
+      diagnosticSecrets.add(context.grant);
+    }
   } else if (process.env.AE_CLI_TOKEN !== undefined) {
     entry = credential(process.env.AE_CLI_TOKEN_HOST, process.env.AE_CLI_TOKEN, 'environment-cli-token');
   } else if (process.env.AE_CLI_TOKEN_HOST !== undefined) {

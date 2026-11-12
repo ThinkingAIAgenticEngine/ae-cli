@@ -1,10 +1,12 @@
 ---
 name: ae-agent
-version: 2.1.2
-description: "AE Agent platform CLI for Agent, resource package import and export, notification, approval, archived conversation, model, MCP, Skill, attachment, and user-memory work. Use when managing these resources, browsing Agent markets, handling approval requests and tasks, restoring archived conversations, persisting user memory, or answering from user preferences, background, stable workflows, or historical conventions."
+version: 2.1.8
+description: "Invoke AE Agents through A2A with automatic CLI authorization; AE Agent platform CLI for Agent, resource package import and export, notification, approval, archived conversation, model, MCP, Skill, attachment, and user-memory work. Use when managing these resources, browsing Agent markets, handling approval requests and tasks, restoring archived conversations, persisting user memory, or answering from user preferences, background, stable workflows, or historical conventions."
 ---
 
 # ae-agent
+
+On upgraded 6.1 servers, `auth login` always uses UBA device authorization. In an agent shell, use `auth login --no-wait`, show `verification_url`, then resume with the same `--host` and returned `--device-code`. Keep the code unchanged: its `uba_` prefix pins the UBA issuer across processes; older codes use the supported legacy flow. Only an explicit missing UBA authorize endpoint permits legacy discovery. Never copy tokens or authorization codes into logs.
 
 > **CRITICAL — Before running any `ae-cli agent +<command>` command, you MUST first read the corresponding `references/<command>.md`.** The reference filename equals the command name without the leading `+`, for example `+add-mcp` -> `references/add-mcp.md`.
 > **CRITICAL — Before running hierarchical approval commands, read the matching resource reference: `approval-type.md`, `approval-request.md`, `approval-task.md`, or `approval-effect.md`.**
@@ -40,6 +42,10 @@ User memory commands live under the `memory` service:
 ```bash
 ae-cli memory +<command> [options]
 ```
+
+## A2A remote Agent invocation
+
+When the user provides an AE A2A link and asks to use that Agent, read [references/a2a.md](references/a2a.md). Use `ae-cli agent a2a +card`, `+send`, `+get`, `list`, `cancel`, and `delete-context` to delegate the task with automatic host-scoped CLI authorization. Never expose the underlying token.
 
 ## Global AE CLI Rules
 
@@ -85,7 +91,17 @@ Use `ae-agent` for all Agent platform resource work:
 
 If the user's intent is data analysis, audience management, metadata governance, TeamRuns, or knowledge bases, switch to `ae-analysis` / `ae-engage` / `ae-dataops` / `ae-team` / `ae-kb`. For AE analysis tasks with an active project scope, user requests to remember a wording, asset choice, working definition, or reusable project workflow belong to `ae-analysis` `personal-semantic-preference`, not the `memory` domain.
 
-## Tool Groups (100 commands)
+## Tool Groups (106 commands)
+
+### A2A invocation (6)
+
+Read [the A2A workflow](references/a2a.md) first.
+
+- `a2a +card` — read target capabilities with automatic CLI authorization
+- `a2a +send` — submit a task to the remote AE Agent
+- `a2a +get` — query task status and artifacts
+- `a2a list` — filter and paginate accessible tasks
+- `a2a cancel` / `a2a delete-context` — cancel a task or delete an owned context with high-risk confirmation
 
 ### Agents (6)
 
@@ -383,8 +399,8 @@ ae-cli workspace capability set --workspace-id <agent-space-id> --version <revis
 
 ## User Memory Notes
 
-- Only write memory after the user explicitly asks for future persistence, for example by asking to remember or save something, keep it for future conversations, use it next time, or set it as a default. A preference, personal fact, workflow instruction, or answer style is eligible memory content but is not by itself permission to persist it.
-- Do not use `memory +create` for a project-scoped AE analysis preference, asset choice, working definition, or reusable workflow. If the current Agent host supplies a project ID, or the conversation has resolved a project for an AE analysis task, switch to `ae-analysis` and use `personal-semantic-preference add|update`; reusable project workflows are `context_type=experience`. Use the memory domain only when no project scope is active or when the user explicitly asks for cross-project memory.
+- This section governs AgentSpace memory, not analysis personal semantics. For AgentSpace memory, only write after the user explicitly asks for future persistence, for example by asking to remember or save something, keep it for future conversations, use it next time, or set it as a default. A preference, personal fact, workflow instruction, or answer style is eligible memory content but is not by itself permission to persist it.
+- Do not use `memory +create` for a project-scoped AE analysis preference, asset choice, working definition, or reusable workflow. If the current Agent host supplies a project ID, or the conversation has resolved a project for an AE analysis task, switch to `ae-analysis` and use `personal-semantic-preference add|update`; reusable project workflows are `context_type=experience`. Analysis-related cross-project preferences, reusable workflows and default query projects use `personal-semantic-preference --project-id -1`; initialize global semantics before selecting a project, then project semantics before querying. Use AgentSpace memory for non-analysis memory only.
 - Requests scoped to the current conversation or task, such as "next", "for this task", or "in this conversation", must not call a memory write command unless the user also explicitly asks for future persistence. An explicit refusal such as "do not remember" or "do not save this" overrides every other cue. If persistence intent is ambiguous, ask for confirmation before writing.
 - After explicit persistence intent is established, create memory in the resolved AgentSpace and only report success after the write returns successfully.
 - Shared-space members submit candidates; Owner/Admin users may activate or review them. Never claim a candidate is active unless the response outcome says so.

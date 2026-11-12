@@ -1,5 +1,5 @@
 {
   "protocol": "ae-cli-runtime-capabilities",
   "version": 1,
-  "features": ["kb_read_context_v1"]
+  "features": ["kb_read_context_v1", "cli_direct_v1"]
 }

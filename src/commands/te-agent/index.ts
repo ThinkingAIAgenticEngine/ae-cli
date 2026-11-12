@@ -1,3 +1,5 @@
+import { a2aCard, a2aSend, a2aGet, a2aList, a2aCancel, a2aDeleteContext } from './a2a.js';
+export { a2aCard, a2aSend, a2aGet, a2aList, a2aCancel, a2aDeleteContext } from './a2a.js';
 /**
  * ae-cli agent command domain
  *
@@ -102,6 +104,7 @@ export {
 } from './resource-packages.js';
 
 const commands: Command[] = [
+  a2aCard, a2aSend, a2aGet, a2aList, a2aCancel, a2aDeleteContext,
   ...notificationCommands,
   // Agent CRUD
   listAgents, createAgent, updateAgent, delAgent, getAgent, getAgentContext,

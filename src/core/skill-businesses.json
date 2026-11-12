@@ -22,6 +22,11 @@
   "community": [
     "ae-community"
   ],
+  "experiment": [
+    "ae-experiment",
+    "ae-experiment-design",
+    "ae-experiment-insight"
+  ],
   "agent": [
     "ae-agent",
     "ae-ai-monitor",

@@ -5,6 +5,7 @@ import { Agent } from 'undici';
 import { getActiveHost, getConfigDir } from './config.js';
 import { peekCliToken } from './cli-token.js';
 import { isAeSandboxRuntime } from './sandbox-runtime.js';
+import { internalCallSourceHeaders } from './internal-call-source.js';
 import { shouldSkipUpdateCheck } from './update-check.js';
 import {
   evaluateCompat,
@@ -191,7 +192,7 @@ export async function fetchCliConfig(
     const options = {
       dispatcher,
       signal: controller.signal,
-      headers: { Accept: 'application/json', ...(external ? { 'cli-token': cliToken } : {}) },
+      headers: { Accept: 'application/json', ...(external ? { 'cli-token': cliToken } : {}), ...internalCallSourceHeaders() },
       ...externalCliTokenRequestOptions(url.toString()),
     };
     resp = await fetch(url.toString(), options);

@@ -60,6 +60,16 @@ test('review directly synchronizes AE after Common saves and then records the re
   assert.equal(calls[2].body.active, true);
   assert.equal(calls[3].body.input.version, '1');
 });
+test('evaluation receives the finding, improvement criterion and reviewer supplement unchanged', async () => {
+  const reason = 'Finding: The answer included renewals in new customers.\nSemantic clarification: New customers are first-time paying customers, not payment records.\nImprovement: Use first paid orders and deduplicate customers.';
+  current.ai_summary.reason = reason;
+  current.review = { supplement: 'Use the approved September reporting window.' };
+  await badCaseReview.execute(ctx);
+  assert.deepEqual(calls.find(c => c.path.startsWith('/agenteval/'))?.body, {
+    version: 1, active: true, question: 'q', answer: 'a', reason,
+    supplement: current.review.supplement,
+  });
+});
 test('failed AE synchronization retains the review and exposes a retryable error', async () => {
   failAE = true;
   const result = unwrapOutputData(await badCaseReview.execute(ctx));

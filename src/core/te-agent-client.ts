@@ -148,7 +148,7 @@ async function signRequest(
   // Choosing CLI-token authentication must not depend on legacy file permissions.
   // Authentication failures on this path never fall back to sandbox credentials.
   // These legacy routes require sandbox identity for authentication or workspace side effects.
-  const sandboxOnly = !hostOverride && new Set([
+  const sandboxEndpoint = new Set([
     '/api/sandbox/models',
     '/api/sandbox/models/select',
     '/api/sandbox/sync/push',
@@ -156,11 +156,13 @@ async function signRequest(
     '/api/sandbox/sync/pull',
     '/api/sandbox/sync/pull/candidates',
   ]).has(path.split('?')[0]);
+  const sandboxOnly = !hostOverride && sandboxEndpoint;
   const sandboxCred = external || (configuredHost && !sandboxOnly) ? null : tryLoadTeAgentSandboxCredentials();
 
   // --- Sandbox path: credentials complete ---
   if (authMode === 'auto' && !hostOverride && sandboxCred && sandboxCred.sandboxId && sandboxCred.sandboxSecretKey) {
     const headers: Record<string, string> = {
+      ...internalCallSourceHeaders(),
       'X-Sandbox-Id': sandboxCred.sandboxId,
       'X-Sandbox-Secret-Key': sandboxCred.sandboxSecretKey,
     };
@@ -198,6 +200,12 @@ async function signRequest(
     url: `${baseUrl.replace(/\/$/, '')}${path}`,
     headers: {
       'cli-token': cliToken,
+      ...(sandboxEndpoint && external?.taskContext ? {
+        'X-Task-CLI-Grant': external.taskContext.grant,
+        'X-Task-CLI-Execution': external.taskContext.executionId,
+        'X-Task-CLI-Company': external.taskContext.companyId,
+        'X-Task-CLI-Sandbox': external.taskContext.sandboxId,
+      } : {}),
       ...internalCallSourceHeaders(),
       ...contentTypeHeader,
     },

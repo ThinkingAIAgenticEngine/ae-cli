@@ -1,4 +1,5 @@
 import crypto from 'node:crypto';
+import { internalCallSourceHeaders } from './internal-call-source.js';
 import fs from 'node:fs';
 import path from 'node:path';
 import { getActiveHost, getFallbackCliToken, getConfigDir, listHosts, readSandboxCliTokenEntry } from './config.js';
@@ -165,7 +166,7 @@ async function generateCliToken(hostUrl: string, accessToken: string): Promise<s
   const url = `${hostUrl.replace(/\/+$/, '')}${CLI_TOKEN_GENERATE_PATH}`;
   const resp = await fetch(url, {
     method: 'GET',
-    headers: { Authorization: `bearer ${accessToken}` },
+    headers: { Authorization: `bearer ${accessToken}`, ...internalCallSourceHeaders() },
   });
   if (!resp.ok) {
     if (resp.status === 403) {
@@ -217,7 +218,7 @@ export async function validateCliTokenOnServer(
   try {
     resp = await fetch(url, {
       method: 'GET',
-      headers: { Accept: 'application/json', 'cli-token': cliToken },
+      headers: { Accept: 'application/json', 'cli-token': cliToken, ...internalCallSourceHeaders() },
       ...externalCliTokenRequestOptions(url),
     });
   } catch (error: any) {
@@ -261,7 +262,7 @@ async function renewCliTokenOnServer(hostUrl: string, cliToken: string, external
   if (!external) url.searchParams.set('cli-token', cliToken);
   const resp = await fetch(url.toString(), {
     method: 'GET',
-    headers: { Accept: 'application/json', ...(external ? { 'cli-token': cliToken } : {}) },
+    headers: { Accept: 'application/json', ...(external ? { 'cli-token': cliToken } : {}), ...internalCallSourceHeaders() },
     ...externalCliTokenRequestOptions(url.toString()),
     signal,
   });

@@ -1,5 +1,7 @@
 # personal-semantic-preference delete
 
+
+Scope: use a positive project ID for project personal semantics, or `--project-id -1` for private global analysis semantics. The CLI routes global CRUD to `business_semantics.global_personal_context.*`; existing positive-project capability IDs are unchanged. Zero and other negative IDs are invalid. Global scope is isolated by authenticated company and owner. A missing global capability is a deployment prerequisite, not an empty directory or permission to fall back to a project write.
 Soft-delete one personal semantic preference using optimistic locking.
 
 Use this only after explicit user confirmation to remove a saved personal preference.

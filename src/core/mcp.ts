@@ -7,6 +7,7 @@ import { logger } from './logger.js';
 import { PermissionError } from './errors.js';
 import { internalCallSourceHeaders } from './internal-call-source.js';
 import { externalCliTokenRequestOptions } from './external-cli-token.js';
+import { sourceLoggedFetch } from './source-logged-fetch.js';
 
 /** Extract structured permission details from a 403 response body. */
 async function permissionDetails(resp: Response): Promise<{ message: string; code?: string; hint?: string }> {
@@ -175,7 +176,7 @@ async function mcpRequest(
     ...buildAuthHeaders(token),
   };
 
-  const resp = await fetch(url, {
+  const resp = await sourceLoggedFetch(url, {
     method: 'POST',
     headers,
     body: stringifyJsonRequest(body),

@@ -1,3 +1,5 @@
+import { CliValidationError } from '../../core/errors.js';
+import { askIdentity } from './ask-identity.js';
 import type { Command, RuntimeContext } from '../../framework/types.js';
 import { kbApi } from '../../core/mcp-access.js';
 import { TeAgentApiError } from '../../core/te-agent-client.js';
@@ -51,6 +53,7 @@ export const ask: Command = {
   description:
     'Ask knowledge bases via LLM-powered retrieval (POST /agent/api/external/knowledge-bases/ask). Consumes platform tokens. Prefer +index -> +grep -> +read for deterministic, token-free lookup. By default, polls for completion; use --no-wait to return immediately with executionId.',
   flags: [
+    { name: 'read-context', type: 'string', required: false, desc: 'Use an existing formal snapshot or pending candidate context. Omit for existing published Ask behavior.' },
     {
       name: 'question',
       type: 'string',
@@ -87,12 +90,14 @@ export const ask: Command = {
     method: 'POST',
     url: `${ctx.host().replace(/\/$/, '')}${API_PATH}`,
     body: buildBody(ctx),
+    ...(ctx.str('read-context') ? { headers: { 'X-KB-Read-Context': ctx.str('read-context') } } : {}),
   }),
   execute: async (ctx) => {
     const noWait = ctx.bool('no-wait');
 
-    const submitResponse = (await kbApi(ctx, 'POST', API_PATH, {}, buildBody(ctx))) as {
+    const submitResponse = (await kbApi(ctx, 'POST', API_PATH, {}, buildBody(ctx), ctx.str('read-context') ? { preserveErrorMetadata: true } : {})) as {
       executionId: string;
+      readViews?: Record<string, unknown>[];
       status: string;
     };
 
@@ -102,15 +107,23 @@ export const ask: Command = {
 
     const executionId = submitResponse.executionId;
 
+    const identity = ctx.str('read-context') ? askIdentity(submitResponse.readViews) : undefined;
+
     if (noWait) {
       return {
         executionId,
         status: submitResponse.status,
+        ...(identity ? { readViews: submitResponse.readViews } : {}),
       };
     }
 
     const finalResponse = await pollUntilSettled(
-      (id) => kbApi(ctx, 'GET', API_PATH, { executionId: id }) as Promise<AskExecutionResponse>,
+      async (id) => {
+        const response = await kbApi(ctx, 'GET', API_PATH, { executionId: id }, undefined, identity ? { preserveErrorMetadata: true } : {}) as AskExecutionResponse;
+        if (identity && askIdentity(response.readViews) !== identity)
+          throw new CliValidationError('Ask response changed its version identity.', { code: 'KB_READ_CONTEXT_MISMATCH' });
+        return response;
+      },
       executionId,
     );
 

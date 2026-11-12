@@ -13,6 +13,7 @@ import { logger } from '../../core/logger.js';
 import { internalCallSourceHeaders } from '../../core/internal-call-source.js';
 import { SecureStoreAuthError } from '../../core/secure-store.js';
 import type { DryRunResult, RuntimeContext } from '../../framework/types.js';
+import { sourceLoggedFetch } from '../../core/source-logged-fetch.js';
 
 type DataopsApiMethod = 'GET' | 'POST';
 
@@ -198,7 +199,7 @@ export async function downloadDataopsApi(
   const host = resolveHost(ctx.host());
   const token = await getCliToken(host);
   const url = buildUrl(host, path, compactArgs(params));
-  const resp = await fetch(url, {
+  const resp = await sourceLoggedFetch(url, {
     method: 'GET',
     ...externalCliTokenRequestOptions(url),
     headers: {
@@ -267,7 +268,7 @@ async function dataopsRequest(
     options.body = JSON.stringify(body ?? {});
   }
 
-  const resp = await fetch(url, { ...options, ...externalCliTokenRequestOptions(url) });
+  const resp = await sourceLoggedFetch(url, { ...options, ...externalCliTokenRequestOptions(url) });
   const text = await resp.text();
   const data = parseResponseBody(text, url, resp.status, !resp.ok);
   logger.api(method, url, resp.status, body, data);

@@ -5,7 +5,8 @@ import { PermissionError } from "./errors.js";
 import { getCliToken } from "./cli-token.js";
 import { SecureStoreAuthError } from "./secure-store.js";
 import { safeJsonParse } from "./json-utils.js";
-import { externalCliTokenRequestOptions } from './external-cli-token.js';
+import { externalCliTokenRequestOptions, readExternalCliToken } from "./external-cli-token.js";
+import { internalCallSourceHeaders } from "./internal-call-source.js";
 
 function buildUrl(
   host: string,
@@ -261,6 +262,7 @@ async function fetchWithCliToken(
 ): Promise<any> {
   const headers = new Headers(init.headers);
   headers.set("cli-token", cliToken);
+  for (const [name, value] of Object.entries(internalCallSourceHeaders())) headers.set(name, value);
 
   const resp = await fetch(input, { ...init, headers, ...externalCliTokenRequestOptions(input) });
   if (options.responseType === "empty" && resp.status === 204) return null;
@@ -315,7 +317,7 @@ export async function getAuthHeaders(
   ctx: RuntimeContext,
 ): Promise<Record<string, string>> {
   const cliToken = await getCliToken(ctx.host());
-  return { "cli-token": cliToken };
+  return { "cli-token": cliToken, ...internalCallSourceHeaders() };
 }
 
 export async function kbApi(
@@ -327,16 +329,17 @@ export async function kbApi(
   options: KbApiOptions = {},
 ): Promise<any> {
   const upperMethod = method.toUpperCase();
+  const isAsk = upperMethod === 'POST' && /^\/(?:agent\/)?api\/external\/knowledge-bases\/ask$/.test(path);
   const isQuery = isKbQueryPath(upperMethod, path);
   const execution = isQuery ? readKbExecutionContext() : undefined;
   const host = execution ? (ctx.hostOverride?.() || execution.origin) : ctx.host();
   // A supplied explicit host must match the execution origin even for direct API callers.
   const selectedHost = execution && !ctx.hostOverride ? ctx.host() : host;
   const url = buildUrl(selectedHost, path, params);
-  const queryHeaders = isQuery ? kbReadHeaders(url, ctx.str('read-context')) : undefined;
+  const queryHeaders = isQuery || (isAsk && ctx.str('read-context')) ? kbReadHeaders(url, ctx.str('read-context')) : undefined;
   const init: RequestInit = {
     method: upperMethod,
-    headers: { 'Content-Type': 'application/json', ...queryHeaders },
+    headers: { 'Content-Type': 'application/json', ...queryHeaders, ...internalCallSourceHeaders() },
     body: upperMethod === 'GET' ? undefined : JSON.stringify(body ?? {}),
   };
   if (execution) {
@@ -344,10 +347,21 @@ export async function kbApi(
     const text = await response.text();
     if (!response.ok) {
       let code = 'KB_READ_CONTEXT_REQUEST_FAILED';
-      try { const value = responseErrorMetadata(safeJsonParse(text)).code; if (value?.startsWith('KB_READ_CONTEXT_')) code = value; } catch { /* Body-free errors. */ }
+      try { const value = responseErrorMetadata(safeJsonParse(text)).code; if (value && /^KB_(READ_CONTEXT|CANDIDATE)_/.test(value)) code = value; } catch { /* Body-free errors. */ }
       throw new KbHttpError(code, code, response.status);
     }
     return parseKbResponse(response, text, { ...options, redactErrorDetails: true });
+  }
+  // Bind usage attribution to this run without changing the CLI user's business authority.
+  if (upperMethod === 'POST' && /^\/(?:agent\/)?api\/external\/knowledge-bases\/(read|grep|index)$/.test(path)) {
+    const task = readExternalCliToken(host)?.taskContext;
+    if (task) init.headers = {
+      ...init.headers,
+      'X-Task-CLI-Grant': task.grant,
+      'X-Task-CLI-Execution': task.executionId,
+      'X-Task-CLI-Company': task.companyId,
+      'X-Task-CLI-Sandbox': task.sandboxId,
+    };
   }
   return requestWithCliToken(
     host,

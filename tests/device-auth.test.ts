@@ -109,6 +109,37 @@ await test('authorizeDevice: success returns DeviceAuthorizeResponse', async () 
   } finally { restore(); }
 });
 
+for (const [host, origin] of [
+  ['https://AE.EXAMPLE.test:443/platform/', 'https://ae.example.test'],
+  ['http://ae.example.test:80/platform/', 'http://ae.example.test'],
+  ['https://ae.example.test:8443/platform/', 'https://ae.example.test:8443'],
+  ['http://[::1]:8080/platform/', 'http://[::1]:8080'],
+  ['https://[2001:db8::1]:443/platform/', 'https://[2001:db8::1]'],
+]) {
+  await test(`authorizeDevice: UBA declares the canonical origin for ${host}`, async () => {
+    const restore = mockFetch(async (input, init) => {
+      assert.equal(String(input), `${host.replace(/\/+$/, '')}/v1/ta/cli/auth/device/authorize`);
+      assert.equal(new Headers(init?.headers).get('X-CLI-Verification-Origin'), origin);
+      assert.equal(new Headers(init?.headers).get('Authorization'), null);
+      assert.equal(init?.redirect, 'error');
+      return new Response(JSON.stringify(MOCK_AUTH_RESP));
+    });
+    try {
+      await authorizeDevice(host, 'uba');
+    } finally { restore(); }
+  });
+}
+
+await test('authorizeDevice: legacy does not declare a verification origin', async () => {
+  const restore = mockFetch(async (_input, init) => {
+    assert.equal(new Headers(init?.headers).get('X-CLI-Verification-Origin'), null);
+    return new Response(JSON.stringify(MOCK_AUTH_RESP));
+  });
+  try {
+    await authorizeDevice(`${HOST}/agent`, 'legacy');
+  } finally { restore(); }
+});
+
 // 2. authorizeDevice: HTTP non-200
 await test('authorizeDevice: HTTP 503 → throws error', async () => {
   const restore = mockFetch(async () => new Response('Service Unavailable', { status: 503 }));
@@ -190,7 +221,7 @@ await test('pollDeviceToken: network error → {status:"error"}', async () => {
     const result = await pollDeviceToken(HOST, 'dc-test');
     assert.equal(result.status, 'error');
     if (result.status === 'error') {
-      assert.ok(result.message.includes('ECONNREFUSED'), `expected to include ECONNREFUSED, actual: ${result.message}`);
+      assert.equal(result.message, 'Network error while polling authorization.');
     }
   } finally { restore(); }
 });

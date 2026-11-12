@@ -1,5 +1,7 @@
 # personal-semantic-preference get
 
+
+Scope: use a positive project ID for project personal semantics, or `--project-id -1` for private global analysis semantics. The CLI routes global CRUD to `business_semantics.global_personal_context.*`; existing positive-project capability IDs are unchanged. Zero and other negative IDs are invalid. Global scope is isolated by authenticated company and owner. A missing global capability is a deployment prerequisite, not an empty directory or permission to fall back to a project write.
 Get one personal semantic preference by ID.
 
 Use this command after `personal-semantic-preference list` identifies a likely current-user preference. Pass the returned directory title with `--title`; it is telemetry context only, and the lookup still uses `id`. Pass `--mark-used` when the preference is adopted for the answer, query path, or as the matched target for an update.

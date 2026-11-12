@@ -60,6 +60,66 @@ await test('validate accepts operation values handled by backend normalization',
   assert.doesNotThrow(() => flowSave.validate(ctxWithReq({ operation: ' Build ' })));
 });
 
+const abIndicator = (eventDefinition) => ({
+  operation: 'build',
+  nodes: [{
+    id: 'ab',
+    type: 'ab_split_flow',
+    config: {
+      indicatorsDef: [{
+        indicatorsUuid: 'metric-1',
+        name: 'Maximum payment amount',
+        completionIndicatorType: 0,
+        touch_cycle_num: 1,
+        touch_cycle_num_unit: 'day',
+        eventDefinition,
+      }],
+    },
+  }],
+});
+
+await test('validate accepts complete semantic AB indicator comparisons', () => {
+  assert.doesNotThrow(() => flowSave.validate(ctxWithReq(abIndicator({
+    type: 'event',
+    event: 'payment',
+    aggregation: 'max',
+    property: 'pay_amount',
+    operator: 'gt',
+    value: 0,
+    filters: { relation: 'and', items: [{ field: 'gold', operator: 'gt', values: [20] }] },
+  }))));
+});
+
+await test('validate rejects AB indicator without aggregate operator', () => {
+  assert.throws(() => flowSave.validate(ctxWithReq(abIndicator({
+    type: 'event', event: 'payment', aggregation: 'max', property: 'pay_amount', value: 0,
+  }))), /eventDefinition\.operator must be one of/);
+});
+
+await test('validate rejects AB indicator property filter without operator', () => {
+  assert.throws(() => flowSave.validate(ctxWithReq(abIndicator({
+    type: 'event', event: 'payment', aggregation: 'max', property: 'pay_amount',
+    operator: 'gt', value: 0,
+    filters: { relation: 'and', items: [{ field: 'gold', values: [20] }] },
+  }))), /filters\.items\[0\]\.operator must be one of/);
+});
+
+await test('validate rejects AB indicator comparison filter without values', () => {
+  assert.throws(() => flowSave.validate(ctxWithReq(abIndicator({
+    type: 'event', event: 'payment', aggregation: 'max', property: 'pay_amount',
+    operator: 'gt', value: 0,
+    filters: { relation: 'and', items: [{ field: 'gold', operator: 'gt' }] },
+  }))), /filters\.items\[0\]\.values must be an array with at least 1 item/);
+});
+
+await test('validate rejects conflicting semantic and legacy AB indicator events', () => {
+  const req = abIndicator({
+    type: 'event', event: 'payment', aggregation: 'count', operator: 'gt', value: 0,
+  });
+  req.nodes[0].config.indicatorsDef[0].event = { eventName: 'payment' };
+  assert.throws(() => flowSave.validate(ctxWithReq(req)), /cannot contain both event and eventDefinition/);
+});
+
 await test('dry-run uses the capability endpoint and stable input shape', async () => {
   setCliTokenManual('cli-test-token', HOST);
   const previousFetch = globalThis.fetch;

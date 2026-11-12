@@ -1,3 +1,4 @@
+import { askIdentity } from './ask-identity.js';
 import type { Command } from '../../framework/types.js';
 import { kbApi } from '../../core/mcp-access.js';
 import { kbExecutionContextRequired } from '../../core/kb-read-context.js';
@@ -62,9 +63,11 @@ export const askStatus: Command = {
         { code: 'KB_READ_CONTEXT_REFERENCE_FORBIDDEN' },
       );
     }
-    return kbApi(ctx, 'GET', API_PATH, {
+    const result = await kbApi(ctx, 'GET', API_PATH, {
       executionId,
       ...(sourceIndex !== undefined ? { sourceIndex } : {}),
-    });
+    }, undefined, { preserveErrorMetadata: true });
+    if (result.readViews !== undefined) askIdentity(result.readViews);
+    return result;
   },
 };

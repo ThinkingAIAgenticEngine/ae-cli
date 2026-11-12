@@ -158,18 +158,18 @@ try {
     assert.equal(sent.filter(call => call.url.includes('.upload/execute')).length, 1);
   });
 
-  await test('upload requires confirmation unless --yes is supplied', async () => {
+  await test('non-interactive upload requires confirmation unless --yes is supplied', async () => {
     const stdin = Object.getOwnPropertyDescriptor(process, 'stdin')!;
     try {
       const input = new PassThrough();
       Object.defineProperty(process, 'stdin', { configurable: true, value: input });
       reply = () => {
-        setImmediate(() => input.write('n\n'));
         return ok({ risk: 'high-risk-write' });
       };
       const result = await run('upload', inputs.upload, []);
       assert.equal(result.stdout, '');
-      assert.match(result.stderr, /Aborted/);
+      assert.equal(result.code, 1);
+      assert.equal(JSON.parse(result.stderr).error.code, 'CONFIRMATION_REQUIRED');
       input.destroy();
     } finally {
       Object.defineProperty(process, 'stdin', stdin);

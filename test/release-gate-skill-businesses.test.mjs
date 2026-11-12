@@ -112,11 +112,34 @@ test('a missing skills directory cannot pass the coverage check', (t) => {
 test('all supported components can explicitly own a distributed Skill', (t) => {
   const groups = {
     base: ['ae-capability'], analysis: ['ae-analysis'], dataops: ['ae-dataops'],
-    engage: ['ae-engage'], agent: ['ae-agent'], community: ['ae-community'],
+    engage: ['ae-engage'], agent: ['ae-agent'], community: ['ae-community'], experiment: ['ae-experiment'],
   };
   const root = fixture(t, groups);
-  for (const name of ['ae-capability', 'ae-dataops', 'ae-engage', 'ae-agent', 'ae-community']) {
+  for (const name of ['ae-capability', 'ae-dataops', 'ae-engage', 'ae-agent', 'ae-community', 'ae-experiment']) {
     write(root, `skills/${name}/SKILL.md`, `---\nname: ${name}\ndescription: "Workflow"\n---\n`);
+  }
+  assert.deepEqual(checkSkillBusinesses(root), { ok: true, findings: [] });
+});
+
+test('new experiment Skills from the distribution are blocked without component mappings', (t) => {
+  const root = fixture(t);
+  const names = ['ae-experiment', 'ae-experiment-design', 'ae-experiment-insight'];
+  for (const name of names) {
+    write(root, `skills/${name}/SKILL.md`, fs.readFileSync(path.join(ROOT, 'skills', name, 'SKILL.md'), 'utf8'));
+  }
+  const result = checkSkillBusinesses(root);
+  assert.equal(result.ok, false);
+  for (const name of names) {
+    assert.ok(result.findings.some((finding) => finding.level === 'P1'
+      && finding.msg.includes(`Skill '${name}' has no component mapping`)));
+  }
+});
+
+test('new experiment Skills pass with explicit experiment component mappings', (t) => {
+  const names = ['ae-experiment', 'ae-experiment-design', 'ae-experiment-insight'];
+  const root = fixture(t, { analysis: ['ae-analysis'], experiment: names });
+  for (const name of names) {
+    write(root, `skills/${name}/SKILL.md`, fs.readFileSync(path.join(ROOT, 'skills', name, 'SKILL.md'), 'utf8'));
   }
   assert.deepEqual(checkSkillBusinesses(root), { ok: true, findings: [] });
 });

@@ -1,4 +1,5 @@
 import { logger } from './logger.js';
+import { internalCallSourceHeaders } from './internal-call-source.js';
 import { open, unlink } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { CliValidationError } from './errors.js';
@@ -87,6 +88,7 @@ export async function evalRequest(options: EvalRequestOptions): Promise<any> {
 
   const headers: Record<string, string> = {
     ...options.headers,
+    ...internalCallSourceHeaders(),
     Accept: options.responseType === 'bytes' ? 'application/octet-stream, application/json' : 'application/json',
   };
   const isMultipart = options.body instanceof FormData;

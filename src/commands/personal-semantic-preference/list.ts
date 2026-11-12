@@ -8,7 +8,7 @@ export const personalSemanticPreferenceList = createPersonalSemanticPreferenceCo
   capabilityId: CAPABILITY_ID,
   description: 'List the current-user lightweight personal semantic preference catalog in one project.',
   flags: [
-    { name: 'project-id', type: 'number', required: true, desc: 'Numeric project ID.', alias: 'p', min: 1 },
+    { name: 'project-id', type: 'number', required: true, desc: 'Positive project ID, or -1 for current-user global personal semantics.', alias: 'p' },
   ],
   risk: 'read',
   buildInput: (ctx) => ({

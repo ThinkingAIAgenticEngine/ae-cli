@@ -13,7 +13,7 @@ ae-cli analysis-governance asset-authentication update --project-id <project_id>
 Large file command:
 
 ```bash
-ae-cli analysis-governance asset-authentication update --project-id <project_id> --authentication-status 1 --asset-file /tmp/selected-assets.jsonl --expected-snapshot-hash <snapshot_hash>
+ae-cli analysis-governance asset-authentication update --project-id <project_id> --authentication-status 1 --asset-file /tmp/selected-assets.jsonl
 ```
 
 Capability id: `governance.asset_authentication.update`.
@@ -26,9 +26,13 @@ Choose exactly one identity input:
 - `--asset-file` for JSONL rows containing `resource_type` and `resource_key`; extra export columns are ignored.
 - `--asset-type` with `--asset-ids` as a same-type convenience form.
 
-The CLI always normalizes the request to `asset_refs[]`. A bare `asset_ids[]` array is never sent to Common. When `expected_snapshot_hash` differs from the current authentication set, the complete update is rejected with `SNAPSHOT_CONFLICT`.
+The CLI always normalizes the request to `asset_refs[]`. A bare `asset_ids[]` array is never sent to Common. Updates affect only the explicitly selected assets. Unrelated project certification changes do not reject the update. Repeated authentication or revocation is a no-op and counts come from actual database changes. Concurrent opposite operations on the same asset follow database execution order.
 
 The response includes requested, resolved, changed, unchanged, and failed counts; retry only the returned failures.
+
+`--expected-snapshot-hash` is retained as a deprecated compatibility no-op: the CLI warns on stderr and does not send it. Updated servers also accept legacy `expected_snapshot_hash` inputs without project snapshot checks. Remove the option from existing scripts. Export `snapshot_hash` remains informational and is not an update precondition.
+
+Deploy the server fix before the CLI/Skill update. New CLI requests omit the optional hash and are accepted by older servers, but those servers still have the original locking behavior. Old clients remain accepted by the updated server; a stale hash no longer rejects their explicit asset updates.
 
 ## analysis-meta asset-authentication update
 

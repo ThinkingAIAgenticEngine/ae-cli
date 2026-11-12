@@ -47,18 +47,23 @@ export function getSandboxClusterInfoFilePath(): string {
  * Personal terminals / personal agents should return false so host compat-check runs.
  */
 export function isAeSandboxRuntime(): boolean {
+  return getAeSandboxDetectionReason() !== 'not_detected';
+}
+
+/** Describe the same runtime evidence used by source selection without exposing config contents. */
+export function getAeSandboxDetectionReason(): 'runtime_root_env' | 'cli_token_file' | 'not_detected' {
   if (process.env.SANDBOX_RUNTIME_ROOT) {
-    return true;
+    return 'runtime_root_env';
   }
   if (process.platform !== 'linux') {
-    return false;
+    return 'not_detected';
   }
   try {
     if (fs.existsSync(getSandboxCliTokenFilePath())) {
-      return true;
+      return 'cli_token_file';
     }
   } catch {
     // ignore
   }
-  return false;
+  return 'not_detected';
 }

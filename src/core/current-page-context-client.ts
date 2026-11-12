@@ -1,5 +1,6 @@
 import { getFromMainApp, TeAgentApiError } from './te-agent-client.js';
 import { safeJsonParse } from './json-utils.js';
+import { internalCallSourceHeaders } from './internal-call-source.js';
 
 /** Only this command may reuse the runtime's narrowly scoped page MCP grant. */
 export async function readCurrentPageContext(path: string): Promise<unknown> {
@@ -28,6 +29,7 @@ export async function readCurrentPageContext(path: string): Promise<unknown> {
         Accept: 'application/json, text/event-stream',
         'MCP-Protocol-Version': '2025-03-26',
         'X-TE-Page-Context-Token': grant!,
+        ...internalCallSourceHeaders(),
       },
       body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'tools/call',
         params: { name: 'read_current_page_context', arguments: {} } }),

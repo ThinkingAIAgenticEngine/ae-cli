@@ -30,7 +30,7 @@ const assetIdsFlag: Flag = {
 };
 const expectedSnapshotHashFlag: Flag = {
   name: 'expected-snapshot-hash', type: 'string', required: false,
-  desc: 'Optional snapshot_hash from the export sidecar. A mismatch rejects the whole update.',
+  desc: 'Deprecated compatibility no-op. Project snapshots are not checked; only specified assets are updated.',
 };
 
 export const analysisGovernanceAssetAuthenticationUpdate = createAnalysisGovernanceCapabilityCommand({
@@ -49,11 +49,15 @@ export const analysisGovernanceAssetAuthenticationUpdate = createAnalysisGoverna
     requestIdFlag,
   ],
   risk: 'write',
-  buildInput: (ctx) => compactInput({
-    project_id: ctx.num('project-id'),
-    authentication_status: ctx.num('authentication-status'),
-    asset_refs: assetRefsInput(ctx),
-    expected_snapshot_hash: optionalString(ctx, 'expected-snapshot-hash'),
-    request_id: optionalString(ctx, 'request-id'),
-  }),
+  buildInput: (ctx) => {
+    if (optionalString(ctx, 'expected-snapshot-hash') !== undefined) {
+      process.stderr.write('Warning: --expected-snapshot-hash is deprecated and ignored. Only the specified assets are updated; project snapshots are not checked.\n');
+    }
+    return compactInput({
+      project_id: ctx.num('project-id'),
+      authentication_status: ctx.num('authentication-status'),
+      asset_refs: assetRefsInput(ctx),
+      request_id: optionalString(ctx, 'request-id'),
+    });
+  },
 });

@@ -7,7 +7,7 @@ import test from 'node:test';
 import { fileURLToPath } from 'node:url';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-const expected = { protocol: 'ae-cli-runtime-capabilities', version: 1, features: ['kb_read_context_v1'] };
+const expected = { protocol: 'ae-cli-runtime-capabilities', version: 1, features: ['kb_read_context_v1', 'cli_direct_v1'] };
 
 function fixture(t, main) {
   const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'ae-capability-entry-'));

@@ -10,7 +10,7 @@ export const personalSemanticPreferenceDelete = createPersonalSemanticPreference
   capabilityId: 'business_semantics.personal_context.delete',
   description: 'Soft-delete one personal semantic preference using optimistic locking.',
   flags: [
-    { name: 'project-id', type: 'number', required: true, desc: 'Numeric project ID.', alias: 'p', min: 1 },
+    { name: 'project-id', type: 'number', required: true, desc: 'Positive project ID, or -1 for current-user global personal semantics.', alias: 'p' },
     { name: 'id', type: 'string', required: true, desc: 'Preference ID returned by list/add.' },
     { name: 'expected-revision', type: 'number', required: true, desc: 'Revision returned by the latest read.', min: 1 },
     { name: 'request-id', type: 'string', desc: 'Optional idempotency key; generated when omitted.', maxLength: 128 },

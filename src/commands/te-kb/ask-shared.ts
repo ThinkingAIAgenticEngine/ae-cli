@@ -39,6 +39,7 @@ export interface AskExecutionError {
 
 export interface AskExecutionResponse {
   executionId: string;
+  readViews?: Record<string, unknown>[];
   status: AskExecutionStatus;
   elapsedMs?: number;
   answer?: string;
@@ -125,6 +126,7 @@ export function transformCompletedResponse(response: AskExecutionResponse): Reco
     answer: response.answer ?? '',
     sources: response.sources ?? [],
   };
+  if (response.readViews !== undefined) result.readViews = response.readViews;
   if (response.modelId !== undefined) result.modelId = response.modelId;
   if (response.modelUsage !== undefined) result.modelUsage = response.modelUsage;
   if (response.toolCallCount !== undefined) result.toolCallCount = response.toolCallCount;

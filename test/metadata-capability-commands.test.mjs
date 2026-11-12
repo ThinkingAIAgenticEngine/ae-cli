@@ -20,6 +20,7 @@ let pass = 0;
 let fail = 0;
 
 async function test(name, fn) {
+  if (process.env.AE_CLI_TEST_FILTER && !name.includes(process.env.AE_CLI_TEST_FILTER)) return;
   try {
     await fn();
     pass += 1;
@@ -1775,13 +1776,23 @@ await test('analysis-governance asset-authentication update normalizes JSONL row
       JSON.stringify({ resource_type: 'event', resource_key: 'ai_model_usage' }),
       '',
     ].join('\n'));
-    const { url, body } = await captureCapabilityDryRun(cmd, {
-      projectId: 3,
-      authenticationStatus: 1,
-      assetFile,
-      expectedSnapshotHash: 'b'.repeat(64),
-      requestId: `cli_${'c'.repeat(32)}`,
-    });
+    const warnings = [];
+    const previousWrite = process.stderr.write;
+    let captured;
+    try {
+      process.stderr.write = (chunk) => { warnings.push(String(chunk)); return true; };
+      captured = await captureCapabilityDryRun(cmd, {
+        projectId: 3,
+        authenticationStatus: 1,
+        assetFile,
+        expectedSnapshotHash: 'b'.repeat(64),
+        requestId: `cli_${'c'.repeat(32)}`,
+      });
+    } finally {
+      process.stderr.write = previousWrite;
+    }
+    assert.match(warnings.join(''), /deprecated and ignored/);
+    const { url, body } = captured;
     assert.equal(url, `${HOST}/api/cli/analysis/v1/capabilities/governance.asset_authentication.update/dry-run`);
     assert.deepEqual(body.input, {
       project_id: 3,
@@ -1790,12 +1801,41 @@ await test('analysis-governance asset-authentication update normalizes JSONL row
         { resource_type: 'dashboard', resource_key: '4350' },
         { resource_type: 'event', resource_key: 'ai_model_usage' },
       ],
-      expected_snapshot_hash: 'b'.repeat(64),
       request_id: `cli_${'c'.repeat(32)}`,
     });
   } finally {
     await rm(dir, { recursive: true, force: true });
   }
+});
+
+await test('analysis-governance asset-authentication update omits the optional hash for older servers', async () => {
+  const cmd = await importCmd(
+    'src/commands/te-analysis/governance/asset-authentication-update.ts',
+    'analysisGovernanceAssetAuthenticationUpdate',
+  );
+  const warnings = [];
+  const previousWrite = process.stderr.write;
+  let captured;
+  try {
+    process.stderr.write = (chunk) => { warnings.push(String(chunk)); return true; };
+    captured = await captureCapabilityDryRun(cmd, {
+      projectId: 3,
+      authenticationStatus: 0,
+      assetType: 'report',
+      assetIds: ['42'],
+    });
+  } finally {
+    process.stderr.write = previousWrite;
+  }
+  assert.match(captured.body.input.request_id, /^cli_[0-9a-f]{32}$/);
+  assert.deepEqual(captured.body.input, {
+    request_id: captured.body.input.request_id,
+    project_id: 3,
+    authentication_status: 0,
+    asset_refs: [{ resource_type: 'report', resource_key: '42' }],
+  });
+  assert.deepEqual(warnings, []);
+  assert.match(cmd.flags.find(flag => flag.name === 'expected-snapshot-hash').desc, /Deprecated compatibility no-op/);
 });
 
 await test('analysis-governance rule list sends shared pagination', async () => {
