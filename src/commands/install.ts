@@ -18,7 +18,7 @@ export function registerInstall(program: Command): void {
           throw new Error('Installation supports --format json|table and --dry-run; --jq and --validate are not supported.');
         }
         const result = installVersion(pkg.version, { packageName: pkg.name,
-          host: opts.host || global.host, dryRun: global.dryRun,
+          host: opts.host || global.host, dryRun: global.dryRun, guideAccountSetup: true,
           progress: message => process.stderr.write(`${message}\n`) });
         report = result.report ?? failInstallation(report, result.ok ? 'environment' : result.stage,
           result.ok ? 'Installation result is unavailable.' : result.message, result.ok ? 'unknown' : result.cause);

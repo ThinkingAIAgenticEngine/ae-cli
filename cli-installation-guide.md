@@ -43,6 +43,16 @@ Each `commands` array describes the current installation plan; `skillsSources` l
 
 The managed synchronizer uses the verified package source. Replaying historical GitHub fallback or `skills add --copy` commands would bypass business selection and copy protection.
 
+## Start using AE in an Agent
+
+When a user asks you to install AE CLI or help them start using AE, continue in the same conversation after installation. If the user ran `npm install -g`, locate the executable for the requested version and run `ae-cli install --format json` with it to sync and verify the matching global Skills. For a user who already has a verified installation and asks to start using AE, begin with the authentication check.
+
+1. For installation, check `ok: true`, `dry_run: false`, `cli.verified: true`, and `skills.status: "success"`. Report the verified version and Skill count. For an explicit install-only request, an upgrade, or a dry run, report the result and finish. For failed or skipped Skill synchronization, report its status and any affected Skills.
+2. Read the optional `next_action` in a successful install report. For `check_authentication`, or when an older report omits `next_action`, run `ae-cli auth status --format json` with the verified executable. Use the user's supplied `--host` when applicable. If the check fails, explain the result and confirm the intended environment before starting signup or login.
+3. Use the user's request to choose the route. For an explicit request for AE onboarding, the new-user walkthrough, or signup, go directly to step 4 for a signed-out user in Japan, Korea, or the United States. In China, use step 5 for an existing account or share the trial request link from the install report. For an explicit request to sign in to an existing account, go to step 5. For `continue_using_ae` or a confirmed sign-in, continue using the signed-in environment. Ask **“Do you already have an AE account?”** only when a signed-out user asks to get started without specifying a route. In that case, open the Agent's native picker with **“Create an account and get started”** and **“Sign in to an existing account.”** Use chat choices if the host cannot show a picker.
+4. Start website onboarding with `ae-cli analysis onboarding run --browser system --format json`. Use `--region jp`, `--region kr`, or `--region us` to select the user's production market. Pass `--source` for the current AI tool. The CLI opens the system default browser. If opening fails, share the returned URL. Read the returned `skill_path` and reuse `session_id` in the same conversation.
+5. To sign in, use the original AE environment supplied or confirmed by the user. If its address is unknown, ask for it. Follow the device flow below. Once the session is authorized, confirm that `ae-cli auth status` reports the expected environment and signed-in account.
+
 ## Host and login
 
 `--host` is optional. It delegates status checks to the existing auth command; it does not independently save credentials or change the active host. Being logged out does not make a verified installation fail.
@@ -51,7 +61,7 @@ The managed synchronizer uses the verified package source. Replaying historical 
 ae-cli auth login --host <AE_HOST> --no-wait
 ```
 
-Show the returned `verification_url` to the user. After browser authorization:
+Open the returned `verification_url` in the system default browser once. In an Agent, use its native picker for **“I approved CLI access”** or **“I need help authorizing the CLI.”** If opening fails, give the user the link. After the user confirms, run these commands in the same turn.
 
 ```bash
 ae-cli auth login --host <AE_HOST> --device-code <DEVICE_CODE>
@@ -101,12 +111,12 @@ The newer command orchestrates the work; the installed target remains the host-r
 Prefer the unified installer. For a specific client or source diagnosis, advanced users can still invoke the external Skills tool directly:
 
 ```bash
-npx -y skills@1.5.12 add <INSTALLED_CLI_SKILLS_PATH> -g -y --agent codex
+npx -y skills@1.5.12 add <INSTALLED_CLI_SKILLS_PATH> -g -y --agent codex --skill ae-analysis
 npx -y skills@1.5.12 list -g --json
 ```
 
-Raw manual-tool output is not the AE installer's final result. Do not infer completeness from the list alone, delete unrelated Skills, or overwrite a source link to resolve a conflict.
+Choose the specific Skill you are troubleshooting. The onboarding Skill is loaded from the CLI package when a new user starts onboarding. Raw manual-tool output is not the AE installer's final result. Do not infer completeness from the list alone, delete unrelated Skills, or overwrite a source link to resolve a conflict.
 
 ## AI installation prompt
 
-> Install AE CLI and its matching Skills globally. Check Node.js 20+, npm, and npx without changing my default Node version. Run `npx @thinkingai/ae-cli@latest install --format json`, adding `--host <AE_HOST>` only if I supplied a host. No Agent selection is needed. Judge success by the installer's final `ok`, CLI verification, and global Skills verification. The installer handles unrelated project-only client diagnostics internally. If installation fails, report the named Skills and reasons; do not hide YAML errors, missing files, or actual installation failures. Do not modify project files, delete unrelated Skills, use sudo, overwrite an npm source link, or print/copy/save tokens. After successful installation, guide me through device-code login if needed and wait for browser authorization. Then use `ae-cli update --host <AE_HOST>` to match the environment. If an older CLI cannot finish its update, use `npx @thinkingai/ae-cli@latest update --host <AE_HOST>` to retain exact host-version selection. Report the installed version, global Skills directory, verified Skill count, and authentication status.
+> Install AE CLI and its matching global Skills with `npx @thinkingai/ae-cli@latest install --format json`. Use the version and registry I supply, if any. Report the verified version and Skill count, then follow [Start using AE in an Agent](#start-using-ae-in-an-agent) in this conversation.

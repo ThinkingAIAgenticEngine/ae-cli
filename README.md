@@ -2,7 +2,7 @@
 
 # ae-cli
 
-`ae-cli` is the command-line client for the ThinkingAI AgenticEngine (AE) platform. It provides stable, structured interfaces for both AI Agents and human operators across analytics and project configuration, metadata, tracking, local-data ingestion, Engage, DataOps, knowledge bases, Agent resources, user memory, and system administration.
+`ae-cli` is the command-line client for the ThinkingAI AgenticEngine (AE) platform. It provides stable, structured interfaces for both AI Agents and human operators across analytics, experimentation, project configuration, metadata, tracking, local-data ingestion, Engage, DataOps, knowledge bases, Agent resources, user memory, and system administration.
 
 The CLI is designed around:
 
@@ -20,8 +20,6 @@ The CLI is designed around:
 
 ## Installation
 
-For setup through Codex, Claude Code, Cursor, or another terminal-capable AI Agent, see the [AE CLI installation and upgrade guide](./cli-installation-guide.md).
-
 Install the public CLI and Agent Skills:
 
 ```bash
@@ -30,6 +28,8 @@ npx @thinkingai/ae-cli@latest install --format json
 ```
 
 The installer checks Node.js 20+, installs and verifies the CLI, then uses the bundled Skills tool to install matching global Skills for supported clients. First installation includes all bundled Skills when no business state has been confirmed. `--dry-run`, `--format json`, and optional `--host <AE_HOST>` are supported. Being logged out is not an installation failure. See the [installation guide](./cli-installation-guide.md).
+
+When installing through Codex, Claude Code, Cursor, or another terminal-capable Agent, give it the `--format json` command above and the installation guide. After verification, you can use guided website onboarding in Japan, Korea, and the United States. In China, sign in to an existing account using your AE environment URL. If you only ask to get started, the Agent can use a signed-in account or ask which account route you want. If you used `npm install -g`, run `ae-cli install --format json` first to verify the installed version and sync its Skills. [Agent installation prompt](./cli-installation-guide.md#ai-installation-prompt)
 
 The Skills teach supported coding Agents, including Claude Code, Codex, Cursor, and similar tools, how to discover and call `ae-cli`.
 
@@ -119,12 +119,13 @@ The table covers every current root command individually. Use `ae-cli --help` fo
 | Category | Root command | Purpose |
 |---|---|---|
 | Analysis and projects | `analysis` | Reports, dashboards, ad-hoc analysis, drilldowns, details, alerts, tags, and cohorts |
+| Analysis and projects | `experiment` | Atlas experiments, reports, traffic domains and layers, buckets, Features, metrics, and operation logs |
 | Analysis and projects | `analysis-meta` | Event/property catalogs, metrics, virtual metadata, tracking governance, and project analysis settings |
 | Analysis and projects | `analysis-governance` | Data-asset search, lineage, impact analysis, certification, and governance |
 | Analysis and projects | `project` | Project information, members, roles, permissions, entities, time zones, and handover settings |
 | Analysis and projects | `metadata` | Capability-backed data-table, property, and dimension-table binding operations |
 | Analysis and projects | `personal-semantic-preference` | Current-user semantic preferences for a project or across projects (`--project-id -1`) |
-| Analysis and projects | `project-semantic` | Asset-package export for building a project knowledge base |
+| Analysis and projects | `project-semantic` | Governed project semantics, knowledge-base asset packages, candidate validation, review, and publishing |
 | Observability | `ai-monitor` | Read traces, conversations, Bad Traces, metrics, cost, security and existing diagnosis reports; export verified ZIPs ([guide](skills/ae-ai-monitor/SKILL.md)) |
 | Data and tracking | `tracking` | Tracking plans, SDK samples, checks, ingestion diagnostics, code generation, and bundled wiki |
 | Data and tracking | `data-integration` | Inspect, plan, convert, upload, hand off, and reuse local CSV/JSON/Excel data |
@@ -166,6 +167,19 @@ Review collected analysis questions with `ae-cli analysis scenario list --projec
 To save and review Bad Cases, use `ae-cli analysis bad-case --help`. The Agent semantically deduplicates each batch against all historical states. Review in CLI or explicitly submit to the page; each batch reports discovered, duplicate, and new counts. Notes are optional. Approval adds the case to the bound AE dataset; revoking approval removes it. See the [Bad Case workflow](skills/ae-analysis/references/bad_case_review.md).
 
 Evaluation commands follow the current AE Host in personal terminals and sandboxes; use `--host` to select another host. Evaluation requests use the HTTP or HTTPS scheme configured for that AE Host, consistent with other AE commands. Legacy `--endpoint` and `AE_EVAL_BASE_URL` values may only match the current AE Host; other values fail before credentials are sent. Remove these settings and use `--host` to select a host. Outside a sandbox, export `AE_EVAL_ACCESS_TOKEN` with a platform session token; sandboxes can obtain a session automatically. See [endpoint and authentication rules](skills/ae-evaluation/SKILL.md#endpoint-and-authentication).
+
+### Scheduled Feature experiments
+
+For a configured Feature experiment, save its start time and optional fixed deadline, check readiness, then submit it:
+
+```bash
+ae-cli experiment experiment save --project-id 1 --req '{"expId":"exp_123"}' --start-time '2026-11-01T16:00:00+08:00' --fixed-end-time '2026-11-08T16:00:00+08:00'
+ae-cli experiment experiment ready-check --project-id 1 --exp-id exp_123
+ae-cli experiment experiment manage --project-id 1 --exp-id exp_123 --target-status pending
+ae-cli experiment experiment get --project-id 1 --exp-id exp_123
+```
+
+This submission path works on older and approval-capable servers. Saving a draft does not start it. On updated servers, Feature experiments require approval only when the project approver roster is non-empty; external experiments are exempt. Exempt Feature submissions retain the existing manual or scheduled start. When approval is required, approval can start a due Feature experiment; scheduled starts are checked every half hour. Verify runtime status and any approval with `experiment experiment get`. Before using dedicated approval commands, check [server compatibility](skills/ae-experiment/references/experiment_approval.md#server-compatibility); submit only once. See [Feature timing](skills/ae-experiment/references/save_experiment.md#feature-timing) for scheduling.
 
 ## Capability Gateway
 
@@ -248,6 +262,11 @@ External mode does not write the token or renewal state to the local credential 
 The new CLI persists only CLI tokens, never access or refresh tokens. Multiple accounts live in an encrypted V1 vault while the active account is projected into the historical file shape for automatic downgrades. When the CLI upgrades again, it reconciles login, switch, or logout changes made by the old CLI.
 
 Login uses a cross-platform device-code flow. Use `--no-browser` when the environment cannot open a browser.
+
+On upgraded 6.1 deployments, authorization always uses the UBA device endpoints and the platform `/#/cli/device-activate` page, independently of Kubernetes or Agent state. Only an explicit missing authorization endpoint (HTTP 404) selects the supported legacy Agent flow; network failures, HTML responses and permission denials never change the issuer. Use `auth login --no-wait`, then resume with the returned `--device-code` and the same `--host` for non-interactive authorization. Existing host accounts, CLI tokens and command flags remain compatible.
+
+The CLI calls business endpoints directly; services enforce product License and user/project permissions. An unavailable component returns the actual API error. HTTP 404 can also mean a missing resource or an unsupported route, so it does not by itself establish that a component is not deployed.
+
 Trial guidance is emitted only when no Host is configured; normal commands and authentication flows for configured environments do not display it.
 
 ## Output and Safety
@@ -415,6 +434,7 @@ npm test
 npm run qa-changed
 npm run self-check
 npm run check:release
+npm run verify:experiment-tools
 npm run verify:readme
 npm run verify:auth-credentials
 npm run verify:update-check

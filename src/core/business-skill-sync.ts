@@ -5,7 +5,7 @@ import { createHash, randomUUID } from 'node:crypto';
 import { getConfigDir } from './config.js';
 import { businessForSkill, getSkillBusinessState, normalizeBusinesses, OPTIONAL_BUSINESSES, type BusinessStates } from './businesses.js';
 import skillBusinesses from './skill-businesses.json' with { type: 'json' };
-import { readBundledSkills } from './skills-install.js';
+import { readInstallableSkills } from './skills-install.js';
 import { createPinnedSkillsTool, skillCopyHash, skillPathIdentity, skillPathProblem, type SkillsTool, type SkillsToolOperation, type SkillsToolTarget } from './skills-tool.js';
 
 export interface BusinessSkillContext {
@@ -315,7 +315,7 @@ export function syncBusinessSkills(options: BusinessSkillSyncOptions): BusinessS
         writeJson(ledgerFile, ledger);
       }
     }
-    const bundled = readBundledSkills(options.skillsDirectory, select);
+    const bundled = readInstallableSkills(options.skillsDirectory, select);
     const skills = new Set(bundled.map(skill => skill.name));
     if (options.mode !== 'adopt') {
       for (const name of [...history.names, ...Object.values(ledger.copies).map(copy => copy.skill)]) {
