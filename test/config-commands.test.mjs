@@ -33,10 +33,10 @@ function readConfig(home) {
   return JSON.parse(fs.readFileSync(configFile(home), 'utf-8'));
 }
 
-function runCli(home, args) {
+function runCli(home, args, env = {}) {
   return spawnSync('npx', ['tsx', 'src/index.ts', '--no-update-check', ...args], {
     cwd: ROOT,
-    env: { ...process.env, HOME: home },
+    env: { ...process.env, HOME: home, ...env },
     encoding: 'utf-8',
     input: 'q',
     timeout: 10_000,
@@ -94,8 +94,9 @@ test('config list and current expose configured hosts', () => {
 
 test('missing host guidance distinguishes existing customers from self-service registration', () => {
   const home = tempHome();
+  const env = { AE_LANG: 'en-US' };
 
-  const status = runCli(home, ['auth', 'status']);
+  const status = runCli(home, ['auth', 'status'], env);
   assert.equal(status.status, 0, status.stderr);
   const data = parseJson(status.stdout).data;
   assert.equal(data.authenticated, false);
@@ -103,19 +104,38 @@ test('missing host guidance distinguishes existing customers from self-service r
   assert.equal(data.next_steps.configure_host, 'ae-cli config set-host <url>');
   assert.match(data.next_steps.existing_customer, /administrator/);
   const registration = new URL(data.next_steps.request_trial_url);
-  assert.match(registration.origin, /^https:\/\/test\.thinkingai\.(?:cn|io)$/);
-  assert.match(registration.pathname, /^\/(?:en\/|jp\/|kr\/)?experience-login\/?$/);
+  assert.equal(registration.origin, 'https://www.thinkingai.io');
+  assert.equal(registration.pathname, '/en/experience-login/');
   assert.equal(registration.searchParams.get('entry'), 'cli');
   assert.ok(['codex', 'cursor', 'claude-code', 'other'].includes(registration.searchParams.get('source')));
   assert.equal(data.next_steps.registration_login_url, data.next_steps.request_trial_url);
   assert.equal(data.next_steps.onboarding_command, 'ae-cli analysis onboarding run');
 
-  const current = runCli(home, ['config', 'current']);
+  const current = runCli(home, ['config', 'current'], env);
   assert.equal(current.status, 1);
   const error = parseJson(current.stderr).error;
   assert.match(error.hint, /ask your administrator/i);
   assert.match(error.hint, /experience-login/);
   assert.doesNotMatch(error.hint, /request-demo/);
+});
+
+test('missing host in China retains existing-account login without providing a signup link', () => {
+  const home = tempHome();
+  const env = { AE_LANG: 'zh-CN' };
+  const status = runCli(home, ['auth', 'status'], env);
+  assert.equal(status.status, 0, status.stderr);
+  const { hint, next_steps } = parseJson(status.stdout).data;
+  assert.match(hint, /ae-cli auth login --host <url>/);
+  assert.equal(next_steps.request_trial_url, null);
+  assert.equal(next_steps.registration_login_url, undefined);
+  assert.equal(next_steps.onboarding_command, undefined);
+  assert.doesNotMatch(status.stdout, /request-demo|experience-login/);
+
+  const current = runCli(home, ['config', 'current'], env);
+  assert.equal(current.status, 1);
+  const error = parseJson(current.stderr).error;
+  assert.match(error.hint, /signup for CLI onboarding is currently unavailable in China/);
+  assert.doesNotMatch(error.hint, /request-demo|experience-login/);
 });
 
 test('configured hosts do not emit trial guidance', () => {

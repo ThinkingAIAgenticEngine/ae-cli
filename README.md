@@ -48,7 +48,7 @@ ae-cli auth login --host https://your-ae-host.example.com
 ae-cli auth status
 ```
 
-Use the AE URL supplied by your AgenticEngine administrator. If no Host is configured, `ae-cli` guides existing customers to obtain that URL first. Only users without an AgenticEngine environment are directed to [request a trial](https://thinkingai.cn/request-demo).
+Use the AE URL supplied by your AgenticEngine administrator.
 
 Business-based command filtering and Skill selection apply only to local CLI use by external Agents; built-in TE Agent sandboxes keep the complete command and Skill sets. After successful login, the CLI filters `--help` and capability discovery by the active environment’s enabled businesses and synchronizes managed global Skills. Analysis remains available by default. Subsequent normal commands automatically synchronize managed Skills when a configuration refresh detects business changes; run `ae-cli config refresh` to refresh and synchronize immediately. Switching the active environment refreshes its business state and synchronizes only affected Skills, reusing the current set when no changes are needed. Terminal output summarizes Skill synchronization status and installation/removal counts; use `--format json` for per-directory details. Switching accounts synchronizes again; a one-off `--host` query does not change global Skills.
 

@@ -5,7 +5,10 @@ import { getLocalCliPackageInfo } from './package-info.js';
 import { globalSkillsDirectory, readInstallableSkills, verifyGlobalSkills, type SkillFailure } from './skills-install.js';
 import { getActiveHost, getConfigDir } from './config.js';
 import { peekCliToken } from './cli-token.js';
-import { aeRegistrationUrl, localRegistrationLanguage, registrationMarket, type AeRegistrationLanguage } from './host-guidance.js';
+import {
+  aeRegistrationUrl, CHINA_WEBSITE_ONBOARDING_UNAVAILABLE, localRegistrationLanguage, registrationMarket,
+  type AeRegistrationLanguage,
+} from './host-guidance.js';
 import { cliEntrySource, isWebsiteMarket } from './website-entry.js';
 import { readBusinessConfig } from './business-config.js';
 import { canManageGlobalSkills } from './local-skill-context.js';
@@ -312,17 +315,15 @@ export function runInstallation(options: InstallationOptions = {}): Installation
       if (chooseAccount) {
         report.next_steps.push('If the user explicitly asks for AE onboarding or a walkthrough and has left the account route open, show the account picker with “Get started”, “Sign in to my existing account”, and “Not now”. For an explicit signup request, use website onboarding. For an explicit existing-account login request, use the original AE environment.');
       }
-      if (websiteOnboarding && (chooseAccount || !report.auth.host)) {
+      if (chooseAccount || !report.auth.host) {
         const source = cliEntrySource(undefined, env);
         const registration = aeRegistrationUrl(language, env, source);
-        if (chooseAccount) {
+        if (registration && chooseAccount) {
           report.next_steps.push(`For website onboarding, run ae-cli analysis onboarding run --language ${language} --source ${source} --browser system --format json. Pass --region for the user's requested market. The CLI opens the system default browser. If it cannot open the page, share the returned login_url for that browser. Read the returned skill_path and continue with its session_id. For manual signup outside the guided session, use ${registration}.`);
-        } else {
+        } else if (registration) {
           report.next_steps.push(`New or returning website users: for guided website verification, run ae-cli analysis onboarding run --language ${language} --source ${source} --browser system. For manual registration or sign-in, use ${registration} in the system default browser.`);
         }
-        report.next_steps.push(`The default new-account region is ${market}. Use the user's explicit market when supplied. Otherwise infer the market from the local language and the request language. Ask which market to use only if both languages suggest different supported markets. Select a production market with --region jp|kr|us. Language does not change an existing account's environment.`);
-      } else if (!websiteOnboarding && !report.auth.host) {
-        report.next_steps.push(`To request an AE trial in China, visit ${aeRegistrationUrl(language, env)}.`);
+        report.next_steps.push(`The default new-account region is ${market}. Use the user's explicit market when supplied. If the local language and the request language suggest different markets, offer exactly those two markets. For Chinese and English, offer China and the United States. Website onboarding supports --region jp|kr|us. If China is selected, stop website onboarding. ${CHINA_WEBSITE_ONBOARDING_UNAVAILABLE} Language does not change an existing account's environment.`);
       }
       if (chooseAccount) report.next_steps.push('Existing AE users: confirm their original AE environment URL and use it for login. Ask for that URL if it is unknown.');
       else if (!report.auth.host) report.next_steps.push('Existing AE users: use your original environment URL, or ask your administrator.');

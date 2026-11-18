@@ -9,7 +9,7 @@ import {
 } from '../core/config.js';
 import { MultiselectCancelled, promptSingleSelect } from '../core/multiselect.js';
 import { normalizeUrl } from '../core/url-utils.js';
-import { AE_TRIAL_URL, aeRegistrationUrl } from '../core/host-guidance.js';
+import { CHINA_WEBSITE_ONBOARDING_UNAVAILABLE, aeRegistrationUrl } from '../core/host-guidance.js';
 import { invalidateBusinessSkillSynchronization, refreshEnvironmentAfterLogin } from '../core/environment-refresh.js';
 
 interface MenuItem {
@@ -33,9 +33,9 @@ export async function runConfigUI(): Promise<void> {
     process.stderr.write('\n\x1B[1mNo AE environments configured.\x1B[0m\n\n');
     process.stderr.write('Use the AE URL provided by your AgenticEngine administrator.\n');
     const registration = aeRegistrationUrl();
-    process.stderr.write(registration === AE_TRIAL_URL
-      ? `Request a trial: ${registration}\n\n`
-      : `Website registration: ${registration}\nFor guided setup, run: ae-cli analysis onboarding run\n\n`);
+    process.stderr.write(registration
+      ? `Website registration: ${registration}\nFor guided setup, run: ae-cli analysis onboarding run\n\n`
+      : `${CHINA_WEBSITE_ONBOARDING_UNAVAILABLE}\n\n`);
     await promptAddEnvironment();
     return;
   }

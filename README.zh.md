@@ -48,7 +48,7 @@ ae-cli auth login --host https://your-ae-host.example.com
 ae-cli auth status
 ```
 
-请使用 AgenticEngine 管理员提供的 AE 地址。未配置 Host 时，`ae-cli` 会先引导已有客户向管理员获取地址；只有确认尚无 AgenticEngine 环境的用户，才会看到[申请试用](https://thinkingai.cn/request-demo)入口。
+请使用 AgenticEngine 管理员提供的 AE 地址。
 
 按业务过滤命令和剪裁 Skills 仅适用于外部 Agent 使用的本机 CLI；TE Agent 内置沙箱始终保留完整命令与全部 Skills。登录成功后，CLI 按当前环境已开通的业务过滤 `--help` 和能力发现，并同步受管的全局 Skills；分析能力默认保留。后续业务开通状态变化时，普通命令会在刷新配置后自动同步受管 Skills；也可执行 `ae-cli config refresh` 立即刷新并同步。切换活动环境会刷新业务状态，仅同步受影响的 Skills；无需变化时复用当前集合，终端仅汇总 Skill 同步状态及安装、移除数量；需要目录明细时使用 `--format json`。切换账号会重新同步；单次 `--host` 查询不改变全局 Skills。
 
