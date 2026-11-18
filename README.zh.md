@@ -29,7 +29,7 @@ npx @thinkingai/ae-cli@latest install --format json
 
 安装器检查 Node.js 20+、安装并验证 CLI，再通过内置的 Skills 工具向支持的客户端安装同版本全局 Skills。首次安装且尚无已确认业务状态时安装全量内置 Skills。支持 `--dry-run`、`--format json` 和可选的 `--host <AE_HOST>`。未登录不算安装失败。详见[安装指南](./cli-installation-guide.md)。
 
-通过 Codex、Claude Code、Cursor 等 AI Agent 安装时，把上面的 `--format json` 命令和安装指南交给 Agent。验证成功后，日本、韩国和美国用户可通过官网完成新手引导。中国区已有账号可使用原 AE 环境地址登录。如果只说「开始使用」，Agent 可以沿用已登录的账号，或询问你想注册还是登录已有账号。如果通过 `npm install -g` 安装，请先执行 `ae-cli install --format json` 验证版本并同步对应的 Skills。[Agent 安装提示词](./cli-installation-guide.md#ai-installation-prompt)
+通过 Codex、Claude Code、Cursor 等 AI Agent 安装时，把上面的 `--format json` 命令和安装指南交给 Agent，Agent 会汇报验收结果。如需体验新手引导，请明确提出。日本、韩国和美国用户可通过官网完成引导，中国区已有账号可使用原 AE 环境地址登录。如果通过 `npm install -g` 安装，请先执行 `ae-cli install --format json` 验证版本并同步对应的 Skills。[Agent 安装提示词](./cli-installation-guide.md#ai-installation-prompt)
 
 Skills 会帮助 Claude Code、Codex、Cursor 等编码 Agent 理解、发现并调用 `ae-cli`。
 

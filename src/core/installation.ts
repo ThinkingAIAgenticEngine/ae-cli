@@ -5,7 +5,7 @@ import { getLocalCliPackageInfo } from './package-info.js';
 import { globalSkillsDirectory, readInstallableSkills, verifyGlobalSkills, type SkillFailure } from './skills-install.js';
 import { getActiveHost, getConfigDir } from './config.js';
 import { peekCliToken } from './cli-token.js';
-import { aeRegistrationUrl, registrationLanguage, registrationMarket } from './host-guidance.js';
+import { aeRegistrationUrl, localRegistrationLanguage, registrationMarket, type AeRegistrationLanguage } from './host-guidance.js';
 import { cliEntrySource, isWebsiteMarket } from './website-entry.js';
 import { readBusinessConfig } from './business-config.js';
 import { canManageGlobalSkills } from './local-skill-context.js';
@@ -29,6 +29,7 @@ export interface InstallationReport {
     synchronization?: BusinessSkillSyncReport;
   };
   auth: { host: string | null; authenticated: boolean | null; warnings: string[] };
+  local_language?: AeRegistrationLanguage;
   next_action?: 'choose_account' | 'continue_using_ae' | 'check_authentication';
   next_steps: string[];
   commands?: string[];
@@ -290,10 +291,13 @@ export function runInstallation(options: InstallationOptions = {}): Installation
       report.ok = true;
       return report;
     }
-    const language = registrationLanguage(undefined, env);
+    const localLanguage = localRegistrationLanguage(env);
+    const language = localLanguage ?? 'en-US';
     const market = registrationMarket(language);
     const websiteOnboarding = isWebsiteMarket(market);
     if (guideAccountSetup) {
+      if (localLanguage) report.local_language = localLanguage;
+      report.next_steps.push('If the user only requested installation, report the verified version and Skill count and finish.');
       if (report.auth.authenticated === true) report.next_action = 'continue_using_ae';
       else if (report.auth.warnings.length > 0) report.next_action = 'check_authentication';
       else if (websiteOnboarding) report.next_action = 'choose_account';
@@ -306,7 +310,7 @@ export function runInstallation(options: InstallationOptions = {}): Installation
     } else {
       const chooseAccount = report.next_action === 'choose_account';
       if (chooseAccount) {
-        report.next_steps.push('For an install-only request, report the verified result. If the user explicitly asked for AE onboarding, the new-user walkthrough, or signup, run the website onboarding command below in the same turn. If they asked to sign in to an existing account, follow the existing-account guidance below. Use the account picker only when the user wants to get started and has not chosen a route: offer “Create an account and get started” and “Sign in to my existing account”.');
+        report.next_steps.push('If the user explicitly asks for AE onboarding or a walkthrough and has left the account route open, show the account picker with “Get started”, “Sign in to my existing account”, and “Not now”. For an explicit signup request, use website onboarding. For an explicit existing-account login request, use the original AE environment.');
       }
       if (websiteOnboarding && (chooseAccount || !report.auth.host)) {
         const source = cliEntrySource(undefined, env);
@@ -316,7 +320,7 @@ export function runInstallation(options: InstallationOptions = {}): Installation
         } else {
           report.next_steps.push(`New or returning website users: for guided website verification, run ae-cli analysis onboarding run --language ${language} --source ${source} --browser system. For manual registration or sign-in, use ${registration} in the system default browser.`);
         }
-        report.next_steps.push(`The default new-account region is ${market}. Select another supported production market with --region jp|kr|us before registration. Language does not change an existing account's environment.`);
+        report.next_steps.push(`The default new-account region is ${market}. Use the user's explicit market when supplied. Otherwise infer the market from the local language and the request language. Ask which market to use only if both languages suggest different supported markets. Select a production market with --region jp|kr|us. Language does not change an existing account's environment.`);
       } else if (!websiteOnboarding && !report.auth.host) {
         report.next_steps.push(`To request an AE trial in China, visit ${aeRegistrationUrl(language, env)}.`);
       }

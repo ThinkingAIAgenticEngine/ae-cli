@@ -10,10 +10,13 @@ export function normalizeRegistrationLanguage(value: string): AeRegistrationLang
   return language === 'en' ? 'en-US' : undefined;
 }
 
+export function localRegistrationLanguage(env: NodeJS.ProcessEnv = process.env): AeRegistrationLanguage | undefined {
+  return normalizeRegistrationLanguage(env.AE_LANG || env.LC_ALL || env.LC_MESSAGES || env.LANG || env.LANGUAGE || '');
+}
+
 /** Conversation language may be passed explicitly; terminal locale is only a fallback. */
 export function registrationLanguage(language?: string, env: NodeJS.ProcessEnv = process.env): AeRegistrationLanguage {
-  const value = language || env.AE_LANG || env.LC_ALL || env.LC_MESSAGES || env.LANG || env.LANGUAGE || '';
-  return normalizeRegistrationLanguage(value) ?? 'en-US';
+  return (language ? normalizeRegistrationLanguage(language) : localRegistrationLanguage(env)) ?? 'en-US';
 }
 
 export function registrationMarket(language: AeRegistrationLanguage): 'cn' | 'us' | 'jp' | 'kr' {

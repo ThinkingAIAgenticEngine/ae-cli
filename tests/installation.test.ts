@@ -122,7 +122,8 @@ test('first installation selects all Skills without an availability snapshot and
   assert.equal(f.state.calls.some(call => call.args.includes('add')), false);
   assert.equal(fs.existsSync(path.join(f.stateDirectory, 'business-config.json')), false);
   assert.equal(result.next_action, 'choose_account');
-  assert.match(result.next_steps[0], /explicitly asked for AE onboarding.*run the website onboarding command below in the same turn.*account picker only when/);
+  assert.match(result.next_steps[0], /only requested installation.*report the verified version and Skill count and finish/);
+  assert.match(result.next_steps.join(' '), /explicitly asks for AE onboarding or a walkthrough.*account route open.*show the account picker/);
   assert.match(result.next_steps.join(' '), /analysis onboarding run.*skill_path.*session_id/);
   assert.match(result.next_steps.join(' '), /user's requested market.*system default browser/);
   assert.doesNotMatch(result.next_steps.join(' '), /--website-env test|test\.thinkingai\./);
@@ -139,11 +140,13 @@ test('installation offers the locale default region and allows an explicit regio
   const f = fixture(t, '@tant/ae-cli');
   const result = f.run({ env: { PATH: path.dirname(f.bin), LANG: 'ja_JP.UTF-8' } });
   assert.equal(result.ok, true);
+  assert.equal(result.local_language, 'ja-JP');
   assert.match(result.next_steps.join(' '), /https:\/\/www\.thinkingai\.io\/jp\/experience-login\//);
   assert.match(result.next_steps.join(' '), /entry=cli&source=other&market=jp/);
   assert.doesNotMatch(result.next_steps.join(' '), /--website-env test|test\.thinkingai\./);
   assert.match(result.next_steps.join(' '), /--language ja-JP/);
   assert.match(result.next_steps.join(' '), /default new-account region is jp/);
+  assert.match(result.next_steps.join(' '), /Ask which market to use only if both languages suggest different supported markets/);
   assert.match(result.next_steps.join(' '), /--region jp\|kr\|us/);
   assert.equal(f.state.calls.some(call => call.args.includes('login')), false);
 });
@@ -155,11 +158,20 @@ test('installation in a Chinese locale supports existing-account login without p
   assert.equal(result.cli.verified, true);
   assert.equal(result.skills.status, 'success');
   assert.equal(result.next_action, undefined);
+  assert.equal(result.local_language, 'zh-CN');
   const guidance = result.next_steps.join(' ');
   assert.match(guidance, /https:\/\/thinkingai\.cn\/request-demo/);
   assert.match(guidance, /ae-cli auth login --host <AE_HOST>/);
   assert.doesNotMatch(guidance, /analysis onboarding|experience-login|Create an account and get started/);
   assert.equal(f.state.calls.some(call => call.args.includes('login')), false);
+});
+
+test('a neutral locale does not report the fallback market as a local language', t => {
+  const f = fixture(t);
+  const result = f.run({ env: { ...f.env, LC_ALL: 'C.UTF-8' } });
+  assert.equal(result.ok, true);
+  assert.equal(result.local_language, undefined);
+  assert.match(result.next_steps.join(' '), /default new-account region is us/);
 });
 
 for (const mode of ['environment', 'invalid-environment', 'file-environment', 'file-option', 'sandbox-root', 'sandbox-config', 'fallback-token'] as const) {
