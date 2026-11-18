@@ -1,8 +1,9 @@
-### 6.1.34
+### 6.1.35
 **Date:** 2026-11-18
 
 **Changes:**
 
+* When you use the public guide to install AE CLI, your AI assistant verifies the CLI and matching Skills, then offers to get started, sign in to an existing account, or continue later.
 * Users in Japan, South Korea, and the United States can sign in to AE CLI through their local ThinkingAI website and continue onboarding in their current AI tool.
 * Onboarding includes the Star Island game and Season Pass samples. Explore purchase conversion, find growth opportunities, and try the full A/B experiment workflow from planning to reviewing results.
 * During onboarding, connect your own project using an SDK, then open the real-time data page to verify that events are arriving.
