@@ -5,8 +5,8 @@ import { PermissionError } from "./errors.js";
 import { getCliToken } from "./cli-token.js";
 import { SecureStoreAuthError } from "./secure-store.js";
 import { safeJsonParse } from "./json-utils.js";
-import { externalCliTokenRequestOptions, readExternalCliToken } from './external-cli-token.js';
-import { internalCallSourceHeaders } from './internal-call-source.js';
+import { externalCliTokenRequestOptions, readExternalCliToken } from "./external-cli-token.js";
+import { internalCallSourceHeaders } from "./internal-call-source.js";
 
 function buildUrl(
   host: string,

@@ -1,7 +1,7 @@
 import { createHash } from 'node:crypto';
 import { gzipSync } from 'node:zlib';
 import { logger } from './logger.js';
-import { LocalDataUploadError } from './errors.js';
+import { CliValidationError, LocalDataUploadError } from './errors.js';
 
 export { LocalDataUploadError } from './errors.js';
 
@@ -215,4 +215,30 @@ function logUpload(
   logger.info(
     `LOCAL_DATA_UPLOAD target_sha256=${targetFingerprint} status=${status} request_bytes=${requestBytes} response_bytes=${responseBytes}`,
   );
+}
+
+export function resolveSyncJsonEndpoint(raw: string): string {
+  let url: URL;
+  try {
+    url = new URL(raw.trim());
+  } catch {
+    throw endpointError();
+  }
+  const validProtocol = url.protocol === 'http:' || url.protocol === 'https:';
+  const forbidden = Boolean(url.username || url.password || url.search || url.hash);
+  if (!validProtocol || forbidden || !url.pathname.endsWith('/sync_json')) throw endpointError();
+  return url.toString();
+}
+
+export function assembleSyncJsonBody(lines: string[], appid: string, debug = false): string {
+  const appidJson = JSON.stringify(appid);
+  const debugValue = debug ? 1 : 0;
+  return `[${lines.map((line) => `{"appid":${appidJson},"debug":${debugValue},"data":${line}}`).join(',')}]`;
+}
+
+function endpointError(): CliValidationError {
+  return new CliValidationError('A complete http(s) receiver endpoint ending in /sync_json is required.', {
+    code: 'LOCAL_DATA_ENDPOINT_INVALID',
+    location: { field: 'endpoint' },
+  });
 }

@@ -53,6 +53,7 @@ export class CapabilityGatewayError extends Error {
     readonly hint?: string,
     readonly meta?: Record<string, unknown>,
     readonly type: 'api' | 'validation' = 'api',
+    readonly details?: Record<string, unknown>,
   ) {
     super(message);
     this.name = 'CapabilityGatewayError';
@@ -111,7 +112,7 @@ async function permissionError(resp: Response): Promise<PermissionError> {
   const body = safeJsonParse(await codeResponse.text());
   const error = isRecord(body?.error) ? body.error : undefined;
   const code = nonEmptyString(error?.code) ?? nonEmptyString(body?.code);
-  return new PermissionError(message, code, nonEmptyString(error?.hint), undefined,
+  return new PermissionError(message, code, nonEmptyString(error?.hint) ?? nonEmptyString(body?.hint), undefined,
     isRecord(body?.meta) ? body.meta : undefined);
 }
 
@@ -158,6 +159,7 @@ function parseCapabilityEnvelope(body: any, acceptCommunityLegacyEnvelope = fals
       hint,
       isRecord(body.meta) ? body.meta : undefined,
       err.type === 'validation' ? 'validation' : 'api',
+      isRecord(err.details) ? err.details : undefined,
     );
   }
   const legacyReturnCode = acceptCommunityLegacyEnvelope ? body.return_code ?? body.returnCode : undefined;
@@ -218,6 +220,7 @@ function buildCapabilityHttpError(resp: Response, body: any): CapabilityGatewayE
         hint,
         isRecord(body.meta) ? body.meta : undefined,
         err.type === 'validation' ? 'validation' : 'api',
+        isRecord(err.details) ? err.details : undefined,
       );
     }
   }
@@ -261,7 +264,12 @@ async function requestOnce(
     headers['Content-Type'] = 'application/json';
     init.body = stringifyJsonRequest(includeClientContextInBody ? withCliAgentContextBody(body, agentContext) : body);
   }
-  return sourceLoggedFetch(url, { ...init, ...externalCliTokenRequestOptions(url), signal });
+  return sourceLoggedFetch(url, {
+    ...init,
+    ...externalCliTokenRequestOptions(url),
+    ...(signal ? { redirect: 'error' as const } : {}),
+    signal,
+  });
 }
 
 async function requestMultipartOnce(url: string, token: string, form: FormData): Promise<Response> {
@@ -315,6 +323,8 @@ async function callGatewayWithEnvelope(
   const url = buildCapabilityGatewayUrl(options.apiBaseUrl ?? host, domain, pathAfterV1, queryParams, options.apiVersion);
   const token = await getCliToken(host, options.signal);
 
+
+  options.signal?.throwIfAborted();
   let resp = await requestOnce(url, method, token, body, 'application/json', options.includeClientContextInBody, options.signal);
   // Explicit opt-in only: reread host-scoped credentials once without minting or deleting them.
   if (resp.status === 401 && options.retryOnUnauthorized === true) {
@@ -434,8 +444,9 @@ export async function executeCapability(
   domain: string,
   capabilityId: string,
   input: Record<string, unknown> = {},
+  options: CapabilityApiRequestOptions = {},
 ): Promise<any> {
-  return callGateway(host, domain, `capabilities/${capabilityId}/execute`, 'POST', { input });
+  return callGateway(host, domain, `capabilities/${capabilityId}/execute`, 'POST', { input }, {}, options);
 }
 
 export async function executeCapabilityWithEnvelope(
@@ -443,8 +454,9 @@ export async function executeCapabilityWithEnvelope(
   domain: string,
   capabilityId: string,
   input: Record<string, unknown> = {},
+  options: CapabilityApiRequestOptions = {},
 ): Promise<CapabilityGatewaySuccess> {
-  return callGatewayWithEnvelope(host, domain, `capabilities/${capabilityId}/execute`, 'POST', { input });
+  return callGatewayWithEnvelope(host, domain, `capabilities/${capabilityId}/execute`, 'POST', { input }, {}, options);
 }
 
 export async function dryRunCapability(

@@ -15,6 +15,7 @@ import { registerInstall } from './commands/install.js';
 import { ExternalCliTokenError, readExternalCliToken, setExternalCliTokenFile } from './core/external-cli-token.js';
 import { CliValidationError } from './core/errors.js';
 import { configureBusinessCommands } from './framework/business-filter.js';
+import { isOnboardingInvocation } from './core/onboarding/entrypoint.js';
 
 const require = createRequire(import.meta.url);
 const pkg = require('../package.json');
@@ -74,6 +75,12 @@ async function loadCommands(): Promise<Command[]> {
     commands.push(...engage.default);
   } catch (err) {
     warnLoadFailure('domain te-engage', err);
+  }
+  try {
+    const experiment = await import('./commands/te-experiment/index.js');
+    commands.push(...experiment.default);
+  } catch (err) {
+    warnLoadFailure('domain te-experiment', err);
   }
   try {
     const community = await import('./commands/te-community/index.js');
@@ -244,12 +251,13 @@ async function main() {
   const executionQuery = kbExecutionContextRequired() && kbIndex >= 0 && ['+list', '+index', '+grep', '+read'].includes(args[kbIndex + 1]);
   if (executionQuery) readKbExecutionContext();
   const helpRequested = isHelpInvocation(args);
+  const onboardingInvocation = isOnboardingInvocation(args);
   setExternalCliTokenFile(globalOptionValue(process.argv.slice(2), '--cli-token-file'));
-  if (!executionQuery && !helpRequested && !process.argv.slice(2).some((arg) => ['--version', '-V'].includes(arg))) {
+  if (!executionQuery && !helpRequested && !onboardingInvocation && !process.argv.slice(2).some((arg) => ['--version', '-V'].includes(arg))) {
     readExternalCliToken(globalOptionValue(process.argv.slice(2), '--host'));
   }
   const pkgInfo = getLocalCliPackageInfo();
-  if (!executionQuery && !helpRequested && !isRootUpdateCommand(process.argv.slice(2))) {
+  if (!executionQuery && !helpRequested && !onboardingInvocation && !isRootUpdateCommand(process.argv.slice(2))) {
     const compat = await runHostCompatCheck(
       pkgInfo,
       globalOptionValue(process.argv.slice(2), '--host'),
@@ -289,7 +297,7 @@ async function main() {
       return;
     }
   }
-  if (!executionQuery && !helpRequested) await runFeatureConfigCheck(globalOptionValue(process.argv.slice(2), '--host'));
+  if (!executionQuery && !helpRequested && !onboardingInvocation) await runFeatureConfigCheck(globalOptionValue(process.argv.slice(2), '--host'));
 
   const commands = await loadCommands();
   registerCommands(program, commands);

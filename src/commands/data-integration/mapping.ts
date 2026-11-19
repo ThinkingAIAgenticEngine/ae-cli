@@ -8,6 +8,11 @@ const VALID_PROPERTY_NAME = /^[a-z][a-z0-9_]{0,49}$/;
 const VALID_CHILD_PROPERTY_NAME = /^[a-z][a-z0-9_]{0,49}(\.[a-z][a-z0-9_]{0,49})+$/;
 /** AE event names allow uppercase (existing customer events); properties stay lowercase-only. */
 const VALID_EVENT_NAME = /^[A-Za-z][A-Za-z0-9_]{0,49}$/;
+const EXPOSURE_PROPERTY_TYPES = new Map([
+  ['#experiment_id', 'string'],
+  ['#experiment_group_id', 'string'],
+  ['#is_control_group', 'boolean'],
+]);
 
 /** Formats whose readers apply flatten_rules; add a new format here only after wiring its reader. */
 const FLATTEN_SUPPORTED_FORMATS = ['csv', 'tsv', 'json', 'jsonl', 'xls', 'xlsx'];
@@ -102,8 +107,12 @@ export function validateMapping(value: unknown, options?: { sourceWildcard?: boo
     if (!isRecord(property)
       || typeof property.source !== 'string'
       || typeof property.target !== 'string'
-      || !(VALID_PROPERTY_NAME.test(property.target) || VALID_CHILD_PROPERTY_NAME.test(property.target))
       || !['number', 'string', 'boolean', 'datetime', 'list', 'object', 'array_row'].includes(String(property.type))
+      || !(VALID_PROPERTY_NAME.test(property.target) || VALID_CHILD_PROPERTY_NAME.test(property.target)
+        || (value.mode === 'track'
+          && (value.event_name_field
+            || (value.default_event_name === 'te_experiment_exposure' && !value.value_mapping?.event_name))
+          && EXPOSURE_PROPERTY_TYPES.get(property.target) === property.type))
       || (property.transform !== undefined
         && !['stringify', 'number', 'boolean', 'json'].includes(String(property.transform)))
       || (property.value_mapping !== undefined && !isStringMap(property.value_mapping))

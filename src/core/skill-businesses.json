@@ -10,7 +10,8 @@
     "ae-generate-tracking-code",
     "ae-generate-tracking-plan",
     "ae-metadata",
-    "ae-migrate-tracking-code"
+    "ae-migrate-tracking-code",
+    "ae-onboarding"
   ],
   "dataops": [
     "ae-dataops"
@@ -20,6 +21,11 @@
   ],
   "community": [
     "ae-community"
+  ],
+  "experiment": [
+    "ae-experiment",
+    "ae-experiment-design",
+    "ae-experiment-insight"
   ],
   "agent": [
     "ae-agent",

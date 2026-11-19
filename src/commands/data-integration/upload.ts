@@ -3,8 +3,11 @@ import { basename, dirname, resolve } from 'node:path';
 import { createInterface } from 'node:readline';
 import type { Command, RuntimeContext } from '../../framework/types.js';
 import { CliValidationError, LocalDataUploadError } from '../../core/errors.js';
+import { assembleSyncJsonBody, resolveSyncJsonEndpoint } from '../../core/local-data-upload-client.js';
 import { sha256File } from './input.js';
 import type { LocalDataManifest } from './types.js';
+
+export { assembleSyncJsonBody, resolveSyncJsonEndpoint } from '../../core/local-data-upload-client.js';
 
 const DEFAULT_BATCH_SIZE = 500;
 const MAX_BATCH_SIZE = 1000;
@@ -171,25 +174,6 @@ export const dataIntegrationUpload: Command = {
     };
   },
 };
-
-export function resolveSyncJsonEndpoint(raw: string): string {
-  let url: URL;
-  try {
-    url = new URL(raw.trim());
-  } catch {
-    throw endpointError();
-  }
-  const validProtocol = url.protocol === 'http:' || url.protocol === 'https:';
-  const forbidden = Boolean(url.username || url.password || url.search || url.hash);
-  if (!validProtocol || forbidden || !url.pathname.endsWith('/sync_json')) throw endpointError();
-  return url.toString();
-}
-
-export function assembleSyncJsonBody(lines: string[], appid: string, debug = false): string {
-  const appidJson = JSON.stringify(appid);
-  const debugValue = debug ? 1 : 0;
-  return `[${lines.map((line) => `{"appid":${appidJson},"debug":${debugValue},"data":${line}}`).join(',')}]`;
-}
 
 async function prepareUpload(ctx: RuntimeContext, enforceReady: boolean): Promise<PreparedUpload> {
   const endpoint = resolveSyncJsonEndpoint(ctx.str('endpoint'));
@@ -374,13 +358,6 @@ function invalidUeFile(record: number): CliValidationError {
   return new CliValidationError('The UE JSONL file contains an invalid record.', {
     code: 'LOCAL_DATA_UE_FILE_INVALID',
     location: { record },
-  });
-}
-
-function endpointError(): CliValidationError {
-  return new CliValidationError('A complete http(s) receiver endpoint ending in /sync_json is required.', {
-    code: 'LOCAL_DATA_ENDPOINT_INVALID',
-    location: { field: 'endpoint' },
   });
 }
 
