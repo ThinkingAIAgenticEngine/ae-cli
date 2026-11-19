@@ -119,23 +119,26 @@ test('missing host guidance distinguishes existing customers from self-service r
   assert.doesNotMatch(error.hint, /request-demo/);
 });
 
-test('missing host in China retains existing-account login without providing a signup link', () => {
+test('missing host in China offers official signup and existing-account login', () => {
   const home = tempHome();
   const env = { AE_LANG: 'zh-CN' };
   const status = runCli(home, ['auth', 'status'], env);
   assert.equal(status.status, 0, status.stderr);
   const { hint, next_steps } = parseJson(status.stdout).data;
   assert.match(hint, /ae-cli auth login --host <url>/);
-  assert.equal(next_steps.request_trial_url, null);
-  assert.equal(next_steps.registration_login_url, undefined);
-  assert.equal(next_steps.onboarding_command, undefined);
-  assert.doesNotMatch(status.stdout, /request-demo|experience-login/);
+  assert.equal(next_steps.request_trial_url, next_steps.registration_login_url);
+  const registration = new URL(next_steps.registration_login_url);
+  assert.equal(registration.origin, 'https://www.thinkingai.cn');
+  assert.equal(registration.pathname, '/experience-login/');
+  assert.equal(registration.searchParams.get('market'), 'cn');
+  assert.equal(next_steps.onboarding_command, 'ae-cli analysis onboarding run');
+  assert.doesNotMatch(status.stdout, /request-demo/);
 
   const current = runCli(home, ['config', 'current'], env);
   assert.equal(current.status, 1);
   const error = parseJson(current.stderr).error;
-  assert.match(error.hint, /signup for CLI onboarding is currently unavailable in China/);
-  assert.doesNotMatch(error.hint, /request-demo|experience-login/);
+  assert.match(error.hint, /https:\/\/www\.thinkingai\.cn\/experience-login\//);
+  assert.doesNotMatch(error.hint, /request-demo/);
 });
 
 test('configured hosts do not emit trial guidance', () => {

@@ -1,3 +1,10 @@
+### 6.1.38
+**Date:** 2026-11-19
+
+**Changes:**
+
+* AE CLI onboarding now supports signing in through the ThinkingAI website in China. When you ask for onboarding in a Chinese locale, the CLI defaults to the China region. You can also select it with `--region cn`.
+
 ### 6.1.37
 **Date:** 2026-11-18
 

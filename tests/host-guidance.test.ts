@@ -24,10 +24,16 @@ test('website onboarding resolves production and rejects explicit test requests'
   assert.equal(websiteEnvironment('production', { AE_CLI_WEBSITE_ENV: 'test' }), 'production');
 });
 
+test('Chinese registration uses the official production website', () => {
+  assert.equal(websiteOrigin('cn', 'production'), 'https://www.thinkingai.cn');
+  assert.equal(aeRegistrationUrl('zh-CN', {}), 'https://www.thinkingai.cn/experience-login/?entry=cli&source=other&market=cn');
+});
+
 test('tool context preserves original public continuation parameters', () => {
   assert.equal(environmentForWebsiteOrigin('https://thinkingai.io'), 'production');
   assert.equal(environmentForWebsiteOrigin('https://www.thinkingai.io'), 'production');
-  for (const origin of ['https://test.thinkingai.cn', 'https://test.thinkingai.io']) {
+  assert.equal(environmentForWebsiteOrigin('https://www.thinkingai.cn'), 'production');
+  for (const origin of ['https://test.thinkingai.cn', 'https://test.thinkingai.io', 'https://thinkingai.cn']) {
     assert.throws(() => environmentForWebsiteOrigin(origin), /Untrusted onboarding website/);
   }
   const thread = '3278330f-ec86-45c1-b4d3-a40617db096a';
@@ -52,7 +58,7 @@ test('tool context preserves original public continuation parameters', () => {
 
 test('an invalid environment does not break regular host guidance', () => {
   const target = new URL('../src/core/host-guidance.ts', import.meta.url).href;
-  const script = `import assert from 'node:assert/strict'; const module = await import(${JSON.stringify(target)}); assert.equal(module.aeRegistrationUrl('zh-CN'), undefined); assert.equal(new URL(module.aeRegistrationUrl('en-US')).origin, 'https://www.thinkingai.io');`;
+  const script = `import assert from 'node:assert/strict'; const module = await import(${JSON.stringify(target)}); assert.equal(new URL(module.aeRegistrationUrl('zh-CN')).origin, 'https://www.thinkingai.cn'); assert.equal(new URL(module.aeRegistrationUrl('en-US')).origin, 'https://www.thinkingai.io');`;
   const result = spawnSync(process.execPath, ['--import', 'tsx', '--input-type=module', '--eval', script],
     { env: { ...process.env, AE_CLI_WEBSITE_ENV: 'invalid' }, encoding: 'utf8' });
   assert.equal(result.status, 0, result.stderr);
@@ -66,7 +72,7 @@ test('conversation language wins over terminal locale without changing an existi
   assert.equal(normalizeRegistrationLanguage('constructor'), undefined);
 });
 
-test('missing-host guidance offers overseas onboarding and existing-account login in China', () => {
+test('missing-host guidance offers localized onboarding and existing-account login', () => {
   const previous = process.env.AE_LANG;
   try {
     process.env.AE_LANG = 'en-US';
@@ -83,12 +89,12 @@ test('missing-host guidance offers overseas onboarding and existing-account logi
     const domestic = missingAeHostGuidance();
     assert.equal(domestic.configure_host, 'ae-cli config set-host <url>');
     assert.match(domestic.existing_customer, /administrator/);
-    assert.equal(domestic.request_trial_url, null);
-    assert.equal(domestic.registration_login_url, undefined);
-    assert.equal(domestic.onboarding_command, undefined);
+    assert.equal(domestic.request_trial_url, domestic.registration_login_url);
+    assert.equal(new URL(domestic.registration_login_url).origin, 'https://www.thinkingai.cn');
+    assert.equal(domestic.onboarding_command, 'ae-cli analysis onboarding run');
     assert.match(missingAeHostHint(), /ae-cli auth login --host <url>/);
-    assert.match(missingAeHostHint(), /signup for CLI onboarding is currently unavailable in China/);
-    assert.doesNotMatch(JSON.stringify(domestic) + missingAeHostHint(), /request-demo|experience-login|analysis onboarding/);
+    assert.match(missingAeHostHint(), /https:\/\/www\.thinkingai\.cn\/experience-login\//);
+    assert.doesNotMatch(JSON.stringify(domestic) + missingAeHostHint(), /request-demo/);
   } finally {
     if (previous === undefined) delete process.env.AE_LANG;
     else process.env.AE_LANG = previous;

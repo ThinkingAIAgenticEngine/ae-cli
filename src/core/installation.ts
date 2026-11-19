@@ -6,10 +6,10 @@ import { globalSkillsDirectory, readInstallableSkills, verifyGlobalSkills, type 
 import { getActiveHost, getConfigDir } from './config.js';
 import { peekCliToken } from './cli-token.js';
 import {
-  aeRegistrationUrl, CHINA_WEBSITE_ONBOARDING_UNAVAILABLE, localRegistrationLanguage, registrationMarket,
+  aeRegistrationUrl, localRegistrationLanguage, registrationMarket,
   type AeRegistrationLanguage,
 } from './host-guidance.js';
-import { cliEntrySource, isWebsiteMarket } from './website-entry.js';
+import { cliEntrySource } from './website-entry.js';
 import { readBusinessConfig } from './business-config.js';
 import { canManageGlobalSkills } from './local-skill-context.js';
 import { OPTIONAL_BUSINESSES, getSkillBusinessState, type BusinessStates } from './businesses.js';
@@ -297,13 +297,12 @@ export function runInstallation(options: InstallationOptions = {}): Installation
     const localLanguage = localRegistrationLanguage(env);
     const language = localLanguage ?? 'en-US';
     const market = registrationMarket(language);
-    const websiteOnboarding = isWebsiteMarket(market);
     if (guideAccountSetup) {
       if (localLanguage) report.local_language = localLanguage;
       report.next_steps.push('If the user only requested installation, report the verified version and Skill count and finish.');
       if (report.auth.authenticated === true) report.next_action = 'continue_using_ae';
       else if (report.auth.warnings.length > 0) report.next_action = 'check_authentication';
-      else if (websiteOnboarding) report.next_action = 'choose_account';
+      else report.next_action = 'choose_account';
     }
     if (report.auth.authenticated === true) {
       report.next_steps.push('You are signed in. Continue your AE task in this AI tool using the existing environment.');
@@ -318,12 +317,12 @@ export function runInstallation(options: InstallationOptions = {}): Installation
       if (chooseAccount || !report.auth.host) {
         const source = cliEntrySource(undefined, env);
         const registration = aeRegistrationUrl(language, env, source);
-        if (registration && chooseAccount) {
+        if (chooseAccount) {
           report.next_steps.push(`For website onboarding, run ae-cli analysis onboarding run --language ${language} --source ${source} --browser system --format json. Pass --region for the user's requested market. The CLI opens the system default browser. If it cannot open the page, share the returned login_url for that browser. Read the returned skill_path and continue with its session_id. For manual signup outside the guided session, use ${registration}.`);
-        } else if (registration) {
+        } else {
           report.next_steps.push(`New or returning website users: for guided website verification, run ae-cli analysis onboarding run --language ${language} --source ${source} --browser system. For manual registration or sign-in, use ${registration} in the system default browser.`);
         }
-        report.next_steps.push(`The default new-account region is ${market}. Use the user's explicit market when supplied. If the local language and the request language suggest different markets, offer exactly those two markets. For Chinese and English, offer China and the United States. Website onboarding supports --region jp|kr|us. If China is selected, stop website onboarding. ${CHINA_WEBSITE_ONBOARDING_UNAVAILABLE} Language does not change an existing account's environment.`);
+        report.next_steps.push(`The default new-account region is ${market}. Use the user's explicit market when supplied. If the local language and the request language suggest different markets, offer exactly those two markets. For Chinese and English, offer China and the United States. Website onboarding supports --region cn|jp|kr|us. Language does not change an existing account's environment.`);
       }
       if (chooseAccount) report.next_steps.push('Existing AE users: confirm their original AE environment URL and use it for login. Ask for that URL if it is unknown.');
       else if (!report.auth.host) report.next_steps.push('Existing AE users: use your original environment URL, or ask your administrator.');

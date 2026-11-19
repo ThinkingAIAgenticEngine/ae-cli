@@ -12,6 +12,7 @@ import type { PollResult } from '../src/core/device-auth.js';
 
 const host = 'https://plg.example.test';
 const origin = 'https://thinkingai.io';
+const chinaOrigin = 'https://www.thinkingai.cn';
 const intent = '3278330f-ec86-45c1-b4d3-a40617db096a';
 const privatePoll = 'private-bootstrap-poll-secret';
 const privateDevice = 'uba_0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ_abcdef';
@@ -72,12 +73,11 @@ function fixture(selectedMode: BootstrapLoginMode | 'legacy' = 'website_login') 
     cleanup: () => fs.rmSync(directory, { recursive: true, force: true }) };
 }
 
-test('new domestic onboarding and explicit test environments stop before website login', async () => {
+test('explicit test environments stop before website login', async () => {
   const f = fixture();
   try {
-    await assert.rejects(f.runtime.invoke('run', { region: 'cn' }), /Japan, Korea, and the United States/);
-    await assert.rejects(f.runtime.invoke('run', { language: 'zh-CN' }), /Japan, Korea, and the United States/);
     await assert.rejects(f.runtime.invoke('run', { region: 'us', website_env: 'test' }), /production/);
+    await assert.rejects(f.runtime.invoke('run', { region: 'cn', website_env: 'test' }), /production/);
     assert.equal(f.created(), 0);
     assert.equal(f.reads(), 0);
     assert.deepEqual(f.opened, []);
@@ -87,6 +87,61 @@ test('new domestic onboarding and explicit test environments stop before website
     assert.equal(allowed.language, 'zh-CN');
     assert.deepEqual(f.bootstrapLanguages, ['zh-CN']);
   } finally { f.cleanup(); }
+});
+
+test('Chinese website login creates and resumes an intent on the production website', async () => {
+  const f = fixture();
+  const original = globalThis.fetch;
+  const calls: { url: string; method?: string }[] = [];
+  const expiresAt = new Date(Date.now() + 300_000).toISOString();
+  try {
+    Object.assign(f.runtime.dependencies, { createBootstrap, readBootstrap, claimBootstrapDevice });
+    globalThis.fetch = async (url, init) => {
+      calls.push({ url: String(url), method: init?.method });
+      assert.equal(init?.redirect, 'error');
+      const headers = new Headers(init?.headers);
+      const endpoint = new URL(String(url)).pathname;
+      let data: Record<string, unknown>;
+      if (endpoint.endsWith('/bootstrap-intents')) {
+        assert.deepEqual(JSON.parse(String(init?.body)), { market: 'cn', source: 'other' });
+        assert.equal(headers.get('Accept-Language'), 'zh-CN');
+        data = { intent_id: intent, login_url: `${chinaOrigin}/experience-login/?intent_id=${intent}`,
+          poll_token: privatePoll, expires_at: expiresAt, poll_after_ms: 2000, login_mode: 'website_login' };
+      } else if (endpoint.endsWith('/device')) {
+        assert.equal(headers.get('X-CLI-Bootstrap-Token'), privatePoll);
+        data = { login_mode: 'website_login', authorization_status: 'approved', host,
+          device_code: privateDevice, user_code: privateUserCode, expires_at: expiresAt, interval: 5,
+          expected_login_name: 'test-user', expected_company_id: '30' };
+      } else {
+        assert.equal(headers.get('X-CLI-Bootstrap-Token'), privatePoll);
+        data = { intent_id: intent, status: 'account_ready', host, ready_url: `${chinaOrigin}/experience-cli/?intent_id=${intent}`,
+          expires_at: expiresAt, poll_after_ms: 2000, login_mode: 'website_login', authorization_status: 'approved' };
+      }
+      return new Response(JSON.stringify({ return_code: 0, data }));
+    };
+    const login = await f.runtime.invoke('run', { language: 'zh-CN', source: 'other', browser: 'system' });
+    assert.equal(login.market, 'cn');
+    const opened = new URL(f.opened[0]);
+    assert.equal(opened.origin, chinaOrigin);
+    assert.equal(opened.pathname, '/experience-login/');
+    assert.equal(opened.searchParams.get('market'), 'cn');
+    assert.equal(opened.searchParams.get('intent_id'), intent);
+
+    const completed = await f.runtime.invoke('run', { session_id: String(login.session_id) });
+    assert.equal(completed.next_action, 'choose_experience');
+    const bootstrap = `${chinaOrigin}/backend/demo/v1/experience/cli/bootstrap-intents`;
+    assert.deepEqual(calls, [
+      { url: bootstrap, method: 'POST' },
+      { url: `${bootstrap}/${intent}`, method: 'GET' },
+      { url: `${bootstrap}/${intent}/device`, method: 'POST' },
+    ]);
+    assert.equal(f.opened.length, 1);
+    assert.equal(f.counts().persistCount, 1);
+    assert.doesNotMatch(JSON.stringify([login, completed]), /private-bootstrap|uba_|private-oauth|ABCD2345/);
+  } finally {
+    globalThis.fetch = original;
+    f.cleanup();
+  }
 });
 
 for (const environment of ['test', undefined] as const) {

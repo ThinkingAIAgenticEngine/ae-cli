@@ -1,6 +1,6 @@
 ---
 name: ae-onboarding
-version: 1.1.36
+version: 1.1.37
 description: "Guide Demo analysis and a follow-up A/B experiment in AE onboarding, with SDK integration available in a local agent."
 metadata:
   internal: true
@@ -22,7 +22,7 @@ After the verified experiment report is ready to deliver, run `node <this-skill-
 
 For a new local onboarding session, use the customer's explicit or already confirmed market. Otherwise infer it from the local language and the language of the customer's own request. Chinese maps to China, English to the United States, Japanese to Japan, and Korean to South Korea. If the two hints differ, render exactly the two corresponding markets. For Chinese and English, show only China and the United States. Treat the CLI's `markets` list as supported-market metadata. Use either hint alone when the other is unavailable, or the United States when neither is available.
 
-If China is selected, explain that website signup for CLI onboarding is currently unavailable and end the signup flow. Existing accounts use their original host. For website onboarding in other markets, pass the resolved `--region jp`, `--region kr`, or `--region us`.
+Start website onboarding with the resolved `--region cn`, `--region jp`, `--region kr`, or `--region us`. Existing accounts use their original host.
 
 Follow `next_action` and the browser receipt. For `guide_existing_window`, direct the user to the page already opened in their system default browser. For `show_fallback_link` or a window the user cannot find, give the exact URL for that browser. For `complete_website_login`, show **I finished signing in** and **I need help signing in**. For `approve_device`, show **I approved CLI access** and **I need help authorizing the CLI**. Resume the same session when the user confirms. For `restart_website_login` or `reauthorize_cli`, show the returned recovery choice and **Not now**. If a matching older CLI returns `run_onboarding` with zero delay after claiming authorization, run once more in the same turn. On `choose_experience`, show the experience picker immediately.
 

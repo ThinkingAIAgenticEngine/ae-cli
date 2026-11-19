@@ -27,7 +27,7 @@ export const onboardingRun: Command = {
   description: 'Start or resume one bounded PLG onboarding step for the sample or business SDK integration.',
   flags: [...sharedFlags,
     { name: 'source', type: 'string', required: false, desc: 'Local AI tool: codex, claude-code, cursor, or other. This is not an authorization credential.' },
-    { name: 'region', type: 'string', required: false, desc: 'Production onboarding market: jp, kr, or us.' },
+    { name: 'region', type: 'string', required: false, desc: 'Production onboarding market: cn, jp, kr, or us.' },
     { name: 'language', type: 'string', required: false, desc: 'Conversation language: zh-CN, en-US, ja-JP, or ko-KR. Use --region for the market when it differs from the language default.' },
     { name: 'website-env', type: 'string', required: false, desc: 'Compatibility flag. Website onboarding uses production.' },
     { name: 'choice', type: 'string', required: false, desc: 'Select demo or business after the user chooses an experience.' },

@@ -3,10 +3,12 @@ import { UUID_PATTERN } from './onboarding/contracts.js';
 export type WebsiteEnvironment = 'test' | 'production';
 export type CliEntrySource = 'codex' | 'cursor' | 'claude-code' | 'other';
 
-const LOGIN_PATHS = { jp: '/jp/experience-login/', kr: '/kr/experience-login/', us: '/en/experience-login/' };
+const LOGIN_PATHS = { jp: '/jp/experience-login/', kr: '/kr/experience-login/', us: '/en/experience-login/', cn: '/experience-login/' };
 export const WEBSITE_MARKETS = Object.keys(LOGIN_PATHS) as (keyof typeof LOGIN_PATHS)[];
 const PRODUCTION_ISSUER = 'https://thinkingai.io';
 const PRODUCTION_BROWSER_ORIGIN = 'https://www.thinkingai.io';
+const CHINA_PRODUCTION_ORIGIN = 'https://www.thinkingai.cn';
+const UNSUPPORTED_MARKET = 'Website onboarding is available in China, Japan, South Korea, and the United States. Use --region cn, jp, kr, or us.';
 
 export function isWebsiteMarket(market: string): market is keyof typeof LOGIN_PATHS {
   return Object.hasOwn(LOGIN_PATHS, market);
@@ -20,12 +22,12 @@ export function websiteEnvironment(value?: string, env: NodeJS.ProcessEnv = proc
 
 export function websiteOrigin(market: string, environment: WebsiteEnvironment): string {
   websiteEnvironment(environment, {});
-  if (!isWebsiteMarket(market)) throw new Error('Website onboarding is available in Japan, Korea, and the United States. Use --region jp, kr, or us.');
-  return PRODUCTION_ISSUER;
+  if (!isWebsiteMarket(market)) throw new Error(UNSUPPORTED_MARKET);
+  return market === 'cn' ? CHINA_PRODUCTION_ORIGIN : PRODUCTION_ISSUER;
 }
 
 export function isProductionWebsiteOrigin(origin: string): boolean {
-  return origin === PRODUCTION_ISSUER || origin === PRODUCTION_BROWSER_ORIGIN;
+  return origin === PRODUCTION_ISSUER || origin === PRODUCTION_BROWSER_ORIGIN || origin === CHINA_PRODUCTION_ORIGIN;
 }
 
 export function environmentForWebsiteOrigin(origin: string): WebsiteEnvironment {
@@ -64,6 +66,7 @@ export function withCliEntryContext(value: string, source: CliEntrySource, marke
 
 export function websiteLoginUrl(market: string, environment: WebsiteEnvironment, source: CliEntrySource, toolReference?: string): string {
   websiteEnvironment(environment, {});
-  if (!isWebsiteMarket(market)) throw new Error('Website onboarding is available in Japan, Korea, and the United States. Use --region jp, kr, or us.');
-  return withCliEntryContext(`${PRODUCTION_BROWSER_ORIGIN}${LOGIN_PATHS[market]}`, source, market, toolReference);
+  if (!isWebsiteMarket(market)) throw new Error(UNSUPPORTED_MARKET);
+  const origin = market === 'cn' ? CHINA_PRODUCTION_ORIGIN : PRODUCTION_BROWSER_ORIGIN;
+  return withCliEntryContext(`${origin}${LOGIN_PATHS[market]}`, source, market, toolReference);
 }

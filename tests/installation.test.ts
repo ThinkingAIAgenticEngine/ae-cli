@@ -147,23 +147,24 @@ test('installation offers the locale default region and allows an explicit regio
   assert.match(result.next_steps.join(' '), /--language ja-JP/);
   assert.match(result.next_steps.join(' '), /default new-account region is jp/);
   assert.match(result.next_steps.join(' '), /offer exactly those two markets/);
-  assert.match(result.next_steps.join(' '), /--region jp\|kr\|us/);
+  assert.match(result.next_steps.join(' '), /--region cn\|jp\|kr\|us/);
   assert.equal(f.state.calls.some(call => call.args.includes('login')), false);
 });
 
-test('installation in a Chinese locale supports existing-account login without prompting for onboarding', t => {
+test('installation in a Chinese locale offers website onboarding on explicit request', t => {
   const f = fixture(t);
   const result = f.run({ env: { ...f.env, LANG: 'zh_CN.UTF-8' } });
   assert.equal(result.ok, true);
   assert.equal(result.cli.verified, true);
   assert.equal(result.skills.status, 'success');
-  assert.equal(result.next_action, undefined);
+  assert.equal(result.next_action, 'choose_account');
   assert.equal(result.local_language, 'zh-CN');
   const guidance = result.next_steps.join(' ');
   assert.match(guidance, /offer exactly those two markets.*For Chinese and English, offer China and the United States/);
-  assert.match(guidance, /If China is selected, stop website onboarding/);
+  assert.match(guidance, /only requested installation.*report the verified version and Skill count and finish/);
+  assert.match(guidance, /https:\/\/www\.thinkingai\.cn\/experience-login\/\?entry=cli&source=other&market=cn/);
   assert.match(guidance, /ae-cli auth login --host <AE_HOST>/);
-  assert.doesNotMatch(guidance, /request-demo|analysis onboarding|experience-login|Create an account and get started/);
+  assert.doesNotMatch(guidance, /request-demo|test\.thinkingai\./);
   assert.equal(f.state.calls.some(call => call.args.includes('login')), false);
 });
 

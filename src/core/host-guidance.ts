@@ -1,4 +1,4 @@
-import { cliEntrySource, cliToolReference, isWebsiteMarket, websiteLoginUrl } from './website-entry.js';
+import { cliEntrySource, cliToolReference, websiteLoginUrl } from './website-entry.js';
 
 export type AeRegistrationLanguage = 'zh-CN' | 'en-US' | 'ja-JP' | 'ko-KR';
 
@@ -23,22 +23,19 @@ export function registrationMarket(language: AeRegistrationLanguage): 'cn' | 'us
   return ({ 'zh-CN': 'cn', 'en-US': 'us', 'ja-JP': 'jp', 'ko-KR': 'kr' } as const)[language];
 }
 
-export function aeRegistrationUrl(language?: string, env: NodeJS.ProcessEnv = process.env, source?: string): string | undefined {
+export function aeRegistrationUrl(language?: string, env: NodeJS.ProcessEnv = process.env, source?: string): string {
   const market = registrationMarket(registrationLanguage(language, env));
-  if (!isWebsiteMarket(market)) return undefined;
   const tool = cliEntrySource(source, env);
   return websiteLoginUrl(market, 'production', tool, cliToolReference(tool, env));
 }
 
-export const CHINA_WEBSITE_ONBOARDING_UNAVAILABLE = 'Website signup for CLI onboarding is currently unavailable in China.';
 export const AE_HOST_SETUP_COMMAND = 'ae-cli config set-host <url>';
 
 export function missingAeHostHint(additionalAction?: string): string {
   const registration = aeRegistrationUrl();
   const actions = [
     `If your organization already uses AgenticEngine, ask your administrator for its AE URL, then run: ${AE_HOST_SETUP_COMMAND} and ae-cli auth login --host <url>. Keep your existing account's environment.`,
-    registration ? `To register or sign in, visit ${registration}, or run ae-cli analysis onboarding run for guided setup.`
-      : CHINA_WEBSITE_ONBOARDING_UNAVAILABLE,
+    `To register or sign in, visit ${registration}, or run ae-cli analysis onboarding run for guided setup.`,
   ];
   if (additionalAction) actions.push(additionalAction);
   return actions.join(' ');
@@ -47,16 +44,17 @@ export function missingAeHostHint(additionalAction?: string): string {
 export function missingAeHostGuidance(): {
   configure_host: string;
   existing_customer: string;
-  request_trial_url: string | null;
-  registration_login_url?: string;
-  onboarding_command?: string;
+  request_trial_url: string;
+  registration_login_url: string;
+  onboarding_command: string;
 } {
   const registration = aeRegistrationUrl();
   return {
     configure_host: AE_HOST_SETUP_COMMAND,
     existing_customer: 'Use the original AE environment URL when known, or ask your administrator.',
-    // Legacy alias for the overseas registration URL.
-    request_trial_url: registration ?? null,
-    ...(registration ? { registration_login_url: registration, onboarding_command: 'ae-cli analysis onboarding run' } : {}),
+    // Legacy alias for the official website registration URL.
+    request_trial_url: registration,
+    registration_login_url: registration,
+    onboarding_command: 'ae-cli analysis onboarding run',
   };
 }
