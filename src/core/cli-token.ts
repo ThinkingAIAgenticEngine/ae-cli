@@ -161,14 +161,12 @@ export function clearCliTokenCache(hostUrl?: string): void {
 }
 
 /** Mint a CLI token during device login. The access token is never persisted. */
-async function generateCliToken(hostUrl: string, accessToken: string, signal?: AbortSignal): Promise<string> {
+async function generateCliToken(hostUrl: string, accessToken: string): Promise<string> {
   if (!accessToken) throw new Error('CLI token generation requires the access token returned by auth login.');
   const url = `${hostUrl.replace(/\/+$/, '')}${CLI_TOKEN_GENERATE_PATH}`;
   const resp = await fetch(url, {
     method: 'GET',
     headers: { Authorization: `bearer ${accessToken}`, ...internalCallSourceHeaders() },
-    signal,
-    ...(signal ? { redirect: 'error' as const } : {}),
   });
   if (!resp.ok) {
     if (resp.status === 403) {
@@ -214,7 +212,6 @@ async function generateCliToken(hostUrl: string, accessToken: string, signal?: A
 export async function validateCliTokenOnServer(
   hostUrl: string,
   cliToken: string,
-  signal?: AbortSignal,
 ): Promise<CliTokenValidationResult> {
   const url = `${hostUrl.replace(/\/+$/, '')}${CLI_TOKEN_VALIDATE_PATH}`;
   let resp: Response;
@@ -223,11 +220,8 @@ export async function validateCliTokenOnServer(
       method: 'GET',
       headers: { Accept: 'application/json', 'cli-token': cliToken, ...internalCallSourceHeaders() },
       ...externalCliTokenRequestOptions(url),
-      ...(signal ? { redirect: 'error' as const } : {}),
-      signal,
     });
   } catch (error: any) {
-    signal?.throwIfAborted();
     throw new CliTokenValidationUnavailableError(`Unable to validate CLI token for ${hostUrl}: ${error.message}`);
   }
 
@@ -388,9 +382,9 @@ function sessionCliToken(hostOverride?: string): string | undefined {
 }
 
 /** Mint during the current device-login exchange; caller decides how to store the CLI token. */
-export async function mintCliToken(hostUrl: string, accessToken: string, signal?: AbortSignal): Promise<string> {
+export async function mintCliToken(hostUrl: string, accessToken: string): Promise<string> {
   logger.info(`Generating CLI token for ${hostUrl}`);
-  const cliToken = await generateCliToken(hostUrl, accessToken, signal);
+  const cliToken = await generateCliToken(hostUrl, accessToken);
   cliTokenCache.set(normalizeUrl(hostUrl), cliToken);
   return cliToken;
 }

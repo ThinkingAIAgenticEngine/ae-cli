@@ -59,7 +59,6 @@ export interface Command {
 }
 
 export interface RuntimeContext {
-  onboarding?(action: import('../core/onboarding/contracts.js').OnboardingAction, input: import('../core/onboarding/contracts.js').OnboardingInput): Promise<Record<string, unknown>>;
   /** Whether the caller explicitly provided a flag, including an empty string value. */
   has?(name: string): boolean;
   str(name: string): string;

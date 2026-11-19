@@ -65,7 +65,6 @@ test('npm pack includes installer chunks, Skills and the public npx package-name
   assert.ok(files.has('dist/ai-monitor.js'));
   assert.ok(files.has('cli-installation-guide.md'));
   assert.ok(files.has('skills/ae-agent/SKILL.md'));
-  assert.ok(files.has('skills/ae-onboarding/SKILL.md'));
   assert.equal(files.has('skills/ae-page-context/SKILL.md'), false);
   // npx selects the bin matching the unscoped package name, forwarding "install" unchanged.
   const inferredBin = pkg.name.replace(/^@[^/]+\//, '');

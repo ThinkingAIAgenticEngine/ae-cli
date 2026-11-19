@@ -4,7 +4,7 @@ Use when the user explicitly wants to create a saved analysis report from an AI 
 
 Do not use raw QP, `analysis_query`, `events`, `event_view`, or `visual_view`. The gateway accepts `model_type` plus AI QP `definition`.
 
-Read [`ai_models.md`](ai_models.md) for the single AI-facing model registry. Report create supports the 13 analysis models plus `tag` for saved tag report data.
+Read [`ai_models.md`](ai_models.md) for the single AI-facing model registry. Report create supports the 12 analysis models plus `tag` for saved tag report data.
 
 Command:
 

@@ -150,7 +150,6 @@ async function signRequest(
   // These legacy routes require sandbox identity for authentication or workspace side effects.
   const sandboxEndpoint = new Set([
     '/api/sandbox/models',
-    '/api/sandbox/onboarding/context',
     '/api/sandbox/models/select',
     '/api/sandbox/sync/push',
     '/api/sandbox/sync/push/skill',

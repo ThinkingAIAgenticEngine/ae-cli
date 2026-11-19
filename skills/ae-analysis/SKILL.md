@@ -1,6 +1,6 @@
 ---
 name: ae-analysis
-version: 4.2.76
+version: 4.2.62
 description: "Use ae-cli for AE analysis-side data questions, asset operations, and asset governance: reports, analysis boards, BI dashboards, ad-hoc models, drilldown, detail data, alerts, clusters, tags, metrics, metadata discovery, project configuration, tracking plans, local input-file upload, governance asset lists/rules/lineage/impact/dependency, batch asset operations, projects, and resource links. Use when the user asks to review collected analysis questions or badcases, query data, explain a change, export evidence, inspect/create/update/govern analysis assets, recommend project assets for certification/authentication, review asset-certification recommendations, review metric recommendations, or build/update/refresh/sync a project semantic knowledge base from a governed asset package."
 ---
 
@@ -200,7 +200,7 @@ Project selection priority is the user's explicit current instruction, the activ
 
 After any project selection or switch, load `personal-semantic-preference list --project-id <id>` before asset discovery or query construction. Read every relevant matched entry in full before using it. Do not carry the previous project's semantics into the new project. Cache directories per host, authenticated account/company, project, and conversation; a new conversation must initialize again. Failure to load either scope is not an empty catalog: report the error and resolve it before analysis continues. A missing global capability requires the new Common deployment; never silently omit global initialization.
 
-### Project Semantic Knowledge Base
+### Project Semantic Knowledge
 
 When the user explicitly asks to build, update, refresh, rebuild, or sync a project semantic knowledge base, open `references/project_semantic_knowledge_wiki.md`. That command-reference workflow starts from `ae-cli project-semantic asset-package export` and then uploads/compiles KB sources. The retired governed project-semantic candidate and release lifecycle is not part of this knowledge-base build path or CLI Agent asset-authentication and metric-recommendation review.
 

@@ -28,7 +28,6 @@ import entityDetail from './entity-detail/index.js';
 import drilldownEvents from './drilldown-events/index.js';
 import drilldownEntities from './drilldown-entities/index.js';
 import drilldownUserEvents from './drilldown-user-events/index.js';
-import drilldownSessionDetails from './drilldown-session-details/index.js';
 import user from './user/index.js';
 import queryCluster from './query-cluster/index.js';
 import sqlTable from './sql-table/index.js';
@@ -44,7 +43,6 @@ import system from './system/index.js';
 import feedback from './feedback/index.js';
 import scenario from './scenario/index.js';
 import badCase from './bad-case/index.js';
-import onboarding from './onboarding/index.js';
 import { registerCapabilityGatewayRoute } from '../../core/capability-routing.js';
 
 registerCapabilityGatewayRoute('analysis', { gatewayDomain: 'analysis' });
@@ -82,7 +80,6 @@ export const baseCommands: Command[] = [
   ...drilldownEvents,
   ...drilldownEntities,
   ...drilldownUserEvents,
-  ...drilldownSessionDetails,
   ...user,
   ...sqlTable,
   ...queryCluster,
@@ -100,7 +97,6 @@ export const baseCommands: Command[] = [
   ...badCase,
 ];
 
-// The bundled PLG Skill documents the onboarding commands.
-const commands: Command[] = [...baseCommands, ...onboarding];
+const commands: Command[] = [...baseCommands];
 
 export default commands;
