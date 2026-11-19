@@ -117,7 +117,7 @@ ae-cli experiment experiment save --project-id 1 --req '{"expId":"exp_123","allo
 - Local routing (`layerType="local"`) does not support `bucketId="#user_id"`. Use another bucket returned by `experiment bucket list`, such as `#account_id` or `#distinct_id` when available.
 - `allocation` (experiment-level) is the experiment's share of the traffic layer. It is optional during draft construction, but before readiness it must be greater than `0` and no more than `100`. **Integer only** (for example `20`); decimals such as `20.5` are rejected at the CLI interface.
 - `groups[].allocation` (group-level): **integer only; sum must equal `100` exactly**. Example for 3 groups: `34 + 33 + 33 = 100`. Decimals such as `33.33` are rejected at the CLI interface before save.
-- `expCycle.cycleType` can be `day`, `sample`, or `time`; when `cycleType=day`, `dayNum` is `1..90`. `time` requires `fixedEndTime`. Blank cycle defaults to day + 30.
+- `expCycle.cycleType` can be `day`, `sample`, or `time`; when `cycleType=day`, `dayNum` is `1..365`. `time` requires `fixedEndTime`. Blank cycle defaults to day + 30.
 - Before readiness, `groups` must be non-empty, contain exactly one control group (`isControl=1`), group allocations must sum to exactly `100`, and each `expGroupValue` must be a non-empty JSON string array.
 - Feature experiments must bind `featureKeyList` before readiness. `featureKeyList` contains Feature key strings, not Feature objects. The MCP currently supports one `featureKey` for feature experiments.
 - Metrics use `metricRole=primary|secondary|guardrail`; the internal `observation` role is currently unavailable for saves. Before readiness at least one primary metric is required.

@@ -1,4 +1,6 @@
 import assert from 'node:assert/strict';
+import { commonMetricCreate } from '../../src/commands/te-engage/engage-setting/common-metric/create.ts';
+import { commonMetricUpdate } from '../../src/commands/te-engage/engage-setting/common-metric/update.ts';
 import { spawnSync } from 'node:child_process';
 import { channelTouchLimitsList } from '../../src/commands/te-engage/engage-setting/channel-touch-limits/list.ts';
 import { channelList } from '../../src/commands/te-engage/engage-setting/channel/list.ts';
@@ -340,6 +342,76 @@ assert.notEqual(invalidCommonMetricWindowUnit.status, 0);
 const invalidCommonMetricWindowUnitError = JSON.parse(invalidCommonMetricWindowUnit.stderr);
 assert.equal(invalidCommonMetricWindowUnitError.error.type, 'validation');
 assert.match(invalidCommonMetricWindowUnitError.error.message, /minute, hour, day/);
+
+const metricOpts = {
+  projectId: 1, metricType: 1, metricName: 'calendar_metric',
+  metricDefinition: '{"type":"event","event":"purchase","aggregation":"total_count"}',
+  metricWindowNum: 1, metricWindowTimeUnit: 'day', displayName: 'Calendar metric',
+};
+const naturalCycles = [
+  ['day', { start_time: '00:00' }],
+  ['day', { start_time: '06:30' }],
+  ['week', { start_day: 1, start_time: '00:00' }],
+  ['week', { start_day: 3, start_time: '06:30' }],
+  ['month', { start_day: 1 }],
+  ['month', { start_day: 28, start_time: '00:00' }],
+];
+for (const cmd of [commonMetricCreate, commonMetricUpdate]) {
+  for (const [unit, cycle] of naturalCycles) {
+    const opts = { ...metricOpts, metricWindowTimeUnit: unit, timeCycleDef: JSON.stringify(cycle) };
+    cmd.validate(makeCtx(opts));
+    const captured = await captureCapabilityDryRun(cmd, opts);
+    assert.equal(captured.body.input.metric_window_time_unit, unit);
+    assert.deepEqual(captured.body.input.time_cycle_def, cycle);
+    assert.equal('timeCycleDef' in captured.body.input, false);
+    assert.match(captured.url, new RegExp(`common-metric\\.${cmd.command}/dry-run$`));
+  }
+}
+for (const cmd of [commonMetricCreate, commonMetricUpdate]) {
+  const rolling = await captureCapabilityDryRun(cmd, metricOpts);
+  assert.equal('time_cycle_def' in rolling.body.input, false);
+}
+const clearCycle = { ...metricOpts, timeCycleDef: 'null' };
+commonMetricUpdate.validate(makeCtx(clearCycle));
+assert.equal((await captureCapabilityDryRun(commonMetricUpdate, clearCycle)).body.input.time_cycle_def, null);
+// An omitted update definition is resolved against the existing metric on the server.
+commonMetricUpdate.validate(makeCtx({ ...metricOpts, metricWindowTimeUnit: 'week' }));
+const preservedCycle = await captureCapabilityDryRun(commonMetricUpdate, { ...metricOpts, metricWindowTimeUnit: 'week' });
+assert.equal('time_cycle_def' in preservedCycle.body.input, false);
+const formulaOpts = { ...metricOpts, metricWindowTimeUnit: 'month', timeCycleDef: '{"start_day":15}',
+  metricDefinition: JSON.stringify({ type: 'formula', expression: 'purchases/refunds', dependencies: [
+    { type: 'event', key: 'purchases', event: 'purchase', aggregation: 'total_count' },
+    { type: 'event', key: 'refunds', event: 'refund', aggregation: 'total_count' },
+  ] }) };
+commonMetricCreate.validate(makeCtx(formulaOpts));
+assert.deepEqual((await captureCapabilityDryRun(commonMetricCreate, formulaOpts)).body.input.time_cycle_def, { start_day: 15 });
+
+const invalidCycles = [
+  ['create', 'week', undefined, 1], ['create', 'month', undefined, 1],
+  ['update', 'week', 'null', 1], ['create', 'minute', '{"start_time":"00:00"}', 1],
+  ['create', 'day', '{}', 1], ['create', 'day', '[]', 1],
+  ['create', 'day', '{"startTime":"00:00"}', 1],
+  ['create', 'day', '{"start_time":"24:00"}', 1],
+  ['create', 'day', '{"start_time":"6:30"}', 1],
+  ['create', 'day', '{"start_time":"00:00","start_day":1}', 1],
+  ['create', 'day', '{"start_time":"00:00"}', 2],
+  ['create', 'week', '{"start_day":8,"start_time":"00:00"}', 1],
+  ['create', 'week', '{"start_day":1.5,"start_time":"00:00"}', 1],
+  ['create', 'week', '{"start_day":"1","start_time":"00:00"}', 1],
+  ['create', 'month', '{"start_day":29}', 1],
+  ['create', 'month', '{"start_day":1,"start_time":"06:30"}', 1],
+  ['create', 'day', undefined, 0], ['create', 'day', undefined, 1.5],
+];
+for (const [action, unit, cycle, num] of invalidCycles) {
+  const args = ['--dry-run', 'engage-setting', 'common-metric', action,
+    '--project-id', '1', '--metric-type', '1', '--metric-name', 'm1',
+    '--metric-definition', metricOpts.metricDefinition, '--metric-window-num', String(num),
+    '--metric-window-time-unit', unit, '--display-name', 'M1'];
+  if (cycle !== undefined) args.push('--time-cycle-def', cycle);
+  const result = runCli(args);
+  assert.notEqual(result.status, 0, `${action}/${unit}/${cycle}/${num}`);
+  assert.equal(JSON.parse(result.stderr).error.type, 'validation', result.stderr);
+}
 
 const invalidCommonMetricType = runCli([
   '--dry-run',

@@ -52,6 +52,14 @@ export function readCliAgentContext(): CliAgentContext {
     ...readFileContext(),
     ...scopedContext.getStore(),
   };
+  const argument = readContextArgument(process.argv.slice(2));
+  const runtime = argument ? parseContextArgument(argument)?.runtime_agent_model : undefined;
+  if (isPlainRecord(runtime) && runtime.version === 1) {
+    // A response-bound model supersedes stale Skill data; unknown stays optional.
+    delete context.agent_model;
+    const model = cleanValue(runtime.model, 128);
+    if (typeof runtime.model === 'string' && model) context.agent_model = model;
+  }
   return withCaptureStatus(context);
 }
 
@@ -179,6 +187,8 @@ function readArgumentContext(): CliAgentContext {
   if (!parsed) return {};
   const context = contextFromRecord(parsed);
   if (!hasContext(context)) return {};
+  if (isPlainRecord(parsed.runtime_agent_model) && parsed.runtime_agent_model.version === 1
+      && Object.keys(context).every((key) => key === 'agent_model')) return context;
   return {
     intent_source: 'agent_argument',
     ...context,

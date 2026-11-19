@@ -1,6 +1,6 @@
 ---
 name: ae-engage
-version: 1.0.1
+version: 1.0.2
 description: "AE Engage capability gateway: config center, flows, push/config channels, strategies, templates, task management, operation activities, and query lifecycle. Trigger words: config center, scene config, push channel, config channel, operation strategy, operation task, operation activity, query lifecycle, template, config item, Engage, Hermes, engage-scene, engage-setting, engage-flow, engage-task, engage-activity, engage-query."
 ---
 
@@ -169,6 +169,11 @@ ae-cli engage-setting common-metric create --project-id <project_id> --metric-ty
 ae-cli engage-setting common-metric update --project-id <project_id> --metric-type 1 --metric-name <name> --metric-definition '<semantic_metric_json>' --metric-window-num 1 --metric-window-time-unit day --display-name <display>
 ae-cli engage-setting common-metric delete --project-id <project_id> --metric-name <name> --yes
 ```
+
+Common metrics support rolling windows and natural day/week/month windows via
+`--time-cycle-def`. Read [common-metric.md](references/common-metric.md) for the public
+snake_case definition, update omission/null semantics, and required backend support.
+
 
 ### 2. task
 

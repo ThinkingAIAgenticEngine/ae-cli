@@ -112,4 +112,50 @@ property and percentile requirements as event metrics.
 
 Resolve every event and property through `ae-cli analysis-meta event list` and the corresponding property metadata before writing. `get` and `list` return `metric_definition`, `metric_definition_status`, and an optional unavailable reason. Raw metric QP is hidden.
 
-`metric_type=1` remains required for setting-page common metrics. Metric windows remain separate from the semantic definition, and their unit must be `minute` / `hour` / `day`.
+## Rolling and natural windows
+
+`metric_type=1` remains required for setting-page common metrics. Window configuration is
+separate from `metric_definition` and applies to both event and formula metrics.
+
+- Rolling windows use `minute`, `hour`, or `day`. On create, omit `--time-cycle-def`
+  (or pass `null`) to keep the rolling behavior. A rolling day is not a calendar day.
+- Natural windows use `day`, `week`, or `month` with `--metric-window-num 1` and a
+  non-null `--time-cycle-def` object. The capability input key is `time_cycle_def`;
+  its public nested keys are `start_time` / `start_day` (snake_case).
+
+| Window | Unit | `--time-cycle-def` |
+| --- | --- | --- |
+| Calendar day | `day` | '{"start_time":"00:00"}' |
+| Calendar week (Monday) | `week` | '{"start_day":1,"start_time":"00:00"}' |
+| Calendar month | `month` | '{"start_day":1}' |
+| Day starting at 06:30 | `day` | '{"start_time":"06:30"}' |
+| Week starting Wednesday at 06:30 | `week` | '{"start_day":3,"start_time":"06:30"}' |
+| Month starting on day 15 | `month` | '{"start_day":15}' |
+
+Day/week `start_time` must use `HH:mm` (00:00-23:59). A day must omit `start_day`.
+Week `start_day` is 1-7 (Monday-Sunday); month `start_day` is 1-28. A month must
+omit `start_time` or set it to `00:00`. Unknown keys and invalid combinations are rejected.
+
+For an existing verified event, add these flags to `common-metric create`:
+
+```bash
+--metric-window-num 1 --metric-window-time-unit week \
+  --time-cycle-def '{"start_day":1,"start_time":"00:00"}'
+```
+
+On **update**, omitting `--time-cycle-def` preserves the stored definition. The server
+validates the new window parameters together with that definition; omission must not
+silently turn a calendar day into a rolling day. Pass a new object to change the cycle,
+or explicitly pass `--time-cycle-def null` and a rolling unit to clear it. For example,
+switching to a rolling day uses:
+
+```bash
+--metric-window-num 1 --metric-window-time-unit day --time-cycle-def null
+```
+
+`get` and `list` return `time_cycle_def` (an object, or `null` for rolling windows).
+After create/update, read the metric back and check that the definition matches the intent.
+When binding a PRESET metric to a task or flow, reference its verified metric name using
+the documented metric-update contract; the saved common metric provides the window.
+Hermes with natural common-metric capability support must be deployed before using the
+new flags. Older Hermes versions may reject `time_cycle_def` or week/month units.

@@ -45,7 +45,7 @@ export const kbGrep: Command = {
       name: 'paths',
       type: 'json',
       required: true,
-      desc: 'JSON array of wiki pages or subdirectories copied from +index, e.g. ["wiki/sandbox.md"] or ["wiki/guides"]',
+      desc: 'JSON array of files or subdirectories strictly under wiki/, copied from returned navigation, e.g. ["wiki/sandbox.md"] or ["wiki/guides"]. The roots "wiki" and "wiki/", index.md, raw/, absolute paths and paths escaping wiki/ are invalid. If navigation provides no usable paths, skip +grep; never use the wiki root as a fallback.',
     },
     { name: 'top-k', type: 'number', required: false, min: 1, max: 50, desc: 'Max number of pages to return (1-50, default 10)' },
     { name: 'locale', type: 'string', required: false, desc: 'Optional locale: zh | en | ja | ko' },

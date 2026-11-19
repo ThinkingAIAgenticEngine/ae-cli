@@ -1,6 +1,6 @@
 ---
 name: ae-team
-version: 1.0.2
+version: 1.1.0
 description: "ThinkingAI AE (Agentic Engine) ae-cli manual for AI Agent Team tasks: managing teams (list, create, update, delete, AI-generate, templates) and executing TeamRuns (start, chat, cancel, reply, result, artifacts). Use when the user asks to find a team, run a team task, check run status, retrieve results or artifacts, or set up multi-agent workflows. Must use ae-cli, read the matching references/<command>.md before composing commands, and never guess team IDs, run IDs, config structures, or parameter formats."
 ---
 
@@ -9,6 +9,8 @@ description: "ThinkingAI AE (Agentic Engine) ae-cli manual for AI Agent Team tas
 > **CRITICAL — Before running any `+<command>` command, you MUST first read the corresponding `references/<command>.md`.** The reference filename equals the command name without the leading `+`, for example `+run-start` → `references/run-start.md`.
 > **CRITICAL — Never guess team IDs, run IDs, or config JSON structures.** Always use `+list` or `+list-templates` to discover real resources first.
 > **CRITICAL — For the core Agent workflow (find → start → poll → artifacts), follow Workflow A in the Typical Workflows section below.**
+
+For scope changes, use `+promote` (personal to company, same Team ID) or `+copy-to-personal` (company to personal, new ID). Preview the chosen operation, explain who can see and manage the Team and what happens to automations and history, then wait for confirmation of that specific action. A request to make a company Team private requires offering an independent copy and waiting for approval. Ordinary updates cannot change scope.
 
 ## Global AE CLI Rules
 
@@ -59,13 +61,15 @@ ae-cli team +list --help
 ae-cli team +run-start --help
 ```
 
-## Tool Groups (13)
+## Tool Groups (16)
 
-### Team Management (7)
+### Team Management (9)
 
 - `+list` ([doc](references/list.md)) — list all visible teams
 - `+create` ([doc](references/create.md)) — create a new team with a TeamConfig
 - `+update` ([doc](references/update.md)) — patch one or more fields of an existing team
+- `+promote` ([doc](references/promote.md)) — publish your personal Team to the company after confirmation
+- `+copy-to-personal` ([doc](references/copy-to-personal.md)) — create a separate personal Team from a company Team
 - `+delete` ([doc](references/delete.md)) — delete a team (409 if runs are active)
 - `+ai-generate` ([doc](references/ai-generate.md)) — AI-generate a team config draft from a goal description
 - `+list-templates` ([doc](references/list-templates.md)) — browse built-in team templates

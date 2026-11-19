@@ -1,5 +1,11 @@
+import { detectCliLocale } from '../../tracking/i18n/locale.js';
 import { randomUUID } from "node:crypto";
 import { currentAgentSpaceId } from "../../core/agent-space-context.js";
+import {
+  CliApiError,
+  CliValidationError,
+  PermissionError,
+} from "../../core/errors.js";
 import { resolveWorkspaceTarget } from "../workspace/target.js";
 import type { Command, Flag, RuntimeContext } from "../../framework/types.js";
 import {
@@ -80,6 +86,10 @@ const configFlags = [
     "json",
   ),
   flag("model", "Agent model configuration ID; null clears the override"),
+  flag(
+    "effort",
+    "Agent reasoning depth: adaptive (default on create), low, medium, high, max. Adaptive clears the override; Team ignores this flag.",
+  ),
   flag("reuse-conversation", "Agent: true | false", "json"),
   {
     ...flag("scope", "Team data scope JSON; null clears it", "json"),
@@ -268,6 +278,15 @@ export function configuration(
     !cron
   )
     throw new Error("Scheduled automation requires a schedule");
+  const effort = ctx.str("effort");
+  const hasEffort = ctx.has?.("effort") ?? Boolean(effort);
+  if (hasEffort && targetType === "agent") {
+    if (!["adaptive", "low", "medium", "high", "max"].includes(effort))
+      throw new CliValidationError(
+        "--effort must be adaptive | low | medium | high | max",
+      );
+    result.effort = effort === "adaptive" ? null : effort;
+  }
   const agentNames = ["model", "reuseConversation"];
   const teamNames = ["scope", "saveToKnowledgeBaseId"];
   const notificationNames = [
@@ -324,8 +343,16 @@ export function configuration(
           ? null
           : value;
   }
-  if (!create && !Object.keys(result).length)
-    throw new Error("No fields to update");
+  if (!create && !Object.keys(result).length) {
+    const onlyTeamEffort =
+      targetType === "team" &&
+      hasEffort &&
+      !configFlags.some(
+        ({ name }) =>
+          name !== "target-type" && name !== "effort" && ctx.has?.(name),
+      );
+    if (!onlyTeamEffort) throw new Error("No fields to update");
+  }
   if (create) result.triggerImmediately = ctx.bool("triggerImmediately");
   return result;
 }
@@ -361,6 +388,7 @@ async function request(
       body,
       ctx.hostOverride ? ctx.hostOverride() : ctx.host(),
       "cli-token",
+      { "Accept-Language": detectCliLocale() },
     );
   if (method === "PATCH")
     return patchToMainApp(
@@ -420,6 +448,49 @@ type Action = {
   typed?: boolean;
   wait?: boolean;
 };
+
+// configuration rejects empty updates except when Team ignored the only supplied field.
+function isUnchangedTeamUpdate(action: Action, body?: Record<string, unknown>) {
+  return (
+    action.command === "update" &&
+    body !== undefined &&
+    Object.keys(body).length === 0
+  );
+}
+
+function ignoredEffortReceipt(ctx: RuntimeContext) {
+  return ctx.str("targetType") === "team" && (ctx.has?.("effort") ?? Boolean(ctx.str("effort")))
+    ? { ignoredFields: ["effort"] }
+    : {};
+}
+
+async function checkUnchangedTeamUpdate(ctx: RuntimeContext, path: string) {
+  const detail = await request(ctx, "GET", path);
+  const update = detail?.actions?.update;
+  if (detail?.targetType !== "team" || typeof update?.allowed !== "boolean")
+    throw new CliApiError("Unable to verify Team update permission.");
+  if (!update.allowed) {
+    const reason = update.reason;
+    if (
+      reason === "AUTOMATION_FORBIDDEN" ||
+      reason === "AGENT_SPACE_PERMISSION_DENIED"
+    )
+      throw new PermissionError(
+        "No permission to update this Team automation.",
+        reason,
+      );
+    throw new CliApiError("This Team automation cannot be updated.", {
+      code: reason,
+    });
+  }
+  return {
+    id: detail.id,
+    agentSpaceId: detail.agentSpaceId,
+    targetType: "team",
+    unchanged: true,
+    ignoredFields: ["effort"],
+  };
+}
 const actions: Action[] = [
   {
     command: "list",
@@ -545,9 +616,25 @@ export const automationCommands: Command[] = actions.map((a) => ({
       ...(a.wait ? { commandId } : {}),
     };
     const path = base + a.suffix(ctx) + (await query(ctx, a.list, a.typed));
+    if (isUnchangedTeamUpdate(a, body)) {
+      const { id, ...result } = await checkUnchangedTeamUpdate(ctx, path);
+      return {
+        request: redactedPreview("GET", path),
+        validation: {
+          dryRun: true,
+          valid: true,
+          operation: "update",
+          automationId: id,
+          ...result,
+        },
+      };
+    }
     return {
       request: redactedPreview(a.method, path, requestBody),
-      validation: await request(ctx, a.method, withDryRun(path), requestBody),
+      validation: {
+        ...(await request(ctx, a.method, withDryRun(path), requestBody)),
+        ...ignoredEffortReceipt(ctx),
+      },
     };
   },
   execute: async (ctx) => {
@@ -555,10 +642,13 @@ export const automationCommands: Command[] = actions.map((a) => ({
       commandId = ctx.str("commandId") || randomUUID();
     let output;
     try {
+      const path = base + a.suffix(ctx) + (await query(ctx, a.list, a.typed));
+      if (isUnchangedTeamUpdate(a, body))
+        return await checkUnchangedTeamUpdate(ctx, path);
       output = await request(
         ctx,
         a.method,
-        base + a.suffix(ctx) + (await query(ctx, a.list, a.typed)),
+        path,
         body && { ...body, ...(a.wait ? { commandId } : {}) },
       );
     } catch (error) {
@@ -579,6 +669,8 @@ export const automationCommands: Command[] = actions.map((a) => ({
         );
       throw error;
     }
+    if (a.command === "update" || a.command === "create")
+      output = { ...output, ...ignoredEffortReceipt(ctx) };
     if (!a.wait) return output;
     const runId =
       a.command === "create" ? output.execution?.runId : output.runId;

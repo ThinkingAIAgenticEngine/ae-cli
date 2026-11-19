@@ -131,6 +131,19 @@ describe('kb +compile command', () => {
     });
   });
 
+  it('forwards the normalized working language to the Host', async () => {
+    const received = await captureCompileRequest(['--content-language', 'KO', '--mode', 'full']);
+    assert.deepEqual(received.body, {
+      name: 'Engineering Handbook',
+      mode: 'full',
+      contentLanguage: 'ko',
+    });
+    assert.throws(
+      () => compile.validate(context({ name: 'Engineering Handbook', 'content-language': 'ko-KR' })),
+      /BCP-47 primary language subtag/,
+    );
+  });
+
   it('omits model when --model is absent', async () => {
     assert.deepEqual(compile.dryRun(context({ name: 'Engineering Handbook' })).body, {
       name: 'Engineering Handbook',

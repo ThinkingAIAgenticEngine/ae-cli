@@ -1,6 +1,6 @@
 ---
 name: ae-experiment
-version: 1.0.11
+version: 1.0.12
 description: "Use when managing Atlas AB or external experiments, experiment approvals and approvers, traffic domains and layers, Features, metrics, buckets, and experiment reports through ae-cli"
 ---
 

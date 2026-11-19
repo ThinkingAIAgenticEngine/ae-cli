@@ -144,3 +144,27 @@ for (const modelCase of [
   });
 
 }
+
+await test('Current runtime response model overrides a stale Skill model without becoming required', () => {
+  const argv = process.argv;
+  const previousSource = process.env.TA_CLI_INTENT_SOURCE;
+  process.env.TA_CLI_INTENT_SOURCE = 'raw_user_prompt';
+  try {
+    withContextFile((file) => {
+      writeFileSync(file, JSON.stringify({ agent_model: 'stale-skill', user_intent: 'Keep this intent' }));
+      for (const model of ['actual-response-model', null]) {
+        const payload = Buffer.from(JSON.stringify({ agent_model: model ?? undefined, runtime_agent_model: { version: 1, model } })).toString('base64url');
+        process.argv = [...argv, '--agent-context', payload];
+        const context = readCliAgentContext();
+        assert.equal(context.agent_model, model ?? undefined);
+        assert.equal(context.user_intent, 'Keep this intent');
+        assert.equal(context.intent_source, 'raw_user_prompt');
+        if (model === null) assert.equal(cliAgentContextHeaders(context)['X-TA-CLI-Agent-Model'], undefined);
+      }
+    });
+  } finally {
+    process.argv = argv;
+    if (previousSource === undefined) delete process.env.TA_CLI_INTENT_SOURCE;
+    else process.env.TA_CLI_INTENT_SOURCE = previousSource;
+  }
+});

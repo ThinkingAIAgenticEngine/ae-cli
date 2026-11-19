@@ -322,6 +322,8 @@ ae-cli kb +ask-status --execution-id <id>
 
 按名称管理知识库的命令都支持可选 `--scope personal|company`；省略时保留 personal 到 company 的旧查找顺序。Schema 与 Compile 优先使用 `ae-cli agent +list-models` 返回的模型记录 `id`；历史 `modelId` 和 `modelId::scope` 仍兼容，`displayName` 不是稳定引用。
 
+配套 Host 支持后，可用 `kb +schema --content-language ko` 指定知识库内容语言。添加 `--rewrite-language` 可在保留现有规则的基础上改写语言。用 `kb +compile --content-language ko` 可在编译前核对工作准则的语言。
+
 `kb +import` 接受最大 50 MB 的编译后 Markdown ZIP，根目录必须包含 `index.md`，页面放在 `wiki/**/*.md`。命令立即返回 `{requestId, status: "queued"}`；通过 `ae-cli kb +import-status --request-id <requestId>` 查询 `queued`、`running`、`succeeded` 或 `failed`。导入成功后可执行列表、Index/Wiki、grep/read、Ask 和删除；个人只读快照不支持来源、Schema、用量、编译、成员/设置、所有权转移和公司发布。
 
 外部 Agent 可以使用不依赖服务端 LLM 的确定性检索：

@@ -280,6 +280,7 @@ async function requestMultipartOnce(url: string, token: string, form: FormData):
       'cli-token': token,
       'Accept': 'application/json',
       ...internalCallSourceHeaders(),
+      ...cliAgentContextHeaders(),
     },
     body: form,
   });
@@ -293,6 +294,7 @@ async function requestDownloadOnce(url: string, token: string): Promise<Response
       'cli-token': token,
       'Accept': '*/*',
       ...internalCallSourceHeaders(),
+      ...cliAgentContextHeaders(),
     },
   });
 }

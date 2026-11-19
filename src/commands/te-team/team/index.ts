@@ -7,9 +7,14 @@ import { aiGenerate } from './ai-generate.js';
 import { listTemplates } from './list-templates.js';
 import { listProjects } from './list-projects.js';
 
+import { promoteTeam } from './promote-team.js';
+import { copyTeam } from './copy-team.js';
+
 const commands: Command[] = [
   listTeams,
   createTeam,
+  promoteTeam,
+  copyTeam,
   updateTeam,
   deleteTeam,
   aiGenerate,

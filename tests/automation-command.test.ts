@@ -22,6 +22,11 @@ import { canPromptForConfirmation } from "../src/framework/runner.ts";
 
 function context(values: Record<string, unknown> = {}): RuntimeContext {
   return {
+    has: (k) =>
+      Object.hasOwn(
+        values,
+        k.replace(/-([a-z])/g, (_, c: string) => c.toUpperCase()),
+      ),
     str: (k) => (values[k] === undefined ? "" : String(values[k])),
     num: (k) => Number(values[k]),
     optionalNum: (k) =>
@@ -90,6 +95,158 @@ test("configuration preserves false, null, empty arrays and rejects cross-target
       ),
     /only/,
   );
+});
+test("Agent effort is optional on create and update; adaptive clears the override", () => {
+  for (const create of [true, false]) {
+    const base = {
+      targetType: "agent",
+      agentId: "a",
+      name: "A",
+      triggerType: "manual",
+    };
+    assert.ok(!Object.hasOwn(configuration(context(base), create), "effort"));
+    for (const effort of ["adaptive", "low", "medium", "high", "max"]) {
+      assert.equal(
+        configuration(context({ ...base, effort }), create).effort,
+        effort === "adaptive" ? null : effort,
+      );
+    }
+    for (const effort of ["", "xhigh", "null"]) {
+      assert.throws(
+        () => configuration(context({ ...base, effort }), create),
+        /--effort/,
+      );
+    }
+  }
+});
+test("invalid Agent effort is a CLI validation error", () => {
+  const result = spawnSync(
+    process.execPath,
+    [
+      "--import",
+      "tsx",
+      "src/index.ts",
+      "--no-update-check",
+      "automation",
+      "update",
+      "--id",
+      "test",
+      "--target-type",
+      "agent",
+      "--effort",
+      "xhigh",
+    ],
+    {
+      encoding: "utf8",
+      timeout: 15000,
+      env: { ...process.env, TE_AGENT_CLI_CONFIG_DIR: "", TE_CLAUDE_BASE_URL: "http://127.0.0.1:9" },
+    },
+  );
+  assert.equal(result.status, 1);
+  const error = JSON.parse(result.stderr.trim()).error;
+  assert.equal(error.type, "validation");
+  assert.match(error.message, /--effort/);
+});
+test("Team ignores effort before validation; effort-only updates check scoped write permission without a PATCH", async () => {
+  const original = globalThis.fetch;
+  setCliTokenManual("cli_test_automation", "https://automation-test.example");
+  const calls: Array<{
+    method: string;
+    url: URL;
+    body?: Record<string, unknown>;
+  }> = [];
+  const team = {
+    id: "task",
+    targetType: "team",
+    agentSpaceId: "space",
+    message: "private task",
+    actions: { update: { allowed: true, reason: null as string | null } },
+  };
+  globalThis.fetch = async (url, init) => {
+    calls.push({
+      method: init?.method ?? "GET",
+      url: new URL(String(url)),
+      body: init?.body ? JSON.parse(String(init.body)) : undefined,
+    });
+    return Response.json(init?.method === "POST" ? { automation: team } : team);
+  };
+  try {
+    for (const mode of ["dryRun", "execute"] as const) {
+      const fields = {
+        id: "task",
+        agentSpaceId: "space",
+        targetType: "team",
+        effort: "not-an-agent-level",
+      };
+      const create = context({
+        ...fields,
+        teamId: "T",
+        name: "team",
+        triggerType: "manual",
+      });
+      command("create").validate!(create);
+      const created = await command("create")[mode]!(create);
+      assert.deepEqual((created.validation ?? created).ignoredFields, ["effort"]);
+      assert.equal(calls.at(-1)?.method, "POST");
+      assert.ok(!Object.hasOwn(calls.at(-1)!.body!, "effort"));
+      const update = context({ ...fields, name: "new name" });
+      const mixed = await command("update")[mode]!(update);
+      assert.deepEqual((mixed.validation ?? mixed).ignoredFields, ["effort"]);
+      assert.notEqual((mixed.validation ?? mixed).unchanged, true);
+      assert.equal(calls.at(-1)?.method, "PATCH");
+      assert.deepEqual(calls.at(-1)?.body, { name: "new name" });
+      const start = calls.length;
+      for (const extra of [
+        { name: "" },
+        { status: "" },
+        { clearMessage: false },
+      ]) {
+        await assert.rejects(
+          () => command("update")[mode]!(context({ ...fields, ...extra })),
+          /No fields to update/,
+        );
+      }
+      const result = await command("update")[mode]!(context(fields));
+      assert.equal(result.validation?.unchanged ?? result.unchanged, true);
+      assert.deepEqual((result.validation ?? result).ignoredFields, ["effort"]);
+      if (mode === "dryRun")
+        assert.ok(!JSON.stringify(result).includes("private task"));
+      team.actions.update = { allowed: false, reason: "AUTOMATION_FORBIDDEN" };
+      await assert.rejects(() => command("update")[mode]!(context(fields)), {
+        code: "AUTOMATION_FORBIDDEN",
+      });
+      team.actions.update = { allowed: true, reason: null };
+      assert.equal(calls.length - start, 2);
+      for (const { method, url, body } of calls.slice(start)) {
+        assert.equal(method, "GET");
+        assert.equal(url.searchParams.get("agentSpaceId"), "space");
+        assert.equal(url.searchParams.get("targetType"), "team");
+        assert.ok(!url.searchParams.has("dryRun"));
+        assert.equal(body, undefined);
+      }
+    }
+    assert.throws(
+      () =>
+        command("update").validate!(
+          context({ id: "task", targetType: "team" }),
+        ),
+      /No fields to update/,
+    );
+    assert.throws(
+      () =>
+        command("update").validate!(
+          context({
+            id: "task",
+            targetType: "team",
+            effort: "max",
+            model: "m",
+          }),
+        ),
+      /not applicable/,
+    );
+  } finally {
+    globalThis.fetch = original;
+  }
 });
 test("all frequencies and manual creation validate before normal or dry-run transport", async () => {
   const original = globalThis.fetch;

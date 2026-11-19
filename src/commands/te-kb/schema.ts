@@ -1,3 +1,4 @@
+import { requestedContentLanguage, requestWithContentLanguage } from './content-language.js';
 import fs from 'node:fs';
 import path from 'node:path';
 import type { Command, RuntimeContext } from '../../framework/types.js';
@@ -39,6 +40,12 @@ function buildBody(ctx: RuntimeContext): Record<string, unknown> {
   const customInstructions = getCustomInstructions(ctx);
   if (customInstructions) body.customInstructions = customInstructions;
 
+  const contentLanguage = requestedContentLanguage(ctx);
+  if (contentLanguage) body.contentLanguage = contentLanguage;
+  if (ctx.bool('rewrite-language')) {
+    if (!contentLanguage) throw new Error('--rewrite-language requires --content-language.');
+    body.schemaMode = 'rewrite-language';
+  }
   return body;
 }
 
@@ -46,9 +53,7 @@ export async function executeSchema(
   ctx: RuntimeContext,
   api: typeof kbApi = kbApi,
 ): Promise<unknown> {
-  return api(ctx, 'POST', API_PATH, {}, buildBody(ctx), {
-    preserveBusinessErrorCode: true,
-  });
+  return requestWithContentLanguage(ctx, API_PATH, buildBody(ctx), api, true);
 }
 
 export const schema: Command = {
@@ -56,6 +61,8 @@ export const schema: Command = {
   command: '+schema',
   description: 'Generate the compile schema for a knowledge base via POST /agent/api/external/knowledge-bases/schema.',
   flags: [
+    { name: 'content-language', type: 'string', required: false, desc: "Set the knowledge-base content language while generating the guidelines." },
+    { name: 'rewrite-language', type: 'boolean', required: false, desc: 'Rewrite the language of the existing guidelines while preserving their rules.' },
     { name: 'name', type: 'string', required: true, desc: 'Knowledge base name (looked up personal → company)' },
     { name: 'scope', type: 'string', required: false, desc: 'Exact knowledge base scope: personal | company (omit for personal → company fallback)' },
     { name: 'force', type: 'boolean', required: false, desc: 'Preempt generation even when status is `generating` (use only for stuck recovery)' },
@@ -78,7 +85,7 @@ export const schema: Command = {
   risk: 'write',
   validate: (ctx) => {
     getExternalKnowledgeBaseTargetScope(ctx);
-    getCustomInstructions(ctx);
+    buildBody(ctx);
   },
   dryRun: (ctx) => ({
     method: 'POST',

@@ -39,7 +39,7 @@ function tasksFor(files) {
     tasks.push(['npm', ['run', 'check:agents-docs']]);
   }
 
-  if (needs(files, [/^src\/core\/(source-logged-fetch|sandbox-runtime|internal-call-source|capability-api|mcp)\.ts$/, /^src\/commands\/te-dataops\/shared\.ts$/, /^tests\/source-logged-fetch\.test\.ts$/])) {
+  if (needs(files, [/^src\/core\/(source-logged-fetch|sandbox-runtime|internal-call-source|capability-api|mcp)\.ts$/, /^src\/commands\/te-dataops\/shared\.ts$/, /^tests\/(source-logged-fetch|cli-agent-context-transports)\.test\.ts$/])) {
     tasks.push(['npm', ['run', 'verify:cli-source-logging']]);
   }
 

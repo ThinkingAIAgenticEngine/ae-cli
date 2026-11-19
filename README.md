@@ -322,6 +322,8 @@ ae-cli kb +ask-status --execution-id <id>
 
 Name-based management commands accept optional `--scope personal|company`; omit it to keep the legacy personal-to-company lookup. For Schema and Compile, prefer the model record `id` from `ae-cli agent +list-models`; historical `modelId` and `modelId::scope` remain compatible, while `displayName` is not a stable reference.
 
+With a supporting Host, use `kb +schema --content-language ko` to select the content language. Add `--rewrite-language` to change the language while retaining the existing guidelines. Use `kb +compile --content-language ko` to check the working language before compiling.
+
 `kb +import` accepts a compiled Markdown ZIP up to 50 MB with root `index.md` and `wiki/**/*.md` pages. It returns `{requestId, status: "queued"}` immediately; use `ae-cli kb +import-status --request-id <requestId>` to read `queued`, `running`, `succeeded`, or `failed`. A succeeded personal read-only snapshot supports list, Index/Wiki, grep/read, Ask, and delete operations; source, Schema, usage, compile, member/settings, ownership transfer, and company publication are unavailable.
 
 External Agents can use deterministic retrieval without a server-side LLM:

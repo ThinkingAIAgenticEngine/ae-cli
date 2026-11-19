@@ -2,7 +2,7 @@ import { createEngageSettingCapabilityCommand } from '../../shared.js';
 import type { Flag } from '../../../../framework/types.js';
 import {
   validateMetricDefinitionFlag,
-  validateMetricWindowTimeUnitFlag,
+  validateMetricWindowFlags,
   validatePresetMetricTypeFlag,
 } from './metric-qp-validation.js';
 
@@ -21,8 +21,9 @@ const writeFlags: Flag[] = [
     name: 'metric-window-time-unit',
     type: 'string',
     required: true,
-    desc: 'Metric window time unit (minute/hour/day).',
+    desc: 'Rolling unit: minute/hour/day; natural cycle unit: day/week/month.',
   },
+  { name: 'time-cycle-def', type: 'json', required: false, desc: 'Natural cycle {start_day?, start_time?}. Omit on update to preserve; null selects a rolling window.' },
   { name: 'display-name', type: 'string', required: true, desc: 'Display name of the metric.' },
   { name: 'note', type: 'string', required: false, desc: 'Metric note/remark.' },
   { name: 'order-id', type: 'number', required: false, desc: 'Sort order id.' },
@@ -37,6 +38,7 @@ const buildWriteInput = (ctx: any) => ({
   metric_definition: ctx.json('metric-definition'),
   metric_window_num: ctx.num('metric-window-num'),
   metric_window_time_unit: ctx.str('metric-window-time-unit'),
+  time_cycle_def: ctx.json('time-cycle-def'),
   display_name: ctx.str('display-name'),
   note: ctx.str('note') || undefined,
   order_id: ctx.optionalNum('order-id'),
@@ -55,7 +57,9 @@ export const commonMetricCreate = createEngageSettingCapabilityCommand({
   validate: (ctx) => {
     validatePresetMetricTypeFlag(ctx.num('metric-type'));
     validateMetricDefinitionFlag(ctx.json('metric-definition'));
-    validateMetricWindowTimeUnitFlag(ctx.str('metric-window-time-unit'));
+    validateMetricWindowFlags(
+      ctx.str('metric-window-time-unit'), ctx.num('metric-window-num'), ctx.json('time-cycle-def'),
+    );
   },
   buildInput: buildWriteInput,
 });

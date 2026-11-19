@@ -273,7 +273,12 @@ assert.match(configTableRef, /engage-setting\.config-table\.\{upload,save,list,q
 const commonMetricRef = readFileSync(path.join(ROOT, 'skills/ae-engage/references/common-metric.md'), 'utf8');
 assert.match(commonMetricRef, /engage-setting\.common-metric\.\{list,get,create,update,delete\}/);
 assert.match(commonMetricRef, /analysis-meta event list/);
-assert.match(commonMetricRef, /`minute` \/ `hour` \/ `day`/);
+assert.match(commonMetricRef, /Rolling windows use `minute`, `hour`, or `day`/);
+assert.match(commonMetricRef, /Natural windows use `day`, `week`, or `month`/);
+assert.match(commonMetricRef, /`time_cycle_def`/);
+assert.match(commonMetricRef, /`start_time` \/ `start_day`/);
+assert.match(commonMetricRef, /omitting `--time-cycle-def` preserves the stored definition/);
+assert.match(commonMetricRef, /--time-cycle-def null/);
 assert.match(commonMetricRef, /opsEditSetting/);
 assert.match(commonMetricRef, /`array_row`/);
 assert.match(commonMetricRef, /`object_group`/);

@@ -43,7 +43,11 @@ A revision or access-context change requires revalidation, not silent reuse.
 
 2. **Grep copied paths.** When no sufficiently specific page link is known,
    copy 1–3 `wiki/...` entries from the navigation already returned (a page
-   such as `wiki/sandbox.md`, or a subdirectory such as `wiki/guides`). Call
+   such as `wiki/sandbox.md`, or a subdirectory such as `wiki/guides`). Each
+   entry must be strictly below `wiki/`: the roots `wiki` and `wiki/`,
+   `index.md`, `raw/`, absolute paths and paths escaping `wiki/` are invalid.
+   Never use the wiki root as a full-library search fallback. If navigation
+   provides no usable paths, skip grep as described below. Call
    `+grep` with the candidate `--sources` and the copied list as `--paths`. Search
    with the terms in the returned navigation. If the first grep misses, rewrite
    the query **once** using different terms from that navigation, still with

@@ -1,6 +1,14 @@
+import { detectCliLocale } from '../../../tracking/i18n/locale.js';
 import type { Command, RuntimeContext } from '../../../framework/types.js';
 import { kbApi } from '../../../core/mcp-access.js';
 import { BASE_TEAM_PATH } from '../shared.js';
+
+const scopeHelp = {
+  en:'For compatibility, pass the current scope only. Use +promote or +copy-to-personal to change ownership.',
+  zh:'仅用于兼容原样传回当前范围。要更改归属，请使用 +promote 或 +copy-to-personal。',
+  ja:'互換性のため現在の公開範囲のみ指定できます。所有範囲の変更は +promote または +copy-to-personal を使用してください。',
+  ko:'호환성을 위해 현재 공개 범위만 전달할 수 있습니다. 소유 범위를 변경하려면 +promote 또는 +copy-to-personal을 사용하세요.',
+};
 
 const VALID_SCOPES = new Set(['personal', 'company']);
 
@@ -28,7 +36,7 @@ export const updateTeam: Command = {
     { name: 'name', type: 'string', required: false, desc: 'New team name' },
     { name: 'config', type: 'json', required: false, desc: 'New TeamConfig JSON' },
     { name: 'description', type: 'string', required: false, desc: 'New description' },
-    { name: 'scope', type: 'string', required: false, desc: 'personal | company' },
+    { name: 'scope', type: 'string', required: false, desc: scopeHelp[detectCliLocale()] },
     { name: 'enabled', type: 'boolean', required: false, desc: 'Whether enabled' },
   ],
   risk: 'write',
@@ -43,5 +51,5 @@ export const updateTeam: Command = {
     url: `${ctx.host().replace(/\/$/, '')}${BASE_TEAM_PATH}/${ctx.str('id')}`,
     body: buildBody(ctx),
   }),
-  execute: async (ctx) => kbApi(ctx, 'PATCH', `${BASE_TEAM_PATH}/${ctx.str('id')}`, {}, buildBody(ctx)),
+  execute: async (ctx) => kbApi(ctx, 'PATCH', `${BASE_TEAM_PATH}/${ctx.str('id')}`, {lang:detectCliLocale()}, buildBody(ctx)),
 };

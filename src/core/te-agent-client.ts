@@ -340,6 +340,7 @@ export async function postToMainApp<T = unknown>(
   body: unknown,
   hostOverride?: string,
   authMode: 'auto' | 'cli-token' = 'auto',
+  headers?: HeadersInit,
 ): Promise<T> {
   const rawBody = JSON.stringify(body);
   const response = await fetchSigned({
@@ -347,6 +348,7 @@ export async function postToMainApp<T = unknown>(
     path,
     body: rawBody,
     hostOverride,
+    headers,
     authMode,
   });
 

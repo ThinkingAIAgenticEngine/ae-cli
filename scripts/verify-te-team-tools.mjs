@@ -21,7 +21,7 @@ function walk(dir) {
       continue;
     }
     if (!entry.name.endsWith('.ts')) continue;
-    if (entry.name === 'index.ts' || entry.name === 'shared.ts') continue;
+    if (['index.ts', 'shared.ts', 'scope-command.ts'].includes(entry.name)) continue;
     commandFiles.push(p);
   }
 }
@@ -43,7 +43,7 @@ if (commandSet.size !== commands.length) {
   fail('duplicate team command names found in source files');
 }
 
-const EXPECTED_COUNT = 14;
+const EXPECTED_COUNT = 16;
 if (commands.length !== EXPECTED_COUNT) {
   fail(`team tool count mismatch: expected ${EXPECTED_COUNT}, got ${commands.length}`);
 }

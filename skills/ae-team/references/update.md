@@ -6,13 +6,13 @@ Domain: **Team management / write**
 
 ## Use Cases
 - Partially update an existing team (PATCH semantics — only the fields you pass are changed).
-- Common uses: rename a team, update its config, disable/enable it, change scope.
+- Common uses: rename a team, update its config, disable/enable it.
 
 ## Mandatory Rules (MUST)
 - `--id` is required. Obtain the real team ID via `+list` — do not guess.
 - At least one optional field must be provided in addition to `--id`.
 - `--config` replaces the entire TeamConfig; provide the complete new config, not a partial patch.
-- `--scope` must be `personal` or `company` if provided.
+- Existing scope may be echoed for compatibility. For a real change use `+promote` or offer `+copy-to-personal`.
 - This is an ordinary `write` operation and does not require CLI confirmation.
 
 ## Command
@@ -30,7 +30,7 @@ ae-cli team +update --dry-run --id <team_id> --name "Test"
 | `--name` | No | New team name |
 | `--config` | No | New complete TeamConfig JSON |
 | `--description` | No | New description |
-| `--scope` | No | `personal` \| `company` |
+| `--scope` | No | Compatibility only: the existing scope. |
 | `--enabled` | No | `true` \| `false` |
 
 ## Decision Rules

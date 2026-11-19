@@ -168,4 +168,31 @@ for (const preserveBusinessErrorCode of [false, true]) {
   );
 }
 
+test('kb +schema sends rewrite and fails clearly once against a legacy Host', async () => {
+  const ctx = makeContext({
+    name: 'engineering-handbook',
+    'content-language': 'KO',
+    'rewrite-language': true,
+  });
+  const expected = {
+    name: 'engineering-handbook',
+    contentLanguage: 'ko',
+    schemaMode: 'rewrite-language',
+  };
+  assert.deepEqual(schema.dryRun(ctx).body, expected);
+  assert.throws(
+    () => schema.validate(makeContext({ name: 'engineering-handbook', 'rewrite-language': true })),
+    /requires --content-language/,
+  );
+  const calls = [];
+  await assert.rejects(
+    executeSchema(ctx, async (_ctx, _method, _path, _query, body) => {
+      calls.push(body);
+      throw new Error('body: Unrecognized key: "contentLanguage"');
+    }),
+    /server does not support the requested knowledge-base language option/,
+  );
+  assert.deepEqual(calls, [expected]);
+});
+
 console.log('kb schema command tests passed');

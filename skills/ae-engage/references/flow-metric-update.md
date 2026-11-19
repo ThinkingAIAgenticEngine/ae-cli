@@ -68,7 +68,7 @@ Natural window constraints:
 - Month: require `startDay` from `1` to `28`; omit `startTime` or use `"00:00"`.
 - An empty `timeCycleDef: {}` is invalid. Without `timeCycleDef`, only rolling `minute`, `hour`, and `day` units are accepted.
 - When switching rolling to calendar, add the matching `timeCycleDef` and set the number/unit together. When switching back, remove `timeCycleDef` entirely and use a valid rolling unit. Preserve the binding's `metricSettingId` and all other desired metrics.
-- These options apply to custom metrics (`metricType: 2`) through `metric update`. Do not use `engage-setting common-metric create/update` to create natural windows.
+- Custom metrics (`metricType: 2`) configure these options through `metric update`. PRESET natural metrics (`metricType: 1`) can be created or updated with `engage-setting common-metric create/update --time-cycle-def` when the matching Hermes capability is deployed; see [common-metric.md](common-metric.md). Reference the saved preset metric name when binding and verify its persisted cycle after saving.
 - Task support requires a backend deployment containing the task natural-window feature. Do not silently replace an unsupported calendar window with a rolling duration.
 
 ### Custom metric payload examples

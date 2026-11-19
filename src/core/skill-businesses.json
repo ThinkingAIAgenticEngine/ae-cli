@@ -11,8 +11,7 @@
     "ae-generate-tracking-plan",
     "ae-metadata",
     "ae-migrate-tracking-code",
-    "ae-onboarding",
-    "ae-tracking-matrix"
+    "ae-onboarding"
   ],
   "dataops": [
     "ae-dataops"

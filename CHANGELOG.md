@@ -1,3 +1,19 @@
+### 6.1.39
+**Date:** 2026-11-19
+
+**Changes:**
+
+* With the appropriate permissions, you can convert a personal Team to a company Team or copy a company Team you can access into your personal space. Use `--dry-run` to preview either operation. A personal copy includes the current workflow. Automation schedules, run history, and notification destinations are handled separately.
+* Use `--effort` to set reasoning depth when creating or updating an automation for a single Agent. Team automations use the Team's settings, and the result reports when it ignores a supplied reasoning depth. When you create multiple automations in a conversation, the assistant previews each one and asks you to confirm it.
+* Engage common metrics support calendar days, weeks, and months. Set the start of the period with `--time-cycle-def`. This feature requires server support for calendar periods.
+* On supported servers, use `kb +schema --content-language` to select a knowledge base's content language. Add `--rewrite-language` to rewrite the existing compilation rules in that language while preserving the rules. Use `kb +compile --content-language` to check the rules' language before compiling.
+* The `kb +grep` help and assistant guidance clarify the search scope. Select pages or subdirectories under `wiki/` from the knowledge base navigation.
+* The Tracking Matrix Skill is distributed through AE system Skills. If you install only the local CLI and want to use this workflow, configure `ae-tracking-matrix` in your assistant.
+
+#### 6.1-only
+
+* The A/B Experiment Skill guidance now specifies a range of 1 to 365 days for experiments with a day-based duration.
+
 ### 6.1.38
 **Date:** 2026-11-19
 

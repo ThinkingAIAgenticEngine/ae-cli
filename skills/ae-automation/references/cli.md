@@ -1,5 +1,7 @@
 # Automation command contract
 
+Shared workspace automations require an enabled company Team. Personal Teams can be used in personal workspaces. Validate the saved workspace and target in the server dry-run.
+
 Transition status: transitional
 Owning module: te-claude automation and team scheduling
 Current transport: authenticated TE REST /api/cli/automation/v1
@@ -11,7 +13,7 @@ Exit condition: equivalent gateway capabilities preserve permissions, idempotenc
 
 - `ae-cli automation list [--agent-space-id ID] [--target-type agent|team] [--q NAME] [--status active|paused] [--limit 20] [--cursor CURSOR]`
 - `ae-cli automation get --id ID`
-- `ae-cli automation create --target-type agent --agent-id ID --name NAME --message TEXT --schedule-kind daily --time 09:00 [--model MODEL_CONFIG_ID] [--reuse-conversation true|false]`
+- `ae-cli automation create --target-type agent --agent-id ID --name NAME --message TEXT --schedule-kind daily --time 09:00 [--model MODEL_CONFIG_ID] [--effort adaptive|low|medium|high|max] [--reuse-conversation true|false]`
 - `ae-cli automation create --target-type team --team-id ID --name NAME --message TEXT --trigger-type manual [--scope JSON] [--channels JSON_ARRAY]`
 - `ae-cli automation update --id ID --target-type agent|team <changed fields>`
 - `ae-cli automation enable|disable --id ID`
@@ -19,7 +21,11 @@ Exit condition: equivalent gateway capabilities preserve permissions, idempotenc
 
 Scheduled creation needs `--schedule-kind` or `--cron-expression`. Frequencies: hourly with `--minute 0..59`; daily with `--time HH:mm`; weekly also `--weekdays '[1,3,5]'` (0=Sunday through 6=Saturday); monthly also `--days-of-month '[1,15,31]'` (integers 1–31 and `"L"` for the actual last day of the month). Existing single-day flags `--weekday 0..6` and `--day-of-month 1..31` remain supported; do not combine a single-day flag with its plural array. Arrays must be non-empty; duplicates are removed and dates sorted. Dates absent in the current month are skipped, never shifted into the next month. `"L"` follows the actual month end in the server timezone (including leap years). It can be selected alone or with numeric dates; overlapping selections at the same time run only once. Any minute 00–59 is valid in `--time`. Times use the server timezone. Manual creation does not require a schedule. `--trigger-immediately` executes after creation; `--wait` then waits for that execution. Creation and immediate execution have separate results: do not create another automation if only its execution failed.
 
-On update, omitted fields retain their values. `--model null`, `--scope null`, destination IDs set to `null`, and `--save-to-knowledge-base-id null` clear nullable fields. `--channels '[]'` clears notifications; `--clear-message` clears instructions; `--reuse-conversation false` disables reuse. An automation's target is immutable on update. Team fields are rejected for Agent targets and vice versa.
+On update, omitted fields retain their values. `--model null`, `--scope null`, destination IDs set to `null`, and `--save-to-knowledge-base-id null` clear nullable fields. `--channels '[]'` clears notifications; `--clear-message` clears instructions; `--reuse-conversation false` disables reuse. An automation's target is immutable on update. Target-specific fields are rejected on the other target, except for `--effort` on Team automations.
+
+For a single Agent, `--effort` accepts `adaptive`, `low`, `medium`, `high`, or `max`. Omit it on create for adaptive reasoning. Omit it on update to keep the saved depth, or pass `--effort adaptive` to clear an override. Verify the saved `effort` with `automation get` (`null` means adaptive). Never infer a depth from the current chat.
+
+For an Agent Team, ignore any `--effort` value before validating the other fields. Create or update with the remaining settings. An update containing only `--effort` verifies the existing target and update permission and returns `unchanged: true` without writing. Preflight and successful command results identify an explicit Team depth in `ignoredFields: ["effort"]`. An effort-only success means the team kept its own settings. For a mixed update, report the saved changes and the ignored depth. Report permission and validation errors from their error envelope.
 
 Team configuration supports `--scope`, `--channels`, `--feishu-chat-id`, `--lark-chat-id`, `--slack-channel-id`, `--save-to-knowledge-base-id`. Other supported notification channels use the team's existing notification configuration. Team visibility and management permissions follow the Web application.
 
@@ -58,7 +64,7 @@ Agent and Agent Team both accept `--channels '["feishu","slack"]'`, `--feishu-ch
 
 Automation requests use the current user's `cli-token`, including in a shared sandbox. They do not infer an owner from `SandboxUser` or fall back to a different member. `--agent-space-id` takes precedence over `TE_AGENT_CURRENT_AGENT_SPACE_ID` or the current AgentSpace working directory. When the shell has changed directories, `TE_AGENT_CONVERSATION_ID` resolves the space through the existing authenticated workspace target API; a resolution failure never falls back to the personal space. Membership and write permissions are enforced by the server.
 
-For conversational creation, keep the supplied prompt editable until the user sends it. Resolve missing or ambiguous targets, summarize the configuration and obtain confirmation before creating. Agent runs inherit its model unless explicitly overridden; Agent Team retains its own configuration. Omit `--trigger-immediately` unless the user requests an immediate run.
+For conversational creation, keep the supplied prompt editable until the user sends it. Resolve missing or ambiguous targets, then run `automation create --dry-run` and present the complete draft. Wait for the user to approve that specific preview before the real create, including paused tasks. Each new task in the same chat and each revised configuration requires a fresh preview and confirmation. A clarification or an earlier approval does not authorize this write. After saving, share the complete `detailPath` returned by `automation get`, including the space query. A single Agent inherits its model unless explicitly overridden. Include its reasoning depth (adaptive by default) in the confirmation and ask only about ambiguous or conflicting depth requests. For an Agent Team, ignore any requested depth and state that the team uses its own settings. Omit `--trigger-immediately` unless the user requests an immediate run.
 
 ## Multi-date examples
 

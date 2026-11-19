@@ -1,3 +1,4 @@
+import { redactKbReadCredential } from '../src/core/kb-read-context.js';
 import assert from 'node:assert/strict';
 import { spawn } from 'node:child_process';
 import fs from 'node:fs';
@@ -46,6 +47,7 @@ function fixture(host: string, options: {
     (name: string) => {
       if (name === 'node:fs') return { default: fs };
       if (name === './url-utils.js') return { normalizeUrl };
+      if (name === './kb-read-context.js') return { redactKbReadCredential };
       throw new Error(`Unexpected token dependency: ${name}`);
     }, tokenModule, tokenModule.exports,
     { env: { AE_CLI_TOKEN: token, AE_CLI_TOKEN_HOST: host } },

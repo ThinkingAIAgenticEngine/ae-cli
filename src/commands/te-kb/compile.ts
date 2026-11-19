@@ -1,5 +1,5 @@
+import { requestedContentLanguage, requestWithContentLanguage } from './content-language.js';
 import type { Command, RuntimeContext } from '../../framework/types.js';
-import { kbApi } from '../../core/mcp-access.js';
 import { getExternalKnowledgeBaseTargetScope } from './target-scope.js';
 
 const API_PATH = '/agent/api/external/knowledge-bases/compile';
@@ -22,6 +22,8 @@ function buildBody(ctx: RuntimeContext): Record<string, unknown> {
   if (scope) body.scope = scope;
   const model = ctx.str('model');
   if (model) body.model = model;
+  const contentLanguage = requestedContentLanguage(ctx);
+  if (contentLanguage) body.contentLanguage = contentLanguage;
   return body;
 }
 
@@ -30,6 +32,7 @@ export const compile: Command = {
   command: '+compile',
   description: 'Compile a knowledge.',
   flags: [
+    { name: 'content-language', type: 'string', required: false, desc: "Require the working guidelines to declare this language before compilation." },
     { name: 'name', type: 'string', required: true, desc: 'Knowledge base name' },
     { name: 'mode', type: 'string', required: false, default: 'incremental', desc: 'Compile mode: incremental | full (default: incremental)' },
     { name: 'scope', type: 'string', required: false, desc: 'Exact knowledge base scope: personal | company (omit for personal → company fallback)' },
@@ -37,13 +40,12 @@ export const compile: Command = {
   ],
   risk: 'write',
   validate: (ctx) => {
-    getMode(ctx);
-    getExternalKnowledgeBaseTargetScope(ctx);
+    buildBody(ctx);
   },
   dryRun: (ctx) => ({
     method: 'POST',
     url: `${ctx.host().replace(/\/$/, '')}${API_PATH}`,
     body: buildBody(ctx),
   }),
-  execute: async (ctx) => kbApi(ctx, 'POST', API_PATH, {}, buildBody(ctx)),
+  execute: async (ctx) => requestWithContentLanguage(ctx, API_PATH, buildBody(ctx)),
 };
