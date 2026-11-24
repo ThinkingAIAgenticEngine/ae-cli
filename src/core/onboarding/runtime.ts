@@ -11,7 +11,7 @@ import { authorizeLoginDevice, resolveDeviceSessionRoute } from '../login-device
 import { fetchCliConfig } from '../compat-check.js';
 import { getLocalCliPackageInfo } from '../package-info.js';
 import { readExternalCliToken } from '../external-cli-token.js';
-import { normalizeRegistrationLanguage, onboardingDeviceMarket, registrationLanguage, registrationMarket, type AeRegistrationLanguage } from '../host-guidance.js';
+import { localRegistrationLanguage, normalizeRegistrationLanguage, onboardingDeviceMarket, registrationLanguage, registrationMarket, type AeRegistrationLanguage } from '../host-guidance.js';
 import { cliEntrySource, isProductionWebsiteOrigin, OVERSEAS_TEST_MARKETS, OVERSEAS_TEST_WEBSITE_ORIGIN,
   WEBSITE_MARKETS, websiteEnvironment, websiteOrigin } from '../website-entry.js';
 import { createBootstrap, readBootstrap, claimBootstrapDevice, bootstrapOrigin, trustedProductHost, type BootstrapState } from './bootstrap-client.js';
@@ -193,14 +193,18 @@ export class OnboardingRuntime {
       }
     }
     const source = cliEntrySource(input.source ?? session?.source);
-    const language = registrationLanguage(input.language ?? session?.language);
+    const inspectLocalLanguage = !webConversation && !testHost && (action === 'plan' || (action === 'run' && !host && !session));
+    const localLanguage = inspectLocalLanguage ? localRegistrationLanguage() : undefined;
+    const language = registrationLanguage(input.language ?? session?.language ?? localLanguage);
     const markets = testHost ? OVERSEAS_TEST_MARKETS : WEBSITE_MARKETS;
     const languageMarket = registrationMarket(language);
     const defaultMarket = testHost && languageMarket === 'cn' ? 'us' : languageMarket;
     const useDefaultMarket = testHost !== undefined || !host;
     const registrationOrigin = webConversation ? null : websiteOrigin(input.region ?? session?.region ?? defaultMarket, selectedWebsiteEnv);
     if (action === 'plan') return { dry_run: true, host: host ?? null, market: input.region ?? session?.region ?? (useDefaultMarket ? defaultMarket : null),
-      language, default_market: defaultMarket, device_market: testHost ? 'us' : onboardingDeviceMarket(), markets,
+      language, default_market: defaultMarket,
+      ...(localLanguage ? { local_language: localLanguage } : {}),
+      device_market: testHost ? 'us' : onboardingDeviceMarket(webConversation ? registrationLanguage() : localLanguage), markets,
       selection_source: input.region ? 'explicit' : session?.region_source ?? (session?.region ? 'saved' : useDefaultMarket ? 'language_default' : 'existing_host'),
       website_env: selectedWebsiteEnv, website_origin: registrationOrigin,
       actions: webConversation ? ['read_project_state', 'choose_demo', 'prepare_demo']

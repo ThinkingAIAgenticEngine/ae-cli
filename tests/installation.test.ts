@@ -40,6 +40,7 @@ function fixture(t: TestContext, packageName = '@thinkingai/ae-cli', platform = 
     syncCalls: [] as string[], operations: [] as SkillsToolOperation[], missing: [] as string[], corrupt: [] as string[],
     npmError: '', wrongVersion: false, noBin: false, auth: false, authUnavailable: false, failClients: false, failTool: false,
     afterNpm: undefined as (() => void) | undefined,
+    systemLanguage: '',
   };
   function install(version = '6.1.9') {
     fs.mkdirSync(root, { recursive: true });
@@ -55,6 +56,14 @@ function fixture(t: TestContext, packageName = '@thinkingai/ae-cli', platform = 
   const runner: ProcessRunner = (command, args) => {
     state.calls.push({ command, args });
     const ok = (stdout = '') => ({ status: 0, stdout, stderr: '' });
+    if (command === '/usr/bin/defaults') {
+      assert.deepEqual(args, ['read', '-g', 'AppleLanguages']);
+      return state.systemLanguage ? ok(`(\n    "${state.systemLanguage}",\n    "en-US"\n)\n`) : ok();
+    }
+    if (command.endsWith('\\powershell.exe')) {
+      assert.deepEqual(args, ['-NoProfile', '-NonInteractive', '-Command', '(Get-UICulture).Name']);
+      return ok(state.systemLanguage);
+    }
     if (args[0] === '--version') return ok(command === bin ? (state.wrongVersion ? '6.1.8' : state.installedVersion) : '10.8.2');
     if (args[0] === 'root') return ok(globalRoot);
     if (args[0] === 'prefix') return ok(prefix);
@@ -139,9 +148,9 @@ test('first installation selects all Skills without an availability snapshot and
   assert.match(result.next_steps[0], /Keep the turn open until the user chooses or dismisses the dialog\. If the dialog is unavailable or fails, ask with the same options in chat/);
   assert.match(result.next_steps.join(' '), /For an explicit onboarding or walkthrough that needs a new account.*show “Create an AE account” and “Learn about AE” using the localized labels from references\/about-ae\.md/);
   assert.match(result.next_steps.join(' '), /If they choose “Learn about AE”, show the localized introduction and available product resources/);
-  assert.match(result.next_steps.join(' '), /For a production market, when the user chooses “Create an AE account” or directly asks to sign up, run ae-cli analysis onboarding run/);
+  assert.match(result.next_steps.join(' '), /After the user chooses “Create an AE account” or directly asks to sign up, run ae-cli analysis onboarding run --region <market>/);
   assert.match(result.next_steps.join(' '), /analysis onboarding run.*skill_path.*session_id/);
-  assert.match(result.next_steps.join(' '), /Honor an explicitly requested market.*system default browser/);
+  assert.match(result.next_steps.join(' '), /honor an explicitly requested or confirmed market first.*--browser system/);
   assert.match(result.next_steps.join(' '), /After the user confirms signup in the overseas test environment.*--website-env test --region us/);
   assert.doesNotMatch(result.next_steps.join(' '), /test\.thinkingai\./);
   assert.match(result.next_steps.join(' '), /Existing AE users: confirm their original AE environment URL/);
@@ -153,19 +162,19 @@ test('first installation selects all Skills without an availability snapshot and
   assert.equal(f.state.operations.some(operation => operation.skill === 'ae-onboarding'), false);
 });
 
-test('installation defaults other device locales to the US while preserving explicit market choices', t => {
+test('installation reports the detected language separately from the legacy market default', t => {
   const f = fixture(t, '@tant/ae-cli');
   const result = f.run({ env: { PATH: path.dirname(f.bin), LANG: 'ja_JP.UTF-8' } });
   assert.equal(result.ok, true);
   assert.equal(result.local_language, 'ja-JP');
   assert.equal(result.onboarding_market, 'us');
-  assert.match(result.next_steps.join(' '), /https:\/\/www\.thinkingai\.io\/en\/experience-login\//);
-  assert.match(result.next_steps.join(' '), /entry=cli&source=other&market=us/);
+  assert.match(result.next_steps.join(' '), /compare local_language with the language of the user’s own request/);
+  assert.match(result.next_steps.join(' '), /Japanese to jp, and Korean to kr/);
+  assert.match(result.next_steps.join(' '), /When the two markets differ, show only those two options and wait/);
   assert.match(result.next_steps.join(' '), /After the user confirms signup in the overseas test environment.*--website-env test --region us/);
   assert.doesNotMatch(result.next_steps.join(' '), /test\.thinkingai\./);
-  assert.match(result.next_steps.join(' '), /analysis onboarding run --region us/);
-  assert.match(result.next_steps.join(' '), /--language for the display preference/);
-  assert.match(result.next_steps.join(' '), /--region cn\|jp\|kr\|us/);
+  assert.match(result.next_steps.join(' '), /analysis onboarding run --region <market>/);
+  assert.match(result.next_steps.join(' '), /--language separately for the display preference/);
   assert.equal(f.state.calls.some(call => call.args.includes('login')), false);
 });
 
@@ -180,9 +189,8 @@ test('installation in a Chinese locale offers signup and existing-account login'
   assert.equal(result.local_language, 'zh-CN');
   assert.equal(result.onboarding_market, 'cn');
   const guidance = result.next_steps.join(' ');
-  assert.match(guidance, /analysis onboarding run --region cn/);
+  assert.match(guidance, /analysis onboarding run --region <market>/);
   assert.match(guidance, /After verifying a fresh install.*Sign in to my existing AE account/);
-  assert.match(guidance, /https:\/\/www\.thinkingai\.cn\/experience-login\/\?entry=cli&source=other&market=cn/);
   assert.match(guidance, /ae-cli auth login --host <AE_HOST>/);
   assert.doesNotMatch(guidance, /request-demo|test\.thinkingai\./);
   assert.equal(f.state.calls.some(call => call.args.includes('login')), false);
@@ -194,6 +202,29 @@ test('a neutral locale does not report the fallback market as a local language',
   assert.equal(result.ok, true);
   assert.equal(result.local_language, undefined);
   assert.equal(result.onboarding_market, 'us');
+});
+
+test('installation uses the preferred Mac language from a neutral Codex process locale', t => {
+  const f = fixture(t, '@thinkingai/ae-cli', 'darwin');
+  f.state.systemLanguage = 'zh-Hans-CN';
+  const receipt = f.run({ env: { ...f.env, LC_ALL: 'C.UTF-8', LANG: 'C.UTF-8' } });
+  assert.equal(receipt.ok, true);
+  assert.equal(receipt.local_language, 'zh-CN');
+  assert.equal(receipt.onboarding_market, 'cn');
+  const output = JSON.stringify(receipt);
+  assert.ok(output.indexOf('"local_language"') < output.indexOf('"skills"'));
+
+  const override = f.run({ env: { ...f.env, AE_LANG: 'ja-JP', LC_ALL: 'C.UTF-8' } });
+  assert.equal(override.local_language, 'ja-JP');
+  assert.equal(f.state.calls.filter(call => call.command === '/usr/bin/defaults').length, 1);
+});
+
+test('installation reads Windows UI culture for a new account', t => {
+  const f = fixture(t, '@thinkingai/ae-cli', 'win32');
+  f.state.systemLanguage = 'ko-KR';
+  const receipt = f.run();
+  assert.equal(receipt.ok, true);
+  assert.equal(receipt.local_language, 'ko-KR');
 });
 
 for (const mode of ['environment', 'invalid-environment', 'file-environment', 'file-option', 'sandbox-root', 'sandbox-config', 'fallback-token'] as const) {

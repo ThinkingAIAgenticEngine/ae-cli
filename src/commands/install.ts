@@ -30,6 +30,7 @@ export function registerInstall(program: Command): void {
         `CLI: ${report.cli.package}@${report.cli.version} (${report.cli.verified ? 'verified' : 'not verified'})`,
         `Command: ${report.cli.path ?? 'pending'}`,
         `Global Skills: ${report.skills.installed_count}/${report.skills.expected_count} verified in ${report.skills.directory}`,
+        ...(report.local_language ? [`Detected local language is ${report.local_language} (local_language).`] : []),
         ...report.skills.failures.map(failure => `- ${failure.skill}: ${failure.reason}`),
         ...report.cli.warnings, ...report.auth.warnings,
         ...(report.error ? [report.error.message] : []),

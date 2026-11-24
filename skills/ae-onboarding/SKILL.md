@@ -1,6 +1,6 @@
 ---
 name: ae-onboarding
-version: 1.1.55
+version: 1.1.56
 description: "Guide Demo growth analysis, business diagnosis, and A/B draft review in AE onboarding, and route business data integration in a local agent."
 metadata:
   internal: true
@@ -38,9 +38,7 @@ For a local onboarding request, start with `ae-cli auth status --format json` on
 
 When the user explicitly requests onboarding and needs a new account, offer **Create an AE account** and **Learn about AE** before starting website onboarding. Use the [localized labels](references/about-ae.md#localized-labels). If they choose **Learn about AE**, show the introduction and available product resources, then offer **Create an AE account**. Wait for the user to choose signup or request it directly before starting website onboarding. When resuming a session that already has a login page, follow the current login step.
 
-Use the customer's explicit or already confirmed market when provided. For a new account, otherwise use `onboarding_market` from the installation report or `device_market` from `ae-cli --dry-run analysis onboarding run`. Chinese device locales, including Traditional Chinese, default to China. All other device locales default to the United States. Keep the selected market through login. Display language is independent. Use English for a neutral local welcome, honor a requested display language and retain the choice in the conversation. Localize using the host's capabilities.
-
-After the user chooses signup, start [website onboarding](references/onboarding_run.md#website-signup) on the requested environment. For overseas testing, use `--website-env test --region us` or the requested Japanese or Korean market. Existing accounts use their original host.
+After the user chooses signup, follow [website signup](references/onboarding_run.md#website-signup) to resolve the production market or use the requested overseas test market. Keep that market through login. Use the requested display language or the conversation language for the UI, and English for a neutral local welcome. Existing accounts use their original host.
 
 Follow `next_action` and the browser receipt. For `guide_existing_window`, direct the user to the page already opened in their system default browser. For `show_fallback_link` or a window the user cannot find, give the exact URL for that browser. For `complete_website_login`, show **I finished signing in** and **I need help signing in**. For `approve_device`, show **I approved CLI access** and **I need help authorizing the CLI**. Resume the same session when the user confirms. For `restart_website_login` or `reauthorize_cli`, show the returned recovery choice and **Not now**. If a matching older CLI returns `run_onboarding` with zero delay after claiming authorization, run once more in the same turn. On `choose_experience`, show the experience picker immediately.
 

@@ -12,7 +12,11 @@ In Web, pass the conversation locale with `--language`. The Web `run` result and
 
 ## Website signup
 
-After the user chooses to create an account, run `ae-cli analysis onboarding run --region <market> --browser system --format json` for production (`cn`, `jp`, `kr`, or `us`). For overseas testing, add `--website-env test` with `--region us`, `jp`, or `kr`. Use `us` for an overseas test request without a specific market. Resume with the returned `--session-id` to keep the original environment. Start a separate continuation when the user requests a different environment.
+For a new production account, use the market the user specified or confirmed. Otherwise compare `local_language` in the install report with the language of the user's own request. Without a current report, read `data.local_language` from `ae-cli --dry-run analysis onboarding run --format json`. Infer the request language from the user's prose, excluding commands, links, quoted text, and picker labels. A missing locale or `C.UTF-8` provides no language signal. Treat `onboarding_market` and `device_market` as defaults that may include a fallback.
+
+Map Chinese (including Traditional Chinese) to China (`cn`), English to the United States (`us`), Japanese to Japan (`jp`), and Korean to South Korea (`kr`). If both signals point to different markets, show exactly those two markets in the user's language and wait for their selection. If they agree or only one maps to a market, use that market directly. With neither, use `us`.
+
+After the user chooses to create an account, run `ae-cli analysis onboarding run --region <market> --browser system --format json`. Pass `--source` for the current AI tool and `--language` for the display preference or conversation language when known. For overseas testing, add `--website-env test` with `--region us`, `jp`, or `kr`. Use `us` for an overseas test request without a specific market. Resume with the returned `--session-id` to keep the original environment. Start a separate continuation when the user requests a different environment.
 
 ## Shared progress
 

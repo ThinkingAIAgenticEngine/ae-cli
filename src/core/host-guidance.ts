@@ -1,3 +1,5 @@
+import path from 'node:path';
+import { commandSucceeded, defaultInstallRunner, type ProcessRunner } from './install-process.js';
 import { cliEntrySource, cliToolReference, websiteLoginUrl } from './website-entry.js';
 
 export type AeRegistrationLanguage = 'zh-CN' | 'en-US' | 'ja-JP' | 'ko-KR';
@@ -10,17 +12,44 @@ export function normalizeRegistrationLanguage(value: string): AeRegistrationLang
   return language === 'en' ? 'en-US' : undefined;
 }
 
-export function localRegistrationLanguage(env: NodeJS.ProcessEnv = process.env): AeRegistrationLanguage | undefined {
-  return normalizeRegistrationLanguage(env.AE_LANG || env.LC_ALL || env.LC_MESSAGES || env.LANG || env.LANGUAGE || '');
+function terminalRegistrationLanguage(env: NodeJS.ProcessEnv): AeRegistrationLanguage | undefined {
+  const locale = [env.LC_ALL, env.LC_MESSAGES, env.LANG, env.LANGUAGE]
+    .map(value => value?.trim())
+    .find(value => value && !/^(?:C|POSIX)(?:[.@].*)?$/i.test(value));
+  return normalizeRegistrationLanguage(locale ?? '');
 }
 
-export function onboardingDeviceMarket(env: NodeJS.ProcessEnv = process.env): 'cn' | 'us' {
-  return localRegistrationLanguage(env) === 'zh-CN' ? 'cn' : 'us';
+export function localRegistrationLanguage(
+  env: NodeJS.ProcessEnv = process.env,
+  platform: NodeJS.Platform = process.platform,
+  runner: ProcessRunner = defaultInstallRunner,
+): AeRegistrationLanguage | undefined {
+  const override = normalizeRegistrationLanguage(env.AE_LANG ?? '');
+  if (override) return override;
+
+  let systemLocale: string | undefined;
+  if (platform === 'darwin') {
+    const result = runner('/usr/bin/defaults', ['read', '-g', 'AppleLanguages'], 1_000);
+    if (commandSucceeded(result)) {
+      systemLocale = result.stdout.match(/^\s*\(\s*"?([\w-]+)"?\s*[,)]/u)?.[1];
+    }
+  } else if (platform === 'win32') {
+    const powershell = path.win32.join(env.SystemRoot ?? 'C:\\Windows', 'System32', 'WindowsPowerShell', 'v1.0', 'powershell.exe');
+    const result = runner(powershell, ['-NoProfile', '-NonInteractive', '-Command', '(Get-UICulture).Name'], 2_000);
+    if (commandSucceeded(result)) systemLocale = result.stdout.trim();
+  }
+  return systemLocale ? normalizeRegistrationLanguage(systemLocale) : terminalRegistrationLanguage(env);
+}
+
+/** Preserve the legacy default for clients that predate local_language. */
+export function onboardingDeviceMarket(language?: AeRegistrationLanguage): 'cn' | 'us' {
+  return language === 'zh-CN' ? 'cn' : 'us';
 }
 
 /** Conversation language may be passed explicitly; terminal locale is only a fallback. */
 export function registrationLanguage(language?: string, env: NodeJS.ProcessEnv = process.env): AeRegistrationLanguage {
-  return (language ? normalizeRegistrationLanguage(language) : localRegistrationLanguage(env)) ?? 'en-US';
+  const locale = language || env.AE_LANG || env.LC_ALL || env.LC_MESSAGES || env.LANG || env.LANGUAGE || '';
+  return normalizeRegistrationLanguage(locale) ?? 'en-US';
 }
 
 export function registrationMarket(language: AeRegistrationLanguage): 'cn' | 'us' | 'jp' | 'kr' {

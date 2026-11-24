@@ -7,7 +7,7 @@ import { globalSkillsDirectory, readInstallableSkills, verifyGlobalSkills, type 
 import { getActiveHost, getConfigDir } from './config.js';
 import { peekCliToken } from './cli-token.js';
 import {
-  aeRegistrationUrl, localRegistrationLanguage, onboardingDeviceMarket,
+  aeRegistrationUrl, localRegistrationLanguage, onboardingDeviceMarket, registrationLanguage,
   type AeRegistrationLanguage,
 } from './host-guidance.js';
 import { cliEntrySource } from './website-entry.js';
@@ -81,8 +81,8 @@ export function distribution(packageName: string): { registry: string; repositor
 export function newInstallationReport(packageName: string, version: string, dryRun = false): InstallationReport {
   return {
     ok: false, dry_run: dryRun,
-    // Keep the next interaction visible before detailed Skill synchronization output.
-    next_action: undefined, interaction: undefined,
+    // Keep the next interaction and detected language visible before Skill synchronization details.
+    next_action: undefined, interaction: undefined, local_language: undefined,
     cli: { package: packageName, version, path: null, entrypoint: null, verified: false, action: 'pending', warnings: [] },
     skills: { directory: globalSkillsDirectory(), expected_count: 0, installed_count: 0, missing: [], source: null,
       version, status: 'pending', failures: [], attempts: [] },
@@ -309,12 +309,10 @@ export function runInstallation(options: InstallationOptions = {}): Installation
       report.ok = true;
       return report;
     }
-    const localLanguage = localRegistrationLanguage(env);
-    const language = localLanguage ?? 'en-US';
-    const deviceMarket = onboardingDeviceMarket(env);
     if (guideAccountSetup) {
+      const localLanguage = localRegistrationLanguage(env, platform, runner);
       if (localLanguage) report.local_language = localLanguage;
-      report.onboarding_market = deviceMarket;
+      report.onboarding_market = onboardingDeviceMarket(localLanguage);
       const onboardingSkillPath = path.join(packageRoot, 'skills', 'ae-onboarding', 'SKILL.md');
       if (fs.existsSync(onboardingSkillPath)) report.onboarding_skill_path = onboardingSkillPath;
       if (report.auth.authenticated === true) {
@@ -345,14 +343,17 @@ export function runInstallation(options: InstallationOptions = {}): Installation
       }
       if (chooseAccount || !report.auth.host) {
         const source = cliEntrySource(undefined, env);
-        const registration = aeRegistrationUrl(chooseAccount ? (deviceMarket === 'cn' ? 'zh-CN' : 'en-US') : language, env, source);
         if (chooseAccount) {
           report.next_steps.push(`After the user confirms signup in the overseas test environment, run ae-cli analysis onboarding run --website-env test --region us --source ${source} --browser system --format json. Use jp or kr for the corresponding requested test market and keep the returned session_id.`);
-          report.next_steps.push(`For a production market, when the user chooses “Create an AE account” or directly asks to sign up, run ae-cli analysis onboarding run --region ${deviceMarket} --source ${source} --browser system --format json. Honor an explicitly requested market and pass --language for the display preference. The CLI opens the system default browser. If it cannot open the page, share the returned login_url for that browser. Read the returned skill_path and continue with its session_id after the user confirms sign-in. For manual signup outside the guided session, use ${registration}.`);
+          report.next_steps.push(
+            'For production signup, honor an explicitly requested or confirmed market first. Otherwise compare local_language with the language of the user’s own request, excluding commands, links, quoted text, and picker labels. Map Chinese to cn, English to us, Japanese to jp, and Korean to kr. If both signals agree or only one maps to a market, use that market. When the two markets differ, show only those two options and wait. Use us if neither language maps to a market.',
+            `After the user chooses “Create an AE account” or directly asks to sign up, run ae-cli analysis onboarding run --region <market> --source ${source} --browser system --format json with the resolved market. Pass --language separately for the display preference. If the browser cannot open, share the returned login_url. Read the returned skill_path and resume with its session_id after sign-in.`,
+          );
         } else {
+          const language = registrationLanguage(undefined, env);
+          const registration = aeRegistrationUrl(language, env, source);
           report.next_steps.push(`New or returning website users: for guided website verification, run ae-cli analysis onboarding run --language ${language} --source ${source} --browser system. For manual registration or sign-in, use ${registration} in the system default browser.`);
         }
-        if (chooseAccount) report.next_steps.push(`Chinese device locales, including Traditional Chinese, default to China. Other device locales default to the United States. The current default is ${deviceMarket}. Explicit --region cn|jp|kr|us still selects the requested market. Display language changes presentation only.`);
       }
       if (chooseAccount) report.next_steps.push('Existing AE users: confirm their original AE environment URL and use it for login. Ask for that URL if it is unknown.');
       else if (!report.auth.host) report.next_steps.push('Existing AE users: use your original environment URL, or ask your administrator.');
