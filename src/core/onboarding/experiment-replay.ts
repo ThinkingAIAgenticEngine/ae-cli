@@ -5,6 +5,7 @@ import { promisify } from 'node:util';
 import { assembleSyncJsonBody, resolveSyncJsonEndpoint } from '../local-data-upload-client.js';
 import { getLocalCliPackageInfo } from '../package-info.js';
 import type { LocalDataMapping } from '../../commands/data-integration/types.js';
+import type { DemoCurrency } from './contracts.js';
 
 const exec = promisify(execFile);
 const OUTCOME_DELAY_MS = 5_000;
@@ -18,8 +19,9 @@ export async function runExperimentScript(script: string, args: string[]): Promi
 }
 
 export async function prepareExperimentReplay(options: {
-  directory: string; runId: string; industry: string; experimentType: string; sampleId: string; itemId: string;
+  directory: string; runId: string; industry: string; experimentType: string; sampleId: string; itemId: string; currency: DemoCurrency;
   experimentId: string; controlId: string; treatmentId: string; accountIds: string[];
+  savedTiming?: { start: string; end: string };
   startTime: string; zoneOffset: number; appid: string; receiver: string; now: () => number;
 }) {
   const receiver = options.receiver.trim().replace(/\/+$/, '');
@@ -33,8 +35,8 @@ export async function prepareExperimentReplay(options: {
   const midnight = Math.floor((now + offsetMs) / 86_400_000) * 86_400_000 - offsetMs;
   const experimentStart = Date.parse(options.startTime);
   if (!Number.isFinite(experimentStart) || experimentStart > now) throw new Error('The running experiment has no elapsed start time.');
-  const start = Math.max(experimentStart, midnight, now - OUTCOME_DELAY_MS);
-  const end = start + OUTCOME_DELAY_MS;
+  const start = options.savedTiming ? Date.parse(options.savedTiming.start) : Math.max(experimentStart, midnight, now - OUTCOME_DELAY_MS);
+  const end = options.savedTiming ? Date.parse(options.savedTiming.end) : start + OUTCOME_DELAY_MS;
 
   const directory = await mkdtemp(path.join(options.directory, 'experiment-replay-'));
   try {
@@ -44,6 +46,7 @@ export async function prepareExperimentReplay(options: {
     await runExperimentScript('generate.mjs', [
       '--phase=plg-experiment-today', `--run-id=${options.runId}`, `--industry=${options.industry}`,
       `--experiment-type=${options.experimentType}`, `--sample-id=${options.sampleId}`, `--item-id=${options.itemId}`,
+      `--currency=${options.currency}`,
       `--cohort-file=${cohort}`, `--experiment-id=${options.experimentId}`, `--control-id=${options.controlId}`,
       `--treatment-id=${options.treatmentId}`, `--start=${new Date(start).toISOString()}`,
       `--end=${new Date(end).toISOString()}`, `--timezone=${timezone}`, `--output-dir=${replay}`,

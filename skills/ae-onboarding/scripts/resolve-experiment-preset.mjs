@@ -8,7 +8,7 @@ export function isDemoAccountId(id, sampleId, userCount) {
   return /^[1-9][0-9]{0,2}$/.test(number) && number === number.trim() && Number(number) <= userCount;
 }
 
-export function resolveExperimentPreset({ industry, experimentType, sampleId, itemId }) {
+export function resolveExperimentPreset({ industry, experimentType, sampleId, itemId, currency }) {
   const matches = Object.entries(catalog.industries).filter(([id, { samples }]) =>
     (industry === undefined || industry === id) && Object.hasOwn(samples, sampleId)
     && samples[sampleId].itemId === itemId);
@@ -22,5 +22,8 @@ export function resolveExperimentPreset({ industry, experimentType, sampleId, it
   if (!sample.experimentTypes.includes(experimentTypeId) || !Object.hasOwn(catalog.experimentTypes, experimentTypeId)) {
     throw new Error(`Unsupported experiment type for ${industryId}/${sampleId}. Available: ${sample.experimentTypes.join(', ')}.`);
   }
-  return { industry: industryId, experimentType: experimentTypeId, sample, preset: catalog.experimentTypes[experimentTypeId] };
+  const preset = catalog.experimentTypes[experimentTypeId];
+  const resolvedCurrency = currency === undefined ? preset.currency : currency;
+  if (resolvedCurrency !== 'CNY' && resolvedCurrency !== 'USD') throw new Error('Unsupported Demo currency. Use CNY or USD.');
+  return { industry: industryId, experimentType: experimentTypeId, sample, preset, currency: resolvedCurrency };
 }

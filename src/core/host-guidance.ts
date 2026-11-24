@@ -14,6 +14,10 @@ export function localRegistrationLanguage(env: NodeJS.ProcessEnv = process.env):
   return normalizeRegistrationLanguage(env.AE_LANG || env.LC_ALL || env.LC_MESSAGES || env.LANG || env.LANGUAGE || '');
 }
 
+export function onboardingDeviceMarket(env: NodeJS.ProcessEnv = process.env): 'cn' | 'us' {
+  return localRegistrationLanguage(env) === 'zh-CN' ? 'cn' : 'us';
+}
+
 /** Conversation language may be passed explicitly; terminal locale is only a fallback. */
 export function registrationLanguage(language?: string, env: NodeJS.ProcessEnv = process.env): AeRegistrationLanguage {
   return (language ? normalizeRegistrationLanguage(language) : localRegistrationLanguage(env)) ?? 'en-US';

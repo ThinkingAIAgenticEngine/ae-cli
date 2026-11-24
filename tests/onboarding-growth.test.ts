@@ -6,6 +6,7 @@ import path from 'node:path';
 import { test, type TestContext } from 'node:test';
 import { CapabilityGatewayError } from '../src/core/capability-api.js';
 import { isOnboardingInvocation } from '../src/core/onboarding/entrypoint.js';
+import { onboardingDemoCurrency } from '../src/core/onboarding/contracts.js';
 import { onboardingEvidenceLinks } from '../src/core/onboarding/interaction.js';
 import { replayReportDates, waitForExperimentSampleSize } from '../src/core/onboarding/experiment-report-wait.js';
 import { OnboardingRuntime } from '../src/core/onboarding/runtime.js';
@@ -13,8 +14,10 @@ import { OnboardingStore } from '../src/core/onboarding/session-store.js';
 
 const host = 'https://plg.example.test';
 const samples = {
-  'star-island': { project: 40, item: 'starlight-bundle', size: 140, head: 18, tail: 10, summary: [96, 14, 44, 16, 140, 50, 30], checkout: [107, 116] },
-  'season-pass': { project: 41, item: 'season-pass-item', size: 120, head: 12, tail: 20, summary: [76, 8, 44, 12, 120, 48, 20], checkout: [85, 92] },
+  'star-island': { project: 40, item: 'starlight-bundle', size: 140, head: 18, tail: 10, summary: [96, 14, 44, 16, 140, 50, 30],
+    checkout: [107, 116], dailyViewers: [38, 34, 0, 31, 42, 28, 33] },
+  'season-pass': { project: 41, item: 'season-pass-item', size: 120, head: 12, tail: 20, summary: [76, 8, 44, 12, 120, 48, 20],
+    checkout: [85, 92], dailyViewers: [30, 19, 38, 36, 23, 26, 32] },
 };
 type Sample = keyof typeof samples;
 
@@ -37,6 +40,9 @@ test('checkout scenario and start-only options keep onboarding in its dedicated 
     assert.ok(isOnboardingInvocation(['analysis', 'onboarding', command, '--scenario', 'checkout-recovery', '--format', 'json']));
   }
   assert.ok(isOnboardingInvocation(['analysis', 'onboarding', 'experiment-launch', '--start-only', 'true', '--format', 'json']));
+  assert.ok(isOnboardingInvocation(['analysis', 'onboarding', 'experiment-plan', '--draft-only', 'true']));
+  assert.ok(isOnboardingInvocation(['analysis', 'onboarding', 'experiment-plan', '--run-id', '1234', '--answered-question', 'review_audience']));
+  assert.ok(isOnboardingInvocation(['analysis', 'onboarding', 'status', '--run-id', '1234']));
 });
 
 test('wait-report options keep experiment launch in its dedicated CLI runtime', () => {
@@ -55,7 +61,14 @@ test('links to the demo funnel only within the selected project', () => {
 
 type CapabilityCall = { id: string; input: Record<string, unknown> };
 
-function fixture(t: TestContext, experiment?: (call: CapabilityCall) => Promise<unknown>) {
+test('Demo currency follows the selected cluster', () => {
+  assert.equal(onboardingDemoCurrency('https://ae-web-global.thinkingai.io', 'cn'), 'USD');
+  assert.equal(onboardingDemoCurrency('https://ae-web.thinkingai.cn', 'us'), 'CNY');
+  assert.equal(onboardingDemoCurrency(host, 'us'), 'USD');
+  assert.equal(onboardingDemoCurrency(host), 'CNY');
+});
+
+function fixture(t: TestContext, experiment?: (call: CapabilityCall) => Promise<unknown>, targetHost = host) {
   const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'ae-plg-growth-'));
   t.after(() => fs.rmSync(directory, { recursive: true, force: true }));
   const store = new OnboardingStore(directory);
@@ -63,10 +76,11 @@ function fixture(t: TestContext, experiment?: (call: CapabilityCall) => Promise<
   const calls: CapabilityCall[] = [];
   const uploads: { endpoint: string; body: string }[] = [];
   const control = { sample: 'star-island' as Sample, status: 'ready', start: '2026-11-01', end: '2026-11-07', credential: 'k',
-    truncated: false, unmapped: 0, wrongReceiverProject: false, checkoutCount: undefined as number | undefined };
+    truncated: false, unmapped: 0, wrongReceiverProject: false, checkoutCount: undefined as number | undefined,
+    dailyViewerResult: undefined as string | undefined };
   const select = (sample: Sample) => {
     control.sample = sample;
-    store.save({ schema_version: 1, id: sessionId, host, choice: 'demo', sample_id: sample, credential_key: 'k', updated_at: '' });
+    store.save({ schema_version: 1, id: sessionId, host: targetHost, choice: 'demo', sample_id: sample, credential_key: 'k', updated_at: '' });
   };
   select(control.sample);
   const runtime = new OnboardingRuntime(store, {
@@ -80,7 +94,7 @@ function fixture(t: TestContext, experiment?: (call: CapabilityCall) => Promise<
       return { code: 0, message: 'accepted', http_status: 200, request_bytes: body.length, response_bytes: 0 };
     },
     capability: async (actualHost, id, input) => {
-      assert.equal(actualHost, host);
+      assert.equal(actualHost, targetHost);
       calls.push({ id, input });
       const sample = samples[control.sample];
       if (id === 'project.plg_demo.context') return { recommended_sample: control.sample };
@@ -113,11 +127,14 @@ function fixture(t: TestContext, experiment?: (call: CapabilityCall) => Promise<
           control.sample, sample.item, control.start, exclusiveEnd]) {
           assert.ok(sql.includes(expected), `query includes ${expected}`);
         }
+        assert.ok(sql.includes(`count_if(contains(view_dates, DATE '${control.start}'))`));
+        assert.ok(sql.includes(`count_if(contains(view_dates, DATE '${control.end}'))`));
         const checkout = checkoutAccounts(control.sample).slice(0, control.checkoutCount);
         return { has_more: control.truncated, returned_rows: 1,
           title: ['single_viewers', 'single_buyers', 'multi_viewers', 'multi_buyers', 'funnel_viewers', 'funnel_checkout', 'funnel_buyers',
-            'account_ids_json', 'checkout_unpaid', 'checkout_account_ids_json', 'unmapped_accounts'],
-          rows: [[...sample.summary, JSON.stringify(expectedAccounts(control.sample)), checkout.length, JSON.stringify(checkout), control.unmapped]] };
+            'account_ids_json', 'checkout_unpaid', 'checkout_account_ids_json', 'unmapped_accounts', 'daily_viewers_json'],
+          rows: [[...sample.summary, JSON.stringify(expectedAccounts(control.sample)), checkout.length, JSON.stringify(checkout), control.unmapped,
+            control.dailyViewerResult ?? JSON.stringify(sample.dailyViewers)]] };
       }
       if (id === 'experiment.approver.add') return { result: true };
       if (experiment && id.startsWith('experiment.')) return experiment({ id, input });
@@ -147,6 +164,16 @@ test('growth queries AE once per Demo scope and saves a private cohort that can 
     assert.deepEqual(result.funnel, { viewers, checkout, buyers });
     assert.deepEqual(result.purchase_rates, { single_day: singleBuyers / singleViewers, multi_day: multiBuyers / multiViewers,
       difference_pp: (multiBuyers / multiViewers - singleBuyers / singleViewers) * 100 });
+    assert.deepEqual(result.data_basis, {
+      source: 'demo_seed_events',
+      counting_unit: 'distinct_accounts',
+      funnel_transitions: [
+        { from_event: 'item_detail_view', to_event: 'checkout_start', from_accounts: viewers, to_accounts: checkout,
+          dropoff_accounts: viewers - checkout, conversion_rate: checkout / viewers },
+        { from_event: 'checkout_start', to_event: 'payment_success', from_accounts: checkout, to_accounts: buyers,
+          dropoff_accounts: checkout - buyers, conversion_rate: buyers / checkout },
+      ],
+    });
     assert.deepEqual(result.charts, {
       purchase_rate: { type: 'bar', data: [
         { label: 'Single-day viewers', value: Math.round(singleBuyers * 1000 / singleViewers) / 10 },
@@ -155,6 +182,7 @@ test('growth queries AE once per Demo scope and saves a private cohort that can 
       funnel: { type: 'bar', data: [
         { label: 'Viewed', value: viewers }, { label: 'Started checkout', value: checkout }, { label: 'Paid', value: buyers },
       ] },
+      daily_viewers: { type: 'line', data: samples[sample].dailyViewers.map((value, index) => ({ label: `2026-11-0${index + 1}`, value })) },
     });
     const followUp = result.follow_up_chart as { type: string; data: { label: string; value: number }[]; markdown: string };
     assert.equal(followUp.type, 'bar');
@@ -169,8 +197,36 @@ test('growth queries AE once per Demo scope and saves a private cohort that can 
       purchase_rate_report_url: `${host}/#/tga/ide/${samples[sample].project}_3`,
       funnel_report_url: `${host}/#/tga/funnel/${samples[sample].project}_5`,
     } : undefined);
-    assert.deepEqual((result.interaction as { options: { value: string }[] }).options.map(option => option.value), ['follow_up', 'change_sample']);
+    assert.deepEqual((result.interaction as { options: { value: string }[] }).options.map(option => option.value), ['follow_up']);
     assert.equal(result.follow_up_count, multiViewers - multiBuyers);
+    const overlap = sample === 'star-island' ? 10 : 20;
+    const checkoutUnpaid = sample === 'star-island' ? 20 : 28;
+    assert.deepEqual(result.candidate_cohorts, { multi_day_unpaid: multiViewers - multiBuyers, checkout_unpaid: checkoutUnpaid,
+      overlap, total_distinct: multiViewers - multiBuyers + checkoutUnpaid - overlap });
+    assert.deepEqual(result.visuals, {
+      overview: sample === 'star-island' ? 'purchase_rate' : 'checkout_share',
+      checkout_share: { type: 'pie', data: [
+        { label: 'Started checkout without paying', value: checkoutUnpaid },
+        { label: 'Paid after checkout', value: buyers },
+      ] },
+      audience_overlap: { type: 'pie', data: [
+        { label: 'Both signals', value: overlap },
+        { label: 'Started checkout only', value: checkoutUnpaid - overlap },
+        { label: 'Viewed on multiple days only', value: multiViewers - multiBuyers - overlap },
+      ] },
+    });
+    const markdown = result.markdown_charts as Record<string, string>;
+    assert.ok(markdown.purchase_rate.includes(`| Single-day viewers | ${(100 * singleBuyers / singleViewers).toFixed(1)}% |`));
+    assert.ok(markdown.checkout_share.startsWith('```text\n'));
+    assert.ok(markdown.checkout_share.includes(`| █ Started checkout without paying | ${checkoutUnpaid} | ${(100 * checkoutUnpaid / checkout).toFixed(1)}% |`));
+    assert.equal(Array.from(markdown.audience_overlap.split('\n')[0]).length, 20);
+    assert.ok(markdown.audience_overlap.includes(`| 🟦 Both signals | ${overlap} |`));
+    assert.ok(markdown.purchase_funnel.includes(`| Started checkout | ${checkout} | ${'━'.repeat(Math.round(12 * checkout / viewers))} | ${viewers - checkout} | ${(100 * checkout / viewers).toFixed(1)}% |`));
+    assert.ok(markdown.follow_up.includes(`| Multi-day viewers, unpaid | ${multiViewers - multiBuyers} |`));
+    assert.ok(markdown.daily_viewers.startsWith('```text\n'));
+    assert.equal(markdown.daily_viewers.match(/●/g)?.length, 7);
+    assert.ok(markdown.daily_viewers.includes('| Date | 11/01 | 11/02 | 11/03 | 11/04 | 11/05 | 11/06 | 11/07 |'));
+    assert.ok(markdown.daily_viewers.includes(`| Viewers | ${samples[sample].dailyViewers.join(' | ')} |`));
     assert.deepEqual(f.calls.slice(before).map(call => call.id), [
       'project.plg_demo.status', 'analysis.sql_table.list', 'analysis.sql_table.columns', 'analysis.adhoc.run',
     ]);
@@ -197,6 +253,8 @@ test('growth queries AE once per Demo scope and saves a private cohort that can 
     const unpaid = sample === 'star-island' ? 20 : 28;
     assert.equal(repeat.follow_up_count, unpaid);
     assert.deepEqual(repeat.checkout_recovery, { unpaid_count: unpaid, unpaid_rate: unpaid / checkout });
+    assert.deepEqual(repeat.data_basis, result.data_basis);
+    assert.deepEqual(repeat.charts, result.charts);
     assert.deepEqual((repeat.follow_up_chart as typeof followUp).data, [
       { label: 'Started checkout', value: checkout },
       { label: 'Paid after checkout', value: buyers },
@@ -215,6 +273,23 @@ test('growth queries AE once per Demo scope and saves a private cohort that can 
   const changedWindow = await f.runtime.invoke('growth', { session_id: f.sessionId });
   assert.equal(changedWindow.cached, false);
   assert.ok(!receipts.has(String(changedWindow.cohort_path)));
+});
+
+test('growth omits incomplete trends and keeps cohorts from older receipts usable', async t => {
+  const f = fixture(t);
+  f.control.dailyViewerResult = '[38,34,null,31,42,28,33]';
+  const first = await f.runtime.invoke('growth', { session_id: f.sessionId });
+  assert.equal(first.phase, 'ready');
+  assert.equal(Object.hasOwn(first.charts as object, 'daily_viewers'), false);
+  assert.equal(Object.hasOwn(first.markdown_charts as object, 'daily_viewers'), false);
+  const receipt = String(first.cohort_path);
+  assert.equal(Object.hasOwn(JSON.parse(fs.readFileSync(receipt, 'utf8')), 'dailyViewers'), false);
+  const resumed = await f.runtime.invoke('growth', { session_id: f.sessionId, scenario: 'checkout-recovery' });
+  assert.equal(resumed.cached, true);
+  assert.equal(resumed.cohort_path, receipt);
+  assert.equal(resumed.follow_up_count, 20);
+  assert.equal(Object.hasOwn(resumed.charts as object, 'daily_viewers'), false);
+  assert.equal(Object.hasOwn(resumed.markdown_charts as object, 'daily_viewers'), false);
 });
 
 test('growth dry-run leaves the session unchanged and waits when the Demo is preparing', async t => {
@@ -262,6 +337,7 @@ test('experiment-plan prepares an approver by default and saves a private propos
   const plan = await f.runtime.invoke('experiment-plan', { session_id: f.sessionId });
   assert.equal(plan.phase, 'ready');
   assert.equal(plan.next_action, 'confirm_experiment');
+  assert.deepEqual((plan.interaction as { options: { value: string }[] }).options.map(option => option.value), ['launch']);
   assert.equal(plan.demo_project_id, samples['star-island'].project);
   assert.equal(plan.item_id, samples['star-island'].item);
   assert.equal(plan.experiment_type, 'item-coupon');
@@ -393,7 +469,7 @@ test('checkout plans prepare approvers and preserve each private cohort', async 
   assert.equal(f.uploads.length, 0);
 });
 
-test('checkout launch waits for the coupon experiment, then returns a link before replaying the saved audience', async t => {
+test('US checkout draft review keeps the same proposal and replays the approved plan in USD', async t => {
   let active = true;
   let start = '';
   let draft: { expName: string; featureKeyList: string[];
@@ -406,7 +482,12 @@ test('checkout launch waits for the coupon experiment, then returns a link befor
         }
         assert.equal(input.query_name, 'Demo checkout recovery A/B');
         return { items: [{ exp_name: draft.expName, exp_id: 'checkout-1', status: 'running' }] };
-      case 'experiment.metric.save':
+      case 'experiment.metric.save': {
+        const metric = input.req as { metricId: string; metricDefinition: { filters: { items: unknown[] } } };
+        assert.deepEqual(metric.metricDefinition.filters.items.at(-1), { field: 'currency', operator: 'eq', values: ['USD'] });
+        if (metric.metricId.startsWith('plg_net_revenue_')) assert.equal(metric.metricId, 'plg_net_revenue_star_island_usd');
+        return { result: true };
+      }
       case 'experiment.feature.save':
         return { result: true };
       case 'experiment.experiment.save':
@@ -426,16 +507,58 @@ test('checkout launch waits for the coupon experiment, then returns a link befor
       case 'experiment.experiment.get':
         return { item: { exp_id: 'checkout-1', status: start ? 'running' : 'pending', start_time: start,
           groups: [{ is_control: 1, exp_group_id: 'details' }, { is_control: 0, exp_group_id: 'checkout' }] } };
+      case 'experiment.report.sample-size':
+        assert.equal(input.exp_id, 'checkout-1');
+        assert.match(String(input.start_time), /^\d{4}-\d{2}-\d{2}$/);
+        assert.equal(f.uploads.length, 1);
+        return { report: { has_data: true } };
       default:
         assert.fail(`Unexpected capability ${id}`);
     }
-  });
+  }, 'https://ae-web-global.thinkingai.io');
   const scenario = { session_id: f.sessionId, scenario: 'checkout-recovery' };
   await f.runtime.invoke('growth', scenario);
-  const plan = await f.runtime.invoke('experiment-plan', scenario);
+  const beforeDraft = f.calls.length;
+  const plan = await f.runtime.invoke('experiment-plan', { ...scenario, draft_only: true });
   const input = { session_id: f.sessionId, run_id: String(plan.run_id) };
+  assert.equal(f.calls.length, beforeDraft);
+  assert.deepEqual(plan.approver, { status: 'deferred' });
+  assert.equal((plan.plan as { currency: string }).currency, 'USD');
+  assert.match(String(plan.plan_preview_markdown), /100 USD/);
+  assert.deepEqual(plan.review, { pilot_accounts_per_arm: 4 });
+  const options = (draft: Record<string, unknown>) =>
+    (draft.interaction as { options: { value: string }[] }).options.map(({ value }) => value);
+  assert.deepEqual(options(plan), ['launch', 'review_audience', 'review_pilot', 'review_no_reward']);
+  const { plan_path: _path, ...visiblePlan } = plan;
+  assert.deepEqual(await f.runtime.invoke('status', input), visiblePlan);
+  const reviewPreview = await f.runtime.invoke('experiment-plan-preview', { ...input, answered_question: 'review_pilot' });
+  assert.equal(reviewPreview.dry_run, true);
+  assert.deepEqual(options(reviewPreview), ['launch', 'review_audience', 'review_no_reward']);
+  assert.deepEqual(await f.runtime.invoke('status', input), visiblePlan);
+  await assert.rejects(f.runtime.invoke('experiment-plan', { ...input, answered_question: 'launch' }), /Use --answered-question/);
+  const answeredAnswers = [
+    ['review_pilot', ['launch', 'review_audience', 'review_no_reward']],
+    ['review_audience', ['launch', 'review_no_reward']],
+    ['review_no_reward', ['launch']],
+  ] as const;
+  for (const [answered_question, remaining] of answeredAnswers) {
+    const reviewed = await f.runtime.invoke('experiment-plan', { ...input, answered_question });
+    assert.deepEqual(options(reviewed), remaining);
+    assert.equal(reviewed.run_id, plan.run_id);
+    assert.deepEqual(reviewed.plan, plan.plan);
+    assert.ok(!Object.hasOwn(reviewed, 'checkout_cohort'));
+    assert.deepEqual(await f.runtime.invoke('status', input), reviewed);
+    assert.deepEqual(await f.runtime.invoke('experiment-plan', { ...input, answered_question }), reviewed);
+  }
+  assert.equal(f.calls.length, beforeDraft);
+  assert.equal(f.uploads.length, 0);
+  f.control.credential = 'another-account';
+  await assert.rejects(f.runtime.invoke('status', input), /active Demo session and account/);
+  await assert.rejects(f.runtime.invoke('experiment-plan', { ...input, answered_question: 'review_audience' }), /active Demo session and account/);
+  f.control.credential = 'k';
   const preview = await f.runtime.invoke('experiment-launch-preview', { ...input, start_only: true });
   assert.ok((preview.steps as string[]).includes('start'));
+  assert.ok((preview.steps as string[]).includes('prepare_signed_in_approver'));
   assert.ok(!(preview.steps as string[]).includes('upload_one_replay_batch'));
   const blocked = await f.runtime.invoke('experiment-launch', { ...input, start_only: true });
   assert.equal(blocked.next_action, 'wait_for_other_demo_experiment');
@@ -448,18 +571,19 @@ test('checkout launch waits for the coupon experiment, then returns a link befor
   const stale = await f.runtime.invoke('experiment-launch', { ...input, start_only: true });
   assert.equal(stale.next_action, 'run_checkout_recovery_growth');
   assert.ok(!f.calls.some(call => call.id.endsWith('.save')));
+  assert.ok(!f.calls.some(call => call.id === 'experiment.approver.add'));
   f.control.start = '2026-11-01';
   f.control.end = '2026-11-07';
 
-  const running = await f.runtime.invoke('experiment-launch', { ...input, start_only: true });
-  assert.equal(running.next_action, 'upload_experiment_replay', JSON.stringify(running));
-  assert.match(String(running.experiment_url), /expId=checkout-1/);
-  assert.equal(f.uploads.length, 0);
+  const guidedLaunch = { ...input, wait_report: true };
+  const complete = await f.runtime.invoke('experiment-launch', guidedLaunch);
+  assert.equal(complete.next_action, 'verify_experiment_results', JSON.stringify(complete));
+  assert.match(String(complete.experiment_url), /expId=checkout-1/);
+  assert.deepEqual(complete.sample_size_report, { has_data: true });
+  assert.equal(complete.currency, 'USD');
+  assert.equal(complete.persistence_verified, false);
   const draftTarget = draft!.targeting.definitionRequest.conditions.items.map(item => item.values[0]);
   assert.deepEqual(draftTarget, checkoutAccounts('star-island').sort());
-
-  const complete = await f.runtime.invoke('experiment-launch', input);
-  assert.equal(complete.next_action, 'verify_experiment_results', JSON.stringify(complete));
   assert.equal(f.uploads.length, 1);
   const rows = JSON.parse(f.uploads[0].body).map((row: { data: Record<string, any> }) => row.data);
   const exposures = rows.filter((row: Record<string, unknown>) => row['#event_name'] === 'te_experiment_exposure');
@@ -467,14 +591,15 @@ test('checkout launch waits for the coupon experiment, then returns a link befor
   assert.deepEqual(exposures.map((row: Record<string, unknown>) => row['#account_id']).sort(), draftTarget);
   assert.equal(payments.length, 6);
   assert.equal(exposures.length + payments.length, rows.length);
-  assert.ok(payments.every((row: Record<string, any>) => row.properties.amount === 100
+  assert.ok(payments.every((row: Record<string, any>) => row.properties.amount === 100 && row.properties.currency === 'USD'
     && row.properties.item_id === 'starlight-bundle' && row.properties.demo_run_id === plan.run_id
     && draftTarget.includes(row['#account_id'])));
   const callCount = f.calls.length;
-  assert.deepEqual(await f.runtime.invoke('experiment-launch', input), complete);
-  assert.equal(f.calls.length, callCount);
+  assert.deepEqual(await f.runtime.invoke('experiment-launch', guidedLaunch), complete);
+  assert.deepEqual(f.calls.slice(callCount).map(call => call.id), ['experiment.report.sample-size']);
   assert.equal(f.uploads.length, 1);
   assert.equal(f.calls.filter(call => call.id === 'experiment.approval.submit').length, 1);
+  assert.equal(f.calls.filter(call => call.id === 'experiment.approver.add').length, 1);
 
   const coupon = await f.runtime.invoke('experiment-plan', { session_id: f.sessionId });
   const couponLaunch = await f.runtime.invoke('experiment-launch', { session_id: f.sessionId, run_id: String(coupon.run_id) });

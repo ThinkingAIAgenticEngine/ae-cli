@@ -1,3 +1,4 @@
+import { readProgress, writeProgress, type ProgressReceipt } from './progress.js';
 import { createHash } from 'node:crypto';
 import path from 'node:path';
 import { isDeepStrictEqual } from 'node:util';
@@ -7,7 +8,7 @@ import { CliApiError, LocalDataUploadError, PermissionError } from '../errors.js
 import { SecureStoreAuthError } from '../secure-store.js';
 import { trustedProductHost } from './bootstrap-client.js';
 import { CHECKOUT_RECOVERY, DEMO_STATUS, NETWORK_BUDGET_MS, UUID_PATTERN, type LocalSession, type OnboardingInput } from './contracts.js';
-import { readyDemoScope } from './experiment-plan.js';
+import { prepareDemoApprover, readyDemoScope } from './experiment-plan.js';
 import { prepareExperimentReplay, runExperimentScript } from './experiment-replay.js';
 import { replayReportDates, waitForExperimentSampleSize } from './experiment-report-wait.js';
 import { onboardingExperimentUrl } from './interaction.js';
@@ -32,12 +33,14 @@ interface Plan {
   industry: string;
   experiment_type: string;
   run_id: string;
+  plan?: { currency?: string };
   approver?: { status: string };
   credential_key?: string;
   checkout_cohort?: { start_date: string; end_date: string; zone_offset: number; account_ids: string[] };
 }
 
 interface LaunchProgress {
+  approver_prepared?: boolean;
   feature?: boolean;
   metric?: boolean;
   draft_attempted?: boolean;
@@ -82,6 +85,7 @@ export async function runOnboardingExperimentLaunch(store: OnboardingStore, deps
     const scope = session.ready_demo;
     if (!plan || plan.phase !== 'ready' || plan.run_id !== runId || plan.session_id !== sessionId
         || !session.host || plan.host !== session.host || session.choice !== 'demo' || plan.sample_id !== session.sample_id
+        || (plan.credential_key && plan.credential_key !== session.credential_key)
         || !scope || scope.sample_id !== plan.sample_id || scope.item_id !== plan.item_id
         || scope.project_id !== plan.demo_project_id || !Number.isSafeInteger(scope.project_id)
         || scope.project_id <= 0 || scope.project_id === session.project_id) {
@@ -89,6 +93,8 @@ export async function runOnboardingExperimentLaunch(store: OnboardingStore, deps
     }
     const host = trustedProductHost(session.host);
     const project = { project_id: scope.project_id };
+    const currency = plan.plan?.currency ?? 'CNY';
+    if (currency !== 'CNY' && currency !== 'USD') throw new Error('The saved Demo plan has an unsupported currency.');
     const checkoutCohort = plan.experiment_type === CHECKOUT_RECOVERY ? plan.checkout_cohort : undefined;
     if (plan.experiment_type === CHECKOUT_RECOVERY && (!checkoutCohort
         || plan.credential_key !== session.credential_key || !Array.isArray(checkoutCohort.account_ids)
@@ -96,10 +102,11 @@ export async function runOnboardingExperimentLaunch(store: OnboardingStore, deps
       throw new Error('The checkout recovery plan no longer matches the verified Demo scope.');
     }
     const summary = { session_id: sessionId, run_id: runId, host, demo_project_id: scope.project_id,
-      sample_id: scope.sample_id, item_id: scope.item_id,
+      sample_id: scope.sample_id, item_id: scope.item_id, currency,
       ...(checkoutCohort ? { experiment_type: plan.experiment_type } : {}) };
     if (preview) return { ...summary, dry_run: true, steps: [
       ...(checkoutCohort ? ['check_other_demo_experiment', 'verify_demo_scope'] : []),
+      ...(plan.approver?.status === 'deferred' ? ['prepare_signed_in_approver'] : []),
       'save_metrics_and_feature', 'save_draft', 'check_readiness',
       'submit_approval', ...(plan.approver ? [] : ['add_signed_in_approver_if_needed']), 'approve', 'start',
       ...(input.start_only ? [] : ['upload_one_replay_batch', ...(input.wait_report ? ['wait_for_sample_size_report'] : [])])] };
@@ -118,6 +125,16 @@ export async function runOnboardingExperimentLaunch(store: OnboardingStore, deps
       return response;
     };
     checkAccount();
+    let progressRun: Record<string, unknown> | undefined;
+    const checkpoint = async (experimentId: string, receipt?: ProgressReceipt) => {
+      if (!progressRun) return;
+      checkAccount();
+      const result = await writeProgress(deps, host, 'checkpoint', { ...progressRun,
+        experiment_id: experimentId, ...(receipt ? { receipt } : {}) });
+      if (result.state !== 'in_progress' || result.experiment_id !== experimentId) {
+        throw new Error('The Demo experiment checkpoint could not be saved. Resume the same run.');
+      }
+    };
     const stateFile = `experiment-launch-${runId}.json`;
     const progress = store.read<LaunchProgress>(stateFile) ?? { timings_ms: {} };
     const persist = () => store.write(stateFile, progress);
@@ -134,9 +151,10 @@ export async function runOnboardingExperimentLaunch(store: OnboardingStore, deps
       if (!input.wait_report) return accepted;
       try {
         const receipt = store.read<{ run_id: string; experiment_id: string; sample_id: string; item_id: string;
-          start: string; end: string; timezone: string }>(`experiment-replay-${runId}.json`);
+          start: string; end: string; timezone: string; currency?: string }>(`experiment-replay-${runId}.json`);
         if (!receipt || receipt.run_id !== runId || receipt.experiment_id !== progress.experiment_id
-            || receipt.sample_id !== scope.sample_id || receipt.item_id !== scope.item_id) {
+            || receipt.sample_id !== scope.sample_id || receipt.item_id !== scope.item_id
+            || (receipt.currency ?? 'CNY') !== currency) {
           throw new Error('The replay receipt does not match this Demo experiment.');
         }
         const dates = replayReportDates(receipt);
@@ -210,13 +228,37 @@ export async function runOnboardingExperimentLaunch(store: OnboardingStore, deps
             message: 'The Demo scope changed. Refresh growth analysis and confirm a new experiment plan.' };
         }
       }
+      stage = 'claim_onboarding_run';
+      if (session.journey_id) {
+        const current = await readProgress(deps, host);
+        if (current.state !== 'completed' && current.state !== 'disabled') {
+          checkAccount();
+          const run = { journey_id: session.journey_id, run_id: runId, launch_session_id: session.id,
+            demo_project_id: scope.project_id };
+          const claim = await writeProgress(deps, host, 'claim', run);
+          if (claim.state !== 'disabled' && !claim.claim_granted) {
+            return { ...summary, phase: 'action_required', next_action: 'resume_onboarding_progress',
+              existing_run_id: claim.run_id, experiment_id: claim.experiment_id };
+          }
+          if (claim.claim_granted) progressRun = run;
+        }
+      }
+      if (plan.approver?.status === 'deferred' && !progress.approver_prepared) {
+        stage = 'prepare_approver';
+        checkAccount();
+        const prepared = await prepareDemoApprover(deps, host, key!, scope.project_id);
+        if (prepared.status !== 'ready') return { ...result('action_required'), failed_stage: stage,
+          next_action: 'resume_experiment_launch', error: { message: prepared.message, code: prepared.code } };
+        progress.approver_prepared = true;
+        persist();
+      }
       stage = 'prepare_requests';
       const requestsFile = `experiment-requests-${runId}.json`;
       let requests = store.read<SaveRequests>(requestsFile);
       if (!requests) {
         const inputFile = `experiment-input-${runId}.json`;
         store.write(inputFile, { industry: plan.industry, experimentType: plan.experiment_type, sampleId: plan.sample_id,
-          itemId: plan.item_id, runId, ...(checkoutCohort ? { accountIds: checkoutCohort.account_ids } : {}) });
+          itemId: plan.item_id, runId, currency, ...(checkoutCohort ? { accountIds: checkoutCohort.account_ids } : {}) });
         const generated: SaveRequests = JSON.parse(await runExperimentScript('experiment-requests.mjs', [path.join(store.directory, inputFile)]));
         store.write(requestsFile, generated);
         requests = generated;
@@ -270,6 +312,7 @@ export async function runOnboardingExperimentLaunch(store: OnboardingStore, deps
       });
 
       const exp = { exp_id: progress.experiment_id! };
+      await checkpoint(exp.exp_id);
       const approval = async () => (await call('experiment.approval.get', exp)).item;
       const verifyRound = (round: any) => {
         if (!Number.isSafeInteger(round?.approval_id) || round.approval_id <= 0
@@ -381,12 +424,20 @@ export async function runOnboardingExperimentLaunch(store: OnboardingStore, deps
           throw new Error('The running experiment did not return both group IDs.');
         }
         const replay = await prepareExperimentReplay({ directory: store.directory, runId, industry: plan.industry,
-          experimentType: plan.experiment_type, sampleId: plan.sample_id, itemId: plan.item_id,
+          experimentType: plan.experiment_type, sampleId: plan.sample_id, itemId: plan.item_id, currency,
           experimentId: exp.exp_id, controlId, treatmentId, startTime: effective.start_time,
           accountIds: preset.experiment.targeting.definitionRequest.conditions.items.map(item => item.values[0]),
-          zoneOffset, appid: info.appid.trim(), receiver: info.public_receiver_address, now: deps.now });
+          zoneOffset, appid: info.appid.trim(), receiver: info.public_receiver_address, now: deps.now,
+          savedTiming: progressRun ? store.read<ProgressReceipt>(`experiment-replay-${runId}.json`) : undefined });
         checkAccount();
         store.write(`experiment-replay-${runId}.json`, replay.receipt);
+        if (progressRun) {
+          const { sample_id, item_id, currency, start, end, timezone, arms } = replay.receipt;
+          const publicArm = ({ group_id, exposed_account_ids, coupon_claim_account_ids, paid_account_ids }: ProgressReceipt['arms']['control']) =>
+            ({ group_id, exposed_account_ids, coupon_claim_account_ids, paid_account_ids });
+          await checkpoint(exp.exp_id, { sample_id, item_id, currency, start, end, timezone,
+            arms: { control: publicArm(arms.control), treatment: publicArm(arms.treatment) } });
+        }
         progress.replay = { status: 'unknown', record_count: replay.count };
         persist();
         try {

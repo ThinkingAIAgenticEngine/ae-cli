@@ -28,6 +28,7 @@ test('Web continuation uses the verified account across rotated task channels', 
   env.AE_CLI_TOKEN = 'cli_task_synthetic_one';
   let account = 'same-user';
   let actorConversation = 'chat-one';
+  let actorMarket: { platform_region?: string; market?: string } = {};
   const calls: string[] = [];
   t.mock.method(globalThis, 'fetch', async (input: string | URL, init: RequestInit) => {
     const url = new URL(input);
@@ -37,7 +38,7 @@ test('Web continuation uses the verified account across rotated task channels', 
     calls.push(url.pathname);
     if (url.pathname === '/v1/ta/cli/config') return Response.json({ return_code: 0, data: {
       task_cli_compat_enabled: true,
-      plg_onboarding_actor: { account_id: account, company_id: 'company', conversation_id: actorConversation },
+      plg_onboarding_actor: { account_id: account, company_id: 'company', conversation_id: actorConversation, ...actorMarket },
     } });
     if (url.pathname.endsWith('/project.plg_demo.context/execute')) return Response.json({ ok: true, data: {
       business_project: { project_id: 7 }, recommended_sample: 'star-island',
@@ -54,12 +55,32 @@ test('Web continuation uses the verified account across rotated task channels', 
   const session_id = String(first.session_id);
   assert.equal(first.next_action, 'choose_experience');
   assert.deepEqual(first.choices, [{ value: 'demo', label: 'Start the demo' }]);
-  assert.deepEqual((first.interaction as { options: { value: string }[] }).options.map(option => option.value), ['demo', 'not_now']);
+  assert.deepEqual((first.interaction as { options: { value: string }[] }).options.map(option => option.value), ['demo', 'learn', 'not_now']);
   assert.equal(first.host, null);
+  assert.equal(first.market, null);
+  assert.equal(first.product_resource_market, null);
   const initialStatus = await invokeOnboarding('status', { session_id });
   assert.deepEqual(initialStatus.choices, first.choices);
+  assert.equal(initialStatus.business_data, undefined);
   const plan = await invokeOnboarding('plan', { session_id });
   assert.deepEqual(plan.actions, ['read_project_state', 'choose_demo', 'prepare_demo']);
+  actorMarket = { platform_region: 'overseas' };
+  for (const [language, expectedMarket] of [['zh-CN', 'us'], ['ja-JP', 'jp'], ['ko-KR', 'kr']] as const) {
+    const localized = await invokeOnboarding('run', { session_id, language });
+    assert.equal(localized.language, language);
+    assert.equal(localized.product_resource_market, expectedMarket);
+    assert.equal(localized.market, null);
+    assert.equal(localized.next_action, 'choose_experience');
+  }
+  actorMarket = { platform_region: 'cn' };
+  const domestic = await invokeOnboarding('run', { session_id, language: 'en-US' });
+  assert.equal(domestic.language, 'en-US');
+  assert.equal(domestic.product_resource_market, 'cn');
+  actorMarket = { platform_region: 'overseas', market: 'jp' };
+  assert.equal((await invokeOnboarding('status', { session_id })).product_resource_market, 'jp');
+  actorMarket = { platform_region: 'unknown', market: 'unknown' };
+  assert.equal((await invokeOnboarding('status', { session_id })).product_resource_market, null);
+  actorMarket = { platform_region: 'overseas' };
   const beforeRejected = calls.length;
   for (const businessInput of [{ choice: 'business' }, { sdk_complete: true }, { confirm_business_project_id: 7 }]) {
     await assert.rejects(invokeOnboarding('run', { session_id, ...businessInput }), /Business SDK setup requires a local agent/);
@@ -69,14 +90,19 @@ test('Web continuation uses the verified account across rotated task channels', 
   env.AE_CLI_TOKEN = 'cli_task_synthetic_two';
   const second = await invokeOnboarding('run', { session_id, choice: 'demo' });
   assert.equal(second.session_id, session_id);
+  assert.equal(second.product_resource_market, 'us');
   assert.equal(second.next_action, 'offer_growth_questions');
   assert.deepEqual((second.interaction as { options: { value: string }[] }).options.map(option => option.value),
-    ['growth', 'checkout_recovery', 'change_sample']);
+    ['growth', 'checkout_recovery']);
   assert.equal(second.demo_project_id, 42);
   assert.deepEqual(second.evidence, { dashboard_url: '/#/panel/panel/42_3' });
   assert.equal(second.realtime_data_url, undefined);
   assert.equal(second.workspace_projects, undefined);
+  assert.equal(second.business_data, undefined);
   const count = calls.filter(call => call.includes('/capabilities/')).length;
+  const localizedPlan = await invokeOnboarding('plan', { session_id, language: 'ja-JP' });
+  assert.equal(localizedPlan.product_resource_market, 'jp');
+  assert.equal(calls.filter(call => call.includes('/capabilities/')).length, count);
   account = 'other-user';
   await assert.rejects(invokeOnboarding('run', { session_id }), /does not match the onboarding session/);
   actorConversation = 'another-chat';
@@ -98,19 +124,27 @@ test('Web journey records endpoints in the current working directory', t => {
     return JSON.parse(result.stdout).data.interaction.options.map((option: { value: string }) => option.value);
   };
   assert.deepEqual(options('choose-sample'), ['star_island', 'season_pass', 'keep_sample']);
-  assert.deepEqual(options('after-follow-up'), ['experiment_plan', 'change_sample']);
+  assert.deepEqual(options('after-follow-up'), ['experiment_plan']);
   assert.equal(fs.existsSync(path.join(cwd, '.ae-onboarding')), false);
+  const file = path.join(cwd, '.ae-onboarding', 'plg-journey.json');
+  assert.equal(run('active').status, 0);
+  const active = JSON.parse(fs.readFileSync(file, 'utf8'));
+  assert.equal(active.endpoint, 'active');
+  assert.deepEqual(options('after-experiment'), ['change_sample', 'finish_demo']);
+  assert.deepEqual(JSON.parse(fs.readFileSync(file, 'utf8')), active);
   const result = run('done');
   assert.equal(result.status, 0, result.stderr);
-  const file = path.join(cwd, '.ae-onboarding', 'plg-journey.json');
   const receipt = JSON.parse(fs.readFileSync(file, 'utf8'));
   assert.equal(receipt.schema, 'ae-onboarding.state.v5');
   assert.equal(receipt.endpoint, 'done');
   assert.ok(receipt.revision > 0);
   assert.equal(run('done').status, 0);
+  assert.equal(run('active').status, 0);
   assert.deepEqual(JSON.parse(fs.readFileSync(file, 'utf8')), receipt);
   const otherCwd = path.join(root, 'chat-two');
   fs.mkdirSync(otherCwd);
+  assert.equal(run('after-experiment', otherCwd).status, 0);
+  assert.equal(JSON.parse(fs.readFileSync(path.join(otherCwd, '.ae-onboarding', 'plg-journey.json'), 'utf8')).endpoint, 'active');
   const stopped = run('stopped', otherCwd);
   assert.equal(stopped.status, 0, stopped.stderr);
   const otherReceipt = JSON.parse(fs.readFileSync(path.join(otherCwd, '.ae-onboarding', 'plg-journey.json'), 'utf8'));

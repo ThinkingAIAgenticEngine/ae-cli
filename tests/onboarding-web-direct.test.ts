@@ -18,7 +18,7 @@ test('Web onboarding runs and resumes with direct execution credentials', { time
   const file = path.join(root, 'cli-token.json');
   let token = 'cli_synthetic_direct_one';
   let context = { version: 1, grant: 'synthetic.one', executionId: 'execution-one', sandboxId: 'sandbox-one', companyId: 'company-one' };
-  let actor = { account_id: 'account-one', company_id: 'company-one', conversation_id: 'chat-one' };
+  let actor = { account_id: 'account-one', company_id: 'company-one', conversation_id: 'chat-one', platform_region: 'overseas' };
   let identityStatus = 200;
   const calls: string[] = [];
   const server = http.createServer(async (request, response) => {
@@ -75,10 +75,11 @@ test('Web onboarding runs and resumes with direct execution credentials', { time
     });
   });
   writeCredential();
-  const first = await run('run', '--choice', 'demo');
+  const first = await run('run', '--choice', 'demo', '--language', 'zh-CN');
   assert.equal(first.code, 0, JSON.stringify(first.output));
   assert.equal(first.output.ok, true);
   assert.equal(first.output.data.demo_project_id, 42);
+  assert.equal(first.output.data.product_resource_market, 'us');
   const sessionId = first.output.data.session_id;
   assert.equal(typeof sessionId, 'string');
   assert.ok(calls.includes('/agent/api/sandbox/onboarding/context'));
@@ -86,11 +87,16 @@ test('Web onboarding runs and resumes with direct execution credentials', { time
   token = 'cli_synthetic_direct_two';
   context = { ...context, grant: 'synthetic.two', executionId: 'execution-two' };
   writeCredential();
-  for (const args of [['status'], ['run', '--dry-run'], ['run']]) {
+  for (const args of [['status'], ['run', '--dry-run', '--language', 'ja-JP'], ['run']]) {
     const result = await run(...args, '--session-id', sessionId);
     assert.equal(result.code, 0, JSON.stringify(result.output));
-    if (args.includes('--dry-run')) assert.equal(result.output.data.dry_run, true);
-    else assert.equal(result.output.data.session_id, sessionId);
+    if (args.includes('--dry-run')) {
+      assert.equal(result.output.data.dry_run, true);
+      assert.equal(result.output.data.product_resource_market, 'jp');
+    } else {
+      assert.equal(result.output.data.session_id, sessionId);
+      assert.equal(result.output.data.product_resource_market, 'us');
+    }
   }
   const capabilityCount = () => calls.filter(call => call.includes('/capabilities/')).length;
   const beforeRejected = capabilityCount();

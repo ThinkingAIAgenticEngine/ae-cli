@@ -7,7 +7,9 @@ function input(ctx: RuntimeContext) {
     scenario: ctx.str('scenario') || undefined,
     confirm_business_project_id: ctx.num('confirm-business-project-id') || undefined,
     browser: ctx.str('browser') || undefined, sdk_complete: ctx.bool('sdk-complete'),
-    upload_metric_event: ctx.bool('upload-metric-event'), prepare_approver: ctx.bool('prepare-approver'), run_id: ctx.str('run-id') || undefined,
+    upload_metric_event: ctx.bool('upload-metric-event'), prepare_approver: ctx.bool('prepare-approver'),
+    draft_only: ctx.bool('draft-only'), run_id: ctx.str('run-id') || undefined,
+    answered_question: ctx.str('answered-question') || undefined,
     start_only: ctx.bool('start-only'), wait_report: ctx.bool('wait-report') };
 }
 
@@ -27,9 +29,9 @@ export const onboardingRun: Command = {
   description: 'Start or resume one bounded PLG onboarding step for the sample or business SDK integration.',
   flags: [...sharedFlags,
     { name: 'source', type: 'string', required: false, desc: 'Local AI tool: codex, claude-code, cursor, or other. This is not an authorization credential.' },
-    { name: 'region', type: 'string', required: false, desc: 'Production onboarding market: cn, jp, kr, or us.' },
+    { name: 'region', type: 'string', required: false, desc: 'Website market: cn, jp, kr, or us. Test signup supports jp, kr, and us.' },
     { name: 'language', type: 'string', required: false, desc: 'Conversation language: zh-CN, en-US, ja-JP, or ko-KR. Use --region for the market when it differs from the language default.' },
-    { name: 'website-env', type: 'string', required: false, desc: 'Compatibility flag. Website onboarding uses production.' },
+    { name: 'website-env', type: 'string', required: false, desc: 'Website signup environment: production (default) or test (overseas).' },
     { name: 'choice', type: 'string', required: false, desc: 'Select demo or business after the user chooses an experience.' },
     { name: 'sample', type: 'string', required: false, desc: 'Select a sample after the user chooses it: star-island or season-pass.' },
     { name: 'confirm-business-project-id', type: 'number', required: false, desc: 'Confirm the eligible business project for a legacy account.' },
@@ -43,7 +45,8 @@ export const onboardingRun: Command = {
 export const onboardingStatus: Command = {
   service: 'analysis', resource: 'onboarding', command: 'status', risk: 'read',
   description: 'Read PLG onboarding progress, authorization continuation and sample preparation without advancing.',
-  flags: sharedFlags,
+  flags: [...sharedFlags,
+    { name: 'run-id', type: 'string', desc: 'Read the existing experiment draft and review choices for this session.' }],
   dryRun: ctx => invoke(ctx, 'plan'),
   execute: ctx => invoke(ctx, 'status'),
 };
@@ -58,11 +61,14 @@ export const onboardingGrowth: Command = {
 
 export const onboardingExperimentPlan: Command = {
   service: 'analysis', resource: 'onboarding', command: 'experiment-plan', risk: 'write',
-  description: 'Generate an A/B experiment plan and optionally submit one synthetic payment to the active PLG Demo.',
+  description: 'Generate a PLG Demo A/B plan or record an answered question on its saved draft.',
   flags: [
     { ...sharedFlags[0], required: true },
     scenarioFlag,
-    { name: 'prepare-approver', type: 'boolean', desc: 'Compatibility flag. All Demo experiment plans automatically add the signed-in account as an approver.' },
+    { name: 'prepare-approver', type: 'boolean', desc: 'Compatibility flag. By default planning prepares the signed-in Demo approver.' },
+    { name: 'draft-only', type: 'boolean', desc: 'Save a reviewable plan. The launch command will prepare the approver after confirmation.' },
+    { name: 'answered-question', type: 'string', desc: 'Record a completed draft question: review_audience, review_pilot, or review_no_reward. Requires --run-id.' },
+    { name: 'run-id', type: 'string', desc: 'Use with --answered-question to continue review of this saved draft.' },
     { name: 'upload-metric-event', type: 'boolean', desc: 'Submit exactly one synthetic payment_success event to the current Demo project.' },
   ],
   dryRun: ctx => invoke(ctx, 'experiment-plan-preview'),
@@ -82,4 +88,12 @@ export const onboardingExperimentLaunch: Command = {
   execute: ctx => invoke(ctx, 'experiment-launch'),
 };
 
-export default [onboardingRun, onboardingStatus, onboardingGrowth, onboardingExperimentPlan, onboardingExperimentLaunch];
+export const onboardingProgress: Command = {
+  service: 'analysis', resource: 'onboarding', command: 'progress', risk: 'write',
+  description: 'Read this account’s versioned PLG Demo progress, or verify a saved replay and complete the round.',
+  flags: [{ name: 'run-id', type: 'string', desc: 'Verify and complete this saved Demo run. Omit to read progress.' }],
+  execute: ctx => invoke(ctx, 'progress'),
+  dryRun: ctx => invoke(ctx, 'progress-preview'),
+};
+
+export default [onboardingRun, onboardingStatus, onboardingProgress, onboardingGrowth, onboardingExperimentPlan, onboardingExperimentLaunch];

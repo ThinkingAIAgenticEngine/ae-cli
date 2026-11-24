@@ -46,20 +46,46 @@ test('demo selection and switching stay separate from the confirmed SDK target',
         recommended_sample: 'star-island',
         samples: [{ sample_id: 'star-island' }, { sample_id: 'season-pass' }],
       };
-      return { status: 'ready', project_id: body.sample_id === 'star-island' ? 40 : 41 };
+      const starIsland = body.sample_id === 'star-island';
+      return { status: 'ready', project_id: starIsland ? 40 : 41, sample_id: body.sample_id,
+        item_id: starIsland ? 'starlight-bundle' : 'season-pass-item' };
     },
   });
   const start = await runtime.invoke('run', {});
   assert.equal(start.next_action, 'choose_experience');
+  assert.deepEqual((start.demo_entry as { options: { value: string }[] }).options.map(({ value }) => value), ['demo', 'learn']);
   assert.equal(start.realtime_data_url, undefined);
   assert.match(String(start.skill_path), /skills\/ae-onboarding\/SKILL\.md$/);
   assert.deepEqual(calls.map(call => call.id), ['project.plg_demo.context']);
   const session_id = String(start.session_id);
-  assert.equal((await runtime.invoke('run', { session_id, choice: 'demo' })).demo_project_id, 40);
+  const first = await runtime.invoke('run', { session_id, choice: 'demo' });
+  assert.equal(first.demo_project_id, 40);
   assert.deepEqual(calls.at(-1), { id: 'project.plg_demo.ensure', body: { sample_id: 'star-island' } });
-  assert.equal((await runtime.invoke('run', { session_id, sample: 'season-pass' })).demo_project_id, 41);
-  assert.equal((await runtime.invoke('status', { session_id })).demo_project_id, 41);
+  const overview = first.demo_overview as { primary_metric: string; featured_topic: string; featured_question: string;
+    interaction: { options: { value: string; label: string }[] } };
+  assert.equal(overview.primary_metric, 'purchase_rate_by_viewing_days');
+  assert.equal(overview.featured_topic, 'product_revisits');
+  assert.deepEqual(overview.interaction.options.map(({ value }) => value), ['growth', 'diagnosis']);
+  assert.equal(overview.interaction.options[0].label, 'Find repeat bundle viewers');
+  assert.deepEqual((await runtime.invoke('run', { session_id })).demo_overview, overview);
+  const season = await runtime.invoke('run', { session_id, sample: 'season-pass' });
+  assert.equal(season.demo_project_id, 41);
+  assert.equal((season.demo_overview as typeof overview).primary_metric, 'checkout_unpaid_rate');
+  assert.equal((season.demo_overview as typeof overview).interaction.options[0].label, 'Find unpaid pass checkouts');
+  const status = await runtime.invoke('status', { session_id });
+  assert.deepEqual(status.demo_overview, season.demo_overview);
+  assert.equal(status.project_id, null);
+  assert.deepEqual(status.business_project, { project_id: 7, project_name: 'prj_example' });
+  assert.equal(status.workspace_projects, undefined);
+  const data = status.business_data as Record<'interaction' | 'tools', { step: string; options: { value: string }[] }>;
+  assert.deepEqual([data.interaction.step, data.tools.step], ['choose_data_source', 'choose_data_tool']);
+  assert.deepEqual(data.interaction.options.map(({ value }) => value), ['import_data', 'sdk', 'more_data_tools']);
+  assert.deepEqual(data.tools.options.map(({ value }) => value),
+    ['datax', 'logbus2', 'tracking_plan', 'migrate_tracking', 'dimension_table', 'check_ingestion']);
   assert.deepEqual(calls.at(-1), { id: 'project.plg_demo.status', body: { sample_id: 'season-pass' } });
+  const again = await runtime.invoke('run', { session_id, sample: 'star-island' });
+  assert.equal((again.demo_overview as typeof overview).featured_topic, 'checkout_recovery');
+  assert.notEqual((again.demo_overview as typeof overview).featured_question, overview.featured_question);
   const unconfirmed = await runtime.invoke('run', { session_id, choice: 'business', sdk_complete: true });
   assert.equal(unconfirmed.next_action, 'confirm_business_project');
   assert.equal(unconfirmed.realtime_data_url, undefined);

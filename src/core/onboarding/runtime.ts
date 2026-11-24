@@ -1,3 +1,4 @@
+import { isOnboardingProgressHost, readProgress, verifyAndCompleteProgress, writeProgress } from './progress.js';
 import crypto from 'node:crypto';
 import path from 'node:path';
 import { localDataUpload } from '../local-data-upload-client.js';
@@ -10,19 +11,20 @@ import { authorizeLoginDevice, resolveDeviceSessionRoute } from '../login-device
 import { fetchCliConfig } from '../compat-check.js';
 import { getLocalCliPackageInfo } from '../package-info.js';
 import { readExternalCliToken } from '../external-cli-token.js';
-import { normalizeRegistrationLanguage, registrationLanguage, registrationMarket, type AeRegistrationLanguage } from '../host-guidance.js';
-import { cliEntrySource, isProductionWebsiteOrigin, WEBSITE_MARKETS, websiteEnvironment, websiteOrigin } from '../website-entry.js';
+import { normalizeRegistrationLanguage, onboardingDeviceMarket, registrationLanguage, registrationMarket, type AeRegistrationLanguage } from '../host-guidance.js';
+import { cliEntrySource, isProductionWebsiteOrigin, OVERSEAS_TEST_MARKETS, OVERSEAS_TEST_WEBSITE_ORIGIN,
+  WEBSITE_MARKETS, websiteEnvironment, websiteOrigin } from '../website-entry.js';
 import { createBootstrap, readBootstrap, claimBootstrapDevice, bootstrapOrigin, trustedProductHost, type BootstrapState } from './bootstrap-client.js';
 import { verifyWebsiteLoginIdentity } from './website-login-identity.js';
 import { OnboardingStore } from './session-store.js';
 import { runOnboardingGrowth } from './growth.js';
 import { runOnboardingExperimentLaunch } from './experiment-launch.js';
-import { readyDemoScope, runOnboardingExperimentPlan } from './experiment-plan.js';
+import { readOnboardingExperimentPlan, readyDemoScope, runOnboardingExperimentPlan } from './experiment-plan.js';
 import { identifyWorkspaceProjects } from './workspace-projects.js';
-import { onboardingEvidenceLinks, onboardingInteraction } from './interaction.js';
+import { onboardingDemoOverview, onboardingEvidenceLinks, onboardingInteraction } from './interaction.js';
 import { onboardingBrowserPolicy, readBrowserMode, type OnboardingBrowserReceipt, type OnboardingBrowserTarget } from './browser-policy.js';
 import { DEMO_CONTEXT, DEMO_ENSURE, DEMO_STATUS, DEMO_SAMPLE_IDS, RUN_BUDGET_MS, NETWORK_BUDGET_MS,
-  UUID_PATTERN, type OnboardingAction, type OnboardingInput, type LocalSession } from './contracts.js';
+  OVERSEAS_TEST_PRODUCT_HOSTNAME, UUID_PATTERN, onboardingDemoCurrency, type OnboardingAction, type OnboardingInput, type LocalSession } from './contracts.js';
 
 /** Reuse auth login navigation; reverse proxies may put an internal origin in Agent URL metadata. */
 export function agentVerificationUrl(base: string, authorization: DeviceAuthorizeResponse, language?: AeRegistrationLanguage): string {
@@ -58,6 +60,8 @@ function clearAccountScope(session: LocalSession) {
   delete session.choice;
   delete session.sample_id;
   delete session.ready_demo;
+  delete session.journey_id;
+  delete session.demo_visits;
   delete session.confirmed_business_project_id;
 }
 
@@ -67,6 +71,7 @@ export interface OnboardingDependencies {
   credentialKey(host: string): string | undefined;
   machineLoginAllowed(host?: string): boolean;
   webConversation?: boolean;
+  demoCurrency: typeof onboardingDemoCurrency;
   createBootstrap: typeof createBootstrap;
   readBootstrap: typeof readBootstrap;
   claimBootstrapDevice: typeof claimBootstrapDevice;
@@ -96,6 +101,7 @@ const defaults: OnboardingDependencies = {
     return token ? crypto.createHash('sha256').update(token).digest('hex') : undefined;
   },
   machineLoginAllowed: host => !readExternalCliToken(host),
+  demoCurrency: onboardingDemoCurrency,
   createBootstrap, readBootstrap, claimBootstrapDevice, verifyWebsiteLoginIdentity,
   authorize: authorizeLoginDevice,
   poll: (issuer, code, signal) => pollDeviceToken(issuer, code, code.startsWith('uba_') ? 'uba' : 'legacy', signal),
@@ -129,6 +135,24 @@ export class OnboardingRuntime {
   }
 
   async invoke(action: OnboardingAction, input: OnboardingInput): Promise<Record<string, unknown>> {
+    if (action === 'progress' || action === 'progress-preview') {
+      const active = input.host ?? this.dependencies.activeHost();
+      const host = active ? trustedProductHost(active) : undefined;
+      if (action === 'progress-preview') return { dry_run: true, action: input.run_id ? 'complete' : 'status', host };
+      if (!host || (!this.dependencies.webConversation && !isOnboardingProgressHost(host))
+          || !this.dependencies.authenticated(host)) return { state: 'disabled' };
+      if (!input.run_id) {
+        const { receipt: _receipt, ...progress } = await readProgress(this.dependencies, host);
+        return progress;
+      }
+      if (!/^[0-9a-f]{32}$/.test(input.run_id)) throw new Error('Pass the run ID returned by experiment-plan.');
+      const { receipt: _receipt, ...progress } = await verifyAndCompleteProgress(this.dependencies, host, input.run_id);
+      return progress;
+    }
+    if ((action === 'status' || action === 'plan') && input.run_id) {
+      const draft = readOnboardingExperimentPlan(this.store, this.dependencies, input);
+      return action === 'plan' ? { ...draft, dry_run: true } : draft;
+    }
     if (action === 'growth' || action === 'growth-plan') {
       return runOnboardingGrowth(this.store, this.dependencies, input, action === 'growth-plan');
     }
@@ -145,10 +169,14 @@ export class OnboardingRuntime {
     if (input.choice === 'business' && input.sample) throw new Error('A sample requires the demo choice.');
     if (input.language && !normalizeRegistrationLanguage(input.language)) throw new Error('Unsupported onboarding language. Use zh-CN, en-US, ja-JP, or ko-KR.');
     if (input.source && !['codex', 'claude-code', 'cursor', 'other'].includes(input.source)) throw new Error('Unsupported local AI tool source.');
-    const selectedWebsiteEnv = websiteEnvironment(input.website_env, webConversation ? {} : process.env);
     const explicitHost = input.host ? trustedProductHost(input.host) : undefined;
-    let session = this.store.session(input.session_id, explicitHost);
-    let host = explicitHost ?? session?.host;
+    const pinnedSession = input.session_id ? this.store.session(input.session_id, explicitHost) : undefined;
+    const websiteEnvOverride = input.website_env ?? (webConversation ? undefined : process.env.AE_CLI_WEBSITE_ENV);
+    const selectedWebsiteEnv = websiteEnvironment(websiteEnvOverride ?? pinnedSession?.website_env, {});
+    const testHost = selectedWebsiteEnv === 'test' ? `https://${OVERSEAS_TEST_PRODUCT_HOSTNAME}` : undefined;
+    if (testHost && explicitHost && explicitHost !== testHost) throw new Error('Use the overseas test product host for test website onboarding.');
+    let session = pinnedSession ?? this.store.session(undefined, explicitHost ?? testHost);
+    let host = explicitHost ?? session?.host ?? testHost;
     if (!host) {
       const active = this.dependencies.activeHost();
       const activeCandidate = active ? trustedProductHost(active) : undefined;
@@ -156,19 +184,24 @@ export class OnboardingRuntime {
       host = activeCandidate && (action === 'plan' || this.dependencies.authenticated(activeCandidate)) ? activeCandidate : undefined;
     }
     if (!session) session = this.store.session(undefined, host);
-    if (session?.website_env === 'test' || (session?.bootstrap && !isProductionWebsiteOrigin(session.bootstrap.origin))) {
-      if (input.session_id || session.host || session.project_id || session.device || session.credential_key) {
-        throw new Error('This onboarding session is bound to a previous website environment. To use an existing account, sign in with ae-cli auth login --host <url>.');
+    if (session) {
+      const origin = session.bootstrap?.origin;
+      const matchesOrigin = !origin || (testHost ? origin === OVERSEAS_TEST_WEBSITE_ORIGIN : isProductionWebsiteOrigin(origin));
+      if ((session.website_env ?? 'production') !== selectedWebsiteEnv || (testHost && session.host !== testHost) || !matchesOrigin) {
+        if (pinnedSession) throw new Error('This onboarding session is bound to a previous website environment. Start a separate continuation.');
+        session = undefined;
       }
-      // Keep the old intent on disk. An implicit, unbound run can start a new production session.
-      session = undefined;
     }
     const source = cliEntrySource(input.source ?? session?.source);
     const language = registrationLanguage(input.language ?? session?.language);
-    const defaultMarket = registrationMarket(language);
+    const markets = testHost ? OVERSEAS_TEST_MARKETS : WEBSITE_MARKETS;
+    const languageMarket = registrationMarket(language);
+    const defaultMarket = testHost && languageMarket === 'cn' ? 'us' : languageMarket;
+    const useDefaultMarket = testHost !== undefined || !host;
     const registrationOrigin = webConversation ? null : websiteOrigin(input.region ?? session?.region ?? defaultMarket, selectedWebsiteEnv);
-    if (action === 'plan') return { dry_run: true, host: host ?? null, market: input.region ?? session?.region ?? (!host ? defaultMarket : null),
-      language, default_market: defaultMarket, markets: WEBSITE_MARKETS, selection_source: input.region ? 'explicit' : session?.region_source ?? (session?.region ? 'saved' : !host ? 'language_default' : 'existing_host'),
+    if (action === 'plan') return { dry_run: true, host: host ?? null, market: input.region ?? session?.region ?? (useDefaultMarket ? defaultMarket : null),
+      language, default_market: defaultMarket, device_market: testHost ? 'us' : onboardingDeviceMarket(), markets,
+      selection_source: input.region ? 'explicit' : session?.region_source ?? (session?.region ? 'saved' : useDefaultMarket ? 'language_default' : 'existing_host'),
       website_env: selectedWebsiteEnv, website_origin: registrationOrigin,
       actions: webConversation ? ['read_project_state', 'choose_demo', 'prepare_demo']
         : ['resolve_trusted_host', 'resolve_account_host', 'authorize_cli', 'read_project_state', 'choose_demo_or_business', 'prepare_demo_or_connect_sdk'],
@@ -177,8 +210,9 @@ export class OnboardingRuntime {
     if (!session && action === 'status' && (!host || !this.dependencies.authenticated(host))) return { host: host ?? null, project_id: null, phase: 'not_started', next_action: 'run_onboarding', poll_after_ms: 0 };
     const newSession = (market?: string): LocalSession => ({ schema_version: 1, id: crypto.randomUUID(), host,
       browser: browserMode,
-      source, region: market ?? (!host ? defaultMarket : undefined), language, language_source: input.language ? 'explicit' : 'system', website_env: selectedWebsiteEnv,
-      region_source: market ? 'explicit' : !host ? 'language_default' : undefined,
+      source, region: market ?? (useDefaultMarket ? defaultMarket : undefined), language, language_source: input.language ? 'explicit' : 'system', website_env: selectedWebsiteEnv,
+      region_source: market ? 'explicit' : useDefaultMarket ? 'language_default' : undefined,
+      ...(testHost ? { requires_auth: true } : {}),
       updated_at: new Date(this.dependencies.now()).toISOString() });
     if (!session) session = newSession(input.region);
     const credentialKey = host && this.dependencies.authenticated(host) ? this.dependencies.credentialKey(host) : undefined;
@@ -188,7 +222,7 @@ export class OnboardingRuntime {
     if (credentialKey) session.credential_key = credentialKey;
     session.host ??= host;
     if (!session.region) {
-      session.region = input.region ?? (!session.host && action === 'run' ? defaultMarket : undefined);
+      session.region = input.region ?? (useDefaultMarket && action === 'run' ? defaultMarket : undefined);
       if (session.region) session.region_source = input.region ? 'explicit' : 'language_default';
     }
     session.language = language;
@@ -221,7 +255,7 @@ export class OnboardingRuntime {
         ? onboardingInteraction(extra.next_action, webConversation) : undefined;
       return { language: current.language ?? language, market: current.region ?? null, default_market: defaultMarket,
         website_env: current.website_env,
-        markets: WEBSITE_MARKETS, selection_source: current.region_source ?? (current.region ? 'saved' : 'existing_host'),
+        markets, selection_source: current.region_source ?? (current.region ? 'saved' : 'existing_host'),
         ...extra, skill_path: path.join(getLocalCliPackageInfo().root, 'skills', 'ae-onboarding', 'SKILL.md'),
         ...(interaction ? { interaction } : {}),
         ...(target ? { browser: opening?.receipt ?? extra.browser ?? onboardingBrowserPolicy({ target: target.name, new_page: false }) } : {}),
@@ -240,7 +274,8 @@ export class OnboardingRuntime {
       const execute = async (): Promise<Record<string, unknown>> => {
         const marketChanged = input.region && current.region && input.region !== current.region;
         if (marketChanged) {
-          if (action !== 'run' || input.session_id || current.host || current.project_id || current.credential_key || current.device) {
+          if (action !== 'run' || input.session_id || (current.host && !(testHost && current.requires_auth))
+              || current.project_id || current.credential_key || current.device) {
             throw new Error('The continuation is bound to another market. Keep the existing account environment and resume its original continuation.');
           }
           if (current.bootstrap) {
@@ -279,6 +314,18 @@ export class OnboardingRuntime {
           this.store.save(current);
         }
         const compatibility = action === 'run' ? await network(signal => this.dependencies.compatibility(current.host!, signal)) : undefined;
+        const versioned = webConversation || isOnboardingProgressHost(current.host);
+        let progress = versioned && action === 'run' ? await readProgress(this.dependencies, current.host!) : undefined;
+        if (progress?.state === 'not_started' && input.choice === 'demo' && !loginChangedCredential) {
+          progress = await writeProgress(this.dependencies, current.host!, 'start', { version: progress.version });
+        }
+        if (progress?.state === 'in_progress' && progress.journey_id !== current.journey_id) {
+          current = { ...current, id: crypto.randomUUID(), journey_id: progress.journey_id,
+            choice: undefined, sample_id: undefined, ready_demo: undefined, demo_visits: undefined };
+          this.store.save(current);
+        } else if (progress?.state === 'not_started' && !input.choice && (current.choice || current.journey_id)) {
+          current = { ...current, id: crypto.randomUUID(), journey_id: undefined, choice: undefined, sample_id: undefined, ready_demo: undefined, demo_visits: undefined };
+        }
         const context = await network(signal => this.dependencies.capability(current.host!, DEMO_CONTEXT, {}, signal));
         const projectId = context?.business_project?.project_id;
         const availableProject = Number.isSafeInteger(projectId) && projectId > 0;
@@ -300,7 +347,16 @@ export class OnboardingRuntime {
               || current.ready_demo?.project_id === projectId) delete current.ready_demo;
           this.store.save(current);
         }
-        const account = { ...completedLogin, business_project: availableProject ? context.business_project : null, compatibility };
+        const account = {
+          ...completedLogin,
+          ...(progress ? { onboarding_progress: { state: progress.state, run_id: progress.run_id,
+            experiment_id: progress.experiment_id, demo_project_id: progress.demo_project_id } } : {}),
+          business_project: availableProject ? context.business_project : null, compatibility,
+          ...(!webConversation ? { business_data: {
+            interaction: onboardingInteraction('choose_data_source'),
+            tools: onboardingInteraction('choose_data_tool'),
+          } } : {}),
+        };
         if (current.choice === 'demo' && current.sample_id) {
           const prepareDemo = () => network(signal => this.dependencies.capability(current.host!, action === 'run' ? DEMO_ENSURE : DEMO_STATUS,
             { sample_id: current.sample_id }, signal));
@@ -316,11 +372,32 @@ export class OnboardingRuntime {
           }
           if (action === 'run') {
             const scope = readyDemoScope(demo, current);
-            if (scope) current.ready_demo = scope;
+            if (scope) {
+              const sample = DEMO_SAMPLE_IDS.find(id => id === scope.sample_id);
+              if (sample && (!current.ready_demo || input.sample)) {
+                current.demo_visits ??= {};
+                current.demo_visits[sample] = (current.demo_visits[sample] ?? 0) + 1;
+              }
+              current.ready_demo = scope;
+            }
             else delete current.ready_demo;
             this.store.save(current);
           }
+          if (action === 'run' && progress?.state === 'in_progress' && current.ready_demo) {
+            try {
+              await writeProgress(this.dependencies, current.host!, 'check_demo', {
+                demo_project_id: current.ready_demo.project_id,
+              });
+            } catch (error: any) {
+              if (error?.code !== 'PLG_DEMO_LICENSE_REQUIRED') throw error;
+              return summary({ ...account, demo, demo_project_id: current.ready_demo.project_id,
+                phase: 'action_required', next_action: 'check_demo_license', code: error.code,
+                message: error.message, poll_after_ms: 0 });
+            }
+          }
+          const sample = DEMO_SAMPLE_IDS.find(id => id === current.sample_id);
           return summary({ ...account, demo, samples: context.samples, demo_project_id: demo?.project_id ?? null,
+            ...(demo?.status === 'ready' && sample ? { demo_overview: onboardingDemoOverview(sample, current.demo_visits?.[sample] ?? 1) } : {}),
             evidence: onboardingEvidenceLinks(demo?.evidence, demo?.project_id, webConversation ? undefined : current.host),
             phase: demo?.status === 'ready' ? 'ready' : demo?.status === 'action_required' ? 'action_required' : 'pending',
             next_action: demo?.status === 'ready' ? 'offer_growth_questions' : demo?.status === 'action_required' ? 'inspect_demo_preparation' : 'poll_demo',
@@ -338,7 +415,7 @@ export class OnboardingRuntime {
         const choices = [{ value: 'demo', label: 'Start the demo' }];
         if (!webConversation) choices.push({ value: 'business', label: 'Connect my business data' });
         return summary({ ...account, phase: 'waiting_user', next_action: 'choose_experience', poll_after_ms: 0,
-          choices });
+          choices, ...(!webConversation ? { demo_entry: onboardingInteraction('demo_entry') } : {}) });
       };
       return action === 'run' ? await this.store.locked(`session:${current.id}`, execute) : await execute();
     } catch (error: any) {
@@ -403,7 +480,7 @@ export class OnboardingRuntime {
       }
       return summary({ phase: 'waiting_user', next_action: 'run_onboarding', poll_after_ms: 0 });
     }
-    if (!session.region) return summary({ phase: 'action_required', next_action: 'choose_market', markets: WEBSITE_MARKETS, poll_after_ms: 0 });
+    if (!session.region) return summary({ phase: 'action_required', next_action: 'choose_market', poll_after_ms: 0 });
     const language = session.language_source === 'explicit' ? registrationLanguage(session.language) : undefined;
     if (!session.bootstrap || Date.parse(session.bootstrap.expires_at) <= this.dependencies.now()) {
       const thread = session.source === 'codex' && UUID_PATTERN.test(process.env.CODEX_THREAD_ID ?? '') ? process.env.CODEX_THREAD_ID : undefined;

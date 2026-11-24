@@ -29,7 +29,7 @@ function authorizationStatus(value: unknown): BootstrapAuthorizationStatus | und
   throw new Error('The website returned an invalid authorization status.');
 }
 
-export function bootstrapOrigin(market: string, environment = websiteEnvironment()): string {
+export function bootstrapOrigin(market: string, environment: WebsiteEnvironment = websiteEnvironment()): string {
   return websiteOrigin(market, environment);
 }
 

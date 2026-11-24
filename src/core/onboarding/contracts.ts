@@ -6,6 +6,16 @@ export const NETWORK_BUDGET_MS = 35_000;
 export const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 export const DEMO_SAMPLE_IDS = ['star-island', 'season-pass'] as const;
 export const CHECKOUT_RECOVERY = 'checkout-recovery';
+export const OVERSEAS_TEST_PRODUCT_HOSTNAME = 'plg-test-overseas-web.thinkingai.io';
+
+export type DemoCurrency = 'CNY' | 'USD';
+
+export function onboardingDemoCurrency(host?: string, region?: string): DemoCurrency {
+  const hostname = host ? new URL(host).hostname : undefined;
+  if (hostname === 'ae-web-global.thinkingai.io' || hostname === OVERSEAS_TEST_PRODUCT_HOSTNAME) return 'USD';
+  if (hostname?.endsWith('.thinkingai.cn') || hostname?.endsWith('.thinkingdata.cn')) return 'CNY';
+  return region === 'us' ? 'USD' : 'CNY';
+}
 
 export function onboardingGrowthScenario(value: string | undefined) {
   if (value === undefined || value === 'item-coupon') return 'item-coupon';
@@ -13,7 +23,7 @@ export function onboardingGrowthScenario(value: string | undefined) {
   throw new Error('Use --scenario item-coupon or checkout-recovery.');
 }
 
-export type OnboardingAction = 'run' | 'status' | 'plan' | 'growth' | 'growth-plan' | 'experiment-plan' | 'experiment-plan-preview' | 'experiment-launch' | 'experiment-launch-preview';
+export type OnboardingAction = 'run' | 'status' | 'plan' | 'progress' | 'progress-preview' | 'growth' | 'growth-plan' | 'experiment-plan' | 'experiment-plan-preview' | 'experiment-launch' | 'experiment-launch-preview';
 
 export interface OnboardingInput {
   host?: string;
@@ -30,6 +40,8 @@ export interface OnboardingInput {
   sdk_complete?: boolean;
   upload_metric_event?: boolean;
   prepare_approver?: boolean;
+  draft_only?: boolean;
+  answered_question?: string;
   run_id?: string;
   start_only?: boolean;
   wait_report?: boolean;
@@ -58,6 +70,8 @@ export interface LocalSession {
   choice?: 'demo' | 'business';
   sample_id?: string;
   ready_demo?: ReadyDemoScope;
+  journey_id?: string;
+  demo_visits?: Partial<Record<typeof DEMO_SAMPLE_IDS[number], number>>;
   confirmed_business_project_id?: number;
   project_id?: number;
   requires_auth?: boolean;

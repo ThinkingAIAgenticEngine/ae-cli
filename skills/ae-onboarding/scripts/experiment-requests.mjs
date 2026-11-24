@@ -3,8 +3,10 @@ import { readFileSync } from 'node:fs';
 
 import { isDemoAccountId, resolveExperimentPreset } from './resolve-experiment-preset.mjs';
 
-function buildRequests({ industry, experimentType, sampleId, itemId, runId, bucketId: requestedBucketId, accountIds: requestedAccountIds, metricIds }) {
-  const { preset, sample, experimentType: selectedType } = resolveExperimentPreset({ industry, experimentType, sampleId, itemId });
+function buildRequests({ industry, experimentType, sampleId, itemId, runId, bucketId: requestedBucketId, accountIds: requestedAccountIds, metricIds, currency: requestedCurrency }) {
+  const { preset, sample, experimentType: selectedType, currency } = resolveExperimentPreset({
+    industry, experimentType, sampleId, itemId, currency: requestedCurrency,
+  });
   const bucketId = requestedBucketId === undefined ? preset.audience.bucketId : requestedBucketId;
   const accountIds = requestedAccountIds === undefined ? sample.followUpAccountIds : requestedAccountIds;
   if (typeof runId !== 'string' || !/^[a-z0-9][a-z0-9_-]{0,31}$/.test(runId)) {
@@ -22,7 +24,9 @@ function buildRequests({ industry, experimentType, sampleId, itemId, runId, buck
       || !accountIds.every(id => isDemoAccountId(id, sampleId, sample.userCount)))) {
     throw new Error('Checkout recovery requires the verified cohort for this Demo sample.');
   }
-  const revenueMetricId = metricIds === undefined ? sample.netRevenueMetricId : metricIds?.secondary;
+  const usd = currency === 'USD';
+  const defaultRevenueMetricId = usd ? `${sample.netRevenueMetricId}_usd` : sample.netRevenueMetricId;
+  const revenueMetricId = metricIds === undefined ? defaultRevenueMetricId : metricIds?.secondary;
   if (typeof revenueMetricId !== 'string' || !revenueMetricId.trim() || revenueMetricId !== revenueMetricId.trim()) {
     throw new Error('metricIds.secondary must contain the verified net revenue metric ID.');
   }
@@ -43,6 +47,7 @@ function buildRequests({ industry, experimentType, sampleId, itemId, runId, buck
     items: [
       { field: preset.metricFilters[0], operator: 'eq', values: [sampleId] },
       { field: preset.metricFilters[1], operator: 'eq', values: [itemId] },
+      ...(usd ? [{ field: 'currency', operator: 'eq', values: [currency] }] : []),
     ],
   };
   const { role, format, ...definition } = preset.metrics.find((entry) => entry.role === 'primary');
@@ -61,7 +66,7 @@ function buildRequests({ industry, experimentType, sampleId, itemId, runId, buck
   const secondary = preset.metrics.find((entry) => entry.role === 'secondary');
   const revenueMetric = {
     metricId: revenueMetricId,
-    metricName: `PLG net revenue (${sampleId})`,
+    metricName: usd ? `PLG net revenue (${sampleId}, USD)` : `PLG net revenue (${sampleId})`,
     createType: 'event',
     goalDirection: 'up',
     metricPurpose: 'confidence_statistics',

@@ -13,7 +13,7 @@ function main() {
   const { values: args } = parseArgs({
     options: Object.fromEntries([
       'phase', 'run-id', 'output-dir', 'start', 'end', 'timezone', 'experiment-id', 'control-id', 'treatment-id',
-      'cohort-file', 'sample-id', 'item-id', 'industry', 'experiment-type',
+      'cohort-file', 'sample-id', 'item-id', 'industry', 'experiment-type', 'currency',
     ].map((name) => [name, { type: 'string' }])),
   });
   if (args.phase !== 'plg-experiment-today') {
@@ -65,8 +65,8 @@ function generatePlgReplay(args, start) {
     'experiment-id': experimentId, 'control-id': controlId, 'treatment-id': treatmentId,
   } = args;
   if (!cohortFile) throw new Error('Pass --cohort-file for the selected Demo sample.');
-  const { preset, sample, industry, experimentType } = resolveExperimentPreset({
-    industry: args.industry, experimentType: args['experiment-type'], sampleId, itemId,
+  const { preset, sample, industry, experimentType, currency } = resolveExperimentPreset({
+    industry: args.industry, experimentType: args['experiment-type'], sampleId, itemId, currency: args.currency,
   });
   const { exposureProperties, events } = preset;
   const cohort = JSON.parse(readFileSync(cohortFile, 'utf8'));
@@ -104,7 +104,7 @@ function generatePlgReplay(args, start) {
     })));
     claims.forEach((id) => outcomes.push(event(id, groupId, outcomeDelayMs, events.couponClaim, tags)));
     paid.forEach((id) => outcomes.push(event(id, groupId, outcomeDelayMs, events.payment, {
-      ...tags, order_id: stableUuid(['order', ...replayIdentity, groupId, id]), amount: config.price, currency: preset.currency,
+      ...tags, order_id: stableUuid(['order', ...replayIdentity, groupId, id]), amount: config.price, currency,
     })));
     arms[name] = {
       group_id: groupId, assigned_account_ids: assigned, exposed_account_ids: exposed,
@@ -119,7 +119,7 @@ function generatePlgReplay(args, start) {
   ];
   const receipt = {
     version: 'ae-plg-demo-experiment-replay/v1', synthetic: true, phase: args.phase, run_id: runId,
-    sample_id: sampleId, item_id: itemId, industry, experiment_type: experimentType,
+    sample_id: sampleId, item_id: itemId, industry, experiment_type: experimentType, currency,
     experiment_id: experimentId, timezone: args.timezone,
     start: args.start, end: args.end, arms,
     event_uuids: { exposure: exposure.map((row) => row.event_uuid), outcomes: outcomes.map((row) => row.event_uuid) },

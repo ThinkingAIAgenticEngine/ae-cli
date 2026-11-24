@@ -122,11 +122,28 @@ test('first installation selects all Skills without an availability snapshot and
   assert.equal(f.state.calls.some(call => call.args.includes('add')), false);
   assert.equal(fs.existsSync(path.join(f.stateDirectory, 'business-config.json')), false);
   assert.equal(result.next_action, 'choose_account');
-  assert.match(result.next_steps[0], /only requested installation.*report the verified version and Skill count and finish/);
-  assert.match(result.next_steps.join(' '), /explicitly asks for AE onboarding or a walkthrough.*account route open.*show the account picker/);
+  const receipt = JSON.stringify(result);
+  assert.deepEqual(JSON.parse(receipt).interaction, {
+    step: 'choose_account',
+    question: 'How would you like to connect to AE?',
+    options: [
+      { value: 'create_account', label: 'Create an AE account' },
+      { value: 'existing_account', label: 'Sign in to my existing AE account' },
+    ],
+  });
+  assert.ok(receipt.indexOf('"interaction"') < receipt.indexOf('"skills"'));
+  assert.ok(receipt.indexOf('"next_action"') < receipt.indexOf('"skills"'));
+  assert.equal(result.onboarding_skill_path, path.join(f.root, 'skills', 'ae-onboarding', 'SKILL.md'));
+  assert.match(result.next_steps[0], /After verifying a fresh install.*Sign in to my existing AE account/);
+  assert.match(result.next_steps[0], /same turn using the native choice dialog, even for a request that only asks to install/);
+  assert.match(result.next_steps[0], /Keep the turn open until the user chooses or dismisses the dialog\. If the dialog is unavailable or fails, ask with the same options in chat/);
+  assert.match(result.next_steps.join(' '), /For an explicit onboarding or walkthrough that needs a new account.*show “Create an AE account” and “Learn about AE” using the localized labels from references\/about-ae\.md/);
+  assert.match(result.next_steps.join(' '), /If they choose “Learn about AE”, show the localized introduction and available product resources/);
+  assert.match(result.next_steps.join(' '), /For a production market, when the user chooses “Create an AE account” or directly asks to sign up, run ae-cli analysis onboarding run/);
   assert.match(result.next_steps.join(' '), /analysis onboarding run.*skill_path.*session_id/);
-  assert.match(result.next_steps.join(' '), /user's requested market.*system default browser/);
-  assert.doesNotMatch(result.next_steps.join(' '), /--website-env test|test\.thinkingai\./);
+  assert.match(result.next_steps.join(' '), /Honor an explicitly requested market.*system default browser/);
+  assert.match(result.next_steps.join(' '), /After the user confirms signup in the overseas test environment.*--website-env test --region us/);
+  assert.doesNotMatch(result.next_steps.join(' '), /test\.thinkingai\./);
   assert.match(result.next_steps.join(' '), /Existing AE users: confirm their original AE environment URL/);
   assert.doesNotMatch(result.next_steps.join(' '), /request-demo/);
 
@@ -136,32 +153,35 @@ test('first installation selects all Skills without an availability snapshot and
   assert.equal(f.state.operations.some(operation => operation.skill === 'ae-onboarding'), false);
 });
 
-test('installation offers the locale default region and allows an explicit region before registration', t => {
+test('installation defaults other device locales to the US while preserving explicit market choices', t => {
   const f = fixture(t, '@tant/ae-cli');
   const result = f.run({ env: { PATH: path.dirname(f.bin), LANG: 'ja_JP.UTF-8' } });
   assert.equal(result.ok, true);
   assert.equal(result.local_language, 'ja-JP');
-  assert.match(result.next_steps.join(' '), /https:\/\/www\.thinkingai\.io\/jp\/experience-login\//);
-  assert.match(result.next_steps.join(' '), /entry=cli&source=other&market=jp/);
-  assert.doesNotMatch(result.next_steps.join(' '), /--website-env test|test\.thinkingai\./);
-  assert.match(result.next_steps.join(' '), /--language ja-JP/);
-  assert.match(result.next_steps.join(' '), /default new-account region is jp/);
-  assert.match(result.next_steps.join(' '), /offer exactly those two markets/);
+  assert.equal(result.onboarding_market, 'us');
+  assert.match(result.next_steps.join(' '), /https:\/\/www\.thinkingai\.io\/en\/experience-login\//);
+  assert.match(result.next_steps.join(' '), /entry=cli&source=other&market=us/);
+  assert.match(result.next_steps.join(' '), /After the user confirms signup in the overseas test environment.*--website-env test --region us/);
+  assert.doesNotMatch(result.next_steps.join(' '), /test\.thinkingai\./);
+  assert.match(result.next_steps.join(' '), /analysis onboarding run --region us/);
+  assert.match(result.next_steps.join(' '), /--language for the display preference/);
   assert.match(result.next_steps.join(' '), /--region cn\|jp\|kr\|us/);
   assert.equal(f.state.calls.some(call => call.args.includes('login')), false);
 });
 
-test('installation in a Chinese locale offers website onboarding on explicit request', t => {
+test('installation in a Chinese locale offers signup and existing-account login', t => {
   const f = fixture(t);
-  const result = f.run({ env: { ...f.env, LANG: 'zh_CN.UTF-8' } });
+  const result = f.run({ env: { ...f.env, LANG: 'zh_TW.UTF-8' } });
   assert.equal(result.ok, true);
   assert.equal(result.cli.verified, true);
   assert.equal(result.skills.status, 'success');
   assert.equal(result.next_action, 'choose_account');
+  assert.match(result.next_steps[0], /offer “Create an AE account” and “Sign in to my existing AE account”/);
   assert.equal(result.local_language, 'zh-CN');
+  assert.equal(result.onboarding_market, 'cn');
   const guidance = result.next_steps.join(' ');
-  assert.match(guidance, /offer exactly those two markets.*For Chinese and English, offer China and the United States/);
-  assert.match(guidance, /only requested installation.*report the verified version and Skill count and finish/);
+  assert.match(guidance, /analysis onboarding run --region cn/);
+  assert.match(guidance, /After verifying a fresh install.*Sign in to my existing AE account/);
   assert.match(guidance, /https:\/\/www\.thinkingai\.cn\/experience-login\/\?entry=cli&source=other&market=cn/);
   assert.match(guidance, /ae-cli auth login --host <AE_HOST>/);
   assert.doesNotMatch(guidance, /request-demo|test\.thinkingai\./);
@@ -173,7 +193,7 @@ test('a neutral locale does not report the fallback market as a local language',
   const result = f.run({ env: { ...f.env, LC_ALL: 'C.UTF-8' } });
   assert.equal(result.ok, true);
   assert.equal(result.local_language, undefined);
-  assert.match(result.next_steps.join(' '), /default new-account region is us/);
+  assert.equal(result.onboarding_market, 'us');
 });
 
 for (const mode of ['environment', 'invalid-environment', 'file-environment', 'file-option', 'sandbox-root', 'sandbox-config', 'fallback-token'] as const) {
@@ -493,6 +513,19 @@ test('explicit install checks the active environment before asking about the acc
   assert.equal(unknown.next_action, 'check_authentication');
   assert.match(unknown.next_steps.join(' '), /auth status --host https:\/\/existing\.example --format json/);
   assert.doesNotMatch(unknown.next_steps.join(' '), /analysis onboarding|auth login/);
+  assert.equal(f.state.calls.some(call => call.args.includes('login')), false);
+});
+
+test('a fresh install with an overseas test host asks for an account route before device authorization', t => {
+  const f = fixture(t, '@tant/ae-cli');
+  const host = 'https://plg-test-overseas-web.thinkingai.io';
+  const result = f.run({ host });
+  assert.equal(result.ok, true);
+  assert.equal(result.cli.action, 'installed');
+  assert.deepEqual({ host: result.auth.host, authenticated: result.auth.authenticated }, { host, authenticated: false });
+  assert.equal(result.next_action, 'choose_account');
+  assert.match(result.next_steps[0], /A supplied host only identifies the environment\. Wait for the account choice before starting signup or device authorization/);
+  assert.ok(f.state.calls.some(call => call.command === f.bin && call.args.includes('status') && call.args.includes(host)));
   assert.equal(f.state.calls.some(call => call.args.includes('login')), false);
 });
 

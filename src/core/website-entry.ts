@@ -5,6 +5,8 @@ export type CliEntrySource = 'codex' | 'cursor' | 'claude-code' | 'other';
 
 const LOGIN_PATHS = { jp: '/jp/experience-login/', kr: '/kr/experience-login/', us: '/en/experience-login/', cn: '/experience-login/' };
 export const WEBSITE_MARKETS = Object.keys(LOGIN_PATHS) as (keyof typeof LOGIN_PATHS)[];
+export const OVERSEAS_TEST_MARKETS = WEBSITE_MARKETS.filter(market => market !== 'cn');
+export const OVERSEAS_TEST_WEBSITE_ORIGIN = 'https://test.thinkingai.io';
 const PRODUCTION_ISSUER = 'https://thinkingai.io';
 const PRODUCTION_BROWSER_ORIGIN = 'https://www.thinkingai.io';
 const CHINA_PRODUCTION_ORIGIN = 'https://www.thinkingai.cn';
@@ -14,15 +16,19 @@ export function isWebsiteMarket(market: string): market is keyof typeof LOGIN_PA
   return Object.hasOwn(LOGIN_PATHS, market);
 }
 
-export function websiteEnvironment(value?: string, env: NodeJS.ProcessEnv = process.env): 'production' {
+export function websiteEnvironment(value?: string, env: NodeJS.ProcessEnv = process.env): WebsiteEnvironment {
   const selected = value ?? env.AE_CLI_WEBSITE_ENV ?? 'production';
-  if (selected !== 'production') throw new Error('Website onboarding supports only the production environment.');
-  return 'production';
+  if (selected !== 'production' && selected !== 'test') throw new Error('Choose website environment test or production.');
+  return selected;
 }
 
 export function websiteOrigin(market: string, environment: WebsiteEnvironment): string {
   websiteEnvironment(environment, {});
   if (!isWebsiteMarket(market)) throw new Error(UNSUPPORTED_MARKET);
+  if (environment === 'test') {
+    if (market === 'cn') throw new Error('Overseas test website onboarding supports us, jp, and kr.');
+    return OVERSEAS_TEST_WEBSITE_ORIGIN;
+  }
   return market === 'cn' ? CHINA_PRODUCTION_ORIGIN : PRODUCTION_ISSUER;
 }
 
@@ -31,6 +37,7 @@ export function isProductionWebsiteOrigin(origin: string): boolean {
 }
 
 export function environmentForWebsiteOrigin(origin: string): WebsiteEnvironment {
+  if (origin === OVERSEAS_TEST_WEBSITE_ORIGIN) return 'test';
   if (isProductionWebsiteOrigin(origin)) return 'production';
   throw new Error('Untrusted onboarding website.');
 }
@@ -65,8 +72,8 @@ export function withCliEntryContext(value: string, source: CliEntrySource, marke
 }
 
 export function websiteLoginUrl(market: string, environment: WebsiteEnvironment, source: CliEntrySource, toolReference?: string): string {
-  websiteEnvironment(environment, {});
   if (!isWebsiteMarket(market)) throw new Error(UNSUPPORTED_MARKET);
-  const origin = market === 'cn' ? CHINA_PRODUCTION_ORIGIN : PRODUCTION_BROWSER_ORIGIN;
-  return withCliEntryContext(`${origin}${LOGIN_PATHS[market]}`, source, market, toolReference);
+  const origin = websiteOrigin(market, environment);
+  const browserOrigin = origin === PRODUCTION_ISSUER ? PRODUCTION_BROWSER_ORIGIN : origin;
+  return withCliEntryContext(`${browserOrigin}${LOGIN_PATHS[market]}`, source, market, toolReference);
 }

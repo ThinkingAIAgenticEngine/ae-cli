@@ -13,13 +13,15 @@ import type { PollResult } from '../src/core/device-auth.js';
 const host = 'https://plg.example.test';
 const origin = 'https://thinkingai.io';
 const chinaOrigin = 'https://www.thinkingai.cn';
+const overseasTestOrigin = 'https://test.thinkingai.io';
+const overseasTestHost = 'https://plg-test-overseas-web.thinkingai.io';
 const intent = '3278330f-ec86-45c1-b4d3-a40617db096a';
 const privatePoll = 'private-bootstrap-poll-secret';
 const privateDevice = 'uba_0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ_abcdef';
 const privateUserCode = 'ABCD2345';
 const privateAccess = 'private-oauth-access-secret';
 
-function fixture(selectedMode: BootstrapLoginMode | 'legacy' = 'website_login') {
+function fixture(selectedMode: BootstrapLoginMode | 'legacy' = 'website_login', accountHost = host) {
   const mode = selectedMode === 'legacy' ? undefined : selectedMode;
   const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'ae-website-login-'));
   const store = new OnboardingStore(path.join(directory, 'private'));
@@ -39,7 +41,7 @@ function fixture(selectedMode: BootstrapLoginMode | 'legacy' = 'website_login') 
   const bootstrapLanguages: Array<string | undefined> = [];
   let identityError = false;
   let result: PollResult = { status: 'approved', tokens: { access_token: privateAccess, token_type: 'Bearer', expires_in: 300 } };
-  let grant: BootstrapDevice = { login_mode: 'website_login', authorization_status: 'approved', host,
+  let grant: BootstrapDevice = { login_mode: 'website_login', authorization_status: 'approved', host: accountHost,
     device_code: privateDevice, user_code: privateUserCode, expires_at: new Date(now + 300_000).toISOString(), interval: 5,
     expected_login_name: 'test-user', expected_company_id: '30' };
   const runtime = new OnboardingRuntime(store, { activeHost: () => '', authenticated: () => authenticated, now: () => now,
@@ -60,8 +62,8 @@ function fixture(selectedMode: BootstrapLoginMode | 'legacy' = 'website_login') 
     claimBootstrapDevice: async (website, id, token) => { assert.equal(website, origin); assert.equal(id, issuedIntent); assert.equal(token, privatePoll); claimCount++; return grant; },
     authorize: async () => { authorizeCount++; return { baseUrl: `${host}/agent`, authorization: { device_code: 'legacy-device', user_code: 'OLD-CODE',
       verification_uri: `${host}/agent/device-activate`, verification_uri_complete: `${host}/agent/device-activate?user_code=OLD-CODE`, expires_in: 300, interval: 5 } }; },
-    poll: async (issuer, code) => { assert.equal(issuer, host); codes.push(code); return result; },
-    verifyWebsiteLoginIdentity: async (actualHost, access, expected) => { identityCount++; assert.equal(actualHost, host); assert.equal(access, privateAccess);
+    poll: async (issuer, code) => { assert.equal(issuer, accountHost); codes.push(code); return result; },
+    verifyWebsiteLoginIdentity: async (actualHost, access, expected) => { identityCount++; assert.equal(actualHost, accountHost); assert.equal(access, privateAccess);
       assert.deepEqual(expected, { login_name: 'test-user', company_id: '30' }); if (identityError) throw new Error('Identity mismatch.'); },
     persist: async () => { assert.ok(identityCount > 0); persistCount++; authenticated = true; },
     capability: async () => ({ business_project: { project_id: 7, project_name: 'prj_sample' }, requires_confirmation: false }),
@@ -73,11 +75,11 @@ function fixture(selectedMode: BootstrapLoginMode | 'legacy' = 'website_login') 
     cleanup: () => fs.rmSync(directory, { recursive: true, force: true }) };
 }
 
-test('explicit test environments stop before website login', async () => {
+test('test signup rejects unsupported markets and unrelated product hosts before website login', async () => {
   const f = fixture();
   try {
-    await assert.rejects(f.runtime.invoke('run', { region: 'us', website_env: 'test' }), /production/);
-    await assert.rejects(f.runtime.invoke('run', { region: 'cn', website_env: 'test' }), /production/);
+    await assert.rejects(f.runtime.invoke('run', { region: 'us', website_env: 'test', host }), /overseas test product host/);
+    await assert.rejects(f.runtime.invoke('run', { region: 'cn', website_env: 'test' }), /overseas test website/i);
     assert.equal(f.created(), 0);
     assert.equal(f.reads(), 0);
     assert.deepEqual(f.opened, []);
@@ -87,6 +89,61 @@ test('explicit test environments stop before website login', async () => {
     assert.equal(allowed.language, 'zh-CN');
     assert.deepEqual(f.bootstrapLanguages, ['zh-CN']);
   } finally { f.cleanup(); }
+});
+
+test('overseas test signup resumes on its original website and only authorizes the test product host', async t => {
+  const f = fixture('website_login', overseasTestHost);
+  t.after(f.cleanup);
+  const original = globalThis.fetch;
+  t.after(() => { globalThis.fetch = original; });
+  const bootstrap = overseasTestOrigin + '/backend/demo/v1/experience/cli/bootstrap-intents';
+  const expires_at = new Date(Date.now() + 300_000).toISOString();
+  const calls: string[] = [];
+  let returnedHost = 'https://ae-web-global.thinkingai.io';
+  Object.assign(f.runtime.dependencies, { createBootstrap, readBootstrap, claimBootstrapDevice });
+  globalThis.fetch = async (url, init) => {
+    const endpoint = String(url);
+    calls.push(endpoint);
+    assert.equal(init?.redirect, 'error');
+    let data: Record<string, unknown>;
+    if (endpoint === bootstrap) {
+      assert.deepEqual(JSON.parse(String(init?.body)), { market: 'us', source: 'other', requested_host: overseasTestHost });
+      data = { intent_id: intent, login_url: overseasTestOrigin + '/en/experience-login/?intent_id=' + intent,
+        poll_token: privatePoll, expires_at, poll_after_ms: 2000, login_mode: 'website_login' };
+    } else {
+      assert.equal(new Headers(init?.headers).get('X-CLI-Bootstrap-Token'), privatePoll);
+      switch (endpoint) {
+        case `${bootstrap}/${intent}`:
+          data = { intent_id: intent, status: 'account_ready', host: returnedHost,
+            ready_url: overseasTestOrigin + '/en/experience-cli/?intent_id=' + intent, expires_at,
+            poll_after_ms: 2000, login_mode: 'website_login', authorization_status: 'approved' };
+          break;
+        case `${bootstrap}/${intent}/device`:
+          data = { login_mode: 'website_login', authorization_status: 'approved', host: overseasTestHost,
+            device_code: privateDevice, user_code: privateUserCode, expires_at, interval: 5,
+            expected_login_name: 'test-user', expected_company_id: '30' };
+          break;
+        default: throw new Error(endpoint);
+      }
+    }
+    return Response.json({ return_code: 0, data });
+  };
+  const login = await f.runtime.invoke('run', { website_env: 'test', language: 'zh-CN', source: 'other' });
+  assert.equal(login.next_action, 'complete_website_login');
+  assert.equal(login.market, 'us');
+  assert.equal(login.host, overseasTestHost);
+  assert.equal(new URL(f.opened[0]).origin, overseasTestOrigin);
+  const session_id = String(login.session_id);
+  await assert.rejects(f.runtime.invoke('run', { session_id, website_env: 'production' }), /previous website environment/);
+  await assert.rejects(f.runtime.invoke('run', { session_id }), /another product host/);
+  assert.equal(f.counts().persistCount, 0);
+  returnedHost = overseasTestHost;
+  const completed = await f.runtime.invoke('run', { session_id });
+  assert.equal(completed.next_action, 'choose_experience');
+  assert.equal(completed.website_env, 'test');
+  assert.equal(f.counts().persistCount, 1);
+  assert.equal(f.opened.length, 1);
+  assert.deepEqual(calls, [bootstrap, `${bootstrap}/${intent}`, `${bootstrap}/${intent}`, `${bootstrap}/${intent}/device`]);
 });
 
 test('Chinese website login creates and resumes an intent on the production website', async () => {

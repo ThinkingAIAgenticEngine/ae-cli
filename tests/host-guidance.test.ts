@@ -17,11 +17,13 @@ test('overseas registration uses the localized official website pages', () => {
   }
 });
 
-test('website onboarding resolves production and rejects explicit test requests', () => {
+test('website onboarding defaults to production and supports explicit overseas test requests', () => {
   assert.equal(websiteEnvironment(undefined, {}), 'production');
-  assert.throws(() => websiteEnvironment('test', {}), /production/);
-  assert.throws(() => websiteEnvironment(undefined, { AE_CLI_WEBSITE_ENV: 'test' }), /production/);
+  assert.equal(websiteEnvironment('test', {}), 'test');
+  assert.equal(websiteEnvironment(undefined, { AE_CLI_WEBSITE_ENV: 'test' }), 'test');
   assert.equal(websiteEnvironment('production', { AE_CLI_WEBSITE_ENV: 'test' }), 'production');
+  for (const market of ['us', 'jp', 'kr']) assert.equal(websiteOrigin(market, 'test'), 'https://test.thinkingai.io');
+  assert.throws(() => websiteOrigin('cn', 'test'), /overseas test website/i);
 });
 
 test('Chinese registration uses the official production website', () => {
@@ -33,7 +35,8 @@ test('tool context preserves original public continuation parameters', () => {
   assert.equal(environmentForWebsiteOrigin('https://thinkingai.io'), 'production');
   assert.equal(environmentForWebsiteOrigin('https://www.thinkingai.io'), 'production');
   assert.equal(environmentForWebsiteOrigin('https://www.thinkingai.cn'), 'production');
-  for (const origin of ['https://test.thinkingai.cn', 'https://test.thinkingai.io', 'https://thinkingai.cn']) {
+  assert.equal(environmentForWebsiteOrigin('https://test.thinkingai.io'), 'test');
+  for (const origin of ['https://test.thinkingai.cn', 'https://test.thinkingai.io.example.org', 'https://thinkingai.cn']) {
     assert.throws(() => environmentForWebsiteOrigin(origin), /Untrusted onboarding website/);
   }
   const thread = '3278330f-ec86-45c1-b4d3-a40617db096a';

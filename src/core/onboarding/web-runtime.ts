@@ -4,9 +4,11 @@ import { executeCapability } from '../capability-api.js';
 import { getCliToken, validateCliTokenOnServer } from '../cli-token.js';
 import { getActiveHost } from '../config.js';
 import { externalCliTokenRequestOptions, readExternalCliToken } from '../external-cli-token.js';
+import { registrationLanguage, registrationMarket } from '../host-guidance.js';
 import { isAeSandboxRuntime } from '../sandbox-runtime.js';
 import { fetchSigned } from '../te-agent-client.js';
-import { NETWORK_BUDGET_MS, type OnboardingAction, type OnboardingInput } from './contracts.js';
+import { isWebsiteMarket } from '../website-entry.js';
+import { NETWORK_BUDGET_MS, onboardingDemoCurrency, type OnboardingAction, type OnboardingInput } from './contracts.js';
 import { OnboardingRuntime } from './runtime.js';
 import { OnboardingStore } from './session-store.js';
 
@@ -33,7 +35,7 @@ async function readTaskActor(host: string, token: string, conversationId: string
     : await fetchSigned({ method: 'GET', path: '/api/sandbox/onboarding/context', hostOverride: host,
         authMode: 'cli-token', timeoutMs: NETWORK_BUDGET_MS });
   if (!response.ok) return undefined;
-  type Actor = { account_id?: string; company_id?: string; conversation_id?: string };
+  type Actor = { account_id?: string; company_id?: string; conversation_id?: string; platform_region?: unknown; market?: unknown };
   const payload = await response.json() as { actor?: Actor; return_code?: number; data?: {
     task_cli_compat_enabled?: boolean; plg_onboarding_actor?: Actor;
   } };
@@ -41,7 +43,12 @@ async function readTaskActor(host: string, token: string, conversationId: string
   const actor = legacy ? payload.data?.plg_onboarding_actor : payload.actor;
   if (typeof actor?.account_id === 'string' && actor.account_id
       && typeof actor.company_id === 'string' && actor.company_id && actor.conversation_id === conversationId) {
-    return { openId: actor.account_id, issuer: actor.company_id };
+    return {
+      openId: actor.account_id,
+      issuer: actor.company_id,
+      platformRegion: actor.platform_region === 'cn' || actor.platform_region === 'overseas' ? actor.platform_region : undefined,
+      market: typeof actor.market === 'string' && isWebsiteMarket(actor.market) ? actor.market : undefined,
+    };
   }
 }
 
@@ -67,7 +74,8 @@ export async function invokeOnboarding(action: OnboardingAction, input: Onboardi
   }
   const actor = token.startsWith('cli_task_') || external?.taskContext
     ? await readTaskActor(host, token, process.env.TE_AGENT_CONVERSATION_ID!, signal)
-    : { openId: (await validateCliTokenOnServer(host, token, signal)).account?.openId, issuer: host };
+    : { openId: (await validateCliTokenOnServer(host, token, signal)).account?.openId, issuer: host,
+        platformRegion: undefined, market: undefined };
   if (!actor?.openId || (external?.taskContext && actor.issuer !== external.taskContext.companyId)) {
     throw new Error('AE could not verify the current onboarding account.');
   }
@@ -79,6 +87,7 @@ export async function invokeOnboarding(action: OnboardingAction, input: Onboardi
   }
   const runtime = new OnboardingRuntime(store, {
     webConversation: true,
+    demoCurrency: () => onboardingDemoCurrency(host),
     activeHost: () => SESSION_HOST,
     authenticated: scope => scope === SESSION_HOST,
     credentialKey: scope => scope === SESSION_HOST ? key : undefined,
@@ -93,5 +102,10 @@ export async function invokeOnboarding(action: OnboardingAction, input: Onboardi
   });
   const output = await runtime.invoke(action, input);
   if (output.host === SESSION_HOST) output.host = null;
+  if (typeof output.language === 'string') {
+    const languageMarket = registrationMarket(registrationLanguage(output.language));
+    const overseasMarket = languageMarket === 'cn' ? 'us' : languageMarket;
+    output.product_resource_market = actor.market ?? (actor.platformRegion === 'overseas' ? overseasMarket : actor.platformRegion ?? null);
+  }
   return output;
 }

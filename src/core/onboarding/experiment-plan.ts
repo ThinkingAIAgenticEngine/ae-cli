@@ -4,17 +4,72 @@ import catalog from '../../../skills/ae-onboarding/scripts/experiment-preset.jso
 import { CliApiError, LocalDataUploadError, PermissionError } from '../errors.js';
 import { assembleSyncJsonBody, resolveSyncJsonEndpoint } from '../local-data-upload-client.js';
 import { trustedProductHost } from './bootstrap-client.js';
-import { CHECKOUT_RECOVERY, DEMO_STATUS, NETWORK_BUDGET_MS, onboardingGrowthScenario,
+import { CHECKOUT_RECOVERY, DEMO_STATUS, NETWORK_BUDGET_MS, UUID_PATTERN, onboardingGrowthScenario,
   type LocalSession, type OnboardingInput, type ReadyDemoScope } from './contracts.js';
 import { readCheckoutRecoveryCohort } from './growth.js';
-import { onboardingInteraction } from './interaction.js';
+import { onboardingDraftReviewInteraction, onboardingInteraction } from './interaction.js';
 import type { OnboardingDependencies } from './runtime.js';
 import type { OnboardingStore } from './session-store.js';
 
 const PROJECT_INFO = 'project.info.get';
 const APPROVER_ADD = 'experiment.approver.add';
-type ExperimentPlanDependencies = Pick<OnboardingDependencies, 'credentialKey' | 'capability' | 'upload' | 'approverOpenId' | 'now'>;
+type ExperimentPlanDependencies = Pick<OnboardingDependencies, 'credentialKey' | 'capability' | 'upload' | 'approverOpenId' | 'now' | 'demoCurrency'>;
+type ReviewDependencies = Pick<OnboardingDependencies, 'credentialKey'>;
 type DemoStatus = Partial<ReadyDemoScope> & { status?: string };
+type SavedPlan = Record<string, unknown> & { approver?: { status?: string }; answered_questions?: string[] };
+
+function readActivePlan(store: OnboardingStore, deps: ReviewDependencies, input: OnboardingInput) {
+  const { session_id: sessionId, run_id: runId } = input;
+  if (!sessionId || !UUID_PATTERN.test(sessionId) || !runId || !/^[0-9a-f]{32}$/.test(runId)) {
+    throw new Error('Pass the onboarding session ID and the run ID returned by experiment-plan.');
+  }
+  const session = store.session(sessionId, input.host ? trustedProductHost(input.host) : undefined)!;
+  const file = `experiment-plan-${runId}.json`;
+  const plan = store.read<SavedPlan>(file);
+  const scope = session.ready_demo;
+  if (!plan || plan.phase !== 'ready' || plan.session_id !== session.id || plan.run_id !== runId
+      || !session.host || plan.host !== session.host || session.choice !== 'demo'
+      || !scope || plan.sample_id !== session.sample_id || plan.sample_id !== scope.sample_id
+      || plan.item_id !== scope.item_id || plan.demo_project_id !== scope.project_id
+      || !session.credential_key || session.requires_auth || plan.credential_key !== session.credential_key
+      || deps.credentialKey(session.host) !== session.credential_key) {
+    throw new Error('The saved experiment plan does not match the active Demo session and account.');
+  }
+  return { file, plan };
+}
+
+function publicPlan(plan: SavedPlan): Record<string, unknown> {
+  const { checkout_cohort: _cohort, credential_key: _key, ...review } = plan;
+  return plan.approver?.status === 'deferred'
+    ? { ...review, interaction: onboardingDraftReviewInteraction(plan.answered_questions) }
+    : review;
+}
+
+export function readOnboardingExperimentPlan(store: OnboardingStore, deps: ReviewDependencies,
+  input: OnboardingInput): Record<string, unknown> {
+  return publicPlan(readActivePlan(store, deps, input).plan);
+}
+
+function recordAnsweredQuestion(store: OnboardingStore, deps: ReviewDependencies, input: OnboardingInput, preview: boolean) {
+  const { session_id: sessionId, answered_question: question } = input;
+  if (!sessionId || !UUID_PATTERN.test(sessionId) || !input.run_id || !question
+      || input.scenario || input.draft_only || input.upload_metric_event || input.prepare_approver) {
+    throw new Error('Use --session-id, --run-id, and --answered-question together for draft review.');
+  }
+  if (!onboardingDraftReviewInteraction().options.some(option => option.value === question && option.value !== 'launch')) {
+    throw new Error('Use --answered-question review_audience, review_pilot, or review_no_reward.');
+  }
+  const update = () => {
+    const { file, plan } = readActivePlan(store, deps, input);
+    if (plan.approver?.status !== 'deferred') throw new Error('Only a plan saved with --draft-only supports review questions.');
+    const answered = plan.answered_questions ?? [];
+    const updated = answered.includes(question) ? plan : { ...plan, answered_questions: [...answered, question] };
+    if (!preview && updated !== plan) store.write(file, updated);
+    const result = publicPlan(updated);
+    return preview ? { ...result, dry_run: true } : result;
+  };
+  return preview ? update() : store.locked(`session:${sessionId}`, async () => update());
+}
 
 export function readyDemoScope(demo: DemoStatus | undefined, session: LocalSession): ReadyDemoScope | undefined {
   if (demo?.status !== 'ready' || !demo.sample_id || demo.sample_id !== session.sample_id || typeof demo.item_id !== 'string' || !demo.item_id
@@ -30,9 +85,15 @@ export async function runOnboardingExperimentPlan(
   input: OnboardingInput,
   preview: boolean,
 ): Promise<Record<string, unknown>> {
+  if (input.run_id !== undefined || input.answered_question !== undefined) {
+    return recordAnsweredQuestion(store, deps, input, preview);
+  }
   const scenario = onboardingGrowthScenario(input.scenario);
   if (scenario === CHECKOUT_RECOVERY && input.upload_metric_event) {
     throw new Error('Checkout recovery prepares the plan locally. Use experiment-launch after the user confirms it.');
+  }
+  if (input.draft_only && (input.upload_metric_event || input.prepare_approver)) {
+    throw new Error('Use --draft-only by itself to prepare a plan for review.');
   }
   const sessionId = input.session_id;
   if (!sessionId) throw new Error('A valid onboarding --session-id is required.');
@@ -40,9 +101,10 @@ export async function runOnboardingExperimentPlan(
   if (preview) {
     const session = store.session(sessionId, explicitHost)!;
     return { dry_run: true, session_id: sessionId, host: session.host ?? null, sample_id: session.sample_id ?? null,
+      currency: deps.demoCurrency(session.host, session.region),
       ...(input.scenario ? { scenario } : {}),
       capabilities: [...(session.ready_demo ? [] : [DEMO_STATUS]), ...(input.upload_metric_event ? [PROJECT_INFO] : []),
-        APPROVER_ADD],
+        ...(input.draft_only ? [] : [APPROVER_ADD])],
       ...(input.upload_metric_event ? { metric_event: { event_name: 'payment_success', record_count: 1 } } : {}) };
   }
 
@@ -81,6 +143,7 @@ export async function runOnboardingExperimentPlan(
       throw new Error('The active Demo sample and item have no supported experiment preset.');
     }
     const preset = catalog.experimentTypes[scenario];
+    const currency = deps.demoCurrency(host, session.region);
     const checkoutCohort = scenario === CHECKOUT_RECOVERY ? readCheckoutRecoveryCohort(store, session, scope) : undefined;
     if (scenario === CHECKOUT_RECOVERY && !checkoutCohort) {
       return { ...base, phase: 'action_required', next_action: 'run_checkout_recovery_growth',
@@ -93,20 +156,22 @@ export async function runOnboardingExperimentPlan(
     }
     const eventId = randomUUID();
     const runId = eventId.replaceAll('-', '');
+    const audienceCount = checkoutCohort?.account_ids.length ?? selection.sample.followUpAccountIds.length;
     const result = {
       ...base, phase: 'ready', next_action: 'confirm_experiment', demo_project_id: scope.project_id,
       item_id: scope.item_id, industry: selection.industry, experiment_type: scenario, run_id: runId,
-      interaction: onboardingInteraction('confirm_experiment'),
+      interaction: input.draft_only ? onboardingDraftReviewInteraction() : onboardingInteraction('confirm_experiment'),
+      ...(input.draft_only ? { answered_questions: [], review: { pilot_accounts_per_arm: Math.min(4, Math.floor(audienceCount / 2)) } } : {}),
       plan: {
         synthetic: true, hypothesis: preset.experiment.hypothesis,
-        audience_count: checkoutCohort?.account_ids.length ?? selection.sample.followUpAccountIds.length,
+        audience_count: audienceCount,
         audience: { minimum_view_days: preset.audience.minimumViewDays, view_event: preset.audience.viewEvent,
           exclude_event: preset.audience.excludeEvent,
           ...(checkoutCohort ? { checkout_event: catalog.experimentTypes[CHECKOUT_RECOVERY].audience.checkoutEvent,
             start_date: checkoutCohort.start_date, end_date: checkoutCohort.end_date } : {}) },
         duration_days: preset.durationDays, allocation: preset.allocation, bucket_id: preset.audience.bucketId,
         arms: Object.entries(preset.arms).map(([role, arm]) => ({ role, name: arm.name, allocation: arm.allocation, price: arm.price })),
-        metrics: preset.metrics, currency: preset.currency, cost_per_paid_order: preset.costPerPaidOrder, other_costs: preset.otherCosts,
+        metrics: preset.metrics, currency, cost_per_paid_order: preset.costPerPaidOrder, other_costs: preset.otherCosts,
       },
     };
     const { control, treatment } = preset.arms;
@@ -114,15 +179,23 @@ export async function runOnboardingExperimentPlan(
       '| A · Control | B · Treatment |',
       '| --- | --- |',
       `| ${control.name} | ${treatment.name} |`,
-      `| ${control.price} ${preset.currency} · ${control.allocation}% | ${treatment.price} ${preset.currency} · ${treatment.allocation}% |`,
+      `| ${control.price} ${currency} · ${control.allocation}% | ${treatment.price} ${currency} · ${treatment.allocation}% |`,
     ].join('\n');
     const file = `experiment-plan-${runId}.json`;
     const planPath = path.resolve(store.directory, file);
+    const savePlan = (plan: Record<string, unknown>) => store.write(file, { ...plan,
+      ...(input.draft_only ? { plan_preview_markdown: planPreviewMarkdown } : {}),
+      ...(input.draft_only || checkoutCohort ? { credential_key: session.credential_key } : {}),
+      ...(checkoutCohort ? { checkout_cohort: checkoutCohort } : {}) });
+    if (input.draft_only) {
+      const draft = { ...result, approver: { status: 'deferred' } };
+      savePlan(draft);
+      return { ...draft, plan_path: planPath, plan_preview_markdown: planPreviewMarkdown };
+    }
     const metricEvent = input.upload_metric_event
       ? { event_name: preset.events.payment, event_id: eventId, persistence_verified: false }
       : undefined;
-    store.write(file, { ...result,
-      ...(checkoutCohort ? { checkout_cohort: checkoutCohort, credential_key: session.credential_key } : {}),
+    savePlan({ ...result,
       ...(metricEvent ? { metric_event: { ...metricEvent, status: 'pending' } } : {}),
       approver: { status: 'pending' },
     });
@@ -139,21 +212,20 @@ export async function runOnboardingExperimentPlan(
           plg_sample_id: sampleId,
           item_id: scope.item_id,
           amount: preset.arms.control.price,
-          currency: preset.currency,
+          currency,
           order_id: eventId,
         },
       }) : undefined,
     ]);
     const preparedPlan = { ...result, approver,
       ...(delivery ? { metric_event: { ...metricEvent, ...delivery } } : {}) };
-    store.write(file, { ...preparedPlan,
-      ...(checkoutCohort ? { checkout_cohort: checkoutCohort, credential_key: session.credential_key } : {}),
-    });
+    savePlan(preparedPlan);
     return { ...preparedPlan, plan_path: planPath, plan_preview_markdown: planPreviewMarkdown };
   });
 }
 
-async function prepareDemoApprover(deps: ExperimentPlanDependencies, host: string, credentialKey: string, projectId: number) {
+export async function prepareDemoApprover(deps: Pick<ExperimentPlanDependencies, 'credentialKey' | 'capability' | 'approverOpenId'>,
+  host: string, credentialKey: string, projectId: number) {
   try {
     const signal = AbortSignal.timeout(NETWORK_BUDGET_MS);
     const openId = await deps.approverOpenId(host, signal);
@@ -163,9 +235,9 @@ async function prepareDemoApprover(deps: ExperimentPlanDependencies, host: strin
     const response = await deps.capability(host, APPROVER_ADD, { project_id: projectId, approvers: [openId] }, signal);
     signal.throwIfAborted();
     if (response?.result !== true) throw new Error('The Demo project did not acknowledge the approver registration.');
-    return { status: 'ready' };
+    return { status: 'ready' as const };
   } catch (error) {
-    return { status: 'failed', message: error instanceof Error ? error.message : 'Demo approver registration failed.',
+    return { status: 'failed' as const, message: error instanceof Error ? error.message : 'Demo approver registration failed.',
       ...(error instanceof CliApiError || error instanceof PermissionError ? { code: error.code } : {}) };
   }
 }
