@@ -2,7 +2,7 @@
 
 # ae-cli
 
-`ae-cli` 是 ThinkingAI AgenticEngine（AE）平台的命令行客户端，为 AI Agent 和人工操作提供稳定、结构化的接口，覆盖分析与项目配置、元数据、埋点、本地数据接入、运营、DataOps、知识库、Agent 资源、用户记忆及系统管理。
+`ae-cli` 是 ThinkingAI AgenticEngine（AE）平台的命令行客户端，为 AI Agent 和人工操作提供稳定、结构化的接口，覆盖分析、实验、项目配置、元数据、埋点、本地数据接入、运营、DataOps、知识库、Agent 资源、用户记忆及系统管理。
 
 CLI 的核心设计包括：
 
@@ -12,6 +12,10 @@ CLI 的核心设计包括：
 - 明确的参数校验、dry-run 和高风险确认契约。
 - CLI 与 Skills 按当前 AE 环境要求的精确版本同步。
 
+## 使用 HearI 开展用户研究
+
+使用 Node.js 22+ 时，可以运行 `ae-cli heari schema` 离线查看命令。当前 AE 环境启用 HearI CLI 登录后，首次使用时，HearI 验票后会为有效的 AE 身份建立工作区绑定，无需提前登录 HearI 网页。登录 AE 即可运行 `ae-cli heari studies list --no-input` 查看研究。每次调用获取只读权限。运行 `ae-cli heari login` 可验证当前 AE 绑定的 HearI 工作区，无需设置地址或浏览器回调。将 HearI 帮助中的 `heari` 替换为 `ae-cli heari` 即可执行示例。CLI 和配套研究技能随 AE 安装和更新。
+
 ## 环境要求
 
 - Node.js 20 或更高版本。
@@ -19,12 +23,6 @@ CLI 的核心设计包括：
 - 安装 CLI 时能够访问 npm 仓库。
 
 ## 安装
-
-如果你希望由 Codex、Claude Code、Cursor 等 AI Agent 自动检查 Node.js、安装 CLI、完成登录并同步匹配版本，请让 Agent 阅读并执行 [AE CLI Installation and Upgrade](./cli-installation-guide.md)。
-
-可直接复制给 Agent，并把 `<AE_HOST>` 替换为你的 AE 地址：
-
-> 请按[安装指南](./cli-installation-guide.md)中的“AI installation prompt”帮助我安装 AE CLI；全局安装 Skills，并根据最终 CLI/Skills 验证结果判断成功。
 
 安装公开版 CLI 和 Agent Skills：
 
@@ -34,6 +32,8 @@ npx @thinkingai/ae-cli@latest install --format json
 ```
 
 安装器检查 Node.js 20+、安装并验证 CLI，再通过内置的 Skills 工具向支持的客户端安装同版本全局 Skills。首次安装且尚无已确认业务状态时安装全量内置 Skills。支持 `--dry-run`、`--format json` 和可选的 `--host <AE_HOST>`。未登录不算安装失败。详见[安装指南](./cli-installation-guide.md)。
+
+让 Codex、Claude Code、Cursor 等 AI Agent 安装 AE CLI 6.1 时，Agent 会验收安装，并在尚未登录时询问你要创建 AE 账号还是登录已有账号。选择创建账号后，Agent 会打开对应的中国、日本、韩国或美国官网注册流程。已有账号使用原 AE 环境地址登录。如果通过 `npm install -g` 安装，请先执行 `ae-cli install --format json` 验证版本并同步对应的 Skills。[Agent 安装提示词](./cli-installation-guide.md#ai-installation-prompt)
 
 Skills 会帮助 Claude Code、Codex、Cursor 等编码 Agent 理解、发现并调用 `ae-cli`。
 
@@ -52,7 +52,7 @@ ae-cli auth login --host https://your-ae-host.example.com
 ae-cli auth status
 ```
 
-请使用 AgenticEngine 管理员提供的 AE 地址。未配置 Host 时，`ae-cli` 会先引导已有客户向管理员获取地址；只有确认尚无 AgenticEngine 环境的用户，才会看到[申请试用](https://thinkingai.cn/request-demo)入口。
+请使用 AgenticEngine 管理员提供的 AE 地址。
 
 按业务过滤命令和剪裁 Skills 仅适用于外部 Agent 使用的本机 CLI；TE Agent 内置沙箱始终保留完整命令与全部 Skills。登录成功后，CLI 按当前环境已开通的业务过滤 `--help` 和能力发现，并同步受管的全局 Skills；分析能力默认保留。后续业务开通状态变化时，普通命令会在刷新配置后自动同步受管 Skills；也可执行 `ae-cli config refresh` 立即刷新并同步。切换活动环境会刷新业务状态，仅同步受影响的 Skills；无需变化时复用当前集合，终端仅汇总 Skill 同步状态及安装、移除数量；需要目录明细时使用 `--format json`。切换账号会重新同步；单次 `--host` 查询不改变全局 Skills。
 
@@ -123,6 +123,7 @@ ae-cli capability list --domain analysis --jq '.capabilities[] | .id'
 | 类别 | 根命令 | 用途 |
 |---|---|---|
 | 分析与项目 | `analysis` | 报告、看板、即席分析、下钻、详情、告警、标签和分群 |
+| 分析与项目 | `experiment` | Atlas 实验、报表、流量域与流量层、分桶、Feature（含值固定与重置）、指标和操作日志 |
 | 分析与项目 | `analysis-meta` | 事件/属性目录、指标、虚拟元数据、埋点治理和项目分析配置 |
 | 分析与项目 | `analysis-governance` | 数据资产搜索、血缘、影响分析、认证和治理 |
 | 分析与项目 | `project` | 项目信息、成员、角色、权限、实体、时区和交接配置 |
@@ -160,6 +161,7 @@ ae-cli capability list --domain analysis --jq '.capabilities[] | .id'
 | 通用工具 | `model` | 在 Agent 沙盒中查看并切换当前工作区模型；在 AgentSpace 上下文中禁用 |
 | 通用工具 | `update` | 将 CLI 和 Skills 同步到当前 Host 要求的版本 |
 | 通用工具 | `install` | 一键安装、验证 CLI 和同版本全局 Skills |
+| 用户研究 | `heari` | 在 HearI 工作区设计研究、管理访谈和查看结果 |
 | Agent 平台 | `workspace` | AgentSpace 上下文、资料、能力、成员、动态与生命周期 |
 | Agent 平台 | `things` | 工作空间事项、协作成员、时间线、归档与恢复 |
 | Agent 平台 | `automation` | 自动化配置、执行、历史和结果 |
@@ -173,6 +175,19 @@ ae-cli capability list --domain analysis --jq '.capabilities[] | .id'
 需保存并审核 Bad Case 时，使用 `ae-cli analysis bad-case --help`。Agent 按语义对同批及所有历史状态去重；CLI 可直接审核，也可显式提交页面。每批汇报发现、重复、新增数量，补充说明选填。认证后将案例加入已绑定的 AE 评测集，取消认证后移除。详见[Bad Case 工作流](skills/ae-analysis/references/bad_case_review.md)。
 
 评测命令在普通终端和沙箱中均跟随当前 AE Host，可通过 `--host` 切换。评测请求沿用该 AE Host 配置的 HTTP 或 HTTPS 协议，与其他 AE 命令一致。旧 `--endpoint` 和 `AE_EVAL_BASE_URL` 只能与当前 AE Host 一致，其他值会在发送凭证前报错；请移除这些配置，统一使用 `--host` 切换。沙箱外需设置 `AE_EVAL_ACCESS_TOKEN` 平台 session token，沙箱内可自动获取会话。详见 [地址与鉴权规则](skills/ae-evaluation/SKILL.md#endpoint-and-authentication)。
+
+### Feature 实验定时开启
+
+对于已完成配置的 Feature 实验，保存开始时间和可选的固定截止时间，检查就绪状态后提交：
+
+```bash
+ae-cli experiment experiment save --project-id 1 --req '{"expId":"exp_123"}' --start-time '2026-11-01T16:00:00+08:00' --fixed-end-time '2026-11-08T16:00:00+08:00'
+ae-cli experiment experiment ready-check --project-id 1 --exp-id exp_123
+ae-cli experiment experiment manage --project-id 1 --exp-id exp_123 --target-status pending
+ae-cli experiment experiment get --project-id 1 --exp-id exp_123
+```
+
+此提交流程兼容旧服务端和支持审批的服务端。保存草稿不会开启实验。新版服务端仅在项目审批人名单非空时要求 Feature 实验审批，外部实验免审批；免审批的 Feature 提交沿用原有手动或预约开启流程。需要审批时，批准可能开启已到开始时间的 Feature 实验，预约由服务端每半小时检查。使用 `experiment experiment get` 确认实际运行状态及审批信息。使用专用审批命令前，按 [服务端兼容性指引](skills/ae-experiment/references/experiment_approval.md#server-compatibility) 确认能力支持，同一次提交只执行一次。时间配置见 [Feature 时间配置](skills/ae-experiment/references/save_experiment.md#feature-timing)。
 
 ## Capability Gateway
 
@@ -255,6 +270,11 @@ Token 文件是只读 JSON 对象：`{"url":"https://host-a.example.com","token"
 新版 CLI 只持久化 CLI Token，不保存 access token 或 refresh token。多账号保存在加密的 V1 凭据文件中，同时维护旧文件格式的当前账号投影，保证 CLI 自动降级后仍可登录；再次升级时会合并旧 CLI 对投影的登录、切换或退出变更。
 
 登录使用跨平台设备码流程。当前环境无法打开浏览器时，可使用 `--no-browser`。
+
+已改造的 6.1 环境统一使用 UBA 设备授权接口与平台 `/#/cli/device-activate` 页面，不随 K8s 或 Agent 状态切换。只有授权端点明确不存在（HTTP 404）时才兼容旧 Agent 流程；网络失败、HTML 响应和权限拒绝均不会更换授权方。非交互环境使用 `auth login --no-wait`，再携带返回的 `--device-code` 和同一个 `--host` 继续授权。原有 Host 多账号、CLI Token 与命令参数保持兼容。
+
+CLI 直接请求对应业务接口，由服务端校验产品 License 和用户/项目权限。组件不可用时会返回实际接口错误；HTTP 404 也可能表示资源不存在或路由不支持，不能据此直接判断组件未部署。
+
 试用引导仅在尚未配置 Host 时出现；已配置环境的正常命令和认证流程不会展示该提示。
 
 分析 Skill 在所有业务动作前先执行 `ae-cli context prepare`，读取公司背景与完整个人全局目录；确定项目后执行 `ae-cli context prepare --project-id <id>`，读取项目背景、个人与公共语义目录。上下文按会话缓存，重复共享条目折叠展示；请消费全部返回页。现有业务命令保持独立。详见[上下文准备](skills/ae-analysis/references/context_prepare.md)。
@@ -423,6 +443,7 @@ npm test
 npm run qa-changed
 npm run self-check
 npm run check:release
+npm run verify:experiment-tools
 npm run verify:readme
 npm run verify:auth-credentials
 npm run verify:update-check

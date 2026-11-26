@@ -14,7 +14,7 @@ ae-cli personal-semantic-preference list --project-id <project_id>
 
 Input uses only `project_id`. Do not add pagination parameters: the backend returns a compact catalog intended for agent context.
 
-Do not use this command for shared knowledge, metadata catalogs, report/dashboard lists, or complete asset discovery. It only returns the current user's personal semantic preferences in the current project.
+Do not use this command for project semantics, shared knowledge, metadata catalogs, report/dashboard lists, or complete asset discovery. It only returns the current user's personal semantic preferences in the current project.
 
 By default, the gateway returns every visible lightweight entry, `complete=true`, `truncated=false`, and `selection_policy=ALL_VISIBLE`. Each directory row contains only `id`, `title`, `summary`, `keywords`, `revision`, and `expired`. Keywords are selection hints visible to the Agent, never a keyword search or a mandatory literal match. Empty keyword arrays remain valid. No 90-day idle filter, heat ranking, count ceiling or byte limit applies. Deleted and forgotten entries are excluded. Explicitly expired entries remain in the directory with `expired:true`, but cannot be adopted in analysis. Redirect large JSON output to a private local file and read every page with the bundled read-semantic-catalog script; never treat a preview or partial read as a complete directory. See [business semantics](business_semantics_workspace.md).
 

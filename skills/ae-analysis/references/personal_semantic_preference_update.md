@@ -16,7 +16,7 @@ The update replaces all editable fields. Include the full intended `title`, `sum
 
 Apply the [capture quality rules](business_semantics_workspace.md#capture-quality) when updating summaries and keywords or retaining a conditional method based on changing environment facts. Preserve existing context types unless the user explicitly requests reclassification.
 
-This command updates only the current-user preference. Do not block the update merely because the same content may benefit other users, and do not imply that the saved preference is shared authority.
+This command updates only the current-user preference; it does not update, approve, or publish project semantics. Do not block the update merely because the same content may benefit other users, and do not imply that the saved preference is shared authority. Keep project-candidate recommendation separate and ask before submitting it.
 
 Keep future governance and lifecycle handling out of the stored content. Do not use this command for shared knowledge, standalone metadata facts, reports, dashboards, transient task details, one-off analysis results, or automatic stale/expired preference handling.
 

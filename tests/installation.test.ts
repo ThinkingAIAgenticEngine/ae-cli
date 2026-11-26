@@ -38,8 +38,9 @@ function fixture(t: TestContext, packageName = '@thinkingai/ae-cli', platform = 
   const state = {
     calls: [] as Array<{ command: string; args: string[] }>, installedVersion: '', installCalls: 0,
     syncCalls: [] as string[], operations: [] as SkillsToolOperation[], missing: [] as string[], corrupt: [] as string[],
-    npmError: '', wrongVersion: false, noBin: false, auth: false, failClients: false, failTool: false,
+    npmError: '', wrongVersion: false, noBin: false, auth: false, authUnavailable: false, failClients: false, failTool: false,
     afterNpm: undefined as (() => void) | undefined,
+    systemLanguage: '',
   };
   function install(version = '6.1.9') {
     fs.mkdirSync(root, { recursive: true });
@@ -55,6 +56,14 @@ function fixture(t: TestContext, packageName = '@thinkingai/ae-cli', platform = 
   const runner: ProcessRunner = (command, args) => {
     state.calls.push({ command, args });
     const ok = (stdout = '') => ({ status: 0, stdout, stderr: '' });
+    if (command === '/usr/bin/defaults') {
+      assert.deepEqual(args, ['read', '-g', 'AppleLanguages']);
+      return state.systemLanguage ? ok(`(\n    "${state.systemLanguage}",\n    "en-US"\n)\n`) : ok();
+    }
+    if (command.endsWith('\\powershell.exe')) {
+      assert.deepEqual(args, ['-NoProfile', '-NonInteractive', '-Command', '(Get-UICulture).Name']);
+      return ok(state.systemLanguage);
+    }
     if (args[0] === '--version') return ok(command === bin ? (state.wrongVersion ? '6.1.8' : state.installedVersion) : '10.8.2');
     if (args[0] === 'root') return ok(globalRoot);
     if (args[0] === 'prefix') return ok(prefix);
@@ -63,7 +72,10 @@ function fixture(t: TestContext, packageName = '@thinkingai/ae-cli', platform = 
       if (state.npmError) return { status: 1, stdout: '', stderr: state.npmError };
       install(args[2].split('@').at(-1)!); state.afterNpm?.(); return ok();
     }
-    if (args.includes('status')) return ok(JSON.stringify({ ok: true, data: { authenticated: state.auth, token: 'MUST_NOT_LEAK' } }));
+    if (args.includes('status')) {
+      if (state.authUnavailable) return { status: 1, stdout: '', stderr: 'Auth service unavailable' };
+      return ok(JSON.stringify({ ok: true, data: { authenticated: state.auth, token: 'MUST_NOT_LEAK' } }));
+    }
     throw new Error('Unexpected subprocess');
   };
   const tool: SkillsTool = {
@@ -90,7 +102,7 @@ function fixture(t: TestContext, packageName = '@thinkingai/ae-cli', platform = 
     }),
   };
   const options: InstallationOptions = { target: '6.1.9', packageName, runner, skillsDirectory,
-    skillStateDirectory: stateDirectory, nodeVersion: '20.19.5', platform, env,
+    skillStateDirectory: stateDirectory, nodeVersion: '20.19.5', platform, env, guideAccountSetup: true,
     skillContext: { host: '', tokenFingerprint: '' },
     syncSkills: options => { state.syncCalls.push(options.mode ?? 'sync'); return syncBusinessSkills({ ...options, tool, env }); } };
   return { tmp, source, root, globalRoot, prefix, bin, skillsDirectory, clientDirectory, stateDirectory, names, state, runner, env,
@@ -98,7 +110,11 @@ function fixture(t: TestContext, packageName = '@thinkingai/ae-cli', platform = 
 }
 
 test('first installation selects all Skills without an availability snapshot and uses only the managed tool', t => {
-  const f = fixture(t); const result = f.run();
+  const f = fixture(t);
+  const plgSkill = path.join(f.source, 'skills', 'ae-onboarding');
+  fs.mkdirSync(plgSkill, { recursive: true });
+  fs.writeFileSync(path.join(plgSkill, 'SKILL.md'), '---\nname: ae-onboarding\ndescription: "PLG test Skill"\n---\n');
+  const result = f.run();
   assert.equal(result.ok, true, JSON.stringify(result));
   assert.equal(result.cli.action, 'installed');
   assert.equal(result.cli.verified, true);
@@ -109,8 +125,106 @@ test('first installation selects all Skills without an availability snapshot and
   assert.equal(result.skills.source, 'installed-package');
   assert.deepEqual(f.state.syncCalls, ['sync']);
   assert.equal(f.state.operations.length, 6);
+  assert.ok(fs.existsSync(path.join(f.root, 'skills', 'ae-onboarding', 'SKILL.md')));
+  assert.equal(fs.existsSync(path.join(f.skillsDirectory, 'ae-onboarding')), false);
+  assert.equal(fs.existsSync(path.join(f.clientDirectory, 'ae-onboarding')), false);
   assert.equal(f.state.calls.some(call => call.args.includes('add')), false);
   assert.equal(fs.existsSync(path.join(f.stateDirectory, 'business-config.json')), false);
+  assert.equal(result.next_action, 'choose_account');
+  const receipt = JSON.stringify(result);
+  assert.deepEqual(JSON.parse(receipt).interaction, {
+    step: 'choose_account',
+    question: 'How would you like to connect to AE?',
+    options: [
+      { value: 'create_account', label: 'Create an AE account' },
+      { value: 'existing_account', label: 'Sign in to my existing AE account' },
+    ],
+  });
+  assert.ok(receipt.indexOf('"interaction"') < receipt.indexOf('"skills"'));
+  assert.ok(receipt.indexOf('"next_action"') < receipt.indexOf('"skills"'));
+  assert.equal(result.onboarding_skill_path, path.join(f.root, 'skills', 'ae-onboarding', 'SKILL.md'));
+  assert.match(result.next_steps[0], /After verifying a fresh install.*Sign in to my existing AE account/);
+  assert.match(result.next_steps[0], /same turn using the native choice dialog, even for a request that only asks to install/);
+  assert.match(result.next_steps[0], /Keep the turn open until the user chooses or dismisses the dialog\. If the dialog is unavailable or fails, ask with the same options in chat/);
+  assert.match(result.next_steps.join(' '), /For an explicit onboarding or walkthrough that needs a new account.*show “Create an AE account” and “Learn about AE” using the localized labels from references\/about-ae\.md/);
+  assert.match(result.next_steps.join(' '), /If they choose “Learn about AE”, show the localized introduction and available product resources/);
+  assert.match(result.next_steps.join(' '), /After the user chooses “Create an AE account” or directly asks to sign up, run ae-cli analysis onboarding run --region <market>/);
+  assert.match(result.next_steps.join(' '), /analysis onboarding run.*skill_path.*session_id/);
+  assert.match(result.next_steps.join(' '), /honor an explicitly requested or confirmed market first.*--browser system/);
+  assert.match(result.next_steps.join(' '), /After the user confirms signup in the overseas test environment.*--website-env test --region us/);
+  assert.doesNotMatch(result.next_steps.join(' '), /test\.thinkingai\./);
+  assert.match(result.next_steps.join(' '), /Existing AE users: confirm their original AE environment URL/);
+  assert.doesNotMatch(result.next_steps.join(' '), /request-demo/);
+
+  const updated = f.run({ target: '6.1.10', guideAccountSetup: false });
+  assert.equal(updated.ok, true, JSON.stringify(updated));
+  assert.equal(updated.skills.expected_count, result.skills.expected_count);
+  assert.equal(f.state.operations.some(operation => operation.skill === 'ae-onboarding'), false);
+});
+
+test('installation reports the detected language separately from the legacy market default', t => {
+  const f = fixture(t, '@tant/ae-cli');
+  const result = f.run({ env: { PATH: path.dirname(f.bin), LANG: 'ja_JP.UTF-8' } });
+  assert.equal(result.ok, true);
+  assert.equal(result.local_language, 'ja-JP');
+  assert.equal(result.onboarding_market, 'us');
+  assert.match(result.next_steps.join(' '), /compare local_language with the language of the user’s own request/);
+  assert.match(result.next_steps.join(' '), /Japanese to jp, and Korean to kr/);
+  assert.match(result.next_steps.join(' '), /When the two markets differ, show only those two options and wait/);
+  assert.match(result.next_steps.join(' '), /After the user confirms signup in the overseas test environment.*--website-env test --region us/);
+  assert.doesNotMatch(result.next_steps.join(' '), /test\.thinkingai\./);
+  assert.match(result.next_steps.join(' '), /analysis onboarding run --region <market>/);
+  assert.match(result.next_steps.join(' '), /--language separately for the display preference/);
+  assert.equal(f.state.calls.some(call => call.args.includes('login')), false);
+});
+
+test('installation in a Chinese locale offers signup and existing-account login', t => {
+  const f = fixture(t);
+  const result = f.run({ env: { ...f.env, LANG: 'zh_TW.UTF-8' } });
+  assert.equal(result.ok, true);
+  assert.equal(result.cli.verified, true);
+  assert.equal(result.skills.status, 'success');
+  assert.equal(result.next_action, 'choose_account');
+  assert.match(result.next_steps[0], /offer “Create an AE account” and “Sign in to my existing AE account”/);
+  assert.equal(result.local_language, 'zh-CN');
+  assert.equal(result.onboarding_market, 'cn');
+  const guidance = result.next_steps.join(' ');
+  assert.match(guidance, /analysis onboarding run --region <market>/);
+  assert.match(guidance, /After verifying a fresh install.*Sign in to my existing AE account/);
+  assert.match(guidance, /ae-cli auth login --host <AE_HOST>/);
+  assert.doesNotMatch(guidance, /request-demo|test\.thinkingai\./);
+  assert.equal(f.state.calls.some(call => call.args.includes('login')), false);
+});
+
+test('a neutral locale does not report the fallback market as a local language', t => {
+  const f = fixture(t);
+  const result = f.run({ env: { ...f.env, LC_ALL: 'C.UTF-8' } });
+  assert.equal(result.ok, true);
+  assert.equal(result.local_language, undefined);
+  assert.equal(result.onboarding_market, 'us');
+});
+
+test('installation uses the preferred Mac language from a neutral Codex process locale', t => {
+  const f = fixture(t, '@thinkingai/ae-cli', 'darwin');
+  f.state.systemLanguage = 'zh-Hans-CN';
+  const receipt = f.run({ env: { ...f.env, LC_ALL: 'C.UTF-8', LANG: 'C.UTF-8' } });
+  assert.equal(receipt.ok, true);
+  assert.equal(receipt.local_language, 'zh-CN');
+  assert.equal(receipt.onboarding_market, 'cn');
+  const output = JSON.stringify(receipt);
+  assert.ok(output.indexOf('"local_language"') < output.indexOf('"skills"'));
+
+  const override = f.run({ env: { ...f.env, AE_LANG: 'ja-JP', LC_ALL: 'C.UTF-8' } });
+  assert.equal(override.local_language, 'ja-JP');
+  assert.equal(f.state.calls.filter(call => call.command === '/usr/bin/defaults').length, 1);
+});
+
+test('installation reads Windows UI culture for a new account', t => {
+  const f = fixture(t, '@thinkingai/ae-cli', 'win32');
+  f.state.systemLanguage = 'ko-KR';
+  const receipt = f.run();
+  assert.equal(receipt.ok, true);
+  assert.equal(receipt.local_language, 'ko-KR');
 });
 
 for (const mode of ['environment', 'invalid-environment', 'file-environment', 'file-option', 'sandbox-root', 'sandbox-config', 'fallback-token'] as const) {
@@ -150,6 +264,8 @@ for (const mode of ['environment', 'invalid-environment', 'file-environment', 'f
       assert.equal(result.ok, true, JSON.stringify(result));
       assert.equal(result.cli.verified, true);
       assert.equal(result.skills.status, 'skipped');
+      assert.equal(result.next_action, undefined);
+      assert.doesNotMatch(result.next_steps.join(' '), /analysis onboarding|auth login/);
       assert.equal(result.skills.source, null);
       assert.equal(result.skills.expected_count, 0);
       assert.equal(result.skills.attempts.length, 0);
@@ -335,6 +451,7 @@ test('missing copies and managed adapter failures report safe errors without fal
 test('dry-run is write-free and describes managed package installation rather than raw add commands', t => {
   const f = fixture(t); const result = f.run({ dryRun: true });
   assert.equal(result.ok, true); assert.equal(result.dry_run, true);
+  assert.equal(result.next_action, undefined);
   assert.equal(result.cli.verified, false); assert.equal(f.state.calls.length, 0);
   assert.equal(fs.existsSync(f.prefix), false); assert.equal(fs.existsSync(f.stateDirectory), false);
   assert.equal(result.commands!.length, 2);
@@ -395,10 +512,51 @@ test('missing executable links and invalid bundled YAML fail before controlled s
 
 test('auth guidance reuses the verified executable and never starts login', t => {
   const f = fixture(t); f.state.auth = true;
-  const result = f.run({ host: 'ae.example.com/' });
+  const result = f.run({ host: 'ae.example.com/', skillContext: { host: 'https://other.example', tokenFingerprint: '' } });
   assert.equal(result.auth.host, 'https://ae.example.com');
   assert.equal(result.auth.authenticated, true);
+  assert.equal(result.next_action, 'continue_using_ae');
+  assert.match(result.next_steps.join(' '), /Continue your AE task/);
+  assert.doesNotMatch(result.next_steps.join(' '), /register|onboarding|request-demo/);
   assert.ok(f.state.calls.some(call => call.command === f.bin && call.args.includes('status')));
+  assert.equal(f.state.calls.some(call => call.args.includes('login')), false);
+});
+
+test('explicit install checks the active environment before asking about the account', t => {
+  const f = fixture(t);
+  const host = 'https://existing.example';
+  const options = { skillContext: { host, tokenFingerprint: '' } };
+  f.state.auth = true;
+  const signedIn = f.run(options);
+  assert.equal(signedIn.auth.host, host);
+  assert.equal(signedIn.next_action, 'continue_using_ae');
+
+  f.state.auth = false;
+  const signedOut = f.run(options);
+  assert.equal(signedOut.next_action, 'choose_account');
+  assert.ok(signedOut.next_steps.includes(`ae-cli auth login --host ${host} --no-wait`));
+  assert.ok(signedOut.next_steps.some(step => step.includes('analysis onboarding run')));
+
+  f.state.authUnavailable = true;
+  const unknown = f.run(options);
+  assert.equal(unknown.ok, true);
+  assert.equal(unknown.auth.authenticated, null);
+  assert.equal(unknown.next_action, 'check_authentication');
+  assert.match(unknown.next_steps.join(' '), /auth status --host https:\/\/existing\.example --format json/);
+  assert.doesNotMatch(unknown.next_steps.join(' '), /analysis onboarding|auth login/);
+  assert.equal(f.state.calls.some(call => call.args.includes('login')), false);
+});
+
+test('a fresh install with an overseas test host asks for an account route before device authorization', t => {
+  const f = fixture(t, '@tant/ae-cli');
+  const host = 'https://plg-test-overseas-web.thinkingai.io';
+  const result = f.run({ host });
+  assert.equal(result.ok, true);
+  assert.equal(result.cli.action, 'installed');
+  assert.deepEqual({ host: result.auth.host, authenticated: result.auth.authenticated }, { host, authenticated: false });
+  assert.equal(result.next_action, 'choose_account');
+  assert.match(result.next_steps[0], /A supplied host only identifies the environment\. Wait for the account choice before starting signup or device authorization/);
+  assert.ok(f.state.calls.some(call => call.command === f.bin && call.args.includes('status') && call.args.includes(host)));
   assert.equal(f.state.calls.some(call => call.args.includes('login')), false);
 });
 
@@ -421,12 +579,13 @@ for (const packageName of ['@tant/ae-cli', '@thinkingai/ae-cli']) {
   });
 }
 
-test('upgrade and downgrade keep matching managed Skill references', t => {
+test('upgrade and downgrade keep matching managed Skill references without prompting for account setup', t => {
   const f = fixture(t); assert.equal(f.run().ok, true);
   for (const version of ['6.0.40', '6.0.50']) {
     fs.writeFileSync(path.join(f.source, 'skills', 'ae-agent', 'references', 'usage.md'), version);
-    const result = f.run({ target: version });
+    const result = f.run({ target: version, guideAccountSetup: false });
     assert.equal(result.ok, true, JSON.stringify(result));
+    assert.equal(result.next_action, undefined);
     assert.equal(fs.readFileSync(path.join(f.skillsDirectory, 'ae-agent', 'references', 'usage.md'), 'utf8'), version);
   }
 });

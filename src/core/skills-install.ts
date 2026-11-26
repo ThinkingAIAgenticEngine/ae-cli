@@ -7,6 +7,13 @@ import { commandSucceeded, type ProcessResult } from './install-process.js';
 export interface BundledSkill { name: string; files: Map<string, Buffer> }
 export interface SkillFailure { skill: string; reason: string }
 
+const ON_DEMAND_SKILLS = new Set(['ae-onboarding']);
+
+/** Bundled onboarding is read through the active session, never managed as a global Skill. */
+export function readInstallableSkills(directory: string, select?: (name: string) => boolean): BundledSkill[] {
+  return readBundledSkills(directory, name => !ON_DEMAND_SKILLS.has(name) && (!select || select(name)));
+}
+
 export function globalSkillsDirectory(): string {
   return path.join(os.homedir(), '.agents', 'skills');
 }

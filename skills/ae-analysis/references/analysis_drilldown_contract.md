@@ -1,6 +1,6 @@
 # analysis drilldown contract
 
-This contract controls every follow-up from an analysis result. Read it before composing `drilldown-events`, `drilldown-entities`, or `query create-result-cluster`.
+This contract controls every follow-up from an analysis result. Read it before composing `drilldown-events`, `drilldown-entities`, `drilldown-session-details`, or `query create-result-cluster`.
 
 ## Hard boundary
 
@@ -64,6 +64,8 @@ Never infer an action from the model name or the numeric cell value. Use the sel
 | `ENTITY_LIST` | The same entity commands; `subject` identifies the analysis entity, which may be a custom entity rather than a user |
 | `NONE` | No drilldown or result-cluster action |
 
+Session analysis chooses the action from the selected column instead of an `analysis_angle`: a session-count or step-count column advertises `drilldown_session_details`, a session-user or step-user column advertises `drilldown_entities`, and both also allow `create_result_cluster`. Duration, dwell, depth, rate, and per-user ratio columns are descriptive statistics with no selectable population. Session-detail rows return every time value as an analysis-time-zone wall-clock string (`yyyy-MM-dd HH:mm:ss.SSS`); show it as is without further time-zone conversion.
+
 `USER_LIST` is one special case of entity drilldown. A custom `ENTITY_LIST` result must be returned and saved as that entity type, not silently converted to users.
 
 ## Model coordinate meanings
@@ -80,6 +82,7 @@ Use only fragments actually returned in options; the table explains their busine
 | `prop_analysis` | `group_values`, `population_index`. With configured user/entity populations, the row chooses `population_index`; otherwise it is `0`. |
 | `path` | `session_level`, `current_nodes`, optional `next_nodes`, `relation=total|with_next|without_next|with_next_specific`, `current_is_more`, `next_is_more`. Copy the returned node objects; event names and group values are machine values. |
 | `attribution` | `attribution_event_id`, `source_group_values`, `target_group_values`. The event ID is returned machine metadata for that row; never derive it from the displayed event name. |
+| `session` | `group_values` plus a machine `date`; a total-granularity result returns no `date`. Only session/step count and user columns are selectable populations. Count columns continue with `analysis drilldown-session-details run`, user columns with `analysis drilldown-entities run|export`, and both may create a result cluster. Session detail has no export variant and no `total`. |
 
 ## Entity result and user-event continuation
 
