@@ -46,7 +46,7 @@ Rules:
 Exports bypass query cache. `--use-cache true|false` remains a deprecated compatibility no-op; supplied values are reported through `meta.deprecated_fields`, `meta.ignored_fields`, and `meta.warnings`. Query-cache selection remains effective for `adhoc run`.
 
 - `--project-id`: target project ID.
-- `--model-type`: one of the 13 AI-facing model names from [`ai_models.md`](ai_models.md). Do not pass `scenario`, `history_tag`, or `cluster`; tags and cohorts/clusters are separate capabilities.
+- `--model-type`: one of the 12 AI-facing model names from [`ai_models.md`](ai_models.md). Do not pass `scenario`, `history_tag`, or `cluster`; tags and cohorts/clusters are separate capabilities.
 - `--definition`: model-specific AI-facing definition JSON.
 - `--intent-snapshot`: use when the caller supplies an existing snapshot containing `schema_version: 1`, non-empty `requirement`, `definition`, and `model_type`. The CLI checks that its definition and model match the submitted values locally; the snapshot is never sent to Gateway.
 - `--resolutions`: only after user confirmation, pass deterministic bindings keyed by compiler error path while keeping each bound field's path and original wording. Fill the other confirmed model parameters in `--definition`. Follow [`metadata_resolution.md`](metadata_resolution.md).
@@ -56,7 +56,7 @@ Async export has no inline row limit. Omit `--timeout-seconds` to use the deploy
 
 Do not use raw QP, `events`, `event_view`, `visual_view`, removed ad-hoc QP builder outputs, or schema helper outputs as `--definition`.
 
-Timezone contract: fixed `--zone-offset` values are integers from `-12` through `14`. Use `--zone-offset 99` for local-time mode, which analyzes timestamps as stored local time without applying a fixed UTC offset conversion; it does not mean UTC+99. Omit the flag to use the project's analysis default.
+Before submitting the export, apply the [query timezone rules](adhoc_run.md#query-timezone) to choose whether to omit `--zone-offset` or pass an explicit value.
 
 Cluster routing is identical to `adhoc run`: omit for current self; discover permissions and physical IDs with `analysis query-cluster list`; `SLAVE` requires an ID. SQL, attribution, and default-interval distribution reject unsupported `GLOBAL` rather than silently changing scope.
 

@@ -1,3 +1,4 @@
+import { CliValidationError } from '../../../core/errors.js';
 import type { Flag, RuntimeContext } from '../../../framework/types.js';
 import {
   asyncTimeoutSecondsFlag,
@@ -6,6 +7,7 @@ import {
   optionalJson,
   optionalNumber,
   optionalString,
+  optionalStringPreserveEmpty,
   projectIdFlag,
   previewRowsFlag,
   requestIdFlag,
@@ -23,8 +25,16 @@ const drilldownContextIdFlag: Flag = {
 const userIdFlag: Flag = {
   name: 'user-id',
   type: 'string',
-  required: true,
-  desc: 'Canonical user_id returned by analysis drilldown-entities run. Never guess or substitute another identity field.',
+  required: false,
+  desc: 'Canonical user_id returned by analysis drilldown-entities run. Pass exactly one of --user-id or --account-id.',
+};
+
+const accountIdFlag: Flag = {
+  name: 'account-id',
+  type: 'string',
+  required: false,
+  sensitive: true,
+  desc: 'Exact #account_id in the project, such as a PlayFab ID. Pass exactly one of --user-id or --account-id.',
 };
 
 const sequenceFlags: Flag[] = [
@@ -47,6 +57,7 @@ export const drilldownUserEventsBaseFlags = [
   projectIdFlag,
   drilldownContextIdFlag,
   userIdFlag,
+  accountIdFlag,
   ...sequenceFlags,
   requestIdFlag,
   useCacheFlag,
@@ -81,10 +92,22 @@ export function drilldownUserEventsExportInput(ctx: RuntimeContext): Record<stri
 }
 
 function baseInput(ctx: RuntimeContext): Record<string, unknown> {
+  const userId = optionalStringPreserveEmpty(ctx, 'user-id');
+  const accountId = optionalStringPreserveEmpty(ctx, 'account-id');
+  if (userId !== undefined && accountId !== undefined) {
+    throw new CliValidationError('Pass only one of --user-id or --account-id.', { code: 'USER_IDENTITY_CONFLICT' });
+  }
+  if (accountId !== undefined && !accountId.trim()) {
+    throw new CliValidationError('--account-id must not be blank.', { code: 'INVALID_ACCOUNT_ID' });
+  }
+  if (!userId?.trim() && accountId === undefined) {
+    throw new CliValidationError('Pass one of --user-id or --account-id.', { code: 'USER_ID_REQUIRED' });
+  }
   return {
     project_id: ctx.num('project-id'),
     drilldown_context_id: ctx.str('drilldown-context-id'),
-    user_id: ctx.str('user-id'),
+    user_id: userId,
+    account_id: accountId,
     properties: optionalJson(ctx, 'properties'),
     sort_order: optionalString(ctx, 'sort-order'),
     event_name_filter: optionalString(ctx, 'event-name-filter'),

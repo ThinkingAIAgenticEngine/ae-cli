@@ -19,7 +19,9 @@ ae-cli analysis drilldown-user-events export \
 
 The nested backend keys are exactly `columnName` and `tableType`, and the table type is the named value `event`. String-name arrays, numeric enum codes, and snake_case rewrites are invalid. With an explicit projection, the artifact retains `#user_id`, account ID, visitor ID, event name, and event time and appends exactly the requested event properties. `#user_id` is internal; Agents should normally present account ID and visitor ID to customers.
 
-Use the exact `drilldown_context_id` and canonical `user_id` returned by a user-subject `analysis drilldown-entities run`. Do not use a custom entity, an entity export artifact, or a guessed identity. Export does not accept `--limit`, `--offset`, `--page-num`, or `--page-size`; Common builds the same authorized event-sequence query without the synchronous preview boundary and streams one `csv.gz` artifact. The platform full-download ceiling (`model_full_download_limit`) still applies.
+Use the exact `drilldown_context_id` from a user-subject `analysis drilldown-entities run`. Pass exactly one of `--user-id` or `--account-id`. Use `--user-id` with the canonical `user_id` from the same response or `--account-id` with the exact project `#account_id` on a server that advertises `account_id`. Do not use a custom entity, an entity export artifact, or a guessed identity.
+
+Export does not accept `--limit`, `--offset`, `--page-num`, or `--page-size`. Common builds the same authorized event-sequence query without the synchronous preview boundary and streams one `csv.gz` artifact. The platform full-download ceiling (`model_full_download_limit`) still applies.
 
 For a `scope=total` source coordinate, there is no single selected date. Common
 preserves the machine date coordinates returned by the source query together

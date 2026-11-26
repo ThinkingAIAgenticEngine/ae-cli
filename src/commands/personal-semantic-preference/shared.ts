@@ -23,6 +23,9 @@ export function createPersonalSemanticPreferenceCommand(config: PersonalSemantic
   return {
     ...projectCommand,
     validate: (ctx) => {
+      if (config.command === 'get' && ctx.bool('include-expired') && ctx.bool('mark-used')) {
+        throw new Error('--include-expired cannot be combined with --mark-used.');
+      }
       const projectId = ctx.num('project-id');
       if (!Number.isSafeInteger(projectId) || (projectId !== -1 && projectId <= 0)) {
         throw new Error('--project-id must be a positive integer or -1 for global personal semantics.');
@@ -123,7 +126,7 @@ export function optionalResourceRefs(ctx: RuntimeContext): ResourceRef[] | undef
 
 export function validateContextType(ctx: RuntimeContext): void {
   const value = ctx.str('context-type');
-  const supported = ['preference', 'asset_context', 'experience', 'background'];
+  const supported = ['preference', 'business_rule', 'asset_context', 'experience', 'background'];
   if (!supported.includes(value)) {
     throw new Error(`--context-type must be one of: ${supported.join(', ')}.`);
   }
@@ -143,4 +146,13 @@ export function validatePersonalSemanticWrite(ctx: RuntimeContext): void {
 
 export function compactInput(input: Record<string, unknown>): Record<string, unknown> {
   return Object.fromEntries(Object.entries(input).filter(([, value]) => value !== undefined));
+}
+
+export function optionalSources(ctx: RuntimeContext): Record<string, unknown>[] | undefined {
+  if (ctx.str('sources') === '') return undefined;
+  const value = ctx.json('sources');
+  if (!Array.isArray(value) || value.length > 200 || value.some((item) => !item || typeof item !== 'object' || Array.isArray(item))) {
+    throw new Error('--sources must be a JSON array of at most 200 source objects.');
+  }
+  return value;
 }

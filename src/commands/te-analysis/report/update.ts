@@ -33,14 +33,14 @@ function validateReportUpdate(ctx: RuntimeContext): void {
     throw new Error('--resolutions requires --definition.');
   }
   validateReportMetadataResolutions(ctx);
-  validateReportPresentation(ctx);
+  validateReportPresentation(ctx, true);
 }
 
 export const reportUpdate = createAnalysisCapabilityCommand({
   resource: 'report',
   command: 'update',
   capabilityId: 'analysis.report.update',
-  description: 'Update report metadata, AI QP definition, or event-report presentation through the capability gateway.',
+  description: 'Update report metadata, AI QP definition, or ordinary-model source presentation through the capability gateway.',
   flags: [
     projectIdFlag,
     { name: 'report-id', type: 'number', required: true, desc: 'Report ID to update.' },

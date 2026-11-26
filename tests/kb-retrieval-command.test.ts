@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { clearCliToken, setCliTokenManual } from '../src/core/cli-token.ts';
 import { kbGrep } from '../src/commands/te-kb/kb-grep.ts';
+import { kbIndex } from '../src/commands/te-kb/kb-index.ts';
 import { kbRead } from '../src/commands/te-kb/kb-read.ts';
 import { runCommand } from '../src/framework/runner.ts';
 import type { Command, RuntimeContext } from '../src/framework/types.ts';
@@ -104,9 +105,11 @@ async function expectLocalValidation(command: Command, options: Record<string, u
 
 setCliTokenManual('cli-test-token', HOST);
 try {
-  globalThis.fetch = (async (_input, init) => {
-    requestCount += 1;
-    requestBodies.push(JSON.parse(String(init?.body ?? '{}')));
+  globalThis.fetch = (async (input, init) => {
+    if (/\/knowledge-bases\/(index|grep|read)$/.test(String(input))) {
+      requestCount += 1;
+      requestBodies.push(JSON.parse(String(init?.body ?? '{}')));
+    }
     return new Response('{}', { status: 200, headers: { 'content-type': 'application/json' } });
   }) as typeof fetch;
   process.exit = ((code?: number) => { throw new ExitSignal(code); }) as typeof process.exit;
@@ -133,6 +136,23 @@ try {
     { query: 'sandbox', sources: [SOURCE], paths: ['wiki/sandbox.md'], topK: 50 },
     { source: SOURCE, path: 'wiki/sandbox.md', offset: 1, limit: 2000 },
   ]);
+
+  const indexOptions = { name: SOURCE.name, scope: SOURCE.scope, locale: 'en' };
+  requestBodies = [];
+  await runCommand(kbIndex, indexOptions, globalOptions);
+  await runCommand(kbIndex, { sources: [SOURCE], locale: 'en' }, globalOptions);
+  await runCommand(kbIndex, {}, globalOptions);
+  assert.deepEqual(requestBodies, [{ sources: [SOURCE], locale: 'en' }, { sources: [SOURCE], locale: 'en' }, {}]);
+  assert.deepEqual(
+    (await kbIndex.dryRun!(dryRunContext({ name: ' System KB ', scope: 'system' }))).body,
+    { sources: [{ scope: 'system', name: 'System KB' }] },
+  );
+  await expectLocalValidation(kbIndex, { ...indexOptions, sources: [] }, /either --name with --scope or --sources/);
+  await expectLocalValidation(kbIndex, { name: SOURCE.name }, /requires --scope/);
+  await expectLocalValidation(kbIndex, { ...indexOptions, scope: 'unknown' }, /requires --scope/);
+  await expectLocalValidation(kbIndex, { scope: 'personal' }, /--name must be/);
+  await expectLocalValidation(kbIndex, { name: '' }, /--name must be/);
+  await expectLocalValidation(kbIndex, { ...indexOptions, name: 'x'.repeat(201) }, /--name must be/);
 
   const grepOptions = { query: 'sandbox', sources: [SOURCE], paths: ['wiki/sandbox.md'] };
   const readOptions = { source: SOURCE, path: 'wiki/sandbox.md' };

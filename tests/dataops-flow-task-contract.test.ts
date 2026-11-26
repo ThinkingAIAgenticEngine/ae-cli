@@ -10,6 +10,8 @@ import { readFile } from 'node:fs/promises';
 import type { Command, DryRunResult, RuntimeContext } from '../src/framework/types.js';
 import { createSqlTask } from '../src/commands/te-dataops/flow/create-sql-task.js';
 import { updateSqlTask } from '../src/commands/te-dataops/flow/update-sql-task.js';
+import { getSqlTask } from '../src/commands/te-dataops/flow/get-sql-task.js';
+import { CliValidationError } from '../src/core/errors.js';
 import { createIntegrationTask } from '../src/commands/te-dataops/flow/create-integration-task.js';
 import { updateIntegrationTask } from '../src/commands/te-dataops/flow/update-integration-task.js';
 import { createWorkflowInstanceCheckTask } from '../src/commands/te-dataops/flow/create-workflow-instance-check-task.js';
@@ -425,7 +427,94 @@ await test('agent skill documents safe task deletion and transitional transport'
   assert.match(reference, /running DEV debug executions/);
   assert.match(reference, /does not reconnect upstream and downstream nodes/);
   assert.match(reference, /flow_delete_task/);
-  assert.match(reference, /Review after: 2026-10-27/);
+  assert.match(reference, /Review after: 2026-12-21/);
+});
+
+await test('sql task commands support outputParams, optional sql partial update, hook clear, and +get_sql_task', async () => {
+  assert.equal(flowCommands.find((c) => c.command === '+get_sql_task'), getSqlTask);
+  assert.equal(getSqlTask.risk, 'read');
+
+  const getDryRun = await runDryRun(getSqlTask, ctx({
+    spaceCode: 'demo',
+    flowCode: 1001,
+    taskCode: 2001,
+  }));
+  assert.equal(getDryRun.method, 'GET');
+  assert.equal(
+    getDryRun.url,
+    'http://example.test/api/cli/dataops/v1/gaia/workflow/sql-task-definition?spaceCode=demo&flowCode=1001&taskCode=2001',
+  );
+  assert.throws(
+    () => getSqlTask.validate?.(ctx({ spaceCode: 'demo', flowCode: 0, taskCode: 2001 })),
+    (err) => err instanceof CliValidationError && /flowCode/.test(err.message),
+  );
+
+  const createBody = await dryRunBody(createSqlTask, {
+    spaceCode: 'demo',
+    flowCode: 1001,
+    taskName: 'sql_out_node',
+    sql: "SELECT '2026-11-21' AS sql_dt",
+    outputParams: [{ paramKey: 'sql_dt', remark: 'Latest date' }],
+  });
+  assert.deepEqual(createBody.outputParams, [{ paramKey: 'sql_dt', remark: 'Latest date' }]);
+
+  assert.throws(
+    () => createSqlTask.validate?.(ctx({
+      spaceCode: 'demo',
+      flowCode: 1001,
+      taskName: 'bad_sql_out',
+      sql: 'SELECT 1 AS env',
+      outputParams: [{ paramKey: 'env' }],
+    })),
+    (err) => err instanceof CliValidationError && /paramKey/.test(err.message),
+  );
+
+  const explicitCtx = (values: Record<string, unknown>): RuntimeContext => ({
+    ...ctx(values),
+    has: (name) => Object.prototype.hasOwnProperty.call(values, name),
+  });
+
+  // Update without --sql (only --outputParams)
+  const partialUpdate = await runDryRun(updateSqlTask, explicitCtx({
+    spaceCode: 'demo',
+    flowCode: 1001,
+    taskCode: 2001,
+    outputParams: [{ paramKey: 'sql_dt' }],
+  }));
+  assert.ok(!('sql' in (partialUpdate.body ?? {})));
+  assert.deepEqual(partialUpdate.body?.outputParams, [{ paramKey: 'sql_dt' }]);
+
+  // Clear preSql, postSql, and outputParams
+  const clearUpdate = await runDryRun(updateSqlTask, explicitCtx({
+    spaceCode: 'demo',
+    flowCode: 1001,
+    taskCode: 2001,
+    preSql: '',
+    postSql: '',
+    outputParams: [],
+  }));
+  assert.equal(clearUpdate.body?.preSql, '');
+  assert.equal(clearUpdate.body?.postSql, '');
+  assert.deepEqual(clearUpdate.body?.outputParams, []);
+
+  // Reject empty update and blank --sql
+  assert.throws(
+    () => updateSqlTask.validate?.(explicitCtx({ spaceCode: 'demo', flowCode: 1001, taskCode: 2001 })),
+    (err) => err instanceof CliValidationError && /at least one update field/i.test(err.message),
+  );
+  assert.throws(
+    () => updateSqlTask.validate?.(explicitCtx({ spaceCode: 'demo', flowCode: 1001, taskCode: 2001, sql: '   ' })),
+    (err) => err instanceof CliValidationError && /--sql must not be empty/.test(err.message),
+  );
+
+  const reference = await readFile(
+    new URL('../skills/ae-dataops/references/dataops-flow-create.md', import.meta.url),
+    'utf8',
+  );
+  assert.match(reference, /\+get_sql_task/);
+  assert.match(reference, /flow_get_sql_task/);
+  assert.match(reference, /--preSql ""/);
+  assert.match(reference, /paramCompare/);
 });
 
 process.stdout.write(`\n${pass} passed, ${fail} failed\n`);

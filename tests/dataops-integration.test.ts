@@ -298,6 +298,60 @@ await test('callDataopsApi treats 403 as PermissionError without retry', async (
   }
 });
 
+await test('callDataopsApi treats Gaia NO_AUTH return_code -10 as PermissionError without retry', async () => {
+  const { looksLikeAuthFailure } = await import('../src/framework/runner.js');
+  const host = 'https://test-dataops-no-auth.internal';
+  clearCliToken(host);
+  setCliTokenManual('cli-valid-lowpriv-token', host);
+
+  for (const payload of [
+    { return_code: -10, return_message: 'Unauthorized operation, please contact the administrator' },
+    { returnCode: -10, returnMessage: 'Unauthorized operation, please contact the administrator' },
+  ]) {
+    let callCount = 0;
+    const prevFetch = globalThis.fetch;
+    globalThis.fetch = withSuccessfulCliTokenRenew(async () => {
+      callCount++;
+      return new Response(JSON.stringify(payload), { status: 200 });
+    });
+
+    try {
+      await assert.rejects(
+        () => callDataopsApi(ctx({}, host), 'flow_list_python_versions', { spaceCode: 'cli' }),
+        (err: unknown) => (
+          err instanceof PermissionError
+          && err.code === '-10'
+          && err.message.includes('Unauthorized operation, please contact the administrator (code: -10)')
+          && Boolean(err.hint && !err.hint.includes('ae-cli auth login'))
+        ),
+      );
+      assert.equal(callCount, 1);
+    } finally {
+      globalThis.fetch = prevFetch;
+    }
+  }
+
+  // Ensure -1001 INVALID_SESSION stays auth-classified rather than PermissionError
+  const prevFetch = globalThis.fetch;
+  globalThis.fetch = withSuccessfulCliTokenRenew(async () => new Response(
+    JSON.stringify({ return_code: -1001, return_message: 'Session invalid' }),
+    { status: 200 },
+  ));
+  try {
+    await assert.rejects(
+      () => callDataopsApi(ctx({}, host), 'flow_list_python_versions', { spaceCode: 'cli' }),
+      (err: unknown) => (
+        err instanceof Error
+        && !(err instanceof PermissionError)
+        && looksLikeAuthFailure(err.message)
+      ),
+    );
+  } finally {
+    globalThis.fetch = prevFetch;
+    clearCliToken(host);
+  }
+});
+
 await test('callDataopsApi preserves cli-token and does not retry on 401', async () => {
   const host = 'https://test-dataops-401.internal';
   clearCliToken(host);

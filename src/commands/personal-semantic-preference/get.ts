@@ -9,6 +9,7 @@ export const personalSemanticPreferenceGet = createPersonalSemanticPreferenceCom
     { name: 'project-id', type: 'number', required: true, desc: 'Positive project ID, or -1 for current-user global personal semantics.', alias: 'p' },
     { name: 'id', type: 'string', required: true, desc: 'Preference ID returned by list/add.' },
     { name: 'title', type: 'string', required: true, desc: 'Preference title copied from list output for telemetry only.', minLength: 1, maxLength: 255 },
+    { name: 'include-expired', type: 'boolean', desc: 'Maintenance read of expired entries; cannot be combined with --mark-used.' },
     { name: 'mark-used', type: 'boolean', desc: 'Count this preference as adopted and update its usage heat.' },
   ],
   risk: 'read',
@@ -17,5 +18,6 @@ export const personalSemanticPreferenceGet = createPersonalSemanticPreferenceCom
     id: ctx.str('id'),
     title: ctx.str('title'),
     mark_used: ctx.bool('mark-used'),
+    ...(ctx.bool('include-expired') ? { include_expired: true } : {}),
   }),
 });

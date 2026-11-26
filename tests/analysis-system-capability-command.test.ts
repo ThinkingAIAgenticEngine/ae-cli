@@ -6,10 +6,11 @@
 
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
-import { chmodSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { chmodSync, existsSync, mkdtempSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import type { Command, RuntimeContext } from '../src/framework/types.ts';
+import { formatOutput, unwrapOutputData } from '../src/framework/output.ts';
 import {
   clearCapabilityGatewayRoutesForTest,
   registerCapabilityGatewayRoute,
@@ -39,6 +40,8 @@ const expectedSystemIds = [
   'system.mfa.update',
   'system.node_monitor.list',
   'system.oauth2.update',
+  'system.openapi_token.batch_generate',
+  'system.openapi_token.get',
   'system.ops_alert_contact.delete',
   'system.ops_alert_contact.list',
   'system.ops_alert_contact.test',
@@ -143,6 +146,7 @@ async function dryInput(
   command: Command,
   values: Record<string, unknown>,
   allowedInputFields?: readonly string[],
+  stage: 'validate' | 'dry-run' = 'dry-run',
 ): Promise<Record<string, unknown>> {
   clearCapabilityGatewayRoutesForTest();
   registerCapabilityGatewayRoute('analysis', { gatewayDomain: 'analysis' });
@@ -153,6 +157,7 @@ async function dryInput(
   globalThis.fetch = (async (request: any, init?: RequestInit) => {
     const url = typeof request === 'string' ? request : request.url;
     assert.match(url, /\/api\/cli\/analysis\/v1\/capabilities\//);
+    assert.ok(url.endsWith(`/${stage}`));
     body = init?.body ? JSON.parse(String(init.body)) : undefined;
     if (allowedInputFields) {
       const unsupported = Object.keys(body.input).filter((field) => !allowedInputFields.includes(field));
@@ -166,7 +171,8 @@ async function dryInput(
     return new Response(JSON.stringify({ ok: true, data: { dry_run: true } }), { status: 200 });
   }) as typeof fetch;
   try {
-    await command.dryRun!(ctx(values));
+    if (stage === 'validate') await command.validateInput!(ctx(values));
+    else await command.dryRun!(ctx(values));
     return body.input;
   } finally {
     globalThis.fetch = originalFetch;
@@ -184,9 +190,9 @@ function protectedSecretFile(value: string): { dir: string; file: string } {
 
 process.stdout.write('\nanalysis system capability command tests\n');
 
-await test('registers exactly the admitted 61 system commands and 2 project commands', () => {
-  assert.equal(systemCommands.length, 61);
-  assert.equal(new Set(systemCommands.map((item) => item.capabilityId)).size, 61);
+await test('registers exactly the admitted 63 system commands and 2 project commands', () => {
+  assert.equal(systemCommands.length, 63);
+  assert.equal(new Set(systemCommands.map((item) => item.capabilityId)).size, 63);
   assert.deepEqual(systemCommands.map((item) => item.capabilityId).sort(), expectedSystemIds);
   assert.equal(projectInfoCreate.capabilityId, 'project.info.create');
   assert.equal(projectInfoDelete.capabilityId, 'project.info.delete');
@@ -198,7 +204,8 @@ await test('all system commands map their three-part capability ID directly to t
     assert.equal(command.service, 'system');
     assert.equal(command.resource, resource.replaceAll('_', '-'));
     assert.equal(command.command, action.replaceAll('_', '-'));
-    assert.ok(command.flags.some((flag) => flag.name === 'company-id' && flag.required));
+    assert.equal(command.flags.some((flag) => flag.name === 'company-id' && flag.required),
+      command.capabilityId !== 'system.openapi_token.get');
     assert.equal(command.flags.some((flag) => flag.name === 'payload'), false);
   }
 });
@@ -224,6 +231,7 @@ await test('high-risk system commands rely on the global confirmation gate', () 
     'system.third_party_login.disable',
     'system.third_party_login.upsert',
     'system.oauth2.update',
+    'system.openapi_token.batch_generate',
     'system.seat.update',
   ]);
   assert.deepEqual(
@@ -244,7 +252,7 @@ await test('OAuth2 changes retain high-risk confirmation without adding an unsup
   }
 });
 
-await test('global yes dispatches authentication changes against their strict server input contracts', () => {
+await test('global yes dispatches security changes against their strict server input contracts', () => {
   const secret = protectedSecretFile('synthetic-login-secret');
   const folder = mkdtempSync(join(tmpdir(), 'ae-cli-system-wire-'));
   const host = 'https://system-wire-contract.example.invalid';
@@ -258,6 +266,13 @@ await test('global yes dispatches authentication changes against their strict se
       expected: { company_id: 7, login_type: 'feishu', app_id: 'synthetic-app', app_secret: 'synthetic-login-secret' } },
     { capabilityId: 'system.smtp.delete', args: ['system', 'smtp', 'delete', '--company-id', '7'],
       expected: { company_id: 7, yes: true } },
+    { capabilityId: 'system.openapi_token.batch_generate', args: ['system', 'openapi-token', 'batch-generate', '--company-id', '7',
+      '--open-ids', '["ou_a","ou_b","ou_a"]', '--expires-at', '2027-02-01T09:30:00+08:00'],
+      expected: { company_id: 7, open_ids: ['ou_a', 'ou_b'], expires_at: '2027-02-01T09:30:00+08:00', yes: true },
+      response: { items: [{ open_id: 'ou_a', status: 'generated', token: 'synthetic-openapi-secret' },
+        { open_id: 'ou_b', status: 'skipped' }], generated_count: 1, skipped_count: 1, failed_count: 0 },
+      expectedData: { items: [{ open_id: 'ou_a', status: 'generated' }, { open_id: 'ou_b', status: 'skipped' }],
+        generated_count: 1, skipped_count: 1, failed_count: 0 } },
   ];
   try {
     for (const scenario of cases) {
@@ -277,11 +292,11 @@ await test('global yes dispatches authentication changes against their strict se
           executions += 1;
           const input = JSON.parse(String(init.body)).input;
           const invalid = Object.keys(input).some(key => !Object.hasOwn(expected, key))
-            || Object.keys(expected).some(key => input[key] !== expected[key]);
+            || Object.keys(expected).some(key => JSON.stringify(input[key]) !== JSON.stringify(expected[key]));
           if (invalid) return new Response(JSON.stringify({ ok: false, error: {
             code: 'UNSUPPORTED_INPUT_FIELDS', message: 'Request does not match the strict capability contract',
           } }), { status: 400 });
-          return new Response(JSON.stringify({ ok: true, data: { accepted: true } }), { status: 200 });
+          return new Response(JSON.stringify({ ok: true, data: ${JSON.stringify(scenario.response ?? { accepted: true })} }), { status: 200 });
         };
         const program = new Command(); program.option('--yes').option('--host <host>').option('--format <format>');
         registerCommands(program, [command]);
@@ -295,7 +310,7 @@ await test('global yes dispatches authentication changes against their strict se
       const child = spawnSync(process.execPath, ['--import', 'tsx', '--input-type=module', '-e', code],
         { env, encoding: 'utf8', input: '', timeout: 10_000 });
       assert.equal(child.status, 0, `${scenario.capabilityId}: ${child.stderr}`);
-      assert.deepEqual(JSON.parse(child.stdout).data, { accepted: true });
+      assert.deepEqual(JSON.parse(child.stdout).data, scenario.expectedData ?? { accepted: true });
     }
   } finally {
     rmSync(secret.dir, { recursive: true, force: true });
@@ -401,6 +416,114 @@ await test('member add rejects empty or incomplete member batches locally', () =
     })),
     /missing user_name/,
   );
+});
+
+await test('OpenAPI token batch previews normalized members without sending confirmation', async () => {
+  const command = byId('system.openapi_token.batch_generate');
+  const input = {
+    'company-id': 7,
+    'open-ids': '["ou_a"," ou_b ","ou_a"]',
+    'expires-at': '2027-02-01T09:30:00+08:00',
+  };
+  for (const stage of ['dry-run', 'validate'] as const) {
+    assert.deepEqual(await dryInput(command, input, ['company_id', 'open_ids', 'expires_at'], stage), {
+      company_id: 7,
+      open_ids: ['ou_a', 'ou_b'],
+      expires_at: '2027-02-01T09:30:00+08:00',
+    });
+  }
+  for (const badIds of [[], [' '], [null], Array.from({ length: 201 }, (_, index) => `ou_${index}`)]) {
+    assert.throws(() => command.preflight!(ctx({ ...input, 'open-ids': badIds })), /1 to 200 nonblank/);
+  }
+  for (const badExpiry of ['2027-02-01', '2027-02-01T09:30:00', '2027-02-31T09:30:00Z']) {
+    assert.throws(() => command.preflight!(ctx({ ...input, 'expires-at': badExpiry })), /explicit timezone/);
+  }
+  assert.throws(() => command.preflight!(ctx({ ...input, 'company-id': 7.5 })), /positive company ID/);
+});
+
+await test('OpenAPI token get keeps preflights and normal output free of credentials', async () => {
+  const directory = mkdtempSync(join(tmpdir(), 'ae-cli-openapi-token-'));
+  const output = join(directory, 'token');
+  const command = byId('system.openapi_token.get');
+  const host = 'https://ta.example.com';
+  const requests: Array<{ stage: string; input: Record<string, unknown> }> = [];
+  const token = 'synthetic-openapi-token%2F';
+  const expiresAt = '2027-02-01T01:30:00Z';
+  const metadata = { status: 'active', expires_at: expiresAt };
+  let responseData: Record<string, unknown> = { ...metadata, token, unexpected: { token } };
+  const originalFetch = globalThis.fetch;
+  setCliTokenManual('cli_synthetic_openapi_test_auth', host);
+  globalThis.fetch = async (request, init) => {
+    const url = new URL(String(request));
+    if (url.pathname.endsWith('/token/renew')) return new Response('{"return_code":0}');
+    assert.match(url.pathname, /\/api\/cli\/analysis\/v1\/capabilities\/system\.openapi_token\.get\//);
+    const stage = url.pathname.split('/').at(-1)!;
+    const { input } = JSON.parse(String(init?.body));
+    requests.push({ stage, input });
+    const data = stage === 'execute' ? responseData : { input };
+    return new Response(JSON.stringify({ ok: true, data, meta: { invocation_id: 'openapi-test' } }));
+  };
+  try {
+    await command.validateInput!(ctx({ output }));
+    await command.dryRun!(ctx({ output }));
+    assert.equal(existsSync(output), false);
+    assert.deepEqual(unwrapOutputData(await command.execute(ctx({}))), metadata);
+    const result = await command.execute(ctx({ output }));
+    assert.deepEqual(unwrapOutputData(result), { ...metadata, output_file: output });
+    assert.equal(JSON.parse(await formatOutput(result, 'json')).meta.invocation_id, 'openapi-test');
+    assert.equal(JSON.parse(await formatOutput(result, 'json', '.token')).data, null);
+    assert.doesNotMatch(await formatOutput(result, 'json', '.. | strings'), /synthetic-openapi-token/);
+    assert.equal(readFileSync(output, 'utf8'), `${token}\n`);
+    if (process.platform !== 'win32') assert.equal(statSync(output).mode & 0o777, 0o600);
+    assert.deepEqual(readdirSync(directory), ['token']);
+    await assert.rejects(command.execute(ctx({ output })), /already exists/);
+    assert.equal(readFileSync(output, 'utf8'), `${token}\n`);
+    assert.deepEqual(requests, [
+      { stage: 'validate', input: {} },
+      { stage: 'dry-run', input: {} },
+      { stage: 'execute', input: {} },
+      { stage: 'execute', input: { reveal: true } },
+    ]);
+    const unavailableOutput = join(directory, 'unavailable-token');
+    for (const status of ['not_generated', 'expired', 'disabled']) {
+      responseData = { status, expires_at: { token }, token };
+      assert.deepEqual(unwrapOutputData(await command.execute(ctx({ output: unavailableOutput }))), { status });
+      assert.equal(existsSync(unavailableOutput), false);
+    }
+    responseData = metadata;
+    await assert.rejects(command.execute(ctx({ output: unavailableOutput })), /Invalid OpenAPI token response/);
+    assert.equal(existsSync(unavailableOutput), false);
+  } finally {
+    globalThis.fetch = originalFetch;
+    clearCliToken(host);
+    rmSync(directory, { recursive: true, force: true });
+  }
+});
+
+await test('OpenAPI token output preserves a concurrent destination and leaves no partial file', async () => {
+  const directory = mkdtempSync(join(tmpdir(), 'ae-cli-openapi-token-race-'));
+  const output = join(directory, 'token');
+  const command = byId('system.openapi_token.get');
+  const host = 'https://ta.example.com';
+  const originalFetch = globalThis.fetch;
+  setCliTokenManual('cli_synthetic_openapi_test_auth', host);
+  globalThis.fetch = async (request, init) => {
+    if (new URL(String(request)).pathname.endsWith('/token/renew')) return new Response('{"return_code":0}');
+    assert.deepEqual(JSON.parse(String(init?.body)).input, { reveal: true });
+    writeFileSync(output, 'concurrent destination', { flag: 'wx', mode: 0o600 });
+    return new Response(JSON.stringify({
+      ok: true, data: { status: 'active', token: 'synthetic-openapi-token%2F' },
+    }));
+  };
+  try {
+    await assert.rejects(command.execute(ctx({ output })), /already exists/);
+    assert.equal(readFileSync(output, 'utf8'), 'concurrent destination');
+    assert.deepEqual(readdirSync(directory), ['token']);
+  } finally {
+    globalThis.fetch = originalFetch;
+    clearCliToken(host);
+    rmSync(directory, { recursive: true, force: true });
+  }
 });
 
 await test('identity protection commands forward typed targets and confirmation', async () => {

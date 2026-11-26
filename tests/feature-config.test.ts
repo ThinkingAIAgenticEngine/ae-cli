@@ -105,6 +105,7 @@ try {
     await program.parseAsync(['--host', featureHost, 'config', 'show'], { from: 'user' });
     assert.deepEqual(JSON.parse(output).data, {
       host: featureHost,
+      businesses: {},
       routing: { knowledge_base: 'auto' },
       source: 'remote',
     });
@@ -112,6 +113,7 @@ try {
     await program.parseAsync(['--host', featureHost, 'config', 'show'], { from: 'user' });
     assert.deepEqual(JSON.parse(output).data, {
       host: featureHost,
+      businesses: {},
       routing: { knowledge_base: 'auto' },
       source: 'cache',
     });
@@ -121,6 +123,7 @@ try {
     await program.parseAsync(['--host', featureHost, 'config', 'show'], { from: 'user' });
     assert.deepEqual(JSON.parse(output).data, {
       host: featureHost,
+      businesses: {},
       routing: { knowledge_base: 'explicit' },
       source: 'cache',
     });

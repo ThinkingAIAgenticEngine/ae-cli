@@ -131,6 +131,35 @@ class IntegrationReviewTests(unittest.TestCase):
         self.assertIn("@push-user", payload["note"])
         self.assertIn("集成分支直接推送", payload["note"])
 
+    def test_snapshot_keeps_text_changes_alongside_binary_additions_and_deletions(self):
+        old = self.root / "旧 模板.xlsx"
+        old.write_bytes(b"PK\0\xff")
+        base = self.commit("old binary")
+        old.unlink()
+        (self.root / "new.xlsx").write_bytes(b"PK\0\xfe")
+        (self.root / "command.ts").write_text("export const value = 3;\n")
+        head = self.commit("replace binary and change text")
+        with tempfile.TemporaryDirectory() as folder:
+            target = Path(folder) / "snapshot"
+            self.assertEqual(review.snapshot(self.root, target, review.Context("mr", base, head, self.api.target)), 2)
+            self.assertEqual(review.git(target, "diff", "--name-only", "review-base...HEAD").stdout.strip(), "command.ts")
+            self.assertEqual(review.git(target, "status", "--porcelain").stdout, "")
+            self.assertEqual((target / "command.ts").read_text(), "export const value = 3;\n")
+            self.assertFalse((target / "new.xlsx").exists())
+        self.assertTrue((self.root / "new.xlsx").exists())
+
+    def test_binary_only_review_reports_limitation_without_model_credentials(self):
+        messages = self.root / ".ci/review_messages.zh-CN.json"
+        messages.parent.mkdir()
+        messages.write_text((ROOT / ".ci/review_messages.zh-CN.json").read_text())
+        base = self.commit("review messages")
+        (self.root / "template.xlsx").write_bytes(b"PK\0\xff")
+        head = self.commit("binary only")
+        result = review.render(self.root, review.Context("push", base, head, self.api.target), {})
+        self.assertEqual(result["binary_file_count"], 1)
+        self.assertIn("未覆盖 1 个二进制变更文件", result["report"])
+        self.assertNotIn("未发现重大问题", result["report"])
+
     def test_push_created_by_merged_mr_skips_review_and_notification(self):
         for field in ("merge_commit_sha", "squash_commit_sha", "sha"):
             self.push()
@@ -383,6 +412,24 @@ class RendererTests(unittest.TestCase):
             def set(self, key, value):
                 self.values[key.upper()] = value
         settings = Settings()
+        class Stream:
+            async def __aenter__(self):
+                return self
+            async def __aexit__(self, *args):
+                pass
+            async def __aiter__(self):
+                yield types.SimpleNamespace(usage=None, choices=[types.SimpleNamespace(
+                    finish_reason=None, delta=types.SimpleNamespace(content=None, reasoning_content="thinking"))])
+                text = prediction or ""
+                midpoint = len(text) // 2
+                for chunk in (text[:midpoint], text[midpoint:]):
+                    yield types.SimpleNamespace(usage=None, choices=[types.SimpleNamespace(
+                        finish_reason=None, delta=types.SimpleNamespace(content=chunk))])
+                yield types.SimpleNamespace(usage=None, choices=[types.SimpleNamespace(
+                    finish_reason=finish, delta=types.SimpleNamespace(content=None))])
+                yield types.SimpleNamespace(choices=[], usage=types.SimpleNamespace(
+                    prompt_tokens=3000, completion_tokens=500,
+                    completion_tokens_details=types.SimpleNamespace(reasoning_tokens=450)))
         class Client:
             def __init__(self, **kwargs):
                 self.chat = types.SimpleNamespace(completions=self)
@@ -392,10 +439,7 @@ class RendererTests(unittest.TestCase):
                 pass
             async def create(self, **kwargs):
                 settings.set("TEST.REQUEST", kwargs)
-                return types.SimpleNamespace(choices=[types.SimpleNamespace(
-                    finish_reason=finish, message=types.SimpleNamespace(content=prediction))],
-                    usage=types.SimpleNamespace(prompt_tokens=3000, completion_tokens=500,
-                                                completion_tokens_details=types.SimpleNamespace(reasoning_tokens=450)))
+                return Stream()
         class Reviewer:
             def __init__(self, base, ai_handler):
                 if base != "review-base":
@@ -457,6 +501,8 @@ class RendererTests(unittest.TestCase):
         self.assertEqual(result["model_result"]["reasoning_tokens"], 450)
         self.assertEqual(settings.get("TEST.REQUEST")["reasoning_effort"], "low")
         self.assertEqual(settings.get("TEST.REQUEST")["max_tokens"], 32768)
+        self.assertIs(settings.get("TEST.REQUEST")["stream"], True)
+        self.assertEqual(settings.get("TEST.REQUEST")["stream_options"], {"include_usage": True})
         self.assertGreaterEqual(result["model_result"]["model_seconds"], 0)
 
     def test_compatibility_and_published_skill_rules_reach_reviewer_settings(self):
@@ -487,6 +533,10 @@ class RendererTests(unittest.TestCase):
     def test_truncated_model_output_is_not_published(self):
         with self.assertRaisesRegex(RuntimeError, "truncated"):
             self.execute("review: {}", finish="length")
+
+    def test_incomplete_model_stream_is_not_published(self):
+        with self.assertRaisesRegex(RuntimeError, "did not finish normally"):
+            self.execute("review: {key_issues_to_review: []}", finish=None)
 
     def test_finding_links_use_real_reviewed_commit(self):
         _, result = self.execute("""review:

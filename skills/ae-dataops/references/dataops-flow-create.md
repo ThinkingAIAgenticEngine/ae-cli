@@ -1,7 +1,7 @@
 ---
 name: dataops-flow-create
-version: 1.0.0
-description: "Flow creation and configuration: create flows, manage custom flow parameters, add task nodes, configure dependencies, save task definitions, configure scheduling, test, and release to production. Trigger keywords: create flow, new workflow, configure schedule, add task node, release, cron, scheduled execution."
+version: 1.1.0
+description: "Flow creation and configuration: create flows, manage custom flow parameters, add SQL/integration/check task nodes (and route to Python nodes), configure dependencies, configure scheduling, preview, and release to production. Trigger keywords: create flow, new workflow, configure schedule, add task node, release, cron, scheduled execution."
 metadata:
   requires:
     bins: ["ae-cli"]
@@ -151,14 +151,36 @@ ae-cli dataops_flow +update_task_instance_check_task --spaceCode "${spaceCode}" 
 
 Task instance check create defaults are `relation=AND`, `checkInterval=10`, and `checkTime=3`; retry defaults are `3`, `5`, and `MINUTE`. `checkItems` is required and replaces the complete target list. On update, omitted check scalars, dependencies, and retry fields keep their current values.
 
-### Step 5: Modify SQL Task Content
+### Step 5: Read or Modify SQL Task Content and OUT Parameters
 
 ```bash
-# Update SQL task content and keep dependencies and retry policy
+# Read the current DEV Trino SQL task definition (sqlTask, preTasks, retry, outputParams, taskParams, paramSources)
+ae-cli dataops_flow +get_sql_task --spaceCode "${spaceCode}" \
+  --flowCode ${flowCode} --taskCode ${taskCode}
+
+# Create a DEV Trino SQL task that publishes an OUT parameter (must be a SELECT / WITH...SELECT query with LIMIT <= 10)
+ae-cli dataops_flow +create_sql_task --spaceCode "${spaceCode}" \
+  --flowCode ${flowCode} --taskName "Compute Latest Date" \
+  --sql "SELECT max(dt) AS sql_dt FROM dwd_user LIMIT 1" \
+  --outputParams '[{"paramKey":"sql_dt","remark":"Latest processed date"}]'
+
+# Partial update: change only outputParams (omit --sql to keep existing DEV SQL)
 ae-cli dataops_flow +update_sql_task --spaceCode "${spaceCode}" \
   --flowCode ${flowCode} --taskCode ${taskCode} \
-  --sql "SELECT * FROM dwd_user"
+  --outputParams '[{"paramKey":"sql_dt","remark":"Updated remark"}]'
+
+# Clear preSql/postSql hooks and OUT declarations explicitly
+ae-cli dataops_flow +update_sql_task --spaceCode "${spaceCode}" \
+  --flowCode ${flowCode} --taskCode ${taskCode} \
+  --preSql "" --postSql "" --outputParams '[]'
 ```
+
+- **SQL `OUT` parameter rules**: `--outputParams` (`[{"paramKey":"sql_dt","remark":"optional"}]`) declares `VARCHAR` `OUT` parameters (`paramKey` matching `^[a-z][a-z0-9_]{0,39}$`, not `env`, no `ws_` prefix, workflow-wide `OUT` limit default 50). Declaring `OUT` requires the main SQL to be a query (`SELECT` / `WITH ... SELECT`, with `LIMIT` <= `10` such as `LIMIT 1`; pure DML such as `INSERT` is rejected). At runtime, values bind from the **first result row** by matching column name/alias (for duplicate column names, the rightmost non-null, non-empty value wins; 10 KiB UTF-8 limit per node; empty/0-row output does not overwrite an earlier non-empty upstream value). Downstream tasks wired via `--preTasks` consume published outputs as `${paramKey}`. Remark-only `OUT` edits update the parameter table without bumping the task version.
+- **Read & partial update**: `+get_sql_task` reads **DEV** definitions only and requires `dwWorkflowEdit`. On `+update_sql_task`, `--sql` is optional (pass at least one mutable field; omitted fields keep existing DEV values; `--preSql ""` / `--postSql ""` clear hooks to null; `--outputParams` and `--preTasks` use three-state semantics: omit=keep, `'[]'`=clear, non-empty=replace).
+
+### Step 5b: Create, Read, or Modify Python Task Nodes
+
+For all 7 Python task and environment/directory commands (`+create_python_task`, `+update_python_task`, `+get_python_task`, `+list_python_versions`, `+list_python_package_sources`, `+list_python_directories`, `+browse_python_directory`), single-file `main.py` packaging, `TE_OUTPUT:` protocol rules, `dwWorkflowEdit` permission requirements, and DEV/PROD boundaries, see [Python workflow nodes](dataops-flow-python.md).
 
 ### Delete a Task Node
 
@@ -209,6 +231,8 @@ ae-cli dataops_flow +preview_release_flow --spaceCode "${spaceCode}" \
 
 Inspect `data.releaseStatus` in the default CLI JSON: `READY` permits the requested release; `NO_CHANGES` means skip submission and inspect PROD. For `CHECK_FAILED` or `FAILED`, report the message and failed change items and stop before publishing or executing. Check that the preview contains only the intended changes.
 
+Note on upstream `OUT` parameters: when a downstream task references an upstream node's declared `OUT` parameter (such as `${out_dt}` from an upstream Python task), a task item may include an informational `refuseReason` like `"Parameter ${out_dt} is null."` even when `data.releaseStatus` is `READY` and the task's `validationStatus` is `SUCCESS`. This reflects runtime-only upstream outputs and does not block release when `releaseStatus=READY` and `validationStatus=SUCCESS`.
+
 ### Step 9: Release to Production and Verify
 
 ```bash
@@ -222,54 +246,47 @@ ae-cli dataops_flow +get_flow_overview --spaceCode "${spaceCode}" \
 
 Check `data.result.releaseStatus`, not outer `ok` or action `status`: `FAILED`, `CHECK_FAILED`, `FAIL`, `PART_SUCCESS`, and `TABLE_FAIL` are not successful publication. Stop and report their details. `TO_RELEASE`, `RELEASING`, or `SUBMITTED` means completion is unverified; retain `data.result.packageCode` and do not resubmit the release.
 
-Confirm the PROD overview has `data.success=true` and compare its visible `schedule`, `dag`, and `flowParams` with the requested changes, including CRON and task presence/type when applicable. Even a release response of `SUCCESS` needs this readback. The overview does not expose task SQL or the integration task's `syncId`; retain the create/update result and release preview as evidence, and state this readback limit instead of claiming those fields were independently verified in PROD. If publication is pending, make read-only checks within a finite deadline; on expiry or unavailable evidence, report the package/flow IDs and what remains unverified. A release-only request ends here. For an explicitly requested manual run, continue with [execution and completion checks](dataops-flow-monitor.md#workflow-c-manual-execution-and-stop).
+Confirm the PROD overview has `data.success=true` and compare its visible `schedule`, `dag`, and `flowParams` with the requested changes, including CRON and task presence/type when applicable. Even a release response of `SUCCESS` needs this readback. The overview does not expose task SQL, Python script text, or the integration task's `syncId`; retain the create/update result and release preview (`contentCompare`) as evidence, and state this readback limit instead of claiming those fields were independently verified in PROD (once a PROD instance runs, `dataops_operations +get_task_instance_detail` exposes the executed historical definition). If publication is pending, make read-only checks within a finite deadline; on expiry or unavailable evidence, report the package/flow IDs and what remains unverified. A release-only request ends here. For an explicitly requested manual run, continue with [execution and completion checks](dataops-flow-monitor.md#workflow-c-manual-execution-and-stop).
 
 ---
 
 ## Command Quick Reference
 
-| Command | Purpose | Key Flags |
-|---------|---------|-----------|
-| `+create_flow` | Create DEV flow | `--spaceCode` `--flowName` `[--remark]` |
-| `+create_sql_task` | Create DEV Trino SQL task and save SQL | `--spaceCode` `--flowCode` `--taskName` `--sql` `[--preSql]` `[--postSql]` `[--preTasks]` `[--failRetryTimes]` `[--failRetryInterval]` `[--failRetryUnit]` `[--remark]` |
-| `+update_sql_task` | Update DEV Trino SQL task content | `--spaceCode` `--flowCode` `--taskCode` `--sql` `[--preSql]` `[--postSql]` `[--preTasks]` `[--failRetryTimes]` `[--failRetryInterval]` `[--failRetryUnit]` |
-| `+create_integration_task` | Create DEV integration sync task from an existing sync solution | `--spaceCode` `--flowCode` `--taskName` `--syncId` `[--preTasks]` `[--failRetryTimes]` `[--failRetryInterval]` `[--failRetryUnit]` `[--remark]` |
-| `+update_integration_task` | Rebind DEV integration sync task to a sync solution | `--spaceCode` `--flowCode` `--taskCode` `--syncId` `[--preTasks]` `[--failRetryTimes]` `[--failRetryInterval]` `[--failRetryUnit]` |
-| `+create_workflow_instance_check_task` | Create DEV workflow instance check task | `--spaceCode` `--flowCode` `--taskName` `--checkItems` `[--relation]` `[--checkInterval]` `[--checkTime]` `[--preTasks]` `[retry flags]` `[--remark]` |
-| `+update_workflow_instance_check_task` | Update DEV workflow instance check task | `--spaceCode` `--flowCode` `--taskCode` `--checkItems` `[--relation]` `[--checkInterval]` `[--checkTime]` `[--preTasks]` `[retry flags]` |
-| `+create_task_instance_check_task` | Create DEV task instance check task | `--spaceCode` `--flowCode` `--taskName` `--checkItems` `[--relation]` `[--checkInterval]` `[--checkTime]` `[--preTasks]` `[retry flags]` `[--remark]` |
-| `+update_task_instance_check_task` | Update DEV task instance check task | `--spaceCode` `--flowCode` `--taskCode` `--checkItems` `[--relation]` `[--checkInterval]` `[--checkTime]` `[--preTasks]` `[retry flags]` |
-| `+delete_task` | Delete one DEV task node after confirmation | `--spaceCode` `--flowCode` `--taskCode` `--yes` |
-| `+add_task_relation` | Add DEV dependency | `--spaceCode` `--flowCode` `--preTaskCode` `--taskCode` |
-| `+save_schedule_config` | Save DEV schedule config | `--spaceCode` `--flowCode` `--enabled` `[--cron]` |
-| `+get_flow_params` | List custom workflow parameters | `--spaceCode` `--flowCode` `[--env DEV\|PROD]` |
-| `+create_flow_param` | Create one DEV custom parameter | `--spaceCode` `--flowCode` `--paramKey` `--paramValue` `[--paramDataType VARCHAR\|EXPRESSION]` `[--remark]` |
-| `+update_flow_param` | Update or rename one DEV custom parameter | `--spaceCode` `--flowCode` `--paramKey` `[--originParamKey]` `[--paramValue]` `[--paramDataType]` `[--remark]` |
-| `+delete_flow_param` | Delete one DEV custom parameter after confirmation | `--spaceCode` `--flowCode` `--paramKey` `--yes` |
-| `+get_flow_overview` | View DEV/PROD flow definitions and all task parameter references | `--spaceCode` (`--flowCode` or `--flowName`) `[--env DEV\|PROD]` |
-| `+execute_flow` | Manual PROD execution | `--spaceCode` `--flowCode` `[--baseDate]` |
-| `dataops_operations +get_flow_instance_detail` | View operations instance DAG and task statuses | `--spaceCode` `--flowCode` `--flowInstanceId` |
-| `dataops_operations +get_task_instance_detail` | View operations task detail and optional logs | `--spaceCode` `--flowCode` `--flowInstanceId` (`--taskInstanceId` or `--taskCode` or `--taskName`) `[--includeLog]` |
-| `+preview_release_flow` | Preview pending DEV-to-PROD release changes without publishing | `--spaceCode` `--flowCode` |
-| `+release_flow` | Submit DEV-to-PROD release | `--spaceCode` `--flowCode` |
+For the 7 Python node commands see [Python workflow nodes](dataops-flow-python.md); for operations instance/log queries see [execution and monitoring](dataops-flow-monitor.md).
+
+| Command | Purpose | Risk | Key Flags |
+|---------|---------|------|-----------|
+| `ae-cli dataops_flow +create_flow` | Create DEV flow | write | `--spaceCode` `--flowName` `[--remark]` |
+| `ae-cli dataops_flow +create_sql_task` | Create DEV Trino SQL task | write | `--spaceCode` `--flowCode` `--taskName` `--sql` `[--preSql]` `[--postSql]` `[--outputParams]` `[--preTasks]` `[retry flags]` `[--remark]` |
+| `ae-cli dataops_flow +update_sql_task` | Partially update DEV Trino SQL task | write | `--spaceCode` `--flowCode` `--taskCode` `[--sql]` `[--preSql]` `[--postSql]` `[--outputParams]` `[--preTasks]` `[retry flags]` |
+| `ae-cli dataops_flow +get_sql_task` | Read DEV Trino SQL task definition | read | `--spaceCode` `--flowCode` `--taskCode` |
+| `ae-cli dataops_flow +create_integration_task` | Create DEV integration sync task | write | `--spaceCode` `--flowCode` `--taskName` `--syncId` `[--preTasks]` `[retry flags]` `[--remark]` |
+| `ae-cli dataops_flow +update_integration_task` | Rebind DEV integration sync task | write | `--spaceCode` `--flowCode` `--taskCode` `--syncId` `[--preTasks]` `[retry flags]` |
+| `ae-cli dataops_flow +create_workflow_instance_check_task` | Create DEV `FLOW_CHECK` task | write | `--spaceCode` `--flowCode` `--taskName` `--checkItems` `[--relation]` `[--checkInterval]` `[--checkTime]` `[--preTasks]` `[retry flags]` `[--remark]` |
+| `ae-cli dataops_flow +update_workflow_instance_check_task` | Update DEV `FLOW_CHECK` task | write | `--spaceCode` `--flowCode` `--taskCode` `--checkItems` `[--relation]` `[--checkInterval]` `[--checkTime]` `[--preTasks]` `[retry flags]` |
+| `ae-cli dataops_flow +create_task_instance_check_task` | Create DEV `TASK_CHECK` task | write | `--spaceCode` `--flowCode` `--taskName` `--checkItems` `[--relation]` `[--checkInterval]` `[--checkTime]` `[--preTasks]` `[retry flags]` `[--remark]` |
+| `ae-cli dataops_flow +update_task_instance_check_task` | Update DEV `TASK_CHECK` task | write | `--spaceCode` `--flowCode` `--taskCode` `--checkItems` `[--relation]` `[--checkInterval]` `[--checkTime]` `[--preTasks]` `[retry flags]` |
+| `ae-cli dataops_flow +delete_task` | Delete one DEV task node | high-risk-write | `--spaceCode` `--flowCode` `--taskCode`; `--yes` after confirmation |
+| `ae-cli dataops_flow +add_task_relation` | Add DEV dependency (`preTaskCode` -> `taskCode`) | write | `--spaceCode` `--flowCode` `--preTaskCode` `--taskCode` |
+| `ae-cli dataops_flow +save_schedule_config` | Save DEV schedule config | write | `--spaceCode` `--flowCode` `--enabled` `[--cron]` |
+| `ae-cli dataops_flow +get_flow_params` | List custom workflow parameters | read | `--spaceCode` `--flowCode` `[--env DEV\|PROD]` |
+| `ae-cli dataops_flow +create_flow_param` | Create one DEV custom parameter | write | `--spaceCode` `--flowCode` `--paramKey` `--paramValue` `[--paramDataType VARCHAR\|EXPRESSION]` `[--remark]` |
+| `ae-cli dataops_flow +update_flow_param` | Update or rename one DEV custom parameter | write | `--spaceCode` `--flowCode` `--paramKey` `[--originParamKey]` `[--paramValue]` `[--paramDataType]` `[--remark]` |
+| `ae-cli dataops_flow +delete_flow_param` | Delete one DEV custom parameter | high-risk-write | `--spaceCode` `--flowCode` `--paramKey`; `--yes` after confirmation |
+| `ae-cli dataops_flow +get_flow_overview` | View DEV/PROD flow overview & parameter refs | read | `--spaceCode` (`--flowCode` or `--flowName`) `[--env DEV\|PROD]` |
+| `ae-cli dataops_flow +preview_release_flow` | Preview pending DEV-to-PROD release diff | read | `--spaceCode` `--flowCode` |
+| `ae-cli dataops_flow +release_flow` | Submit DEV-to-PROD release | write | `--spaceCode` `--flowCode` |
+| `ae-cli dataops_flow +execute_flow` | Manual PROD execution | write | `--spaceCode` `--flowCode` `[--baseDate]` |
 
 ## Parameter Notes
 
-- **Parameter Reference**: Reference workspace parameters in tasks using `${paramKey}` (e.g., `${ws_run_date}`)
-- **Execution**: `+execute_flow` requires `--spaceCode` and `--flowCode`; `--baseDate` is optional and maps to runtime parameter `bd`. It always runs PROD and returns `action/result/status`; `result` includes `flowCode`, `executeId`, `operationStatus`, `nextAction`, and optional `flowInstanceId`.
-- **Schedule config**: `+save_schedule_config` requires `--spaceCode`, `--flowCode`, and `--enabled`. `--cron` is required only when `--enabled true`; omit it when disabling scheduling. It returns `action/result/status`; `result` includes `enabled`, `flow`, `message`, and `cron` only when enabled.
-- **Release preview**: `+preview_release_flow` requires `--spaceCode` and `--flowCode`; it has no optional flags. It returns `flowCode`, `releaseStatus`, `message`, and `changes`. Each change may include `scheduleConfigChange` and `tasks`; `scheduleConfigChange.diff.old.parameters` and `.new.parameters` show the flow parameter comparison. Parameter-only changes use the existing flow configuration release. Task entries may include `changed`, `contentCompare`, and `targetTable`.
-- **Release**: `+release_flow` requires `--spaceCode` and `--flowCode`; it has no optional flags. It returns `action/result/status`; `result` includes `flowCode`, `releaseStatus`, `message`, optional `packageCode`, and optional `changes`. Each change may include `scheduleConfigChange` and `tasks`; task entries include `changed`.
-- **Task dependencies**: `--preTasks` is a JSON array of upstream task codes on SQL, integration, workflow instance check, and task instance check create/update commands. Omit `--preTasks` on update to preserve existing dependencies; pass `--preTasks '[]'` to clear them; pass a non-empty array to replace them.
-- **Retry policy**: All four task types accept `--failRetryTimes`, `--failRetryInterval`, and `--failRetryUnit`. Create defaults to `3`, `5`, and `MINUTE`. Update preserves every omitted retry field. `MINUTE` is the only supported unit.
-- **SQL task creation**: `+create_sql_task` requires `--spaceCode`, `--flowCode`, `--taskName`, and `--sql`; SQL hooks, dependencies, retry policy, and remark are optional. It returns `action/result/status`; `result` includes `flowCode`, `taskCode`, `taskName`, `taskType=TRINO_SQL`, and `sqlSaved=true`.
-- **SQL task update**: `+update_sql_task` requires `--spaceCode`, `--flowCode`, `--taskCode`, and `--sql`; omitted SQL hooks, dependencies, and retry fields keep existing values. It returns `action/result/status`; `result` includes `sqlSaved`, `flowCode`, `taskCode`, `taskType=TRINO_SQL`, and `task`.
-- **Task dependency**: `+add_task_relation` requires `--spaceCode`, `--flowCode`, `--preTaskCode`, and `--taskCode`. `preTaskCode` is upstream and `taskCode` is downstream. It returns `action/result/status`; `result` includes `status`, `flowCode`, `preTaskCode`, `taskCode`, and `message`.
-- **Flow and task parameters**: `+get_flow_overview` requires `dwWorkflowEdit` and supports DEV (default) or PROD. It returns all custom flow definitions in `flowParams` and task references in `dag.tasks[].taskParams`, including source, definition value, type, description, and built-in flags. Expressions remain literal; task references retain `paramDataType=QUOTE`. Source is `FLOW` or `SPACE` for configured parameters. A code-parsed reference without a configured source remains visible with null or omitted `paramFrom` and `paramValue` fields; either form means no configured source/value. Empty parameter lists are arrays. Use the selected environment to compare unpublished DEV changes with PROD.
-- **Integration task creation**: `+create_integration_task` requires `--spaceCode`, `--flowCode`, `--taskName`, and `--syncId`; dependencies, retry policy, and remark are optional. It returns `action/result/status`; `result` includes `syncTaskSaved`, `flowCode`, `taskCode`, `taskName`, `taskType=OFFLINE_SYNC`, `syncId`, and `nextAction`.
-- **Workflow instance check tasks**: `checkItems` is required and replaces the complete check item list. Create defaults `relation/checkInterval/checkTime` to `AND/5/3`; update preserves omitted scalar values. This command creates `FLOW_CHECK`, not task-instance `TASK_CHECK`.
-- **Task instance check tasks**: `checkItems` is required and replaces the complete check item list. Each item identifies a target using `flowCode` and `taskCode`. Create defaults `relation/checkInterval/checkTime` to `AND/10/3`; update preserves omitted scalar values. This command creates `TASK_CHECK`.
-- **Task deletion**: `+delete_task` requires `--spaceCode`, `--flowCode`, and `--taskCode`. It is a `high-risk-write`: inspect the node with `+get_flow_overview`, run `--dry-run`, obtain explicit confirmation, and then pass `--yes`. It changes DEV only; release the flow to apply deletion to PROD.
+- **Parameter reference**: Reference parameters in tasks as `${paramKey}` (e.g., `${ws_run_date}`).
+- **Task dependencies (`--preTasks`)**: JSON array of upstream task codes across all task create/update commands. Omit `--preTasks` on update to preserve existing dependencies; pass `--preTasks '[]'` to clear them; pass a non-empty array to replace them.
+- **Retry flags**: `--failRetryTimes`, `--failRetryInterval`, `--failRetryUnit` (`MINUTE` only). Create defaults to `3`, `5`, `MINUTE`; update preserves omitted fields.
+- **SQL & integration updates**: `+update_sql_task` preserves omitted hooks/dependencies/retry fields; `+create_sql_task` returns `taskType=TRINO_SQL`, `sqlSaved=true`; `+create_integration_task` returns `taskType=OFFLINE_SYNC`, `syncTaskSaved=true`.
+- **Schedule & execution**: `+save_schedule_config` requires `--cron` only when `--enabled true`. `+execute_flow` always runs PROD (`--baseDate` maps to `bd`) and returns `result.executeId`, `operationStatus`, and optional `flowInstanceId`.
+- **Release preview & submit**: Both take only `--spaceCode` and `--flowCode`. Preview returns `releaseStatus`, `message`, and `changes` (`scheduleConfigChange.diff.old/new.parameters`, task `changed`/`contentCompare`/`paramCompare`/`targetTable`; `paramCompare` includes `old` and `new` task parameter lists whenever `"parameter"` is in `changed`); parameter-only changes use the existing flow configuration release. Release returns `result.releaseStatus`, `message`, and optional `packageCode`/`changes`.
+- **Flow overview (`+get_flow_overview`)**: Requires `dwWorkflowEdit` in DEV (default) and PROD. Returns `flowParams` and `dag.tasks[].taskParams` (empty arrays when none). Expressions stay literal (`paramDataType=QUOTE` on task refs); `paramFrom` is `FLOW` or `SPACE`, and code-parsed refs without a configured source leave `paramFrom`/`paramValue` null or omitted.
 
 ## Transport Status
 
@@ -279,11 +296,11 @@ Owning module: gaia-mcp workflow
 
 Current transport: DataOps CLI REST
 
-Covered workflow tools: `flow_create_workflow_instance_check_task`, `flow_update_workflow_instance_check_task`, `flow_create_task_instance_check_task`, `flow_update_task_instance_check_task`, `flow_delete_task`, `flow_get_flow_params`, `flow_create_flow_param`, `flow_update_flow_param`, and `flow_delete_flow_param`
+Covered workflow tools: `flow_get_sql_task`, `flow_create_workflow_instance_check_task`, `flow_update_workflow_instance_check_task`, `flow_create_task_instance_check_task`, `flow_update_task_instance_check_task`, `flow_delete_task`, `flow_get_flow_params`, `flow_create_flow_param`, `flow_update_flow_param`, and `flow_delete_flow_param`
 
 Gateway target: TBD after DataOps workflow Gateway schema review
 
-Review after: 2026-10-27
+Review after: 2026-12-21
 
 Exit condition: Migrate or remove these one-to-one commands after equivalent Capability Gateway actions are available.
 

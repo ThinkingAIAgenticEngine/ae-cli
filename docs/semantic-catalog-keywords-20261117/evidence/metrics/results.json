@@ -1,0 +1,1082 @@
+{
+  "A": {
+    "rows": 60,
+    "pages": 2,
+    "wire_json_chars": 8952,
+    "wire_json_bytes": 17028,
+    "model_catalog_chars": 9231,
+    "model_catalog_utf8_bytes": 17307,
+    "model_catalog_tokens_o200k_base": 4707,
+    "reader_sha256": "07621a30f3f5f3b63ec95c650b74f797f041da4e40ad89e96c68b8d378cd1292",
+    "catalog_sha256": "5cb4ea2b7d297105841ddc2e0ce53c251653094f890593ed1ac606ccccefb0e8",
+    "required_candidate_hits": 16,
+    "required_candidate_total": 16,
+    "candidate_recall": 1.0,
+    "selected_candidates_total": 18,
+    "unexpected_candidates_total": 0,
+    "candidate_precision_with_allowed_extras": 1.0,
+    "questions_all_required_recalled": 16,
+    "questions": 16,
+    "negative_queries_correct": 2,
+    "unique_detail_ids": 16,
+    "detail_call_count": 1,
+    "details_tokens_o200k_base": 1592,
+    "catalog_plus_details_tokens_o200k_base": 6299,
+    "per_query": [
+      {
+        "id": "Q01",
+        "required": [
+          "preference_27"
+        ],
+        "selected": [
+          "preference_27"
+        ],
+        "missing": [],
+        "unexpected_extra": [],
+        "all_required": true
+      },
+      {
+        "id": "Q02",
+        "required": [
+          "semantic_46"
+        ],
+        "selected": [
+          "semantic_46"
+        ],
+        "missing": [],
+        "unexpected_extra": [],
+        "all_required": true
+      },
+      {
+        "id": "Q03",
+        "required": [
+          "preference_49"
+        ],
+        "selected": [
+          "preference_49"
+        ],
+        "missing": [],
+        "unexpected_extra": [],
+        "all_required": true
+      },
+      {
+        "id": "Q04",
+        "required": [
+          "preference_50"
+        ],
+        "selected": [
+          "preference_50"
+        ],
+        "missing": [],
+        "unexpected_extra": [],
+        "all_required": true
+      },
+      {
+        "id": "Q05",
+        "required": [
+          "semantic_48"
+        ],
+        "selected": [
+          "semantic_48"
+        ],
+        "missing": [],
+        "unexpected_extra": [],
+        "all_required": true
+      },
+      {
+        "id": "Q06",
+        "required": [
+          "preference_30"
+        ],
+        "selected": [
+          "preference_30"
+        ],
+        "missing": [],
+        "unexpected_extra": [],
+        "all_required": true
+      },
+      {
+        "id": "Q07",
+        "required": [
+          "preference_31"
+        ],
+        "selected": [
+          "preference_27",
+          "preference_31"
+        ],
+        "missing": [],
+        "unexpected_extra": [],
+        "all_required": true
+      },
+      {
+        "id": "Q08",
+        "required": [
+          "preference_28"
+        ],
+        "selected": [
+          "preference_28"
+        ],
+        "missing": [],
+        "unexpected_extra": [],
+        "all_required": true
+      },
+      {
+        "id": "Q09",
+        "required": [
+          "preference_29"
+        ],
+        "selected": [
+          "preference_29"
+        ],
+        "missing": [],
+        "unexpected_extra": [],
+        "all_required": true
+      },
+      {
+        "id": "Q10",
+        "required": [
+          "preference_29",
+          "preference_33"
+        ],
+        "selected": [
+          "preference_29",
+          "preference_33"
+        ],
+        "missing": [],
+        "unexpected_extra": [],
+        "all_required": true
+      },
+      {
+        "id": "Q11",
+        "required": [
+          "preference_34"
+        ],
+        "selected": [
+          "preference_34"
+        ],
+        "missing": [],
+        "unexpected_extra": [],
+        "all_required": true
+      },
+      {
+        "id": "Q12",
+        "required": [
+          "preference_53"
+        ],
+        "selected": [
+          "preference_53",
+          "semantic_52"
+        ],
+        "missing": [],
+        "unexpected_extra": [],
+        "all_required": true
+      },
+      {
+        "id": "Q13",
+        "required": [
+          "preference_10001"
+        ],
+        "selected": [
+          "preference_10001"
+        ],
+        "missing": [],
+        "unexpected_extra": [],
+        "all_required": true
+      },
+      {
+        "id": "Q14",
+        "required": [
+          "preference_10073",
+          "preference_10223"
+        ],
+        "selected": [
+          "preference_10073",
+          "preference_10223"
+        ],
+        "missing": [],
+        "unexpected_extra": [],
+        "all_required": true
+      },
+      {
+        "id": "Q15",
+        "required": [],
+        "selected": [],
+        "missing": [],
+        "unexpected_extra": [],
+        "all_required": true
+      },
+      {
+        "id": "Q16",
+        "required": [],
+        "selected": [],
+        "missing": [],
+        "unexpected_extra": [],
+        "all_required": true
+      }
+    ]
+  },
+  "B": {
+    "rows": 60,
+    "pages": 2,
+    "wire_json_chars": 10157,
+    "wire_json_bytes": 18619,
+    "model_catalog_chars": 10436,
+    "model_catalog_utf8_bytes": 18898,
+    "model_catalog_tokens_o200k_base": 5101,
+    "reader_sha256": "9cefd12120b5463589e20188b0023cad22488be05df0e7e4641511439226261f",
+    "catalog_sha256": "12fafac515d4046795c86eeb58620d1692c92789a6ee04bb7ba88ab1d4f403c0",
+    "required_candidate_hits": 16,
+    "required_candidate_total": 16,
+    "candidate_recall": 1.0,
+    "selected_candidates_total": 18,
+    "unexpected_candidates_total": 0,
+    "candidate_precision_with_allowed_extras": 1.0,
+    "questions_all_required_recalled": 16,
+    "questions": 16,
+    "negative_queries_correct": 2,
+    "unique_detail_ids": 16,
+    "detail_call_count": 1,
+    "details_tokens_o200k_base": 1592,
+    "catalog_plus_details_tokens_o200k_base": 6693,
+    "per_query": [
+      {
+        "id": "Q01",
+        "required": [
+          "preference_27"
+        ],
+        "selected": [
+          "preference_27"
+        ],
+        "missing": [],
+        "unexpected_extra": [],
+        "all_required": true
+      },
+      {
+        "id": "Q02",
+        "required": [
+          "semantic_46"
+        ],
+        "selected": [
+          "semantic_46"
+        ],
+        "missing": [],
+        "unexpected_extra": [],
+        "all_required": true
+      },
+      {
+        "id": "Q03",
+        "required": [
+          "preference_49"
+        ],
+        "selected": [
+          "preference_49"
+        ],
+        "missing": [],
+        "unexpected_extra": [],
+        "all_required": true
+      },
+      {
+        "id": "Q04",
+        "required": [
+          "preference_50"
+        ],
+        "selected": [
+          "preference_50"
+        ],
+        "missing": [],
+        "unexpected_extra": [],
+        "all_required": true
+      },
+      {
+        "id": "Q05",
+        "required": [
+          "semantic_48"
+        ],
+        "selected": [
+          "semantic_48"
+        ],
+        "missing": [],
+        "unexpected_extra": [],
+        "all_required": true
+      },
+      {
+        "id": "Q06",
+        "required": [
+          "preference_30"
+        ],
+        "selected": [
+          "preference_30"
+        ],
+        "missing": [],
+        "unexpected_extra": [],
+        "all_required": true
+      },
+      {
+        "id": "Q07",
+        "required": [
+          "preference_31"
+        ],
+        "selected": [
+          "preference_27",
+          "preference_31"
+        ],
+        "missing": [],
+        "unexpected_extra": [],
+        "all_required": true
+      },
+      {
+        "id": "Q08",
+        "required": [
+          "preference_28"
+        ],
+        "selected": [
+          "preference_28"
+        ],
+        "missing": [],
+        "unexpected_extra": [],
+        "all_required": true
+      },
+      {
+        "id": "Q09",
+        "required": [
+          "preference_29"
+        ],
+        "selected": [
+          "preference_29"
+        ],
+        "missing": [],
+        "unexpected_extra": [],
+        "all_required": true
+      },
+      {
+        "id": "Q10",
+        "required": [
+          "preference_29",
+          "preference_33"
+        ],
+        "selected": [
+          "preference_29",
+          "preference_33"
+        ],
+        "missing": [],
+        "unexpected_extra": [],
+        "all_required": true
+      },
+      {
+        "id": "Q11",
+        "required": [
+          "preference_34"
+        ],
+        "selected": [
+          "preference_34"
+        ],
+        "missing": [],
+        "unexpected_extra": [],
+        "all_required": true
+      },
+      {
+        "id": "Q12",
+        "required": [
+          "preference_53"
+        ],
+        "selected": [
+          "preference_53",
+          "semantic_52"
+        ],
+        "missing": [],
+        "unexpected_extra": [],
+        "all_required": true
+      },
+      {
+        "id": "Q13",
+        "required": [
+          "preference_10001"
+        ],
+        "selected": [
+          "preference_10001"
+        ],
+        "missing": [],
+        "unexpected_extra": [],
+        "all_required": true
+      },
+      {
+        "id": "Q14",
+        "required": [
+          "preference_10073",
+          "preference_10223"
+        ],
+        "selected": [
+          "preference_10073",
+          "preference_10223"
+        ],
+        "missing": [],
+        "unexpected_extra": [],
+        "all_required": true
+      },
+      {
+        "id": "Q15",
+        "required": [],
+        "selected": [],
+        "missing": [],
+        "unexpected_extra": [],
+        "all_required": true
+      },
+      {
+        "id": "Q16",
+        "required": [],
+        "selected": [],
+        "missing": [],
+        "unexpected_extra": [],
+        "all_required": true
+      }
+    ]
+  },
+  "C": {
+    "rows": 60,
+    "pages": 2,
+    "wire_json_chars": 8856,
+    "wire_json_bytes": 16806,
+    "model_catalog_chars": 9135,
+    "model_catalog_utf8_bytes": 17085,
+    "model_catalog_tokens_o200k_base": 4616,
+    "reader_sha256": "07621a30f3f5f3b63ec95c650b74f797f041da4e40ad89e96c68b8d378cd1292",
+    "catalog_sha256": "b641d7dc31625fec2ffa27595f6f1bf6c57e9054526ba19d96e8dca9e7a65c1e",
+    "required_candidate_hits": 16,
+    "required_candidate_total": 16,
+    "candidate_recall": 1.0,
+    "selected_candidates_total": 17,
+    "unexpected_candidates_total": 0,
+    "candidate_precision_with_allowed_extras": 1.0,
+    "questions_all_required_recalled": 16,
+    "questions": 16,
+    "negative_queries_correct": 2,
+    "unique_detail_ids": 16,
+    "detail_call_count": 2,
+    "details_tokens_o200k_base": 1594,
+    "catalog_plus_details_tokens_o200k_base": 6210,
+    "per_query": [
+      {
+        "id": "Q01",
+        "required": [
+          "preference_27"
+        ],
+        "selected": [
+          "preference_27"
+        ],
+        "missing": [],
+        "unexpected_extra": [],
+        "all_required": true
+      },
+      {
+        "id": "Q02",
+        "required": [
+          "semantic_46"
+        ],
+        "selected": [
+          "semantic_46"
+        ],
+        "missing": [],
+        "unexpected_extra": [],
+        "all_required": true
+      },
+      {
+        "id": "Q03",
+        "required": [
+          "preference_49"
+        ],
+        "selected": [
+          "preference_49"
+        ],
+        "missing": [],
+        "unexpected_extra": [],
+        "all_required": true
+      },
+      {
+        "id": "Q04",
+        "required": [
+          "preference_50"
+        ],
+        "selected": [
+          "preference_50"
+        ],
+        "missing": [],
+        "unexpected_extra": [],
+        "all_required": true
+      },
+      {
+        "id": "Q05",
+        "required": [
+          "semantic_48"
+        ],
+        "selected": [
+          "semantic_48"
+        ],
+        "missing": [],
+        "unexpected_extra": [],
+        "all_required": true
+      },
+      {
+        "id": "Q06",
+        "required": [
+          "preference_30"
+        ],
+        "selected": [
+          "preference_30"
+        ],
+        "missing": [],
+        "unexpected_extra": [],
+        "all_required": true
+      },
+      {
+        "id": "Q07",
+        "required": [
+          "preference_31"
+        ],
+        "selected": [
+          "preference_27",
+          "preference_31"
+        ],
+        "missing": [],
+        "unexpected_extra": [],
+        "all_required": true
+      },
+      {
+        "id": "Q08",
+        "required": [
+          "preference_28"
+        ],
+        "selected": [
+          "preference_28"
+        ],
+        "missing": [],
+        "unexpected_extra": [],
+        "all_required": true
+      },
+      {
+        "id": "Q09",
+        "required": [
+          "preference_29"
+        ],
+        "selected": [
+          "preference_29"
+        ],
+        "missing": [],
+        "unexpected_extra": [],
+        "all_required": true
+      },
+      {
+        "id": "Q10",
+        "required": [
+          "preference_29",
+          "preference_33"
+        ],
+        "selected": [
+          "preference_29",
+          "preference_33"
+        ],
+        "missing": [],
+        "unexpected_extra": [],
+        "all_required": true
+      },
+      {
+        "id": "Q11",
+        "required": [
+          "preference_34"
+        ],
+        "selected": [
+          "preference_34"
+        ],
+        "missing": [],
+        "unexpected_extra": [],
+        "all_required": true
+      },
+      {
+        "id": "Q12",
+        "required": [
+          "preference_53"
+        ],
+        "selected": [
+          "preference_53"
+        ],
+        "missing": [],
+        "unexpected_extra": [],
+        "all_required": true
+      },
+      {
+        "id": "Q13",
+        "required": [
+          "preference_10001"
+        ],
+        "selected": [
+          "preference_10001"
+        ],
+        "missing": [],
+        "unexpected_extra": [],
+        "all_required": true
+      },
+      {
+        "id": "Q14",
+        "required": [
+          "preference_10073",
+          "preference_10223"
+        ],
+        "selected": [
+          "preference_10073",
+          "preference_10223"
+        ],
+        "missing": [],
+        "unexpected_extra": [],
+        "all_required": true
+      },
+      {
+        "id": "Q15",
+        "required": [],
+        "selected": [],
+        "missing": [],
+        "unexpected_extra": [],
+        "all_required": true
+      },
+      {
+        "id": "Q16",
+        "required": [],
+        "selected": [],
+        "missing": [],
+        "unexpected_extra": [],
+        "all_required": true
+      }
+    ]
+  },
+  "D": {
+    "rows": 60,
+    "pages": 2,
+    "wire_json_chars": 11589,
+    "wire_json_bytes": 22233,
+    "model_catalog_chars": 11868,
+    "model_catalog_utf8_bytes": 22512,
+    "model_catalog_tokens_o200k_base": 6107,
+    "reader_sha256": "9cefd12120b5463589e20188b0023cad22488be05df0e7e4641511439226261f",
+    "catalog_sha256": "ad09115a8a0ac4352e99f03027db712eb29ecd83379f3f9a9fefdee8c9c158d8",
+    "required_candidate_hits": 16,
+    "required_candidate_total": 16,
+    "candidate_recall": 1.0,
+    "selected_candidates_total": 17,
+    "unexpected_candidates_total": 0,
+    "candidate_precision_with_allowed_extras": 1.0,
+    "questions_all_required_recalled": 16,
+    "questions": 16,
+    "negative_queries_correct": 2,
+    "unique_detail_ids": 16,
+    "detail_call_count": 2,
+    "details_tokens_o200k_base": 1594,
+    "catalog_plus_details_tokens_o200k_base": 7701,
+    "per_query": [
+      {
+        "id": "Q01",
+        "required": [
+          "preference_27"
+        ],
+        "selected": [
+          "preference_27"
+        ],
+        "missing": [],
+        "unexpected_extra": [],
+        "all_required": true
+      },
+      {
+        "id": "Q02",
+        "required": [
+          "semantic_46"
+        ],
+        "selected": [
+          "semantic_46"
+        ],
+        "missing": [],
+        "unexpected_extra": [],
+        "all_required": true
+      },
+      {
+        "id": "Q03",
+        "required": [
+          "preference_49"
+        ],
+        "selected": [
+          "preference_49"
+        ],
+        "missing": [],
+        "unexpected_extra": [],
+        "all_required": true
+      },
+      {
+        "id": "Q04",
+        "required": [
+          "preference_50"
+        ],
+        "selected": [
+          "preference_50"
+        ],
+        "missing": [],
+        "unexpected_extra": [],
+        "all_required": true
+      },
+      {
+        "id": "Q05",
+        "required": [
+          "semantic_48"
+        ],
+        "selected": [
+          "semantic_48"
+        ],
+        "missing": [],
+        "unexpected_extra": [],
+        "all_required": true
+      },
+      {
+        "id": "Q06",
+        "required": [
+          "preference_30"
+        ],
+        "selected": [
+          "preference_30"
+        ],
+        "missing": [],
+        "unexpected_extra": [],
+        "all_required": true
+      },
+      {
+        "id": "Q07",
+        "required": [
+          "preference_31"
+        ],
+        "selected": [
+          "preference_27",
+          "preference_31"
+        ],
+        "missing": [],
+        "unexpected_extra": [],
+        "all_required": true
+      },
+      {
+        "id": "Q08",
+        "required": [
+          "preference_28"
+        ],
+        "selected": [
+          "preference_28"
+        ],
+        "missing": [],
+        "unexpected_extra": [],
+        "all_required": true
+      },
+      {
+        "id": "Q09",
+        "required": [
+          "preference_29"
+        ],
+        "selected": [
+          "preference_29"
+        ],
+        "missing": [],
+        "unexpected_extra": [],
+        "all_required": true
+      },
+      {
+        "id": "Q10",
+        "required": [
+          "preference_29",
+          "preference_33"
+        ],
+        "selected": [
+          "preference_29",
+          "preference_33"
+        ],
+        "missing": [],
+        "unexpected_extra": [],
+        "all_required": true
+      },
+      {
+        "id": "Q11",
+        "required": [
+          "preference_34"
+        ],
+        "selected": [
+          "preference_34"
+        ],
+        "missing": [],
+        "unexpected_extra": [],
+        "all_required": true
+      },
+      {
+        "id": "Q12",
+        "required": [
+          "preference_53"
+        ],
+        "selected": [
+          "preference_53"
+        ],
+        "missing": [],
+        "unexpected_extra": [],
+        "all_required": true
+      },
+      {
+        "id": "Q13",
+        "required": [
+          "preference_10001"
+        ],
+        "selected": [
+          "preference_10001"
+        ],
+        "missing": [],
+        "unexpected_extra": [],
+        "all_required": true
+      },
+      {
+        "id": "Q14",
+        "required": [
+          "preference_10073",
+          "preference_10223"
+        ],
+        "selected": [
+          "preference_10073",
+          "preference_10223"
+        ],
+        "missing": [],
+        "unexpected_extra": [],
+        "all_required": true
+      },
+      {
+        "id": "Q15",
+        "required": [],
+        "selected": [],
+        "missing": [],
+        "unexpected_extra": [],
+        "all_required": true
+      },
+      {
+        "id": "Q16",
+        "required": [],
+        "selected": [],
+        "missing": [],
+        "unexpected_extra": [],
+        "all_required": true
+      }
+    ]
+  },
+  "E": {
+    "rows": 60,
+    "pages": 2,
+    "wire_json_chars": 9801,
+    "wire_json_bytes": 17865,
+    "model_catalog_chars": 10080,
+    "model_catalog_utf8_bytes": 18144,
+    "model_catalog_tokens_o200k_base": 4863,
+    "reader_sha256": "9cefd12120b5463589e20188b0023cad22488be05df0e7e4641511439226261f",
+    "catalog_sha256": "6c3780416adc06851b2fd5b5c8e20472415ba97ceaabf6bdc6e3af4a0de05e5c",
+    "required_candidate_hits": 16,
+    "required_candidate_total": 16,
+    "candidate_recall": 1.0,
+    "selected_candidates_total": 20,
+    "unexpected_candidates_total": 0,
+    "candidate_precision_with_allowed_extras": 1.0,
+    "questions_all_required_recalled": 16,
+    "questions": 16,
+    "negative_queries_correct": 2,
+    "unique_detail_ids": 16,
+    "detail_call_count": 1,
+    "details_tokens_o200k_base": 1592,
+    "catalog_plus_details_tokens_o200k_base": 6455,
+    "per_query": [
+      {
+        "id": "Q01",
+        "required": [
+          "preference_27"
+        ],
+        "selected": [
+          "preference_27"
+        ],
+        "missing": [],
+        "unexpected_extra": [],
+        "all_required": true
+      },
+      {
+        "id": "Q02",
+        "required": [
+          "semantic_46"
+        ],
+        "selected": [
+          "semantic_46"
+        ],
+        "missing": [],
+        "unexpected_extra": [],
+        "all_required": true
+      },
+      {
+        "id": "Q03",
+        "required": [
+          "preference_49"
+        ],
+        "selected": [
+          "preference_49",
+          "semantic_48"
+        ],
+        "missing": [],
+        "unexpected_extra": [],
+        "all_required": true
+      },
+      {
+        "id": "Q04",
+        "required": [
+          "preference_50"
+        ],
+        "selected": [
+          "preference_50",
+          "semantic_48"
+        ],
+        "missing": [],
+        "unexpected_extra": [],
+        "all_required": true
+      },
+      {
+        "id": "Q05",
+        "required": [
+          "semantic_48"
+        ],
+        "selected": [
+          "semantic_48"
+        ],
+        "missing": [],
+        "unexpected_extra": [],
+        "all_required": true
+      },
+      {
+        "id": "Q06",
+        "required": [
+          "preference_30"
+        ],
+        "selected": [
+          "preference_30"
+        ],
+        "missing": [],
+        "unexpected_extra": [],
+        "all_required": true
+      },
+      {
+        "id": "Q07",
+        "required": [
+          "preference_31"
+        ],
+        "selected": [
+          "preference_27",
+          "preference_31"
+        ],
+        "missing": [],
+        "unexpected_extra": [],
+        "all_required": true
+      },
+      {
+        "id": "Q08",
+        "required": [
+          "preference_28"
+        ],
+        "selected": [
+          "preference_28"
+        ],
+        "missing": [],
+        "unexpected_extra": [],
+        "all_required": true
+      },
+      {
+        "id": "Q09",
+        "required": [
+          "preference_29"
+        ],
+        "selected": [
+          "preference_29"
+        ],
+        "missing": [],
+        "unexpected_extra": [],
+        "all_required": true
+      },
+      {
+        "id": "Q10",
+        "required": [
+          "preference_29",
+          "preference_33"
+        ],
+        "selected": [
+          "preference_29",
+          "preference_33"
+        ],
+        "missing": [],
+        "unexpected_extra": [],
+        "all_required": true
+      },
+      {
+        "id": "Q11",
+        "required": [
+          "preference_34"
+        ],
+        "selected": [
+          "preference_34"
+        ],
+        "missing": [],
+        "unexpected_extra": [],
+        "all_required": true
+      },
+      {
+        "id": "Q12",
+        "required": [
+          "preference_53"
+        ],
+        "selected": [
+          "preference_53",
+          "semantic_52"
+        ],
+        "missing": [],
+        "unexpected_extra": [],
+        "all_required": true
+      },
+      {
+        "id": "Q13",
+        "required": [
+          "preference_10001"
+        ],
+        "selected": [
+          "preference_10001"
+        ],
+        "missing": [],
+        "unexpected_extra": [],
+        "all_required": true
+      },
+      {
+        "id": "Q14",
+        "required": [
+          "preference_10073",
+          "preference_10223"
+        ],
+        "selected": [
+          "preference_10073",
+          "preference_10223"
+        ],
+        "missing": [],
+        "unexpected_extra": [],
+        "all_required": true
+      },
+      {
+        "id": "Q15",
+        "required": [],
+        "selected": [],
+        "missing": [],
+        "unexpected_extra": [],
+        "all_required": true
+      },
+      {
+        "id": "Q16",
+        "required": [],
+        "selected": [],
+        "missing": [],
+        "unexpected_extra": [],
+        "all_required": true
+      }
+    ]
+  }
+}

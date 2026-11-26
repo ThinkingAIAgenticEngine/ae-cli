@@ -1,7 +1,7 @@
 ---
 name: ae-dataops
-version: 2.2.0
-description: "Use ae-cli for DataOps warehouse tables/views and fields, recycling, workflow configuration and release, execution troubleshooting, backfill, SQL queries, and data integration."
+version: 2.3.0
+description: "Use ae-cli for DataOps warehouse tables/views and fields, recycling, workflow configuration (SQL, Python, integration, and instance-check nodes) and release, execution troubleshooting, backfill, SQL queries, and data integration."
 metadata:
   requires:
     bins: ["ae-cli"]
@@ -95,7 +95,8 @@ Backfill lifecycle: Discover eligible PROD flow → Create or fully update DRAFT
 | Discover or select a space | `dataops_repo` | [Space discovery](#1-space-discovery) | Resolve the intended `spaceCode`; reuse trusted context |
 | Create tables/views or change a field type/comment | `dataops_datatable` | [Table workflows](references/dataops-table.md) | Verify DEV state; publish only when requested |
 | Delete a table/view; inspect or empty one recycle-bin entry | `dataops_datatable` | [Entity lifecycle](references/dataops-table.md#entity-lifecycle-scope-and-safety) | Ordinary deletion stops at recycling; permanent deletion needs separate authorization |
-| Create/configure a flow; add/update/delete tasks and parameters; schedule or release | `dataops_flow` | [Flow configuration](references/dataops-flow-create.md) | Read back the requested DEV or PROD definition; do not add a manual run |
+| Create/configure a flow; add/update/delete SQL, integration, or check tasks and parameters; schedule or release | `dataops_flow` | [Flow configuration](references/dataops-flow-create.md) | Read back the requested DEV or PROD definition; do not add a manual run |
+| Author/update/read Python task nodes; discover Python versions, pip package sources, or mount/DEV directories | `dataops_flow` | [Python nodes](references/dataops-flow-python.md) | Debug locally, upload single-file `main.py` to DEV; release/run only when requested |
 | Execute, inspect, or stop a run; troubleshoot failed work | `dataops_flow`, `dataops_operations` | [Execution and monitoring](references/dataops-flow-monitor.md) | Match the exact instance; whole-flow execution is not failed-node retry |
 | Fill multiple historical business dates | `dataops_operations` | [Backfill jobs](references/dataops-backfill.md) | Draft creation, job start, and completed plans are different outcomes |
 | Create/test a datasource or configure/run a sync | `dataops_integration` | [Data integration](references/dataops-integration.md) | Verify saved config or the exact run, according to the request |
@@ -137,11 +138,11 @@ Key constraints:
 
 ## 3. Flow Orchestration
 
-Flow references cover **creation and configuration**, **execution and monitoring**, and **backfill jobs**.
+Flow references cover **creation and configuration**, **Python task nodes**, **execution and monitoring**, and **backfill jobs**.
 
 **Lifecycle: DEV configuration → Requested release → Requested execution or troubleshooting. Stop at the user's boundary.**
 
-Detailed creation/configuration commands live in [`references/dataops-flow-create.md`](references/dataops-flow-create.md). Detailed execution, monitoring, operation instance, task log, and stop commands live in [`references/dataops-flow-monitor.md`](references/dataops-flow-monitor.md). Persistent multi-date backfill jobs live in [`references/dataops-backfill.md`](references/dataops-backfill.md).
+Detailed creation/configuration commands live in [`references/dataops-flow-create.md`](references/dataops-flow-create.md). Python node authoring, `TE_OUTPUT:` protocol, and environment/directory discovery live in [`references/dataops-flow-python.md`](references/dataops-flow-python.md). Detailed execution, monitoring, operation instance, task log, and stop commands live in [`references/dataops-flow-monitor.md`](references/dataops-flow-monitor.md). Persistent multi-date backfill jobs live in [`references/dataops-backfill.md`](references/dataops-backfill.md).
 
 Key constraints:
 - Create and update tasks in DEV, preview/release before PROD execution.
@@ -153,7 +154,9 @@ Key constraints:
 - A backfill job is persistent and batches multiple base dates; do not emulate it by looping `+execute_flow`.
 - Create a draft with `+create_backfill_job` and run it as a separate step. `+rerun_backfill_job` reruns the complete job, not only failed plans.
 - `+update_backfill_job` replaces a DRAFT job's complete configuration; inspect the job first and do not treat it as a partial patch. Treat `+delete_backfill_job` as high-risk and preview it with `--dry-run` before confirmation.
-- Reference flow or workspace parameters in task SQL as `${paramKey}`. Inspect parameter sources in the overview before release.
+- Reference flow, workspace, or upstream `OUT` parameters in task SQL or Python scripts as `${paramKey}`. Both `TRINO_SQL` (`+create_sql_task` / `+update_sql_task` / `+get_sql_task`) and `PYTHON` nodes support `--outputParams` (`VARCHAR` `OUT` declarations); inspect parameter sources in `+get_flow_overview` and task `paramCompare` in `+preview_release_flow` before release.
+- Python nodes run a **single self-contained `main.py` script** (never split local helper `.py` modules). Develop and debug single `.py` and `requirements.txt` files locally, upload via `+create_python_task` / `+update_python_task` with `--scriptFile` and `--requirementsFile`, and read existing DEV definitions with `+get_python_task`. Pre-declare `TE_OUTPUT:` outputs via `--outputParams` and print one compact `TE_OUTPUT:{"name":"<paramKey>","value":<jsonValue>}` line per parameter (malformed lines fail the task).
+- All 7 Python commands—including `+list_python_versions`, `+list_python_package_sources`, `+list_python_directories`, and `+browse_python_directory`—require `dwWorkflowEdit` in `spaceCode` (permission denials return `error.type="permission"`, `code: "-10"`). No remote DEV single-node debug-run CLI exists (remote execution requires releasing to PROD and running `+execute_flow`), and `+browse_python_directory` inspects DEV storage only.
 
 ---
 

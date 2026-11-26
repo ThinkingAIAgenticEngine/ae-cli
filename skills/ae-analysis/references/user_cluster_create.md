@@ -6,7 +6,7 @@ Do not use it for uploaded-ID clusters or result-derived clusters; use `user-clu
 
 The response reports this directly: `computation.triggered_automatically=true`, `computation.status=submitted`, and `result_freshness.is_stale=true`. Follow `next_action`; when it is `poll_get`, invoke `next_capability_id` with the exact `next_input` returned by the command.
 
-Flags: `--project-id`, `--cluster-name`, `--display-name`, `--definition-request` required. Optional: `--authenticated-only`, `--zone-offset`, `--entity-id`. The cluster type comes from `definition_request.type`.
+Flags: `--project-id`, `--cluster-name`, `--display-name`, `--definition-request` required. Optional: `--authenticated-only`, `--zone-offset`, `--entity-id`, `--enable-auto-refresh`, `--auto-refresh-schedule`. The cluster type comes from `definition_request.type`.
 
 `cluster_name` is a machine identifier: 1-80 characters, starts with a letter, and contains only letters, digits, or underscores. `display_name` is 1-80 characters. The CLI rejects violations before dispatch.
 
@@ -17,3 +17,5 @@ The backend validates and compiles the definition inside the create operation; i
 ```bash
 ae-cli analysis user-cluster create --project-id <project_id> --cluster-name retained_users --display-name "Retained Users" --definition-request '{"type":"condition","conditions":{"relation":"and","items":[{"type":"user","field":{"name":"country","type":"user_property"},"operator":"eq","values":["US"]}]}}'
 ```
+
+Periodic refresh uses the [same structured schedule contract as tags](audience_scheduling.md). Create supports daily, daily_multiple, weekly, and monthly plans. A schedule enables periodic refresh; true without a schedule is rejected. Omitting both flags leaves periodic refresh disabled. This is separate from the initial calculation.

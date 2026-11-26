@@ -22,7 +22,8 @@ ae-cli analysis drilldown-user-events run \
 
 - `--drilldown-context-id`: returned by the same user-subject `analysis drilldown-entities run`.
 - `--project-id`: the project used by that drilldown; it must match the project stored by `drilldown_context_id`.
-- `--user-id`: canonical `user_id` from one item in that same response. Never substitute `entity_value`, `#distinct_id`, account ID, or another identity field.
+- Pass exactly one of `--user-id` or `--account-id`. Use `--user-id` with the canonical `user_id` from one item in the same response. Use `--account-id` with the exact project `#account_id`, for example a PlayFab ID stored as `#account_id`. The server resolves the account before querying its event sequence. Do not substitute `entity_value` or `#distinct_id` for either identity.
+- Account lookup requires a server whose capability schema includes `account_id`. On an older server, match the account against `items[].attributes["#account_id"]` and pass the matching row's `user_id`.
 - `--properties`: optional exact event-property projection. Omit it to use the default event columns. If present, each item uses backend keys `columnName` and `tableType`, for example `[{"columnName":"<event_property_name>","tableType":"event"}]`. `#user_id`, account ID, visitor ID, event name, and event time remain present; unrelated event properties must not be returned. `#user_id` is an internal association key, so Agents should normally display account ID and visitor ID to customers. Do not pass numeric table-type codes, string-name arrays, or snake_case nested keys.
 - `--sort-order`: `asc` or `desc`.
 - `--event-name-filter`, `--time-filter`, `--time-filter-before-nums`, `--time-filter-after-nums`: optional event sequence filters.

@@ -1,0 +1,11 @@
+node /Users/zhouyuan/dev/java/business_content/verification/catalog-keywords-20261117/arms/A/reader.mjs /Users/zhouyuan/dev/java/business_content/verification/catalog-keywords-20261117/arms/A/catalog.json 1
+cat /Users/zhouyuan/dev/java/business_content/verification/catalog-keywords-20261117/arms/A/queries.json
+node /Users/zhouyuan/dev/java/business_content/verification/catalog-keywords-20261117/arms/A/reader.mjs /Users/zhouyuan/dev/java/business_content/verification/catalog-keywords-20261117/arms/A/catalog.json 1
+node /Users/zhouyuan/dev/java/business_content/verification/catalog-keywords-20261117/arms/A/reader.mjs /Users/zhouyuan/dev/java/business_content/verification/catalog-keywords-20261117/arms/A/catalog.json 1
+node /Users/zhouyuan/dev/java/business_content/verification/catalog-keywords-20261117/arms/A/reader.mjs /Users/zhouyuan/dev/java/business_content/verification/catalog-keywords-20261117/arms/A/catalog.json 2
+node /Users/zhouyuan/dev/java/business_content/verification/catalog-keywords-20261117/arms/A/detail.mjs preference_27 semantic_46 preference_49 preference_50 semantic_48 preference_30 preference_31 preference_28 preference_29 preference_33 preference_34 preference_53 semantic_52 preference_10001 preference_10223 preference_10073
+# 前置第1次reader错误：The server catalog is incomplete. Do not analyze from a preview or legacy bounded response.
+# 前置第2次reader错误：Catalog row identity, revision or summary is invalid.
+# 父任务修复输入契约后，第3次reader成功返回第1页，随后第2页完整读取；不将前置契约错误计为语义召回失败。
+# 完整目录：2页、60条。候选在任何详情读取前冻结。详情去重读取16个ID；无额外依赖ID读取。
+# 存在不确定：数据缺口、内测账号标记缺失、夏日资格正文有效期与expired字段冲突、2题无匹配。

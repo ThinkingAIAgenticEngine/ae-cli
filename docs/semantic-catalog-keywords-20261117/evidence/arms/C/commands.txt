@@ -1,0 +1,7 @@
+node reader.mjs catalog.json 1
+cat queries.json
+node /Users/zhouyuan/dev/java/business_content/verification/catalog-keywords-20261117/arms/C/reader.mjs /Users/zhouyuan/dev/java/business_content/verification/catalog-keywords-20261117/arms/C/catalog.json 1
+node reader.mjs catalog.json 1
+node reader.mjs catalog.json 2
+node detail.mjs preference_27 semantic_46 preference_49 preference_50 semantic_48 preference_30 preference_31 preference_28 preference_29 preference_33 preference_34 preference_53 preference_10001 preference_10223 preference_10073
+node detail.mjs semantic_52

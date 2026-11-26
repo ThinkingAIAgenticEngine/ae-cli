@@ -1,16 +1,10 @@
 # analysis-meta governance-recommendation auto-review
 
-## Use
-
 Use this command only when the user explicitly asks the Agent to automatically review or automatically certify recommended assets.
 
-## Do not use
-
-Do not call this command for a plain recommendation request. Do not call this command for recommendation plus review-page submission. Those flows use `governance-recommendation export` and, when explicitly authorized, `agent-review submit-to-page`.
+Do not use this command for a plain recommendation request. Do not call this command for recommendation plus review-page submission. Those flows use `governance-recommendation export` and, when explicitly authorized, `agent-review submit-to-page`.
 
 ## Input and command
-
-Provide `--project-id`. `--window-days` defaults to 90; `--limit` is optional and fixes the recommendation scope when supplied.
 
 ```bash
 ae-cli analysis-meta governance-recommendation auto-review \

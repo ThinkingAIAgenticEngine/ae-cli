@@ -70,6 +70,65 @@ test('report update accepts presentation-only without replacing the definition o
   });
 });
 
+test('ordinary-model display patches retain semantic arrays, explicit false and source-only scope', async () => {
+  const patches = [
+    { show_values: false, retention: { key_periods: { mode: 'selected', day: [2, 7, 14, 30, 222, 236] }, cohort_display_grain: 'week', table_rows: 'date' } },
+    { funnel: { result_view: 'drop_off', table_detail: 'steps' } },
+    { interval: { histogram_value: 'occurrences' }, sort: { by: 'value', direction: 'desc' } },
+    { pie: { show_percentage: false, group_limit: 20, max_charts: 4 } },
+    { date_annotations: { tag_keys: [], include_untagged: false } },
+  ];
+  for (const presentation of patches) {
+    const result = await dispatch('analysis.report.update', { 'project-id': 1, 'report-id': 11, 'report-version': 2, presentation });
+    assert.deepEqual(result.body.input, { project_id: 1, report_id: 11, version: 2, presentation });
+    assert.equal('definition' in result.body.input, false);
+    assert.equal('dashboard_id' in result.body.input, false);
+  }
+});
+
+test('display options coexist with applicable definitions and preserve old creation restrictions', async () => {
+  const result = await dispatch('analysis.report.update', {
+    'project-id': 1, 'report-id': 11, 'report-version': 2, 'model-type': 'retention',
+    definition: { retention: { initial_event: 'register', return_event: 'login', unit_num: 300 } },
+    presentation: { show_values: true, retention: { key_periods: { mode: 'all' } } },
+  });
+  assert.equal(result.body.input.model_type, 'retention');
+  assert.equal(result.body.input.definition.retention.unit_num, 300);
+  assert.throws(() => command('analysis.report.create').validate!(context({
+    'project-id': 1, 'report-name': 'New', 'model-type': 'event', definition: { metrics: [] },
+    presentation: { show_values: true },
+  })), /presentation/);
+});
+
+test('display validation rejects raw names, null, empty objects, wrong primitive types and invalid models', () => {
+  const invalid: unknown[] = [
+    { showChartLabel: true }, { show_values: 'false' }, { show_values: null },
+    { retention: {} }, { retention: { key_periods: { day: [] } } },
+    { retention: { key_periods: { day: [1.5] } } }, { retention: { key_periods: { day: [-1] } } },
+    { retention: { key_periods: { day: ['7'] } } }, { retention: { key_periods: { T1: '1,7' } } },
+    { retention: { trend_value: 'num' } }, { sort: { by: 'value' } },
+    { pie: { group_limit: 11 } }, { pie: { max_charts: 3 } },
+    { date_annotations: { tag_keys: ['__UNGROUPED__'] } },
+    { date_annotations: { tag_keys: [7] } }, { date_annotations: { include_untagged: 'true' } },
+    { interval: { histogram_value: 'event' } },
+  ];
+  for (const presentation of invalid) {
+    assert.throws(() => command('analysis.report.update').validate!(context({
+      'project-id': 1, 'report-id': 11, 'report-version': 2, presentation,
+    })), /presentation/);
+  }
+  for (const [model, presentation] of [
+    ['sql', { show_values: true }], ['event', { retention: { table_rows: 'date' } }],
+    ['distribution', { show_values: true }], ['prop_analysis', { pie: { max_charts: 2 } }],
+    ['funnel', { chart_type: 'line' }],
+  ] as const) {
+    assert.throws(() => command('analysis.report.update').validate!(context({
+      'project-id': 1, 'report-id': 11, 'report-version': 2, 'model-type': model,
+      definition: {}, presentation,
+    })), /presentation/);
+  }
+});
+
 test('same-model definition replacement omits presentation to preserve the saved display', async () => {
   const result = await dispatch('analysis.report.update', {
     'project-id': 1, 'report-id': 11, 'report-version': 2,

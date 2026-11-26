@@ -83,7 +83,10 @@ export const adhocBaseFlags = [
   metadataResolutionsFlag,
   requestIdFlag,
   useCacheFlag,
-  zoneOffsetFlag,
+  {
+    ...zoneOffsetFlag,
+    desc: 'Omit for the server default. Fixed UTC offsets (-12..14) require project timezone conversion and a configured offset. Use 99 for stored local time, which is also the default when conversion is disabled.',
+  },
   fieldsFlag,
   clusterQueryScopeFlag,
   slaveClusterIdFlag,

@@ -1,5 +1,7 @@
 # User cluster definition models
 
+For condition clusters, fixed event and sequence dates cannot be later than today in the effective cluster timezone. On update, an omitted timezone uses the saved cluster timezone. The same rule applies inside nested groups and include/exclude conditions.
+
 This is the canonical `--definition-request` contract for direct user-cluster create/update. Shared operators, properties, time ranges, and filters are defined in [`audience_models.md`](audience_models.md).
 
 Top-level variants:

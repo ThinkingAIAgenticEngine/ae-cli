@@ -1,0 +1,171 @@
+[
+  {
+    "id": "Q01",
+    "adopted_ids": [
+      "preference_27"
+    ],
+    "dependency_ids": [],
+    "conclusion": "按项目时区逐日统计最近七个完整自然日（不含今天）触发 ps_login 的去重玩家，通关或领奖不能代替登录，缺测试账号标记时不能排除内测账号。",
+    "missing_or_uncertain": [
+      "当前没有测试账号标记，无法实施内测账号排除。"
+    ]
+  },
+  {
+    "id": "Q02",
+    "adopted_ids": [
+      "semantic_46"
+    ],
+    "dependency_ids": [],
+    "conclusion": "没有适用个人口径时，共享日活取登录或通关玩家的去重并集，不能把两项去重人数直接相加。",
+    "missing_or_uncertain": []
+  },
+  {
+    "id": "Q03",
+    "adopted_ids": [
+      "preference_49"
+    ],
+    "dependency_ids": [
+      "semantic_48"
+    ],
+    "conclusion": "上周历史首次安装批次在生命天0至6累计的同币种支付减退款为七日价值总额，人均另除同批首次安装去重人数，注册或首次登录人数不能替代。",
+    "missing_or_uncertain": [
+      "当前无安装和流水，无法报告真实总额或人均值；需确认项目时区下上周范围及同币种观察窗口。"
+    ]
+  },
+  {
+    "id": "Q04",
+    "adopted_ids": [
+      "preference_50"
+    ],
+    "dependency_ids": [
+      "semantic_48"
+    ],
+    "conclusion": "七日回本比例是同获客渠道、同首次安装批次生命天0至6净收入除同币种获客成本，不能先减成本；零成本单列不可除，活动渠道不能替代获客渠道。",
+    "missing_or_uncertain": [
+      "缺获客成本、历史首次安装或获客渠道时不能计算该回本比例；退款符号须核实。"
+    ]
+  },
+  {
+    "id": "Q05",
+    "adopted_ids": [
+      "semantic_48"
+    ],
+    "dependency_ids": [],
+    "conclusion": "净流水按同窗口同币种的 ps_pay_success 金额减 ps_pay_refund 金额，退款为正值时直接扣减，CNY 与 USD 不能直接相加。",
+    "missing_or_uncertain": [
+      "实际退款正负约定未知时需先核实；没有汇率不能换算。"
+    ]
+  },
+  {
+    "id": "Q06",
+    "adopted_ids": [
+      "preference_30"
+    ],
+    "dependency_ids": [],
+    "conclusion": "厨房开门对应登录 ps_login，通关 ps_level_complete 只表示关卡完成，通关不证明付费且登录不证明首次安装。",
+    "missing_or_uncertain": []
+  },
+  {
+    "id": "Q07",
+    "adopted_ids": [
+      "preference_31"
+    ],
+    "dependency_ids": [
+      "preference_27"
+    ],
+    "conclusion": "星厨赛参与率分子是具参赛资格的登录活跃玩家中实际参加者，分母是同期具资格的登录活跃玩家，不能用领奖人数除全部活跃人数，缺资格数据应暂停计算。",
+    "missing_or_uncertain": [
+      "必须核实星厨赛实际 ps_campaign_id、当前资格规则及资格数据，不能假设全部活跃玩家均可参赛。"
+    ]
+  },
+  {
+    "id": "Q08",
+    "adopted_ids": [
+      "preference_28"
+    ],
+    "dependency_ids": [],
+    "conclusion": "先查登录与通关接入及观察窗口，再按获客渠道拆分；小样本展示人数、未成熟窗口单独说明，缺历史首次安装时不能用注册或首次登录构造安装批次。",
+    "missing_or_uncertain": [
+      "需确认数据接入和窗口成熟度；生命天缺失不能自动补零。"
+    ]
+  },
+  {
+    "id": "Q09",
+    "adopted_ids": [
+      "preference_29"
+    ],
+    "dependency_ids": [],
+    "conclusion": "经营简报默认金额和比例三位小数、人数整数，当次明确要求两位小数时以本次要求为准，展示精度不改变计算精度。",
+    "missing_or_uncertain": []
+  },
+  {
+    "id": "Q10",
+    "adopted_ids": [
+      "preference_33"
+    ],
+    "dependency_ids": [
+      "preference_29"
+    ],
+    "conclusion": "会员月报先按 ps_member_level 分层再给合计，分层规则不更改金额和比例默认三位小数及当次明确精度优先的规则。",
+    "missing_or_uncertain": []
+  },
+  {
+    "id": "Q11",
+    "adopted_ids": [
+      "preference_34"
+    ],
+    "dependency_ids": [],
+    "conclusion": "登录和支付无记录不能认定真实零活跃、零收入或零回本，应先核实事件接入、查询窗口和权限并说明当前缺业务流水、数值不可验证。",
+    "missing_or_uncertain": [
+      "当前业务事件尚未接入数据，定义明确不等于有真实可验证数值。"
+    ]
+  },
+  {
+    "id": "Q12",
+    "adopted_ids": [],
+    "dependency_ids": [
+      "semantic_52"
+    ],
+    "conclusion": "不能继续采用夏日奖励转化父规则：必要奖励资格正文仅有效至2026-08-31，即使参加和领奖事件仍在也须补充当前有效资格定义。",
+    "missing_or_uncertain": [
+      "preference_53 的必要依赖 semantic_52 已按正文日期过期，故不采用父规则；元数据 expired=false 与正文有效期不一致，以明确业务有效期为边界。"
+    ]
+  },
+  {
+    "id": "Q13",
+    "adopted_ids": [
+      "preference_10001"
+    ],
+    "dependency_ids": [],
+    "conclusion": "餐车巡游入门组奖励按活动结束时最终组归并，途中升组者按最终组处理；该规则仅适用于此活动和组别，不能计算全项目获客回收。",
+    "missing_or_uncertain": []
+  },
+  {
+    "id": "Q14",
+    "adopted_ids": [
+      "preference_10223",
+      "preference_10073"
+    ],
+    "dependency_ids": [],
+    "conclusion": "海岛集市大师组订单归属与入门组退款处理各自都按活动结束时最终组归并，但仅适用于各自活动组别与事项。",
+    "missing_or_uncertain": []
+  },
+  {
+    "id": "Q15",
+    "adopted_ids": [],
+    "dependency_ids": [],
+    "conclusion": "目录无匹配，不能确定合成蘑菇所需食材或失败体力消耗。",
+    "missing_or_uncertain": [
+      "缺合成配方与失败消耗规则。"
+    ]
+  },
+  {
+    "id": "Q16",
+    "adopted_ids": [],
+    "dependency_ids": [],
+    "conclusion": "目录无匹配，不能确定俄罗斯区圣诞月卡的苹果及安卓商店当前卢布价格。",
+    "missing_or_uncertain": [
+      "缺当前分地区、分商店的商品定价信息。"
+    ]
+  }
+]

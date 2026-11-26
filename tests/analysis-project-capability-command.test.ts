@@ -12,6 +12,7 @@ import {
 } from '../src/core/capability-routing.ts';
 import { clearCliToken, setCliTokenManual } from '../src/core/cli-token.ts';
 import { CliValidationError } from '../src/core/errors.ts';
+import { projectInfoGet } from '../src/commands/te-analysis/project/info/get.ts';
 import { projectPermissionBindingList } from '../src/commands/te-analysis/project/permission-binding/list.ts';
 import { projectRoleDelete } from '../src/commands/te-analysis/project/role/delete.ts';
 import { projectRoleGet } from '../src/commands/te-analysis/project/role/get.ts';
@@ -104,6 +105,38 @@ await test('project role get forwards project_id', async () => {
     project_id: 1,
     role_name: 'custom_role',
   });
+});
+
+await test('project info exposes the current policy and still accepts older responses', async () => {
+  clearCapabilityGatewayRoutesForTest();
+  registerCapabilityGatewayRoute('analysis', { gatewayDomain: 'analysis' });
+  const host = 'https://ta.example.com';
+  setCliTokenManual('analysis-project-contract-test-token', host);
+  const responses = [
+    { project_id: 1, project_semantic_kb_auto_discovery_enabled: true },
+    { project_id: 2, project_semantic_kb_auto_discovery_enabled: false },
+    { project_id: 1, project_semantic_kb_auto_discovery_enabled: false },
+    { project_id: 1 },
+  ];
+  const requestedProjects: number[] = [];
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = (async (request: string, init?: RequestInit) => {
+    assert.equal(new URL(request).pathname, '/api/cli/analysis/v1/capabilities/project.info.get/execute');
+    const body = JSON.parse(String(init?.body));
+    requestedProjects.push(body.input.project_id);
+    assert.deepEqual(body.input, { project_id: body.input.project_id });
+    return new Response(JSON.stringify({ ok: true, data: responses[requestedProjects.length - 1] }));
+  }) as typeof fetch;
+  try {
+    for (const response of responses) {
+      const output = await projectInfoGet.execute(ctx({ 'project-id': response.project_id }));
+      assert.deepEqual(JSON.parse(JSON.stringify(output)), response);
+    }
+    assert.deepEqual(requestedProjects, [1, 2, 1, 1]);
+  } finally {
+    globalThis.fetch = originalFetch;
+    clearCliToken(host);
+  }
 });
 
 await test('project role upsert preserves the structured role function payload', async () => {

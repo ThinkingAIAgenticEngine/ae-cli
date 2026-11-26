@@ -174,7 +174,6 @@ export interface CliConfigResult {
 export async function fetchCliConfig(
   host: string,
   cliToken: string,
-  signal?: AbortSignal,
 ): Promise<CliConfigResult | null> {
   const url = new URL(CLI_CONFIG_PATH, host.endsWith('/') ? host : `${host}/`);
   const external = readExternalCliToken(host)?.token === cliToken;
@@ -184,9 +183,6 @@ export async function fetchCliConfig(
   const dispatcher = new Agent({ connect: { timeout: FETCH_TIMEOUT_MS } });
   let cleanup: Promise<void> | undefined;
   const destroy = (): Promise<void> => cleanup ??= dispatcher.destroy().catch(() => {});
-  const abort = () => { controller.abort(); void destroy(); };
-  signal?.addEventListener('abort', abort, { once: true });
-  if (signal?.aborted) abort();
   const timer = setTimeout(() => {
     controller.abort();
     void destroy();
@@ -198,7 +194,6 @@ export async function fetchCliConfig(
       signal: controller.signal,
       headers: { Accept: 'application/json', ...(external ? { 'cli-token': cliToken } : {}), ...internalCallSourceHeaders() },
       ...externalCliTokenRequestOptions(url.toString()),
-      ...(signal ? { redirect: 'error' as const } : {}),
     };
     resp = await fetch(url.toString(), options);
     if (!resp.ok) return null;
@@ -220,10 +215,8 @@ export async function fetchCliConfig(
         : {}),
     };
   } catch {
-    signal?.throwIfAborted();
     return null;
   } finally {
-    signal?.removeEventListener('abort', abort);
     clearTimeout(timer);
     // Start destroying our own connections before awaiting an unread response body.
     const destroyed = destroy();

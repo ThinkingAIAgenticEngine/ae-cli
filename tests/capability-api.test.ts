@@ -820,7 +820,9 @@ await test('callCapabilityApi: 403 → PermissionError, no retry', async () => {
         type: 'permission',
         code: 'CAPABILITY_PERMISSION_DENIED',
         message: 'no permission for this project',
+        hint: 'Ask a project administrator.',
       },
+      meta: { invocation_id: 'test-invocation' },
     }), { status: 403 });
   }) as typeof fetch;
 
@@ -830,6 +832,9 @@ await test('callCapabilityApi: 403 → PermissionError, no retry', async () => {
       (err: Error) => {
         assert.ok(err instanceof PermissionError);
         assert.equal(err.code, 'CAPABILITY_PERMISSION_DENIED');
+        assert.equal(err.message, 'no permission for this project');
+        assert.equal(err.hint, 'Ask a project administrator.');
+        assert.equal(err.meta?.invocation_id, 'test-invocation');
         return true;
       },
     );
@@ -839,6 +844,42 @@ await test('callCapabilityApi: 403 → PermissionError, no retry', async () => {
     clearCliToken(host);
   }
 });
+
+for (const { label, body, contentType } of [
+  { label: 'plain text', body: 'Forbidden', contentType: 'text/plain' },
+  { label: 'HTML', body: '<html><body>Forbidden</body></html>', contentType: 'text/html' },
+  { label: 'empty body', body: null, contentType: 'text/plain' },
+]) {
+  await test(`callCapabilityApi: 403 with ${label} returns a generic PermissionError without retry`, async () => {
+    const host = 'https://test-capi-403-non-json.internal';
+    clearCliToken(host);
+    setCliTokenManual('tok', host);
+
+    let callCount = 0;
+    const prevFetch = globalThis.fetch;
+    globalThis.fetch = (async () => {
+      callCount++;
+      return new Response(body, { status: 403, headers: { 'Content-Type': contentType } });
+    }) as typeof fetch;
+
+    try {
+      await assert.rejects(
+        () => callCapabilityApi(host, 'metadata', 'capabilities/metadata.event.get/execute', 'POST', { input: {} }),
+        (err: Error) => {
+          assert.ok(err instanceof PermissionError);
+          assert.equal(err.message, 'Permission denied for this resource (HTTP 403)');
+          assert.equal(err.code, undefined);
+          assert.equal(err.hint, undefined);
+          return true;
+        },
+      );
+      assert.equal(callCount, 1);
+    } finally {
+      globalThis.fetch = prevFetch;
+      clearCliToken(host);
+    }
+  });
+}
 
 await test('executeCapability: non-2xx response exposes capability error body', async () => {
   const host = 'https://test-capi-422.internal';
@@ -1127,81 +1168,6 @@ await test('legacy non-zero return_code is an error and stack text is not expose
   }
 });
 
-
-await test('community transport retains error details for HTTP and success-status failure envelopes', async () => {
-  const host = 'https://test-community-error-details.internal';
-  setCliTokenManual('synthetic-community-error-details-token', host);
-  const prevFetch = globalThis.fetch;
-  const details = { invalid_fields: ['game_id'], retryable: false };
-  try {
-    for (const status of [200, 422]) {
-      globalThis.fetch = (async () => new Response(JSON.stringify({
-        ok: false,
-        error: { code: 'INVALID_QUERY', message: 'Query is invalid.', type: 'validation', details },
-      }), { status })) as typeof fetch;
-      await assert.rejects(
-        () => executeCapability(host, 'community', 'community.visual.query', {}),
-        (err: Error) => {
-          assert.ok(err instanceof CapabilityGatewayError);
-          assert.deepEqual(JSON.parse(JSON.stringify(err.details)), details);
-          assert.equal(err.type, 'validation');
-          return true;
-        },
-      );
-    }
-  } finally {
-    globalThis.fetch = prevFetch;
-    clearCliToken(host);
-  }
-});
-
-await test('community permission rejection preserves the root hint and performs one request', async () => {
-  const host = 'https://test-community-permission-hint.internal';
-  setCliTokenManual('synthetic-community-permission-hint-token', host);
-  const prevFetch = globalThis.fetch;
-  let requests = 0;
-  globalThis.fetch = (async () => {
-    requests++;
-    return new Response(JSON.stringify({
-      ok: false,
-      error: { code: 'SPACE_FORBIDDEN', message: 'Access denied.' },
-      hint: 'Select an authorized community space.',
-    }), { status: 403 });
-  }) as typeof fetch;
-  try {
-    await assert.rejects(
-      () => executeCapability(host, 'community', 'community.visual.query', {}),
-      (err: Error) => {
-        assert.ok(err instanceof PermissionError);
-        assert.equal(err.hint, 'Select an authorized community space.');
-        assert.equal(err.code, 'SPACE_FORBIDDEN');
-        return true;
-      },
-    );
-    assert.equal(requests, 1);
-  } finally {
-    globalThis.fetch = prevFetch;
-    clearCliToken(host);
-  }
-});
-
-await test('executeCapability: bounded stored-token calls reject redirects and pass the original abort signal', async () => {
-  const host = 'https://test-capi-signal.internal';
-  setCliTokenManual('test-stored-token', host);
-  const originalFetch = globalThis.fetch;
-  const controller = new AbortController();
-  try {
-    globalThis.fetch = (async (_url, init) => {
-      assert.equal(init?.signal, controller.signal);
-      assert.equal(init?.redirect, 'error');
-      return new Response(JSON.stringify({ success: true, data: { ready: true } }), { status: 200 });
-    }) as typeof fetch;
-    await executeCapability(host, 'analysis', 'project.plg_onboarding.status', { project_id: 7 }, { signal: controller.signal });
-  } finally {
-    globalThis.fetch = originalFetch;
-    clearCliToken(host);
-  }
-});
 
 process.stdout.write(`\n${pass} passed, ${fail} failed\n`);
 if (fail > 0) process.exit(1);

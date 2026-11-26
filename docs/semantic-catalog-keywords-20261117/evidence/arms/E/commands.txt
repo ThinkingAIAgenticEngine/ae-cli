@@ -1,0 +1,4 @@
+node reader.mjs catalog.json 1
+cat queries.json
+node reader.mjs catalog.json 2
+node detail.mjs preference_27 semantic_46 preference_49 semantic_48 preference_50 preference_30 preference_31 preference_28 preference_29 preference_33 preference_34 preference_53 semantic_52 preference_10001 preference_10223 preference_10073

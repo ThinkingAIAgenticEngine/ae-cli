@@ -48,12 +48,20 @@ const TOOL_API_MAP: Record<string, DataopsApiSpec> = {
   flow_release_flow: { method: 'POST', path: '/api/cli/dataops/v1/gaia/workflow/flow-release' },
   flow_create_sql_task: { method: 'POST', path: '/api/cli/dataops/v1/gaia/workflow/tasks' },
   flow_update_sql_task: { method: 'POST', path: '/api/cli/dataops/v1/gaia/workflow/sql-task-definition' },
+  flow_get_sql_task: { method: 'GET', path: '/api/cli/dataops/v1/gaia/workflow/sql-task-definition' },
   flow_create_integration_task: { method: 'POST', path: '/api/cli/dataops/v1/gaia/workflow/integration-tasks' },
   flow_update_integration_task: { method: 'POST', path: '/api/cli/dataops/v1/gaia/workflow/integration-task-definition' },
   flow_create_workflow_instance_check_task: { method: 'POST', path: '/api/cli/dataops/v1/gaia/workflow/workflow-instance-check-tasks' },
   flow_update_workflow_instance_check_task: { method: 'POST', path: '/api/cli/dataops/v1/gaia/workflow/workflow-instance-check-task-definition' },
   flow_create_task_instance_check_task: { method: 'POST', path: '/api/cli/dataops/v1/gaia/workflow/task-instance-check-tasks' },
   flow_update_task_instance_check_task: { method: 'POST', path: '/api/cli/dataops/v1/gaia/workflow/task-instance-check-task-definition' },
+  flow_create_python_task: { method: 'POST', path: '/api/cli/dataops/v1/gaia/workflow/python-tasks' },
+  flow_update_python_task: { method: 'POST', path: '/api/cli/dataops/v1/gaia/workflow/python-task-definition' },
+  flow_get_python_task: { method: 'GET', path: '/api/cli/dataops/v1/gaia/workflow/python-task-definition' },
+  flow_list_python_versions: { method: 'GET', path: '/api/cli/dataops/v1/gaia/workflow/python-versions' },
+  flow_list_python_package_sources: { method: 'GET', path: '/api/cli/dataops/v1/gaia/workflow/python-package-sources' },
+  flow_list_python_directories: { method: 'GET', path: '/api/cli/dataops/v1/gaia/workflow/python-directories' },
+  flow_browse_python_directory: { method: 'GET', path: '/api/cli/dataops/v1/gaia/workflow/python-directory-tree' },
   flow_delete_task: { method: 'POST', path: '/api/cli/dataops/v1/gaia/workflow/task-deletion' },
   flow_add_task_relation: { method: 'POST', path: '/api/cli/dataops/v1/gaia/workflow/task-relation' },
   flow_get_flow_params: { method: 'GET', path: '/api/cli/dataops/v1/gaia/workflow/flow-params' },
@@ -305,7 +313,10 @@ function buildUrl(host: string, path: string, params: Record<string, unknown> = 
 function compactArgs(args: Record<string, unknown>, toolName?: string): Record<string, unknown> {
   const result: Record<string, unknown> = {};
   for (const [key, value] of Object.entries(args)) {
-    if (value === undefined || value === null || (value === '' && !(toolName === 'flow_update_flow_param' && key === 'remark'))) {
+    const allowEmptyClear = (toolName === 'flow_update_flow_param' && key === 'remark')
+      || (toolName === 'flow_update_sql_task' && (key === 'preSql' || key === 'postSql'))
+      || (toolName === 'flow_update_python_task' && (key === 'requirementsTxt' || key === 'remark'));
+    if (value === undefined || value !== value || value === null || (value === '' && !allowEmptyClear)) {
       continue;
     }
     result[key] = value;
@@ -317,9 +328,18 @@ function asRecord(value: unknown): Record<string, any> | undefined {
   return typeof value === 'object' && value !== null ? value as Record<string, any> : undefined;
 }
 
+const DATAOPS_NO_AUTH_CODE = -10;
+
 function unwrapDataResponse(data: any): unknown {
   const returnCode = data?.returnCode ?? data?.return_code;
   const returnMessage = data?.returnMessage ?? data?.return_message;
+  if (returnCode === DATAOPS_NO_AUTH_CODE || returnCode === String(DATAOPS_NO_AUTH_CODE)) {
+    throw new PermissionError(
+      `AE API error: ${returnMessage || 'Permission denied'} (code: ${returnCode})`,
+      String(returnCode),
+      'Check your space membership and required DataOps permissions with a space administrator; re-login will not resolve this error.',
+    );
+  }
   if (returnCode !== undefined && returnCode !== 0) {
     throw new Error(`AE API error: ${returnMessage || 'unknown'} (code: ${returnCode})`);
   }

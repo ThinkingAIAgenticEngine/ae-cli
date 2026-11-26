@@ -24,7 +24,7 @@ function buildBody(ctx: RuntimeContext): Record<string, unknown> {
 export const status: Command = {
   service: 'kb',
   command: '+status',
-  description: 'Query knowledge base status.',
+  description: 'Query knowledge base and compilation guideline status, including failure details when available.',
   flags: [
     { name: 'name', type: 'string', required: true, desc: 'Knowledge base name' },
     { name: 'scope', type: 'string', required: false, desc: 'Exact knowledge base scope: personal | company (omit for personal → company fallback)' },

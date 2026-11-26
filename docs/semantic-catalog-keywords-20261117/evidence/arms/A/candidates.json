@@ -1,0 +1,18 @@
+[
+  {"id":"Q01","candidate_ids":["preference_27"],"reason":"用户指定个人登录日活，个人口径直接说明登录及自然日边界。"},
+  {"id":"Q02","candidate_ids":["semantic_46"],"reason":"共享日活的两个活跃事件及并集规则直接相关。"},
+  {"id":"Q03","candidate_ids":["preference_49"],"reason":"新厨师七日总价值、人均分母与安装cohort均直接相关。"},
+  {"id":"Q04","candidate_ids":["preference_50"],"reason":"买量七日回收的分子分母、成本与安装前提直接相关。"},
+  {"id":"Q05","candidate_ids":["semantic_48"],"reason":"净收入、退款及币种汇总边界直接相关。"},
+  {"id":"Q06","candidate_ids":["preference_30"],"reason":"厨房开门与通关的事件映射及安装、订单边界直接相关。"},
+  {"id":"Q07","candidate_ids":["preference_31","preference_27"],"reason":"活动参与率需活动资格规则和用户指定的个人登录活跃口径共同约束。"},
+  {"id":"Q08","candidate_ids":["preference_28"],"reason":"新厨师回访排查、渠道分组及安装数据缺口直接相关。"},
+  {"id":"Q09","candidate_ids":["preference_29"],"reason":"经营简报的金额、比例和人数展示精度直接相关。"},
+  {"id":"Q10","candidate_ids":["preference_33","preference_29"],"reason":"会员月报展示顺序及其沿用的金额比例精度需要共同核对。"},
+  {"id":"Q11","candidate_ids":["preference_34"],"reason":"空查询结果与真实零值的证据边界直接相关。"},
+  {"id":"Q12","candidate_ids":["preference_53","semantic_52"],"reason":"夏日奖励转化和已过期的资格依赖直接相关，需核对可用性。"},
+  {"id":"Q13","candidate_ids":["preference_10001"],"reason":"指定餐车巡游入门组奖励核算与跨组归并及全项目适用边界直接相关。"},
+  {"id":"Q14","candidate_ids":["preference_10223","preference_10073"],"reason":"分别对应指定海岛集市大师组订单与入门组退款规则。"},
+  {"id":"Q15","candidate_ids":[],"reason":"目录没有食材合成配方或失败体力消耗规则。"},
+  {"id":"Q16","candidate_ids":[],"reason":"目录没有俄罗斯区月卡或应用商店当前定价信息。"}
+]

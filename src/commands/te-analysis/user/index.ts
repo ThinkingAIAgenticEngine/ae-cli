@@ -146,27 +146,27 @@ const zoneOffsetFlag: Flag = {
 const autoRefreshCronFlag: Flag = {
   name: 'auto-refresh-cron',
   type: 'string',
-  required: false,
-  desc: 'Optional Quartz cron expression for an existing enabled auto-refresh schedule. This does not enable auto refresh.',
+  desc: 'Deprecated Quartz cron for existing scripts. Runs must be at least 15 minutes apart. Use --auto-refresh-schedule for new scripts.',
 };
+
+const autoRefreshFlags: Flag[] = [
+  {
+    name: 'enable-auto-refresh', type: 'boolean', required: false,
+    desc: 'Enable or disable periodic refresh. Omit on update to preserve the setting. A supplied schedule enables refresh.',
+  },
+  {
+    name: 'auto-refresh-schedule', type: 'json', required: false,
+    desc: 'Page-compatible schedule: frequency daily|daily_multiple|weekly|monthly. Use time HH:mm except daily_multiple, which requires hours (0-23) and minutes (0,15,30,45) arrays. Weekly requires weekdays (ISO 1-7); monthly requires month_days (1-31). Selected hours and minutes form all combinations. Example: {"frequency":"daily","time":"02:30"}.',
+  },
+];
 
 const tagAutoRefreshFlags: Flag[] = [
   {
     name: 'enable-history-tag-backup', type: 'boolean', required: false,
     desc: 'Save historical tag versions during scheduled refresh. Enabling requires periodic refresh. Omit on update to preserve the setting.',
   },
-  {
-    name: 'enable-auto-refresh', type: 'boolean', required: false,
-    desc: 'Enable or disable periodic refresh. Omit to preserve the setting on update. Enabling on create requires a schedule.',
-  },
-  {
-    ...autoRefreshCronFlag,
-    desc: 'Quartz cron expression in the tag timezone. Enables periodic refresh. Mutually exclusive with --auto-refresh-schedule.',
-  },
-  {
-    name: 'auto-refresh-schedule', type: 'json', required: false,
-    desc: 'Schedule object: frequency daily|weekly|monthly, time HH:mm, weekdays (weekly, ISO 1=Monday to 7=Sunday), month_days (monthly, 1-31). Enables periodic refresh in the tag timezone. Example: {"frequency":"daily","time":"02:30"}.',
-  },
+  ...autoRefreshFlags,
+  autoRefreshCronFlag,
 ];
 
 const entityIdFlag: Flag = {
@@ -456,17 +456,13 @@ function clusterWriteInput(ctx: RuntimeContext, create: boolean): Record<string,
     authenticated_only: optionalBoolean(ctx, 'authenticated-only'),
     remark: create ? undefined : optionalString(ctx, 'remark'),
     zone_offset: optionalNumber(ctx, 'zone-offset'),
-    auto_refresh_cron: create ? undefined : optionalString(ctx, 'auto-refresh-cron'),
+    ...autoRefreshInput(ctx, create, create ? undefined : optionalString(ctx, autoRefreshCronFlag.name)),
     entity_id: create ? optionalNumber(ctx, 'entity-id') : undefined,
   });
 }
 
-function tagWriteInput(ctx: RuntimeContext, create: boolean): Record<string, unknown> {
-  const definitionRequest = optionalJson(ctx, 'definition-request');
-  validateDefinitionRequest(create, definitionRequest);
-  const backup = optionalBoolean(ctx, 'enable-history-tag-backup');
+function autoRefreshInput(ctx: RuntimeContext, create: boolean, cron: string | undefined): Record<string, unknown> {
   const enabled = optionalBoolean(ctx, 'enable-auto-refresh');
-  const cron = optionalString(ctx, 'auto-refresh-cron');
   const schedule = optionalJson(ctx, 'auto-refresh-schedule');
   if (cron !== undefined && schedule !== undefined) {
     throw new Error('Pass only one of --auto-refresh-cron and --auto-refresh-schedule');
@@ -474,11 +470,24 @@ function tagWriteInput(ctx: RuntimeContext, create: boolean): Record<string, unk
   if (enabled === false && (cron !== undefined || schedule !== undefined)) {
     throw new Error('Cannot set a schedule with --enable-auto-refresh false');
   }
-  if (backup === true && (enabled === false || (create && schedule === undefined && cron === undefined))) {
-    throw new Error('Enabling history tag backup requires periodic refresh with a schedule');
+  if (create && enabled === true && schedule === undefined && cron === undefined) {
+    throw new Error('Enabling auto refresh on create requires --auto-refresh-schedule');
   }
-  if (create && enabled === true && cron === undefined && schedule === undefined) {
-    throw new Error('Enabling auto refresh on create requires --auto-refresh-schedule or --auto-refresh-cron');
+  return compactInput({
+    enable_auto_refresh: enabled,
+    auto_refresh_schedule: schedule,
+    auto_refresh_cron: cron,
+  });
+}
+
+function tagWriteInput(ctx: RuntimeContext, create: boolean): Record<string, unknown> {
+  const definitionRequest = optionalJson(ctx, 'definition-request');
+  validateDefinitionRequest(create, definitionRequest);
+  const refresh = autoRefreshInput(ctx, create, optionalString(ctx, autoRefreshCronFlag.name));
+  const backup = optionalBoolean(ctx, 'enable-history-tag-backup');
+  if (backup === true && (refresh.enable_auto_refresh === false
+    || (create && refresh.auto_refresh_schedule === undefined && refresh.auto_refresh_cron === undefined))) {
+    throw new Error('Enabling history tag backup requires periodic refresh with a schedule');
   }
   return compactInput({
     project_id: ctx.num('project-id'),
@@ -488,10 +497,8 @@ function tagWriteInput(ctx: RuntimeContext, create: boolean): Record<string, unk
     authenticated_only: optionalBoolean(ctx, 'authenticated-only'),
     remark: create ? undefined : optionalString(ctx, 'remark'),
     zone_offset: optionalNumber(ctx, 'zone-offset'),
-    enable_auto_refresh: enabled,
     enable_history_tag_backup: backup,
-    auto_refresh_cron: cron,
-    auto_refresh_schedule: schedule,
+    ...refresh,
     entity_id: create ? optionalNumber(ctx, 'entity-id') : undefined,
   });
 }
@@ -671,6 +678,7 @@ const commands: Command[] = [
     authenticatedOnlyFlag,
     zoneOffsetFlag,
     entityIdFlag,
+    ...autoRefreshFlags,
   ], 'write', (ctx) => clusterWriteInput(ctx, true)),
   capability('user-cluster', 'update', 'analysis.user_cluster.update', 'Update a condition or SQL user cluster without changing its existing type or analysis entity. Pass only fields that should change.', [
     projectIdFlag,
@@ -680,7 +688,8 @@ const commands: Command[] = [
     authenticatedOnlyFlag,
     remarkFlag,
     zoneOffsetFlag,
-    autoRefreshCronFlag,
+    ...autoRefreshFlags,
+    { ...autoRefreshCronFlag, desc: `${autoRefreshCronFlag.desc} Requires an already enabled refresh plan.` },
   ], 'high-risk-write', (ctx) => clusterWriteInput(ctx, false)),
   idImportCapability(capability('user-cluster', 'create-id', 'analysis.user_cluster.create_id', 'Create a cluster by mapping imported values to an analysis entity.', [
     projectIdFlag,

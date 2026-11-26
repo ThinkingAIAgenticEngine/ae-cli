@@ -1,0 +1,18 @@
+[
+  {"id":"Q01","candidate_ids":["preference_27"],"reason":"个人登录日活直接规定自然日、替代事件和内测排除边界。"},
+  {"id":"Q02","candidate_ids":["semantic_46"],"reason":"共享日活定义直接覆盖登录与通关的合并方式。"},
+  {"id":"Q03","candidate_ids":["preference_49"],"reason":"七日价值总额、人均分母及安装批次边界对应本题。"},
+  {"id":"Q04","candidate_ids":["preference_50"],"reason":"渠道七日回收覆盖比例公式、零成本和渠道归属。"},
+  {"id":"Q05","candidate_ids":["semantic_48"],"reason":"收入净额直接约束退款符号、窗口与币种。"},
+  {"id":"Q06","candidate_ids":["preference_30"],"reason":"厨房开门事件释义及安装、付费推断边界直接匹配。"},
+  {"id":"Q07","candidate_ids":["preference_31","preference_27"],"reason":"星厨赛参加和资格活跃分母需结合个人登录活跃口径。"},
+  {"id":"Q08","candidate_ids":["preference_28"],"reason":"新厨师回访排查覆盖渠道、样本、窗口和缺安装边界。"},
+  {"id":"Q09","candidate_ids":["preference_29"],"reason":"经营简报展示精度和当次要求优先级直接匹配。"},
+  {"id":"Q10","candidate_ids":["preference_33","preference_29"],"reason":"会员月报分层顺序及通用金额精度需分别核对。"},
+  {"id":"Q11","candidate_ids":["preference_34"],"reason":"空查询结果能否解释为真实零及应核实缺口直接匹配。"},
+  {"id":"Q12","candidate_ids":["preference_53"],"reason":"夏日奖励转化明确以资格有效作为复用前提。"},
+  {"id":"Q13","candidate_ids":["preference_10001"],"reason":"精确对应餐车巡游入门组奖励核算及适用范围。"},
+  {"id":"Q14","candidate_ids":["preference_10223","preference_10073"],"reason":"分别对应海岛集市大师组订单归属和入门组退款处理。"},
+  {"id":"Q15","candidate_ids":[],"reason":"目录没有合成配方、失败体力消耗相关规则。"},
+  {"id":"Q16","candidate_ids":[],"reason":"目录没有俄罗斯月卡或商店现价信息。"}
+]

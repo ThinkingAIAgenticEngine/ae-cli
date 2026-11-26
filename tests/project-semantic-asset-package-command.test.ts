@@ -1,34 +1,26 @@
-import assert from 'node:assert/strict';
+import { projectSemanticAssetPackageExport } from '../src/commands/project-semantic/asset-package/export.ts';
+import commands from '../src/commands/project-semantic/index.ts';
 import { metadataGovernanceRecommendationExport } from '../src/commands/te-analysis/meta/governance-recommendation/export.ts';
 import { CapabilityGatewayError } from '../src/core/capability-api.ts';
-import commands from '../src/commands/project-semantic/index.ts';
-import { projectSemanticAssetPackageExport } from '../src/commands/project-semantic/asset-package/export.ts';
 import { clearCliToken, setCliTokenManual } from '../src/core/cli-token.ts';
 import type { RuntimeContext } from '../src/framework/types.ts';
+import assert from 'node:assert/strict';
 
-function ctx(values: Record<string, string | number> = {}): RuntimeContext {
+function ctx(values: Record<string, unknown> = {}): RuntimeContext {
   return {
     host: () => 'https://project-semantic.example.com',
     str: (name: string) => String(values[name] ?? ''),
     num: (name: string) => Number(values[name] ?? 0),
     optionalNum: () => undefined,
     bool: () => false,
-    json: () => undefined,
+    json: (name: string) => values[name],
     list: () => [],
   } as RuntimeContext;
 }
 
-const registeredCommandNames = commands.map(
-  command => `${command.service} ${command.resource} ${command.command}`,
-);
-assert.ok(
-  registeredCommandNames.includes('project-semantic asset-package export'),
-  'asset-package export remains available independently of the retired project-semantic lifecycle',
-);
-assert.equal(
-  registeredCommandNames.filter(name => name === 'project-semantic asset-package export').length,
-  1,
-  'asset-package export is registered exactly once',
+assert.deepEqual(
+  commands.map((command) => `${command.service} ${command.resource ? command.resource + ' ' : ''}${command.command}`),
+  ['project-semantic asset-package export', 'project-semantic setup'],
 );
 
 async function captureGatewayCall(fn: () => Promise<unknown>) {
@@ -58,36 +50,66 @@ function gatewayInput(body: unknown): unknown {
   return body.input;
 }
 
-const dryRun = await captureGatewayCall(() =>
-  projectSemanticAssetPackageExport.dryRun!(ctx({ 'project-id': 5 })) as Promise<unknown>);
+const dryRun = await captureGatewayCall(
+  () => projectSemanticAssetPackageExport.dryRun!(ctx({ 'project-id': 5 })) as Promise<unknown>,
+);
 assert.deepEqual(gatewayInput(dryRun.capturedBody), {
   project_id: 5,
   asset_scope: 'governed',
 });
-assert.ok(String(dryRun.capturedUrl).endsWith(
-  '/api/cli/analysis/v1/capabilities/business_semantics.asset_package.export/dry-run',
-));
+assert.ok(
+  String(dryRun.capturedUrl).endsWith(
+    '/api/cli/analysis/v1/capabilities/business_semantics.asset_package.export/dry-run',
+  ),
+);
 
 const validate = await captureGatewayCall(() =>
-  projectSemanticAssetPackageExport.validateInput!(ctx({
-    'project-id': 5,
-    'asset-scope': 'collaborative',
-  })));
+  projectSemanticAssetPackageExport.validateInput!(
+    ctx({
+      'project-id': 5,
+      'asset-scope': 'collaborative',
+    }),
+  ),
+);
 assert.deepEqual(gatewayInput(validate.capturedBody), {
   project_id: 5,
   asset_scope: 'collaborative',
 });
-assert.ok(String(validate.capturedUrl).endsWith(
-  '/api/cli/analysis/v1/capabilities/business_semantics.asset_package.export/validate',
-));
+assert.ok(
+  String(validate.capturedUrl).endsWith(
+    '/api/cli/analysis/v1/capabilities/business_semantics.asset_package.export/validate',
+  ),
+);
 
 assert.throws(
-  () => projectSemanticAssetPackageExport.dryRun!(ctx({
-    'project-id': 5,
-    'asset-scope': 'invalid',
-  })),
+  () =>
+    projectSemanticAssetPackageExport.dryRun!(
+      ctx({
+        'project-id': 5,
+        'asset-scope': 'invalid',
+      }),
+    ),
   /asset-scope must be one of: governed, collaborative, all_visible/,
 );
+
+for (const scope of ['certified', 'frequent', 'all', 'specified']) {
+  const refs = [{ resource_type: 'report', resource_key: '17' }];
+  const captured = await captureGatewayCall(
+    () =>
+      projectSemanticAssetPackageExport.dryRun!(
+        ctx({
+          'project-id': 5,
+          'asset-scope': scope,
+          ...(scope === 'specified' ? { 'asset-refs': refs } : {}),
+        }),
+      ) as Promise<unknown>,
+  );
+  assert.deepEqual(gatewayInput(captured.capturedBody), {
+    project_id: 5,
+    asset_scope: scope,
+    ...(scope === 'specified' ? { asset_refs: refs } : {}),
+  });
+}
 
 const previousFetch = globalThis.fetch;
 setCliTokenManual('cli-test-token', 'https://project-semantic.example.com');
@@ -106,11 +128,14 @@ try {
   ]) {
     const requests: string[] = [];
     globalThis.fetch = (async (url) => {
-      if (String(url).includes("/api/cli/")) requests.push(String(url));
-      return new Response(JSON.stringify({
-        ok: false,
-        error: { code, message },
-      }), { status: 200, headers: { 'Content-Type': 'application/json' } });
+      if (String(url).includes('/api/cli/')) requests.push(String(url));
+      return new Response(
+        JSON.stringify({
+          ok: false,
+          error: { code, message },
+        }),
+        { status: 200, headers: { 'Content-Type': 'application/json' } },
+      );
     }) as typeof fetch;
     await assert.rejects(command.execute(ctx({ 'project-id': 5 })), (error: unknown) => {
       assert.ok(error instanceof CapabilityGatewayError);
@@ -118,7 +143,11 @@ try {
       assert.equal(error.message, message);
       return true;
     });
-    assert.equal(requests.length, 1, `Failed exports must not retry, poll, or download an artifact: ${requests.join(', ')}`);
+    assert.equal(
+      requests.length,
+      1,
+      `Failed exports must not retry, poll, or download an artifact: ${requests.join(', ')}`,
+    );
     assert.ok(requests[0].endsWith('/execute'));
   }
 } finally {

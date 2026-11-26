@@ -76,8 +76,8 @@ assert.match(workflow, /Capability unavailable/);
 assert.match(workflow, /Fixed historical window/);
 assert.match(workflow, /Technical success is not semantic correctness/);
 assert.match(
-  workflow,
-  /The KB path is preferred, not exclusive/,
+  workflowContract,
+  /If there is no relevant hit, continue through ordinary analysis with business semantics/,
 );
 assert.match(workflow, /Search for another accessible saved report or dashboard/);
 assert.match(workflow, /use authorized ad-hoc analysis only when the normal\s+`ae-analysis` rules permit it/);

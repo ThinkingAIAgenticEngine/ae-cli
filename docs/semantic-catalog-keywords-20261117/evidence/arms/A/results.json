@@ -1,0 +1,18 @@
+[
+  {"id":"Q01","adopted_ids":["preference_27"],"dependency_ids":[],"conclusion":"按项目时区统计不含今天的最近七个完整自然日，每天以ps_login去重玩家作为个人DAU，单独通关或领奖不算登录活跃，缺测试账号标记不能虚构排除条件。","missing_or_uncertain":["测试账号标记缺失，无法可靠排除内测账号。"]},
+  {"id":"Q02","adopted_ids":["semantic_46"],"dependency_ids":[],"conclusion":"没有个人另定口径时，共享日活按项目时区自然日取ps_login或ps_level_complete的去重玩家并集，不能直接相加两事件各自去重人数。","missing_or_uncertain":[]},
+  {"id":"Q03","adopted_ids":["preference_49"],"dependency_ids":["semantic_48"],"conclusion":"上周历史首次安装玩家的生命天0至6累计同币种净收入总额是七日LTV，人均另除同一首次安装cohort去重人数，注册或首次登录人数不能替代安装分母。","missing_or_uncertain":["缺历史首次安装与流水数据，无法验证总额或人均数值。","生命天字段不能独自建立完整安装cohort。"]},
+  {"id":"Q04","adopted_ids":["preference_50"],"dependency_ids":["semantic_48"],"conclusion":"七日回本比例是同获客渠道、同历史首次安装cohort生命天0至6同币种净收入除获客成本，不先减成本，零成本单列不可除，只有活动渠道不能代替获客渠道计算。","missing_or_uncertain":["需首次安装cohort、获客渠道和对应成本；任一缺失不能报告ROI。","需核实收入与成本币种一致。"]},
+  {"id":"Q05","adopted_ids":["semantic_48"],"dependency_ids":[],"conclusion":"净收入取同窗口同币种支付成功金额合计减退款金额合计，退款正数按扣减处理，CNY与USD需分组且无汇率不能直接相加。","missing_or_uncertain":["实际退款正负约定未知时须先核实。"]},
+  {"id":"Q06","adopted_ids":["preference_30"],"dependency_ids":[],"conclusion":"厨房开门对应ps_login登录，ps_level_complete是通关，通关不能证明付费，登录不能证明首次安装。","missing_or_uncertain":[]},
+  {"id":"Q07","adopted_ids":["preference_31","preference_27"],"dependency_ids":[],"conclusion":"星厨赛参与率应以同期具备参赛资格的个人登录活跃玩家为分母、其中触发ps_campaign_join的玩家为分子，领奖不能代替参加或除以全部活跃，资格缺失须暂停计算。","missing_or_uncertain":["需核实星厨赛实际ps_campaign_id、有效资格规则及资格数据。"]},
+  {"id":"Q08","adopted_ids":["preference_28"],"dependency_ids":[],"conclusion":"先核实登录与通关接入和观察窗口，再按获客渠道拆分回访；小样本应展示人数，未成熟窗口单独说明，没有历史首次安装数据不能用注册或首次登录构造安装cohort。","missing_or_uncertain":["需接入状态、历史首次安装记录、渠道样本人数和窗口成熟度。","生命天缺失不能自动填零。"]},
+  {"id":"Q09","adopted_ids":["preference_29"],"dependency_ids":[],"conclusion":"经营简报默认金额与比例三位小数、人数整数，本次明确要求两位小数时金额与比例按两位展示且不降低计算精度，人数仍用整数。","missing_or_uncertain":[]},
+  {"id":"Q10","adopted_ids":["preference_33","preference_29"],"dependency_ids":[],"conclusion":"会员月报先列ps_member_level分层再给合计，金额和比例沿用三位小数默认精度，人数用整数，分层顺序本身不改变精度。","missing_or_uncertain":[]},
+  {"id":"Q11","adopted_ids":["preference_34"],"dependency_ids":[],"conclusion":"无登录或支付记录不能写成真实零活跃、零收入或零回本，应先核实事件接入、查询窗口与权限，并说明当前事件未接入、定义可明确而数值不可验证。","missing_or_uncertain":["当前缺业务事件和流水，无法验证真实数值。","需核实接入、查询窗口与权限。"]},
+  {"id":"Q12","adopted_ids":[],"dependency_ids":["semantic_52"],"conclusion":"不能继续应用夏日奖励转化父规则：必要资格仅有效至2026-08-31，虽然参加和领奖事件仍在，依赖失效仍须停止并取得当前有效资格定义。","missing_or_uncertain":["缺当前有效奖励资格定义，preference_53不能被采用。","目录及详情expired=false与正文有效期冲突，应以具体有效期识别已过期。"]},
+  {"id":"Q13","adopted_ids":["preference_10001"],"dependency_ids":[],"conclusion":"餐车巡游入门组奖励按活动结束时最终归属组归并，途中升组不能仍算起始组，规则仅适用于该活动组别，不能扩展成全项目获客回收口径。","missing_or_uncertain":[]},
+  {"id":"Q14","adopted_ids":["preference_10223","preference_10073"],"dependency_ids":[],"conclusion":"海岛集市大师组订单归属和入门组退款处理都以活动结束时最终归属组统计，各自仅限对应活动组别。","missing_or_uncertain":[]},
+  {"id":"Q15","adopted_ids":[],"dependency_ids":[],"conclusion":"目录没有匹配的合成蘑菇配方或失败体力规则，不能给出两个食材与消耗值。","missing_or_uncertain":["缺合成配方及失败体力消耗定义。"]},
+  {"id":"Q16","adopted_ids":[],"dependency_ids":[],"conclusion":"目录没有匹配的俄罗斯区圣诞月卡当前定价，不能给出苹果与安卓商店卢布价格。","missing_or_uncertain":["缺当前俄罗斯区各商店价格资料。"]}
+]

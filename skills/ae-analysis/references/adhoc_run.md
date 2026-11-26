@@ -36,7 +36,7 @@ For SQL model definitions, use [`sql_table_list.md`](sql_table_list.md) to disco
 ## Input
 
 - `--project-id`: target project ID.
-- `--model-type`: one of the 13 AI-facing model names from [`ai_models.md`](ai_models.md). Do not pass `scenario`, `history_tag`, or `cluster`; tags and cohorts/clusters are separate capabilities.
+- `--model-type`: one of the 12 AI-facing model names from [`ai_models.md`](ai_models.md). Do not pass `scenario`, `history_tag`, or `cluster`; tags and cohorts/clusters are separate capabilities.
 - `--definition`: model-specific AI-facing definition JSON.
 - `--intent-snapshot`: use when the caller supplies an existing snapshot containing `schema_version: 1`, non-empty `requirement`, `definition`, and `model_type`. The CLI checks that its definition and model match the submitted values locally; the snapshot is never sent to Gateway.
 - `--resolutions`: only after user confirmation, pass deterministic bindings keyed by compiler error path. Keep each bound field's path and original wording; fill the other confirmed model parameters in `--definition`. Follow [`metadata_resolution.md`](metadata_resolution.md).
@@ -49,9 +49,14 @@ If the requested result exceeds the current runtime synchronous maximum, go dire
 
 Do not use raw QP, `events`, `event_view`, `visual_view`, removed ad-hoc QP builder outputs, or schema helper outputs as `--definition`.
 
-Timezone contract: fixed `--zone-offset` values are integers from `-12` through `14`. Use `--zone-offset 99` for local-time mode, which analyzes timestamps as stored local time without applying a fixed UTC offset conversion; it does not mean UTC+99. Omit the flag to use the project's analysis default.
-
 Cluster routing: omit both routing flags for current-self data. Before `GLOBAL` or `SLAVE`, call `analysis query-cluster list`; `SLAVE` requires exactly one returned physical cluster ID. SQL and attribution do not support `GLOBAL`; distribution with default intervals also rejects `GLOBAL`. These 查询集群 options are unrelated to 用户分群 definitions.
+
+## Query timezone
+
+- When the user has no timezone override, omit `--zone-offset`. The backend uses the current user's valid timezone selection or the project default. Projects with timezone conversion disabled use stored local time.
+- For a requested fixed offset, reuse verified settings for the target project or read them with [project timezone get](project_timezone_get.md). Pass a fixed integer offset from `-12` through `14` only when `data.time_zone_enabled` is `true` and the offset is listed in `data.available_time_zones` or matches `data.default_time_zone_offset`. If the requested fixed offset cannot be used, explain the limitation and confirm whether stored local time is acceptable before changing the query.
+- Pass `--zone-offset 99` when the user requests or confirms stored local time. This mode groups timestamps as stored, without converting them to a fixed UTC offset.
+- On `PROJECT_TZ_DISABLED`, omit the flag and retry once within the allowed retry limit if the user wanted the default. If the user requested a fixed offset, explain that project conversion is disabled and confirm the change to stored local time before retrying.
 
 ## Output
 
@@ -63,6 +68,7 @@ The response may include:
 - `row_metadata` / `column_metadata`, when returned: align with row/column positions. Event `scope=total` identifies a total row; `period_values` specifies stage aggregates. Time comparisons repeat metric titles in separate column blocks, so preserve indexes. See [event result totals](ai_models/event.md#event-totals-and-comparison-columns).
 - `result`: direct result for non-tabular models. Path results also return top-level `returned_rows` and `has_more` using the per-level node contract above.
 - `request_id`: lifecycle request id.
+- `effective_zone_offset`: timezone applied to the run. A value of `99` indicates stored local time.
 - `definition`: normalized AI-facing definition used for compilation. Tag/cluster filters expose the effective `cluster_date_policy`; `AUTO` means each analysis date uses its matching computed result, while an omitted policy defaults to `LATEST`.
 - `actual_cluster_query_scope`, optional `actual_slave_cluster_id`, and `cluster_query_scope_source`: actual physical data route. Verify these before comparing results or following the query context.
 

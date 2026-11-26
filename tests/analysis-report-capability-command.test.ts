@@ -36,7 +36,6 @@ import { drilldownEntitiesRun } from '../src/commands/te-analysis/drilldown-enti
 import { drilldownEntitiesExport } from '../src/commands/te-analysis/drilldown-entities/export.ts';
 import { drilldownUserEventsRun } from '../src/commands/te-analysis/drilldown-user-events/run.ts';
 import { drilldownUserEventsExport } from '../src/commands/te-analysis/drilldown-user-events/export.ts';
-import { drilldownSessionDetailsRun } from '../src/commands/te-analysis/drilldown-session-details/run.ts';
 import { queryCreateResultCluster } from '../src/commands/te-analysis/query/create-result-cluster.ts';
 import { queryContextGet } from '../src/commands/te-analysis/query-context/get.ts';
 import { filterValueList } from '../src/commands/te-analysis/filter-value/list.ts';
@@ -777,6 +776,27 @@ await test('adhoc run maps AI-facing SQL definition and model type to gateway in
   });
 });
 
+await test('adhoc timezone help documents project requirements and preserves existing request mapping', async () => {
+  const input = {
+    'project-id': 1,
+    'model-type': 'sql',
+    definition: { sql: 'SELECT 1' },
+  };
+  for (const command of [adhocRun, adhocExport]) {
+    const flag = command.flags.find(({ name }) => name === 'zone-offset');
+    assert.equal(flag?.required, false);
+    assert.equal(flag?.default, undefined);
+    assert.match(flag?.desc ?? '', /require project timezone conversion and a configured offset/i);
+
+    const omitted = await dryBody(command, input);
+    assert.equal(Object.hasOwn(omitted.body.input, 'zone_offset'), false);
+    for (const offset of [0, 8, 99]) {
+      const explicit = await dryBody(command, { ...input, 'zone-offset': offset });
+      assert.equal(explicit.body.input.zone_offset, offset);
+    }
+  }
+});
+
 await test('adhoc forwards corrected ordered funnel filters unchanged and keeps existence filters valid', async () => {
   const definition = {
     time_range: { mode: 'custom', start_time: '2026-08-20 00:00:00', end_time: '2026-09-01 23:59:59' },
@@ -1058,14 +1078,14 @@ await test('run inspect and artifact download use the configured analysis gatewa
   );
 });
 
-await test('adhoc exposes 13 AI models and report write exposes 13 plus tag', () => {
+await test('adhoc exposes 12 AI models and report write exposes 12 plus tag', () => {
   const modelTypeDesc = adhocRun.flags.find((flag) => flag.name === 'model-type')?.desc ?? '';
   const definitionDesc = adhocRun.flags.find((flag) => flag.name === 'definition')?.desc ?? '';
   const reportCreateModelTypeDesc = reportCreate.flags.find((flag) => flag.name === 'model-type')?.desc ?? '';
   const reportUpdateDefinitionDesc = reportUpdate.flags.find((flag) => flag.name === 'definition')?.desc ?? '';
 
-  assert.equal(AI_MODEL_TYPE_VALUES.length, 13);
-  assert.equal(new Set(AI_MODEL_TYPE_VALUES).size, 13);
+  assert.equal(AI_MODEL_TYPE_VALUES.length, 12);
+  assert.equal(new Set(AI_MODEL_TYPE_VALUES).size, 12);
   assert.deepEqual([...AI_MODEL_TYPE_VALUES], [
     'event',
     'retention',
@@ -1076,16 +1096,14 @@ await test('adhoc exposes 13 AI models and report write exposes 13 plus tag', ()
     'path',
     'prop_analysis',
     'sql',
-    'session',
     'heat_map',
     'rank_list',
     'revenue',
   ]);
   assert.match(modelTypeDesc, /event/);
   assert.match(modelTypeDesc, /revenue/);
-  assert.match(modelTypeDesc, /13 total/);
-  assert.match(modelTypeDesc, /10 common/);
-  assert.match(modelTypeDesc, /session \(session analysis\)/);
+  assert.match(modelTypeDesc, /12 total/);
+  assert.match(modelTypeDesc, /9 common/);
   assert.match(modelTypeDesc, /3 scenario models/);
   assert.match(modelTypeDesc, /not ad-hoc model_type values/);
   assert.doesNotMatch(modelTypeDesc, /generic schema-defined scenario/);
@@ -1097,14 +1115,14 @@ await test('adhoc exposes 13 AI models and report write exposes 13 plus tag', ()
   assert.match(definitionDesc, /each analysis date/);
   assert.match(definitionDesc, /global filters support user_property, cluster, and tag only/);
   assert.match(definitionDesc, /event_property is not supported/);
-  assert.match(definitionDesc, /session_interval must be a positive integer/);
-  assert.match(definitionDesc, /session_unit accepts second \(1\.\.3600\), minute \(1\.\.1440\), hour \(1\.\.168\), or day \(1\.\.180\)/);
-  assert.equal(REPORT_WRITE_MODEL_TYPE_VALUES.length, 14);
+  assert.match(definitionDesc, /session_unit accepts second \(1\.\.999\), minute \(1\.\.999\), or hour \(1\.\.24\)/);
+  assert.match(definitionDesc, /express one day as session_interval=24 and session_unit=hour/);
+  assert.equal(REPORT_WRITE_MODEL_TYPE_VALUES.length, 13);
   assert.deepEqual([...REPORT_WRITE_MODEL_TYPE_VALUES], [
     ...AI_MODEL_TYPE_VALUES,
     'tag',
   ]);
-  assert.match(reportCreateModelTypeDesc, /13 total/);
+  assert.match(reportCreateModelTypeDesc, /12 total/);
   assert.match(reportCreateModelTypeDesc, /tag for saved tag report data/);
   assert.doesNotMatch(reportCreateModelTypeDesc, /history_tag/);
   assert.doesNotMatch(reportCreateModelTypeDesc, /generic schema-defined scenario/);
@@ -1174,20 +1192,6 @@ await test('query follow-up commands use context ids instead of raw QP', async (
     },
   );
   assert.deepEqual(
-    (await dryBody(drilldownSessionDetailsRun, {
-      'project-id': 1,
-      'query-context-id': 'ctx_0123456789abcdef0123456789abcdef',
-      coordinate: '{"date":"2026-08-30","group_values":["add_to_cart"]}',
-      'preview-rows': 100,
-    })).body.input,
-    {
-      project_id: 1,
-      query_context_id: 'ctx_0123456789abcdef0123456789abcdef',
-      coordinate: { date: '2026-08-30', group_values: ['add_to_cart'] },
-      preview_rows: 100,
-    },
-  );
-  assert.deepEqual(
     (await dryBody(drilldownUserEventsRun, {
       'project-id': 1,
       'drilldown-context-id': 'drill_0123456789abcdef0123456789abcdef',
@@ -1247,6 +1251,30 @@ await test('query follow-up commands use context ids instead of raw QP', async (
       display_name: 'AI saved users',
     },
   );
+});
+
+await test('user event drilldown run and export accept exactly one identity and preserve the account string', async () => {
+  const context = {
+    'project-id': 1,
+    'drilldown-context-id': 'drill_0123456789abcdef0123456789abcdef',
+  };
+  const accountId = ' 00001-PlayFab ';
+  for (const command of [drilldownUserEventsRun, drilldownUserEventsExport]) {
+    const { body } = await dryBody(command, { ...context, 'account-id': accountId });
+    assert.equal(body.input.account_id, accountId);
+    assert.equal('user_id' in body.input, false);
+    await assert.rejects(dryBody(command, context), /Pass one of --user-id or --account-id/);
+    await assert.rejects(
+      dryBody(command, { ...context, 'user-id': 'u1', 'account-id': accountId }),
+      /Pass only one of --user-id or --account-id/,
+    );
+    for (const invalidAccountId of ['', ' ']) {
+      await assert.rejects(
+        dryBody(command, { ...context, 'account-id': invalidAccountId }),
+        /--account-id must not be blank/,
+      );
+    }
+  }
 });
 
 await test('analysis result run commands do not expose pagination offsets', () => {

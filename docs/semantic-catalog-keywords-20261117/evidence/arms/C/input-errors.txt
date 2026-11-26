@@ -1,0 +1,2 @@
+前置输入错误：首次相对路径及随后绝对路径执行reader均返回“The server catalog is incomplete. Do not analyze from a preview or legacy bounded response.”，两次均未输出目录内容、未选择候选、未读取详情。
+父任务修复输入契约后重新执行，完整读取2页60条。该前置输入错误不作为召回效果。

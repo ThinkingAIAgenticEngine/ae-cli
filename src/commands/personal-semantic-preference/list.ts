@@ -6,7 +6,7 @@ export const personalSemanticPreferenceList = createPersonalSemanticPreferenceCo
   resource: '',
   command: 'list',
   capabilityId: CAPABILITY_ID,
-  description: 'List the current-user lightweight personal semantic preference catalog in one project.',
+  description: 'List the complete current-user lightweight personal semantic preference catalog for the selected scope.',
   flags: [
     { name: 'project-id', type: 'number', required: true, desc: 'Positive project ID, or -1 for current-user global personal semantics.', alias: 'p' },
   ],

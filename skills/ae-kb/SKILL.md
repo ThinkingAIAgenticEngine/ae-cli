@@ -1,7 +1,7 @@
 ---
 name: ae-kb
-version: 1.0.15
-description: 'AE knowledge base CLI manual for creating, importing read-only compiled snapshots, querying, LLM-powered ask, listing accessible knowledge bases and their sources, deterministic index/grep/read retrieval, checking status, ZIP source upload and directory management, raw child-file reading, revision-checked child updates and deletion, compiling, schema generation, URL sources, source deletion, ordinary text source creation, full reads and revision-checked editing, file/ZIP source draft replacement and restoration, and knowledge base deletion. Use when the user asks to manage AE (Agentic Engine) knowledge bases, import a compiled Markdown ZIP snapshot, upload documents or URLs to a knowledge base, query knowledge, ask knowledge bases with an LLM, list accessible knowledge bases or source metadata, inspect knowledge base indexes, search knowledge base pages, read a specific knowledge base page, check knowledge base status, generate schemas, compile knowledge, remove sources, create or edit text sources, or delete a knowledge base. To choose which knowledge base is worth searching, use the ae-kb-discovery skill first; this skill runs the retrieval once a target is chosen. Must use ae-cli kb commands and must not guess knowledge base names, scopes, page paths, source IDs, source display names, JSON payload shapes, or URL formats.'
+version: 1.0.17
+description: 'AE knowledge base CLI manual for creating, importing read-only compiled snapshots, querying, LLM-powered ask, listing accessible knowledge bases and their sources, deterministic index/grep/read retrieval, checking status, ZIP source upload and directory management, raw child-file reading, revision-checked child updates and deletion, compiling, schema generation, URL sources, source deletion, ordinary text source creation, full reads and revision-checked editing, file/ZIP source draft replacement and restoration, and knowledge base deletion. Use when the user asks to manage AE (Agentic Engine) knowledge bases, import a compiled Markdown ZIP snapshot, upload documents or URLs to a knowledge base, query knowledge, ask knowledge bases with an LLM, list accessible knowledge bases or source metadata, inspect knowledge base indexes, search knowledge base pages, read a specific knowledge base page, check knowledge base status, generate schemas, compile knowledge, remove sources, create or edit text sources, or delete a knowledge base. For automatic project semantic retrieval, use the exact KB resolved by ae-analysis. Use ae-kb-discovery when the task requires choosing a KB. Must use ae-cli kb commands and must not guess knowledge base names, scopes, page paths, source IDs, source display names, JSON payload shapes, or URL formats.'
 ---
 
 # ae-kb
@@ -348,7 +348,9 @@ Use the deterministic retrieval primitives when an agent needs to explore knowle
 
 **Before running a real query, read [`references/query-workflow.md`](references/query-workflow.md)** — it selects the next useful retrieval step without crawling. It covers candidate indexing, copied-path grep, direct bounded reads of linked short pages, same-page read windows, linked-page re-grep when needed, optional outline-derived ranges, and coverage assessment. This section below is the per-command reference the workflow draws on.
 
-Start with the trusted active sources described by `ae-kb-discovery`. Explicit references go straight to scoped retrieval without `+list`; relevant preferred candidates go first, with `+list` only if unrelated or insufficient. When no trusted active sources exist, use `+list` to discover accessible knowledge bases. Use `+index` when you also need navigation maps:
+For automatic project semantic KB retrieval, start with the exact company KB returned by `kb project-target get` under the `ae-analysis` gate. Make a fresh scoped retrieval for each new analysis question. If there is no relevant hit, continue ordinary analysis with business semantics.
+
+**Other KB queries:** start with the trusted active sources described by `ae-kb-discovery`. Explicit references go straight to scoped retrieval without `+list`; relevant preferred candidates go first, with `+list` only if unrelated or insufficient. When no trusted active sources exist, use `+list` to discover accessible knowledge bases. Use `+index` when you also need navigation maps:
 
 When discovery is needed:
 
@@ -486,10 +488,11 @@ ae-cli kb +list [--build-status compiled] [--locale zh|en|ja|ko]
 ### `+index`
 
 ```bash
-ae-cli kb +index [--sources '[{"scope":"company","name":"kb-name"}]'] [--locale zh|en|ja|ko]
+ae-cli kb +index [--name "<kb-name>" --scope personal|company|system | --sources '[{"scope":"company","name":"kb-name"}]'] [--locale zh|en|ja|ko]
 ```
 
-- `--sources`: optional JSON array of knowledge base refs. Omit to list all accessible knowledge bases.
+- `--name` and `--scope`: select one exact knowledge base. For example, `ae-cli kb +index --name "Engineering Handbook" --scope company`.
+- `--sources`: JSON array of knowledge base refs for single or multiple targets. Omit both filters to list all accessible knowledge bases.
 - `--locale`: optional locale: `zh`, `en`, `ja`, or `ko`.
 
 ### `+grep`
@@ -588,6 +591,8 @@ ae-cli kb +compile --name "<name>" [--scope personal|company] [--mode incrementa
 ae-cli kb +status --name "<name>" [--scope personal|company] [--run-id <compile-run-id>]
 ```
 
+For a knowledge-base status check, use the name and optionally the exact scope. On supported servers, `schemaFailure` appears when the latest guideline generation failed, and `wikiFailure` appears when the latest Wiki compile failed. Authorized callers receive a short `message` and a `code` when available. Read them alongside `schemaValidation` and publication status to tell whether earlier content is still usable. Older servers may omit these fields.
+
 With `--run-id`, output contains `knowledgeBase` and `compileRun` (`id`, `status`, `errorMessage`, `startedAt`, `finishedAt`) instead of the aggregate lifecycle fields. Copy the ID from `+compile`; wait only for `queued`/`running`, and stop on `succeeded`/`failed`/`cancelled`. A failed run remains failed even when an older published version is available. Exact-run diagnostics require the same compile-run permission as the KB run-detail view, and error text is redacted. The run must belong to the resolved, authorized KB; unknown and cross-KB IDs return `KB_COMPILE_RUN_NOT_FOUND`. Aggregate output includes working and published language declarations when available. Exact-run output can include structured `runStatus` and an original-language `contentSummary`. A legacy `summary` is a historical task status. Older servers may reject the optional field; do not fall back to aggregate polling for exact-run completion. Run success is separate from publication completeness and content acceptance.
 
 ### `+list-sources`
@@ -644,6 +649,7 @@ Transport: `POST /agent/api/external/knowledge-bases/sources/check-updates`, bod
 - Gateway target: TBD; reuse an equivalent source update-check capability when available.
 - Review after: 2026-10-16.
 - Exit condition: once the Gateway exposes equivalent authorization and detector semantics, migrate the typed command to L2 or use L3 if it adds no value.
+
 
 ### Submit an ordinary URL update check
 

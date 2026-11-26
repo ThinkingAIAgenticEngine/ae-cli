@@ -18,7 +18,7 @@ export function registerInstall(program: Command): void {
           throw new Error('Installation supports --format json|table and --dry-run; --jq and --validate are not supported.');
         }
         const result = installVersion(pkg.version, { packageName: pkg.name,
-          host: opts.host || global.host, dryRun: global.dryRun, guideAccountSetup: true,
+          host: opts.host || global.host, dryRun: global.dryRun,
           progress: message => process.stderr.write(`${message}\n`) });
         report = result.report ?? failInstallation(report, result.ok ? 'environment' : result.stage,
           result.ok ? 'Installation result is unavailable.' : result.message, result.ok ? 'unknown' : result.cause);
@@ -30,7 +30,6 @@ export function registerInstall(program: Command): void {
         `CLI: ${report.cli.package}@${report.cli.version} (${report.cli.verified ? 'verified' : 'not verified'})`,
         `Command: ${report.cli.path ?? 'pending'}`,
         `Global Skills: ${report.skills.installed_count}/${report.skills.expected_count} verified in ${report.skills.directory}`,
-        ...(report.local_language ? [`Detected local language is ${report.local_language} (local_language).`] : []),
         ...report.skills.failures.map(failure => `- ${failure.skill}: ${failure.reason}`),
         ...report.cli.warnings, ...report.auth.warnings,
         ...(report.error ? [report.error.message] : []),

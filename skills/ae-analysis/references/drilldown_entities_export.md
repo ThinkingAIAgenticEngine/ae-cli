@@ -26,4 +26,4 @@ Property support matches the synchronous preview exactly:
 
 This command does not accept `--limit`, `--offset`, `--page-num`, or `--page-size`. Common executes one full-download query and streams it directly into the artifact; it does not repeatedly call the synchronous preview. “Complete” follows the platform full-download ceiling (`model_full_download_limit`). Use `--output` to wait and download the completed artifact. To resume an interrupted export, use [`analysis run wait`](run_wait.md) with the returned `run_id` and `--output <file>`.
 
-The file is durable member data, not a new interactive result. Do not use rows in the downloaded artifact to construct another analysis coordinate. User event continuation requires the `drilldown_context_id` and canonical `user_id` returned by a user-subject `drilldown-entities run`, not this export.
+The file is durable member data. Do not use rows in the downloaded artifact to construct another analysis coordinate. User event continuation requires a `drilldown_context_id` from a user-subject `drilldown-entities run` and an identity accepted by [user event drilldown](drilldown_user_events_run.md).

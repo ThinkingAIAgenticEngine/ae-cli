@@ -3,6 +3,7 @@ import path from 'node:path';
 import type { Command, Flag } from '../src/framework/types.js';
 import { baseCommands as analysisCommands } from '../src/commands/te-analysis/index.js';
 import personalSemanticPreferenceCommands from '../src/commands/personal-semantic-preference/index.js';
+import { contextPrepare } from '../src/commands/context/prepare.js';
 
 const root = process.cwd();
 const referencesDir = path.join(root, 'skills/ae-analysis/references');
@@ -20,8 +21,10 @@ const sharedReferences = new Set([
   'analysis_drilldown_contract.md',
   'analysis_gateway_assets.md',
   'event_report_presentation.md',
+  'report_presentation.md',
   'analysis_interpretation.md',
   'audience_models.md',
+  'audience_scheduling.md',
   'command_index.md',
   'metadata_resolution.md',
   'cross_source_config.md',
@@ -38,6 +41,16 @@ const sharedReferences = new Set([
 
 const workflowReferences = [
   {
+    name: 'Set up project business semantics from materials and assets',
+    searchTerms: 'project-semantic setup; cold start; project background; certified assets; frequent assets; specified assets; source materials; review; resumable import plan',
+    reference: 'project_semantic_setup.md',
+  },
+  {
+    name: 'Business semantics capture, sharing and consumption',
+    searchTerms: 'full catalog; session; company background; project background; personal semantics; shared entries; multi-file capture; source provenance; automatic following',
+    reference: 'business_semantics_workspace.md',
+  },
+  {
     name: 'Project semantic knowledge-base build/update/refresh/sync',
     searchTerms: 'project semantic knowledge base; governed asset package; project-semantic asset-package export; KB source upload; schema; compile; readback; retrieval smoke test',
     reference: 'project_semantic_knowledge_wiki.md',
@@ -47,6 +60,7 @@ const workflowReferences = [
 const commands = deduplicate([
   ...analysisCommands,
   ...personalSemanticPreferenceCommands,
+  contextPrepare,
 ])
   .sort((left, right) => commandPath(left).localeCompare(commandPath(right)));
 
@@ -144,6 +158,7 @@ function referenceName(command: Command): string {
 }
 
 function commandContract(command: Command): string {
+  if (command === contextPrepare) return 'gateway orchestration';
   if (command.capabilityId) return command.capabilityId;
   if (command.usesAeHost === false) return 'local utility';
   if (command.resource && !command.command.startsWith('+')) return 'gateway lifecycle';
@@ -195,11 +210,13 @@ function render(items: Command[]): string {
 
   for (const command of items) {
     const reference = referenceName(command);
+    // Existing scripts can still pass this flag. Skills only recommend structured refresh plans.
+    const flags = command.flags.filter((flag) => flag.name !== 'auto-refresh-cron');
     lines.push([
       `| \`${escapeCell(commandPath(command))}\``,
       escapeCell(commandContract(command)),
       command.risk,
-      command.flags.length > 0 ? command.flags.map(renderFlag).join('<br>') : 'None',
+      flags.length > 0 ? flags.map(renderFlag).join('<br>') : 'None',
       `[${reference}](${reference}) |`,
     ].join(' | '));
   }

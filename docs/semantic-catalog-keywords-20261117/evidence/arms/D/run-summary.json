@@ -1,0 +1,22 @@
+{
+  "catalog_pages": 2,
+  "catalog_entries": 60,
+  "initial_candidate_unique_ids": 15,
+  "detail_unique_ids": 16,
+  "detail_reads": 2,
+  "has_uncertainty": true,
+  "unmatched_queries": [
+    "Q15",
+    "Q16"
+  ],
+  "blocked_rule_queries": [
+    "Q12"
+  ],
+  "precondition_error": {
+    "command": "reader.mjs catalog.json 1",
+    "message": "Catalog row identity, revision or summary is invalid.",
+    "resolved_by_parent": true,
+    "included_in_retrieval_effect": false
+  },
+  "verification": "完整呈现2页目录与16题，候选先于详情写入且未修改；读取15个候选正文及1个必要依赖，结果16题格式检查通过。"
+}

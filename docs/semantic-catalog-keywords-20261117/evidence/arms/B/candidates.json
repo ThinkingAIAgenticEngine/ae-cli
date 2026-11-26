@@ -1,0 +1,18 @@
+[
+  {"id":"Q01","candidate_ids":["preference_27"],"reason":"明确要求个人登录日活，匹配该个人登录口径；目录未见内测账号排除规则。"},
+  {"id":"Q02","candidate_ids":["semantic_46"],"reason":"未另定个人口径，需读共享日活的并集规则。"},
+  {"id":"Q03","candidate_ids":["preference_49"],"reason":"新厨师头七天总价值和人均分母直接匹配七日价值口径。"},
+  {"id":"Q04","candidate_ids":["preference_50"],"reason":"买量七日回本对应渠道七日回收，需确认收入、成本和cohort边界。"},
+  {"id":"Q05","candidate_ids":["semantic_48"],"reason":"支付减退款及同币种汇总直接匹配收入净额规则。"},
+  {"id":"Q06","candidate_ids":["preference_30"],"reason":"厨房开门、通关、支付与安装含义属于事件边界。"},
+  {"id":"Q07","candidate_ids":["preference_31","preference_27"],"reason":"星厨赛参与和资格分母需结合明确沿用的个人登录活跃口径。"},
+  {"id":"Q08","candidate_ids":["preference_28"],"reason":"新厨师登录回访下降的定位、渠道拆分及安装缺口直接匹配。"},
+  {"id":"Q09","candidate_ids":["preference_29"],"reason":"简报金额、比例、人数及显式精度覆盖属于展示格式。"},
+  {"id":"Q10","candidate_ids":["preference_33","preference_29"],"reason":"会员分层顺序由月报规则决定，精度需同时核对通用格式。"},
+  {"id":"Q11","candidate_ids":["preference_34"],"reason":"查询无记录是否能判零及接入缺口属于空结果判断边界。"},
+  {"id":"Q12","candidate_ids":["preference_53","semantic_52"],"reason":"夏日领奖率必须核对奖励转化及已失效资格依赖。"},
+  {"id":"Q13","candidate_ids":["preference_10001"],"reason":"活动、入门组、奖励核算精确对应，需确认归组时点及全项目适用范围。"},
+  {"id":"Q14","candidate_ids":["preference_10223","preference_10073"],"reason":"分别匹配海岛集市大师组订单归属和入门组退款处理。"},
+  {"id":"Q15","candidate_ids":[],"reason":"完整目录没有合成蘑菇配方或失败体力规则。"},
+  {"id":"Q16","candidate_ids":[],"reason":"完整目录没有俄罗斯区月卡、卢布定价或商店价格规则。"}
+]

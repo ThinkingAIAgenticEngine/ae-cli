@@ -1,8 +1,8 @@
 ---
 name: ae-kb-discovery
-version: 1.0.0
+version: 1.0.1
 description: >
-  Discover which AE (Agentic Engine) knowledge bases accessible to the current user are worth searching, and decide whether to search at all, through read-only operations. Use when the user explicitly asks to search knowledge bases, internal documentation, or company materials. Also use when a task requires internal facts or business context, or when ae-analysis sees an enabled KB auto-discovery company switch before choosing its query route. Use internal context to explain data analysis results, anomalies, or trends and form evidence-backed conclusions. Do not use if the user explicitly asks not to access knowledge bases. This skill covers discovery and candidate selection; run the actual `+index` / `+grep` / `+read` / `+ask` retrieval with the `ae-kb` skill.
+  Discover which AE (Agentic Engine) knowledge bases accessible to the current user are worth searching, and decide whether to search at all, through read-only operations. Use when the user explicitly asks to search knowledge bases, internal documentation, or company materials, or when a task calls for internal facts or business context. For automatic project semantic knowledge-base consumption during data analysis, follow the project gate and exact target in ae-analysis. Do not use if the user explicitly asks not to access knowledge bases. This skill covers discovery and candidate selection; run the actual `+index` / `+grep` / `+read` / `+ask` retrieval with the `ae-kb` skill.
 ---
 
 # Knowledge Base Discovery
@@ -23,7 +23,8 @@ Use this skill when:
 - The task requires organization-specific facts or context, such as product design and rules, events, campaign or operations calendars, release and iteration records, workflows, policies, or terminology.
 - Internal context is needed to explain data analysis results, anomalies, or trends and form evidence-backed conclusions.
 - The knowledge base context currently available does not cover the question, and discovering other accessible sources has clear value.
-- `ae-analysis` read `data.routing.knowledge_base: auto` from `ae-cli config show` before selecting the project-scoped query route, and a knowledge base could materially improve the answer or asset selection.
+
+For automatic project semantic KB consumption, `ae-analysis` uses its dual-switch policy and the exact project target. Do not discover other KBs when that lookup is disabled, unavailable or insufficient. Explicit requests for general KB discovery retain the workflow below.
 
 Do not use this skill when:
 

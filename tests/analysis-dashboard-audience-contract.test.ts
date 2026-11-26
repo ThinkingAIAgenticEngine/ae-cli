@@ -308,21 +308,62 @@ await test('audience string limits fail locally before dispatch', () => {
   assert.equal(stringFlagValidationError(remark, 'r'.repeat(400)), undefined);
 });
 
-await test('audience updates expose and forward auto refresh cron', async () => {
-  for (const resource of ['user-cluster', 'user-tag']) {
-    const command = user(resource, 'update');
-    const flag = command.flags.find((item) => item.name === 'auto-refresh-cron');
-    assert.ok(flag, `${resource} update must expose --auto-refresh-cron`);
-    assert.match(flag.desc, resource === 'user-tag' ? /enables periodic refresh/i : /does not enable auto refresh/i);
+await test('tags and clusters share structured schedules on both create and update', async () => {
+  const plans = [
+    { frequency: 'daily', time: '02:30' },
+    { frequency: 'daily_multiple', hours: [8, 12, 18], minutes: [0, 30] },
+    { frequency: 'weekly', time: '02:30', weekdays: [1, 7] },
+    { frequency: 'monthly', time: '02:30', month_days: [1, 15] },
+  ];
+  for (const resource of ['user-tag', 'user-cluster']) {
+    for (const action of ['create', 'update']) {
+      const cmd = user(resource, action);
+      assert.ok(flagNames(cmd).includes('enable-auto-refresh'));
+      assert.ok(flagNames(cmd).includes('auto-refresh-schedule'));
+      assert.equal(flagNames(cmd).includes('auto-refresh-cron'), resource === 'user-tag' || action === 'update');
+      for (const plan of plans) {
+        const { body } = await dryBody(cmd, {
+          'project-id': 1, 'tag-name': 'active_users', 'cluster-name': 'active_users',
+          'display-name': 'Active users', 'definition-request': { type: 'condition' },
+          'auto-refresh-schedule': plan,
+        });
+        assert.deepEqual(body.input.auto_refresh_schedule, plan);
+        assert.equal(body.input.auto_refresh_cron, undefined);
+      }
+      if (action === 'update') {
+        const { body } = await dryBody(cmd, { 'project-id': 1, 'tag-name': 'active_users', 'cluster-name': 'active_users', 'enable-auto-refresh': false });
+        assert.equal(body.input.enable_auto_refresh, false);
+        assert.equal(body.input.auto_refresh_schedule, undefined);
+      }
+      await assert.rejects(() => dryBody(cmd, {
+        'project-id': 1, 'tag-name': 'active_users', 'cluster-name': 'active_users',
+        'definition-request': { type: 'condition' }, 'enable-auto-refresh': false,
+        'auto-refresh-schedule': plans[0],
+      }), /Cannot set a schedule/);
+    }
+  }
+});
 
-    const args: Record<string, unknown> = {
-      'project-id': 1,
-      'auto-refresh-cron': '0 30 2 * * ? *',
+await test('legacy refresh flags preserve the gateway input for their three historical commands', async () => {
+  const cron = '0 30 2 L * ? *';
+  const schedule = { frequency: 'daily', time: '02:30' };
+  for (const [resource, action] of [['user-tag', 'create'], ['user-tag', 'update'], ['user-cluster', 'update']]) {
+    const command = user(resource, action);
+    const args = {
+      'project-id': 1, 'tag-name': 'active_users', 'cluster-name': 'active_users',
+      'display-name': 'Active users', 'definition-request': { type: 'condition' },
+      'auto-refresh-cron': cron,
     };
-    args[resource === 'user-cluster' ? 'cluster-name' : 'tag-name'] =
-      resource === 'user-cluster' ? 'retained_users' : 'user_level';
     const { body } = await dryBody(command, args);
-    assert.equal(body.input.auto_refresh_cron, '0 30 2 * * ? *');
+    assert.equal(body.input.auto_refresh_cron, cron);
+    assert.equal(body.input.auto_refresh_schedule, undefined);
+    assert.equal(body.input.enable_auto_refresh, undefined);
+    await assert.rejects(dryBody(command, { ...args, 'auto-refresh-schedule': schedule }), /Pass only one/);
+    await assert.rejects(dryBody(command, { ...args, 'enable-auto-refresh': false }), /Cannot set a schedule/);
+    if (resource === 'user-tag') {
+      const withBackup = await dryBody(command, { ...args, 'enable-history-tag-backup': true });
+      assert.equal(withBackup.body.input.enable_history_tag_backup, true);
+    }
   }
 });
 
@@ -354,14 +395,9 @@ await test('tag create and update forward schedules and preserve an explicit fal
     assert.equal('enable_auto_refresh' in omitted.body.input, false);
     assert.equal('auto_refresh_schedule' in omitted.body.input, false);
     assert.equal('auto_refresh_cron' in omitted.body.input, false);
-    const cron = await dryBody(command, { ...args, 'auto-refresh-cron': '0 30 2 * * ? *' });
-    assert.equal(cron.body.input.auto_refresh_cron, '0 30 2 * * ? *');
     await assert.rejects(dryBody(command, {
       ...args, 'auto-refresh-schedule': schedule, 'enable-auto-refresh': false,
     }), /Cannot set a schedule/);
-    await assert.rejects(dryBody(command, {
-      ...args, 'auto-refresh-schedule': schedule, 'auto-refresh-cron': '0 30 2 * * ? *',
-    }), /Pass only one/);
     if (action === 'create') {
       await assert.rejects(dryBody(command, { ...args, 'enable-auto-refresh': true }), /requires/);
     }

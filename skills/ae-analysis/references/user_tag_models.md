@@ -4,6 +4,14 @@ This is the canonical `--definition-request` contract for direct user-tag create
 
 Top-level `type` is exactly one of `condition`, `metric`, `first_last`, or `sql`.
 
+## Date limits for non-SQL tags
+
+For create and update, explicit `time_range.start_time` and `time_range.end_time` must not be later than today in the tag's effective timezone. This applies to metric, first/last, condition-event, and behavior-sequence ranges. For `custom`, the start must not be after the end. Today is allowed in full, including `23:59:59`; compare calendar dates rather than the current clock time.
+
+Resolve today using the requested `--zone-offset`. On update, omitting that flag preserves the existing tag timezone; inspect `analysis user-tag get` when needed. When timezone conversion is disabled or omitted on create, use the service/cluster local date, not the Agent machine's date. Never send a future boundary or silently truncate the user's range. Explain the restriction and obtain a corrected range if the requested dates are in the future. The CLI backend enforces the same limits for execution, `--validate`, and `--dry-run`.
+
+Use `recent` or `previous` for relative ranges. The fixed start in `start_to_today` and `start_to_yesterday` is subject to the same date limit; do not replace these modes with guessed future endpoints. Metadata-only updates may omit `definition_request` and preserve the existing definition.
+
 ## Condition tag
 
 `condition_values` is a non-empty array. Each item requires `value`; optional fields are `remark`, `events`, `event_relation`, `filters`, `relation`, `event_user_relation`, and `behavior_sequences`.

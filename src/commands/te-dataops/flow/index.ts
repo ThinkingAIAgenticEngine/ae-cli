@@ -15,12 +15,20 @@ import { deleteFlowParam } from './delete-flow-param.js';
 import { addTaskRelation } from './add-task-relation.js';
 import { createSqlTask } from './create-sql-task.js';
 import { updateSqlTask } from './update-sql-task.js';
+import { getSqlTask } from './get-sql-task.js';
 import { createIntegrationTask } from './create-integration-task.js';
 import { updateIntegrationTask } from './update-integration-task.js';
 import { createWorkflowInstanceCheckTask } from './create-workflow-instance-check-task.js';
 import { updateWorkflowInstanceCheckTask } from './update-workflow-instance-check-task.js';
 import { createTaskInstanceCheckTask } from './create-task-instance-check-task.js';
 import { updateTaskInstanceCheckTask } from './update-task-instance-check-task.js';
+import { createPythonTask } from './create-python-task.js';
+import { updatePythonTask } from './update-python-task.js';
+import { getPythonTask } from './get-python-task.js';
+import { listPythonVersions } from './list-python-versions.js';
+import { listPythonPackageSources } from './list-python-package-sources.js';
+import { listPythonDirectories } from './list-python-directories.js';
+import { browsePythonDirectory } from './browse-python-directory.js';
 import { deleteTask } from './delete-task.js';
 import { listHighFrequencyReleaseFlows } from './list-high-frequency-release-flows.js';
 
@@ -42,11 +50,19 @@ const commands: Command[] = [
   updateIntegrationTask,
   updateWorkflowInstanceCheckTask,
   updateTaskInstanceCheckTask,
+  updatePythonTask,
   addTaskRelation,
   createSqlTask,
+  getSqlTask,
   createIntegrationTask,
   createWorkflowInstanceCheckTask,
   createTaskInstanceCheckTask,
+  createPythonTask,
+  getPythonTask,
+  listPythonVersions,
+  listPythonPackageSources,
+  listPythonDirectories,
+  browsePythonDirectory,
   deleteTask,
 ];
 
@@ -57,9 +73,17 @@ export {
   createFlowParam,
   updateFlowParam,
   deleteFlowParam,
+  getSqlTask,
   createWorkflowInstanceCheckTask,
   updateWorkflowInstanceCheckTask,
   createTaskInstanceCheckTask,
   updateTaskInstanceCheckTask,
+  createPythonTask,
+  updatePythonTask,
+  getPythonTask,
+  listPythonVersions,
+  listPythonPackageSources,
+  listPythonDirectories,
+  browsePythonDirectory,
   deleteTask,
 };

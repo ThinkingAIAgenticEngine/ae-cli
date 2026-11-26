@@ -1,0 +1,175 @@
+[
+  {
+    "id": "Q01",
+    "required_candidate_ids": [
+      "preference_27"
+    ],
+    "acceptable_extra_candidate_ids": [
+      "preference_30"
+    ],
+    "required_dependency_ids": [],
+    "reason": "个人登录日活优先；通关、领奖与测试账号排除边界均在本条。共享口径不能替代。"
+  },
+  {
+    "id": "Q02",
+    "required_candidate_ids": [
+      "semantic_46"
+    ],
+    "acceptable_extra_candidate_ids": [
+      "preference_27"
+    ],
+    "required_dependency_ids": [],
+    "reason": "明确问无个人覆盖的共享默认，需去重并集而非人数相加。个人条仅可补充优先级解释。"
+  },
+  {
+    "id": "Q03",
+    "required_candidate_ids": [
+      "preference_49"
+    ],
+    "acceptable_extra_candidate_ids": [
+      "preference_34"
+    ],
+    "required_dependency_ids": [
+      "semantic_48"
+    ],
+    "reason": "七日LTV总额、人均分母、首次安装不可替代来自价值规则；净收入规则是明确依赖。"
+  },
+  {
+    "id": "Q04",
+    "required_candidate_ids": [
+      "preference_50"
+    ],
+    "acceptable_extra_candidate_ids": [
+      "preference_49",
+      "preference_34"
+    ],
+    "required_dependency_ids": [
+      "semantic_48"
+    ],
+    "reason": "回本别名、公式、零成本和两种渠道边界来自七日回收；净收入规则是明确依赖。"
+  },
+  {
+    "id": "Q05",
+    "required_candidate_ids": [
+      "semantic_48"
+    ],
+    "acceptable_extra_candidate_ids": [],
+    "required_dependency_ids": [],
+    "reason": "净流水为原快照关键词别名；同币种、退款正负与不自动人均在收入正文。"
+  },
+  {
+    "id": "Q06",
+    "required_candidate_ids": [
+      "preference_30"
+    ],
+    "acceptable_extra_candidate_ids": [
+      "preference_27",
+      "semantic_46"
+    ],
+    "required_dependency_ids": [],
+    "reason": "厨房开门是原有标题及关键词别名，事件关系及不推断安装、付费由事件边界正文规定。"
+  },
+  {
+    "id": "Q07",
+    "required_candidate_ids": [
+      "preference_31"
+    ],
+    "acceptable_extra_candidate_ids": [
+      "preference_32"
+    ],
+    "required_dependency_ids": [
+      "preference_27"
+    ],
+    "reason": "参与率需资格活跃分母、join分子与ID核验；正文要求读取有效日活，本题明确个人登录口径。"
+  },
+  {
+    "id": "Q08",
+    "required_candidate_ids": [
+      "preference_28"
+    ],
+    "acceptable_extra_candidate_ids": [
+      "preference_30",
+      "preference_34"
+    ],
+    "required_dependency_ids": [],
+    "reason": "回访排查流程明确样本少、窗口不成熟与缺安装边界，不需要猜测留存公式。"
+  },
+  {
+    "id": "Q09",
+    "required_candidate_ids": [
+      "preference_29"
+    ],
+    "acceptable_extra_candidate_ids": [],
+    "required_dependency_ids": [],
+    "reason": "默认三位、人数整数和当次两位要求的优先级均在格式规则。"
+  },
+  {
+    "id": "Q10",
+    "required_candidate_ids": [
+      "preference_33",
+      "preference_29"
+    ],
+    "acceptable_extra_candidate_ids": [],
+    "required_dependency_ids": [],
+    "reason": "会员月报负责顺序且不改精度；格式条负责金额精度，两条均是直接问题。"
+  },
+  {
+    "id": "Q11",
+    "required_candidate_ids": [
+      "preference_34"
+    ],
+    "acceptable_extra_candidate_ids": [
+      "preference_27",
+      "semantic_48",
+      "preference_50"
+    ],
+    "required_dependency_ids": [],
+    "reason": "空结果不是业务零；接入、窗口、权限先核实，不要求计算具体指标。"
+  },
+  {
+    "id": "Q12",
+    "required_candidate_ids": [
+      "preference_53"
+    ],
+    "acceptable_extra_candidate_ids": [],
+    "required_dependency_ids": [
+      "semantic_52"
+    ],
+    "reason": "父规则要求资格有效；依赖正文明确有效截至2026-08-31。需要读取过期依赖后停止，不能沿用。"
+  },
+  {
+    "id": "Q13",
+    "required_candidate_ids": [
+      "preference_10001"
+    ],
+    "acceptable_extra_candidate_ids": [
+      "preference_10031"
+    ],
+    "required_dependency_ids": [],
+    "reason": "仅该活动该组的奖励核算，按结束组归并且不替代全项目回收；同组分组统计可补充。"
+  },
+  {
+    "id": "Q14",
+    "required_candidate_ids": [
+      "preference_10223",
+      "preference_10073"
+    ],
+    "acceptable_extra_candidate_ids": [],
+    "required_dependency_ids": [],
+    "reason": "分别定位大师组订单与入门组退款，不能用同活动不同组或不同主题替代。"
+  },
+  {
+    "id": "Q15",
+    "required_candidate_ids": [],
+    "acceptable_extra_candidate_ids": [],
+    "required_dependency_ids": [],
+    "reason": "目录没有食材配方或体力消耗规则，合成背景不能推出具体规则。"
+  },
+  {
+    "id": "Q16",
+    "required_candidate_ids": [],
+    "acceptable_extra_candidate_ids": [],
+    "required_dependency_ids": [],
+    "reason": "目录没有地区月卡或商店定价；金额展示或币种规则不能回答商品价格。"
+  }
+]

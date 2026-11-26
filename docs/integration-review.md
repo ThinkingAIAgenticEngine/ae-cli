@@ -110,6 +110,8 @@ GitLab 机器人变量：已有变量名 / 待创建
 
 请求采用 OpenAI 兼容调用方式：发送模型名称、system/user 消息、`temperature=0.1` 和 `reasoning_effort=low`，不关闭思考模式。PR-Agent 需要 YAML 格式的审核结果，因此不使用系统 Skill 的 JSON 输出格式参数。
 
+审核请求使用流式响应，收到正常结束标记后才解析并发布完整 YAML。网关提供的流式用量会随审核产物保存。
+
 DeepSeek 官方默认开启思考模式，强度为 `high`，实际行为还取决于内部网关配置；[官方说明](https://api-docs.deepseek.com/zh-cn/guides/thinking_mode/)。每次 MR 更新会审核当前完整 base..head 差异，直接 push 会审核完整 before..head 差异，而不是只审核最后一次提交。历史上首次成功的 MR 验证包含 11 个变更文件、1266 行新增内容，因此即使最终没有发现问题，仍需处理完整审核输入。
 
 耗时排查：[Job #30104](https://gitlab.thinkingdata.cn/te-ai/te-cli/-/jobs/30104) 的输入为 37,432 token，模型请求耗时 548.37 秒，32,768 个输出 token 全部属于推理，正文字符数为 0，最终以 `finish_reason=length` 结束且未发布。这确认该次失败由推理用尽输出预算造成。当前将思考强度改为 `low`，以保留思考并降低耗尽预算的概率；具体耗时与效果仍以真实请求指标为准。网关排队时间没有单独指标，不能由这些数据直接推算。
@@ -167,6 +169,8 @@ GitLab 在 `workflow:rules` 阶段无法调用 API，因此无法可靠做到“
 ## 四、状态与排查
 
 产物保留 30 天：`.review/report.md` 保存报告或错误/跳过说明；`.review/result.json` 保存状态、实际 SHA、事件和流水线 ID。
+
+二进制变更由 Git 识别，审核报告提示人工核对，产物记录 `binary_file_count`。其余文本仍按原始差异审核。只有二进制变更时，仅发布覆盖范围说明。
 
 成功产物还包含 `review_seconds`（准备临时仓库至报告生成完成）和 `model` 指标：`model_seconds`（一次模型 HTTP 请求的总耗时）、`input_tokens`、`output_tokens`，以及网关提供时的 `reasoning_tokens`。`reasoning_chars` 与 `answer_chars` 只记录响应字段字符数，不保存或展示推理正文。请求耗时包含网关等待、模型生成及网络传输，不能直接等同于纯推理耗时。日志中的 `Model metrics` 可用于判断慢在模型请求还是本地准备；缺失 token 指标表示网关未提供，而不是零消耗。
 

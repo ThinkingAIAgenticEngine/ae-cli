@@ -1,0 +1,12 @@
+{
+  "row_count": 60,
+  "query_count": 16,
+  "gold_sha256": "456ba474d68bbc23808500b51161d1ad856793c69db32dc7ae7f387f7446d906",
+  "source_state_sha256": "9ab3c3ace509471fa5d7c3371ef5f00e3b99a69b707c82adbc5ddb8904bc4077",
+  "source_catalog_sha256": "6271806915fe915e0604077643f96e0f9c798bb367d3b17af79a5ee1d8737768",
+  "source_manifest": "docs/business-semantics/cli-consumption-20261116/fixture-refinement/manifest.json",
+  "source_manifest_sha256": "8e18a6223c02ec716b1b88970fb017e12aa001d58709e26689f8ab87dc69b668",
+  "construction_order": "正文与原元数据 -> queries/gold -> 改写元数据 -> 四臂目录",
+  "baseline_keyword_rows": 14,
+  "improved_keyword_rows": 60
+}

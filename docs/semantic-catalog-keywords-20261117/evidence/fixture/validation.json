@@ -1,0 +1,22 @@
+{
+  "status": "passed",
+  "row_count": 60,
+  "query_count": 16,
+  "baseline_keyword_rows": 14,
+  "improved_keyword_rows": 60,
+  "gold_sha256": "456ba474d68bbc23808500b51161d1ad856793c69db32dc7ae7f387f7446d906",
+  "checks": [
+    "unique IDs",
+    "question-only schema",
+    "gold references and SHA-256",
+    "baseline metadata exact equality to source",
+    "body exact equality to source",
+    "all old and revised keywords supported by content or sources",
+    "revised keyword count 2..5",
+    "four-arm field and order equality",
+    "body projection equality",
+    "Python AST",
+    "trailing whitespace"
+  ],
+  "scope": "Fixture integrity only; no retrieval result or model-token measurement."
+}

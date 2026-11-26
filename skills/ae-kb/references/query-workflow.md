@@ -9,18 +9,40 @@ Use `+ask` when the question requires synthesizing across multiple pages or
 multi-hop reasoning; simple factual lookups are served by the steps below.
 Everything below is server-side LLM-free.
 
-## The loop
+## Automatic project semantic KB retrieval
+
+When the `ae-analysis` dual-switch gate is enabled and `kb project-target get`
+returns an available company KB for the verified project, that exact KB is the
+sole candidate. For each new analysis question, reuse exact navigation where
+applicable and make a fresh `+grep` or content `+read` against the current project's resolved KB.
+Results from a previous question do not satisfy the automatic project KB preflight.
+If no obvious page matches, search the closest valid paths returned by navigation.
+If the KB has no valid retrieval path, the retrieval fails, or there are no relevant hits,
+continue ordinary analysis with business semantics. Do not return to discovery or search another KB.
+
+## Other KB queries
 
 This picks up **after** `ae-kb-discovery` has chosen a candidate from trusted active sources or `+list`.
 An explicit reference skips `+list` and stays within the referenced list, even when page evidence is insufficient.
 Preferred candidates are searched only when relevant; clearly unrelated candidates or evidence gaps can lead to `+list`.
 After `+list`, retrieve from at most three distinct newly discovered knowledge bases; count every new source in a multi-source `+ask` separately. Explicit references and preferred candidates do not consume that budget.
-Start here with a chosen candidate; scope every `+index` / `+grep` / `+read` call to it with `--sources` / `--source`. If the candidate turns out not to cover the question, go back to `ae-kb-discovery` for the next allowed candidate rather than searching everything blindly.
 When using `+ask` with explicit references or preferred candidates, always pass `--sources` containing only the relevant authorized sources from that active list; never omit it or include unrelated sources. For an explicit reference, insufficient evidence does not authorize expansion to another knowledge base.
 
+If the first grep misses, rewrite the query once with different terms from the
+navigation and the same `--paths`, then read the likeliest linked page if useful.
+For a remaining evidence gap, try other paths copied from current navigation or
+return to discovery for the next allowed candidate. With no usable paths, apply
+the same discovery limits. Never construct a path from a title.
+
+## Retrieval steps
+
+Scope every `+index` / `+grep` / `+read` call to the selected KB with `--sources` / `--source`.
+
 **Known-page fast path:** within the same host, identity, KB and published revision,
-reuse navigation and read evidence already obtained in this task. Copy exact
-links returned by `+index`, `+grep` or `+read`; go to step 3 for a relevant page
+reuse navigation across questions. For automatic project retrieval, reuse previously
+read content only for the same question. For other KB queries, reuse the evidence
+already read in the same task.
+Copy exact links returned by `+index`, `+grep` or `+read` and go to step 3 for a relevant page
 whose path is known. Do not guess filenames. Once a path is known,
 do not repeat indexing or broad directory searches to rediscover it;
 only read a domain, catalog or parent page when its additional
@@ -47,17 +69,13 @@ A revision or access-context change requires revalidation, not silent reuse.
    entry must be strictly below `wiki/`: the roots `wiki` and `wiki/`,
    `index.md`, `raw/`, absolute paths and paths escaping `wiki/` are invalid.
    Never use the wiki root as a full-library search fallback. If navigation
-   provides no usable paths, skip grep as described below. Call
-   `+grep` with the candidate `--sources` and the copied list as `--paths`. Search
-   with the terms in the returned navigation. If the first grep misses, rewrite
-   the query **once** using different terms from that navigation, still with
-   the same `--paths`. If the rewrite also misses, choose the likeliest linked
-   page and use step 3, or return to discovery. A third rewrite of the same
-   idea produces no new recall.
+   provides no usable paths, skip `+grep` and follow the fallback for your route above.
+   With valid paths, call `+grep` with the candidate `--sources` and the copied list as `--paths`. Search
+   with the terms in the returned navigation. If the grep misses, follow the
+   fallback for your route above.
 
-   **Done when:** you have hits, or you have rewritten once, or step 1 copied
-   0 paths. Copied 0 paths → skip grep and go back to discovery rather than
-   constructing a path from a title.
+   **Done when:** you have relevant hits to read or have reached the fallback
+   for your route.
 
    **Reading the result — the page-level `results` view.** The response is a page-level
    `results` array: each entry is one page with its full `hitCount`, a
@@ -160,8 +178,7 @@ A revision or access-context change requires revalidation, not silent reuse.
    has no guaranteed historical snapshot; do not label its current content historical.
    Historical source reads are rejected inside a required fixed-context execution;
    never remove that context or fall back to an ordinary token to bypass its KB set.
-   If a gap remains, go back to step 2 with another set of `--paths`
-   **copied** from current navigation, or return to discovery for the next candidate.
+   If a gap remains, follow the fallback for your route above.
    For a knowledge-only question, missing evidence after the allowed search
    means "not covered by the knowledge base" — do not attach a confident fact
    from general knowledge, even with a disclaimer. For business data analysis,

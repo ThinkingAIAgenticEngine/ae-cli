@@ -31,3 +31,5 @@ Reuse this definition when already read; otherwise get it before applying report
 - `sql`: only `--sql-params` is valid. Every override name must already exist in `data.definition.params`; time values may be overridden only through a saved `part_date` or time parameter. For a selector runtime override, copy the exact UI label from `data.definition.params[].options[].name` into the override's `value`; never send `options[].value`, which is the saved SQL expansion fragment. A saved PartDate definition exposes boolean `use_timezone` (default `false`); it is definition metadata and cannot be overridden by report-data.
 - non-SQL analysis models: use `--filters`, `--group-by`, `--start-time`, `--end-time`, or `--time-granularity`; do not send `--sql-params`.
 - `tag`: report-data executes the saved tag definition. For a different tag view, use `analysis history-tag-data run/export`.
+
+For ordinary-model persisted display settings, `presentation` also returns the applicable semantic options described in [source-report presentation](report_presentation.md). Missing fields mean no recognized persisted value; do not infer false or a browser default.

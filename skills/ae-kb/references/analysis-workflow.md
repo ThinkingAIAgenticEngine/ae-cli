@@ -20,13 +20,16 @@ project-KB retrieval as a prerequisite.
    command. Verify the host and exact project ID; a KB name, binding, or display
    name does not prove the live project identity. Do not probe a default or
    previously used project while resolving the requested one.
-2. Use `ae-kb-discovery` to select the candidate. An explicitly named KB wins;
-   otherwise prefer a compiled KB whose `bindings.targetType` is `project` and
-   whose `targetId` exactly matches the verified project ID.
-3. Follow the deterministic `+index -> +grep -> +read` procedure in
-   [`query-workflow.md`](query-workflow.md). Only source-page content actually
-   returned by `+read` counts as a KB hit. A list item, index title, grep
-   snippet, or `+ask` synthesis alone is not enough to drive execution.
+2. For automatic project semantic KB consumption, apply the `ae-analysis`
+   dual-switch gate and use only the company KB returned by
+   `kb project-target get` for that project. For an explicit KB request, use the
+   authorized named source or the general `ae-kb-discovery` workflow.
+3. Follow the matching route in [`query-workflow.md`](query-workflow.md).
+   For a new analysis question with an available project KB, run a fresh
+   `+grep` or content `+read`. If there is no relevant hit, continue through
+   ordinary analysis with business semantics. Before using a KB hit to choose
+   an asset or definition, verify it in source-page content returned by `+read`.
+   Index titles, grep snippets and `+ask` synthesis are navigation evidence.
 4. If `+ask` helps locate or synthesize multiple pages, read its cited source
    pages before executing data queries. Verify asset IDs, definitions, dynamic
    parameters, time rules, and limitations in the source text.
@@ -38,6 +41,12 @@ project-KB retrieval as a prerequisite.
 A compiled KB is a snapshot, not a live data source. Use it for routing,
 semantics, and decision boundaries. Verify current asset existence, the current
 saved definition, and current data with `ae-analysis`.
+
+When an applicable, current business-semantic definition differs from a KB
+definition of the same measure or rule, follow business semantics. A saved asset
+whose live definition conflicts with business semantics is unsuitable for that
+measure. Use KB evidence for uncovered context, and use ordinary discovery for
+an authorized asset or query that matches the business-semantic definition.
 
 ## Choose the most specific executable asset
 
@@ -255,9 +264,9 @@ applicable scope is not an equivalent validation.
 
 ## Degrade to the ordinary analysis path
 
-The KB path is preferred, not exclusive. If definition inspection establishes
-that the KB-selected asset cannot cover the request, or a real execution attempt
-cannot produce the requested live result, continue through the ordinary
+If definition inspection establishes that the KB-selected asset cannot cover
+the request, or a real execution attempt cannot produce the requested live
+result, continue through the ordinary
 `ae-analysis` "Existing business asset before ad-hoc" workflow. Preserve the KB
 evidence and already verified definitions; do not restart from zero:
 

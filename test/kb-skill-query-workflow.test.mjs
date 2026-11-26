@@ -135,6 +135,25 @@ test('known paths bypass redundant navigation within a stable retrieval context'
   assert.match(workflow, /definitions, parameters and boundaries.*analysis handoff/s);
 });
 
+test('a known path does not waive retrieval for a new project analysis question', () => {
+  assert.match(workflow, /For each new analysis question, reuse exact navigation where\s+applicable and make a fresh `\+grep` or content `\+read` against the current project's resolved KB/);
+  assert.match(workflow, /Results from a previous question do not satisfy the automatic project KB preflight/);
+  assert.match(workflow, /If no obvious page matches, search the closest valid paths returned by navigation/);
+});
+
+test('automatic project retrieval and general discovery have separate fallbacks', () => {
+  const project = sectionBetween(workflow, '## Automatic project semantic KB retrieval', '## Other KB queries');
+  const general = sectionBetween(workflow, '## Other KB queries', '## Retrieval steps');
+  const steps = sectionBetween(workflow, '## Retrieval steps', '## Anti-pattern: same-page offset crawling');
+  assert.match(project, /no valid retrieval path[\s\S]*no relevant hits[\s\S]*continue ordinary analysis/);
+  assert.match(project, /Do not return to discovery or search another KB/);
+  assert.match(steps, /For automatic project retrieval, reuse previously\s+read content only for the same question/);
+  assert.match(general, /return to discovery for the next allowed candidate/);
+  assert.doesNotMatch(steps, /return to discovery|go back to discovery/);
+  const explore = sectionBetween(skill, '### Explore Knowledge Base Pages', '### Remove One Source');
+  assert.match(explore, /automatic project semantic KB[\s\S]*project-target get[\s\S]*Other KB queries/);
+});
+
 test('short linked pages use a bounded read before optional section localization', () => {
   const locator = sectionBetween(
     workflow,

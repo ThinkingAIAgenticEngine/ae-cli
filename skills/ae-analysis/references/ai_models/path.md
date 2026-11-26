@@ -27,12 +27,13 @@ Use for behavior paths before or after a source event.
 
 Path `filters` are global member filters compiled to the original QP `user_filter`. They support `user_property`, `cluster`, and `tag`, but not `event_property`. Do not move a user filter into the source event's event-property filter.
 
-`session_interval` must be a positive integer. Path session timeout accepts only these unit/value ranges:
+Path session timeout accepts only these unit/value ranges:
 
-- `second`: `1..3600`
-- `minute`: `1..1440`
-- `hour`: `1..168`
-- `day`: `1..180`
+- `second`: `1..999`
+- `minute`: `1..999`
+- `hour`: `1..24`
+
+Do not use `day`. Express one day as `session_interval=24` with `session_unit=hour`.
 
 Property types come from project metadata. If resolution says a field is an `event_property`, never relabel it as `user_property` just to satisfy the path schema. Remove the unsupported global filter, choose a model that supports event-property filtering, or ask the user to clarify the intended constraint. A familiar name such as `channel` is not universally an event or user property across projects.
 

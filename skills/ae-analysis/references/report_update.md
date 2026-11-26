@@ -1,10 +1,12 @@
 # analysis report update
 
-Use when the user explicitly wants to update saved report metadata, replace its AI QP definition, or change an event report's chart/result-table layout.
+Use when the user explicitly wants to update saved report metadata, replace its AI QP definition, or change supported source-report display settings.
+
+For ordinary-model labels, date annotations, retention key periods/display grain, funnel display, pie options, interval histograms or simple chart sorting, read [source-report presentation](report_presentation.md). Use the same update command; applicability follows the saved report model. Creation and dashboard display remain separate scopes.
 
 Do not use raw QP, `qp`, `report_model`, or `analysis_query`. When changing the definition, pass `model_type` and AI QP `definition` together.
 
-Read [`ai_models.md`](ai_models.md) for the single AI-facing model registry. Report update supports the 13 analysis models plus `tag` for saved tag report data.
+Read [`ai_models.md`](ai_models.md) for the single AI-facing model registry. Report update supports the 12 analysis models plus `tag` for saved tag report data.
 
 Command:
 
@@ -20,7 +22,7 @@ Input sends `project_id`, `report_id`, `version` from CLI `--report-version`, an
 
 ## Preserve display settings
 
-For same-model definition updates, omit `presentation` to preserve the saved event-report chart and result-table layout. For a display-only change, send `--presentation` without `--definition` or `--model-type`, using the current version. Only supplied presentation fields change; omitted fields are retained. Supported only for event reports: `chart_type=line|combo|bar|stacked|cumulative|pie`, `table_layout=date|event|group`, and report-level `series`. The gateway validates the effective presentation against the saved definition; pie always requires grouping without time comparison. Total-time reports support bar, or pie only when those grouping/comparison conditions hold. A model change uses the target model's display defaults unless an allowed event presentation is supplied.
+For same-model definition updates, omit `presentation` to preserve supported saved display settings, including the event chart and result-table layout. For a display-only change, send `--presentation` without `--definition` or `--model-type`, using the current version. Only supplied presentation fields change; omitted fields are retained. The existing event-only fields remain: `chart_type=line|combo|bar|stacked|cumulative|pie`, `table_layout=date|event|group`, and report-level `series`. The gateway validates the effective presentation against the saved definition; pie always requires grouping without time comparison. Total-time reports support bar, or pie only when those grouping/comparison conditions hold. A model change uses the target model's display defaults unless an allowed event presentation is supplied.
 
 For combination styles/axes, read [event-report presentation](event_report_presentation.md) before updating. Series is a subset patch; `[]` is an explicit reset, and `chart_type=line` resets all series to primary-axis lines. Metric positions are tied to the current returned `definition.metrics` and report version. Changing source series also affects its other trend (`L0`) cards; card updates cannot override series locally. During definition changes, the server preserves uniquely matched technical metrics and rejects unsafe non-default series loss with `SERIES_PRESERVATION_CONFLICT`; follow its reset guidance instead of silently carrying old indexes into new metrics.
 

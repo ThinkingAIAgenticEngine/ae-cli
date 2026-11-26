@@ -1,6 +1,6 @@
 # Project Semantic Knowledge Base Wiki
 
-Asset-package export requires access to the target project. Neither the retired `project_semantic_enable` project switch nor the company switch for automatic knowledge-base discovery gates an explicit build or refresh. If project access or company KB permission is denied, report the error and stop; do not switch to a different project, scope, or export path.
+Asset-package export for building or refreshing a project KB requires project access and the target project's `project_semantic_enable` switch. The company's automatic discovery switch applies to automatic analysis reads. If project access or company KB permission is denied, report the error and stop; do not switch to a different project, scope, or export path.
 
 Build one server-consumable project semantic source Wiki from one immutable Common asset-package snapshot and prove that the KB-compiled knowledge base can be browsed and consumed correctly. The asset package is the raw truth source. Default to a governed package; use an `all_visible` package only when the user explicitly asks for all assets or for uncertified assets to be included. The Agent summarizes the asset semantics once into editable Markdown sources; KB owns formal rule application, final compilation, source lifecycle, and incremental maintenance.
 

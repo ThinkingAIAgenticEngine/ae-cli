@@ -31,6 +31,10 @@ export interface CreateCapabilityCommandConfig {
   buildInput: (ctx: RuntimeContext) => Record<string, unknown>;
   /** Optional async input resolver for service-specific discovery (kept out of generic commands). */
   prepareInput?: (ctx: RuntimeContext, input: Record<string, unknown>) => Promise<Record<string, unknown>>;
+  /** Prepare inputs that are permitted only after the command's execution checks. */
+  prepareExecuteInput?: (
+    ctx: RuntimeContext, input: Record<string, unknown>,
+  ) => Record<string, unknown> | Promise<Record<string, unknown>>;
   postProcess?: (
     result: unknown,
     input: Record<string, unknown>,
@@ -86,10 +90,13 @@ export function createCapabilityCommand(config: CreateCapabilityCommandConfig): 
       const preparedInput = config.prepareInput ? await config.prepareInput(ctx, input) : input;
       const evidence = config.intentConsistency ? verifyDefinitionIntent(ctx, config.intentConsistency) : undefined;
       const intentMeta = evidence ? { intent_consistency: evidence } : undefined;
-      announceDispatch(config.capabilityId, preparedInput);
-      const result = await executeCapabilityWithEnvelope(requestHost, gatewayDomain, config.capabilityId, preparedInput);
+      const executeInput = config.prepareExecuteInput
+        ? await config.prepareExecuteInput(ctx, preparedInput)
+        : preparedInput;
+      announceDispatch(config.capabilityId, executeInput);
+      const result = await executeCapabilityWithEnvelope(requestHost, gatewayDomain, config.capabilityId, executeInput);
       const data = config.postProcess
-        ? await config.postProcess(result.data, preparedInput, ctx)
+        ? await config.postProcess(result.data, executeInput, ctx)
         : result.data;
       return withOutputMetadata(data, { ...result.meta, ...intentMeta });
     },

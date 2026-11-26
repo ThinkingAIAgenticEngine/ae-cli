@@ -1,0 +1,4757 @@
+{
+  "policy": "E仅改变keywords；删除标题摘要已覆盖的重复主题或条件，允许恢复原快照已有且未被标题摘要覆盖的业务叫法。不凑数量，不读取测试问题、gold或盲测结果。",
+  "candidate_pool": "每条D.improved_keywords与同条原快照keywords的去重并集；没有额外从正文扩充词表。",
+  "summary": {
+    "keep": 4,
+    "recover": 13,
+    "remove": 230,
+    "rows": 60,
+    "D_keyword_count": 195,
+    "E_keyword_count": 17,
+    "E_nonempty_rows": 12,
+    "D_removed_count": 191,
+    "original_only_removed_count": 39
+  },
+  "immutable_checks": {
+    "title_summary_equal_D": true,
+    "row_order_equal_D": true,
+    "catalog_E_sha256": "d1afc5a9f1ca5a20278f5c0d4fd02eb55fde8017b2049f98badeaefffd6ec41b",
+    "gold_not_opened": true,
+    "blind_results_not_opened": true,
+    "questions_not_inspected": true,
+    "E_schema_and_source_check": "passed"
+  },
+  "entries": [
+    {
+      "id": "preference_27",
+      "frozen_title": "个人登录日活：自然日与排除边界",
+      "frozen_summary": "个人日活仅计 ps_login 去重玩家，最近7个完整自然日不含今天；通关、领奖不能替代登录，没有测试账号标记不得自行排除。",
+      "D_keywords": [
+        "日活玩家",
+        "完整自然日",
+        "测试账号标记"
+      ],
+      "E_keywords": [
+        "DAU"
+      ],
+      "decisions": [
+        {
+          "keyword": "日活玩家",
+          "in_D": true,
+          "in_original_keywords": true,
+          "action": "remove",
+          "reason": "标题的个人登录日活和摘要的去重玩家已表达同一对象。",
+          "source_support": [
+            {
+              "kind": "body",
+              "path": "docs/business-semantics/cli-consumption-20261116/fixture-lifecycle/state-final.json",
+              "entry_id": "preference_27",
+              "excerpt": "星岛餐厅的日活玩家是当日触发 ps_login 的去重用户。"
+            },
+            {
+              "kind": "original_keyword",
+              "path": "docs/business-semantics/cli-consumption-20261116/fixture-lifecycle/state-final.json",
+              "entry_id": "preference_27",
+              "field": "keywords",
+              "value": "日活玩家"
+            }
+          ]
+        },
+        {
+          "keyword": "完整自然日",
+          "in_D": true,
+          "in_original_keywords": false,
+          "action": "remove",
+          "reason": "冻结摘要已逐字包含该词，重复出现不增加上下文信息。",
+          "source_support": [
+            {
+              "kind": "body",
+              "path": "docs/business-semantics/cli-consumption-20261116/fixture-lifecycle/state-final.json",
+              "entry_id": "preference_27",
+              "excerpt": "最近7个完整自然日不含今天，按项目时区逐日统计。"
+            }
+          ]
+        },
+        {
+          "keyword": "测试账号标记",
+          "in_D": true,
+          "in_original_keywords": false,
+          "action": "remove",
+          "reason": "冻结摘要已逐字包含该词，重复出现不增加上下文信息。",
+          "source_support": [
+            {
+              "kind": "body",
+              "path": "docs/business-semantics/cli-consumption-20261116/fixture-lifecycle/state-final.json",
+              "entry_id": "preference_27",
+              "excerpt": "当前没有测试账号标记，不得虚构排除条件。"
+            }
+          ]
+        },
+        {
+          "keyword": "每日活跃",
+          "in_D": false,
+          "in_original_keywords": true,
+          "action": "remove",
+          "reason": "只是把标题中的日活展开为中文全称，无新增业务定义或区分。",
+          "source_support": [
+            {
+              "kind": "original_keyword",
+              "path": "docs/business-semantics/cli-consumption-20261116/fixture-lifecycle/state-final.json",
+              "entry_id": "preference_27",
+              "field": "keywords",
+              "value": "每日活跃"
+            }
+          ]
+        },
+        {
+          "keyword": "DAU",
+          "in_D": false,
+          "in_original_keywords": true,
+          "action": "recover",
+          "reason": "原快照已确认的日活英文缩写；冻结标题、摘要只有中文日活，没有DAU这一术语。",
+          "source_support": [
+            {
+              "kind": "original_keyword",
+              "path": "docs/business-semantics/cli-consumption-20261116/fixture-lifecycle/state-final.json",
+              "entry_id": "preference_27",
+              "field": "keywords",
+              "value": "DAU"
+            }
+          ]
+        },
+        {
+          "keyword": "登录活跃",
+          "in_D": false,
+          "in_original_keywords": true,
+          "action": "remove",
+          "reason": "摘要已明确仅计登录去重玩家，重复同一事件限定。",
+          "source_support": [
+            {
+              "kind": "original_keyword",
+              "path": "docs/business-semantics/cli-consumption-20261116/fixture-lifecycle/state-final.json",
+              "entry_id": "preference_27",
+              "field": "keywords",
+              "value": "登录活跃"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "preference_28",
+      "frozen_title": "新厨师回访排查：渠道、样本与窗口",
+      "frozen_summary": "先核实登录和通关接入及窗口，再按获客渠道拆分；小样本展示人数，未成熟窗口说明，缺安装不以注册或首次登录替代。",
+      "D_keywords": [
+        "新厨师回访",
+        "渠道样本过少",
+        "回访窗口未成熟",
+        "历史首次安装记录"
+      ],
+      "E_keywords": [
+        "留存"
+      ],
+      "decisions": [
+        {
+          "keyword": "新厨师回访",
+          "in_D": true,
+          "in_original_keywords": false,
+          "action": "remove",
+          "reason": "冻结标题已逐字包含该词，重复出现不增加上下文信息。",
+          "source_support": [
+            {
+              "kind": "body",
+              "path": "docs/business-semantics/cli-consumption-20261116/fixture-lifecycle/state-final.json",
+              "entry_id": "preference_28",
+              "excerpt": "排查新厨师回访变化，先核实 ps_login 与 ps_level_complete 的接入状态和观察窗口，再按 ps_acquisition_channel 拆分。"
+            }
+          ]
+        },
+        {
+          "keyword": "渠道样本过少",
+          "in_D": true,
+          "in_original_keywords": false,
+          "action": "remove",
+          "reason": "摘要已写小样本展示人数，重复条件。",
+          "source_support": [
+            {
+              "kind": "body",
+              "path": "docs/business-semantics/cli-consumption-20261116/fixture-lifecycle/state-final.json",
+              "entry_id": "preference_28",
+              "excerpt": " 渠道样本过少时展示人数，不只比较百分比。"
+            }
+          ]
+        },
+        {
+          "keyword": "回访窗口未成熟",
+          "in_D": true,
+          "in_original_keywords": false,
+          "action": "remove",
+          "reason": "摘要已写未成熟窗口说明，重复条件。",
+          "source_support": [
+            {
+              "kind": "body",
+              "path": "docs/business-semantics/cli-consumption-20261116/fixture-lifecycle/state-final.json",
+              "entry_id": "preference_28",
+              "excerpt": " 回访窗口未成熟时单独说明。"
+            }
+          ]
+        },
+        {
+          "keyword": "历史首次安装记录",
+          "in_D": true,
+          "in_original_keywords": false,
+          "action": "remove",
+          "reason": "摘要已写缺安装不以注册或首次登录替代，重复安装依赖边界。",
+          "source_support": [
+            {
+              "kind": "body",
+              "path": "docs/business-semantics/cli-consumption-20261116/fixture-lifecycle/state-final.json",
+              "entry_id": "preference_28",
+              "excerpt": "没有历史首次安装记录时，不构造安装 cohort，也不把注册或首次登录当安装。"
+            }
+          ]
+        },
+        {
+          "keyword": "新厨师",
+          "in_D": false,
+          "in_original_keywords": true,
+          "action": "remove",
+          "reason": "冻结标题已逐字包含该词，重复出现不增加上下文信息。",
+          "source_support": [
+            {
+              "kind": "body",
+              "path": "docs/business-semantics/cli-consumption-20261116/fixture-lifecycle/state-final.json",
+              "entry_id": "preference_28",
+              "excerpt": "排查新厨师回访变化，先核实 ps_login 与 ps_level_complete 的接入状态和观察窗口，再按 ps_acquisition_channel 拆分。"
+            },
+            {
+              "kind": "original_keyword",
+              "path": "docs/business-semantics/cli-consumption-20261116/fixture-lifecycle/state-final.json",
+              "entry_id": "preference_28",
+              "field": "keywords",
+              "value": "新厨师"
+            }
+          ]
+        },
+        {
+          "keyword": "回访",
+          "in_D": false,
+          "in_original_keywords": true,
+          "action": "remove",
+          "reason": "冻结标题已逐字包含该词，重复出现不增加上下文信息。",
+          "source_support": [
+            {
+              "kind": "body",
+              "path": "docs/business-semantics/cli-consumption-20261116/fixture-lifecycle/state-final.json",
+              "entry_id": "preference_28",
+              "excerpt": "排查新厨师回访变化，先核实 ps_login 与 ps_level_complete 的接入状态和观察窗口，再按 ps_acquisition_channel 拆分。"
+            },
+            {
+              "kind": "original_keyword",
+              "path": "docs/business-semantics/cli-consumption-20261116/fixture-lifecycle/state-final.json",
+              "entry_id": "preference_28",
+              "field": "keywords",
+              "value": "回访"
+            }
+          ]
+        },
+        {
+          "keyword": "留存",
+          "in_D": false,
+          "in_original_keywords": true,
+          "action": "recover",
+          "reason": "原快照记录的回访分析业务术语；冻结标题、摘要写回访，但没有留存这一原有叫法。只用于定位该排查经验，不新增留存公式。",
+          "source_support": [
+            {
+              "kind": "original_keyword",
+              "path": "docs/business-semantics/cli-consumption-20261116/fixture-lifecycle/state-final.json",
+              "entry_id": "preference_28",
+              "field": "keywords",
+              "value": "留存"
+            }
+          ]
+        },
+        {
+          "keyword": "获客渠道",
+          "in_D": false,
+          "in_original_keywords": true,
+          "action": "remove",
+          "reason": "冻结摘要已逐字包含该词，重复出现不增加上下文信息。",
+          "source_support": [
+            {
+              "kind": "original_keyword",
+              "path": "docs/business-semantics/cli-consumption-20261116/fixture-lifecycle/state-final.json",
+              "entry_id": "preference_28",
+              "field": "keywords",
+              "value": "获客渠道"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "preference_29",
+      "frozen_title": "经营简报格式：三位小数与当次要求",
+      "frozen_summary": "金额和比例默认三位小数、人数为整数；展示不改计算精度，用户当次指定优先，无汇率不换算。",
+      "D_keywords": [
+        "经营简报",
+        "金额和比例",
+        "保留三位小数",
+        "用户当次明确指定精度"
+      ],
+      "E_keywords": [],
+      "decisions": [
+        {
+          "keyword": "经营简报",
+          "in_D": true,
+          "in_original_keywords": false,
+          "action": "remove",
+          "reason": "冻结标题已逐字包含该词，重复出现不增加上下文信息。",
+          "source_support": [
+            {
+              "kind": "body",
+              "path": "docs/business-semantics/cli-consumption-20261116/fixture-lifecycle/state-final.json",
+              "entry_id": "preference_29",
+              "excerpt": "星岛餐厅的经营简报中，金额和比例默认保留三位小数，人数仍用整数。"
+            }
+          ]
+        },
+        {
+          "keyword": "金额和比例",
+          "in_D": true,
+          "in_original_keywords": false,
+          "action": "remove",
+          "reason": "冻结摘要已逐字包含该词，重复出现不增加上下文信息。",
+          "source_support": [
+            {
+              "kind": "body",
+              "path": "docs/business-semantics/cli-consumption-20261116/fixture-lifecycle/state-final.json",
+              "entry_id": "preference_29",
+              "excerpt": "星岛餐厅的经营简报中，金额和比例默认保留三位小数，人数仍用整数。"
+            }
+          ]
+        },
+        {
+          "keyword": "保留三位小数",
+          "in_D": true,
+          "in_original_keywords": false,
+          "action": "remove",
+          "reason": "标题与摘要已明确三位小数，重复精度。",
+          "source_support": [
+            {
+              "kind": "body",
+              "path": "docs/business-semantics/cli-consumption-20261116/fixture-lifecycle/state-final.json",
+              "entry_id": "preference_29",
+              "excerpt": "星岛餐厅的经营简报中，金额和比例默认保留三位小数，人数仍用整数。"
+            }
+          ]
+        },
+        {
+          "keyword": "用户当次明确指定精度",
+          "in_D": true,
+          "in_original_keywords": false,
+          "action": "remove",
+          "reason": "标题当次要求、摘要当次指定优先已表达同一优先级。",
+          "source_support": [
+            {
+              "kind": "body",
+              "path": "docs/business-semantics/cli-consumption-20261116/fixture-lifecycle/state-final.json",
+              "entry_id": "preference_29",
+              "excerpt": "用户当次明确指定精度时以当次要求为准。"
+            }
+          ]
+        },
+        {
+          "keyword": "小数位",
+          "in_D": false,
+          "in_original_keywords": true,
+          "action": "remove",
+          "reason": "标题三位小数及摘要精度已表达，是格式泛称。",
+          "source_support": [
+            {
+              "kind": "original_keyword",
+              "path": "docs/business-semantics/cli-consumption-20261116/fixture-lifecycle/state-final.json",
+              "entry_id": "preference_29",
+              "field": "keywords",
+              "value": "小数位"
+            }
+          ]
+        },
+        {
+          "keyword": "金额展示",
+          "in_D": false,
+          "in_original_keywords": true,
+          "action": "remove",
+          "reason": "摘要已明确金额的展示精度，没有额外业务叫法。",
+          "source_support": [
+            {
+              "kind": "original_keyword",
+              "path": "docs/business-semantics/cli-consumption-20261116/fixture-lifecycle/state-final.json",
+              "entry_id": "preference_29",
+              "field": "keywords",
+              "value": "金额展示"
+            }
+          ]
+        },
+        {
+          "keyword": "比例格式",
+          "in_D": false,
+          "in_original_keywords": true,
+          "action": "remove",
+          "reason": "摘要已明确比例的小数位，重复展示主题。",
+          "source_support": [
+            {
+              "kind": "original_keyword",
+              "path": "docs/business-semantics/cli-consumption-20261116/fixture-lifecycle/state-final.json",
+              "entry_id": "preference_29",
+              "field": "keywords",
+              "value": "比例格式"
+            }
+          ]
+        },
+        {
+          "keyword": "简报",
+          "in_D": false,
+          "in_original_keywords": true,
+          "action": "remove",
+          "reason": "冻结标题已逐字包含该词，重复出现不增加上下文信息。",
+          "source_support": [
+            {
+              "kind": "body",
+              "path": "docs/business-semantics/cli-consumption-20261116/fixture-lifecycle/state-final.json",
+              "entry_id": "preference_29",
+              "excerpt": "星岛餐厅的经营简报中，金额和比例默认保留三位小数，人数仍用整数。"
+            },
+            {
+              "kind": "original_keyword",
+              "path": "docs/business-semantics/cli-consumption-20261116/fixture-lifecycle/state-final.json",
+              "entry_id": "preference_29",
+              "field": "keywords",
+              "value": "简报"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "preference_30",
+      "frozen_title": "厨房开门与通关：登录、安装、付费边界",
+      "frozen_summary": "ps_login 为登录、ps_level_complete 为关卡完成；不能互相替代，也不能据此推断首次安装或付费，日活另读适用规则。",
+      "D_keywords": [
+        "厨房开门",
+        "玩家登录游戏",
+        "关卡完成",
+        "玩家首次安装"
+      ],
+      "E_keywords": [
+        "开游戏"
+      ],
+      "decisions": [
+        {
+          "keyword": "厨房开门",
+          "in_D": true,
+          "in_original_keywords": true,
+          "action": "remove",
+          "reason": "冻结标题已逐字包含该词，重复出现不增加上下文信息。",
+          "source_support": [
+            {
+              "kind": "original_keyword",
+              "path": "docs/business-semantics/cli-consumption-20261116/fixture-lifecycle/state-final.json",
+              "entry_id": "preference_30",
+              "field": "keywords",
+              "value": "厨房开门"
+            }
+          ]
+        },
+        {
+          "keyword": "玩家登录游戏",
+          "in_D": true,
+          "in_original_keywords": false,
+          "action": "remove",
+          "reason": "摘要已用ps_login为登录表述同一事件。",
+          "source_support": [
+            {
+              "kind": "body",
+              "path": "docs/business-semantics/cli-consumption-20261116/fixture-lifecycle/state-final.json",
+              "entry_id": "preference_30",
+              "excerpt": "ps_login 记录玩家登录游戏；ps_level_complete 记录关卡完成。"
+            }
+          ]
+        },
+        {
+          "keyword": "关卡完成",
+          "in_D": true,
+          "in_original_keywords": false,
+          "action": "remove",
+          "reason": "冻结摘要已逐字包含该词，重复出现不增加上下文信息。",
+          "source_support": [
+            {
+              "kind": "body",
+              "path": "docs/business-semantics/cli-consumption-20261116/fixture-lifecycle/state-final.json",
+              "entry_id": "preference_30",
+              "excerpt": "ps_login 记录玩家登录游戏；ps_level_complete 记录关卡完成。"
+            }
+          ]
+        },
+        {
+          "keyword": "玩家首次安装",
+          "in_D": true,
+          "in_original_keywords": false,
+          "action": "remove",
+          "reason": "标题安装、摘要首次安装已覆盖，重复对象。",
+          "source_support": [
+            {
+              "kind": "body",
+              "path": "docs/business-semantics/cli-consumption-20261116/fixture-lifecycle/state-final.json",
+              "entry_id": "preference_30",
+              "excerpt": "登录没有证明玩家首次安装，通关没有证明玩家付费。"
+            }
+          ]
+        },
+        {
+          "keyword": "登录",
+          "in_D": false,
+          "in_original_keywords": true,
+          "action": "remove",
+          "reason": "冻结标题已逐字包含该词，重复出现不增加上下文信息。",
+          "source_support": [
+            {
+              "kind": "body",
+              "path": "docs/business-semantics/cli-consumption-20261116/fixture-lifecycle/state-final.json",
+              "entry_id": "preference_30",
+              "excerpt": "ps_login 记录玩家登录游戏；ps_level_complete 记录关卡完成。"
+            },
+            {
+              "kind": "original_keyword",
+              "path": "docs/business-semantics/cli-consumption-20261116/fixture-lifecycle/state-final.json",
+              "entry_id": "preference_30",
+              "field": "keywords",
+              "value": "登录"
+            }
+          ]
+        },
+        {
+          "keyword": "通关",
+          "in_D": false,
+          "in_original_keywords": true,
+          "action": "remove",
+          "reason": "冻结标题已逐字包含该词，重复出现不增加上下文信息。",
+          "source_support": [
+            {
+              "kind": "body",
+              "path": "docs/business-semantics/cli-consumption-20261116/fixture-lifecycle/state-final.json",
+              "entry_id": "preference_30",
+              "excerpt": "登录没有证明玩家首次安装，通关没有证明玩家付费。"
+            },
+            {
+              "kind": "original_keyword",
+              "path": "docs/business-semantics/cli-consumption-20261116/fixture-lifecycle/state-final.json",
+              "entry_id": "preference_30",
+              "field": "keywords",
+              "value": "通关"
+            }
+          ]
+        },
+        {
+          "keyword": "开游戏",
+          "in_D": false,
+          "in_original_keywords": true,
+          "action": "recover",
+          "reason": "原快照记录的登录场景口语叫法；标题中的厨房开门及摘要中的登录没有覆盖这一既有表述。",
+          "source_support": [
+            {
+              "kind": "original_keyword",
+              "path": "docs/business-semantics/cli-consumption-20261116/fixture-lifecycle/state-final.json",
+              "entry_id": "preference_30",
+              "field": "keywords",
+              "value": "开游戏"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "preference_31",
+      "frozen_title": "星厨赛参与率：资格活跃分母与参加分子",
+      "frozen_summary": "参加按 ps_campaign_join 去重，分母为同期具资格的活跃玩家；活跃读有效日活，领奖不能替代参加或分母，缺ID或资格时暂停计算。",
+      "D_keywords": [
+        "星厨赛的参与人数",
+        "具备参赛资格的活跃玩家",
+        "当前用户有效日活规则",
+        "暂停参与率计算"
+      ],
+      "E_keywords": [
+        "活动覆盖"
+      ],
+      "decisions": [
+        {
+          "keyword": "星厨赛的参与人数",
+          "in_D": true,
+          "in_original_keywords": false,
+          "action": "remove",
+          "reason": "标题星厨赛参与率及摘要参加去重已覆盖参与计数。",
+          "source_support": [
+            {
+              "kind": "body",
+              "path": "docs/business-semantics/cli-consumption-20261116/fixture-lifecycle/state-final.json",
+              "entry_id": "preference_31",
+              "excerpt": "本月星厨赛的参与人数以 ps_campaign_join 去重用户计，需先核实 ps_campaign_id 对应星厨赛的实际取值。"
+            }
+          ]
+        },
+        {
+          "keyword": "具备参赛资格的活跃玩家",
+          "in_D": true,
+          "in_original_keywords": false,
+          "action": "remove",
+          "reason": "标题资格活跃分母和摘要同期具资格的活跃玩家已明确。",
+          "source_support": [
+            {
+              "kind": "body",
+              "path": "docs/business-semantics/cli-consumption-20261116/fixture-lifecycle/state-final.json",
+              "entry_id": "preference_31",
+              "excerpt": "参与率分子为具备参赛资格的活跃玩家中参加星厨赛的人数，分母为同期具备参赛资格的活跃玩家。"
+            }
+          ]
+        },
+        {
+          "keyword": "当前用户有效日活规则",
+          "in_D": true,
+          "in_original_keywords": false,
+          "action": "remove",
+          "reason": "摘要活跃读有效日活已表达同一依赖。",
+          "source_support": [
+            {
+              "kind": "body",
+              "path": "docs/business-semantics/cli-consumption-20261116/fixture-lifecycle/state-final.json",
+              "entry_id": "preference_31",
+              "excerpt": "活跃采用当前用户有效日活规则。"
+            }
+          ]
+        },
+        {
+          "keyword": "暂停参与率计算",
+          "in_D": true,
+          "in_original_keywords": false,
+          "action": "remove",
+          "reason": "摘要缺ID或资格时暂停计算已明确同一停止条件。",
+          "source_support": [
+            {
+              "kind": "body",
+              "path": "docs/business-semantics/cli-consumption-20261116/fixture-lifecycle/state-final.json",
+              "entry_id": "preference_31",
+              "excerpt": "若缺少活动ID、资格规则或资格数据，说明缺口并暂停参与率计算，不假设全部活跃都可参赛。"
+            }
+          ]
+        },
+        {
+          "keyword": "星厨赛",
+          "in_D": false,
+          "in_original_keywords": true,
+          "action": "remove",
+          "reason": "冻结标题已逐字包含该词，重复出现不增加上下文信息。",
+          "source_support": [
+            {
+              "kind": "body",
+              "path": "docs/business-semantics/cli-consumption-20261116/fixture-lifecycle/state-final.json",
+              "entry_id": "preference_31",
+              "excerpt": "本月星厨赛的参与人数以 ps_campaign_join 去重用户计，需先核实 ps_campaign_id 对应星厨赛的实际取值。"
+            },
+            {
+              "kind": "original_keyword",
+              "path": "docs/business-semantics/cli-consumption-20261116/fixture-lifecycle/state-final.json",
+              "entry_id": "preference_31",
+              "field": "keywords",
+              "value": "星厨赛"
+            }
+          ]
+        },
+        {
+          "keyword": "参赛",
+          "in_D": false,
+          "in_original_keywords": true,
+          "action": "remove",
+          "reason": "标题参加分子与摘要参加已表达同一动作，单独动词不增加区分。",
+          "source_support": [
+            {
+              "kind": "body",
+              "path": "docs/business-semantics/cli-consumption-20261116/fixture-lifecycle/state-final.json",
+              "entry_id": "preference_31",
+              "excerpt": "参与率分子为具备参赛资格的活跃玩家中参加星厨赛的人数，分母为同期具备参赛资格的活跃玩家。"
+            },
+            {
+              "kind": "original_keyword",
+              "path": "docs/business-semantics/cli-consumption-20261116/fixture-lifecycle/state-final.json",
+              "entry_id": "preference_31",
+              "field": "keywords",
+              "value": "参赛"
+            }
+          ]
+        },
+        {
+          "keyword": "参与率",
+          "in_D": false,
+          "in_original_keywords": true,
+          "action": "remove",
+          "reason": "冻结标题已逐字包含该词，重复出现不增加上下文信息。",
+          "source_support": [
+            {
+              "kind": "body",
+              "path": "docs/business-semantics/cli-consumption-20261116/fixture-lifecycle/state-final.json",
+              "entry_id": "preference_31",
+              "excerpt": "参与率分子为具备参赛资格的活跃玩家中参加星厨赛的人数，分母为同期具备参赛资格的活跃玩家。"
+            },
+            {
+              "kind": "original_keyword",
+              "path": "docs/business-semantics/cli-consumption-20261116/fixture-lifecycle/state-final.json",
+              "entry_id": "preference_31",
+              "field": "keywords",
+              "value": "参与率"
+            }
+          ]
+        },
+        {
+          "keyword": "活动覆盖",
+          "in_D": false,
+          "in_original_keywords": true,
+          "action": "recover",
+          "reason": "原快照记录的参与率业务叫法；标题、摘要只表述参与率及其分子分母，没有活动覆盖这一命名。",
+          "source_support": [
+            {
+              "kind": "original_keyword",
+              "path": "docs/business-semantics/cli-consumption-20261116/fixture-lifecycle/state-final.json",
+              "entry_id": "preference_31",
+              "field": "keywords",
+              "value": "活动覆盖"
+            }
+          ]
+        },
+        {
+          "keyword": "领奖",
+          "in_D": false,
+          "in_original_keywords": true,
+          "action": "remove",
+          "reason": "冻结摘要已逐字包含该词，重复出现不增加上下文信息。",
+          "source_support": [
+            {
+              "kind": "body",
+              "path": "docs/business-semantics/cli-consumption-20261116/fixture-lifecycle/state-final.json",
+              "entry_id": "preference_31",
+              "excerpt": "ps_campaign_reward 只是领奖，不等于参加，更不能作分母。"
+            },
+            {
+              "kind": "original_keyword",
+              "path": "docs/business-semantics/cli-consumption-20261116/fixture-lifecycle/state-final.json",
+              "entry_id": "preference_31",
+              "field": "keywords",
+              "value": "领奖"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "preference_32",
+      "frozen_title": "活动复盘：参加、领奖、付费与可比性",
+      "frozen_summary": "核实活动ID和窗口，分别看参加、领奖、支付；按进入时间和获客渠道检查可比性，缺安装不声称完成新增安装批次对照。",
+      "D_keywords": [
+        "活动复盘",
+        "玩家进入时间",
+        "获客渠道检查可比性",
+        "新增安装 cohort 对照"
+      ],
+      "E_keywords": [
+        "参与转化",
+        "领奖转化"
+      ],
+      "decisions": [
+        {
+          "keyword": "活动复盘",
+          "in_D": true,
+          "in_original_keywords": true,
+          "action": "remove",
+          "reason": "冻结标题已逐字包含该词，重复出现不增加上下文信息。",
+          "source_support": [
+            {
+              "kind": "body",
+              "path": "docs/business-semantics/cli-consumption-20261116/fixture-lifecycle/state-final.json",
+              "entry_id": "preference_32",
+              "excerpt": "活动复盘先确认 ps_campaign_id 与观察窗口，分别读取 ps_campaign_join、ps_campaign_reward 和 ps_pay_success。"
+            },
+            {
+              "kind": "original_keyword",
+              "path": "docs/business-semantics/cli-consumption-20261116/fixture-lifecycle/state-final.json",
+              "entry_id": "preference_32",
+              "field": "keywords",
+              "value": "活动复盘"
+            }
+          ]
+        },
+        {
+          "keyword": "玩家进入时间",
+          "in_D": true,
+          "in_original_keywords": false,
+          "action": "remove",
+          "reason": "摘要已写按进入时间检查可比性。",
+          "source_support": [
+            {
+              "kind": "body",
+              "path": "docs/business-semantics/cli-consumption-20261116/fixture-lifecycle/state-final.json",
+              "entry_id": "preference_32",
+              "excerpt": "按玩家进入时间与获客渠道检查可比性；没有安装记录时不得声称完成新增安装 cohort 对照。"
+            }
+          ]
+        },
+        {
+          "keyword": "获客渠道检查可比性",
+          "in_D": true,
+          "in_original_keywords": false,
+          "action": "remove",
+          "reason": "冻结摘要已逐字包含该词，重复出现不增加上下文信息。",
+          "source_support": [
+            {
+              "kind": "body",
+              "path": "docs/business-semantics/cli-consumption-20261116/fixture-lifecycle/state-final.json",
+              "entry_id": "preference_32",
+              "excerpt": "按玩家进入时间与获客渠道检查可比性；没有安装记录时不得声称完成新增安装 cohort 对照。"
+            }
+          ]
+        },
+        {
+          "keyword": "新增安装 cohort 对照",
+          "in_D": true,
+          "in_original_keywords": false,
+          "action": "remove",
+          "reason": "摘要已写新增安装批次对照；此处cohort仅替换批次，没有额外人群定义。",
+          "source_support": [
+            {
+              "kind": "body",
+              "path": "docs/business-semantics/cli-consumption-20261116/fixture-lifecycle/state-final.json",
+              "entry_id": "preference_32",
+              "excerpt": "按玩家进入时间与获客渠道检查可比性；没有安装记录时不得声称完成新增安装 cohort 对照。"
+            }
+          ]
+        },
+        {
+          "keyword": "参与转化",
+          "in_D": false,
+          "in_original_keywords": true,
+          "action": "recover",
+          "reason": "原快照记录的活动复盘关注术语；标题、摘要只分列动作和可比性。保留此来源叫法，不声称正文给出独立转化率公式。",
+          "source_support": [
+            {
+              "kind": "original_keyword",
+              "path": "docs/business-semantics/cli-consumption-20261116/fixture-lifecycle/state-final.json",
+              "entry_id": "preference_32",
+              "field": "keywords",
+              "value": "参与转化"
+            }
+          ]
+        },
+        {
+          "keyword": "领奖转化",
+          "in_D": false,
+          "in_original_keywords": true,
+          "action": "recover",
+          "reason": "原快照记录的活动复盘关注术语；标题、摘要只分列领奖动作。保留此来源叫法，不新增转化公式。",
+          "source_support": [
+            {
+              "kind": "original_keyword",
+              "path": "docs/business-semantics/cli-consumption-20261116/fixture-lifecycle/state-final.json",
+              "entry_id": "preference_32",
+              "field": "keywords",
+              "value": "领奖转化"
+            }
+          ]
+        },
+        {
+          "keyword": "对照",
+          "in_D": false,
+          "in_original_keywords": true,
+          "action": "remove",
+          "reason": "冻结摘要已逐字包含该词，重复出现不增加上下文信息。",
+          "source_support": [
+            {
+              "kind": "body",
+              "path": "docs/business-semantics/cli-consumption-20261116/fixture-lifecycle/state-final.json",
+              "entry_id": "preference_32",
+              "excerpt": "按玩家进入时间与获客渠道检查可比性；没有安装记录时不得声称完成新增安装 cohort 对照。"
+            },
+            {
+              "kind": "original_keyword",
+              "path": "docs/business-semantics/cli-consumption-20261116/fixture-lifecycle/state-final.json",
+              "entry_id": "preference_32",
+              "field": "keywords",
+              "value": "对照"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "preference_33",
+      "frozen_title": "会员月报：会员等级分层先于合计",
+      "frozen_summary": "仅会员月报按 ps_member_level 先分层后合计；不适用于日活或回本，不改变金额和比例的小数位。",
+      "D_keywords": [
+        "星岛餐厅会员月报",
+        "分层再给合计",
+        "不适用于日活简报或渠道回本问题"
+      ],
+      "E_keywords": [],
+      "decisions": [
+        {
+          "keyword": "星岛餐厅会员月报",
+          "in_D": true,
+          "in_original_keywords": false,
+          "action": "remove",
+          "reason": "标题已有会员月报，条目范围为同一虚构项目，项目名前缀不新增区分。",
+          "source_support": [
+            {
+              "kind": "body",
+              "path": "docs/business-semantics/cli-consumption-20261116/fixture-lifecycle/state-final.json",
+              "entry_id": "preference_33",
+              "excerpt": "仅在星岛餐厅会员月报中先列 ps_member_level 分层再给合计。"
+            }
+          ]
+        },
+        {
+          "keyword": "分层再给合计",
+          "in_D": true,
+          "in_original_keywords": false,
+          "action": "remove",
+          "reason": "标题分层先于合计、摘要先分层后合计已明确顺序。",
+          "source_support": [
+            {
+              "kind": "body",
+              "path": "docs/business-semantics/cli-consumption-20261116/fixture-lifecycle/state-final.json",
+              "entry_id": "preference_33",
+              "excerpt": "仅在星岛餐厅会员月报中先列 ps_member_level 分层再给合计。"
+            }
+          ]
+        },
+        {
+          "keyword": "不适用于日活简报或渠道回本问题",
+          "in_D": true,
+          "in_original_keywords": false,
+          "action": "remove",
+          "reason": "摘要已写不适用于日活或回本，重复排除边界。",
+          "source_support": [
+            {
+              "kind": "body",
+              "path": "docs/business-semantics/cli-consumption-20261116/fixture-lifecycle/state-final.json",
+              "entry_id": "preference_33",
+              "excerpt": "该偏好不适用于日活简报或渠道回本问题，也不更改金额、比例的小数位。"
+            }
+          ]
+        },
+        {
+          "keyword": "会员月报",
+          "in_D": false,
+          "in_original_keywords": true,
+          "action": "remove",
+          "reason": "冻结标题已逐字包含该词，重复出现不增加上下文信息。",
+          "source_support": [
+            {
+              "kind": "body",
+              "path": "docs/business-semantics/cli-consumption-20261116/fixture-lifecycle/state-final.json",
+              "entry_id": "preference_33",
+              "excerpt": "仅在星岛餐厅会员月报中先列 ps_member_level 分层再给合计。"
+            },
+            {
+              "kind": "original_keyword",
+              "path": "docs/business-semantics/cli-consumption-20261116/fixture-lifecycle/state-final.json",
+              "entry_id": "preference_33",
+              "field": "keywords",
+              "value": "会员月报"
+            }
+          ]
+        },
+        {
+          "keyword": "会员等级",
+          "in_D": false,
+          "in_original_keywords": true,
+          "action": "remove",
+          "reason": "冻结标题已逐字包含该词，重复出现不增加上下文信息。",
+          "source_support": [
+            {
+              "kind": "original_keyword",
+              "path": "docs/business-semantics/cli-consumption-20261116/fixture-lifecycle/state-final.json",
+              "entry_id": "preference_33",
+              "field": "keywords",
+              "value": "会员等级"
+            }
+          ]
+        },
+        {
+          "keyword": "分层简报",
+          "in_D": false,
+          "in_original_keywords": true,
+          "action": "remove",
+          "reason": "标题会员等级分层与摘要月报分层已表达；此泛称没有额外业务身份。",
+          "source_support": [
+            {
+              "kind": "original_keyword",
+              "path": "docs/business-semantics/cli-consumption-20261116/fixture-lifecycle/state-final.json",
+              "entry_id": "preference_33",
+              "field": "keywords",
+              "value": "分层简报"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "preference_34",
+      "frozen_title": "空结果边界：先查接入、窗口与权限",
+      "frozen_summary": "星岛餐厅尚缺业务流水；查询无记录先查接入、窗口、权限，不能报告真实零活跃、零收入或零回本，区分定义明确与数值不可验证。",
+      "D_keywords": [
+        "事件数据是否接入",
+        "查询窗口与权限",
+        "零活跃、零收入或零回本",
+        "数值不可验证"
+      ],
+      "E_keywords": [
+        "埋点接入"
+      ],
+      "decisions": [
+        {
+          "keyword": "事件数据是否接入",
+          "in_D": true,
+          "in_original_keywords": false,
+          "action": "remove",
+          "reason": "标题先查接入、摘要先查接入已表达接入检查。",
+          "source_support": [
+            {
+              "kind": "body",
+              "path": "docs/business-semantics/cli-consumption-20261116/fixture-lifecycle/state-final.json",
+              "entry_id": "preference_34",
+              "excerpt": "先核实事件数据是否接入、查询窗口与权限。"
+            }
+          ]
+        },
+        {
+          "keyword": "查询窗口与权限",
+          "in_D": true,
+          "in_original_keywords": false,
+          "action": "remove",
+          "reason": "标题与摘要已分别写窗口和权限。",
+          "source_support": [
+            {
+              "kind": "body",
+              "path": "docs/business-semantics/cli-consumption-20261116/fixture-lifecycle/state-final.json",
+              "entry_id": "preference_34",
+              "excerpt": "先核实事件数据是否接入、查询窗口与权限。"
+            }
+          ]
+        },
+        {
+          "keyword": "零活跃、零收入或零回本",
+          "in_D": true,
+          "in_original_keywords": false,
+          "action": "remove",
+          "reason": "冻结摘要已逐字包含该词，重复出现不增加上下文信息。",
+          "source_support": [
+            {
+              "kind": "body",
+              "path": "docs/business-semantics/cli-consumption-20261116/fixture-lifecycle/state-final.json",
+              "entry_id": "preference_34",
+              "excerpt": "查询无记录不能冒充真实业务的零活跃、零收入或零回本；应说明缺少流水，区分定义已明确与数值不可验证。"
+            }
+          ]
+        },
+        {
+          "keyword": "数值不可验证",
+          "in_D": true,
+          "in_original_keywords": false,
+          "action": "remove",
+          "reason": "冻结摘要已逐字包含该词，重复出现不增加上下文信息。",
+          "source_support": [
+            {
+              "kind": "body",
+              "path": "docs/business-semantics/cli-consumption-20261116/fixture-lifecycle/state-final.json",
+              "entry_id": "preference_34",
+              "excerpt": "查询无记录不能冒充真实业务的零活跃、零收入或零回本；应说明缺少流水，区分定义已明确与数值不可验证。"
+            }
+          ]
+        },
+        {
+          "keyword": "无流水",
+          "in_D": false,
+          "in_original_keywords": true,
+          "action": "remove",
+          "reason": "摘要尚缺业务流水是同一事实的改说法。",
+          "source_support": [
+            {
+              "kind": "original_keyword",
+              "path": "docs/business-semantics/cli-consumption-20261116/fixture-lifecycle/state-final.json",
+              "entry_id": "preference_34",
+              "field": "keywords",
+              "value": "无流水"
+            }
+          ]
+        },
+        {
+          "keyword": "空结果",
+          "in_D": false,
+          "in_original_keywords": true,
+          "action": "remove",
+          "reason": "冻结标题已逐字包含该词，重复出现不增加上下文信息。",
+          "source_support": [
+            {
+              "kind": "original_keyword",
+              "path": "docs/business-semantics/cli-consumption-20261116/fixture-lifecycle/state-final.json",
+              "entry_id": "preference_34",
+              "field": "keywords",
+              "value": "空结果"
+            }
+          ]
+        },
+        {
+          "keyword": "零收入",
+          "in_D": false,
+          "in_original_keywords": true,
+          "action": "remove",
+          "reason": "冻结摘要已逐字包含该词，重复出现不增加上下文信息。",
+          "source_support": [
+            {
+              "kind": "body",
+              "path": "docs/business-semantics/cli-consumption-20261116/fixture-lifecycle/state-final.json",
+              "entry_id": "preference_34",
+              "excerpt": "查询无记录不能冒充真实业务的零活跃、零收入或零回本；应说明缺少流水，区分定义已明确与数值不可验证。"
+            },
+            {
+              "kind": "original_keyword",
+              "path": "docs/business-semantics/cli-consumption-20261116/fixture-lifecycle/state-final.json",
+              "entry_id": "preference_34",
+              "field": "keywords",
+              "value": "零收入"
+            }
+          ]
+        },
+        {
+          "keyword": "埋点接入",
+          "in_D": false,
+          "in_original_keywords": true,
+          "action": "recover",
+          "reason": "原快照记录的技术业务用语；标题、摘要只说接入和缺流水，没有埋点接入这一具体叫法。",
+          "source_support": [
+            {
+              "kind": "original_keyword",
+              "path": "docs/business-semantics/cli-consumption-20261116/fixture-lifecycle/state-final.json",
+              "entry_id": "preference_34",
+              "field": "keywords",
+              "value": "埋点接入"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "preference_49",
+      "frozen_title": "七日LTV总额与人均：首次安装批次",
+      "frozen_summary": "头七天价值取历史首次安装批次生命天0到6累计净收入，先读收入净额；LTV默认总额，人均另除同批安装人数，缺安装不以注册或登录替代。",
+      "D_keywords": [
+        "进入游戏后的头七天贡献多少价值",
+        "历史首次安装",
+        "累计收入净额",
+        "默认不是人均值"
+      ],
+      "E_keywords": [
+        "新厨师价值",
+        "新玩家价值"
+      ],
+      "decisions": [
+        {
+          "keyword": "进入游戏后的头七天贡献多少价值",
+          "in_D": true,
+          "in_original_keywords": false,
+          "action": "remove",
+          "reason": "摘要头七天价值已完整表达，是同一问题句改写，不作为关键词保留。",
+          "source_support": [
+            {
+              "kind": "body",
+              "path": "docs/business-semantics/cli-consumption-20261116/fixture-lifecycle/state-final.json",
+              "entry_id": "preference_49",
+              "excerpt": "询问“进入游戏后的头七天贡献多少价值”时，采用历史首次安装在指定日期范围的玩家 cohort，统计这些玩家生命天0到6（含0和6）的累计收入净额。"
+            }
+          ]
+        },
+        {
+          "keyword": "历史首次安装",
+          "in_D": true,
+          "in_original_keywords": false,
+          "action": "remove",
+          "reason": "冻结摘要已逐字包含该词，重复出现不增加上下文信息。",
+          "source_support": [
+            {
+              "kind": "body",
+              "path": "docs/business-semantics/cli-consumption-20261116/fixture-lifecycle/state-final.json",
+              "entry_id": "preference_49",
+              "excerpt": "询问“进入游戏后的头七天贡献多少价值”时，采用历史首次安装在指定日期范围的玩家 cohort，统计这些玩家生命天0到6（含0和6）的累计收入净额。"
+            }
+          ]
+        },
+        {
+          "keyword": "累计收入净额",
+          "in_D": true,
+          "in_original_keywords": false,
+          "action": "remove",
+          "reason": "摘要累计净收入已表达同一金额口径。",
+          "source_support": [
+            {
+              "kind": "body",
+              "path": "docs/business-semantics/cli-consumption-20261116/fixture-lifecycle/state-final.json",
+              "entry_id": "preference_49",
+              "excerpt": "询问“进入游戏后的头七天贡献多少价值”时，采用历史首次安装在指定日期范围的玩家 cohort，统计这些玩家生命天0到6（含0和6）的累计收入净额。"
+            }
+          ]
+        },
+        {
+          "keyword": "默认不是人均值",
+          "in_D": true,
+          "in_original_keywords": false,
+          "action": "remove",
+          "reason": "标题总额与人均、摘要LTV默认总额已表达同一否定边界。",
+          "source_support": [
+            {
+              "kind": "body",
+              "path": "docs/business-semantics/cli-consumption-20261116/fixture-lifecycle/state-final.json",
+              "entry_id": "preference_49",
+              "excerpt": "星岛餐厅把指定安装批次的累计总收入称为 LTV，默认不是人均值。"
+            }
+          ]
+        },
+        {
+          "keyword": "新厨师价值",
+          "in_D": false,
+          "in_original_keywords": true,
+          "action": "recover",
+          "reason": "原快照记录的游戏角色业务叫法；冻结标题、摘要使用LTV与安装批次，没有新厨师这一人群表述。",
+          "source_support": [
+            {
+              "kind": "original_keyword",
+              "path": "docs/business-semantics/cli-consumption-20261116/fixture-lifecycle/state-final.json",
+              "entry_id": "preference_49",
+              "field": "keywords",
+              "value": "新厨师价值"
+            }
+          ]
+        },
+        {
+          "keyword": "新玩家价值",
+          "in_D": false,
+          "in_original_keywords": true,
+          "action": "recover",
+          "reason": "原快照记录的新人价值叫法；冻结标题、摘要使用LTV与安装批次，没有新玩家这一常用人群表述。",
+          "source_support": [
+            {
+              "kind": "original_keyword",
+              "path": "docs/business-semantics/cli-consumption-20261116/fixture-lifecycle/state-final.json",
+              "entry_id": "preference_49",
+              "field": "keywords",
+              "value": "新玩家价值"
+            }
+          ]
+        },
+        {
+          "keyword": "LTV",
+          "in_D": false,
+          "in_original_keywords": true,
+          "action": "remove",
+          "reason": "冻结标题已逐字包含该词，重复出现不增加上下文信息。",
+          "source_support": [
+            {
+              "kind": "body",
+              "path": "docs/business-semantics/cli-consumption-20261116/fixture-lifecycle/state-final.json",
+              "entry_id": "preference_49",
+              "excerpt": "星岛餐厅把指定安装批次的累计总收入称为 LTV，默认不是人均值。"
+            },
+            {
+              "kind": "original_keyword",
+              "path": "docs/business-semantics/cli-consumption-20261116/fixture-lifecycle/state-final.json",
+              "entry_id": "preference_49",
+              "field": "keywords",
+              "value": "LTV"
+            }
+          ]
+        },
+        {
+          "keyword": "人均价值",
+          "in_D": false,
+          "in_original_keywords": true,
+          "action": "remove",
+          "reason": "标题人均与摘要人均另除人数已表达同一主题。",
+          "source_support": [
+            {
+              "kind": "original_keyword",
+              "path": "docs/business-semantics/cli-consumption-20261116/fixture-lifecycle/state-final.json",
+              "entry_id": "preference_49",
+              "field": "keywords",
+              "value": "人均价值"
+            }
+          ]
+        },
+        {
+          "keyword": "头七天",
+          "in_D": false,
+          "in_original_keywords": true,
+          "action": "remove",
+          "reason": "冻结摘要已逐字包含该词，重复出现不增加上下文信息。",
+          "source_support": [
+            {
+              "kind": "body",
+              "path": "docs/business-semantics/cli-consumption-20261116/fixture-lifecycle/state-final.json",
+              "entry_id": "preference_49",
+              "excerpt": "询问“进入游戏后的头七天贡献多少价值”时，采用历史首次安装在指定日期范围的玩家 cohort，统计这些玩家生命天0到6（含0和6）的累计收入净额。"
+            },
+            {
+              "kind": "original_keyword",
+              "path": "docs/business-semantics/cli-consumption-20261116/fixture-lifecycle/state-final.json",
+              "entry_id": "preference_49",
+              "field": "keywords",
+              "value": "头七天"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "preference_50",
+      "frozen_title": "渠道七日回收：净收入除获客成本",
+      "frozen_summary": "同获客渠道、同首次安装批次生命天0到6净收入除同批成本，先读收入净额且币种一致；非利润率，零成本不可除，活动渠道不能替代获客渠道。",
+      "D_keywords": [
+        "渠道七日回收",
+        "回本比例",
+        "七日ROI",
+        "成本为零",
+        "玩家获客渠道"
+      ],
+      "E_keywords": [
+        "回本比例",
+        "七日ROI",
+        "买量"
+      ],
+      "decisions": [
+        {
+          "keyword": "渠道七日回收",
+          "in_D": true,
+          "in_original_keywords": false,
+          "action": "remove",
+          "reason": "冻结标题已逐字包含该词，重复出现不增加上下文信息。",
+          "source_support": [
+            {
+              "kind": "body",
+              "path": "docs/business-semantics/cli-consumption-20261116/fixture-lifecycle/state-final.json",
+              "entry_id": "preference_50",
+              "excerpt": "星岛餐厅的渠道七日回收（回本比例、七日ROI）为同一获客渠道、同一历史首次安装 cohort 在生命天0到6的收入净额除以该批玩家获客成本。"
+            }
+          ]
+        },
+        {
+          "keyword": "回本比例",
+          "in_D": true,
+          "in_original_keywords": false,
+          "action": "keep",
+          "reason": "正文把回本比例明确作为渠道七日回收的别名；冻结标题、摘要仅称回收并列公式，没有回本这一命名。",
+          "source_support": [
+            {
+              "kind": "body",
+              "path": "docs/business-semantics/cli-consumption-20261116/fixture-lifecycle/state-final.json",
+              "entry_id": "preference_50",
+              "excerpt": "星岛餐厅的渠道七日回收（回本比例、七日ROI）为同一获客渠道、同一历史首次安装 cohort 在生命天0到6的收入净额除以该批玩家获客成本。"
+            }
+          ]
+        },
+        {
+          "keyword": "七日ROI",
+          "in_D": true,
+          "in_original_keywords": false,
+          "action": "keep",
+          "reason": "正文明确的回收指标术语；冻结标题、摘要没有ROI缩写，保留能区别收入、利润率和回收的指标名。",
+          "source_support": [
+            {
+              "kind": "body",
+              "path": "docs/business-semantics/cli-consumption-20261116/fixture-lifecycle/state-final.json",
+              "entry_id": "preference_50",
+              "excerpt": "星岛餐厅的渠道七日回收（回本比例、七日ROI）为同一获客渠道、同一历史首次安装 cohort 在生命天0到6的收入净额除以该批玩家获客成本。"
+            }
+          ]
+        },
+        {
+          "keyword": "成本为零",
+          "in_D": true,
+          "in_original_keywords": false,
+          "action": "remove",
+          "reason": "摘要零成本不可除已明确，重复条件。",
+          "source_support": [
+            {
+              "kind": "body",
+              "path": "docs/business-semantics/cli-consumption-20261116/fixture-lifecycle/state-final.json",
+              "entry_id": "preference_50",
+              "excerpt": "成本为零需单列不可除，不返回无穷大。"
+            }
+          ]
+        },
+        {
+          "keyword": "玩家获客渠道",
+          "in_D": true,
+          "in_original_keywords": false,
+          "action": "remove",
+          "reason": "摘要同获客渠道与活动渠道不能替代已覆盖。",
+          "source_support": [
+            {
+              "kind": "body",
+              "path": "docs/business-semantics/cli-consumption-20261116/fixture-lifecycle/state-final.json",
+              "entry_id": "preference_50",
+              "excerpt": "ps_acquisition_channel 是玩家获客渠道；ps_campaign_channel 是活动渠道，不能混用。"
+            }
+          ]
+        },
+        {
+          "keyword": "七日回收",
+          "in_D": false,
+          "in_original_keywords": true,
+          "action": "remove",
+          "reason": "冻结标题已逐字包含该词，重复出现不增加上下文信息。",
+          "source_support": [
+            {
+              "kind": "body",
+              "path": "docs/business-semantics/cli-consumption-20261116/fixture-lifecycle/state-final.json",
+              "entry_id": "preference_50",
+              "excerpt": "星岛餐厅的渠道七日回收（回本比例、七日ROI）为同一获客渠道、同一历史首次安装 cohort 在生命天0到6的收入净额除以该批玩家获客成本。"
+            },
+            {
+              "kind": "original_keyword",
+              "path": "docs/business-semantics/cli-consumption-20261116/fixture-lifecycle/state-final.json",
+              "entry_id": "preference_50",
+              "field": "keywords",
+              "value": "七日回收"
+            }
+          ]
+        },
+        {
+          "keyword": "回本",
+          "in_D": false,
+          "in_original_keywords": true,
+          "action": "remove",
+          "reason": "已保留更完整的正文别名回本比例，此短词不再增加信息。",
+          "source_support": [
+            {
+              "kind": "body",
+              "path": "docs/business-semantics/cli-consumption-20261116/fixture-lifecycle/state-final.json",
+              "entry_id": "preference_50",
+              "excerpt": "星岛餐厅的渠道七日回收（回本比例、七日ROI）为同一获客渠道、同一历史首次安装 cohort 在生命天0到6的收入净额除以该批玩家获客成本。"
+            },
+            {
+              "kind": "original_keyword",
+              "path": "docs/business-semantics/cli-consumption-20261116/fixture-lifecycle/state-final.json",
+              "entry_id": "preference_50",
+              "field": "keywords",
+              "value": "回本"
+            }
+          ]
+        },
+        {
+          "keyword": "渠道ROI",
+          "in_D": false,
+          "in_original_keywords": true,
+          "action": "remove",
+          "reason": "已保留七日ROI，标题另有渠道限定；再加入此组合不新增术语或口径。",
+          "source_support": [
+            {
+              "kind": "original_keyword",
+              "path": "docs/business-semantics/cli-consumption-20261116/fixture-lifecycle/state-final.json",
+              "entry_id": "preference_50",
+              "field": "keywords",
+              "value": "渠道ROI"
+            }
+          ]
+        },
+        {
+          "keyword": "获客回报",
+          "in_D": false,
+          "in_original_keywords": true,
+          "action": "remove",
+          "reason": "只是标题获客成本回收的中文改说法，没有额外业务定义。",
+          "source_support": [
+            {
+              "kind": "original_keyword",
+              "path": "docs/business-semantics/cli-consumption-20261116/fixture-lifecycle/state-final.json",
+              "entry_id": "preference_50",
+              "field": "keywords",
+              "value": "获客回报"
+            }
+          ]
+        },
+        {
+          "keyword": "买量",
+          "in_D": false,
+          "in_original_keywords": true,
+          "action": "recover",
+          "reason": "原快照记录的获客业务场景叫法；标题、摘要只有获客渠道和成本，没有买量这一业务术语。",
+          "source_support": [
+            {
+              "kind": "original_keyword",
+              "path": "docs/business-semantics/cli-consumption-20261116/fixture-lifecycle/state-final.json",
+              "entry_id": "preference_50",
+              "field": "keywords",
+              "value": "买量"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "semantic_46",
+      "frozen_title": "共享日活默认：登录或通关去重并集",
+      "frozen_summary": "共享日活取登录或通关去重用户并集，不能加两种去重人数；按项目时区，最近7个完整自然日不含今天，有适用个人口径时优先采用个人口径。",
+      "D_keywords": [
+        "共享日活",
+        "去重用户并集",
+        "完整自然日",
+        "适用个人明确口径优先"
+      ],
+      "E_keywords": [
+        "DAU"
+      ],
+      "decisions": [
+        {
+          "keyword": "共享日活",
+          "in_D": true,
+          "in_original_keywords": false,
+          "action": "remove",
+          "reason": "冻结标题已逐字包含该词，重复出现不增加上下文信息。",
+          "source_support": [
+            {
+              "kind": "body",
+              "path": "docs/business-semantics/cli-consumption-20261116/fixture-lifecycle/state-final.json",
+              "entry_id": "semantic_46",
+              "excerpt": "星岛餐厅共享日活默认取 ps_login 或 ps_level_complete 的去重用户并集；不能将两种事件各自去重人数相加。"
+            }
+          ]
+        },
+        {
+          "keyword": "去重用户并集",
+          "in_D": true,
+          "in_original_keywords": false,
+          "action": "remove",
+          "reason": "冻结摘要已逐字包含该词，重复出现不增加上下文信息。",
+          "source_support": [
+            {
+              "kind": "body",
+              "path": "docs/business-semantics/cli-consumption-20261116/fixture-lifecycle/state-final.json",
+              "entry_id": "semantic_46",
+              "excerpt": "星岛餐厅共享日活默认取 ps_login 或 ps_level_complete 的去重用户并集；不能将两种事件各自去重人数相加。"
+            }
+          ]
+        },
+        {
+          "keyword": "完整自然日",
+          "in_D": true,
+          "in_original_keywords": false,
+          "action": "remove",
+          "reason": "冻结摘要已逐字包含该词，重复出现不增加上下文信息。",
+          "source_support": [
+            {
+              "kind": "body",
+              "path": "docs/business-semantics/cli-consumption-20261116/fixture-lifecycle/state-final.json",
+              "entry_id": "semantic_46",
+              "excerpt": "遵循项目时区自然日，最近7个完整自然日不含今天。"
+            }
+          ]
+        },
+        {
+          "keyword": "适用个人明确口径优先",
+          "in_D": true,
+          "in_original_keywords": false,
+          "action": "remove",
+          "reason": "摘要有适用个人口径时优先采用个人口径已明确。",
+          "source_support": [
+            {
+              "kind": "body",
+              "path": "docs/business-semantics/cli-consumption-20261116/fixture-lifecycle/state-final.json",
+              "entry_id": "semantic_46",
+              "excerpt": "适用个人明确口径优先。"
+            }
+          ]
+        },
+        {
+          "keyword": "日活玩家",
+          "in_D": false,
+          "in_original_keywords": true,
+          "action": "remove",
+          "reason": "标题共享日活及摘要去重用户已表达同一对象。",
+          "source_support": [
+            {
+              "kind": "original_keyword",
+              "path": "docs/business-semantics/cli-consumption-20261116/fixture-lifecycle/state-final.json",
+              "entry_id": "semantic_46",
+              "field": "keywords",
+              "value": "日活玩家"
+            }
+          ]
+        },
+        {
+          "keyword": "每日活跃",
+          "in_D": false,
+          "in_original_keywords": true,
+          "action": "remove",
+          "reason": "只是标题日活的中文展开，无额外业务定义。",
+          "source_support": [
+            {
+              "kind": "original_keyword",
+              "path": "docs/business-semantics/cli-consumption-20261116/fixture-lifecycle/state-final.json",
+              "entry_id": "semantic_46",
+              "field": "keywords",
+              "value": "每日活跃"
+            }
+          ]
+        },
+        {
+          "keyword": "DAU",
+          "in_D": false,
+          "in_original_keywords": true,
+          "action": "recover",
+          "reason": "原快照已确认的日活英文缩写；冻结标题、摘要只有中文日活，没有DAU这一术语。",
+          "source_support": [
+            {
+              "kind": "original_keyword",
+              "path": "docs/business-semantics/cli-consumption-20261116/fixture-lifecycle/state-final.json",
+              "entry_id": "semantic_46",
+              "field": "keywords",
+              "value": "DAU"
+            }
+          ]
+        },
+        {
+          "keyword": "登录活跃",
+          "in_D": false,
+          "in_original_keywords": true,
+          "action": "remove",
+          "reason": "摘要已写登录或通关去重并集；单列登录活跃不增加区分，还容易省略通关部分。",
+          "source_support": [
+            {
+              "kind": "original_keyword",
+              "path": "docs/business-semantics/cli-consumption-20261116/fixture-lifecycle/state-final.json",
+              "entry_id": "semantic_46",
+              "field": "keywords",
+              "value": "登录活跃"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "semantic_48",
+      "frozen_title": "收入净额：同窗口同币种支付减退款",
+      "frozen_summary": "同观察窗口、同币种的支付成功金额减退款金额；退款按正值扣减前核实符号，不混币或虚构汇率，本条不自动除人数。",
+      "D_keywords": [
+        "收入净额",
+        "净流水",
+        "退款金额按正值扣减",
+        "不跨币种直接求和",
+        "不自动除以人数"
+      ],
+      "E_keywords": [
+        "净流水"
+      ],
+      "decisions": [
+        {
+          "keyword": "收入净额",
+          "in_D": true,
+          "in_original_keywords": true,
+          "action": "remove",
+          "reason": "冻结标题已逐字包含该词，重复出现不增加上下文信息。",
+          "source_support": [
+            {
+              "kind": "body",
+              "path": "docs/business-semantics/cli-consumption-20261116/fixture-lifecycle/state-final.json",
+              "entry_id": "semantic_48",
+              "excerpt": "星岛餐厅收入净额为同一观察窗口、同一币种 ps_pay_success 的 ps_amount 合计减 ps_pay_refund 的 ps_amount 合计。"
+            },
+            {
+              "kind": "original_keyword",
+              "path": "docs/business-semantics/cli-consumption-20261116/fixture-lifecycle/state-final.json",
+              "entry_id": "semantic_48",
+              "field": "keywords",
+              "value": "收入净额"
+            }
+          ]
+        },
+        {
+          "keyword": "净流水",
+          "in_D": true,
+          "in_original_keywords": true,
+          "action": "keep",
+          "reason": "原快照记录的收入净额别名；标题、摘要只有收入净额及支付减退款，没有净流水这一用语。",
+          "source_support": [
+            {
+              "kind": "original_keyword",
+              "path": "docs/business-semantics/cli-consumption-20261116/fixture-lifecycle/state-final.json",
+              "entry_id": "semantic_48",
+              "field": "keywords",
+              "value": "净流水"
+            }
+          ]
+        },
+        {
+          "keyword": "退款金额按正值扣减",
+          "in_D": true,
+          "in_original_keywords": false,
+          "action": "remove",
+          "reason": "摘要退款按正值扣减前核实符号已明确。",
+          "source_support": [
+            {
+              "kind": "body",
+              "path": "docs/business-semantics/cli-consumption-20261116/fixture-lifecycle/state-final.json",
+              "entry_id": "semantic_48",
+              "excerpt": "退款金额按正值扣减；若实际数据正负约定未知应先核实。"
+            }
+          ]
+        },
+        {
+          "keyword": "不跨币种直接求和",
+          "in_D": true,
+          "in_original_keywords": false,
+          "action": "remove",
+          "reason": "标题同币种、摘要不混币已表达同一禁止条件。",
+          "source_support": [
+            {
+              "kind": "body",
+              "path": "docs/business-semantics/cli-consumption-20261116/fixture-lifecycle/state-final.json",
+              "entry_id": "semantic_48",
+              "excerpt": "以 ps_currency 分组或筛选同币种，不虚构汇率，不跨币种直接求和。"
+            }
+          ]
+        },
+        {
+          "keyword": "不自动除以人数",
+          "in_D": true,
+          "in_original_keywords": false,
+          "action": "remove",
+          "reason": "摘要本条不自动除人数已明确。",
+          "source_support": [
+            {
+              "kind": "body",
+              "path": "docs/business-semantics/cli-consumption-20261116/fixture-lifecycle/state-final.json",
+              "entry_id": "semantic_48",
+              "excerpt": "本规则只定义收入，不自动除以人数。"
+            }
+          ]
+        },
+        {
+          "keyword": "退款",
+          "in_D": false,
+          "in_original_keywords": true,
+          "action": "remove",
+          "reason": "冻结标题已逐字包含该词，重复出现不增加上下文信息。",
+          "source_support": [
+            {
+              "kind": "body",
+              "path": "docs/business-semantics/cli-consumption-20261116/fixture-lifecycle/state-final.json",
+              "entry_id": "semantic_48",
+              "excerpt": "退款金额按正值扣减；若实际数据正负约定未知应先核实。"
+            },
+            {
+              "kind": "original_keyword",
+              "path": "docs/business-semantics/cli-consumption-20261116/fixture-lifecycle/state-final.json",
+              "entry_id": "semantic_48",
+              "field": "keywords",
+              "value": "退款"
+            }
+          ]
+        },
+        {
+          "keyword": "支付金额",
+          "in_D": false,
+          "in_original_keywords": true,
+          "action": "remove",
+          "reason": "摘要支付成功金额已覆盖，重复金额对象。",
+          "source_support": [
+            {
+              "kind": "original_keyword",
+              "path": "docs/business-semantics/cli-consumption-20261116/fixture-lifecycle/state-final.json",
+              "entry_id": "semantic_48",
+              "field": "keywords",
+              "value": "支付金额"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "semantic_52",
+      "frozen_title": "夏日食材节旧奖励资格：有效至2026-08-31",
+      "frozen_summary": "仅2026年夏日食材节，先参加再同活动ID领奖才有效；资格有效至2026-08-31，之后必须取得新定义。",
+      "D_keywords": [
+        "夏日食材节活动",
+        "有效奖励用户",
+        "规则有效至2026-08-31",
+        "必须取得新资格定义"
+      ],
+      "E_keywords": [
+        "夏日限时活动"
+      ],
+      "decisions": [
+        {
+          "keyword": "夏日食材节活动",
+          "in_D": true,
+          "in_original_keywords": false,
+          "action": "remove",
+          "reason": "标题夏日食材节、摘要仅2026年夏日食材节已覆盖，活动后缀不新增命名。",
+          "source_support": [
+            {
+              "kind": "body",
+              "path": "docs/business-semantics/cli-consumption-20261116/fixture-lifecycle/state-final.json",
+              "entry_id": "semantic_52",
+              "excerpt": "夏日食材节活动中的有效奖励用户需先有 ps_campaign_join，再有相同 ps_campaign_id 的 ps_campaign_reward。"
+            }
+          ]
+        },
+        {
+          "keyword": "有效奖励用户",
+          "in_D": true,
+          "in_original_keywords": false,
+          "action": "remove",
+          "reason": "摘要先参加再同活动ID领奖才有效已给出有效对象，重复规则。",
+          "source_support": [
+            {
+              "kind": "body",
+              "path": "docs/business-semantics/cli-consumption-20261116/fixture-lifecycle/state-final.json",
+              "entry_id": "semantic_52",
+              "excerpt": "夏日食材节活动中的有效奖励用户需先有 ps_campaign_join，再有相同 ps_campaign_id 的 ps_campaign_reward。"
+            }
+          ]
+        },
+        {
+          "keyword": "规则有效至2026-08-31",
+          "in_D": true,
+          "in_original_keywords": false,
+          "action": "remove",
+          "reason": "标题和摘要已完整写有效截止日。",
+          "source_support": [
+            {
+              "kind": "body",
+              "path": "docs/business-semantics/cli-consumption-20261116/fixture-lifecycle/state-final.json",
+              "entry_id": "semantic_52",
+              "excerpt": "仅适用于2026年夏日食材节，规则有效至2026-08-31，之后必须取得新资格定义，不能继续套用。"
+            }
+          ]
+        },
+        {
+          "keyword": "必须取得新资格定义",
+          "in_D": true,
+          "in_original_keywords": false,
+          "action": "remove",
+          "reason": "摘要之后必须取得新定义已明确同一边界。",
+          "source_support": [
+            {
+              "kind": "body",
+              "path": "docs/business-semantics/cli-consumption-20261116/fixture-lifecycle/state-final.json",
+              "entry_id": "semantic_52",
+              "excerpt": "仅适用于2026年夏日食材节，规则有效至2026-08-31，之后必须取得新资格定义，不能继续套用。"
+            }
+          ]
+        },
+        {
+          "keyword": "夏日食材节",
+          "in_D": false,
+          "in_original_keywords": true,
+          "action": "remove",
+          "reason": "冻结标题已逐字包含该词，重复出现不增加上下文信息。",
+          "source_support": [
+            {
+              "kind": "body",
+              "path": "docs/business-semantics/cli-consumption-20261116/fixture-lifecycle/state-final.json",
+              "entry_id": "semantic_52",
+              "excerpt": "夏日食材节活动中的有效奖励用户需先有 ps_campaign_join，再有相同 ps_campaign_id 的 ps_campaign_reward。"
+            },
+            {
+              "kind": "original_keyword",
+              "path": "docs/business-semantics/cli-consumption-20261116/fixture-lifecycle/state-final.json",
+              "entry_id": "semantic_52",
+              "field": "keywords",
+              "value": "夏日食材节"
+            }
+          ]
+        },
+        {
+          "keyword": "夏日限时活动",
+          "in_D": false,
+          "in_original_keywords": true,
+          "action": "recover",
+          "reason": "正文或原快照记录的活动别称；标题、摘要使用夏日食材节或夏日奖励，没有完整的夏日限时活动这一既有名称。",
+          "source_support": [
+            {
+              "kind": "original_keyword",
+              "path": "docs/business-semantics/cli-consumption-20261116/fixture-lifecycle/state-final.json",
+              "entry_id": "semantic_52",
+              "field": "keywords",
+              "value": "夏日限时活动"
+            }
+          ]
+        },
+        {
+          "keyword": "奖励资格",
+          "in_D": false,
+          "in_original_keywords": true,
+          "action": "remove",
+          "reason": "冻结标题已逐字包含该词，重复出现不增加上下文信息。",
+          "source_support": [
+            {
+              "kind": "original_keyword",
+              "path": "docs/business-semantics/cli-consumption-20261116/fixture-lifecycle/state-final.json",
+              "entry_id": "semantic_52",
+              "field": "keywords",
+              "value": "奖励资格"
+            }
+          ]
+        },
+        {
+          "keyword": "活动奖励",
+          "in_D": false,
+          "in_original_keywords": true,
+          "action": "remove",
+          "reason": "是标题奖励资格的泛称，缺少活动和资格区分，不增加价值。",
+          "source_support": [
+            {
+              "kind": "original_keyword",
+              "path": "docs/business-semantics/cli-consumption-20261116/fixture-lifecycle/state-final.json",
+              "entry_id": "semantic_52",
+              "field": "keywords",
+              "value": "活动奖励"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "preference_53",
+      "frozen_title": "夏日奖励转化：依赖资格有效才可计算",
+      "frozen_summary": "先读夏日食材节资格，资格和事件有效时以合格参加者为分母、有效领奖者为分子；资格过期、缺失或不可读时停止，需补当前定义。",
+      "D_keywords": [
+        "夏日限时活动",
+        "奖励转化规则",
+        "夏日食材节奖励资格",
+        "不得将旧规则复活",
+        "当前有效资格定义"
+      ],
+      "E_keywords": [
+        "夏日限时活动",
+        "领奖率"
+      ],
+      "decisions": [
+        {
+          "keyword": "夏日限时活动",
+          "in_D": true,
+          "in_original_keywords": true,
+          "action": "keep",
+          "reason": "正文或原快照记录的活动别称；标题、摘要使用夏日食材节或夏日奖励，没有完整的夏日限时活动这一既有名称。",
+          "source_support": [
+            {
+              "kind": "body",
+              "path": "docs/business-semantics/cli-consumption-20261116/fixture-lifecycle/state-final.json",
+              "entry_id": "preference_53",
+              "excerpt": "回答夏日限时活动当前应使用哪套奖励转化规则时，必须读取依赖的夏日食材节奖励资格。"
+            },
+            {
+              "kind": "original_keyword",
+              "path": "docs/business-semantics/cli-consumption-20261116/fixture-lifecycle/state-final.json",
+              "entry_id": "preference_53",
+              "field": "keywords",
+              "value": "夏日限时活动"
+            }
+          ]
+        },
+        {
+          "keyword": "奖励转化规则",
+          "in_D": true,
+          "in_original_keywords": false,
+          "action": "remove",
+          "reason": "标题夏日奖励转化已覆盖，规则后缀无新增命名。",
+          "source_support": [
+            {
+              "kind": "body",
+              "path": "docs/business-semantics/cli-consumption-20261116/fixture-lifecycle/state-final.json",
+              "entry_id": "preference_53",
+              "excerpt": "回答夏日限时活动当前应使用哪套奖励转化规则时，必须读取依赖的夏日食材节奖励资格。"
+            }
+          ]
+        },
+        {
+          "keyword": "夏日食材节奖励资格",
+          "in_D": true,
+          "in_original_keywords": false,
+          "action": "remove",
+          "reason": "摘要先读夏日食材节资格已表达同一依赖。",
+          "source_support": [
+            {
+              "kind": "body",
+              "path": "docs/business-semantics/cli-consumption-20261116/fixture-lifecycle/state-final.json",
+              "entry_id": "preference_53",
+              "excerpt": "回答夏日限时活动当前应使用哪套奖励转化规则时，必须读取依赖的夏日食材节奖励资格。"
+            }
+          ]
+        },
+        {
+          "keyword": "不得将旧规则复活",
+          "in_D": true,
+          "in_original_keywords": false,
+          "action": "remove",
+          "reason": "摘要资格过期、缺失或不可读时停止已完整表达同一禁止边界。",
+          "source_support": [
+            {
+              "kind": "body",
+              "path": "docs/business-semantics/cli-consumption-20261116/fixture-lifecycle/state-final.json",
+              "entry_id": "preference_53",
+              "excerpt": "必要资格依赖过期、缺失或无法读取时，不得使用本条父规则，不得将旧规则复活；需要活动负责人补充当前有效资格定义。"
+            }
+          ]
+        },
+        {
+          "keyword": "当前有效资格定义",
+          "in_D": true,
+          "in_original_keywords": false,
+          "action": "remove",
+          "reason": "摘要需补当前定义已明确，不需关键词再次强调。",
+          "source_support": [
+            {
+              "kind": "body",
+              "path": "docs/business-semantics/cli-consumption-20261116/fixture-lifecycle/state-final.json",
+              "entry_id": "preference_53",
+              "excerpt": "必要资格依赖过期、缺失或无法读取时，不得使用本条父规则，不得将旧规则复活；需要活动负责人补充当前有效资格定义。"
+            }
+          ]
+        },
+        {
+          "keyword": "奖励转化",
+          "in_D": false,
+          "in_original_keywords": true,
+          "action": "remove",
+          "reason": "冻结标题已逐字包含该词，重复出现不增加上下文信息。",
+          "source_support": [
+            {
+              "kind": "body",
+              "path": "docs/business-semantics/cli-consumption-20261116/fixture-lifecycle/state-final.json",
+              "entry_id": "preference_53",
+              "excerpt": "回答夏日限时活动当前应使用哪套奖励转化规则时，必须读取依赖的夏日食材节奖励资格。"
+            },
+            {
+              "kind": "original_keyword",
+              "path": "docs/business-semantics/cli-consumption-20261116/fixture-lifecycle/state-final.json",
+              "entry_id": "preference_53",
+              "field": "keywords",
+              "value": "奖励转化"
+            }
+          ]
+        },
+        {
+          "keyword": "夏日食材节",
+          "in_D": false,
+          "in_original_keywords": true,
+          "action": "remove",
+          "reason": "冻结摘要已逐字包含该词，重复出现不增加上下文信息。",
+          "source_support": [
+            {
+              "kind": "body",
+              "path": "docs/business-semantics/cli-consumption-20261116/fixture-lifecycle/state-final.json",
+              "entry_id": "preference_53",
+              "excerpt": "回答夏日限时活动当前应使用哪套奖励转化规则时，必须读取依赖的夏日食材节奖励资格。"
+            },
+            {
+              "kind": "original_keyword",
+              "path": "docs/business-semantics/cli-consumption-20261116/fixture-lifecycle/state-final.json",
+              "entry_id": "preference_53",
+              "field": "keywords",
+              "value": "夏日食材节"
+            }
+          ]
+        },
+        {
+          "keyword": "领奖率",
+          "in_D": false,
+          "in_original_keywords": true,
+          "action": "recover",
+          "reason": "原快照记录的奖励转化指标名；标题、摘要使用奖励转化和分子分母，没有领奖率这一短称。",
+          "source_support": [
+            {
+              "kind": "original_keyword",
+              "path": "docs/business-semantics/cli-consumption-20261116/fixture-lifecycle/state-final.json",
+              "entry_id": "preference_53",
+              "field": "keywords",
+              "value": "领奖率"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "preference_10001",
+      "frozen_title": "餐车巡游入门组奖励核算",
+      "frozen_summary": "餐车巡游入门组奖励核算只适用于该活动和组别；跨组迁移按活动结束时最终组归并，不替代全项目新增、价值或获客回收。",
+      "D_keywords": [
+        "餐车巡游入门组的奖励核算",
+        "跨组迁移",
+        "最终组归并"
+      ],
+      "E_keywords": [],
+      "decisions": [
+        {
+          "keyword": "餐车巡游入门组的奖励核算",
+          "in_D": true,
+          "in_original_keywords": false,
+          "action": "remove",
+          "reason": "只是把标题中的活动、组别和主题之间加“的”，同一作用域和主题已完整覆盖。",
+          "source_support": [
+            {
+              "kind": "body",
+              "path": "docs/business-semantics/cli-consumption-20261116/scale-fixture/catalog.json",
+              "entry_id": "preference_10001",
+              "excerpt": "餐车巡游入门组的奖励核算按活动结束时归属统计；只适用于该活动和组别，跨组迁移按最终组归并，不替代全项目新增、价值或获客回收口径。"
+            }
+          ]
+        },
+        {
+          "keyword": "跨组迁移",
+          "in_D": true,
+          "in_original_keywords": false,
+          "action": "remove",
+          "reason": "冻结摘要已逐字包含该词，重复出现不增加上下文信息。",
+          "source_support": [
+            {
+              "kind": "body",
+              "path": "docs/business-semantics/cli-consumption-20261116/scale-fixture/catalog.json",
+              "entry_id": "preference_10001",
+              "excerpt": "餐车巡游入门组的奖励核算按活动结束时归属统计；只适用于该活动和组别，跨组迁移按最终组归并，不替代全项目新增、价值或获客回收口径。"
+            }
+          ]
+        },
+        {
+          "keyword": "最终组归并",
+          "in_D": true,
+          "in_original_keywords": false,
+          "action": "remove",
+          "reason": "冻结摘要已逐字包含该词，重复出现不增加上下文信息。",
+          "source_support": [
+            {
+              "kind": "body",
+              "path": "docs/business-semantics/cli-consumption-20261116/scale-fixture/catalog.json",
+              "entry_id": "preference_10001",
+              "excerpt": "餐车巡游入门组的奖励核算按活动结束时归属统计；只适用于该活动和组别，跨组迁移按最终组归并，不替代全项目新增、价值或获客回收口径。"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "preference_10007",
+      "frozen_title": "好友订单入门组奖励核算",
+      "frozen_summary": "好友订单入门组奖励核算只适用于该活动和组别；跨组迁移按活动结束时最终组归并，不替代全项目新增、价值或获客回收。",
+      "D_keywords": [
+        "好友订单入门组的奖励核算",
+        "跨组迁移",
+        "最终组归并"
+      ],
+      "E_keywords": [],
+      "decisions": [
+        {
+          "keyword": "好友订单入门组的奖励核算",
+          "in_D": true,
+          "in_original_keywords": false,
+          "action": "remove",
+          "reason": "只是把标题中的活动、组别和主题之间加“的”，同一作用域和主题已完整覆盖。",
+          "source_support": [
+            {
+              "kind": "body",
+              "path": "docs/business-semantics/cli-consumption-20261116/scale-fixture/catalog.json",
+              "entry_id": "preference_10007",
+              "excerpt": "好友订单入门组的奖励核算按活动结束时归属统计；只适用于该活动和组别，跨组迁移按最终组归并，不替代全项目新增、价值或获客回收口径。"
+            }
+          ]
+        },
+        {
+          "keyword": "跨组迁移",
+          "in_D": true,
+          "in_original_keywords": false,
+          "action": "remove",
+          "reason": "冻结摘要已逐字包含该词，重复出现不增加上下文信息。",
+          "source_support": [
+            {
+              "kind": "body",
+              "path": "docs/business-semantics/cli-consumption-20261116/scale-fixture/catalog.json",
+              "entry_id": "preference_10007",
+              "excerpt": "好友订单入门组的奖励核算按活动结束时归属统计；只适用于该活动和组别，跨组迁移按最终组归并，不替代全项目新增、价值或获客回收口径。"
+            }
+          ]
+        },
+        {
+          "keyword": "最终组归并",
+          "in_D": true,
+          "in_original_keywords": false,
+          "action": "remove",
+          "reason": "冻结摘要已逐字包含该词，重复出现不增加上下文信息。",
+          "source_support": [
+            {
+              "kind": "body",
+              "path": "docs/business-semantics/cli-consumption-20261116/scale-fixture/catalog.json",
+              "entry_id": "preference_10007",
+              "excerpt": "好友订单入门组的奖励核算按活动结束时归属统计；只适用于该活动和组别，跨组迁移按最终组归并，不替代全项目新增、价值或获客回收口径。"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "preference_10013",
+      "frozen_title": "海岛集市入门组参与资格",
+      "frozen_summary": "海岛集市入门组参与资格只适用于该活动和组别；跨组迁移按活动结束时最终组归并，不替代全项目新增、价值或获客回收。",
+      "D_keywords": [
+        "海岛集市入门组的参与资格",
+        "跨组迁移",
+        "最终组归并"
+      ],
+      "E_keywords": [],
+      "decisions": [
+        {
+          "keyword": "海岛集市入门组的参与资格",
+          "in_D": true,
+          "in_original_keywords": false,
+          "action": "remove",
+          "reason": "只是把标题中的活动、组别和主题之间加“的”，同一作用域和主题已完整覆盖。",
+          "source_support": [
+            {
+              "kind": "body",
+              "path": "docs/business-semantics/cli-consumption-20261116/scale-fixture/catalog.json",
+              "entry_id": "preference_10013",
+              "excerpt": "海岛集市入门组的参与资格按活动结束时归属统计；只适用于该活动和组别，跨组迁移按最终组归并，不替代全项目新增、价值或获客回收口径。"
+            }
+          ]
+        },
+        {
+          "keyword": "跨组迁移",
+          "in_D": true,
+          "in_original_keywords": false,
+          "action": "remove",
+          "reason": "冻结摘要已逐字包含该词，重复出现不增加上下文信息。",
+          "source_support": [
+            {
+              "kind": "body",
+              "path": "docs/business-semantics/cli-consumption-20261116/scale-fixture/catalog.json",
+              "entry_id": "preference_10013",
+              "excerpt": "海岛集市入门组的参与资格按活动结束时归属统计；只适用于该活动和组别，跨组迁移按最终组归并，不替代全项目新增、价值或获客回收口径。"
+            }
+          ]
+        },
+        {
+          "keyword": "最终组归并",
+          "in_D": true,
+          "in_original_keywords": false,
+          "action": "remove",
+          "reason": "冻结摘要已逐字包含该词，重复出现不增加上下文信息。",
+          "source_support": [
+            {
+              "kind": "body",
+              "path": "docs/business-semantics/cli-consumption-20261116/scale-fixture/catalog.json",
+              "entry_id": "preference_10013",
+              "excerpt": "海岛集市入门组的参与资格按活动结束时归属统计；只适用于该活动和组别，跨组迁移按最终组归并，不替代全项目新增、价值或获客回收口径。"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "preference_10019",
+      "frozen_title": "厨师晋升入门组参与资格",
+      "frozen_summary": "厨师晋升入门组参与资格只适用于该活动和组别；跨组迁移按活动结束时最终组归并，不替代全项目新增、价值或获客回收。",
+      "D_keywords": [
+        "厨师晋升入门组的参与资格",
+        "跨组迁移",
+        "最终组归并"
+      ],
+      "E_keywords": [],
+      "decisions": [
+        {
+          "keyword": "厨师晋升入门组的参与资格",
+          "in_D": true,
+          "in_original_keywords": false,
+          "action": "remove",
+          "reason": "只是把标题中的活动、组别和主题之间加“的”，同一作用域和主题已完整覆盖。",
+          "source_support": [
+            {
+              "kind": "body",
+              "path": "docs/business-semantics/cli-consumption-20261116/scale-fixture/catalog.json",
+              "entry_id": "preference_10019",
+              "excerpt": "厨师晋升入门组的参与资格按活动结束时归属统计；只适用于该活动和组别，跨组迁移按最终组归并，不替代全项目新增、价值或获客回收口径。"
+            }
+          ]
+        },
+        {
+          "keyword": "跨组迁移",
+          "in_D": true,
+          "in_original_keywords": false,
+          "action": "remove",
+          "reason": "冻结摘要已逐字包含该词，重复出现不增加上下文信息。",
+          "source_support": [
+            {
+              "kind": "body",
+              "path": "docs/business-semantics/cli-consumption-20261116/scale-fixture/catalog.json",
+              "entry_id": "preference_10019",
+              "excerpt": "厨师晋升入门组的参与资格按活动结束时归属统计；只适用于该活动和组别，跨组迁移按最终组归并，不替代全项目新增、价值或获客回收口径。"
+            }
+          ]
+        },
+        {
+          "keyword": "最终组归并",
+          "in_D": true,
+          "in_original_keywords": false,
+          "action": "remove",
+          "reason": "冻结摘要已逐字包含该词，重复出现不增加上下文信息。",
+          "source_support": [
+            {
+              "kind": "body",
+              "path": "docs/business-semantics/cli-consumption-20261116/scale-fixture/catalog.json",
+              "entry_id": "preference_10019",
+              "excerpt": "厨师晋升入门组的参与资格按活动结束时归属统计；只适用于该活动和组别，跨组迁移按最终组归并，不替代全项目新增、价值或获客回收口径。"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "preference_10025",
+      "frozen_title": "食材寻宝入门组订单归属",
+      "frozen_summary": "食材寻宝入门组订单归属只适用于该活动和组别；跨组迁移按活动结束时最终组归并，不替代全项目新增、价值或获客回收。",
+      "D_keywords": [
+        "食材寻宝入门组的订单归属",
+        "跨组迁移",
+        "最终组归并"
+      ],
+      "E_keywords": [],
+      "decisions": [
+        {
+          "keyword": "食材寻宝入门组的订单归属",
+          "in_D": true,
+          "in_original_keywords": false,
+          "action": "remove",
+          "reason": "只是把标题中的活动、组别和主题之间加“的”，同一作用域和主题已完整覆盖。",
+          "source_support": [
+            {
+              "kind": "body",
+              "path": "docs/business-semantics/cli-consumption-20261116/scale-fixture/catalog.json",
+              "entry_id": "preference_10025",
+              "excerpt": "食材寻宝入门组的订单归属按活动结束时归属统计；只适用于该活动和组别，跨组迁移按最终组归并，不替代全项目新增、价值或获客回收口径。"
+            }
+          ]
+        },
+        {
+          "keyword": "跨组迁移",
+          "in_D": true,
+          "in_original_keywords": false,
+          "action": "remove",
+          "reason": "冻结摘要已逐字包含该词，重复出现不增加上下文信息。",
+          "source_support": [
+            {
+              "kind": "body",
+              "path": "docs/business-semantics/cli-consumption-20261116/scale-fixture/catalog.json",
+              "entry_id": "preference_10025",
+              "excerpt": "食材寻宝入门组的订单归属按活动结束时归属统计；只适用于该活动和组别，跨组迁移按最终组归并，不替代全项目新增、价值或获客回收口径。"
+            }
+          ]
+        },
+        {
+          "keyword": "最终组归并",
+          "in_D": true,
+          "in_original_keywords": false,
+          "action": "remove",
+          "reason": "冻结摘要已逐字包含该词，重复出现不增加上下文信息。",
+          "source_support": [
+            {
+              "kind": "body",
+              "path": "docs/business-semantics/cli-consumption-20261116/scale-fixture/catalog.json",
+              "entry_id": "preference_10025",
+              "excerpt": "食材寻宝入门组的订单归属按活动结束时归属统计；只适用于该活动和组别，跨组迁移按最终组归并，不替代全项目新增、价值或获客回收口径。"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "preference_10031",
+      "frozen_title": "餐车巡游入门组分组统计",
+      "frozen_summary": "餐车巡游入门组分组统计只适用于该活动和组别；跨组迁移按活动结束时最终组归并，不替代全项目新增、价值或获客回收。",
+      "D_keywords": [
+        "餐车巡游入门组的分组统计",
+        "跨组迁移",
+        "最终组归并"
+      ],
+      "E_keywords": [],
+      "decisions": [
+        {
+          "keyword": "餐车巡游入门组的分组统计",
+          "in_D": true,
+          "in_original_keywords": false,
+          "action": "remove",
+          "reason": "只是把标题中的活动、组别和主题之间加“的”，同一作用域和主题已完整覆盖。",
+          "source_support": [
+            {
+              "kind": "body",
+              "path": "docs/business-semantics/cli-consumption-20261116/scale-fixture/catalog.json",
+              "entry_id": "preference_10031",
+              "excerpt": "餐车巡游入门组的分组统计按活动结束时归属统计；只适用于该活动和组别，跨组迁移按最终组归并，不替代全项目新增、价值或获客回收口径。"
+            }
+          ]
+        },
+        {
+          "keyword": "跨组迁移",
+          "in_D": true,
+          "in_original_keywords": false,
+          "action": "remove",
+          "reason": "冻结摘要已逐字包含该词，重复出现不增加上下文信息。",
+          "source_support": [
+            {
+              "kind": "body",
+              "path": "docs/business-semantics/cli-consumption-20261116/scale-fixture/catalog.json",
+              "entry_id": "preference_10031",
+              "excerpt": "餐车巡游入门组的分组统计按活动结束时归属统计；只适用于该活动和组别，跨组迁移按最终组归并，不替代全项目新增、价值或获客回收口径。"
+            }
+          ]
+        },
+        {
+          "keyword": "最终组归并",
+          "in_D": true,
+          "in_original_keywords": false,
+          "action": "remove",
+          "reason": "冻结摘要已逐字包含该词，重复出现不增加上下文信息。",
+          "source_support": [
+            {
+              "kind": "body",
+              "path": "docs/business-semantics/cli-consumption-20261116/scale-fixture/catalog.json",
+              "entry_id": "preference_10031",
+              "excerpt": "餐车巡游入门组的分组统计按活动结束时归属统计；只适用于该活动和组别，跨组迁移按最终组归并，不替代全项目新增、价值或获客回收口径。"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "preference_10037",
+      "frozen_title": "好友订单入门组分组统计",
+      "frozen_summary": "好友订单入门组分组统计只适用于该活动和组别；跨组迁移按活动结束时最终组归并，不替代全项目新增、价值或获客回收。",
+      "D_keywords": [
+        "好友订单入门组的分组统计",
+        "跨组迁移",
+        "最终组归并"
+      ],
+      "E_keywords": [],
+      "decisions": [
+        {
+          "keyword": "好友订单入门组的分组统计",
+          "in_D": true,
+          "in_original_keywords": false,
+          "action": "remove",
+          "reason": "只是把标题中的活动、组别和主题之间加“的”，同一作用域和主题已完整覆盖。",
+          "source_support": [
+            {
+              "kind": "body",
+              "path": "docs/business-semantics/cli-consumption-20261116/scale-fixture/catalog.json",
+              "entry_id": "preference_10037",
+              "excerpt": "好友订单入门组的分组统计按活动结束时归属统计；只适用于该活动和组别，跨组迁移按最终组归并，不替代全项目新增、价值或获客回收口径。"
+            }
+          ]
+        },
+        {
+          "keyword": "跨组迁移",
+          "in_D": true,
+          "in_original_keywords": false,
+          "action": "remove",
+          "reason": "冻结摘要已逐字包含该词，重复出现不增加上下文信息。",
+          "source_support": [
+            {
+              "kind": "body",
+              "path": "docs/business-semantics/cli-consumption-20261116/scale-fixture/catalog.json",
+              "entry_id": "preference_10037",
+              "excerpt": "好友订单入门组的分组统计按活动结束时归属统计；只适用于该活动和组别，跨组迁移按最终组归并，不替代全项目新增、价值或获客回收口径。"
+            }
+          ]
+        },
+        {
+          "keyword": "最终组归并",
+          "in_D": true,
+          "in_original_keywords": false,
+          "action": "remove",
+          "reason": "冻结摘要已逐字包含该词，重复出现不增加上下文信息。",
+          "source_support": [
+            {
+              "kind": "body",
+              "path": "docs/business-semantics/cli-consumption-20261116/scale-fixture/catalog.json",
+              "entry_id": "preference_10037",
+              "excerpt": "好友订单入门组的分组统计按活动结束时归属统计；只适用于该活动和组别，跨组迁移按最终组归并，不替代全项目新增、价值或获客回收口径。"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "preference_10043",
+      "frozen_title": "海岛集市入门组付费礼包",
+      "frozen_summary": "海岛集市入门组付费礼包只适用于该活动和组别；跨组迁移按活动结束时最终组归并，不替代全项目新增、价值或获客回收。",
+      "D_keywords": [
+        "海岛集市入门组的付费礼包",
+        "跨组迁移",
+        "最终组归并"
+      ],
+      "E_keywords": [],
+      "decisions": [
+        {
+          "keyword": "海岛集市入门组的付费礼包",
+          "in_D": true,
+          "in_original_keywords": false,
+          "action": "remove",
+          "reason": "只是把标题中的活动、组别和主题之间加“的”，同一作用域和主题已完整覆盖。",
+          "source_support": [
+            {
+              "kind": "body",
+              "path": "docs/business-semantics/cli-consumption-20261116/scale-fixture/catalog.json",
+              "entry_id": "preference_10043",
+              "excerpt": "海岛集市入门组的付费礼包按活动结束时归属统计；只适用于该活动和组别，跨组迁移按最终组归并，不替代全项目新增、价值或获客回收口径。"
+            }
+          ]
+        },
+        {
+          "keyword": "跨组迁移",
+          "in_D": true,
+          "in_original_keywords": false,
+          "action": "remove",
+          "reason": "冻结摘要已逐字包含该词，重复出现不增加上下文信息。",
+          "source_support": [
+            {
+              "kind": "body",
+              "path": "docs/business-semantics/cli-consumption-20261116/scale-fixture/catalog.json",
+              "entry_id": "preference_10043",
+              "excerpt": "海岛集市入门组的付费礼包按活动结束时归属统计；只适用于该活动和组别，跨组迁移按最终组归并，不替代全项目新增、价值或获客回收口径。"
+            }
+          ]
+        },
+        {
+          "keyword": "最终组归并",
+          "in_D": true,
+          "in_original_keywords": false,
+          "action": "remove",
+          "reason": "冻结摘要已逐字包含该词，重复出现不增加上下文信息。",
+          "source_support": [
+            {
+              "kind": "body",
+              "path": "docs/business-semantics/cli-consumption-20261116/scale-fixture/catalog.json",
+              "entry_id": "preference_10043",
+              "excerpt": "海岛集市入门组的付费礼包按活动结束时归属统计；只适用于该活动和组别，跨组迁移按最终组归并，不替代全项目新增、价值或获客回收口径。"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "preference_10049",
+      "frozen_title": "厨师晋升入门组付费礼包",
+      "frozen_summary": "厨师晋升入门组付费礼包只适用于该活动和组别；跨组迁移按活动结束时最终组归并，不替代全项目新增、价值或获客回收。",
+      "D_keywords": [
+        "厨师晋升入门组的付费礼包",
+        "跨组迁移",
+        "最终组归并"
+      ],
+      "E_keywords": [],
+      "decisions": [
+        {
+          "keyword": "厨师晋升入门组的付费礼包",
+          "in_D": true,
+          "in_original_keywords": false,
+          "action": "remove",
+          "reason": "只是把标题中的活动、组别和主题之间加“的”，同一作用域和主题已完整覆盖。",
+          "source_support": [
+            {
+              "kind": "body",
+              "path": "docs/business-semantics/cli-consumption-20261116/scale-fixture/catalog.json",
+              "entry_id": "preference_10049",
+              "excerpt": "厨师晋升入门组的付费礼包按活动结束时归属统计；只适用于该活动和组别，跨组迁移按最终组归并，不替代全项目新增、价值或获客回收口径。"
+            }
+          ]
+        },
+        {
+          "keyword": "跨组迁移",
+          "in_D": true,
+          "in_original_keywords": false,
+          "action": "remove",
+          "reason": "冻结摘要已逐字包含该词，重复出现不增加上下文信息。",
+          "source_support": [
+            {
+              "kind": "body",
+              "path": "docs/business-semantics/cli-consumption-20261116/scale-fixture/catalog.json",
+              "entry_id": "preference_10049",
+              "excerpt": "厨师晋升入门组的付费礼包按活动结束时归属统计；只适用于该活动和组别，跨组迁移按最终组归并，不替代全项目新增、价值或获客回收口径。"
+            }
+          ]
+        },
+        {
+          "keyword": "最终组归并",
+          "in_D": true,
+          "in_original_keywords": false,
+          "action": "remove",
+          "reason": "冻结摘要已逐字包含该词，重复出现不增加上下文信息。",
+          "source_support": [
+            {
+              "kind": "body",
+              "path": "docs/business-semantics/cli-consumption-20261116/scale-fixture/catalog.json",
+              "entry_id": "preference_10049",
+              "excerpt": "厨师晋升入门组的付费礼包按活动结束时归属统计；只适用于该活动和组别，跨组迁移按最终组归并，不替代全项目新增、价值或获客回收口径。"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "preference_10055",
+      "frozen_title": "食材寻宝入门组触达统计",
+      "frozen_summary": "食材寻宝入门组触达统计只适用于该活动和组别；跨组迁移按活动结束时最终组归并，不替代全项目新增、价值或获客回收。",
+      "D_keywords": [
+        "食材寻宝入门组的触达统计",
+        "跨组迁移",
+        "最终组归并"
+      ],
+      "E_keywords": [],
+      "decisions": [
+        {
+          "keyword": "食材寻宝入门组的触达统计",
+          "in_D": true,
+          "in_original_keywords": false,
+          "action": "remove",
+          "reason": "只是把标题中的活动、组别和主题之间加“的”，同一作用域和主题已完整覆盖。",
+          "source_support": [
+            {
+              "kind": "body",
+              "path": "docs/business-semantics/cli-consumption-20261116/scale-fixture/catalog.json",
+              "entry_id": "preference_10055",
+              "excerpt": "食材寻宝入门组的触达统计按活动结束时归属统计；只适用于该活动和组别，跨组迁移按最终组归并，不替代全项目新增、价值或获客回收口径。"
+            }
+          ]
+        },
+        {
+          "keyword": "跨组迁移",
+          "in_D": true,
+          "in_original_keywords": false,
+          "action": "remove",
+          "reason": "冻结摘要已逐字包含该词，重复出现不增加上下文信息。",
+          "source_support": [
+            {
+              "kind": "body",
+              "path": "docs/business-semantics/cli-consumption-20261116/scale-fixture/catalog.json",
+              "entry_id": "preference_10055",
+              "excerpt": "食材寻宝入门组的触达统计按活动结束时归属统计；只适用于该活动和组别，跨组迁移按最终组归并，不替代全项目新增、价值或获客回收口径。"
+            }
+          ]
+        },
+        {
+          "keyword": "最终组归并",
+          "in_D": true,
+          "in_original_keywords": false,
+          "action": "remove",
+          "reason": "冻结摘要已逐字包含该词，重复出现不增加上下文信息。",
+          "source_support": [
+            {
+              "kind": "body",
+              "path": "docs/business-semantics/cli-consumption-20261116/scale-fixture/catalog.json",
+              "entry_id": "preference_10055",
+              "excerpt": "食材寻宝入门组的触达统计按活动结束时归属统计；只适用于该活动和组别，跨组迁移按最终组归并，不替代全项目新增、价值或获客回收口径。"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "preference_10061",
+      "frozen_title": "餐车巡游入门组关卡进度",
+      "frozen_summary": "餐车巡游入门组关卡进度只适用于该活动和组别；跨组迁移按活动结束时最终组归并，不替代全项目新增、价值或获客回收。",
+      "D_keywords": [
+        "餐车巡游入门组的关卡进度",
+        "跨组迁移",
+        "最终组归并"
+      ],
+      "E_keywords": [],
+      "decisions": [
+        {
+          "keyword": "餐车巡游入门组的关卡进度",
+          "in_D": true,
+          "in_original_keywords": false,
+          "action": "remove",
+          "reason": "只是把标题中的活动、组别和主题之间加“的”，同一作用域和主题已完整覆盖。",
+          "source_support": [
+            {
+              "kind": "body",
+              "path": "docs/business-semantics/cli-consumption-20261116/scale-fixture/catalog.json",
+              "entry_id": "preference_10061",
+              "excerpt": "餐车巡游入门组的关卡进度按活动结束时归属统计；只适用于该活动和组别，跨组迁移按最终组归并，不替代全项目新增、价值或获客回收口径。"
+            }
+          ]
+        },
+        {
+          "keyword": "跨组迁移",
+          "in_D": true,
+          "in_original_keywords": false,
+          "action": "remove",
+          "reason": "冻结摘要已逐字包含该词，重复出现不增加上下文信息。",
+          "source_support": [
+            {
+              "kind": "body",
+              "path": "docs/business-semantics/cli-consumption-20261116/scale-fixture/catalog.json",
+              "entry_id": "preference_10061",
+              "excerpt": "餐车巡游入门组的关卡进度按活动结束时归属统计；只适用于该活动和组别，跨组迁移按最终组归并，不替代全项目新增、价值或获客回收口径。"
+            }
+          ]
+        },
+        {
+          "keyword": "最终组归并",
+          "in_D": true,
+          "in_original_keywords": false,
+          "action": "remove",
+          "reason": "冻结摘要已逐字包含该词，重复出现不增加上下文信息。",
+          "source_support": [
+            {
+              "kind": "body",
+              "path": "docs/business-semantics/cli-consumption-20261116/scale-fixture/catalog.json",
+              "entry_id": "preference_10061",
+              "excerpt": "餐车巡游入门组的关卡进度按活动结束时归属统计；只适用于该活动和组别，跨组迁移按最终组归并，不替代全项目新增、价值或获客回收口径。"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "preference_10067",
+      "frozen_title": "好友订单入门组关卡进度",
+      "frozen_summary": "好友订单入门组关卡进度只适用于该活动和组别；跨组迁移按活动结束时最终组归并，不替代全项目新增、价值或获客回收。",
+      "D_keywords": [
+        "好友订单入门组的关卡进度",
+        "跨组迁移",
+        "最终组归并"
+      ],
+      "E_keywords": [],
+      "decisions": [
+        {
+          "keyword": "好友订单入门组的关卡进度",
+          "in_D": true,
+          "in_original_keywords": false,
+          "action": "remove",
+          "reason": "只是把标题中的活动、组别和主题之间加“的”，同一作用域和主题已完整覆盖。",
+          "source_support": [
+            {
+              "kind": "body",
+              "path": "docs/business-semantics/cli-consumption-20261116/scale-fixture/catalog.json",
+              "entry_id": "preference_10067",
+              "excerpt": "好友订单入门组的关卡进度按活动结束时归属统计；只适用于该活动和组别，跨组迁移按最终组归并，不替代全项目新增、价值或获客回收口径。"
+            }
+          ]
+        },
+        {
+          "keyword": "跨组迁移",
+          "in_D": true,
+          "in_original_keywords": false,
+          "action": "remove",
+          "reason": "冻结摘要已逐字包含该词，重复出现不增加上下文信息。",
+          "source_support": [
+            {
+              "kind": "body",
+              "path": "docs/business-semantics/cli-consumption-20261116/scale-fixture/catalog.json",
+              "entry_id": "preference_10067",
+              "excerpt": "好友订单入门组的关卡进度按活动结束时归属统计；只适用于该活动和组别，跨组迁移按最终组归并，不替代全项目新增、价值或获客回收口径。"
+            }
+          ]
+        },
+        {
+          "keyword": "最终组归并",
+          "in_D": true,
+          "in_original_keywords": false,
+          "action": "remove",
+          "reason": "冻结摘要已逐字包含该词，重复出现不增加上下文信息。",
+          "source_support": [
+            {
+              "kind": "body",
+              "path": "docs/business-semantics/cli-consumption-20261116/scale-fixture/catalog.json",
+              "entry_id": "preference_10067",
+              "excerpt": "好友订单入门组的关卡进度按活动结束时归属统计；只适用于该活动和组别，跨组迁移按最终组归并，不替代全项目新增、价值或获客回收口径。"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "preference_10073",
+      "frozen_title": "海岛集市入门组退款处理",
+      "frozen_summary": "海岛集市入门组退款处理只适用于该活动和组别；跨组迁移按活动结束时最终组归并，不替代全项目新增、价值或获客回收。",
+      "D_keywords": [
+        "海岛集市入门组的退款处理",
+        "跨组迁移",
+        "最终组归并"
+      ],
+      "E_keywords": [],
+      "decisions": [
+        {
+          "keyword": "海岛集市入门组的退款处理",
+          "in_D": true,
+          "in_original_keywords": false,
+          "action": "remove",
+          "reason": "只是把标题中的活动、组别和主题之间加“的”，同一作用域和主题已完整覆盖。",
+          "source_support": [
+            {
+              "kind": "body",
+              "path": "docs/business-semantics/cli-consumption-20261116/scale-fixture/catalog.json",
+              "entry_id": "preference_10073",
+              "excerpt": "海岛集市入门组的退款处理按活动结束时归属统计；只适用于该活动和组别，跨组迁移按最终组归并，不替代全项目新增、价值或获客回收口径。"
+            }
+          ]
+        },
+        {
+          "keyword": "跨组迁移",
+          "in_D": true,
+          "in_original_keywords": false,
+          "action": "remove",
+          "reason": "冻结摘要已逐字包含该词，重复出现不增加上下文信息。",
+          "source_support": [
+            {
+              "kind": "body",
+              "path": "docs/business-semantics/cli-consumption-20261116/scale-fixture/catalog.json",
+              "entry_id": "preference_10073",
+              "excerpt": "海岛集市入门组的退款处理按活动结束时归属统计；只适用于该活动和组别，跨组迁移按最终组归并，不替代全项目新增、价值或获客回收口径。"
+            }
+          ]
+        },
+        {
+          "keyword": "最终组归并",
+          "in_D": true,
+          "in_original_keywords": false,
+          "action": "remove",
+          "reason": "冻结摘要已逐字包含该词，重复出现不增加上下文信息。",
+          "source_support": [
+            {
+              "kind": "body",
+              "path": "docs/business-semantics/cli-consumption-20261116/scale-fixture/catalog.json",
+              "entry_id": "preference_10073",
+              "excerpt": "海岛集市入门组的退款处理按活动结束时归属统计；只适用于该活动和组别，跨组迁移按最终组归并，不替代全项目新增、价值或获客回收口径。"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "preference_10079",
+      "frozen_title": "厨师晋升入门组退款处理",
+      "frozen_summary": "厨师晋升入门组退款处理只适用于该活动和组别；跨组迁移按活动结束时最终组归并，不替代全项目新增、价值或获客回收。",
+      "D_keywords": [
+        "厨师晋升入门组的退款处理",
+        "跨组迁移",
+        "最终组归并"
+      ],
+      "E_keywords": [],
+      "decisions": [
+        {
+          "keyword": "厨师晋升入门组的退款处理",
+          "in_D": true,
+          "in_original_keywords": false,
+          "action": "remove",
+          "reason": "只是把标题中的活动、组别和主题之间加“的”，同一作用域和主题已完整覆盖。",
+          "source_support": [
+            {
+              "kind": "body",
+              "path": "docs/business-semantics/cli-consumption-20261116/scale-fixture/catalog.json",
+              "entry_id": "preference_10079",
+              "excerpt": "厨师晋升入门组的退款处理按活动结束时归属统计；只适用于该活动和组别，跨组迁移按最终组归并，不替代全项目新增、价值或获客回收口径。"
+            }
+          ]
+        },
+        {
+          "keyword": "跨组迁移",
+          "in_D": true,
+          "in_original_keywords": false,
+          "action": "remove",
+          "reason": "冻结摘要已逐字包含该词，重复出现不增加上下文信息。",
+          "source_support": [
+            {
+              "kind": "body",
+              "path": "docs/business-semantics/cli-consumption-20261116/scale-fixture/catalog.json",
+              "entry_id": "preference_10079",
+              "excerpt": "厨师晋升入门组的退款处理按活动结束时归属统计；只适用于该活动和组别，跨组迁移按最终组归并，不替代全项目新增、价值或获客回收口径。"
+            }
+          ]
+        },
+        {
+          "keyword": "最终组归并",
+          "in_D": true,
+          "in_original_keywords": false,
+          "action": "remove",
+          "reason": "冻结摘要已逐字包含该词，重复出现不增加上下文信息。",
+          "source_support": [
+            {
+              "kind": "body",
+              "path": "docs/business-semantics/cli-consumption-20261116/scale-fixture/catalog.json",
+              "entry_id": "preference_10079",
+              "excerpt": "厨师晋升入门组的退款处理按活动结束时归属统计；只适用于该活动和组别，跨组迁移按最终组归并，不替代全项目新增、价值或获客回收口径。"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "preference_10085",
+      "frozen_title": "食材寻宝入门组排行榜",
+      "frozen_summary": "食材寻宝入门组排行榜只适用于该活动和组别；跨组迁移按活动结束时最终组归并，不替代全项目新增、价值或获客回收。",
+      "D_keywords": [
+        "食材寻宝入门组的排行榜",
+        "跨组迁移",
+        "最终组归并"
+      ],
+      "E_keywords": [],
+      "decisions": [
+        {
+          "keyword": "食材寻宝入门组的排行榜",
+          "in_D": true,
+          "in_original_keywords": false,
+          "action": "remove",
+          "reason": "只是把标题中的活动、组别和主题之间加“的”，同一作用域和主题已完整覆盖。",
+          "source_support": [
+            {
+              "kind": "body",
+              "path": "docs/business-semantics/cli-consumption-20261116/scale-fixture/catalog.json",
+              "entry_id": "preference_10085",
+              "excerpt": "食材寻宝入门组的排行榜按活动结束时归属统计；只适用于该活动和组别，跨组迁移按最终组归并，不替代全项目新增、价值或获客回收口径。"
+            }
+          ]
+        },
+        {
+          "keyword": "跨组迁移",
+          "in_D": true,
+          "in_original_keywords": false,
+          "action": "remove",
+          "reason": "冻结摘要已逐字包含该词，重复出现不增加上下文信息。",
+          "source_support": [
+            {
+              "kind": "body",
+              "path": "docs/business-semantics/cli-consumption-20261116/scale-fixture/catalog.json",
+              "entry_id": "preference_10085",
+              "excerpt": "食材寻宝入门组的排行榜按活动结束时归属统计；只适用于该活动和组别，跨组迁移按最终组归并，不替代全项目新增、价值或获客回收口径。"
+            }
+          ]
+        },
+        {
+          "keyword": "最终组归并",
+          "in_D": true,
+          "in_original_keywords": false,
+          "action": "remove",
+          "reason": "冻结摘要已逐字包含该词，重复出现不增加上下文信息。",
+          "source_support": [
+            {
+              "kind": "body",
+              "path": "docs/business-semantics/cli-consumption-20261116/scale-fixture/catalog.json",
+              "entry_id": "preference_10085",
+              "excerpt": "食材寻宝入门组的排行榜按活动结束时归属统计；只适用于该活动和组别，跨组迁移按最终组归并，不替代全项目新增、价值或获客回收口径。"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "preference_10091",
+      "frozen_title": "餐车巡游入门组召回奖励",
+      "frozen_summary": "餐车巡游入门组召回奖励只适用于该活动和组别；跨组迁移按活动结束时最终组归并，不替代全项目新增、价值或获客回收。",
+      "D_keywords": [
+        "餐车巡游入门组的召回奖励",
+        "跨组迁移",
+        "最终组归并"
+      ],
+      "E_keywords": [],
+      "decisions": [
+        {
+          "keyword": "餐车巡游入门组的召回奖励",
+          "in_D": true,
+          "in_original_keywords": false,
+          "action": "remove",
+          "reason": "只是把标题中的活动、组别和主题之间加“的”，同一作用域和主题已完整覆盖。",
+          "source_support": [
+            {
+              "kind": "body",
+              "path": "docs/business-semantics/cli-consumption-20261116/scale-fixture/catalog.json",
+              "entry_id": "preference_10091",
+              "excerpt": "餐车巡游入门组的召回奖励按活动结束时归属统计；只适用于该活动和组别，跨组迁移按最终组归并，不替代全项目新增、价值或获客回收口径。"
+            }
+          ]
+        },
+        {
+          "keyword": "跨组迁移",
+          "in_D": true,
+          "in_original_keywords": false,
+          "action": "remove",
+          "reason": "冻结摘要已逐字包含该词，重复出现不增加上下文信息。",
+          "source_support": [
+            {
+              "kind": "body",
+              "path": "docs/business-semantics/cli-consumption-20261116/scale-fixture/catalog.json",
+              "entry_id": "preference_10091",
+              "excerpt": "餐车巡游入门组的召回奖励按活动结束时归属统计；只适用于该活动和组别，跨组迁移按最终组归并，不替代全项目新增、价值或获客回收口径。"
+            }
+          ]
+        },
+        {
+          "keyword": "最终组归并",
+          "in_D": true,
+          "in_original_keywords": false,
+          "action": "remove",
+          "reason": "冻结摘要已逐字包含该词，重复出现不增加上下文信息。",
+          "source_support": [
+            {
+              "kind": "body",
+              "path": "docs/business-semantics/cli-consumption-20261116/scale-fixture/catalog.json",
+              "entry_id": "preference_10091",
+              "excerpt": "餐车巡游入门组的召回奖励按活动结束时归属统计；只适用于该活动和组别，跨组迁移按最终组归并，不替代全项目新增、价值或获客回收口径。"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "preference_10097",
+      "frozen_title": "好友订单入门组召回奖励",
+      "frozen_summary": "好友订单入门组召回奖励只适用于该活动和组别；跨组迁移按活动结束时最终组归并，不替代全项目新增、价值或获客回收。",
+      "D_keywords": [
+        "好友订单入门组的召回奖励",
+        "跨组迁移",
+        "最终组归并"
+      ],
+      "E_keywords": [],
+      "decisions": [
+        {
+          "keyword": "好友订单入门组的召回奖励",
+          "in_D": true,
+          "in_original_keywords": false,
+          "action": "remove",
+          "reason": "只是把标题中的活动、组别和主题之间加“的”，同一作用域和主题已完整覆盖。",
+          "source_support": [
+            {
+              "kind": "body",
+              "path": "docs/business-semantics/cli-consumption-20261116/scale-fixture/catalog.json",
+              "entry_id": "preference_10097",
+              "excerpt": "好友订单入门组的召回奖励按活动结束时归属统计；只适用于该活动和组别，跨组迁移按最终组归并，不替代全项目新增、价值或获客回收口径。"
+            }
+          ]
+        },
+        {
+          "keyword": "跨组迁移",
+          "in_D": true,
+          "in_original_keywords": false,
+          "action": "remove",
+          "reason": "冻结摘要已逐字包含该词，重复出现不增加上下文信息。",
+          "source_support": [
+            {
+              "kind": "body",
+              "path": "docs/business-semantics/cli-consumption-20261116/scale-fixture/catalog.json",
+              "entry_id": "preference_10097",
+              "excerpt": "好友订单入门组的召回奖励按活动结束时归属统计；只适用于该活动和组别，跨组迁移按最终组归并，不替代全项目新增、价值或获客回收口径。"
+            }
+          ]
+        },
+        {
+          "keyword": "最终组归并",
+          "in_D": true,
+          "in_original_keywords": false,
+          "action": "remove",
+          "reason": "冻结摘要已逐字包含该词，重复出现不增加上下文信息。",
+          "source_support": [
+            {
+              "kind": "body",
+              "path": "docs/business-semantics/cli-consumption-20261116/scale-fixture/catalog.json",
+              "entry_id": "preference_10097",
+              "excerpt": "好友订单入门组的召回奖励按活动结束时归属统计；只适用于该活动和组别，跨组迁移按最终组归并，不替代全项目新增、价值或获客回收口径。"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "preference_10103",
+      "frozen_title": "海岛集市进阶组奖励核算",
+      "frozen_summary": "海岛集市进阶组奖励核算只适用于该活动和组别；跨组迁移按活动结束时最终组归并，不替代全项目新增、价值或获客回收。",
+      "D_keywords": [
+        "海岛集市进阶组的奖励核算",
+        "跨组迁移",
+        "最终组归并"
+      ],
+      "E_keywords": [],
+      "decisions": [
+        {
+          "keyword": "海岛集市进阶组的奖励核算",
+          "in_D": true,
+          "in_original_keywords": false,
+          "action": "remove",
+          "reason": "只是把标题中的活动、组别和主题之间加“的”，同一作用域和主题已完整覆盖。",
+          "source_support": [
+            {
+              "kind": "body",
+              "path": "docs/business-semantics/cli-consumption-20261116/scale-fixture/catalog.json",
+              "entry_id": "preference_10103",
+              "excerpt": "海岛集市进阶组的奖励核算按活动结束时归属统计；只适用于该活动和组别，跨组迁移按最终组归并，不替代全项目新增、价值或获客回收口径。"
+            }
+          ]
+        },
+        {
+          "keyword": "跨组迁移",
+          "in_D": true,
+          "in_original_keywords": false,
+          "action": "remove",
+          "reason": "冻结摘要已逐字包含该词，重复出现不增加上下文信息。",
+          "source_support": [
+            {
+              "kind": "body",
+              "path": "docs/business-semantics/cli-consumption-20261116/scale-fixture/catalog.json",
+              "entry_id": "preference_10103",
+              "excerpt": "海岛集市进阶组的奖励核算按活动结束时归属统计；只适用于该活动和组别，跨组迁移按最终组归并，不替代全项目新增、价值或获客回收口径。"
+            }
+          ]
+        },
+        {
+          "keyword": "最终组归并",
+          "in_D": true,
+          "in_original_keywords": false,
+          "action": "remove",
+          "reason": "冻结摘要已逐字包含该词，重复出现不增加上下文信息。",
+          "source_support": [
+            {
+              "kind": "body",
+              "path": "docs/business-semantics/cli-consumption-20261116/scale-fixture/catalog.json",
+              "entry_id": "preference_10103",
+              "excerpt": "海岛集市进阶组的奖励核算按活动结束时归属统计；只适用于该活动和组别，跨组迁移按最终组归并，不替代全项目新增、价值或获客回收口径。"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "preference_10109",
+      "frozen_title": "厨师晋升进阶组奖励核算",
+      "frozen_summary": "厨师晋升进阶组奖励核算只适用于该活动和组别；跨组迁移按活动结束时最终组归并，不替代全项目新增、价值或获客回收。",
+      "D_keywords": [
+        "厨师晋升进阶组的奖励核算",
+        "跨组迁移",
+        "最终组归并"
+      ],
+      "E_keywords": [],
+      "decisions": [
+        {
+          "keyword": "厨师晋升进阶组的奖励核算",
+          "in_D": true,
+          "in_original_keywords": false,
+          "action": "remove",
+          "reason": "只是把标题中的活动、组别和主题之间加“的”，同一作用域和主题已完整覆盖。",
+          "source_support": [
+            {
+              "kind": "body",
+              "path": "docs/business-semantics/cli-consumption-20261116/scale-fixture/catalog.json",
+              "entry_id": "preference_10109",
+              "excerpt": "厨师晋升进阶组的奖励核算按活动结束时归属统计；只适用于该活动和组别，跨组迁移按最终组归并，不替代全项目新增、价值或获客回收口径。"
+            }
+          ]
+        },
+        {
+          "keyword": "跨组迁移",
+          "in_D": true,
+          "in_original_keywords": false,
+          "action": "remove",
+          "reason": "冻结摘要已逐字包含该词，重复出现不增加上下文信息。",
+          "source_support": [
+            {
+              "kind": "body",
+              "path": "docs/business-semantics/cli-consumption-20261116/scale-fixture/catalog.json",
+              "entry_id": "preference_10109",
+              "excerpt": "厨师晋升进阶组的奖励核算按活动结束时归属统计；只适用于该活动和组别，跨组迁移按最终组归并，不替代全项目新增、价值或获客回收口径。"
+            }
+          ]
+        },
+        {
+          "keyword": "最终组归并",
+          "in_D": true,
+          "in_original_keywords": false,
+          "action": "remove",
+          "reason": "冻结摘要已逐字包含该词，重复出现不增加上下文信息。",
+          "source_support": [
+            {
+              "kind": "body",
+              "path": "docs/business-semantics/cli-consumption-20261116/scale-fixture/catalog.json",
+              "entry_id": "preference_10109",
+              "excerpt": "厨师晋升进阶组的奖励核算按活动结束时归属统计；只适用于该活动和组别，跨组迁移按最终组归并，不替代全项目新增、价值或获客回收口径。"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "preference_10115",
+      "frozen_title": "食材寻宝进阶组参与资格",
+      "frozen_summary": "食材寻宝进阶组参与资格只适用于该活动和组别；跨组迁移按活动结束时最终组归并，不替代全项目新增、价值或获客回收。",
+      "D_keywords": [
+        "食材寻宝进阶组的参与资格",
+        "跨组迁移",
+        "最终组归并"
+      ],
+      "E_keywords": [],
+      "decisions": [
+        {
+          "keyword": "食材寻宝进阶组的参与资格",
+          "in_D": true,
+          "in_original_keywords": false,
+          "action": "remove",
+          "reason": "只是把标题中的活动、组别和主题之间加“的”，同一作用域和主题已完整覆盖。",
+          "source_support": [
+            {
+              "kind": "body",
+              "path": "docs/business-semantics/cli-consumption-20261116/scale-fixture/catalog.json",
+              "entry_id": "preference_10115",
+              "excerpt": "食材寻宝进阶组的参与资格按活动结束时归属统计；只适用于该活动和组别，跨组迁移按最终组归并，不替代全项目新增、价值或获客回收口径。"
+            }
+          ]
+        },
+        {
+          "keyword": "跨组迁移",
+          "in_D": true,
+          "in_original_keywords": false,
+          "action": "remove",
+          "reason": "冻结摘要已逐字包含该词，重复出现不增加上下文信息。",
+          "source_support": [
+            {
+              "kind": "body",
+              "path": "docs/business-semantics/cli-consumption-20261116/scale-fixture/catalog.json",
+              "entry_id": "preference_10115",
+              "excerpt": "食材寻宝进阶组的参与资格按活动结束时归属统计；只适用于该活动和组别，跨组迁移按最终组归并，不替代全项目新增、价值或获客回收口径。"
+            }
+          ]
+        },
+        {
+          "keyword": "最终组归并",
+          "in_D": true,
+          "in_original_keywords": false,
+          "action": "remove",
+          "reason": "冻结摘要已逐字包含该词，重复出现不增加上下文信息。",
+          "source_support": [
+            {
+              "kind": "body",
+              "path": "docs/business-semantics/cli-consumption-20261116/scale-fixture/catalog.json",
+              "entry_id": "preference_10115",
+              "excerpt": "食材寻宝进阶组的参与资格按活动结束时归属统计；只适用于该活动和组别，跨组迁移按最终组归并，不替代全项目新增、价值或获客回收口径。"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "preference_10121",
+      "frozen_title": "餐车巡游进阶组订单归属",
+      "frozen_summary": "餐车巡游进阶组订单归属只适用于该活动和组别；跨组迁移按活动结束时最终组归并，不替代全项目新增、价值或获客回收。",
+      "D_keywords": [
+        "餐车巡游进阶组的订单归属",
+        "跨组迁移",
+        "最终组归并"
+      ],
+      "E_keywords": [],
+      "decisions": [
+        {
+          "keyword": "餐车巡游进阶组的订单归属",
+          "in_D": true,
+          "in_original_keywords": false,
+          "action": "remove",
+          "reason": "只是把标题中的活动、组别和主题之间加“的”，同一作用域和主题已完整覆盖。",
+          "source_support": [
+            {
+              "kind": "body",
+              "path": "docs/business-semantics/cli-consumption-20261116/scale-fixture/catalog.json",
+              "entry_id": "preference_10121",
+              "excerpt": "餐车巡游进阶组的订单归属按活动结束时归属统计；只适用于该活动和组别，跨组迁移按最终组归并，不替代全项目新增、价值或获客回收口径。"
+            }
+          ]
+        },
+        {
+          "keyword": "跨组迁移",
+          "in_D": true,
+          "in_original_keywords": false,
+          "action": "remove",
+          "reason": "冻结摘要已逐字包含该词，重复出现不增加上下文信息。",
+          "source_support": [
+            {
+              "kind": "body",
+              "path": "docs/business-semantics/cli-consumption-20261116/scale-fixture/catalog.json",
+              "entry_id": "preference_10121",
+              "excerpt": "餐车巡游进阶组的订单归属按活动结束时归属统计；只适用于该活动和组别，跨组迁移按最终组归并，不替代全项目新增、价值或获客回收口径。"
+            }
+          ]
+        },
+        {
+          "keyword": "最终组归并",
+          "in_D": true,
+          "in_original_keywords": false,
+          "action": "remove",
+          "reason": "冻结摘要已逐字包含该词，重复出现不增加上下文信息。",
+          "source_support": [
+            {
+              "kind": "body",
+              "path": "docs/business-semantics/cli-consumption-20261116/scale-fixture/catalog.json",
+              "entry_id": "preference_10121",
+              "excerpt": "餐车巡游进阶组的订单归属按活动结束时归属统计；只适用于该活动和组别，跨组迁移按最终组归并，不替代全项目新增、价值或获客回收口径。"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "preference_10127",
+      "frozen_title": "好友订单进阶组订单归属",
+      "frozen_summary": "好友订单进阶组订单归属只适用于该活动和组别；跨组迁移按活动结束时最终组归并，不替代全项目新增、价值或获客回收。",
+      "D_keywords": [
+        "好友订单进阶组的订单归属",
+        "跨组迁移",
+        "最终组归并"
+      ],
+      "E_keywords": [],
+      "decisions": [
+        {
+          "keyword": "好友订单进阶组的订单归属",
+          "in_D": true,
+          "in_original_keywords": false,
+          "action": "remove",
+          "reason": "只是把标题中的活动、组别和主题之间加“的”，同一作用域和主题已完整覆盖。",
+          "source_support": [
+            {
+              "kind": "body",
+              "path": "docs/business-semantics/cli-consumption-20261116/scale-fixture/catalog.json",
+              "entry_id": "preference_10127",
+              "excerpt": "好友订单进阶组的订单归属按活动结束时归属统计；只适用于该活动和组别，跨组迁移按最终组归并，不替代全项目新增、价值或获客回收口径。"
+            }
+          ]
+        },
+        {
+          "keyword": "跨组迁移",
+          "in_D": true,
+          "in_original_keywords": false,
+          "action": "remove",
+          "reason": "冻结摘要已逐字包含该词，重复出现不增加上下文信息。",
+          "source_support": [
+            {
+              "kind": "body",
+              "path": "docs/business-semantics/cli-consumption-20261116/scale-fixture/catalog.json",
+              "entry_id": "preference_10127",
+              "excerpt": "好友订单进阶组的订单归属按活动结束时归属统计；只适用于该活动和组别，跨组迁移按最终组归并，不替代全项目新增、价值或获客回收口径。"
+            }
+          ]
+        },
+        {
+          "keyword": "最终组归并",
+          "in_D": true,
+          "in_original_keywords": false,
+          "action": "remove",
+          "reason": "冻结摘要已逐字包含该词，重复出现不增加上下文信息。",
+          "source_support": [
+            {
+              "kind": "body",
+              "path": "docs/business-semantics/cli-consumption-20261116/scale-fixture/catalog.json",
+              "entry_id": "preference_10127",
+              "excerpt": "好友订单进阶组的订单归属按活动结束时归属统计；只适用于该活动和组别，跨组迁移按最终组归并，不替代全项目新增、价值或获客回收口径。"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "preference_10133",
+      "frozen_title": "海岛集市进阶组分组统计",
+      "frozen_summary": "海岛集市进阶组分组统计只适用于该活动和组别；跨组迁移按活动结束时最终组归并，不替代全项目新增、价值或获客回收。",
+      "D_keywords": [
+        "海岛集市进阶组的分组统计",
+        "跨组迁移",
+        "最终组归并"
+      ],
+      "E_keywords": [],
+      "decisions": [
+        {
+          "keyword": "海岛集市进阶组的分组统计",
+          "in_D": true,
+          "in_original_keywords": false,
+          "action": "remove",
+          "reason": "只是把标题中的活动、组别和主题之间加“的”，同一作用域和主题已完整覆盖。",
+          "source_support": [
+            {
+              "kind": "body",
+              "path": "docs/business-semantics/cli-consumption-20261116/scale-fixture/catalog.json",
+              "entry_id": "preference_10133",
+              "excerpt": "海岛集市进阶组的分组统计按活动结束时归属统计；只适用于该活动和组别，跨组迁移按最终组归并，不替代全项目新增、价值或获客回收口径。"
+            }
+          ]
+        },
+        {
+          "keyword": "跨组迁移",
+          "in_D": true,
+          "in_original_keywords": false,
+          "action": "remove",
+          "reason": "冻结摘要已逐字包含该词，重复出现不增加上下文信息。",
+          "source_support": [
+            {
+              "kind": "body",
+              "path": "docs/business-semantics/cli-consumption-20261116/scale-fixture/catalog.json",
+              "entry_id": "preference_10133",
+              "excerpt": "海岛集市进阶组的分组统计按活动结束时归属统计；只适用于该活动和组别，跨组迁移按最终组归并，不替代全项目新增、价值或获客回收口径。"
+            }
+          ]
+        },
+        {
+          "keyword": "最终组归并",
+          "in_D": true,
+          "in_original_keywords": false,
+          "action": "remove",
+          "reason": "冻结摘要已逐字包含该词，重复出现不增加上下文信息。",
+          "source_support": [
+            {
+              "kind": "body",
+              "path": "docs/business-semantics/cli-consumption-20261116/scale-fixture/catalog.json",
+              "entry_id": "preference_10133",
+              "excerpt": "海岛集市进阶组的分组统计按活动结束时归属统计；只适用于该活动和组别，跨组迁移按最终组归并，不替代全项目新增、价值或获客回收口径。"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "preference_10139",
+      "frozen_title": "厨师晋升进阶组分组统计",
+      "frozen_summary": "厨师晋升进阶组分组统计只适用于该活动和组别；跨组迁移按活动结束时最终组归并，不替代全项目新增、价值或获客回收。",
+      "D_keywords": [
+        "厨师晋升进阶组的分组统计",
+        "跨组迁移",
+        "最终组归并"
+      ],
+      "E_keywords": [],
+      "decisions": [
+        {
+          "keyword": "厨师晋升进阶组的分组统计",
+          "in_D": true,
+          "in_original_keywords": false,
+          "action": "remove",
+          "reason": "只是把标题中的活动、组别和主题之间加“的”，同一作用域和主题已完整覆盖。",
+          "source_support": [
+            {
+              "kind": "body",
+              "path": "docs/business-semantics/cli-consumption-20261116/scale-fixture/catalog.json",
+              "entry_id": "preference_10139",
+              "excerpt": "厨师晋升进阶组的分组统计按活动结束时归属统计；只适用于该活动和组别，跨组迁移按最终组归并，不替代全项目新增、价值或获客回收口径。"
+            }
+          ]
+        },
+        {
+          "keyword": "跨组迁移",
+          "in_D": true,
+          "in_original_keywords": false,
+          "action": "remove",
+          "reason": "冻结摘要已逐字包含该词，重复出现不增加上下文信息。",
+          "source_support": [
+            {
+              "kind": "body",
+              "path": "docs/business-semantics/cli-consumption-20261116/scale-fixture/catalog.json",
+              "entry_id": "preference_10139",
+              "excerpt": "厨师晋升进阶组的分组统计按活动结束时归属统计；只适用于该活动和组别，跨组迁移按最终组归并，不替代全项目新增、价值或获客回收口径。"
+            }
+          ]
+        },
+        {
+          "keyword": "最终组归并",
+          "in_D": true,
+          "in_original_keywords": false,
+          "action": "remove",
+          "reason": "冻结摘要已逐字包含该词，重复出现不增加上下文信息。",
+          "source_support": [
+            {
+              "kind": "body",
+              "path": "docs/business-semantics/cli-consumption-20261116/scale-fixture/catalog.json",
+              "entry_id": "preference_10139",
+              "excerpt": "厨师晋升进阶组的分组统计按活动结束时归属统计；只适用于该活动和组别，跨组迁移按最终组归并，不替代全项目新增、价值或获客回收口径。"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "preference_10145",
+      "frozen_title": "食材寻宝进阶组付费礼包",
+      "frozen_summary": "食材寻宝进阶组付费礼包只适用于该活动和组别；跨组迁移按活动结束时最终组归并，不替代全项目新增、价值或获客回收。",
+      "D_keywords": [
+        "食材寻宝进阶组的付费礼包",
+        "跨组迁移",
+        "最终组归并"
+      ],
+      "E_keywords": [],
+      "decisions": [
+        {
+          "keyword": "食材寻宝进阶组的付费礼包",
+          "in_D": true,
+          "in_original_keywords": false,
+          "action": "remove",
+          "reason": "只是把标题中的活动、组别和主题之间加“的”，同一作用域和主题已完整覆盖。",
+          "source_support": [
+            {
+              "kind": "body",
+              "path": "docs/business-semantics/cli-consumption-20261116/scale-fixture/catalog.json",
+              "entry_id": "preference_10145",
+              "excerpt": "食材寻宝进阶组的付费礼包按活动结束时归属统计；只适用于该活动和组别，跨组迁移按最终组归并，不替代全项目新增、价值或获客回收口径。"
+            }
+          ]
+        },
+        {
+          "keyword": "跨组迁移",
+          "in_D": true,
+          "in_original_keywords": false,
+          "action": "remove",
+          "reason": "冻结摘要已逐字包含该词，重复出现不增加上下文信息。",
+          "source_support": [
+            {
+              "kind": "body",
+              "path": "docs/business-semantics/cli-consumption-20261116/scale-fixture/catalog.json",
+              "entry_id": "preference_10145",
+              "excerpt": "食材寻宝进阶组的付费礼包按活动结束时归属统计；只适用于该活动和组别，跨组迁移按最终组归并，不替代全项目新增、价值或获客回收口径。"
+            }
+          ]
+        },
+        {
+          "keyword": "最终组归并",
+          "in_D": true,
+          "in_original_keywords": false,
+          "action": "remove",
+          "reason": "冻结摘要已逐字包含该词，重复出现不增加上下文信息。",
+          "source_support": [
+            {
+              "kind": "body",
+              "path": "docs/business-semantics/cli-consumption-20261116/scale-fixture/catalog.json",
+              "entry_id": "preference_10145",
+              "excerpt": "食材寻宝进阶组的付费礼包按活动结束时归属统计；只适用于该活动和组别，跨组迁移按最终组归并，不替代全项目新增、价值或获客回收口径。"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "preference_10151",
+      "frozen_title": "餐车巡游进阶组触达统计",
+      "frozen_summary": "餐车巡游进阶组触达统计只适用于该活动和组别；跨组迁移按活动结束时最终组归并，不替代全项目新增、价值或获客回收。",
+      "D_keywords": [
+        "餐车巡游进阶组的触达统计",
+        "跨组迁移",
+        "最终组归并"
+      ],
+      "E_keywords": [],
+      "decisions": [
+        {
+          "keyword": "餐车巡游进阶组的触达统计",
+          "in_D": true,
+          "in_original_keywords": false,
+          "action": "remove",
+          "reason": "只是把标题中的活动、组别和主题之间加“的”，同一作用域和主题已完整覆盖。",
+          "source_support": [
+            {
+              "kind": "body",
+              "path": "docs/business-semantics/cli-consumption-20261116/scale-fixture/catalog.json",
+              "entry_id": "preference_10151",
+              "excerpt": "餐车巡游进阶组的触达统计按活动结束时归属统计；只适用于该活动和组别，跨组迁移按最终组归并，不替代全项目新增、价值或获客回收口径。"
+            }
+          ]
+        },
+        {
+          "keyword": "跨组迁移",
+          "in_D": true,
+          "in_original_keywords": false,
+          "action": "remove",
+          "reason": "冻结摘要已逐字包含该词，重复出现不增加上下文信息。",
+          "source_support": [
+            {
+              "kind": "body",
+              "path": "docs/business-semantics/cli-consumption-20261116/scale-fixture/catalog.json",
+              "entry_id": "preference_10151",
+              "excerpt": "餐车巡游进阶组的触达统计按活动结束时归属统计；只适用于该活动和组别，跨组迁移按最终组归并，不替代全项目新增、价值或获客回收口径。"
+            }
+          ]
+        },
+        {
+          "keyword": "最终组归并",
+          "in_D": true,
+          "in_original_keywords": false,
+          "action": "remove",
+          "reason": "冻结摘要已逐字包含该词，重复出现不增加上下文信息。",
+          "source_support": [
+            {
+              "kind": "body",
+              "path": "docs/business-semantics/cli-consumption-20261116/scale-fixture/catalog.json",
+              "entry_id": "preference_10151",
+              "excerpt": "餐车巡游进阶组的触达统计按活动结束时归属统计；只适用于该活动和组别，跨组迁移按最终组归并，不替代全项目新增、价值或获客回收口径。"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "preference_10157",
+      "frozen_title": "好友订单进阶组触达统计",
+      "frozen_summary": "好友订单进阶组触达统计只适用于该活动和组别；跨组迁移按活动结束时最终组归并，不替代全项目新增、价值或获客回收。",
+      "D_keywords": [
+        "好友订单进阶组的触达统计",
+        "跨组迁移",
+        "最终组归并"
+      ],
+      "E_keywords": [],
+      "decisions": [
+        {
+          "keyword": "好友订单进阶组的触达统计",
+          "in_D": true,
+          "in_original_keywords": false,
+          "action": "remove",
+          "reason": "只是把标题中的活动、组别和主题之间加“的”，同一作用域和主题已完整覆盖。",
+          "source_support": [
+            {
+              "kind": "body",
+              "path": "docs/business-semantics/cli-consumption-20261116/scale-fixture/catalog.json",
+              "entry_id": "preference_10157",
+              "excerpt": "好友订单进阶组的触达统计按活动结束时归属统计；只适用于该活动和组别，跨组迁移按最终组归并，不替代全项目新增、价值或获客回收口径。"
+            }
+          ]
+        },
+        {
+          "keyword": "跨组迁移",
+          "in_D": true,
+          "in_original_keywords": false,
+          "action": "remove",
+          "reason": "冻结摘要已逐字包含该词，重复出现不增加上下文信息。",
+          "source_support": [
+            {
+              "kind": "body",
+              "path": "docs/business-semantics/cli-consumption-20261116/scale-fixture/catalog.json",
+              "entry_id": "preference_10157",
+              "excerpt": "好友订单进阶组的触达统计按活动结束时归属统计；只适用于该活动和组别，跨组迁移按最终组归并，不替代全项目新增、价值或获客回收口径。"
+            }
+          ]
+        },
+        {
+          "keyword": "最终组归并",
+          "in_D": true,
+          "in_original_keywords": false,
+          "action": "remove",
+          "reason": "冻结摘要已逐字包含该词，重复出现不增加上下文信息。",
+          "source_support": [
+            {
+              "kind": "body",
+              "path": "docs/business-semantics/cli-consumption-20261116/scale-fixture/catalog.json",
+              "entry_id": "preference_10157",
+              "excerpt": "好友订单进阶组的触达统计按活动结束时归属统计；只适用于该活动和组别，跨组迁移按最终组归并，不替代全项目新增、价值或获客回收口径。"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "preference_10163",
+      "frozen_title": "海岛集市进阶组关卡进度",
+      "frozen_summary": "海岛集市进阶组关卡进度只适用于该活动和组别；跨组迁移按活动结束时最终组归并，不替代全项目新增、价值或获客回收。",
+      "D_keywords": [
+        "海岛集市进阶组的关卡进度",
+        "跨组迁移",
+        "最终组归并"
+      ],
+      "E_keywords": [],
+      "decisions": [
+        {
+          "keyword": "海岛集市进阶组的关卡进度",
+          "in_D": true,
+          "in_original_keywords": false,
+          "action": "remove",
+          "reason": "只是把标题中的活动、组别和主题之间加“的”，同一作用域和主题已完整覆盖。",
+          "source_support": [
+            {
+              "kind": "body",
+              "path": "docs/business-semantics/cli-consumption-20261116/scale-fixture/catalog.json",
+              "entry_id": "preference_10163",
+              "excerpt": "海岛集市进阶组的关卡进度按活动结束时归属统计；只适用于该活动和组别，跨组迁移按最终组归并，不替代全项目新增、价值或获客回收口径。"
+            }
+          ]
+        },
+        {
+          "keyword": "跨组迁移",
+          "in_D": true,
+          "in_original_keywords": false,
+          "action": "remove",
+          "reason": "冻结摘要已逐字包含该词，重复出现不增加上下文信息。",
+          "source_support": [
+            {
+              "kind": "body",
+              "path": "docs/business-semantics/cli-consumption-20261116/scale-fixture/catalog.json",
+              "entry_id": "preference_10163",
+              "excerpt": "海岛集市进阶组的关卡进度按活动结束时归属统计；只适用于该活动和组别，跨组迁移按最终组归并，不替代全项目新增、价值或获客回收口径。"
+            }
+          ]
+        },
+        {
+          "keyword": "最终组归并",
+          "in_D": true,
+          "in_original_keywords": false,
+          "action": "remove",
+          "reason": "冻结摘要已逐字包含该词，重复出现不增加上下文信息。",
+          "source_support": [
+            {
+              "kind": "body",
+              "path": "docs/business-semantics/cli-consumption-20261116/scale-fixture/catalog.json",
+              "entry_id": "preference_10163",
+              "excerpt": "海岛集市进阶组的关卡进度按活动结束时归属统计；只适用于该活动和组别，跨组迁移按最终组归并，不替代全项目新增、价值或获客回收口径。"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "preference_10169",
+      "frozen_title": "厨师晋升进阶组关卡进度",
+      "frozen_summary": "厨师晋升进阶组关卡进度只适用于该活动和组别；跨组迁移按活动结束时最终组归并，不替代全项目新增、价值或获客回收。",
+      "D_keywords": [
+        "厨师晋升进阶组的关卡进度",
+        "跨组迁移",
+        "最终组归并"
+      ],
+      "E_keywords": [],
+      "decisions": [
+        {
+          "keyword": "厨师晋升进阶组的关卡进度",
+          "in_D": true,
+          "in_original_keywords": false,
+          "action": "remove",
+          "reason": "只是把标题中的活动、组别和主题之间加“的”，同一作用域和主题已完整覆盖。",
+          "source_support": [
+            {
+              "kind": "body",
+              "path": "docs/business-semantics/cli-consumption-20261116/scale-fixture/catalog.json",
+              "entry_id": "preference_10169",
+              "excerpt": "厨师晋升进阶组的关卡进度按活动结束时归属统计；只适用于该活动和组别，跨组迁移按最终组归并，不替代全项目新增、价值或获客回收口径。"
+            }
+          ]
+        },
+        {
+          "keyword": "跨组迁移",
+          "in_D": true,
+          "in_original_keywords": false,
+          "action": "remove",
+          "reason": "冻结摘要已逐字包含该词，重复出现不增加上下文信息。",
+          "source_support": [
+            {
+              "kind": "body",
+              "path": "docs/business-semantics/cli-consumption-20261116/scale-fixture/catalog.json",
+              "entry_id": "preference_10169",
+              "excerpt": "厨师晋升进阶组的关卡进度按活动结束时归属统计；只适用于该活动和组别，跨组迁移按最终组归并，不替代全项目新增、价值或获客回收口径。"
+            }
+          ]
+        },
+        {
+          "keyword": "最终组归并",
+          "in_D": true,
+          "in_original_keywords": false,
+          "action": "remove",
+          "reason": "冻结摘要已逐字包含该词，重复出现不增加上下文信息。",
+          "source_support": [
+            {
+              "kind": "body",
+              "path": "docs/business-semantics/cli-consumption-20261116/scale-fixture/catalog.json",
+              "entry_id": "preference_10169",
+              "excerpt": "厨师晋升进阶组的关卡进度按活动结束时归属统计；只适用于该活动和组别，跨组迁移按最终组归并，不替代全项目新增、价值或获客回收口径。"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "preference_10175",
+      "frozen_title": "食材寻宝进阶组退款处理",
+      "frozen_summary": "食材寻宝进阶组退款处理只适用于该活动和组别；跨组迁移按活动结束时最终组归并，不替代全项目新增、价值或获客回收。",
+      "D_keywords": [
+        "食材寻宝进阶组的退款处理",
+        "跨组迁移",
+        "最终组归并"
+      ],
+      "E_keywords": [],
+      "decisions": [
+        {
+          "keyword": "食材寻宝进阶组的退款处理",
+          "in_D": true,
+          "in_original_keywords": false,
+          "action": "remove",
+          "reason": "只是把标题中的活动、组别和主题之间加“的”，同一作用域和主题已完整覆盖。",
+          "source_support": [
+            {
+              "kind": "body",
+              "path": "docs/business-semantics/cli-consumption-20261116/scale-fixture/catalog.json",
+              "entry_id": "preference_10175",
+              "excerpt": "食材寻宝进阶组的退款处理按活动结束时归属统计；只适用于该活动和组别，跨组迁移按最终组归并，不替代全项目新增、价值或获客回收口径。"
+            }
+          ]
+        },
+        {
+          "keyword": "跨组迁移",
+          "in_D": true,
+          "in_original_keywords": false,
+          "action": "remove",
+          "reason": "冻结摘要已逐字包含该词，重复出现不增加上下文信息。",
+          "source_support": [
+            {
+              "kind": "body",
+              "path": "docs/business-semantics/cli-consumption-20261116/scale-fixture/catalog.json",
+              "entry_id": "preference_10175",
+              "excerpt": "食材寻宝进阶组的退款处理按活动结束时归属统计；只适用于该活动和组别，跨组迁移按最终组归并，不替代全项目新增、价值或获客回收口径。"
+            }
+          ]
+        },
+        {
+          "keyword": "最终组归并",
+          "in_D": true,
+          "in_original_keywords": false,
+          "action": "remove",
+          "reason": "冻结摘要已逐字包含该词，重复出现不增加上下文信息。",
+          "source_support": [
+            {
+              "kind": "body",
+              "path": "docs/business-semantics/cli-consumption-20261116/scale-fixture/catalog.json",
+              "entry_id": "preference_10175",
+              "excerpt": "食材寻宝进阶组的退款处理按活动结束时归属统计；只适用于该活动和组别，跨组迁移按最终组归并，不替代全项目新增、价值或获客回收口径。"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "preference_10181",
+      "frozen_title": "餐车巡游进阶组排行榜",
+      "frozen_summary": "餐车巡游进阶组排行榜只适用于该活动和组别；跨组迁移按活动结束时最终组归并，不替代全项目新增、价值或获客回收。",
+      "D_keywords": [
+        "餐车巡游进阶组的排行榜",
+        "跨组迁移",
+        "最终组归并"
+      ],
+      "E_keywords": [],
+      "decisions": [
+        {
+          "keyword": "餐车巡游进阶组的排行榜",
+          "in_D": true,
+          "in_original_keywords": false,
+          "action": "remove",
+          "reason": "只是把标题中的活动、组别和主题之间加“的”，同一作用域和主题已完整覆盖。",
+          "source_support": [
+            {
+              "kind": "body",
+              "path": "docs/business-semantics/cli-consumption-20261116/scale-fixture/catalog.json",
+              "entry_id": "preference_10181",
+              "excerpt": "餐车巡游进阶组的排行榜按活动结束时归属统计；只适用于该活动和组别，跨组迁移按最终组归并，不替代全项目新增、价值或获客回收口径。"
+            }
+          ]
+        },
+        {
+          "keyword": "跨组迁移",
+          "in_D": true,
+          "in_original_keywords": false,
+          "action": "remove",
+          "reason": "冻结摘要已逐字包含该词，重复出现不增加上下文信息。",
+          "source_support": [
+            {
+              "kind": "body",
+              "path": "docs/business-semantics/cli-consumption-20261116/scale-fixture/catalog.json",
+              "entry_id": "preference_10181",
+              "excerpt": "餐车巡游进阶组的排行榜按活动结束时归属统计；只适用于该活动和组别，跨组迁移按最终组归并，不替代全项目新增、价值或获客回收口径。"
+            }
+          ]
+        },
+        {
+          "keyword": "最终组归并",
+          "in_D": true,
+          "in_original_keywords": false,
+          "action": "remove",
+          "reason": "冻结摘要已逐字包含该词，重复出现不增加上下文信息。",
+          "source_support": [
+            {
+              "kind": "body",
+              "path": "docs/business-semantics/cli-consumption-20261116/scale-fixture/catalog.json",
+              "entry_id": "preference_10181",
+              "excerpt": "餐车巡游进阶组的排行榜按活动结束时归属统计；只适用于该活动和组别，跨组迁移按最终组归并，不替代全项目新增、价值或获客回收口径。"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "preference_10187",
+      "frozen_title": "好友订单进阶组排行榜",
+      "frozen_summary": "好友订单进阶组排行榜只适用于该活动和组别；跨组迁移按活动结束时最终组归并，不替代全项目新增、价值或获客回收。",
+      "D_keywords": [
+        "好友订单进阶组的排行榜",
+        "跨组迁移",
+        "最终组归并"
+      ],
+      "E_keywords": [],
+      "decisions": [
+        {
+          "keyword": "好友订单进阶组的排行榜",
+          "in_D": true,
+          "in_original_keywords": false,
+          "action": "remove",
+          "reason": "只是把标题中的活动、组别和主题之间加“的”，同一作用域和主题已完整覆盖。",
+          "source_support": [
+            {
+              "kind": "body",
+              "path": "docs/business-semantics/cli-consumption-20261116/scale-fixture/catalog.json",
+              "entry_id": "preference_10187",
+              "excerpt": "好友订单进阶组的排行榜按活动结束时归属统计；只适用于该活动和组别，跨组迁移按最终组归并，不替代全项目新增、价值或获客回收口径。"
+            }
+          ]
+        },
+        {
+          "keyword": "跨组迁移",
+          "in_D": true,
+          "in_original_keywords": false,
+          "action": "remove",
+          "reason": "冻结摘要已逐字包含该词，重复出现不增加上下文信息。",
+          "source_support": [
+            {
+              "kind": "body",
+              "path": "docs/business-semantics/cli-consumption-20261116/scale-fixture/catalog.json",
+              "entry_id": "preference_10187",
+              "excerpt": "好友订单进阶组的排行榜按活动结束时归属统计；只适用于该活动和组别，跨组迁移按最终组归并，不替代全项目新增、价值或获客回收口径。"
+            }
+          ]
+        },
+        {
+          "keyword": "最终组归并",
+          "in_D": true,
+          "in_original_keywords": false,
+          "action": "remove",
+          "reason": "冻结摘要已逐字包含该词，重复出现不增加上下文信息。",
+          "source_support": [
+            {
+              "kind": "body",
+              "path": "docs/business-semantics/cli-consumption-20261116/scale-fixture/catalog.json",
+              "entry_id": "preference_10187",
+              "excerpt": "好友订单进阶组的排行榜按活动结束时归属统计；只适用于该活动和组别，跨组迁移按最终组归并，不替代全项目新增、价值或获客回收口径。"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "preference_10193",
+      "frozen_title": "海岛集市进阶组召回奖励",
+      "frozen_summary": "海岛集市进阶组召回奖励只适用于该活动和组别；跨组迁移按活动结束时最终组归并，不替代全项目新增、价值或获客回收。",
+      "D_keywords": [
+        "海岛集市进阶组的召回奖励",
+        "跨组迁移",
+        "最终组归并"
+      ],
+      "E_keywords": [],
+      "decisions": [
+        {
+          "keyword": "海岛集市进阶组的召回奖励",
+          "in_D": true,
+          "in_original_keywords": false,
+          "action": "remove",
+          "reason": "只是把标题中的活动、组别和主题之间加“的”，同一作用域和主题已完整覆盖。",
+          "source_support": [
+            {
+              "kind": "body",
+              "path": "docs/business-semantics/cli-consumption-20261116/scale-fixture/catalog.json",
+              "entry_id": "preference_10193",
+              "excerpt": "海岛集市进阶组的召回奖励按活动结束时归属统计；只适用于该活动和组别，跨组迁移按最终组归并，不替代全项目新增、价值或获客回收口径。"
+            }
+          ]
+        },
+        {
+          "keyword": "跨组迁移",
+          "in_D": true,
+          "in_original_keywords": false,
+          "action": "remove",
+          "reason": "冻结摘要已逐字包含该词，重复出现不增加上下文信息。",
+          "source_support": [
+            {
+              "kind": "body",
+              "path": "docs/business-semantics/cli-consumption-20261116/scale-fixture/catalog.json",
+              "entry_id": "preference_10193",
+              "excerpt": "海岛集市进阶组的召回奖励按活动结束时归属统计；只适用于该活动和组别，跨组迁移按最终组归并，不替代全项目新增、价值或获客回收口径。"
+            }
+          ]
+        },
+        {
+          "keyword": "最终组归并",
+          "in_D": true,
+          "in_original_keywords": false,
+          "action": "remove",
+          "reason": "冻结摘要已逐字包含该词，重复出现不增加上下文信息。",
+          "source_support": [
+            {
+              "kind": "body",
+              "path": "docs/business-semantics/cli-consumption-20261116/scale-fixture/catalog.json",
+              "entry_id": "preference_10193",
+              "excerpt": "海岛集市进阶组的召回奖励按活动结束时归属统计；只适用于该活动和组别，跨组迁移按最终组归并，不替代全项目新增、价值或获客回收口径。"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "preference_10199",
+      "frozen_title": "厨师晋升进阶组召回奖励",
+      "frozen_summary": "厨师晋升进阶组召回奖励只适用于该活动和组别；跨组迁移按活动结束时最终组归并，不替代全项目新增、价值或获客回收。",
+      "D_keywords": [
+        "厨师晋升进阶组的召回奖励",
+        "跨组迁移",
+        "最终组归并"
+      ],
+      "E_keywords": [],
+      "decisions": [
+        {
+          "keyword": "厨师晋升进阶组的召回奖励",
+          "in_D": true,
+          "in_original_keywords": false,
+          "action": "remove",
+          "reason": "只是把标题中的活动、组别和主题之间加“的”，同一作用域和主题已完整覆盖。",
+          "source_support": [
+            {
+              "kind": "body",
+              "path": "docs/business-semantics/cli-consumption-20261116/scale-fixture/catalog.json",
+              "entry_id": "preference_10199",
+              "excerpt": "厨师晋升进阶组的召回奖励按活动结束时归属统计；只适用于该活动和组别，跨组迁移按最终组归并，不替代全项目新增、价值或获客回收口径。"
+            }
+          ]
+        },
+        {
+          "keyword": "跨组迁移",
+          "in_D": true,
+          "in_original_keywords": false,
+          "action": "remove",
+          "reason": "冻结摘要已逐字包含该词，重复出现不增加上下文信息。",
+          "source_support": [
+            {
+              "kind": "body",
+              "path": "docs/business-semantics/cli-consumption-20261116/scale-fixture/catalog.json",
+              "entry_id": "preference_10199",
+              "excerpt": "厨师晋升进阶组的召回奖励按活动结束时归属统计；只适用于该活动和组别，跨组迁移按最终组归并，不替代全项目新增、价值或获客回收口径。"
+            }
+          ]
+        },
+        {
+          "keyword": "最终组归并",
+          "in_D": true,
+          "in_original_keywords": false,
+          "action": "remove",
+          "reason": "冻结摘要已逐字包含该词，重复出现不增加上下文信息。",
+          "source_support": [
+            {
+              "kind": "body",
+              "path": "docs/business-semantics/cli-consumption-20261116/scale-fixture/catalog.json",
+              "entry_id": "preference_10199",
+              "excerpt": "厨师晋升进阶组的召回奖励按活动结束时归属统计；只适用于该活动和组别，跨组迁移按最终组归并，不替代全项目新增、价值或获客回收口径。"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "preference_10205",
+      "frozen_title": "食材寻宝大师组奖励核算",
+      "frozen_summary": "食材寻宝大师组奖励核算只适用于该活动和组别；跨组迁移按活动结束时最终组归并，不替代全项目新增、价值或获客回收。",
+      "D_keywords": [
+        "食材寻宝大师组的奖励核算",
+        "跨组迁移",
+        "最终组归并"
+      ],
+      "E_keywords": [],
+      "decisions": [
+        {
+          "keyword": "食材寻宝大师组的奖励核算",
+          "in_D": true,
+          "in_original_keywords": false,
+          "action": "remove",
+          "reason": "只是把标题中的活动、组别和主题之间加“的”，同一作用域和主题已完整覆盖。",
+          "source_support": [
+            {
+              "kind": "body",
+              "path": "docs/business-semantics/cli-consumption-20261116/scale-fixture/catalog.json",
+              "entry_id": "preference_10205",
+              "excerpt": "食材寻宝大师组的奖励核算按活动结束时归属统计；只适用于该活动和组别，跨组迁移按最终组归并，不替代全项目新增、价值或获客回收口径。"
+            }
+          ]
+        },
+        {
+          "keyword": "跨组迁移",
+          "in_D": true,
+          "in_original_keywords": false,
+          "action": "remove",
+          "reason": "冻结摘要已逐字包含该词，重复出现不增加上下文信息。",
+          "source_support": [
+            {
+              "kind": "body",
+              "path": "docs/business-semantics/cli-consumption-20261116/scale-fixture/catalog.json",
+              "entry_id": "preference_10205",
+              "excerpt": "食材寻宝大师组的奖励核算按活动结束时归属统计；只适用于该活动和组别，跨组迁移按最终组归并，不替代全项目新增、价值或获客回收口径。"
+            }
+          ]
+        },
+        {
+          "keyword": "最终组归并",
+          "in_D": true,
+          "in_original_keywords": false,
+          "action": "remove",
+          "reason": "冻结摘要已逐字包含该词，重复出现不增加上下文信息。",
+          "source_support": [
+            {
+              "kind": "body",
+              "path": "docs/business-semantics/cli-consumption-20261116/scale-fixture/catalog.json",
+              "entry_id": "preference_10205",
+              "excerpt": "食材寻宝大师组的奖励核算按活动结束时归属统计；只适用于该活动和组别，跨组迁移按最终组归并，不替代全项目新增、价值或获客回收口径。"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "preference_10211",
+      "frozen_title": "餐车巡游大师组参与资格",
+      "frozen_summary": "餐车巡游大师组参与资格只适用于该活动和组别；跨组迁移按活动结束时最终组归并，不替代全项目新增、价值或获客回收。",
+      "D_keywords": [
+        "餐车巡游大师组的参与资格",
+        "跨组迁移",
+        "最终组归并"
+      ],
+      "E_keywords": [],
+      "decisions": [
+        {
+          "keyword": "餐车巡游大师组的参与资格",
+          "in_D": true,
+          "in_original_keywords": false,
+          "action": "remove",
+          "reason": "只是把标题中的活动、组别和主题之间加“的”，同一作用域和主题已完整覆盖。",
+          "source_support": [
+            {
+              "kind": "body",
+              "path": "docs/business-semantics/cli-consumption-20261116/scale-fixture/catalog.json",
+              "entry_id": "preference_10211",
+              "excerpt": "餐车巡游大师组的参与资格按活动结束时归属统计；只适用于该活动和组别，跨组迁移按最终组归并，不替代全项目新增、价值或获客回收口径。"
+            }
+          ]
+        },
+        {
+          "keyword": "跨组迁移",
+          "in_D": true,
+          "in_original_keywords": false,
+          "action": "remove",
+          "reason": "冻结摘要已逐字包含该词，重复出现不增加上下文信息。",
+          "source_support": [
+            {
+              "kind": "body",
+              "path": "docs/business-semantics/cli-consumption-20261116/scale-fixture/catalog.json",
+              "entry_id": "preference_10211",
+              "excerpt": "餐车巡游大师组的参与资格按活动结束时归属统计；只适用于该活动和组别，跨组迁移按最终组归并，不替代全项目新增、价值或获客回收口径。"
+            }
+          ]
+        },
+        {
+          "keyword": "最终组归并",
+          "in_D": true,
+          "in_original_keywords": false,
+          "action": "remove",
+          "reason": "冻结摘要已逐字包含该词，重复出现不增加上下文信息。",
+          "source_support": [
+            {
+              "kind": "body",
+              "path": "docs/business-semantics/cli-consumption-20261116/scale-fixture/catalog.json",
+              "entry_id": "preference_10211",
+              "excerpt": "餐车巡游大师组的参与资格按活动结束时归属统计；只适用于该活动和组别，跨组迁移按最终组归并，不替代全项目新增、价值或获客回收口径。"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "preference_10217",
+      "frozen_title": "好友订单大师组参与资格",
+      "frozen_summary": "好友订单大师组参与资格只适用于该活动和组别；跨组迁移按活动结束时最终组归并，不替代全项目新增、价值或获客回收。",
+      "D_keywords": [
+        "好友订单大师组的参与资格",
+        "跨组迁移",
+        "最终组归并"
+      ],
+      "E_keywords": [],
+      "decisions": [
+        {
+          "keyword": "好友订单大师组的参与资格",
+          "in_D": true,
+          "in_original_keywords": false,
+          "action": "remove",
+          "reason": "只是把标题中的活动、组别和主题之间加“的”，同一作用域和主题已完整覆盖。",
+          "source_support": [
+            {
+              "kind": "body",
+              "path": "docs/business-semantics/cli-consumption-20261116/scale-fixture/catalog.json",
+              "entry_id": "preference_10217",
+              "excerpt": "好友订单大师组的参与资格按活动结束时归属统计；只适用于该活动和组别，跨组迁移按最终组归并，不替代全项目新增、价值或获客回收口径。"
+            }
+          ]
+        },
+        {
+          "keyword": "跨组迁移",
+          "in_D": true,
+          "in_original_keywords": false,
+          "action": "remove",
+          "reason": "冻结摘要已逐字包含该词，重复出现不增加上下文信息。",
+          "source_support": [
+            {
+              "kind": "body",
+              "path": "docs/business-semantics/cli-consumption-20261116/scale-fixture/catalog.json",
+              "entry_id": "preference_10217",
+              "excerpt": "好友订单大师组的参与资格按活动结束时归属统计；只适用于该活动和组别，跨组迁移按最终组归并，不替代全项目新增、价值或获客回收口径。"
+            }
+          ]
+        },
+        {
+          "keyword": "最终组归并",
+          "in_D": true,
+          "in_original_keywords": false,
+          "action": "remove",
+          "reason": "冻结摘要已逐字包含该词，重复出现不增加上下文信息。",
+          "source_support": [
+            {
+              "kind": "body",
+              "path": "docs/business-semantics/cli-consumption-20261116/scale-fixture/catalog.json",
+              "entry_id": "preference_10217",
+              "excerpt": "好友订单大师组的参与资格按活动结束时归属统计；只适用于该活动和组别，跨组迁移按最终组归并，不替代全项目新增、价值或获客回收口径。"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "preference_10223",
+      "frozen_title": "海岛集市大师组订单归属",
+      "frozen_summary": "海岛集市大师组订单归属只适用于该活动和组别；跨组迁移按活动结束时最终组归并，不替代全项目新增、价值或获客回收。",
+      "D_keywords": [
+        "海岛集市大师组的订单归属",
+        "跨组迁移",
+        "最终组归并"
+      ],
+      "E_keywords": [],
+      "decisions": [
+        {
+          "keyword": "海岛集市大师组的订单归属",
+          "in_D": true,
+          "in_original_keywords": false,
+          "action": "remove",
+          "reason": "只是把标题中的活动、组别和主题之间加“的”，同一作用域和主题已完整覆盖。",
+          "source_support": [
+            {
+              "kind": "body",
+              "path": "docs/business-semantics/cli-consumption-20261116/scale-fixture/catalog.json",
+              "entry_id": "preference_10223",
+              "excerpt": "海岛集市大师组的订单归属按活动结束时归属统计；只适用于该活动和组别，跨组迁移按最终组归并，不替代全项目新增、价值或获客回收口径。"
+            }
+          ]
+        },
+        {
+          "keyword": "跨组迁移",
+          "in_D": true,
+          "in_original_keywords": false,
+          "action": "remove",
+          "reason": "冻结摘要已逐字包含该词，重复出现不增加上下文信息。",
+          "source_support": [
+            {
+              "kind": "body",
+              "path": "docs/business-semantics/cli-consumption-20261116/scale-fixture/catalog.json",
+              "entry_id": "preference_10223",
+              "excerpt": "海岛集市大师组的订单归属按活动结束时归属统计；只适用于该活动和组别，跨组迁移按最终组归并，不替代全项目新增、价值或获客回收口径。"
+            }
+          ]
+        },
+        {
+          "keyword": "最终组归并",
+          "in_D": true,
+          "in_original_keywords": false,
+          "action": "remove",
+          "reason": "冻结摘要已逐字包含该词，重复出现不增加上下文信息。",
+          "source_support": [
+            {
+              "kind": "body",
+              "path": "docs/business-semantics/cli-consumption-20261116/scale-fixture/catalog.json",
+              "entry_id": "preference_10223",
+              "excerpt": "海岛集市大师组的订单归属按活动结束时归属统计；只适用于该活动和组别，跨组迁移按最终组归并，不替代全项目新增、价值或获客回收口径。"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "preference_10229",
+      "frozen_title": "厨师晋升大师组订单归属",
+      "frozen_summary": "厨师晋升大师组订单归属只适用于该活动和组别；跨组迁移按活动结束时最终组归并，不替代全项目新增、价值或获客回收。",
+      "D_keywords": [
+        "厨师晋升大师组的订单归属",
+        "跨组迁移",
+        "最终组归并"
+      ],
+      "E_keywords": [],
+      "decisions": [
+        {
+          "keyword": "厨师晋升大师组的订单归属",
+          "in_D": true,
+          "in_original_keywords": false,
+          "action": "remove",
+          "reason": "只是把标题中的活动、组别和主题之间加“的”，同一作用域和主题已完整覆盖。",
+          "source_support": [
+            {
+              "kind": "body",
+              "path": "docs/business-semantics/cli-consumption-20261116/scale-fixture/catalog.json",
+              "entry_id": "preference_10229",
+              "excerpt": "厨师晋升大师组的订单归属按活动结束时归属统计；只适用于该活动和组别，跨组迁移按最终组归并，不替代全项目新增、价值或获客回收口径。"
+            }
+          ]
+        },
+        {
+          "keyword": "跨组迁移",
+          "in_D": true,
+          "in_original_keywords": false,
+          "action": "remove",
+          "reason": "冻结摘要已逐字包含该词，重复出现不增加上下文信息。",
+          "source_support": [
+            {
+              "kind": "body",
+              "path": "docs/business-semantics/cli-consumption-20261116/scale-fixture/catalog.json",
+              "entry_id": "preference_10229",
+              "excerpt": "厨师晋升大师组的订单归属按活动结束时归属统计；只适用于该活动和组别，跨组迁移按最终组归并，不替代全项目新增、价值或获客回收口径。"
+            }
+          ]
+        },
+        {
+          "keyword": "最终组归并",
+          "in_D": true,
+          "in_original_keywords": false,
+          "action": "remove",
+          "reason": "冻结摘要已逐字包含该词，重复出现不增加上下文信息。",
+          "source_support": [
+            {
+              "kind": "body",
+              "path": "docs/business-semantics/cli-consumption-20261116/scale-fixture/catalog.json",
+              "entry_id": "preference_10229",
+              "excerpt": "厨师晋升大师组的订单归属按活动结束时归属统计；只适用于该活动和组别，跨组迁移按最终组归并，不替代全项目新增、价值或获客回收口径。"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "preference_10235",
+      "frozen_title": "食材寻宝大师组分组统计",
+      "frozen_summary": "食材寻宝大师组分组统计只适用于该活动和组别；跨组迁移按活动结束时最终组归并，不替代全项目新增、价值或获客回收。",
+      "D_keywords": [
+        "食材寻宝大师组的分组统计",
+        "跨组迁移",
+        "最终组归并"
+      ],
+      "E_keywords": [],
+      "decisions": [
+        {
+          "keyword": "食材寻宝大师组的分组统计",
+          "in_D": true,
+          "in_original_keywords": false,
+          "action": "remove",
+          "reason": "只是把标题中的活动、组别和主题之间加“的”，同一作用域和主题已完整覆盖。",
+          "source_support": [
+            {
+              "kind": "body",
+              "path": "docs/business-semantics/cli-consumption-20261116/scale-fixture/catalog.json",
+              "entry_id": "preference_10235",
+              "excerpt": "食材寻宝大师组的分组统计按活动结束时归属统计；只适用于该活动和组别，跨组迁移按最终组归并，不替代全项目新增、价值或获客回收口径。"
+            }
+          ]
+        },
+        {
+          "keyword": "跨组迁移",
+          "in_D": true,
+          "in_original_keywords": false,
+          "action": "remove",
+          "reason": "冻结摘要已逐字包含该词，重复出现不增加上下文信息。",
+          "source_support": [
+            {
+              "kind": "body",
+              "path": "docs/business-semantics/cli-consumption-20261116/scale-fixture/catalog.json",
+              "entry_id": "preference_10235",
+              "excerpt": "食材寻宝大师组的分组统计按活动结束时归属统计；只适用于该活动和组别，跨组迁移按最终组归并，不替代全项目新增、价值或获客回收口径。"
+            }
+          ]
+        },
+        {
+          "keyword": "最终组归并",
+          "in_D": true,
+          "in_original_keywords": false,
+          "action": "remove",
+          "reason": "冻结摘要已逐字包含该词，重复出现不增加上下文信息。",
+          "source_support": [
+            {
+              "kind": "body",
+              "path": "docs/business-semantics/cli-consumption-20261116/scale-fixture/catalog.json",
+              "entry_id": "preference_10235",
+              "excerpt": "食材寻宝大师组的分组统计按活动结束时归属统计；只适用于该活动和组别，跨组迁移按最终组归并，不替代全项目新增、价值或获客回收口径。"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "preference_10241",
+      "frozen_title": "餐车巡游大师组付费礼包",
+      "frozen_summary": "餐车巡游大师组付费礼包只适用于该活动和组别；跨组迁移按活动结束时最终组归并，不替代全项目新增、价值或获客回收。",
+      "D_keywords": [
+        "餐车巡游大师组的付费礼包",
+        "跨组迁移",
+        "最终组归并"
+      ],
+      "E_keywords": [],
+      "decisions": [
+        {
+          "keyword": "餐车巡游大师组的付费礼包",
+          "in_D": true,
+          "in_original_keywords": false,
+          "action": "remove",
+          "reason": "只是把标题中的活动、组别和主题之间加“的”，同一作用域和主题已完整覆盖。",
+          "source_support": [
+            {
+              "kind": "body",
+              "path": "docs/business-semantics/cli-consumption-20261116/scale-fixture/catalog.json",
+              "entry_id": "preference_10241",
+              "excerpt": "餐车巡游大师组的付费礼包按活动结束时归属统计；只适用于该活动和组别，跨组迁移按最终组归并，不替代全项目新增、价值或获客回收口径。"
+            }
+          ]
+        },
+        {
+          "keyword": "跨组迁移",
+          "in_D": true,
+          "in_original_keywords": false,
+          "action": "remove",
+          "reason": "冻结摘要已逐字包含该词，重复出现不增加上下文信息。",
+          "source_support": [
+            {
+              "kind": "body",
+              "path": "docs/business-semantics/cli-consumption-20261116/scale-fixture/catalog.json",
+              "entry_id": "preference_10241",
+              "excerpt": "餐车巡游大师组的付费礼包按活动结束时归属统计；只适用于该活动和组别，跨组迁移按最终组归并，不替代全项目新增、价值或获客回收口径。"
+            }
+          ]
+        },
+        {
+          "keyword": "最终组归并",
+          "in_D": true,
+          "in_original_keywords": false,
+          "action": "remove",
+          "reason": "冻结摘要已逐字包含该词，重复出现不增加上下文信息。",
+          "source_support": [
+            {
+              "kind": "body",
+              "path": "docs/business-semantics/cli-consumption-20261116/scale-fixture/catalog.json",
+              "entry_id": "preference_10241",
+              "excerpt": "餐车巡游大师组的付费礼包按活动结束时归属统计；只适用于该活动和组别，跨组迁移按最终组归并，不替代全项目新增、价值或获客回收口径。"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "preference_10247",
+      "frozen_title": "好友订单大师组付费礼包",
+      "frozen_summary": "好友订单大师组付费礼包只适用于该活动和组别；跨组迁移按活动结束时最终组归并，不替代全项目新增、价值或获客回收。",
+      "D_keywords": [
+        "好友订单大师组的付费礼包",
+        "跨组迁移",
+        "最终组归并"
+      ],
+      "E_keywords": [],
+      "decisions": [
+        {
+          "keyword": "好友订单大师组的付费礼包",
+          "in_D": true,
+          "in_original_keywords": false,
+          "action": "remove",
+          "reason": "只是把标题中的活动、组别和主题之间加“的”，同一作用域和主题已完整覆盖。",
+          "source_support": [
+            {
+              "kind": "body",
+              "path": "docs/business-semantics/cli-consumption-20261116/scale-fixture/catalog.json",
+              "entry_id": "preference_10247",
+              "excerpt": "好友订单大师组的付费礼包按活动结束时归属统计；只适用于该活动和组别，跨组迁移按最终组归并，不替代全项目新增、价值或获客回收口径。"
+            }
+          ]
+        },
+        {
+          "keyword": "跨组迁移",
+          "in_D": true,
+          "in_original_keywords": false,
+          "action": "remove",
+          "reason": "冻结摘要已逐字包含该词，重复出现不增加上下文信息。",
+          "source_support": [
+            {
+              "kind": "body",
+              "path": "docs/business-semantics/cli-consumption-20261116/scale-fixture/catalog.json",
+              "entry_id": "preference_10247",
+              "excerpt": "好友订单大师组的付费礼包按活动结束时归属统计；只适用于该活动和组别，跨组迁移按最终组归并，不替代全项目新增、价值或获客回收口径。"
+            }
+          ]
+        },
+        {
+          "keyword": "最终组归并",
+          "in_D": true,
+          "in_original_keywords": false,
+          "action": "remove",
+          "reason": "冻结摘要已逐字包含该词，重复出现不增加上下文信息。",
+          "source_support": [
+            {
+              "kind": "body",
+              "path": "docs/business-semantics/cli-consumption-20261116/scale-fixture/catalog.json",
+              "entry_id": "preference_10247",
+              "excerpt": "好友订单大师组的付费礼包按活动结束时归属统计；只适用于该活动和组别，跨组迁移按最终组归并，不替代全项目新增、价值或获客回收口径。"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "preference_10253",
+      "frozen_title": "海岛集市大师组触达统计",
+      "frozen_summary": "海岛集市大师组触达统计只适用于该活动和组别；跨组迁移按活动结束时最终组归并，不替代全项目新增、价值或获客回收。",
+      "D_keywords": [
+        "海岛集市大师组的触达统计",
+        "跨组迁移",
+        "最终组归并"
+      ],
+      "E_keywords": [],
+      "decisions": [
+        {
+          "keyword": "海岛集市大师组的触达统计",
+          "in_D": true,
+          "in_original_keywords": false,
+          "action": "remove",
+          "reason": "只是把标题中的活动、组别和主题之间加“的”，同一作用域和主题已完整覆盖。",
+          "source_support": [
+            {
+              "kind": "body",
+              "path": "docs/business-semantics/cli-consumption-20261116/scale-fixture/catalog.json",
+              "entry_id": "preference_10253",
+              "excerpt": "海岛集市大师组的触达统计按活动结束时归属统计；只适用于该活动和组别，跨组迁移按最终组归并，不替代全项目新增、价值或获客回收口径。"
+            }
+          ]
+        },
+        {
+          "keyword": "跨组迁移",
+          "in_D": true,
+          "in_original_keywords": false,
+          "action": "remove",
+          "reason": "冻结摘要已逐字包含该词，重复出现不增加上下文信息。",
+          "source_support": [
+            {
+              "kind": "body",
+              "path": "docs/business-semantics/cli-consumption-20261116/scale-fixture/catalog.json",
+              "entry_id": "preference_10253",
+              "excerpt": "海岛集市大师组的触达统计按活动结束时归属统计；只适用于该活动和组别，跨组迁移按最终组归并，不替代全项目新增、价值或获客回收口径。"
+            }
+          ]
+        },
+        {
+          "keyword": "最终组归并",
+          "in_D": true,
+          "in_original_keywords": false,
+          "action": "remove",
+          "reason": "冻结摘要已逐字包含该词，重复出现不增加上下文信息。",
+          "source_support": [
+            {
+              "kind": "body",
+              "path": "docs/business-semantics/cli-consumption-20261116/scale-fixture/catalog.json",
+              "entry_id": "preference_10253",
+              "excerpt": "海岛集市大师组的触达统计按活动结束时归属统计；只适用于该活动和组别，跨组迁移按最终组归并，不替代全项目新增、价值或获客回收口径。"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "preference_10259",
+      "frozen_title": "厨师晋升大师组触达统计",
+      "frozen_summary": "厨师晋升大师组触达统计只适用于该活动和组别；跨组迁移按活动结束时最终组归并，不替代全项目新增、价值或获客回收。",
+      "D_keywords": [
+        "厨师晋升大师组的触达统计",
+        "跨组迁移",
+        "最终组归并"
+      ],
+      "E_keywords": [],
+      "decisions": [
+        {
+          "keyword": "厨师晋升大师组的触达统计",
+          "in_D": true,
+          "in_original_keywords": false,
+          "action": "remove",
+          "reason": "只是把标题中的活动、组别和主题之间加“的”，同一作用域和主题已完整覆盖。",
+          "source_support": [
+            {
+              "kind": "body",
+              "path": "docs/business-semantics/cli-consumption-20261116/scale-fixture/catalog.json",
+              "entry_id": "preference_10259",
+              "excerpt": "厨师晋升大师组的触达统计按活动结束时归属统计；只适用于该活动和组别，跨组迁移按最终组归并，不替代全项目新增、价值或获客回收口径。"
+            }
+          ]
+        },
+        {
+          "keyword": "跨组迁移",
+          "in_D": true,
+          "in_original_keywords": false,
+          "action": "remove",
+          "reason": "冻结摘要已逐字包含该词，重复出现不增加上下文信息。",
+          "source_support": [
+            {
+              "kind": "body",
+              "path": "docs/business-semantics/cli-consumption-20261116/scale-fixture/catalog.json",
+              "entry_id": "preference_10259",
+              "excerpt": "厨师晋升大师组的触达统计按活动结束时归属统计；只适用于该活动和组别，跨组迁移按最终组归并，不替代全项目新增、价值或获客回收口径。"
+            }
+          ]
+        },
+        {
+          "keyword": "最终组归并",
+          "in_D": true,
+          "in_original_keywords": false,
+          "action": "remove",
+          "reason": "冻结摘要已逐字包含该词，重复出现不增加上下文信息。",
+          "source_support": [
+            {
+              "kind": "body",
+              "path": "docs/business-semantics/cli-consumption-20261116/scale-fixture/catalog.json",
+              "entry_id": "preference_10259",
+              "excerpt": "厨师晋升大师组的触达统计按活动结束时归属统计；只适用于该活动和组别，跨组迁移按最终组归并，不替代全项目新增、价值或获客回收口径。"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "preference_10265",
+      "frozen_title": "食材寻宝大师组关卡进度",
+      "frozen_summary": "食材寻宝大师组关卡进度只适用于该活动和组别；跨组迁移按活动结束时最终组归并，不替代全项目新增、价值或获客回收。",
+      "D_keywords": [
+        "食材寻宝大师组的关卡进度",
+        "跨组迁移",
+        "最终组归并"
+      ],
+      "E_keywords": [],
+      "decisions": [
+        {
+          "keyword": "食材寻宝大师组的关卡进度",
+          "in_D": true,
+          "in_original_keywords": false,
+          "action": "remove",
+          "reason": "只是把标题中的活动、组别和主题之间加“的”，同一作用域和主题已完整覆盖。",
+          "source_support": [
+            {
+              "kind": "body",
+              "path": "docs/business-semantics/cli-consumption-20261116/scale-fixture/catalog.json",
+              "entry_id": "preference_10265",
+              "excerpt": "食材寻宝大师组的关卡进度按活动结束时归属统计；只适用于该活动和组别，跨组迁移按最终组归并，不替代全项目新增、价值或获客回收口径。"
+            }
+          ]
+        },
+        {
+          "keyword": "跨组迁移",
+          "in_D": true,
+          "in_original_keywords": false,
+          "action": "remove",
+          "reason": "冻结摘要已逐字包含该词，重复出现不增加上下文信息。",
+          "source_support": [
+            {
+              "kind": "body",
+              "path": "docs/business-semantics/cli-consumption-20261116/scale-fixture/catalog.json",
+              "entry_id": "preference_10265",
+              "excerpt": "食材寻宝大师组的关卡进度按活动结束时归属统计；只适用于该活动和组别，跨组迁移按最终组归并，不替代全项目新增、价值或获客回收口径。"
+            }
+          ]
+        },
+        {
+          "keyword": "最终组归并",
+          "in_D": true,
+          "in_original_keywords": false,
+          "action": "remove",
+          "reason": "冻结摘要已逐字包含该词，重复出现不增加上下文信息。",
+          "source_support": [
+            {
+              "kind": "body",
+              "path": "docs/business-semantics/cli-consumption-20261116/scale-fixture/catalog.json",
+              "entry_id": "preference_10265",
+              "excerpt": "食材寻宝大师组的关卡进度按活动结束时归属统计；只适用于该活动和组别，跨组迁移按最终组归并，不替代全项目新增、价值或获客回收口径。"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "preference_10271",
+      "frozen_title": "餐车巡游大师组退款处理",
+      "frozen_summary": "餐车巡游大师组退款处理只适用于该活动和组别；跨组迁移按活动结束时最终组归并，不替代全项目新增、价值或获客回收。",
+      "D_keywords": [
+        "餐车巡游大师组的退款处理",
+        "跨组迁移",
+        "最终组归并"
+      ],
+      "E_keywords": [],
+      "decisions": [
+        {
+          "keyword": "餐车巡游大师组的退款处理",
+          "in_D": true,
+          "in_original_keywords": false,
+          "action": "remove",
+          "reason": "只是把标题中的活动、组别和主题之间加“的”，同一作用域和主题已完整覆盖。",
+          "source_support": [
+            {
+              "kind": "body",
+              "path": "docs/business-semantics/cli-consumption-20261116/scale-fixture/catalog.json",
+              "entry_id": "preference_10271",
+              "excerpt": "餐车巡游大师组的退款处理按活动结束时归属统计；只适用于该活动和组别，跨组迁移按最终组归并，不替代全项目新增、价值或获客回收口径。"
+            }
+          ]
+        },
+        {
+          "keyword": "跨组迁移",
+          "in_D": true,
+          "in_original_keywords": false,
+          "action": "remove",
+          "reason": "冻结摘要已逐字包含该词，重复出现不增加上下文信息。",
+          "source_support": [
+            {
+              "kind": "body",
+              "path": "docs/business-semantics/cli-consumption-20261116/scale-fixture/catalog.json",
+              "entry_id": "preference_10271",
+              "excerpt": "餐车巡游大师组的退款处理按活动结束时归属统计；只适用于该活动和组别，跨组迁移按最终组归并，不替代全项目新增、价值或获客回收口径。"
+            }
+          ]
+        },
+        {
+          "keyword": "最终组归并",
+          "in_D": true,
+          "in_original_keywords": false,
+          "action": "remove",
+          "reason": "冻结摘要已逐字包含该词，重复出现不增加上下文信息。",
+          "source_support": [
+            {
+              "kind": "body",
+              "path": "docs/business-semantics/cli-consumption-20261116/scale-fixture/catalog.json",
+              "entry_id": "preference_10271",
+              "excerpt": "餐车巡游大师组的退款处理按活动结束时归属统计；只适用于该活动和组别，跨组迁移按最终组归并，不替代全项目新增、价值或获客回收口径。"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
