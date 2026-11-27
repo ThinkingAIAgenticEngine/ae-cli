@@ -21,6 +21,7 @@ function ctx(values: Record<string, unknown> = {}): RuntimeContext {
 assert.deepEqual(
   commands.map((command) => `${command.service} ${command.resource ? command.resource + ' ' : ''}${command.command}`),
   ['project-semantic asset-package export', 'project-semantic setup'],
+  'setup and asset-package export are registered once without the retired project-semantic lifecycle',
 );
 
 async function captureGatewayCall(fn: () => Promise<unknown>) {

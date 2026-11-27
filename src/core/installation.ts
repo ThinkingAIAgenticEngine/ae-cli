@@ -1,10 +1,16 @@
+import { isOnboardingProgressHost } from './onboarding/progress.js';
 import fs from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';
 import { getLocalCliPackageInfo } from './package-info.js';
-import { globalSkillsDirectory, readBundledSkills, verifyGlobalSkills, type SkillFailure } from './skills-install.js';
+import { globalSkillsDirectory, readInstallableSkills, verifyGlobalSkills, type SkillFailure } from './skills-install.js';
 import { getActiveHost, getConfigDir } from './config.js';
 import { peekCliToken } from './cli-token.js';
+import {
+  aeRegistrationUrl, localRegistrationLanguage, onboardingDeviceMarket, registrationLanguage,
+  type AeRegistrationLanguage,
+} from './host-guidance.js';
+import { cliEntrySource } from './website-entry.js';
 import { readBusinessConfig } from './business-config.js';
 import { canManageGlobalSkills } from './local-skill-context.js';
 import { OPTIONAL_BUSINESSES, getSkillBusinessState, type BusinessStates } from './businesses.js';
@@ -13,6 +19,15 @@ import {
   commandSucceeded, classifyInstallFailure, defaultInstallRunner, exactVersion, installHost,
   resolveNodeTool, INSTALL_TIMEOUT_MS, type ProcessRunner,
 } from './install-process.js';
+
+const accountChoice = {
+  step: 'choose_account',
+  question: 'How would you like to connect to AE?',
+  options: [
+    { value: 'create_account', label: 'Create an AE account' },
+    { value: 'existing_account', label: 'Sign in to my existing AE account' },
+  ],
+} as const;
 
 export interface InstallationReport {
   ok: boolean;
@@ -27,6 +42,11 @@ export interface InstallationReport {
     synchronization?: BusinessSkillSyncReport;
   };
   auth: { host: string | null; authenticated: boolean | null; warnings: string[] };
+  local_language?: AeRegistrationLanguage;
+  onboarding_market?: 'cn' | 'us';
+  onboarding_skill_path?: string;
+  next_action?: 'choose_account' | 'continue_using_ae' | 'check_authentication' | 'check_onboarding';
+  interaction?: typeof accountChoice;
   next_steps: string[];
   commands?: string[];
   error?: { type: 'config'; code: string; message: string; stage: string; cause: string };
@@ -37,6 +57,7 @@ export interface InstallationOptions {
   packageName?: string;
   host?: string;
   dryRun?: boolean;
+  guideAccountSetup?: boolean;
   skipCliInstall?: boolean;
   runner?: ProcessRunner;
   progress?: (message: string) => void;
@@ -60,6 +81,8 @@ export function distribution(packageName: string): { registry: string; repositor
 export function newInstallationReport(packageName: string, version: string, dryRun = false): InstallationReport {
   return {
     ok: false, dry_run: dryRun,
+    // Keep the next interaction and detected language visible before Skill synchronization details.
+    next_action: undefined, interaction: undefined, local_language: undefined,
     cli: { package: packageName, version, path: null, entrypoint: null, verified: false, action: 'pending', warnings: [] },
     skills: { directory: globalSkillsDirectory(), expected_count: 0, installed_count: 0, missing: [], source: null,
       version, status: 'pending', failures: [], attempts: [] },
@@ -187,7 +210,7 @@ export function runInstallation(options: InstallationOptions = {}): Installation
       if (!fs.existsSync(path.join(stateDirectory, 'business-skills.json')) && installedBefore?.name === packageName) {
         const previousSkills = path.join(packageRoot, 'skills');
         try {
-          readBundledSkills(previousSkills);
+          readInstallableSkills(previousSkills);
           syncSkills({ ...context, skillsDirectory: previousSkills, businesses: {}, mode: 'adopt', packageVersion: installedBefore.version });
         } catch {
           report.next_steps.push('Existing Skills could not be adopted from the previous package; unmatched copies will be preserved.');
@@ -232,7 +255,7 @@ export function runInstallation(options: InstallationOptions = {}): Installation
     } else if (context) {
       stage = 'skills_local';
       const skillsPath = path.join(packageRoot, 'skills');
-      const skills = readBundledSkills(skillsPath);
+      const skills = readInstallableSkills(skillsPath);
       if (!isBusinessSkillContextCurrent(context)) {
         return failInstallation(report, stage, 'The active environment changed during CLI installation. Re-run install or update to synchronize its Skills.');
       }
@@ -263,6 +286,14 @@ export function runInstallation(options: InstallationOptions = {}): Installation
       }
     }
     progress('[ae-cli] [4/4] Checking authentication guidance...');
+    const guideAccountSetup = options.guideAccountSetup && report.skills.status === 'success';
+    if (guideAccountSetup && !report.auth.host && context?.host) {
+      try {
+        report.auth.host = installHost(context.host);
+      } catch {
+        report.auth.warnings.push('The configured AE host could not be used to check authentication.');
+      }
+    }
     if (report.auth.host) {
       // Delegate all host/credential semantics to the existing auth command. Never surface its raw output.
       const result = runner(bin, ['--no-update-check', '--format', 'json', 'auth', 'status', '--host', report.auth.host], INSTALL_TIMEOUT_MS);
@@ -274,9 +305,60 @@ export function runInstallation(options: InstallationOptions = {}): Installation
         report.auth.warnings.push('Authentication status could not be verified. Run auth status for this host.');
       }
     }
-    if (report.auth.authenticated !== true) {
+    if (options.guideAccountSetup && !guideAccountSetup) {
+      report.ok = true;
+      return report;
+    }
+    if (guideAccountSetup) {
+      const localLanguage = localRegistrationLanguage(env, platform, runner);
+      if (localLanguage) report.local_language = localLanguage;
+      report.onboarding_market = onboardingDeviceMarket(localLanguage);
+      const onboardingSkillPath = path.join(packageRoot, 'skills', 'ae-onboarding', 'SKILL.md');
+      if (fs.existsSync(onboardingSkillPath)) report.onboarding_skill_path = onboardingSkillPath;
+      if (report.auth.authenticated === true) {
+        report.next_action = isOnboardingProgressHost(report.auth.host ?? undefined) ? 'check_onboarding' : 'continue_using_ae';
+      }
+      else if (report.auth.warnings.length > 0) report.next_action = 'check_authentication';
+      else report.next_action = 'choose_account';
+    }
+    if (report.auth.authenticated === true) {
+      if (report.next_action === 'check_onboarding') {
+        report.next_steps.push('Check the signed-in account with ae-cli analysis onboarding progress --format json. Offer the current Demo only for not_started or in_progress. Continue the user’s specific AE task first when one was requested.');
+      } else {
+        report.next_steps.push('You are signed in. Continue your AE task in this AI tool using the existing environment.');
+      }
+    } else if (report.next_action === 'check_authentication') {
+      const hostOption = report.auth.host ? ` --host ${report.auth.host}` : '';
+      report.next_steps.push(`Check the configured AE environment with ae-cli auth status${hostOption} --format json. If it still cannot be verified, confirm the intended environment before starting signup or login.`);
+    } else {
+      const chooseAccount = report.next_action === 'choose_account';
+      if (chooseAccount) {
+        report.interaction = accountChoice;
+        report.next_steps.push(
+          'After verifying a fresh install, when the user has left the account route open, offer “Create an AE account” and “Sign in to my existing AE account” in the user’s language. ' +
+          'In an AI Agent, show these options in the same turn using the native choice dialog, even for a request that only asks to install. Keep the turn open until the user chooses or dismisses the dialog. If the dialog is unavailable or fails, ask with the same options in chat. ' +
+          'A supplied host only identifies the environment. Wait for the account choice before starting signup or device authorization. For an explicit existing-account login request, use the original AE environment.',
+        );
+        report.next_steps.push('For an explicit onboarding or walkthrough that needs a new account, show “Create an AE account” and “Learn about AE” using the localized labels from references/about-ae.md next to onboarding_skill_path. If they choose “Learn about AE”, show the localized introduction and available product resources from that reference. Offer “Create an AE account” and wait for their choice.');
+      }
+      if (chooseAccount || !report.auth.host) {
+        const source = cliEntrySource(undefined, env);
+        if (chooseAccount) {
+          report.next_steps.push(`After the user confirms signup in the overseas test environment, run ae-cli analysis onboarding run --website-env test --region us --source ${source} --browser system --format json. Use jp or kr for the corresponding requested test market and keep the returned session_id.`);
+          report.next_steps.push(
+            'For production signup, honor an explicitly requested or confirmed market first. Otherwise compare local_language with the language of the user’s own request, excluding commands, links, quoted text, and picker labels. Map Chinese to cn, English to us, Japanese to jp, and Korean to kr. If both signals agree or only one maps to a market, use that market. When the two markets differ, show only those two options and wait. Use us if neither language maps to a market.',
+            `After the user chooses “Create an AE account” or directly asks to sign up, run ae-cli analysis onboarding run --region <market> --source ${source} --browser system --format json with the resolved market. Pass --language separately for the display preference. If the browser cannot open, share the returned login_url. Read the returned skill_path and resume with its session_id after sign-in.`,
+          );
+        } else {
+          const language = registrationLanguage(undefined, env);
+          const registration = aeRegistrationUrl(language, env, source);
+          report.next_steps.push(`New or returning website users: for guided website verification, run ae-cli analysis onboarding run --language ${language} --source ${source} --browser system. For manual registration or sign-in, use ${registration} in the system default browser.`);
+        }
+      }
+      if (chooseAccount) report.next_steps.push('Existing AE users: confirm their original AE environment URL and use it for login. Ask for that URL if it is unknown.');
+      else if (!report.auth.host) report.next_steps.push('Existing AE users: use your original environment URL, or ask your administrator.');
       report.next_steps.push(`ae-cli auth login --host ${report.auth.host ?? '<AE_HOST>'} --no-wait`);
-      report.next_steps.push('Complete browser authorization, then run ae-cli auth login --host <AE_HOST> --device-code <DEVICE_CODE>.');
+      report.next_steps.push('Complete browser authorization, then resume the same login using its returned host and device code. Keep the private device code local.');
     }
     report.ok = true;
     return report;

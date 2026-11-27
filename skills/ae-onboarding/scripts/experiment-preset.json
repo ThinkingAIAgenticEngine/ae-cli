@@ -1,0 +1,252 @@
+{
+  "industries": {
+    "game": {
+      "samples": {
+        "star-island": {
+          "itemId": "starlight-bundle",
+          "userCount": 140,
+          "experimentTypes": [
+            "item-coupon",
+            "checkout-recovery"
+          ],
+          "followUpAccountIds": [
+            "star-island-user-1",
+            "star-island-user-2",
+            "star-island-user-3",
+            "star-island-user-4",
+            "star-island-user-5",
+            "star-island-user-6",
+            "star-island-user-7",
+            "star-island-user-8",
+            "star-island-user-9",
+            "star-island-user-10",
+            "star-island-user-11",
+            "star-island-user-12",
+            "star-island-user-13",
+            "star-island-user-14",
+            "star-island-user-15",
+            "star-island-user-16",
+            "star-island-user-17",
+            "star-island-user-18",
+            "star-island-user-131",
+            "star-island-user-132",
+            "star-island-user-133",
+            "star-island-user-134",
+            "star-island-user-135",
+            "star-island-user-136",
+            "star-island-user-137",
+            "star-island-user-138",
+            "star-island-user-139",
+            "star-island-user-140"
+          ],
+          "netRevenueMetricId": "plg_net_revenue_star_island"
+        },
+        "season-pass": {
+          "itemId": "season-pass-item",
+          "userCount": 120,
+          "experimentTypes": [
+            "item-coupon",
+            "checkout-recovery"
+          ],
+          "followUpAccountIds": [
+            "season-pass-user-1",
+            "season-pass-user-2",
+            "season-pass-user-3",
+            "season-pass-user-4",
+            "season-pass-user-5",
+            "season-pass-user-6",
+            "season-pass-user-7",
+            "season-pass-user-8",
+            "season-pass-user-9",
+            "season-pass-user-10",
+            "season-pass-user-11",
+            "season-pass-user-12",
+            "season-pass-user-101",
+            "season-pass-user-102",
+            "season-pass-user-103",
+            "season-pass-user-104",
+            "season-pass-user-105",
+            "season-pass-user-106",
+            "season-pass-user-107",
+            "season-pass-user-108",
+            "season-pass-user-109",
+            "season-pass-user-110",
+            "season-pass-user-111",
+            "season-pass-user-112",
+            "season-pass-user-113",
+            "season-pass-user-114",
+            "season-pass-user-115",
+            "season-pass-user-116",
+            "season-pass-user-117",
+            "season-pass-user-118",
+            "season-pass-user-119",
+            "season-pass-user-120"
+          ],
+          "netRevenueMetricId": "plg_net_revenue_season_pass"
+        }
+      }
+    }
+  },
+  "experimentTypes": {
+    "item-coupon": {
+      "audience": {
+        "bucketId": "#account_id",
+        "viewEvent": "item_detail_view",
+        "minimumViewDays": 2,
+        "excludeEvent": "payment_success"
+      },
+      "durationDays": 7,
+      "allocation": 100,
+      "currency": "CNY",
+      "costPerPaidOrder": 50,
+      "otherCosts": 0,
+      "arms": {
+        "control": {
+          "featureValue": "full_price",
+          "allocation": 50,
+          "price": 100,
+          "exposureLimit": 12,
+          "couponClaims": 0,
+          "paidUsers": 1,
+          "name": "Full-price reminder"
+        },
+        "treatment": {
+          "featureValue": "coupon_20",
+          "allocation": 50,
+          "price": 80,
+          "exposureLimit": 12,
+          "couponClaims": 8,
+          "paidUsers": 7,
+          "name": "20% coupon"
+        }
+      },
+      "events": {
+        "exposure": "te_experiment_exposure",
+        "couponClaim": "demo_coupon_claim",
+        "payment": "payment_success"
+      },
+      "exposureProperties": [
+        [
+          "experiment_id",
+          "string",
+          "#experiment_id"
+        ],
+        [
+          "experiment_group_id",
+          "string",
+          "#experiment_group_id"
+        ],
+        [
+          "is_control_group",
+          "boolean",
+          "#is_control_group"
+        ]
+      ],
+      "metrics": [
+        {
+          "role": "primary",
+          "event": "payment_success",
+          "aggregation": "user_count",
+          "format": "integer"
+        },
+        {
+          "role": "secondary",
+          "event": "payment_success",
+          "aggregation": "sum",
+          "property": "amount",
+          "format": "float2"
+        }
+      ],
+      "metricFilters": [
+        "plg_sample_id",
+        "item_id"
+      ],
+      "runFilter": "demo_run_id",
+      "orderKey": "order_id",
+      "feature": {
+        "type": "string",
+        "targetPlatform": [
+          "client"
+        ],
+        "keyPrefix": "plg_offer",
+        "displayName": "Demo offer"
+      },
+      "experiment": {
+        "name": "Demo offer A/B",
+        "hypothesis": "An item-specific 20% coupon increases the number of buyers.",
+        "atlasType": "feature"
+      }
+    },
+    "checkout-recovery": {
+      "audience": {
+        "bucketId": "#account_id",
+        "viewEvent": "item_detail_view",
+        "minimumViewDays": 1,
+        "checkoutEvent": "checkout_start",
+        "excludeEvent": "payment_success"
+      },
+      "durationDays": 7,
+      "allocation": 100,
+      "currency": "CNY",
+      "costPerPaidOrder": 50,
+      "otherCosts": 0,
+      "arms": {
+        "control": {
+          "featureValue": "product_details",
+          "allocation": 50,
+          "price": 100,
+          "paidUsers": 2,
+          "name": "Reminder to product details"
+        },
+        "treatment": {
+          "featureValue": "direct_checkout",
+          "allocation": 50,
+          "price": 100,
+          "paidUsers": 4,
+          "name": "Reminder directly to checkout"
+        }
+      },
+      "events": {
+        "exposure": "te_experiment_exposure",
+        "payment": "payment_success"
+      },
+      "exposureProperties": [
+        ["experiment_id", "string", "#experiment_id"],
+        ["experiment_group_id", "string", "#experiment_group_id"],
+        ["is_control_group", "boolean", "#is_control_group"]
+      ],
+      "metrics": [
+        {
+          "role": "primary",
+          "event": "payment_success",
+          "aggregation": "user_count",
+          "format": "integer"
+        },
+        {
+          "role": "secondary",
+          "event": "payment_success",
+          "aggregation": "sum",
+          "property": "amount",
+          "format": "float2"
+        }
+      ],
+      "metricFilters": [
+        "plg_sample_id",
+        "item_id"
+      ],
+      "runFilter": "demo_run_id",
+      "orderKey": "order_id",
+      "feature": {
+        "type": "string",
+        "targetPlatform": ["client"],
+        "keyPrefix": "plg_checkout",
+        "displayName": "Demo checkout recovery"
+      },
+      "experiment": {
+        "name": "Demo checkout recovery A/B",
+        "hypothesis": "At the same price, sending checkout abandoners directly to checkout increases the number of buyers.",
+        "atlasType": "feature"
+      }
+    }
+  }
+}

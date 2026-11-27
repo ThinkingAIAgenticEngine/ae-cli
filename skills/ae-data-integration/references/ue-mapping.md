@@ -29,6 +29,8 @@ Required structure:
 
 Use `distinct_id_field` when no account field exists. `mixed` requires `record_type_field`. Track requires `event_name_field` or a reviewed `default_event_name`. `source.format` is one of `csv`, `tsv`, `json`, `jsonl`, `xls`, `xlsx`, `parquet`. For a multi-file template mapping, `source.sha256` may be the wildcard `*`.
 
+For Atlas exposure data, use a `track` mapping with `default_event_name: "te_experiment_exposure"` or an `event_name_field` when the file contains several event names. The mapping accepts the receiver-defined targets `#experiment_id` and `#experiment_group_id` as strings and `#is_control_group` as a boolean. Conversion emits these fields under `properties` only for rows resolved to `te_experiment_exposure`. Plan generation excludes them from custom property definitions.
+
 ## Record types
 
 Every record carries a `#type`. `mode: 'mixed'` resolves the type per row via `record_type_field`; otherwise the mode fixes it (`track` or `user_set`). The `record_type_field` values are normalized case- and underscore-insensitively, with `event`→`track` and `user`/`userset`→`user_set` aliases.

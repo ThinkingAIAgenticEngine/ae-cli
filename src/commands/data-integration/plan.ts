@@ -45,7 +45,8 @@ export function buildDraftFromMapping(options: PlanDraftOptions): Draft {
   const { mapping } = options;
   const excluded = new Set(mapping.exclude_columns ?? []);
   const properties: Property[] = mapping.properties
-    .filter((property) => !excluded.has(property.source))
+    // Receiver-defined exposure properties do not require custom tracking-plan items.
+    .filter((property) => !excluded.has(property.source) && !property.target.startsWith('#'))
     .map((property) => {
       // A dotted target is a plan-only sub-property declaration: its display name defaults to the
       // leaf segment rather than the parent source column, so sibling sub-properties never collide

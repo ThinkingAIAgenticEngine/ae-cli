@@ -1,6 +1,6 @@
 {
   "name": "@thinkingai/ae-cli",
-  "version": "6.0.65",
+  "version": "6.1.44",
   "description": "CLI tool for ThinkingAI (AE) analytics platform",
   "type": "module",
   "bin": {
@@ -19,7 +19,7 @@
   ],
   "scripts": {
     "dev": "tsx src/index.ts",
-    "build": "tsup src/index.ts src/ai-monitor.ts --format esm --outDir dist --clean --config tsup.config.ts && node scripts/copy-tracking-assets.mjs",
+    "build": "tsup --format esm --outDir dist --clean --config tsup.config.ts && node scripts/copy-tracking-assets.mjs",
     "generate:analysis-skill": "tsx scripts/generate-analysis-skill-index.mts",
     "sync:skill-collaboration": "node scripts/sync-skill-collaboration.mjs",
     "check:skill-collaboration": "node scripts/sync-skill-collaboration.mjs --check",
@@ -52,6 +52,7 @@
     "verify:retired-analysis-commands": "node --test test/retired-analysis-commands.test.mjs",
     "verify:retired-api-command": "node --test test/retired-api-command.test.mjs",
     "verify:analysis-common-tools": "node scripts/verify-te-common-tools.mjs",
+    "verify:experiment-tools": "node scripts/verify-te-experiment-tools.mjs && node --import tsx test/experiment/experiment-capability-command.test.mjs && node --import tsx --test test/experiment/experiment-approval-command.test.mjs && node --import tsx test/experiment/traffic-domain-command.test.mjs && node --import tsx test/experiment/feature-fixed-value-command.test.mjs",
     "verify:team-tools": "node scripts/verify-te-team-tools.mjs && node --import tsx --test tests/team-run-watch.test.ts test/team-run-start-command.test.mjs test/team-scope-command.test.mjs",
     "verify:evaluation-tools": "node scripts/verify-evaluation-tools.mjs && node --import tsx tests/evaluation-client.test.ts && node --import tsx tests/evaluation-sandbox-session.test.ts && node --import tsx tests/evaluation-security.test.ts && node --import tsx tests/evaluation-command-contract.test.ts && node --import tsx --test tests/evaluation-onboarding.test.ts",
     "verify:a2a": "node --import tsx --test tests/a2a-client.test.ts",
@@ -82,6 +83,7 @@
     "verify:version-sync": "npx tsx tests/version-sync.test.ts && node --import tsx --test tests/compat-check-autosync.test.ts tests/resume-command.test.ts",
     "verify:auth-credentials": "npx tsx tests/secure-store.test.ts && npx tsx tests/secure-store-environment.test.ts && npx tsx tests/cli-token-validation.test.ts && npx tsx tests/auth-multi-account.test.ts && npx tsx tests/mcp-no-disk.test.ts && npx tsx tests/external-cli-token.test.ts && node --import tsx --test tests/secure-store-windows-lock.test.ts",
     "verify:readme": "node --test test/readme-command-surface.test.mjs",
+    "verify:heari": "node --test test/heari-integration.test.mjs && node --import tsx --test tests/heari-cli-login.test.ts",
     "verify:dependency-hygiene": "node --test test/dependency-hygiene.test.mjs",
     "qa-changed": "node scripts/qa-changed.mjs",
     "self-check": "node self-check/scan.mjs",
@@ -91,11 +93,12 @@
     "check:agents-docs": "node scripts/check-agents-docs-sync.mjs",
     "prepublishOnly": "npm run check:release && npm run build",
     "start": "node dist/index.js",
-    "test": "npx tsx src/index.ts --help && npm run verify:retired-api-command && npm run verify:sandbox-tools && npm run verify:dependency-hygiene && npm run verify:readme && npm run verify:cli-agent-model-context && npm run verify:analysis-feedback && npm run verify:analysis-scenario",
+    "test": "npx tsx src/index.ts --help && npm run verify:heari && npm run verify:retired-api-command && npm run verify:sandbox-tools && npm run verify:dependency-hygiene && npm run verify:readme && npm run verify:cli-agent-model-context && npm run verify:analysis-feedback && npm run verify:analysis-scenario",
     "verify:kb-versions": "tsx test/kb-version-management-command.test.mjs",
     "verify:automation": "tsx tests/automation-command.test.ts",
     "verify:project-kb-schema": "tsx --test test/kb-schema-import-command.test.mjs && node --test test/project-semantic-compile-schema.test.mjs test/project-semantic-empty-skeleton.test.mjs test/project-semantic-execution-contract.test.mjs test/project-semantic-fidelity.test.mjs && node test/project-semantic-knowledge-wiki-reference.test.mjs",
     "verify:install": "tsx --test tests/installation.test.ts && node --test test/install-entrypoint.test.mjs test/runtime-capabilities-entrypoint.test.mjs",
+    "verify:optional-agent": "tsx --test tests/login-device-flow.test.ts tests/auth-device-command.test.ts tests/agent-business-transport.test.ts",
     "verify:business-skills": "node --import tsx --test tests/business-skill-sync.test.ts",
     "verify:skill-businesses": "node --test test/release-gate-skill-businesses.test.mjs",
     "verify:notifications": "tsx tests/notification-command.test.ts",
@@ -104,7 +107,8 @@
     "verify:capability-api": "npx tsx tests/capability-api.test.ts",
     "verify:community-ux": "npm run build && npx tsx tests/community-ux.test.ts",
     "verify:community-evidence": "node --import tsx tests/community-evidence.test.ts",
-    "verify:businesses": "node --import tsx --test tests/business-config.test.ts tests/business-command-filter.test.ts tests/business-cli.test.ts tests/environment-refresh.test.ts tests/business-sandbox-boundary.test.ts tests/business-refresh-skills.test.ts"
+    "verify:businesses": "node --import tsx --test tests/business-config.test.ts tests/business-command-filter.test.ts tests/business-cli.test.ts tests/environment-refresh.test.ts tests/business-sandbox-boundary.test.ts tests/business-refresh-skills.test.ts",
+    "verify:plg": "tsx --test tests/onboarding-v3.test.ts tests/onboarding-website-login.test.ts tests/onboarding-growth.test.ts tests/login-device-flow.test.ts tests/auth-device-command.test.ts tests/plg-engage-replay.test.ts"
   },
   "repository": {
     "type": "git",

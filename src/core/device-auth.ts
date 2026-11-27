@@ -1,4 +1,3 @@
-import { internalCallSourceHeaders } from './internal-call-source.js';
 /**
  * device-auth.ts — RFC 8628 device code login client
  *
@@ -21,6 +20,8 @@ import { internalCallSourceHeaders } from './internal-call-source.js';
 import { execFileSync } from 'node:child_process';
 import { logger } from './logger.js';
 import { PermissionError } from './errors.js';
+import { boundedRequestSignal } from './abort-signal.js';
+import { internalCallSourceHeaders } from './internal-call-source.js';
 
 // ---------- Types ----------
 
@@ -45,6 +46,32 @@ export interface DeviceTokenResponse {
 export interface DeviceAuthOptions {
   /** Skip auto-opening the browser; only print the URL */
   noBrowser?: boolean;
+  protocol?: DeviceAuthProtocol;
+  /** Reuse the authorization response after endpoint negotiation. */
+  authorization?: DeviceAuthorizeResponse;
+}
+
+export type DeviceAuthProtocol = 'legacy' | 'uba';
+
+function deviceApiPath(protocol: DeviceAuthProtocol, action: 'authorize' | 'token'): string {
+  return protocol === 'uba' ? `/v1/ta/cli/auth/device/${action}` : `/api/auth/device/${action}`;
+}
+
+function ubaAuthorizationDenial(code: unknown): { code: string; message: string; hint: string } {
+  if (code === 'CLI_ACCESS_DISABLED') return {
+    code, message: 'CLI access is disabled for this account.', hint: 'Contact your administrator.',
+  };
+  if (code === 'ACCOUNT_UNAVAILABLE') return {
+    code, message: 'This account is unavailable.', hint: 'Contact your administrator or sign in with an active account.',
+  };
+  if (code === 'ORIGIN_DENIED') return {
+    code, message: 'Authorization must be approved from the trusted platform page.',
+    hint: 'Open the verification URL on the configured AE host and sign in there.',
+  };
+  return {
+    code: 'AUTHORIZATION_DENIED', message: 'Device authorization was denied.',
+    hint: 'Check your account status with your administrator before requesting authorization again.',
+  };
 }
 
 // ---------- Errors ----------
@@ -55,7 +82,7 @@ export interface DeviceAuthOptions {
  * a missing endpoint until the device code expires.
  */
 export class DeviceFlowUnsupportedError extends Error {
-  constructor() {
+  constructor(readonly httpStatus?: number) {
     super('This AE server does not support device code login (it may be an older server version).');
     this.name = 'DeviceFlowUnsupportedError';
   }
@@ -111,7 +138,7 @@ export function openBrowser(url: string, _execFile?: typeof execFileSync): boole
     exec('xdg-open', [url], { timeout: 5000 });
     return true;
   } catch (e: any) {
-    logger.warn(`openBrowser: failed to open ${safeLogUrl}: ${e.message}`);
+    logger.warn(`openBrowser: failed to open ${safeLogUrl}`);
     return false;
   }
 }
@@ -119,33 +146,50 @@ export function openBrowser(url: string, _execFile?: typeof execFileSync): boole
 // ---------- Device code flow ----------
 
 /**
- * Request a device code from te-claude.
- * @param host  Full base URL of te-claude, e.g. "https://ae.thinkingengine.io"
+ * Request a device code from the selected UBA or legacy issuer.
+ * @param host Full trusted platform URL for UBA, or the legacy Agent base URL.
  */
-export async function authorizeDevice(host: string): Promise<DeviceAuthorizeResponse> {
+export async function authorizeDevice(host: string, protocol: DeviceAuthProtocol = 'legacy', signal?: AbortSignal): Promise<DeviceAuthorizeResponse> {
   const base = host.replace(/\/+$/, '');
-  const url = `${base}/api/auth/device/authorize`;
+  const url = `${base}${deviceApiPath(protocol, 'authorize')}`;
 
   let resp: Response;
   try {
     resp = await fetch(url, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', ...internalCallSourceHeaders() },
+      headers: {
+        'Content-Type': 'application/json',
+        ...internalCallSourceHeaders(),
+        ...(protocol === 'uba' ? { 'X-CLI-Verification-Origin': new URL(host).origin } : {}),
+      },
+      redirect: 'error',
+      signal: boundedRequestSignal(signal, 10_000),
     });
   } catch (e: any) {
-    throw new Error(`Device authorize request failed: ${e.message}`);
+    signal?.throwIfAborted();
+    throw new Error('Device authorize request failed. Check the AE host and network, then retry.');
   }
 
   const contentType = resp.headers.get('content-type');
   const text = await resp.text().catch(() => '');
+  signal?.throwIfAborted();
 
-  // F-012: detect an old server that lacks the device-code endpoint (404, or an HTML SPA page even at HTTP 200) and fail fast
-  if (looksLikeMissingEndpoint(resp.status, contentType, text)) {
-    throw new DeviceFlowUnsupportedError();
+  // Older servers can challenge the UBA authorize request before routing it.
+  if ((protocol === 'uba' && resp.status === 401) || looksLikeMissingEndpoint(resp.status, contentType, text)) {
+    throw new DeviceFlowUnsupportedError(resp.status);
   }
 
   if (!resp.ok) {
-    throw new Error(`Device authorize returned HTTP ${resp.status}: ${text}`);
+    if (resp.status === 403) {
+      if (protocol === 'uba') {
+        let code: unknown;
+        try { code = JSON.parse(text)?.code; } catch { /* Use the stable denial below. */ }
+        const denial = ubaAuthorizationDenial(code);
+        throw new PermissionError(denial.message, denial.code, denial.hint);
+      }
+      throw new PermissionError('CLI authorization is not allowed.', 'CLI_ACCESS_DISABLED', 'Contact your administrator.');
+    }
+    throw new Error(`Device authorize returned HTTP ${resp.status}`);
   }
 
   let body: DeviceAuthorizeResponse;
@@ -155,8 +199,12 @@ export async function authorizeDevice(host: string): Promise<DeviceAuthorizeResp
     throw new Error('Device authorize returned invalid JSON');
   }
 
-  if (!body.device_code || !body.user_code) {
+  if (typeof body.device_code !== 'string' || !body.device_code || typeof body.user_code !== 'string' || !body.user_code) {
     throw new Error('Device authorize response missing required fields');
+  }
+  if (protocol === 'uba' && (!Number.isInteger(body.expires_in) || body.expires_in < 1 || body.expires_in > 300
+    || !Number.isInteger(body.interval) || body.interval < 1 || body.interval > body.expires_in)) {
+    throw new Error('UBA authorization returned invalid polling limits. Check the server deployment.');
   }
 
   return body;
@@ -181,9 +229,9 @@ export type PollResult =
   | { status: 'denied'; code: string; message: string; hint?: string }
   | { status: 'error'; message: string };
 
-export async function pollDeviceToken(host: string, deviceCode: string): Promise<PollResult> {
+export async function pollDeviceToken(host: string, deviceCode: string, protocol: DeviceAuthProtocol = 'legacy', signal?: AbortSignal): Promise<PollResult> {
   const base = host.replace(/\/+$/, '');
-  const url = `${base}/api/auth/device/token`;
+  const url = `${base}${deviceApiPath(protocol, 'token')}`;
 
   let resp: Response;
   try {
@@ -191,9 +239,12 @@ export async function pollDeviceToken(host: string, deviceCode: string): Promise
       method: 'POST',
       headers: { 'Content-Type': 'application/json', ...internalCallSourceHeaders() },
       body: JSON.stringify({ device_code: deviceCode }),
+      redirect: 'error',
+      signal: boundedRequestSignal(signal, 10_000),
     });
   } catch (e: any) {
-    return { status: 'error', message: `Network error: ${e.message}` };
+    signal?.throwIfAborted();
+    return { status: 'error', message: 'Network error while polling authorization.' };
   }
 
   if (resp.status === 200) {
@@ -203,7 +254,7 @@ export async function pollDeviceToken(host: string, deviceCode: string): Promise
     } catch {
       return { status: 'error', message: 'Token response is not valid JSON' };
     }
-    if (!body.access_token) {
+    if (typeof body.access_token !== 'string' || !body.access_token) {
       return { status: 'error', message: 'Token response missing access_token' };
     }
     return { status: 'approved', tokens: body };
@@ -220,7 +271,11 @@ export async function pollDeviceToken(host: string, deviceCode: string): Promise
     if (err === 'authorization_pending') return { status: 'pending' };
     if (err === 'slow_down') return { status: 'slow_down' };
     if (err === 'expired_token') return { status: 'expired' };
-    return { status: 'error', message: `Unknown error: ${err ?? 'unknown'}` };
+    if (err === 'access_denied') return {
+      status: 'denied', code: 'AUTHORIZATION_DENIED', message: 'Device authorization was denied.',
+      hint: 'Run ae-cli auth login again only when you want to request authorization.',
+    };
+    return { status: 'error', message: 'Token endpoint returned an unrecognized authorization error.' };
   }
 
   if (resp.status === 403) {
@@ -230,6 +285,7 @@ export async function pollDeviceToken(host: string, deviceCode: string): Promise
     } catch {
       // Fall through to the stable permission defaults below.
     }
+    if (protocol === 'uba') return { status: 'denied', ...ubaAuthorizationDenial(errorBody.code) };
     return {
       status: 'denied',
       code: errorBody.code ?? 'CLI_ACCESS_DISABLED',
@@ -241,6 +297,7 @@ export async function pollDeviceToken(host: string, deviceCode: string): Promise
   // F-012: an old server without the device-code endpoint returns 404 or an HTML SPA page — fatal "unsupported" signal
   const contentType = resp.headers.get('content-type');
   const text = await resp.text().catch(() => '');
+  signal?.throwIfAborted();
   if (looksLikeMissingEndpoint(resp.status, contentType, text)) {
     return { status: 'unsupported' };
   }
@@ -250,16 +307,20 @@ export async function pollDeviceToken(host: string, deviceCode: string): Promise
 }
 
 /**
- * Build the device-activate URL from the CLI's own known te-claude base.
+ * Build the verification URL from the CLI's own trusted issuer base.
  * The CLI does NOT trust the server-returned verification_uri: the server address depends on its
  * env/reverse-proxy config, and in multi-layer proxy topologies the Host header may be rewritten to
  * an internal service name (unreachable by the user). Only the user_code is trusted from the server.
  */
-export function buildVerificationUrl(host: string, userCode: string): string {
+export function buildVerificationUrl(host: string, userCode: string, protocol: DeviceAuthProtocol = 'legacy'): string {
+  if (protocol === 'uba') {
+    return `${host.replace(/\/+$/, '')}/#/cli/device-activate?user_code=${encodeURIComponent(userCode)}`;
+  }
   return `${host.replace(/\/+$/, '')}/device-activate?user_code=${encodeURIComponent(userCode)}`;
 }
 
 export interface PollLoopOptions {
+  protocol?: DeviceAuthProtocol;
   /** Poll interval in milliseconds (default 5000) */
   intervalMs?: number;
   /** Overall deadline in seconds from now (default 300, matching the device_code TTL) */
@@ -271,7 +332,7 @@ export interface PollLoopOptions {
  * Shared by the full runDeviceFlow and by the split-flow resume path (`auth login --device-code <code>`),
  * which polls without first re-running authorize.
  *
- * @param host        te-claude base URL
+ * @param host        Selected issuer base URL
  * @param deviceCode  device_code obtained from authorizeDevice
  * @param options     PollLoopOptions (interval + deadline)
  * @param onStatus    Progress callback (for UI/stderr display)
@@ -295,7 +356,7 @@ export async function pollDeviceFlow(
     await sleep(intervalMs);
     pollCount++;
 
-    const result = await pollDeviceToken(host, deviceCode);
+    const result = await pollDeviceToken(host, deviceCode, options.protocol);
 
     if (result.status === 'approved') {
       emit(`Authorization successful! (polled ${pollCount} time(s))`);
@@ -357,7 +418,7 @@ export async function pollDeviceFlow(
  * 2. Print the URL (optionally auto-open browser)
  * 3. Poll at the given interval until approved / expired / timed out
  *
- * @param host         te-claude base URL
+ * @param host         Selected issuer base URL
  * @param options      DeviceAuthOptions
  * @param onStatus     Progress callback (for UI/stderr display)
  * @returns            DeviceTokenResponse (token set after authorization)
@@ -373,10 +434,10 @@ export async function runDeviceFlow(
 
   // Step 1: Request device code
   emit('Requesting authorization code from server...');
-  const auth = await authorizeDevice(host);
+  const auth = options.authorization ?? await authorizeDevice(host, options.protocol);
 
   const userCode = auth.user_code;
-  const verifyUrl = buildVerificationUrl(host, userCode);
+  const verifyUrl = buildVerificationUrl(host, userCode, options.protocol);
   const expiresIn = auth.expires_in ?? 300;
 
   // Step 2: Display URL
@@ -397,7 +458,7 @@ export async function runDeviceFlow(
   }
 
   // Step 3: Poll until authorized
-  return pollDeviceFlow(host, auth.device_code, { intervalMs: (auth.interval ?? 5) * 1000, expiresIn }, onStatus);
+  return pollDeviceFlow(host, auth.device_code, { intervalMs: (auth.interval ?? 5) * 1000, expiresIn, protocol: options.protocol }, onStatus);
 }
 
 // ---------- Utilities ----------

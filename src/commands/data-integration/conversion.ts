@@ -410,6 +410,8 @@ export function convertRow(
     // A dotted target is a plan-only sub-property declaration: the parent object/array_row
     // carries the nested value, so a child row never reads or emits data of its own.
     if (property.target.includes('.')) continue;
+    // The only mapped preset targets are Atlas exposure properties.
+    if (property.target.startsWith('#') && eventName !== 'te_experiment_exposure') continue;
     if (excluded.has(property.source)) continue;
     let value = stripQuotes(row[property.source]);
     if (isMissing(value)) continue;
