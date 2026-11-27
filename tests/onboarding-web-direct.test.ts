@@ -80,6 +80,7 @@ test('Web onboarding runs and resumes with direct execution credentials', { time
   assert.equal(first.output.ok, true);
   assert.equal(first.output.data.demo_project_id, 42);
   assert.equal(first.output.data.product_resource_market, 'us');
+  assert.equal(first.output.data.language, 'en-US');
   const sessionId = first.output.data.session_id;
   assert.equal(typeof sessionId, 'string');
   assert.ok(calls.includes('/agent/api/sandbox/onboarding/context'));
@@ -96,6 +97,7 @@ test('Web onboarding runs and resumes with direct execution credentials', { time
     } else {
       assert.equal(result.output.data.session_id, sessionId);
       assert.equal(result.output.data.product_resource_market, 'us');
+      assert.equal(result.output.data.language, 'en-US');
     }
   }
   const capabilityCount = () => calls.filter(call => call.includes('/capabilities/')).length;

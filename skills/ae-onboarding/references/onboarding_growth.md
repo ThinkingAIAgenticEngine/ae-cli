@@ -15,9 +15,9 @@ The CLI scopes the query to the session's Demo project, item and sample dates. I
 
 `data_basis` identifies the seed-event source and distinct-account counting unit. Its `funnel_transitions` give each pair of ordered events, the distinct accounts at each step, the difference in counts (`dropoff_accounts`), and the next-step count divided by the prior-step count (`conversion_rate`). A conversion rate is `null` when the prior step is empty. With an older CLI, derive these counts and rates from `funnel`.
 
-`charts.daily_viewers` is a seven-day line series with a distinct count of item-detail viewers per sample-local date, in chronological order. A player can appear on several dates. The series comes from the same query and cache as the funnel. A zero means nobody viewed the item that day. If the series is absent in an older CLI or an existing cached result, continue with the verified overview or diagnosis without a trend.
+`charts.daily_viewers` is a seven-day series with a distinct count of item-detail viewers per sample-local date, in chronological order. A player can appear on several dates. The series comes from the same query and cache as the funnel. A zero means nobody viewed the item that day. Use it as the source for the daily viewers and change table when the preformatted table is unavailable. If an older CLI or cached result has no series, continue with the verified overview or diagnosis.
 
-Use the ready response's `markdown_charts` for the inline figures. They use the same scoped counts as `charts`, `visuals` and `data_basis`. Select the layout for the current finding using the [Markdown chart guide](presentation.md#choose-and-render-a-chart).
+Use the [Markdown chart guide](presentation.md#choose-and-render-a-chart) to select the layout for the current finding. The ready response's `markdown_charts` uses the same scoped counts as `charts`, `visuals` and `data_basis`.
 
 The account IDs are stored in the private `cohort_path` receipt for the same session and sample. The checkout experiment reads this cohort automatically. Show only aggregate counts in chat.
 
@@ -49,9 +49,7 @@ In the evidence section, explain that each rate is buyers divided by viewers, th
 
 ### Checkout recovery
 
-For `checkout-recovery`, lead with checkout starters, the unpaid count and unpaid share. Use a three-stage funnel with **Viewed item → Started checkout → Paid** and the account count at each stage from `funnel`. Annotate each transition with `data_basis.funnel_transitions[].dropoff_accounts`. With an older CLI, subtract the next-stage count from the preceding count.
-
-Use the [Markdown funnel](presentation.md#markdown-layouts) to show the ordered purchase stages with their transition labels. Use the checkout share when the finding is about the final step alone and the split has not just been shown.
+For `checkout-recovery`, lead with checkout starters, the unpaid count and unpaid share. Show the [three-step purchase path](presentation.md#markdown-layouts) with the counts for **Viewed item → Started checkout → Paid** and the loss and conversion rate for each transition. Use the checkout share bar when the finding is about the final step alone and the split has not just been shown.
 
 In the evidence section, identify the stage with the largest account loss and show `checkout_recovery.unpaid_count` divided by `funnel.checkout` for the unpaid share. If nobody started checkout, show the share as unavailable. Describe the observed behavior as checkout without payment. Explain the reason only if the evidence supports it.
 

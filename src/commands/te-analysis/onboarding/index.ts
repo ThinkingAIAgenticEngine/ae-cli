@@ -30,7 +30,7 @@ export const onboardingRun: Command = {
   flags: [...sharedFlags,
     { name: 'source', type: 'string', required: false, desc: 'Local AI tool: codex, claude-code, cursor, or other. This is not an authorization credential.' },
     { name: 'region', type: 'string', required: false, desc: 'Website market: cn, jp, kr, or us. Test signup supports jp, kr, and us.' },
-    { name: 'language', type: 'string', required: false, desc: 'Conversation language: zh-CN, en-US, ja-JP, or ko-KR. Use --region for the market when it differs from the language default.' },
+    { name: 'language', type: 'string', required: false, desc: 'Display language: zh-CN, en-US, ja-JP, or ko-KR. US onboarding always uses en-US. Use --region to select the market.' },
     { name: 'website-env', type: 'string', required: false, desc: 'Website signup environment: production (default) or test (overseas).' },
     { name: 'choice', type: 'string', required: false, desc: 'Select demo or business after the user chooses an experience.' },
     { name: 'sample', type: 'string', required: false, desc: 'Select a sample after the user chooses it: star-island or season-pass.' },

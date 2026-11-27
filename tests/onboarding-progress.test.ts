@@ -62,50 +62,91 @@ test('an existing overseas test account can check and start versioned onboarding
   ]);
 });
 
-test('a shared experiment completes only when both arms and the recorded outcomes are persisted', async () => {
+const exposureSchemas = [
+  { label: 'legacy exposure columns', host: 'https://ae-web.thinkingai.cn', currency: 'CNY',
+    columns: ['experiment_id', 'experiment_group_id'], refs: ['e.experiment_id', 'e.experiment_group_id'] },
+  { label: 'reserved exposure columns', host: 'https://ae-web-global.thinkingai.io', currency: 'USD',
+    columns: ['#experiment_id', '#experiment_group_id'], refs: ['e."#experiment_id"', 'e."#experiment_group_id"'] },
+];
+
+for (const { label, host, currency, columns, refs } of exposureSchemas) {
+  test(`a shared experiment with ${label} completes only after the recorded exposures and outcomes are persisted`, async () => {
+    const run = '1'.repeat(32);
+    const checkpoint = {
+      state: 'in_progress', run_id: run, journey_id: 'journey', demo_project_id: 9, experiment_id: 'exp-1',
+      receipt: {
+        sample_id: 'star-island', item_id: 'bundle', currency, timezone: '+08:00',
+        start: '2026-11-23T12:00:00Z', end: '2026-11-23T12:00:05Z',
+        arms: {
+          control: { group_id: 'a', exposed_account_ids: ['alice'], paid_account_ids: [], coupon_claim_account_ids: [] },
+          treatment: { group_id: 'b', exposed_account_ids: ['bob'],
+            paid_account_ids: ['bob'], coupon_claim_account_ids: ['bob'] },
+        },
+      },
+    };
+    const rows = [
+      ['te_experiment_exposure', 'alice', 'a'],
+      ['te_experiment_exposure', 'bob', 'b'],
+      ['demo_coupon_claim', 'bob', ''],
+    ];
+    let completed = false;
+    const capability = async (_host: string, id: string, input: Record<string, unknown>) => {
+      switch (id) {
+        case 'analysis.plg_onboarding.progress':
+          if (input.action === 'status') return checkpoint;
+          assert.deepEqual(input, { action: 'complete', journey_id: 'journey',
+            run_id: run, demo_project_id: 9, experiment_id: 'exp-1' });
+          completed = true;
+          return { state: 'completed' };
+        case 'analysis.sql_table.list':
+          return { items: [{ table_type: 'eventView', sql_reference: '"hive"."te"."v_event_9"' }], has_more: false };
+        case 'analysis.sql_table.columns':
+          return { columns: ['#event_time', '$part_date', '$part_event', 'plg_sample_id', 'item_id',
+            'plg_seed_event_id', '#account_id', ...columns].map(column => ({ column })) };
+        case 'analysis.adhoc.run': {
+          const { sql } = input.definition as { sql: string };
+          assert.ok(sql.includes(`CAST(${refs[0]} AS varchar) = 'exp-1'`));
+          assert.ok(sql.includes(`CAST(${refs[1]} AS varchar) ELSE ''`));
+          assert.ok(sql.includes(`e.currency = '${currency}'`));
+          assert.ok(sql.includes(`e.demo_run_id = '${run}'`));
+          return { rows, has_more: false };
+        }
+        default:
+          throw new Error(id);
+      }
+    };
+    const verify = () => verifyAndCompleteProgress({ capability }, host, run);
+    assert.equal((await verify()).state, 'in_progress');
+    assert.equal(completed, false);
+    rows.push(['payment_success', 'bob', '']);
+    assert.equal((await verify()).state, 'completed');
+    assert.equal(completed, true);
+  });
+}
+
+test('US progress refuses legacy replays without an explicitly USD currency', async () => {
   const run = '1'.repeat(32);
   const checkpoint = {
     state: 'in_progress', run_id: run, journey_id: 'journey', demo_project_id: 9, experiment_id: 'exp-1',
     receipt: {
-      sample_id: 'star-island', item_id: 'bundle', currency: 'CNY', timezone: '+08:00',
+      sample_id: 'star-island', item_id: 'bundle', timezone: '+00:00',
       start: '2026-11-23T12:00:00Z', end: '2026-11-23T12:00:05Z',
       arms: {
         control: { group_id: 'a', exposed_account_ids: ['alice'], paid_account_ids: [], coupon_claim_account_ids: [] },
-        treatment: { group_id: 'b', exposed_account_ids: ['bob'],
-          paid_account_ids: ['bob'], coupon_claim_account_ids: ['bob'] },
+        treatment: { group_id: 'b', exposed_account_ids: ['bob'], paid_account_ids: ['bob'], coupon_claim_account_ids: [] },
       },
     },
   };
-  const rows = [
-    ['te_experiment_exposure', 'alice', 'a'],
-    ['te_experiment_exposure', 'bob', 'b'],
-    ['demo_coupon_claim', 'bob', ''],
-  ];
-  let completed = false;
-  const capability = async (_host: string, id: string, input: Record<string, unknown>) => {
-    switch (id) {
-      case 'analysis.plg_onboarding.progress':
-        if (input.action === 'status') return checkpoint;
-        assert.deepEqual(input, { action: 'complete', journey_id: 'journey',
-          run_id: run, demo_project_id: 9, experiment_id: 'exp-1' });
-        completed = true;
-        return { state: 'completed' };
-      case 'analysis.sql_table.list':
-        return { items: [{ table_type: 'eventView', sql_reference: '"hive"."te"."v_event_9"' }], has_more: false };
-      case 'analysis.sql_table.columns':
-        return { columns: ['#event_time', '$part_date', '$part_event', 'plg_sample_id', 'item_id',
-          'plg_seed_event_id', '#account_id'].map(column => ({ column })) };
-      case 'analysis.adhoc.run':
-        assert.match((input.definition as { sql: string }).sql, /demo_run_id/);
-        return { rows, has_more: false };
-      default:
-        throw new Error(id);
-    }
-  };
-  const verify = () => verifyAndCompleteProgress({ capability }, 'https://ae-web.thinkingai.cn', run);
-  assert.equal((await verify()).state, 'in_progress');
-  assert.equal(completed, false);
-  rows.push(['payment_success', 'bob', '']);
-  assert.equal((await verify()).state, 'completed');
-  assert.equal(completed, true);
+  for (const currency of [undefined, 'CNY']) {
+    const receipt = currency ? { ...checkpoint.receipt, currency } : checkpoint.receipt;
+    const capability = async (_host: string, id: string, input: Record<string, unknown>) => {
+      assert.equal(id, 'analysis.plg_onboarding.progress');
+      assert.deepEqual(input, { action: 'status' });
+      return { ...checkpoint, receipt };
+    };
+    await assert.rejects(verifyAndCompleteProgress({ capability }, 'https://ae-web-global.thinkingai.io', run),
+      /saved Demo replay does not use USD/);
+    await assert.rejects(verifyAndCompleteProgress({ capability }, 'https://onboarding-sandbox.invalid', run, 'us'),
+      /saved Demo replay does not use USD/);
+  }
 });

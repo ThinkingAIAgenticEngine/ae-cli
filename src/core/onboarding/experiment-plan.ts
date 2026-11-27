@@ -4,7 +4,7 @@ import catalog from '../../../skills/ae-onboarding/scripts/experiment-preset.jso
 import { CliApiError, LocalDataUploadError, PermissionError } from '../errors.js';
 import { assembleSyncJsonBody, resolveSyncJsonEndpoint } from '../local-data-upload-client.js';
 import { trustedProductHost } from './bootstrap-client.js';
-import { CHECKOUT_RECOVERY, DEMO_STATUS, NETWORK_BUDGET_MS, UUID_PATTERN, onboardingGrowthScenario,
+import { CHECKOUT_RECOVERY, DEMO_STATUS, NETWORK_BUDGET_MS, UUID_PATTERN, isUsOnboarding, onboardingGrowthScenario,
   type LocalSession, type OnboardingInput, type ReadyDemoScope } from './contracts.js';
 import { readCheckoutRecoveryCohort } from './growth.js';
 import { onboardingDraftReviewInteraction, onboardingInteraction } from './interaction.js';
@@ -13,10 +13,31 @@ import type { OnboardingStore } from './session-store.js';
 
 const PROJECT_INFO = 'project.info.get';
 const APPROVER_ADD = 'experiment.approver.add';
-type ExperimentPlanDependencies = Pick<OnboardingDependencies, 'credentialKey' | 'capability' | 'upload' | 'approverOpenId' | 'now' | 'demoCurrency'>;
-type ReviewDependencies = Pick<OnboardingDependencies, 'credentialKey'>;
+type ExperimentPlanDependencies = Pick<OnboardingDependencies, 'credentialKey' | 'capability' | 'upload' | 'approverOpenId' | 'now' | 'demoCurrency' | 'webMarket'>;
+type ReviewDependencies = Pick<OnboardingDependencies, 'credentialKey' | 'webMarket'>;
 type DemoStatus = Partial<ReadyDemoScope> & { status?: string };
-type SavedPlan = Record<string, unknown> & { approver?: { status?: string }; answered_questions?: string[] };
+type PreviewArm = { name: string; price: number; allocation: number };
+type SavedPlan = Record<string, unknown> & {
+  plan?: { currency?: string; arms?: (PreviewArm & { role: string })[] };
+  approver?: { status?: string };
+  answered_questions?: string[];
+};
+
+function renderPlanPreview(control: PreviewArm, treatment: PreviewArm, currency: string, us: boolean): string {
+  const amount = (price: number) => us ? `$${price}` : `${price} ${currency}`;
+  return [
+    '| A · Control | B · Treatment |',
+    '| --- | --- |',
+    `| ${control.name} | ${treatment.name} |`,
+    `| ${amount(control.price)} · ${control.allocation}% | ${amount(treatment.price)} · ${treatment.allocation}% |`,
+  ].join('\n');
+}
+
+export function validateSavedDemoPlanCurrency(host: string, market: string | undefined, currency: string | undefined): void {
+  if (isUsOnboarding(host, market) && currency !== 'USD') {
+    throw new Error('This saved Demo draft does not use USD. Create a new draft to continue.');
+  }
+}
 
 function readActivePlan(store: OnboardingStore, deps: ReviewDependencies, input: OnboardingInput) {
   const { session_id: sessionId, run_id: runId } = input;
@@ -35,11 +56,19 @@ function readActivePlan(store: OnboardingStore, deps: ReviewDependencies, input:
       || deps.credentialKey(session.host) !== session.credential_key) {
     throw new Error('The saved experiment plan does not match the active Demo session and account.');
   }
-  return { file, plan };
+  const market = deps.webMarket ?? session.region;
+  validateSavedDemoPlanCurrency(session.host, market, plan.plan?.currency);
+  return { file, plan, us: isUsOnboarding(session.host, market) };
 }
 
-function publicPlan(plan: SavedPlan): Record<string, unknown> {
+function publicPlan(plan: SavedPlan, us: boolean): Record<string, unknown> {
   const { checkout_cohort: _cohort, credential_key: _key, ...review } = plan;
+  if (us && typeof review.plan_preview_markdown === 'string') {
+    const control = plan.plan?.arms?.find(arm => arm.role === 'control');
+    const treatment = plan.plan?.arms?.find(arm => arm.role === 'treatment');
+    if (control && treatment) review.plan_preview_markdown = renderPlanPreview(control, treatment, 'USD', us);
+    else delete review.plan_preview_markdown;
+  }
   return plan.approver?.status === 'deferred'
     ? { ...review, interaction: onboardingDraftReviewInteraction(plan.answered_questions) }
     : review;
@@ -47,7 +76,8 @@ function publicPlan(plan: SavedPlan): Record<string, unknown> {
 
 export function readOnboardingExperimentPlan(store: OnboardingStore, deps: ReviewDependencies,
   input: OnboardingInput): Record<string, unknown> {
-  return publicPlan(readActivePlan(store, deps, input).plan);
+  const { plan, us } = readActivePlan(store, deps, input);
+  return publicPlan(plan, us);
 }
 
 function recordAnsweredQuestion(store: OnboardingStore, deps: ReviewDependencies, input: OnboardingInput, preview: boolean) {
@@ -60,12 +90,12 @@ function recordAnsweredQuestion(store: OnboardingStore, deps: ReviewDependencies
     throw new Error('Use --answered-question review_audience, review_pilot, or review_no_reward.');
   }
   const update = () => {
-    const { file, plan } = readActivePlan(store, deps, input);
+    const { file, plan, us } = readActivePlan(store, deps, input);
     if (plan.approver?.status !== 'deferred') throw new Error('Only a plan saved with --draft-only supports review questions.');
     const answered = plan.answered_questions ?? [];
     const updated = answered.includes(question) ? plan : { ...plan, answered_questions: [...answered, question] };
     if (!preview && updated !== plan) store.write(file, updated);
-    const result = publicPlan(updated);
+    const result = publicPlan(updated, us);
     return preview ? { ...result, dry_run: true } : result;
   };
   return preview ? update() : store.locked(`session:${sessionId}`, async () => update());
@@ -101,7 +131,7 @@ export async function runOnboardingExperimentPlan(
   if (preview) {
     const session = store.session(sessionId, explicitHost)!;
     return { dry_run: true, session_id: sessionId, host: session.host ?? null, sample_id: session.sample_id ?? null,
-      currency: deps.demoCurrency(session.host, session.region),
+      currency: deps.demoCurrency(session.host, deps.webMarket ?? session.region),
       ...(input.scenario ? { scenario } : {}),
       capabilities: [...(session.ready_demo ? [] : [DEMO_STATUS]), ...(input.upload_metric_event ? [PROJECT_INFO] : []),
         ...(input.draft_only ? [] : [APPROVER_ADD])],
@@ -143,7 +173,8 @@ export async function runOnboardingExperimentPlan(
       throw new Error('The active Demo sample and item have no supported experiment preset.');
     }
     const preset = catalog.experimentTypes[scenario];
-    const currency = deps.demoCurrency(host, session.region);
+    const market = deps.webMarket ?? session.region;
+    const currency = deps.demoCurrency(host, market);
     const checkoutCohort = scenario === CHECKOUT_RECOVERY ? readCheckoutRecoveryCohort(store, session, scope) : undefined;
     if (scenario === CHECKOUT_RECOVERY && !checkoutCohort) {
       return { ...base, phase: 'action_required', next_action: 'run_checkout_recovery_growth',
@@ -175,12 +206,7 @@ export async function runOnboardingExperimentPlan(
       },
     };
     const { control, treatment } = preset.arms;
-    const planPreviewMarkdown = [
-      '| A · Control | B · Treatment |',
-      '| --- | --- |',
-      `| ${control.name} | ${treatment.name} |`,
-      `| ${control.price} ${currency} · ${control.allocation}% | ${treatment.price} ${currency} · ${treatment.allocation}% |`,
-    ].join('\n');
+    const planPreviewMarkdown = renderPlanPreview(control, treatment, currency, isUsOnboarding(host, market));
     const file = `experiment-plan-${runId}.json`;
     const planPath = path.resolve(store.directory, file);
     const savePlan = (plan: Record<string, unknown>) => store.write(file, { ...plan,

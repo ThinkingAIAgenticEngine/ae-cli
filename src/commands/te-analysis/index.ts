@@ -45,7 +45,10 @@ import feedback from './feedback/index.js';
 import scenario from './scenario/index.js';
 import badCase from './bad-case/index.js';
 import onboarding from './onboarding/index.js';
+import { sendMemberInvitation } from './member-invitation/send.js';
 import { registerCapabilityGatewayRoute } from '../../core/capability-routing.js';
+
+export { sendMemberInvitation };
 
 registerCapabilityGatewayRoute('analysis', { gatewayDomain: 'analysis' });
 registerCapabilityGatewayRoute('project', { gatewayDomain: 'analysis' });
@@ -100,7 +103,7 @@ export const baseCommands: Command[] = [
   ...badCase,
 ];
 
-// The bundled PLG Skill documents the onboarding commands.
-const commands: Command[] = [...baseCommands, ...onboarding];
+// The bundled PLG Skill documents onboarding and member invitations.
+const commands: Command[] = [...baseCommands, ...onboarding, sendMemberInvitation];
 
 export default commands;

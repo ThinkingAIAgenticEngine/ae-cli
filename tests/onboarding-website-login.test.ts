@@ -9,10 +9,13 @@ import { OnboardingStore } from '../src/core/onboarding/session-store.js';
 import { createBootstrap, readBootstrap, claimBootstrapDevice, type BootstrapDevice, type BootstrapLoginMode } from '../src/core/onboarding/bootstrap-client.js';
 import { verifyWebsiteLoginIdentity } from '../src/core/onboarding/website-login-identity.js';
 import type { PollResult } from '../src/core/device-auth.js';
+import { resolveLegacyLoginBase } from '../src/core/login-device-flow.js';
+import type { existingAccountOptions } from '../src/core/host-guidance.js';
 
 const host = 'https://plg.example.test';
 const origin = 'https://thinkingai.io';
 const chinaOrigin = 'https://www.thinkingai.cn';
+const usHost = 'https://ae-web-global.thinkingai.io';
 const overseasTestOrigin = 'https://test.thinkingai.io';
 const overseasTestHost = 'https://plg-test-overseas-web.thinkingai.io';
 const intent = '3278330f-ec86-45c1-b4d3-a40617db096a';
@@ -60,8 +63,12 @@ function fixture(selectedMode: BootstrapLoginMode | 'legacy' = 'website_login', 
         ...(effectiveMode ? { login_mode: effectiveMode } : {}), authorization_status: grant.authorization_status };
     },
     claimBootstrapDevice: async (website, id, token) => { assert.equal(website, origin); assert.equal(id, issuedIntent); assert.equal(token, privatePoll); claimCount++; return grant; },
-    authorize: async () => { authorizeCount++; return { baseUrl: `${host}/agent`, authorization: { device_code: 'legacy-device', user_code: 'OLD-CODE',
-      verification_uri: `${host}/agent/device-activate`, verification_uri_complete: `${host}/agent/device-activate?user_code=OLD-CODE`, expires_in: 300, interval: 5 } }; },
+    authorize: async actualHost => {
+      authorizeCount++;
+      const baseUrl = resolveLegacyLoginBase(actualHost);
+      return { baseUrl, authorization: { device_code: 'legacy-device', user_code: 'OLD-CODE',
+        verification_uri: `${baseUrl}/device-activate`, verification_uri_complete: `${baseUrl}/device-activate?user_code=OLD-CODE`, expires_in: 300, interval: 5 } };
+    },
     poll: async (issuer, code) => { assert.equal(issuer, accountHost); codes.push(code); return result; },
     verifyWebsiteLoginIdentity: async (actualHost, access, expected) => { identityCount++; assert.equal(actualHost, accountHost); assert.equal(access, privateAccess);
       assert.deepEqual(expected, { login_name: 'test-user', company_id: '30' }); if (identityError) throw new Error('Identity mismatch.'); },
@@ -99,7 +106,7 @@ test('overseas test signup resumes on its original website and only authorizes t
   const bootstrap = overseasTestOrigin + '/backend/demo/v1/experience/cli/bootstrap-intents';
   const expires_at = new Date(Date.now() + 300_000).toISOString();
   const calls: string[] = [];
-  let returnedHost = 'https://ae-web-global.thinkingai.io';
+  let returnedHost = usHost;
   Object.assign(f.runtime.dependencies, { createBootstrap, readBootstrap, claimBootstrapDevice });
   globalThis.fetch = async (url, init) => {
     const endpoint = String(url);
@@ -108,6 +115,7 @@ test('overseas test signup resumes on its original website and only authorizes t
     let data: Record<string, unknown>;
     if (endpoint === bootstrap) {
       assert.deepEqual(JSON.parse(String(init?.body)), { market: 'us', source: 'other', requested_host: overseasTestHost });
+      assert.equal(new Headers(init?.headers).get('Accept-Language'), 'en-US');
       data = { intent_id: intent, login_url: overseasTestOrigin + '/en/experience-login/?intent_id=' + intent,
         poll_token: privatePoll, expires_at, poll_after_ms: 2000, login_mode: 'website_login' };
     } else {
@@ -131,6 +139,7 @@ test('overseas test signup resumes on its original website and only authorizes t
   const login = await f.runtime.invoke('run', { website_env: 'test', language: 'zh-CN', source: 'other' });
   assert.equal(login.next_action, 'complete_website_login');
   assert.equal(login.market, 'us');
+  assert.equal(login.language, 'en-US');
   assert.equal(login.host, overseasTestHost);
   assert.equal(new URL(f.opened[0]).origin, overseasTestOrigin);
   const session_id = String(login.session_id);
@@ -141,13 +150,15 @@ test('overseas test signup resumes on its original website and only authorizes t
   const completed = await f.runtime.invoke('run', { session_id });
   assert.equal(completed.next_action, 'choose_experience');
   assert.equal(completed.website_env, 'test');
+  assert.equal(completed.language, 'en-US');
   assert.equal(f.counts().persistCount, 1);
   assert.equal(f.opened.length, 1);
   assert.deepEqual(calls, [bootstrap, `${bootstrap}/${intent}`, `${bootstrap}/${intent}`, `${bootstrap}/${intent}/device`]);
 });
 
-test('Chinese website login creates and resumes an intent on the production website', async () => {
-  const f = fixture();
+test('China free SaaS signs in through the production website with its confirmed AE host', async () => {
+  const chinaHost = 'https://ae-web.thinkingai.cn';
+  const f = fixture('website_login', chinaHost);
   const original = globalThis.fetch;
   const calls: { url: string; method?: string }[] = [];
   const expiresAt = new Date(Date.now() + 300_000).toISOString();
@@ -160,23 +171,24 @@ test('Chinese website login creates and resumes an intent on the production webs
       const endpoint = new URL(String(url)).pathname;
       let data: Record<string, unknown>;
       if (endpoint.endsWith('/bootstrap-intents')) {
-        assert.deepEqual(JSON.parse(String(init?.body)), { market: 'cn', source: 'other' });
+        assert.deepEqual(JSON.parse(String(init?.body)), { market: 'cn', source: 'other', requested_host: chinaHost });
         assert.equal(headers.get('Accept-Language'), 'zh-CN');
         data = { intent_id: intent, login_url: `${chinaOrigin}/experience-login/?intent_id=${intent}`,
           poll_token: privatePoll, expires_at: expiresAt, poll_after_ms: 2000, login_mode: 'website_login' };
       } else if (endpoint.endsWith('/device')) {
         assert.equal(headers.get('X-CLI-Bootstrap-Token'), privatePoll);
-        data = { login_mode: 'website_login', authorization_status: 'approved', host,
+        data = { login_mode: 'website_login', authorization_status: 'approved', host: chinaHost,
           device_code: privateDevice, user_code: privateUserCode, expires_at: expiresAt, interval: 5,
           expected_login_name: 'test-user', expected_company_id: '30' };
       } else {
         assert.equal(headers.get('X-CLI-Bootstrap-Token'), privatePoll);
-        data = { intent_id: intent, status: 'account_ready', host, ready_url: `${chinaOrigin}/experience-cli/?intent_id=${intent}`,
+        data = { intent_id: intent, status: 'account_ready', host: chinaHost, ready_url: `${chinaOrigin}/experience-cli/?intent_id=${intent}`,
           expires_at: expiresAt, poll_after_ms: 2000, login_mode: 'website_login', authorization_status: 'approved' };
       }
       return new Response(JSON.stringify({ return_code: 0, data }));
     };
-    const login = await f.runtime.invoke('run', { language: 'zh-CN', source: 'other', browser: 'system' });
+    const login = await f.runtime.invoke('run', { host: chinaHost, region: 'cn', website_env: 'production',
+      language: 'zh-CN', source: 'other', browser: 'system' });
     assert.equal(login.market, 'cn');
     const opened = new URL(f.opened[0]);
     assert.equal(opened.origin, chinaOrigin);
@@ -186,6 +198,7 @@ test('Chinese website login creates and resumes an intent on the production webs
 
     const completed = await f.runtime.invoke('run', { session_id: String(login.session_id) });
     assert.equal(completed.next_action, 'choose_experience');
+    assert.equal(completed.host, chinaHost);
     const bootstrap = `${chinaOrigin}/backend/demo/v1/experience/cli/bootstrap-intents`;
     assert.deepEqual(calls, [
       { url: bootstrap, method: 'POST' },
@@ -224,17 +237,24 @@ for (const environment of ['test', undefined] as const) {
   });
 }
 
-test('website login claims the existing approved device and never opens a second authorization page', async () => {
+test('US website login stays in English and claims the approved device without opening a second page', async () => {
   const f = fixture();
   try {
-    const login = await f.runtime.invoke('run', { region: 'us', browser: 'system' });
+    const preview = await f.runtime.invoke('plan', { region: 'us', language: 'zh-CN' });
+    assert.equal(preview.market, 'us');
+    assert.equal(preview.language, 'en-US');
+    const login = await f.runtime.invoke('run', { region: 'us', language: 'zh-CN', browser: 'system' });
     const session_id = String(login.session_id);
-    assert.deepEqual(f.bootstrapLanguages, [undefined]);
+    assert.deepEqual(f.bootstrapLanguages, ['en-US']);
+    assert.equal(login.language, 'en-US');
     assert.equal(login.login_mode, 'website_login');
     assert.deepEqual((login.interaction as { options: { value: string }[] }).options.map(option => option.value), ['login_done', 'login_help']);
+    f.store.save({ ...f.store.session(session_id)!, language: 'zh-CN' });
+    assert.equal((await f.runtime.invoke('status', { session_id })).language, 'en-US');
     f.ready();
-    const completed = await f.runtime.invoke('run', { session_id });
+    const completed = await f.runtime.invoke('run', { session_id, language: 'zh-CN' });
     assert.equal(completed.next_action, 'choose_experience');
+    assert.equal(completed.language, 'en-US');
     assert.deepEqual(completed.interaction, { step: 'choose_experience', options: [
       { value: 'demo', label: 'Start the demo' }, { value: 'business', label: 'Connect my business data' },
     ] });
@@ -246,7 +266,63 @@ test('website login claims the existing approved device and never opens a second
     assert.equal(saved.bootstrap, undefined);
     assert.equal(saved.website_device, undefined);
     assert.equal(saved.device, undefined);
+    assert.equal(saved.language, 'en-US');
   } finally { f.cleanup(); }
+});
+
+test('the US production host starts English website login without a separate market choice', async t => {
+  const f = fixture('website_login', usHost);
+  t.after(f.cleanup);
+  const login = await f.runtime.invoke('run', { host: usHost, language: 'zh-CN', browser: 'system' });
+  assert.equal(login.market, 'us');
+  assert.equal(login.language, 'en-US');
+  assert.equal(login.next_action, 'complete_website_login');
+  assert.deepEqual(f.bootstrapLanguages, ['en-US']);
+});
+
+test('local setup preview uses the device language for existing-account choices', async t => {
+  const previous = process.env.AE_LANG;
+  t.after(() => {
+    if (previous === undefined) delete process.env.AE_LANG;
+    else process.env.AE_LANG = previous;
+  });
+  const f = fixture();
+  t.after(f.cleanup);
+
+  process.env.AE_LANG = 'zh-CN';
+  const chineseDevice = await f.runtime.invoke('plan', { website_env: 'production', language: 'en-US' });
+  assert.equal(chineseDevice.local_language, 'zh-CN');
+  assert.equal(chineseDevice.language, 'en-US');
+  const chinaChoices = chineseDevice.existing_account_options as ReturnType<typeof existingAccountOptions>;
+  assert.equal(chinaChoices.deployment.step, 'choose_existing_deployment');
+  assert.deepEqual(chinaChoices.deployment.options.map(({ value }) => value), ['saas', 'private', 'unsure']);
+  assert.equal(chinaChoices.saas.step, 'choose_existing_saas');
+  assert.deepEqual(chinaChoices.saas.options.map(({ value }) => value), ['cn_paid', 'cn_free', 'other_address']);
+  assert.equal(chinaChoices.saas.default_value, undefined);
+
+  process.env.AE_LANG = 'en-US';
+  const englishDevice = await f.runtime.invoke('plan', { website_env: 'production', language: 'zh-CN' });
+  assert.equal(englishDevice.local_language, 'en-US');
+  const usChoices = englishDevice.existing_account_options as ReturnType<typeof existingAccountOptions>;
+  assert.deepEqual(usChoices.saas.options.map(({ value }) => value), ['us', 'cn_paid', 'cn_free', 'other_address']);
+  assert.equal(usChoices.saas.default_value, 'us');
+  assert.equal(f.created(), 0);
+  assert.equal(f.opened.length, 0);
+});
+
+test('local setup preview leaves explicit routes and saved continuations alone', async t => {
+  const f = fixture();
+  t.after(f.cleanup);
+  const session_id = crypto.randomUUID();
+  f.store.save({ schema_version: 1, id: session_id, host: usHost, region: 'us', website_env: 'production', updated_at: '' });
+
+  for (const input of [{ website_env: 'production', host: usHost }, { website_env: 'production', region: 'cn' },
+    { session_id }, { website_env: 'test' }]) {
+    const preview = await f.runtime.invoke('plan', input);
+    assert.equal(preview.existing_account_options, undefined, JSON.stringify(input));
+  }
+  assert.equal(f.created(), 0);
+  assert.equal(f.opened.length, 0);
 });
 
 test('website login exchanges the claimed UBA device at the product root across retries', async () => {
@@ -297,7 +373,7 @@ test('website login exchanges the claimed UBA device at the product root across 
   }
 });
 
-test('legacy device confirmation opens its configured authorization URL in the system browser', async () => {
+test('legacy US device confirmation opens its authorization URL in English', async () => {
   const previous = process.env.TE_CLAUDE_BASE_PATH;
   const f = fixture('device_confirmation');
   try {
@@ -312,10 +388,22 @@ test('legacy device confirmation opens its configured authorization URL in the s
     assert.deepEqual(authorization.browser, { owner: 'cli', target: 'device_authorization', attempted_this_call: true,
       open_command_succeeded: true, agent_action: 'guide_existing_window' });
     assert.deepEqual(f.opened, [login.login_url, authorization.verification_url]);
-    assert.deepEqual(f.bootstrapLanguages, ['ja-JP']);
+    assert.deepEqual(f.bootstrapLanguages, ['en-US']);
     const verification = new URL(String(authorization.verification_url));
-    assert.equal(verification.searchParams.get('locale'), 'ja-JP');
+    assert.equal(verification.searchParams.get('locale'), 'en-US');
     assert.equal(verification.searchParams.get('user_code'), 'OLD-CODE');
+
+    const pending = f.store.session(session_id)!;
+    const legacyUrl = new URL(verification);
+    legacyUrl.searchParams.set('locale', 'zh-CN');
+    f.store.save({ ...pending, language: 'zh-CN', device: { ...pending.device!, verification_url: legacyUrl.href } });
+    const status = await f.runtime.invoke('status', { session_id });
+    assert.equal(status.verification_url, verification.href);
+    assert.equal(f.store.session(session_id)?.device?.verification_url, legacyUrl.href);
+    assert.equal(f.opened.length, 2);
+    const resumed = await f.runtime.invoke('run', { session_id });
+    assert.equal(resumed.verification_url, verification.href);
+    assert.equal(f.opened.at(-1), verification.href);
     assert.equal(f.counts().authorizeCount, 1); assert.equal(f.counts().claimCount, 0);
   } finally {
     if (previous === undefined) delete process.env.TE_CLAUDE_BASE_PATH;
@@ -400,6 +488,13 @@ test('an already authenticated account does not create or claim website authoriz
   try {
     f.authenticated();
     assert.equal((await f.runtime.invoke('run', { host })).next_action, 'choose_experience');
+    f.runtime.dependencies.activeHost = () => usHost;
+    const existing = await f.runtime.invoke('run', { language: 'zh-CN' });
+    assert.equal(existing.next_action, 'choose_experience');
+    assert.equal(existing.host, usHost);
+    assert.equal(existing.language, 'en-US');
+    assert.equal(existing.existing_account_options, undefined);
+    assert.equal(f.created(), 0);
     assert.deepEqual(f.counts(), { claimCount: 0, authorizeCount: 0, persistCount: 0, identityCount: 0 });
     assert.equal(f.opened.length, 0);
   } finally { f.cleanup(); }
@@ -559,7 +654,7 @@ test('bootstrap negotiation and private claim use separate explicit requests wit
     assert.equal(calls[0].url, `${origin}/backend/demo/v1/experience/cli/bootstrap-intents`);
     assert.equal(new URL(created.login_url).origin, origin);
     assert.equal(new Headers(calls[0].init.headers).get('X-AE-CLI-Login-Mode'), 'website_login');
-    assert.equal(new Headers(calls[0].init.headers).get('Accept-Language'), 'zh-CN');
+    assert.equal(new Headers(calls[0].init.headers).get('Accept-Language'), 'en-US');
     assert.deepEqual(JSON.parse(String(calls[0].init.body)), { market: 'us', source: 'codex' });
     await readBootstrap(origin, intent, privatePoll, signal);
     assert.equal(calls[1].init.method, 'GET');

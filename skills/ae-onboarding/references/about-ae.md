@@ -1,16 +1,16 @@
 # About Agentic Engine
 
-When the user chooses **Learn about AE**, use the introduction in the display language and include the official links for their market from [Product resources](#product-resources).
+When the user chooses **Learn about AE**, use the introduction in the [onboarding language](../SKILL.md#onboarding-language-and-currency) and include the official links for their market from [Product resources](#product-resources).
 
-In a local agent, finish the pre-registration introduction with **Create an AE account** as the next choice. Open registration only after the user chooses it. After login return to the experience choice. After an experiment keep the same session and return to the report's follow-up choices.
+In a local agent, follow the [product video rule](#local-agent-product-video) before showing the next choice. Finish the pre-registration introduction with **Create an AE account** as the next choice. Open registration only after the user chooses it. After login return to the experience choice. After an experiment keep the same session and return to the report's follow-up choices.
 
 ## Web onboarding
 
-Use the introduction in the conversation language. Use `product_resource_market` from the latest Web onboarding `run` or `--dry-run` result to select the [product website and contact page](#product-resources). Show only those two resources as clickable text links with the localized labels below. Omit the links when the field is absent or `null`. Before the Demo, return to the same Web opening picker. After a verified experiment, return to the same [report follow-up choices](demo-operations.md#choose-the-next-step).
+Use the introduction in the [onboarding language](../SKILL.md#onboarding-language-and-currency). Use `product_resource_market` from the latest Web onboarding `run` or `--dry-run` result to select the [product website and contact page](#product-resources). Show only those two resources as clickable text links with the localized labels below. Omit the links when the field is absent or `null`. Before the Demo, return to the same Web opening picker. After a verified experiment, return to the same [report follow-up choices](demo-operations.md#choose-the-next-step).
 
 ## Product resources
 
-In a local agent, use the market confirmed for the signed-in account's AE host. Before sign-in, use the confirmed registration market. Take all links from that one row, including the manual and case studies. For example, a Chinese conversation in the United States market uses Chinese link labels and the United States URLs. When the market is unknown, show the introduction and add the links once the market is confirmed. For Web, follow the [Web market rule](#web-onboarding).
+In a local agent, use the market confirmed for the signed-in account's AE host. Before sign-in, use the confirmed registration market. Take all links from that one row, including the manual and case studies. When the market is unknown, show the introduction and add the links once the market is confirmed. For Web, follow the [Web market rule](#web-onboarding).
 
 | Market | Product website | Contact us | Cases or reading | Manual |
 | --- | --- | --- | --- | --- |
@@ -19,17 +19,39 @@ In a local agent, use the market confirmed for the signed-in account's AE host. 
 | Japan (`jp`) | https://www.thinkingai.io/jp/ | https://www.thinkingai.io/jp/request-demo/ | — | — |
 | South Korea (`kr`) | https://www.thinkingai.io/kr/ | https://www.thinkingai.io/kr/request-demo/ | — | — |
 
-Show the available links as text links. After the verified local report, use the same row's website for **Learn about AE** and contact page for **Contact us**. In a local agent, show the product video when the host supplies a verified playable asset for that market.
+Show the available links as text links. After the verified local report, use the same row's website for **Learn about AE** and contact page for **Contact us**.
+
+## Local agent product video
+
+Show the video only when the user explicitly selects or confirms the United States (`us`) as their registration or account market. Omit it when the market is unknown or inferred only from the display language, `default_market`, or a shared overseas AE host.
+
+Put the video on its own line at the end of the introduction, after the product and contact links and before the next choice. Use the exact destination in this Markdown link and choose its label in the onboarding language.
+
+[Watch the product introduction · 1:38](https://thinkingdata-image.oss-cn-shanghai.aliyuncs.com/us-optimized/company_info.mp4)
+
+## AE CLI support
+
+Select the row for the SaaS environment the user has confirmed or selected. In Web, use `product_resource_market` from the latest onboarding result. Use the onboarding language for the guidance and link labels.
+
+| SaaS environment | Support channels |
+| --- | --- |
+| United States (`us`) | Visit the [ThinkingAI website](https://thinkingai.io/) or email [support.us@thinkingai.io](mailto:support.us@thinkingai.io). |
+| China (`cn`, `cn_free`, `cn_paid`) | 访问 [ThinkingAI 官网](https://www.thinkingai.cn/) 或拨打 **400-086-0901**。 |
+
+For private deployments, direct the user to their AE administrator. For another confirmed market, use its established support channel if known. When the environment is unknown, confirm it through [existing account sign-in](onboarding_run.md#existing-account-sign-in) before offering regional support.
 
 ## Localized labels
 
-Use the label for the customer's conversation language. The market determines the link destinations.
+Use the label in the [onboarding language](../SKILL.md#onboarding-language-and-currency). The market determines the link destinations.
 
 | Action | 中文 | English | 日本語 | 한국어 |
 | --- | --- | --- | --- | --- |
 | Register | 创建 AE 账号 | Create an AE account | AE アカウントを作成 | AE 계정 만들기 |
 | Learn | 先了解 ThinkingAI | See what ThinkingAI can do | ThinkingAI について | ThinkingAI 알아보기 |
+| Product video | 观看产品介绍视频 · 1:38 | Watch the product introduction · 1:38 | 製品紹介動画を見る · 1:38 | 제품 소개 영상 보기 · 1:38 |
 | Connect data | 接入数据 | Connect my data | データを接続 | 데이터 연결 |
+| Invite others | 邀请他人协作 | Invite others to collaborate | メンバーを招待 | 협업할 동료 초대 |
+| Send invitation | 发送邀请 | Send invitation | 招待を送信 | 초대 보내기 |
 | Continue Demo | 继续体验Demo | Continue the demo | デモを続ける | 데모 계속하기 |
 | Change Demo | 换个 Demo 继续 | Try another demo | 別のデモを試す | 다른 데모 체험하기 |
 | Finish Demo | 完成体验 | Finish the demo | デモを終了 | 체험 완료 |

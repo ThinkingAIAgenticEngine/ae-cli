@@ -5,10 +5,12 @@ import os from 'node:os';
 import path from 'node:path';
 import { test, type TestContext } from 'node:test';
 import { CapabilityGatewayError } from '../src/core/capability-api.js';
+import { safeJsonParse } from '../src/core/json-utils.js';
 import { isOnboardingInvocation } from '../src/core/onboarding/entrypoint.js';
 import { onboardingDemoCurrency } from '../src/core/onboarding/contracts.js';
 import { onboardingEvidenceLinks } from '../src/core/onboarding/interaction.js';
 import { replayReportDates, waitForExperimentSampleSize } from '../src/core/onboarding/experiment-report-wait.js';
+import { checkoutShareMarkdown, purchasePathMarkdown } from '../src/core/onboarding/markdown-charts.js';
 import { OnboardingRuntime } from '../src/core/onboarding/runtime.js';
 import { OnboardingStore } from '../src/core/onboarding/session-store.js';
 
@@ -17,7 +19,7 @@ const samples = {
   'star-island': { project: 40, item: 'starlight-bundle', size: 140, head: 18, tail: 10, summary: [96, 14, 44, 16, 140, 50, 30],
     checkout: [107, 116], dailyViewers: [38, 34, 0, 31, 42, 28, 33] },
   'season-pass': { project: 41, item: 'season-pass-item', size: 120, head: 12, tail: 20, summary: [76, 8, 44, 12, 120, 48, 20],
-    checkout: [85, 92], dailyViewers: [30, 19, 38, 36, 23, 26, 32] },
+    checkout: [85, 92], dailyViewers: [30, 19, 38, 38, 23, 26, 32] },
 };
 type Sample = keyof typeof samples;
 
@@ -217,16 +219,24 @@ test('growth queries AE once per Demo scope and saves a private cohort that can 
     });
     const markdown = result.markdown_charts as Record<string, string>;
     assert.ok(markdown.purchase_rate.includes(`| Single-day viewers | ${(100 * singleBuyers / singleViewers).toFixed(1)}% |`));
-    assert.ok(markdown.checkout_share.startsWith('```text\n'));
-    assert.ok(markdown.checkout_share.includes(`| █ Started checkout without paying | ${checkoutUnpaid} | ${(100 * checkoutUnpaid / checkout).toFixed(1)}% |`));
+    const unpaidBlocks = sample === 'star-island' ? 5 : 7;
+    assert.equal(markdown.checkout_share.split('\n')[0], '🟦'.repeat(unpaidBlocks) + '🟪'.repeat(12 - unpaidBlocks));
+    assert.ok(markdown.checkout_share.includes('| Group | Players | Share |'));
+    assert.ok(markdown.checkout_share.includes(`| 🟦 Started checkout without paying | ${checkoutUnpaid} | ${(100 * checkoutUnpaid / checkout).toFixed(1)}% |`));
+    assert.ok(markdown.checkout_share.includes(`| 🟪 Paid after checkout | ${buyers} | ${(100 * buyers / checkout).toFixed(1)}% |`));
     assert.equal(Array.from(markdown.audience_overlap.split('\n')[0]).length, 20);
     assert.ok(markdown.audience_overlap.includes(`| 🟦 Both signals | ${overlap} |`));
-    assert.ok(markdown.purchase_funnel.includes(`| Started checkout | ${checkout} | ${'━'.repeat(Math.round(12 * checkout / viewers))} | ${viewers - checkout} | ${(100 * checkout / viewers).toFixed(1)}% |`));
+    assert.equal(markdown.purchase_funnel,
+      `**${viewers}** Viewed → **${checkout}** Started checkout → **${buyers}** Paid\n\n` +
+      `Viewed → Started checkout **${(100 * checkout / viewers).toFixed(1)}%** (${viewers - checkout} lost)` +
+      ` · Started checkout → Paid **${(100 * buyers / checkout).toFixed(1)}%** (${checkout - buyers} lost)`);
     assert.ok(markdown.follow_up.includes(`| Multi-day viewers, unpaid | ${multiViewers - multiBuyers} |`));
-    assert.ok(markdown.daily_viewers.startsWith('```text\n'));
-    assert.equal(markdown.daily_viewers.match(/●/g)?.length, 7);
-    assert.ok(markdown.daily_viewers.includes('| Date | 11/01 | 11/02 | 11/03 | 11/04 | 11/05 | 11/06 | 11/07 |'));
-    assert.ok(markdown.daily_viewers.includes(`| Viewers | ${samples[sample].dailyViewers.join(' | ')} |`));
+    const dailyChanges = sample === 'star-island' ? ['—', '↓ 4', '↓ 34', '↑ 31', '↑ 11', '↓ 14', '↑ 5']
+      : ['—', '↓ 11', '↑ 19', 'No change', '↓ 15', '↑ 3', '↑ 6'];
+    const dailyRows = markdown.daily_viewers.split('\n');
+    assert.equal(dailyRows[0], '| Date | Viewers | Change vs prior day |');
+    assert.deepEqual(dailyRows.slice(2), samples[sample].dailyViewers.map((value, index) =>
+      `| 11/0${index + 1} | ${value} | ${dailyChanges[index]} |`));
     assert.deepEqual(f.calls.slice(before).map(call => call.id), [
       'project.plg_demo.status', 'analysis.sql_table.list', 'analysis.sql_table.columns', 'analysis.adhoc.run',
     ]);
@@ -255,6 +265,10 @@ test('growth queries AE once per Demo scope and saves a private cohort that can 
     assert.deepEqual(repeat.checkout_recovery, { unpaid_count: unpaid, unpaid_rate: unpaid / checkout });
     assert.deepEqual(repeat.data_basis, result.data_basis);
     assert.deepEqual(repeat.charts, result.charts);
+    const repeatMarkdown = repeat.markdown_charts as typeof markdown;
+    assert.equal(repeatMarkdown.checkout_share, markdown.checkout_share);
+    assert.equal(repeatMarkdown.daily_viewers, markdown.daily_viewers);
+    assert.equal(repeatMarkdown.purchase_funnel, markdown.purchase_funnel);
     assert.deepEqual((repeat.follow_up_chart as typeof followUp).data, [
       { label: 'Started checkout', value: checkout },
       { label: 'Paid after checkout', value: buyers },
@@ -273,6 +287,22 @@ test('growth queries AE once per Demo scope and saves a private cohort that can 
   const changedWindow = await f.runtime.invoke('growth', { session_id: f.sessionId });
   assert.equal(changedWindow.cached, false);
   assert.ok(!receipts.has(String(changedWindow.cohort_path)));
+});
+
+test('checkout displays omit empty composition and distinguish zero from an undefined conversion rate', () => {
+  assert.equal(checkoutShareMarkdown([
+    { label: 'Started checkout without paying', value: 0 },
+    { label: 'Paid after checkout', value: 0 },
+  ]), null);
+  assert.equal(purchasePathMarkdown([
+    { label: 'Viewed', value: 15 },
+    { label: 'Started checkout', value: 0 },
+    { label: 'Paid', value: 0 },
+  ], [
+    { dropoff_accounts: 15, conversion_rate: 0 },
+    { dropoff_accounts: 0, conversion_rate: null },
+  ]), '**15** Viewed → **0** Started checkout → **0** Paid\n\n' +
+    'Viewed → Started checkout **0.0%** (15 lost) · Started checkout → Paid **—** (0 lost)');
 });
 
 test('growth omits incomplete trends and keeps cohorts from older receipts usable', async t => {
@@ -469,9 +499,50 @@ test('checkout plans prepare approvers and preserve each private cohort', async 
   assert.equal(f.uploads.length, 0);
 });
 
+test('US review and launch require an explicitly USD saved draft', async t => {
+  const f = fixture(t, undefined, 'https://ae-web-global.thinkingai.io');
+  const plan = await f.runtime.invoke('experiment-plan', { session_id: f.sessionId, draft_only: true });
+  assert.match(String(plan.plan_preview_markdown), /\| \$100 · 50% \| \$80 · 50% \|/);
+  assert.doesNotMatch(String(plan.plan_preview_markdown), /USD|CNY|[￥¥]/);
+  const input = { session_id: f.sessionId, run_id: String(plan.run_id) };
+  const store = new OnboardingStore(f.directory);
+  const file = `experiment-plan-${input.run_id}.json`;
+  const saved = store.read<{ plan: { currency?: string }; plan_preview_markdown: string }>(file)!;
+  const { currency: _currency, ...legacyPlan } = saved.plan;
+  const before = f.calls.length;
+
+  for (const currency of [undefined, 'CNY']) {
+    store.write(file, { ...saved, plan: currency ? { ...legacyPlan, currency } : legacyPlan,
+      plan_preview_markdown: saved.plan_preview_markdown.replace(/\$(\d+)/g, '$1 CNY') });
+    await assert.rejects(f.runtime.invoke('status', input), /saved Demo draft does not use USD/);
+    await assert.rejects(f.runtime.invoke('experiment-plan', { ...input, answered_question: 'review_pilot' }),
+      /saved Demo draft does not use USD/);
+    await assert.rejects(f.runtime.invoke('experiment-launch-preview', input), /saved Demo draft does not use USD/);
+    await assert.rejects(f.runtime.invoke('experiment-launch', input), /saved Demo draft does not use USD/);
+  }
+  assert.equal(f.calls.length, before);
+  assert.deepEqual(f.uploads, []);
+});
+
+test('a non-US draft without a currency retains the legacy launch default', async t => {
+  const f = fixture(t, undefined, 'https://ae-web.thinkingai.cn');
+  const plan = await f.runtime.invoke('experiment-plan', { session_id: f.sessionId, draft_only: true });
+  const input = { session_id: f.sessionId, run_id: String(plan.run_id) };
+  const store = new OnboardingStore(f.directory);
+  const file = `experiment-plan-${input.run_id}.json`;
+  const saved = store.read<{ plan: { currency?: string } }>(file)!;
+  const { currency: _currency, ...legacyPlan } = saved.plan;
+  store.write(file, { ...saved, plan: legacyPlan });
+
+  assert.deepEqual((await f.runtime.invoke('status', input)).plan, legacyPlan);
+  assert.equal((await f.runtime.invoke('experiment-launch-preview', input)).currency, 'CNY');
+});
+
 test('US checkout draft review keeps the same proposal and replays the approved plan in USD', async t => {
   let active = true;
   let start = '';
+  let matchesRevenue = false;
+  let revenueMetric: { metricId: string; format: string; metricPurpose: string; metricDefinition: { filters: { items: unknown[] } } };
   let draft: { expName: string; featureKeyList: string[];
     targeting: { definitionRequest: { conditions: { items: { values: string[] }[] } } } };
   const f = fixture(t, async ({ id, input }) => {
@@ -483,10 +554,21 @@ test('US checkout draft review keeps the same proposal and replays the approved 
         assert.equal(input.query_name, 'Demo checkout recovery A/B');
         return { items: [{ exp_name: draft.expName, exp_id: 'checkout-1', status: 'running' }] };
       case 'experiment.metric.save': {
-        const metric = input.req as { metricId: string; metricDefinition: { filters: { items: unknown[] } } };
+        const metric = input.req as typeof revenueMetric;
         assert.deepEqual(metric.metricDefinition.filters.items.at(-1), { field: 'currency', operator: 'eq', values: ['USD'] });
-        if (metric.metricId.startsWith('plg_net_revenue_')) assert.equal(metric.metricId, 'plg_net_revenue_star_island_usd');
+        if (metric.metricId.startsWith('plg_net_revenue_')) {
+          assert.equal(metric.metricId, 'plg_net_revenue_star_island_usd');
+          revenueMetric = metric;
+          throw new Error('Metric ID already exists');
+        }
         return { result: true };
+      }
+      case 'experiment.metric.get': {
+        assert.equal(input.metric_id, revenueMetric.metricId);
+        const definition = structuredClone(revenueMetric.metricDefinition);
+        if (!matchesRevenue) definition.filters.items[definition.filters.items.length - 1] = { field: 'currency', operator: 'eq', values: ['CNY'] };
+        return safeJsonParse(JSON.stringify({ item: { metric_id: revenueMetric.metricId, format: revenueMetric.format,
+          metric_purpose: revenueMetric.metricPurpose, metric_definition: definition } }));
       }
       case 'experiment.feature.save':
         return { result: true };
@@ -524,13 +606,19 @@ test('US checkout draft review keeps the same proposal and replays the approved 
   assert.equal(f.calls.length, beforeDraft);
   assert.deepEqual(plan.approver, { status: 'deferred' });
   assert.equal((plan.plan as { currency: string }).currency, 'USD');
-  assert.match(String(plan.plan_preview_markdown), /100 USD/);
+  assert.match(String(plan.plan_preview_markdown), /\| \$100 · 50% \| \$100 · 50% \|/);
   assert.deepEqual(plan.review, { pilot_accounts_per_arm: 4 });
   const options = (draft: Record<string, unknown>) =>
     (draft.interaction as { options: { value: string }[] }).options.map(({ value }) => value);
   assert.deepEqual(options(plan), ['launch', 'review_audience', 'review_pilot', 'review_no_reward']);
   const { plan_path: _path, ...visiblePlan } = plan;
+  const store = new OnboardingStore(f.directory);
+  const planFile = `experiment-plan-${input.run_id}.json`;
+  const savedPlan = store.read<Record<string, unknown>>(planFile)!;
+  const legacyMarkdown = String(plan.plan_preview_markdown).replaceAll('$100', '100 USD');
+  store.write(planFile, { ...savedPlan, plan_preview_markdown: legacyMarkdown });
   assert.deepEqual(await f.runtime.invoke('status', input), visiblePlan);
+  assert.equal(store.read<Record<string, unknown>>(planFile)?.plan_preview_markdown, legacyMarkdown);
   const reviewPreview = await f.runtime.invoke('experiment-plan-preview', { ...input, answered_question: 'review_pilot' });
   assert.equal(reviewPreview.dry_run, true);
   assert.deepEqual(options(reviewPreview), ['launch', 'review_audience', 'review_no_reward']);
@@ -576,6 +664,10 @@ test('US checkout draft review keeps the same proposal and replays the approved 
   f.control.end = '2026-11-07';
 
   const guidedLaunch = { ...input, wait_report: true };
+  const incompatibleMetric = await f.runtime.invoke('experiment-launch', guidedLaunch);
+  assert.equal(incompatibleMetric.failed_stage, 'save_revenue_metric');
+  assert.ok(!f.calls.some(call => call.id === 'experiment.experiment.save'));
+  matchesRevenue = true;
   const complete = await f.runtime.invoke('experiment-launch', guidedLaunch);
   assert.equal(complete.next_action, 'verify_experiment_results', JSON.stringify(complete));
   assert.match(String(complete.experiment_url), /expId=checkout-1/);

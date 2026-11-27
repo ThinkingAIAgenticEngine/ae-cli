@@ -6,13 +6,13 @@ When a route needs an AE project, reuse the user's verified business project. Us
 
 ## Data source choices
 
-If the source and intent are unclear, show the short introduction below. In other languages, translate the introduction and the option labels. Keep CSV and Excel as the file examples.
+If the source and intent are unclear, show a short introduction in the [onboarding language](../SKILL.md#onboarding-language-and-currency). In English, use **Try it with your data** and ask for a CSV or Excel file or a Feishu Sheet or Bitable link. Explain that you will check which fields can be imported. In Chinese, use the introduction below. Keep CSV and Excel as the file examples.
 
 > **用你的数据试一次**
 >
 > 上传 CSV 或 Excel 文件，或粘贴飞书电子表格、多维表格链接。我会先检查字段，告诉你哪些数据可以导入。
 
-Render `business_data.interaction` in the native picker. Use these labels in Chinese and as the fallback order for older CLI builds:
+Render `business_data.interaction` in the native picker. Use the onboarding language for the labels. Keep this order for older CLI builds.
 
 | Value | 中文 | English |
 | --- | --- | --- |
@@ -37,7 +37,7 @@ Render `business_data.tools` in the native picker. If the host cannot fit the li
 | `dimension_table` | 导入维度表 | Import a dimension table | Use `ae-metadata` to create or bind the dimension table in the business project. |
 | `check_ingestion` | 检查已有上报 | Check existing ingestion | Use `ae-tracking-matrix` for verification. Read `tracking live-data list`, `tracking ingest summary` or `tracking ingest-error list` as needed. |
 
-When the customer selects **More integration tools** or directly requests database sync, check `ae-cli --host <verified-host> config show`. Append **DataOps 数据源同步** to the picker or route the request to `ae-dataops` only if `businesses.dataops` is `true`. Verify the DataOps space when required by that route.
+When the customer selects **More integration tools** or directly requests database sync, check `ae-cli --host <verified-host> config show`. If `businesses.dataops` is `true`, append **Sync a DataOps data source** in the onboarding language or route the request to `ae-dataops`. Verify the DataOps space when required by that route.
 
 ### DataX setup
 

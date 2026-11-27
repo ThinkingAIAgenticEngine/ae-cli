@@ -148,7 +148,7 @@ test('first installation selects all Skills without an availability snapshot and
   assert.match(result.next_steps[0], /Keep the turn open until the user chooses or dismisses the dialog\. If the dialog is unavailable or fails, ask with the same options in chat/);
   assert.match(result.next_steps.join(' '), /For an explicit onboarding or walkthrough that needs a new account.*show “Create an AE account” and “Learn about AE” using the localized labels from references\/about-ae\.md/);
   assert.match(result.next_steps.join(' '), /If they choose “Learn about AE”, show the localized introduction and available product resources/);
-  assert.match(result.next_steps.join(' '), /After the user chooses “Create an AE account” or directly asks to sign up, run ae-cli analysis onboarding run --region <market>/);
+  assert.match(result.next_steps.join(' '), /After the user chooses “Create an AE account” or directly asks to sign up, run ae-cli analysis onboarding run --region <market> --website-env production/);
   assert.match(result.next_steps.join(' '), /analysis onboarding run.*skill_path.*session_id/);
   assert.match(result.next_steps.join(' '), /honor an explicitly requested or confirmed market first.*--browser system/);
   assert.match(result.next_steps.join(' '), /After the user confirms signup in the overseas test environment.*--website-env test --region us/);
@@ -168,6 +168,9 @@ test('installation reports the detected language separately from the legacy mark
   assert.equal(result.ok, true);
   assert.equal(result.local_language, 'ja-JP');
   assert.equal(result.onboarding_market, 'us');
+  assert.equal(result.existing_account_options?.saas.default_value, undefined);
+  assert.deepEqual(result.existing_account_options?.saas.options.map(({ value }) => value),
+    ['us', 'cn_paid', 'cn_free', 'other_address']);
   assert.match(result.next_steps.join(' '), /compare local_language with the language of the user’s own request/);
   assert.match(result.next_steps.join(' '), /Japanese to jp, and Korean to kr/);
   assert.match(result.next_steps.join(' '), /When the two markets differ, show only those two options and wait/);
@@ -188,11 +191,60 @@ test('installation in a Chinese locale offers signup and existing-account login'
   assert.match(result.next_steps[0], /offer “Create an AE account” and “Sign in to my existing AE account”/);
   assert.equal(result.local_language, 'zh-CN');
   assert.equal(result.onboarding_market, 'cn');
+  assert.equal(result.existing_account_options?.saas.default_value, undefined);
+  assert.deepEqual(result.existing_account_options?.saas.options.map(({ value }) => value),
+    ['cn_paid', 'cn_free', 'other_address']);
   const guidance = result.next_steps.join(' ');
   assert.match(guidance, /analysis onboarding run --region <market>/);
   assert.match(guidance, /After verifying a fresh install.*Sign in to my existing AE account/);
   assert.match(guidance, /ae-cli auth login --host <AE_HOST>/);
+  assert.match(guidance, /existing_account_options/);
+  assert.match(guidance, /Use the US free trial for an English device and the China free trial for a Chinese device/);
   assert.doesNotMatch(guidance, /request-demo|test\.thinkingai\./);
+  assert.equal(f.state.calls.some(call => call.args.includes('login')), false);
+});
+
+test('installation on an English device offers existing-account routes and recommends US SaaS', t => {
+  const f = fixture(t);
+  const result = f.run({ env: { ...f.env, AE_LANG: 'en-US' } });
+  assert.equal(result.ok, true);
+  assert.equal(result.next_action, 'choose_account');
+  assert.equal(result.local_language, 'en-US');
+  assert.deepEqual(result.interaction?.options.map(({ value }) => value), ['create_account', 'existing_account']);
+  const routes = result.existing_account_options;
+  assert.equal(routes?.deployment.step, 'choose_existing_deployment');
+  assert.deepEqual(routes?.deployment.options.map(({ value }) => value), ['saas', 'private', 'unsure']);
+  assert.equal(routes?.saas.step, 'choose_existing_saas');
+  assert.equal(routes?.saas.default_value, 'us');
+  assert.deepEqual(routes?.saas.options.map(({ label: _label, ...route }) => route), [
+    { value: 'us', login_url: 'https://thinkingai.io/en/experience-login/', login_method: 'website',
+      website_market: 'us', ae_host: 'https://ae-web-global.thinkingai.io' },
+    { value: 'cn_paid', login_url: 'https://ta.thinkingdata.cn/', login_method: 'device' },
+    { value: 'cn_free', login_url: 'https://www.thinkingai.cn/experience-login/', login_method: 'website',
+      website_market: 'cn', ae_host: 'https://ae-web.thinkingai.cn' },
+    { value: 'other_address' },
+  ]);
+  assert.equal(f.state.calls.some(call => call.args.includes('login')), false);
+});
+
+test('installation keeps a known US onboarding in English on a Chinese device', t => {
+  const f = fixture(t);
+  const host = 'https://ae-web-global.thinkingai.io';
+  const result = f.run({ host, env: { ...f.env, AE_LANG: 'zh-CN' } });
+  assert.equal(result.ok, true);
+  assert.equal(result.next_action, 'choose_account');
+  assert.equal(result.existing_account_options, undefined);
+  assert.equal(result.local_language, 'zh-CN');
+  assert.equal(result.onboarding_market, 'us');
+  assert.deepEqual(result.interaction?.options.map(({ label }) => label), [
+    'Create an AE account', 'Sign in to my existing AE account',
+  ]);
+  const guidance = result.next_steps.join(' ');
+  assert.match(guidance, /English/);
+  assert.match(guidance, /\$100/);
+  assert.ok(result.next_steps.some(step => step.includes('ae-cli analysis onboarding run')
+    && step.includes(`--host ${host}`) && step.includes('--region us') && step.includes('--language en-US')
+    && step.includes('--browser system')), guidance);
   assert.equal(f.state.calls.some(call => call.args.includes('login')), false);
 });
 
@@ -202,6 +254,22 @@ test('a neutral locale does not report the fallback market as a local language',
   assert.equal(result.ok, true);
   assert.equal(result.local_language, undefined);
   assert.equal(result.onboarding_market, 'us');
+  assert.equal(result.existing_account_options?.saas.default_value, undefined);
+  assert.deepEqual(result.existing_account_options?.saas.options.map(({ value }) => value),
+    ['us', 'cn_paid', 'cn_free', 'other_address']);
+});
+
+test('an explicit China free SaaS host uses website login for an existing account', t => {
+  const f = fixture(t);
+  const host = 'https://ae-web.thinkingai.cn';
+  const result = f.run({ host, env: { ...f.env, AE_LANG: 'en-US' } });
+  assert.equal(result.ok, true);
+  assert.equal(result.next_action, 'choose_account');
+  assert.equal(result.existing_account_options, undefined);
+  assert.ok(result.next_steps.some(step => step.includes('ae-cli analysis onboarding run')
+    && step.includes(`--host ${host}`) && step.includes('--region cn') && step.includes('--browser system')));
+  assert.ok(!result.next_steps.some(step => step.startsWith('ae-cli auth login')));
+  assert.equal(f.state.calls.some(call => call.args.includes('login')), false);
 });
 
 test('installation uses the preferred Mac language from a neutral Codex process locale', t => {
@@ -516,6 +584,7 @@ test('auth guidance reuses the verified executable and never starts login', t =>
   assert.equal(result.auth.host, 'https://ae.example.com');
   assert.equal(result.auth.authenticated, true);
   assert.equal(result.next_action, 'continue_using_ae');
+  assert.equal(result.existing_account_options, undefined);
   assert.match(result.next_steps.join(' '), /Continue your AE task/);
   assert.doesNotMatch(result.next_steps.join(' '), /register|onboarding|request-demo/);
   assert.ok(f.state.calls.some(call => call.command === f.bin && call.args.includes('status')));
@@ -530,11 +599,13 @@ test('explicit install checks the active environment before asking about the acc
   const signedIn = f.run(options);
   assert.equal(signedIn.auth.host, host);
   assert.equal(signedIn.next_action, 'continue_using_ae');
+  assert.equal(signedIn.existing_account_options, undefined);
 
   f.state.auth = false;
   const signedOut = f.run(options);
   assert.equal(signedOut.next_action, 'choose_account');
-  assert.ok(signedOut.next_steps.includes(`ae-cli auth login --host ${host} --no-wait`));
+  assert.ok(signedOut.existing_account_options);
+  assert.ok(signedOut.next_steps.includes('ae-cli auth login --host <AE_HOST> --no-wait'));
   assert.ok(signedOut.next_steps.some(step => step.includes('analysis onboarding run')));
 
   f.state.authUnavailable = true;
@@ -542,9 +613,21 @@ test('explicit install checks the active environment before asking about the acc
   assert.equal(unknown.ok, true);
   assert.equal(unknown.auth.authenticated, null);
   assert.equal(unknown.next_action, 'check_authentication');
+  assert.equal(unknown.existing_account_options, undefined);
   assert.match(unknown.next_steps.join(' '), /auth status --host https:\/\/existing\.example --format json/);
   assert.doesNotMatch(unknown.next_steps.join(' '), /analysis onboarding|auth login/);
   assert.equal(f.state.calls.some(call => call.args.includes('login')), false);
+});
+
+test('a signed-out US host does not override the device suggestions', t => {
+  const f = fixture(t);
+  const host = 'https://ae-web-global.thinkingai.io';
+  const result = f.run({ skillContext: { host, tokenFingerprint: '' }, env: { ...f.env, AE_LANG: 'zh-CN' } });
+  assert.equal(result.auth.host, host);
+  assert.equal(result.onboarding_market, 'cn');
+  assert.deepEqual(result.existing_account_options?.saas.options.map(({ value }) => value),
+    ['cn_paid', 'cn_free', 'other_address']);
+  assert.doesNotMatch(result.next_steps.join(' '), /--host https:\/\/ae-web-global\.thinkingai\.io/);
 });
 
 test('a fresh install with an overseas test host asks for an account route before device authorization', t => {

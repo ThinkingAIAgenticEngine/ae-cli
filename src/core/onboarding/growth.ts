@@ -6,7 +6,7 @@ import { CHECKOUT_RECOVERY, DEMO_SAMPLE_IDS, DEMO_STATUS, NETWORK_BUDGET_MS, RUN
 import type { OnboardingDependencies } from './runtime.js';
 import type { OnboardingStore } from './session-store.js';
 import { onboardingEvidenceLinks, onboardingInteraction } from './interaction.js';
-import { audienceShareMarkdown, checkoutRingMarkdown, comparisonMarkdown, dailyTrendMarkdown, funnelMarkdown } from './markdown-charts.js';
+import { audienceShareMarkdown, checkoutShareMarkdown, comparisonMarkdown, dailyViewerChangesMarkdown, purchasePathMarkdown } from './markdown-charts.js';
 
 const GROWTH_VERSION = 2;
 const CACHE_TTL_MS = 10 * 60_000;
@@ -99,7 +99,11 @@ function verifiedTables(result: any, type: string): string[] {
     .map((item: any) => item.sql_reference);
 }
 
-export async function resolveEventSource(call: Call, projectId: number): Promise<{ from: string; account: string }> {
+export async function resolveEventSource(call: Call, projectId: number): Promise<{
+  from: string;
+  account: string;
+  eventColumns: ReadonlySet<string>;
+}> {
   let offset = 0;
   const events = new Set<string>();
   const users = new Set<string>();
@@ -124,12 +128,12 @@ export async function resolveEventSource(call: Call, projectId: number): Promise
   if (!['#event_time', '$part_date', '$part_event', 'plg_sample_id', 'item_id', 'plg_seed_event_id'].every(name => columns.has(name))) {
     throw new Error('The authorized Demo view is missing the fields required for growth analysis.');
   }
-  if (columns.has('#account_id')) return { from: `${event} e`, account: 'e."#account_id"' };
+  if (columns.has('#account_id')) return { from: `${event} e`, account: 'e."#account_id"', eventColumns: columns };
   if (!columns.has('#user_id') || users.size !== 1) throw new Error('AE did not expose a verified Demo account-ID mapping.');
   const user = [...users][0];
   const userColumns = await readColumns(user);
   if (!userColumns.has('#user_id') || !userColumns.has('#account_id')) throw new Error('AE did not expose a verified Demo account-ID mapping.');
-  return { from: `${event} e LEFT JOIN ${user} u ON e."#user_id" = u."#user_id"`, account: 'u."#account_id"' };
+  return { from: `${event} e LEFT JOIN ${user} u ON e."#user_id" = u."#user_id"`, account: 'u."#account_id"', eventColumns: columns };
 }
 
 function growthSql(scope: GrowthScope, source: { from: string; account: string }): string {
@@ -372,11 +376,11 @@ export async function runOnboardingGrowth(store: OnboardingStore, deps: GrowthDe
             { label: 'Single-day viewers', value: singleRate === null ? null : singleRate * 100 },
             { label: 'Multi-day viewers', value: multiRate === null ? null : multiRate * 100 },
           ], 100, true),
-          checkout_share: checkoutRingMarkdown(checkoutShare),
+          checkout_share: checkoutShareMarkdown(checkoutShare),
           audience_overlap: audienceShareMarkdown(audienceOverlap),
-          purchase_funnel: funnelMarkdown(funnelData, funnelTransitions),
+          purchase_funnel: purchasePathMarkdown(funnelData, funnelTransitions),
           follow_up: comparisonMarkdown(followUpData, maxCount),
-          ...(dailyData ? { daily_viewers: dailyTrendMarkdown(dailyData) } : {}),
+          ...(dailyData ? { daily_viewers: dailyViewerChangesMarkdown(dailyData) } : {}),
         },
         follow_up_chart: { type: 'bar', data: followUpData, markdown: followUpMarkdown },
         follow_up_count: scenario === CHECKOUT_RECOVERY ? checkoutUnpaid : evidence.accountIds.length,

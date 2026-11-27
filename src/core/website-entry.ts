@@ -32,6 +32,10 @@ export function websiteOrigin(market: string, environment: WebsiteEnvironment): 
   return market === 'cn' ? CHINA_PRODUCTION_ORIGIN : PRODUCTION_ISSUER;
 }
 
+export function productionWebsiteLoginPage(market: 'us' | 'cn'): string {
+  return `${websiteOrigin(market, 'production')}${LOGIN_PATHS[market]}`;
+}
+
 export function isProductionWebsiteOrigin(origin: string): boolean {
   return origin === PRODUCTION_ISSUER || origin === PRODUCTION_BROWSER_ORIGIN || origin === CHINA_PRODUCTION_ORIGIN;
 }

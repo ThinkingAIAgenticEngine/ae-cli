@@ -1,6 +1,7 @@
 import path from 'node:path';
 import { commandSucceeded, defaultInstallRunner, type ProcessRunner } from './install-process.js';
-import { cliEntrySource, cliToolReference, websiteLoginUrl } from './website-entry.js';
+import { CHINA_TRIAL_SAAS_PRODUCT_HOST, US_SAAS_PRODUCT_HOST } from './onboarding/contracts.js';
+import { cliEntrySource, cliToolReference, productionWebsiteLoginPage, websiteLoginUrl } from './website-entry.js';
 
 export type AeRegistrationLanguage = 'zh-CN' | 'en-US' | 'ja-JP' | 'ko-KR';
 
@@ -62,7 +63,46 @@ export function aeRegistrationUrl(language?: string, env: NodeJS.ProcessEnv = pr
   return websiteLoginUrl(market, 'production', tool, cliToolReference(tool, env));
 }
 
+const existingDeployments = {
+  step: 'choose_existing_deployment',
+  question: 'Which type of AE environment do you use?',
+  options: [
+    { value: 'saas', label: 'ThinkingAI cloud (SaaS)' },
+    { value: 'private', label: 'Privately deployed AE' },
+    { value: 'unsure', label: "I'm not sure" },
+  ],
+} as const;
+
+const existingSaasOptions = [
+  { value: 'us', label: 'United States SaaS', login_url: productionWebsiteLoginPage('us'),
+    login_method: 'website', website_market: 'us', ae_host: US_SAAS_PRODUCT_HOST },
+  { value: 'cn_paid', label: 'China SaaS (paid)', login_url: 'https://ta.thinkingdata.cn/', login_method: 'device' },
+  { value: 'cn_free', label: 'China SaaS (free)', login_url: productionWebsiteLoginPage('cn'),
+    login_method: 'website', website_market: 'cn', ae_host: CHINA_TRIAL_SAAS_PRODUCT_HOST },
+  { value: 'other_address', label: 'Use another AE address' },
+] as const;
+
+export function existingAccountOptions(language?: AeRegistrationLanguage) {
+  return {
+    deployment: existingDeployments,
+    saas: {
+      step: 'choose_existing_saas' as const,
+      question: 'Which ThinkingAI SaaS environment is your account in?',
+      options: language === 'zh-CN' ? existingSaasOptions.filter(option => option.value !== 'us') : existingSaasOptions,
+      ...(language === 'en-US' ? { default_value: 'us' as const } : {}),
+    },
+  };
+}
+
 export const AE_HOST_SETUP_COMMAND = 'ae-cli config set-host <url>';
+
+export const AE_CLI_SUPPORT_HELP = [
+  '',
+  'AE CLI support',
+  '  United States  https://thinkingai.io/ or support.us@thinkingai.io',
+  '  China          https://www.thinkingai.cn/ or 400-086-0901',
+  '',
+].join('\n');
 
 export function missingAeHostHint(additionalAction?: string): string {
   const registration = aeRegistrationUrl();

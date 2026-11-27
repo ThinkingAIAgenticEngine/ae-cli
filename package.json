@@ -1,6 +1,6 @@
 {
   "name": "@thinkingai/ae-cli",
-  "version": "6.1.44",
+  "version": "6.1.45",
   "description": "CLI tool for ThinkingAI (AE) analytics platform",
   "type": "module",
   "bin": {
@@ -108,7 +108,7 @@
     "verify:community-ux": "npm run build && npx tsx tests/community-ux.test.ts",
     "verify:community-evidence": "node --import tsx tests/community-evidence.test.ts",
     "verify:businesses": "node --import tsx --test tests/business-config.test.ts tests/business-command-filter.test.ts tests/business-cli.test.ts tests/environment-refresh.test.ts tests/business-sandbox-boundary.test.ts tests/business-refresh-skills.test.ts",
-    "verify:plg": "tsx --test tests/onboarding-v3.test.ts tests/onboarding-website-login.test.ts tests/onboarding-growth.test.ts tests/login-device-flow.test.ts tests/auth-device-command.test.ts tests/plg-engage-replay.test.ts"
+    "verify:plg": "tsx --test tests/onboarding-v3.test.ts tests/onboarding-website-login.test.ts tests/onboarding-growth.test.ts tests/login-device-flow.test.ts tests/auth-device-command.test.ts tests/plg-engage-replay.test.ts tests/member-invitation-command.test.ts"
   },
   "repository": {
     "type": "git",

@@ -1,12 +1,12 @@
 import type { OnboardingDependencies } from './runtime.js';
 import { replayReportDates } from './experiment-report-wait.js';
 import { resolveEventSource, sqlString } from './growth.js';
-import { OVERSEAS_TEST_PRODUCT_HOSTNAME } from './contracts.js';
+import { CHINA_TRIAL_SAAS_PRODUCT_HOST, isUsOnboarding, OVERSEAS_TEST_PRODUCT_HOSTNAME, US_SAAS_PRODUCT_HOST } from './contracts.js';
 
 const PROGRESS = 'analysis.plg_onboarding.progress';
 const progressOrigins = new Set([
-  'https://ae-web.thinkingai.cn',
-  'https://ae-web-global.thinkingai.io',
+  CHINA_TRIAL_SAAS_PRODUCT_HOST,
+  US_SAAS_PRODUCT_HOST,
   `https://${OVERSEAS_TEST_PRODUCT_HOSTNAME}`,
 ]);
 
@@ -60,18 +60,29 @@ export async function readProgress(deps: Pick<OnboardingDependencies, 'capabilit
   }
 }
 
+function exposureColumn(columns: ReadonlySet<string>, name: 'experiment_id' | 'experiment_group_id'): string {
+  if (columns.has(`#${name}`)) return `e."#${name}"`;
+  if (columns.has(name)) return `e.${name}`;
+  throw new Error('The authorized Demo view is missing the fields required to verify experiment exposure.');
+}
+
 export async function verifyAndCompleteProgress(deps: Pick<OnboardingDependencies, 'capability'>,
-  host: string, runId: string): Promise<OnboardingProgress> {
+  host: string, runId: string, market?: string): Promise<OnboardingProgress> {
   const progress = await readProgress(deps, host);
   if (progress.state !== 'in_progress') return progress;
   const { receipt, experiment_id, journey_id, demo_project_id } = progress;
   if (progress.run_id !== runId || !receipt || !experiment_id || !journey_id || !demo_project_id) {
     throw new Error('The current Demo replay checkpoint is not ready. Resume the experiment in the session that started it.');
   }
+  if (isUsOnboarding(host, market) && receipt.currency !== 'USD') {
+    throw new Error('The saved Demo replay does not use USD. Continue with a USD Demo run.');
+  }
 
   const call = (id: string, input: Record<string, unknown>) =>
     deps.capability(host, id, input, AbortSignal.timeout(10000));
   const source = await resolveEventSource(call, demo_project_id);
+  const experimentColumn = exposureColumn(source.eventColumns, 'experiment_id');
+  const groupColumn = exposureColumn(source.eventColumns, 'experiment_group_id');
   const dates = replayReportDates(receipt);
   const shiftDate = (date: string, days: number) =>
     new Date(Date.parse(date) + days * 86_400_000).toISOString().slice(0, 10);
@@ -84,10 +95,10 @@ export async function verifyAndCompleteProgress(deps: Pick<OnboardingDependencie
   }
   if (!expected.size) throw new Error('The Demo replay checkpoint contains no events.');
   const sql = `SELECT DISTINCT e."$part_event", CAST(${source.account} AS varchar),
-    CASE WHEN e."$part_event" = 'te_experiment_exposure' THEN CAST(e.experiment_group_id AS varchar) ELSE '' END
+    CASE WHEN e."$part_event" = 'te_experiment_exposure' THEN CAST(${groupColumn} AS varchar) ELSE '' END
     FROM ${source.from}
     WHERE e."$part_date" BETWEEN ${sqlString(shiftDate(dates.start_time, -1))} AND ${sqlString(shiftDate(dates.end_time, 1))}
-      AND ((e."$part_event" = 'te_experiment_exposure' AND CAST(e.experiment_id AS varchar) = ${sqlString(experiment_id)})
+      AND ((e."$part_event" = 'te_experiment_exposure' AND CAST(${experimentColumn} AS varchar) = ${sqlString(experiment_id)})
         OR (e.demo_run_id = ${sqlString(runId)} AND e.plg_sample_id = ${sqlString(receipt.sample_id)}
           AND e.item_id = ${sqlString(receipt.item_id)}
           AND (e."$part_event" = 'demo_coupon_claim'

@@ -7,13 +7,27 @@ export const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-
 export const DEMO_SAMPLE_IDS = ['star-island', 'season-pass'] as const;
 export const CHECKOUT_RECOVERY = 'checkout-recovery';
 export const OVERSEAS_TEST_PRODUCT_HOSTNAME = 'plg-test-overseas-web.thinkingai.io';
+export const US_ONBOARDING_LANGUAGE = 'en-US';
+const GLOBAL_PRODUCT_HOSTNAME = 'ae-web-global.thinkingai.io';
+export const US_SAAS_PRODUCT_HOST = `https://${GLOBAL_PRODUCT_HOSTNAME}`;
+export const CHINA_TRIAL_SAAS_PRODUCT_HOST = 'https://ae-web.thinkingai.cn';
 
 export type DemoCurrency = 'CNY' | 'USD';
 
+function isDomesticProductHost(hostname?: string): boolean {
+  return Boolean(hostname?.endsWith('.thinkingai.cn') || hostname?.endsWith('.thinkingdata.cn'));
+}
+
+export function isUsOnboarding(host?: string, market?: string): boolean {
+  const hostname = host ? new URL(host).hostname : undefined;
+  if (isDomesticProductHost(hostname)) return false;
+  return market ? market === 'us' : hostname === GLOBAL_PRODUCT_HOSTNAME || hostname === OVERSEAS_TEST_PRODUCT_HOSTNAME;
+}
+
 export function onboardingDemoCurrency(host?: string, region?: string): DemoCurrency {
   const hostname = host ? new URL(host).hostname : undefined;
-  if (hostname === 'ae-web-global.thinkingai.io' || hostname === OVERSEAS_TEST_PRODUCT_HOSTNAME) return 'USD';
-  if (hostname?.endsWith('.thinkingai.cn') || hostname?.endsWith('.thinkingdata.cn')) return 'CNY';
+  if (hostname === GLOBAL_PRODUCT_HOSTNAME || hostname === OVERSEAS_TEST_PRODUCT_HOSTNAME) return 'USD';
+  if (isDomesticProductHost(hostname)) return 'CNY';
   return region === 'us' ? 'USD' : 'CNY';
 }
 

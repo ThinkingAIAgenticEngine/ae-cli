@@ -8,6 +8,7 @@ import { runHostCompatCheck } from './core/compat-check.js';
 import { resumeSyncedCommand } from './core/resume-command.js';
 import { runFeatureConfigCheck } from './core/feature-config-check.js';
 import { getLocalCliPackageInfo } from './core/package-info.js';
+import { AE_CLI_SUPPORT_HELP } from './core/host-guidance.js';
 import { registerTracking } from './commands/tracking/index.js';
 import { parseProgram } from './framework/program-lifecycle.js';
 import { printError } from './framework/output.js';
@@ -43,7 +44,8 @@ program
     false,
   )
   .option('--yes', 'Skip confirmation for high-risk write operations', false)
-  .option('--no-update-check', 'Skip host compatibility checks', false);
+  .option('--no-update-check', 'Skip host compatibility checks', false)
+  .addHelpText('after', AE_CLI_SUPPORT_HELP);
 
 program.addOption(
   new Option('--agent-context <base64url-json>', 'Internal agent context payload for gateway telemetry')

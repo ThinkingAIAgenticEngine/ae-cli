@@ -16,10 +16,12 @@ Answer the current `featured_question` from the matching baseline and show the r
 
 ## Business diagnosis
 
-1. **Choose a topic.** Use `charts.daily_viewers` from the ready overview to show the [seven-day trend](presentation.md#choose-and-render-a-chart) for the selected item, when available. Label it as daily unique viewers of the item detail page. Show the three item-specific topics in `demo_overview.diagnosis`, with the featured topic first. Ask which part of the item's purchase flow the user wants to understand.
-2. **See the topic's data and choose a question.** For revisits use the purchase-rate comparison. For checkout use the checkout share or the audience overlap when comparing follow-up audiences. For conversion use the Markdown funnel. Lead with the finding and show one [matching chart](presentation.md#choose-and-render-a-chart). When the overview already showed the same numbers for the same question, show exact counts or the next relevant detail instead of repeating the visual. Show the three short follow-up questions for that topic below the result.
+1. **Choose a topic.** Use the ready overview to show the [seven-day viewers and change table](presentation.md#choose-and-render-a-chart) for the selected item, when available. Label it as daily unique viewers of the item detail page. Show the three item-specific topics in `demo_overview.diagnosis`, with the featured topic first. Ask which part of the item's purchase flow the user wants to understand.
+2. **See the topic's data and choose a question.** For revisits use the purchase-rate comparison. For checkout use the share bar or the audience overlap when comparing follow-up audiences. For conversion use the three-step purchase path. Lead with the finding and show one [matching layout](presentation.md#choose-and-render-a-chart). When the overview already showed the same numbers for the same question, show exact counts or the next relevant detail instead of repeating the visual. Show the three short follow-up questions for that topic below the result.
 3. **See the answer and choose an action.** Answer the chosen question with the finding, supporting counts and any hypothesis that needs a test. Show the three corresponding actions. Add one sentence per action explaining what it would test. Label a review-only proposal here so its scope is clear before the user selects it.
 4. **Generate the draft.** Carry the chosen action and its audience into the plan. For runnable scenarios, use the verified replay preset and show that the draft can be replayed before presenting review choices.
+
+Render the questions in the onboarding language. The table gives the Chinese wording and evidence for each topic.
 
 | Topic | Questions to offer | Evidence to use |
 | --- | --- | --- |

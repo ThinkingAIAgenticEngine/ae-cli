@@ -1,3 +1,12 @@
+### 6.1.45
+**Date:** 2026-11-27
+
+**Changes:**
+
+* After installing, follow guidance to create an AE account or sign in to your existing AE environment. The US onboarding flow uses English and displays amounts in US dollars.
+* Invite teammates by email from onboarding on AE deployments that support member invitations.
+* Review the sample data and A/B experiment plan during onboarding. The US product introduction includes a link to the product video.
+
 ### 6.1.44
 **Date:** 2026-11-27
 

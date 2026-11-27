@@ -8,7 +8,7 @@ import { CliApiError, LocalDataUploadError, PermissionError } from '../errors.js
 import { SecureStoreAuthError } from '../secure-store.js';
 import { trustedProductHost } from './bootstrap-client.js';
 import { CHECKOUT_RECOVERY, DEMO_STATUS, NETWORK_BUDGET_MS, UUID_PATTERN, type LocalSession, type OnboardingInput } from './contracts.js';
-import { prepareDemoApprover, readyDemoScope } from './experiment-plan.js';
+import { prepareDemoApprover, readyDemoScope, validateSavedDemoPlanCurrency } from './experiment-plan.js';
 import { prepareExperimentReplay, runExperimentScript } from './experiment-replay.js';
 import { replayReportDates, waitForExperimentSampleSize } from './experiment-report-wait.js';
 import { onboardingExperimentUrl } from './interaction.js';
@@ -65,11 +65,12 @@ interface SaveRequests {
   revenueMetric: MetricRequest;
   experiment: Request & { expName: string; targeting: { definitionRequest: { conditions: { items: { values: string[] }[] } } } };
 }
-type LaunchDependencies = Pick<OnboardingDependencies, 'credentialKey' | 'capability' | 'upload' | 'approverOpenId' | 'now' | 'webConversation'>;
+type LaunchDependencies = Pick<OnboardingDependencies, 'credentialKey' | 'capability' | 'upload' | 'approverOpenId' | 'now' | 'webConversation' | 'webMarket'>;
 
 function matchesMetric(item: any, metric: MetricRequest): boolean {
+  // Gateway JSON objects have no prototype. Compare their data with the saved draft.
   return item?.metric_id === metric.metricId && item.format === metric.format
-    && item.metric_purpose === metric.metricPurpose && isDeepStrictEqual(item.metric_definition, metric.metricDefinition);
+    && item.metric_purpose === metric.metricPurpose && isDeepStrictEqual(structuredClone(item.metric_definition), metric.metricDefinition);
 }
 
 export async function runOnboardingExperimentLaunch(store: OnboardingStore, deps: LaunchDependencies,
@@ -93,6 +94,7 @@ export async function runOnboardingExperimentLaunch(store: OnboardingStore, deps
     }
     const host = trustedProductHost(session.host);
     const project = { project_id: scope.project_id };
+    validateSavedDemoPlanCurrency(host, deps.webMarket ?? session.region, plan.plan?.currency);
     const currency = plan.plan?.currency ?? 'CNY';
     if (currency !== 'CNY' && currency !== 'USD') throw new Error('The saved Demo plan has an unsupported currency.');
     const checkoutCohort = plan.experiment_type === CHECKOUT_RECOVERY ? plan.checkout_cohort : undefined;

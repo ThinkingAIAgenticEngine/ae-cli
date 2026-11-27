@@ -1,5 +1,6 @@
 import type { Command } from 'commander';
 import { getLocalCliPackageInfo } from '../core/package-info.js';
+import { AE_CLI_SUPPORT_HELP } from '../core/host-guidance.js';
 import { installVersion } from '../core/version-sync.js';
 import { failInstallation, newInstallationReport } from '../core/installation.js';
 
@@ -8,6 +9,7 @@ export function registerInstall(program: Command): void {
     .description('Install and verify this CLI distribution and its matching global Skills')
     .option('--host <url>', 'Check authentication for this AE host after installation')
     .addHelpText('after', '\nExamples:\n  npx @thinkingai/ae-cli@latest install\n  ae-cli install --dry-run --format json\n  ae-cli install --host https://your-ae-host.example.com\n\nSkills are installed globally in ~/.agents/skills with client adaptation handled automatically.\nGlobal options: --dry-run, --format json|table. Supports macOS, Linux, and native Windows.\n')
+    .addHelpText('after', AE_CLI_SUPPORT_HELP)
     .action(async (opts: { host?: string }) => {
       const pkg = getLocalCliPackageInfo();
       const global = program.opts();

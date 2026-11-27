@@ -165,13 +165,13 @@ if (analysisLifecycleCount !== EXPECTED_GATEWAY_LIFECYCLE_COUNT) {
   fail(`analysis gateway lifecycle command count mismatch: expected ${EXPECTED_GATEWAY_LIFECYCLE_COUNT}, got ${analysisLifecycleCount}`);
 }
 
-const EXPECTED_CAPABILITY_COUNT = 363;
+const EXPECTED_CAPABILITY_COUNT = 364;
 if (capabilityCommands.length !== EXPECTED_CAPABILITY_COUNT) {
   fail(`analysis capability command count mismatch: expected ${EXPECTED_CAPABILITY_COUNT}, got ${capabilityCommands.length}`);
 }
 
 const EXPECTED_CAPABILITY_COUNTS_BY_SERVICE = {
-  analysis: 133,
+  analysis: 134,
   'analysis-meta': 66,
   'analysis-governance': 23,
   project: 51,
@@ -272,7 +272,8 @@ function capabilityReferenceName(item) {
 }
 
 for (const item of [...capabilityCommands, ...gatewayLifecycleCommands]) {
-  const skillPath = plgOnboardingCommands.includes(item) ? 'skills/ae-onboarding' : 'skills/ae-analysis';
+  const skillPath = plgOnboardingCommands.includes(item) || item.capabilityId === 'analysis.member_invitation.send'
+    ? 'skills/ae-onboarding' : 'skills/ae-analysis';
   const relPath = `${skillPath}/references/${capabilityReferenceName(item)}`;
   const absPath = path.join(ROOT, relPath);
   if (!fs.existsSync(absPath)) {

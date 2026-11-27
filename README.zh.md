@@ -172,6 +172,8 @@ ae-cli capability list --domain analysis --jq '.capabilities[] | .id'
 
 使用 `ae-cli analysis scenario list --project-id 1 --days 7` 查询已采集的分析问题，由 `ae-analysis` Skill 指导 Agent 去重、判断 badcase 并简要说明原因和证据。详见[分析问题复盘指南](skills/ae-analysis/references/scenario_list.md)。 回答可附带耗时；使用 `ae-cli analysis scenario get --help` 查看关联命令执行明细的查询方式。
 
+在支持的 PLG 环境中，公司 Root 账号可用 `ae-cli analysis member-invitation send` 发送邀请邮件，让收件人加入当前公司并获得所选项目的角色。收件人通过邮件中的链接验证身份。详见[邀请流程](skills/ae-onboarding/references/member_invitation_send.md)。
+
 需保存并审核 Bad Case 时，使用 `ae-cli analysis bad-case --help`。Agent 按语义对同批及所有历史状态去重；CLI 可直接审核，也可显式提交页面。每批汇报发现、重复、新增数量，补充说明选填。认证后将案例加入已绑定的 AE 评测集，取消认证后移除。详见[Bad Case 工作流](skills/ae-analysis/references/bad_case_review.md)。
 
 评测命令在普通终端和沙箱中均跟随当前 AE Host，可通过 `--host` 切换。评测请求沿用该 AE Host 配置的 HTTP 或 HTTPS 协议，与其他 AE 命令一致。旧 `--endpoint` 和 `AE_EVAL_BASE_URL` 只能与当前 AE Host 一致，其他值会在发送凭证前报错；请移除这些配置，统一使用 `--host` 切换。沙箱外需设置 `AE_EVAL_ACCESS_TOKEN` 平台 session token，沙箱内可自动获取会话。详见 [地址与鉴权规则](skills/ae-evaluation/SKILL.md#endpoint-and-authentication)。

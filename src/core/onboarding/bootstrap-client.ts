@@ -1,6 +1,6 @@
 import { safeJsonParse } from '../json-utils.js';
 import type { AeRegistrationLanguage } from '../host-guidance.js';
-import { UUID_PATTERN } from './contracts.js';
+import { US_ONBOARDING_LANGUAGE, UUID_PATTERN } from './contracts.js';
 import { cliEntrySource, environmentForWebsiteOrigin, websiteEnvironment, websiteOrigin, withCliEntryContext, type WebsiteEnvironment } from '../website-entry.js';
 
 const PATH = '/backend/demo/v1/experience/cli/bootstrap-intents';
@@ -64,10 +64,11 @@ export async function createBootstrap(
 ): Promise<BootstrapCreated> {
   const origin = bootstrapOrigin(market, environment);
   const tool = cliEntrySource(source);
+  const displayLanguage = market === 'us' ? US_ONBOARDING_LANGUAGE : language;
   if (toolReference && (tool !== 'codex' || !UUID_PATTERN.test(toolReference))) throw new Error('Invalid AI tool continuation reference.');
   const data = await request(origin, PATH, { method: 'POST', headers: {
     'X-AE-CLI-Login-Mode': 'website_login',
-    ...(language ? { 'Accept-Language': language } : {}),
+    ...(displayLanguage ? { 'Accept-Language': displayLanguage } : {}),
   }, body: JSON.stringify({ market, source,
     ...(host ? { requested_host: trustedProductHost(host) } : {}), ...(toolReference ? { tool_reference: toolReference } : {}) }) }, signal);
   if (typeof data.intent_id !== 'string' || !UUID_PATTERN.test(data.intent_id)

@@ -70,6 +70,7 @@ const GROUPED_DOC_SKILLS = new Set([
 const INLINE_DOC_DOMAINS = new Set(['memory', 'workspace', 'things']);
 const COMMAND_SKILL_OVERRIDES = [
   { pathPrefix: 'src/commands/te-analysis/global/', skill: 'ae-analysis-global' },
+  { pathPrefix: 'src/commands/te-analysis/member-invitation/', skill: 'ae-onboarding' },
 ];
 
 // ---------- Result collection ----------

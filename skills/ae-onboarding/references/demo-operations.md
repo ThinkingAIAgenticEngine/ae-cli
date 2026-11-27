@@ -28,11 +28,19 @@ The `item-coupon` replay exposes up to 12 accounts per arm and simulates up to e
 
 Use the same saved preset selection and audience for plan display, targeting and replay. Reuse the sample's revenue metric and the Feature key generated for the run. Checkout recovery replays one exposure per assigned account and simulated full-price payments.
 
+## Demo currency
+
+For US onboarding, require `USD` in the saved plan and replay receipt, and verify payments with a `USD` currency filter. Use `$` as the only visible currency marker in onboarding copy and experiment data, including individual payment rows, group totals, chart labels, and any report prepared for export. Format prices, revenue, costs, and profit as `$100`, `$50.50`, or `-$20`. Use labels such as **Revenue**, **Order costs**, and **Profit**. Keep currency codes in structured data and queries.
+
+If a saved US draft lacks verified USD currency, regenerate the draft and ask the user to review it before launch. If an existing US replay lacks verified USD currency, explain that the replay currency could not be verified and keep the run ID for recovery.
+
+For other markets, use the saved currency. A legacy receipt without currency uses CNY only outside the US flow.
+
 ## Present the plan
 
-Show the Demo audience, hypothesis, and evaluation period from the ready `experiment-plan` response. Insert `plan_preview_markdown` as a visible two-column Markdown table in the conversation. Translate labels and descriptions, keeping both columns, prices, and allocation values. With an older CLI, build the same **A · Control** and **B · Treatment** table from `plan.arms` and `plan.currency`. Show each group's path, price, and split side by side.
+Show the Demo audience, hypothesis, and evaluation period from the ready `experiment-plan` response. Render `plan_preview_markdown` as a visible two-column Markdown table. Translate labels and descriptions, keeping both columns, prices, and allocation values. With an older CLI or a US preview using a different money format, build the same **A · Control** and **B · Treatment** table from `plan.arms` and `plan.currency` using the [Demo currency rules](#demo-currency). Show each group's path, price, and split side by side.
 
-Show the metrics and cost per paid order below the table. Both groups use the same placement and timing, with at most one exposure per account and no follow-up after purchase. Localize the preview to the customer's language. Format amounts from `plan.currency` as USD or CNY, independent of the response language. Keep the local `plan_path` private.
+Show the metrics and cost per paid order below the table. Both groups use the same placement and timing, with at most one exposure per account and no follow-up after purchase. Use the [onboarding language](../SKILL.md#onboarding-language-and-currency) and verify the saved [Demo currency](#demo-currency). Keep the local `plan_path` private.
 
 Every ready Demo plan includes `approver`. In the local journey, `approver.status=deferred` means the draft is available for [review](demo-journey.md#review-the-same-draft). The confirmed launch prepares the approver. For legacy plans require `approver.status=ready` before offering launch and report preparation failures. When a coupon plan returns `metric_event`, report its status. If delivery is uncertain, check the saved event ID before sending another event. For `poll_demo`, resume Demo preparation. For `action_required`, follow the returned `next_action`.
 
@@ -63,9 +71,9 @@ Use the experiment ID, run ID and replay receipt returned by `experiment-launch`
 
 Use the platform report as a cross-check. Pass `--project-id` and `--exp-id` to each read. Refresh `ae-cli experiment report summary` with `--force-refresh true` once after ingest. Reuse `sample_size_report` when present. For `ae-cli experiment report sample-size` and `ae-cli experiment report metric-trend`, use `--start-time` and `--end-time` from `report_dates` when available and pass `--metric-id` for each trend. Run independent reads in parallel. If the exposure view is still pending, reuse the existing `--wait-report` response instead of repeatedly issuing the same failing platform query.
 
-Use the saved assignment receipt for assigned counts, and use query results for exposure, coupon claims, purchases, and order amounts. Match outcome accounts to verified exposure groups, keep the run and item filters, and match payment currency to the saved receipt or plan. Treat a legacy receipt without currency as CNY. Deduplicate buyers by account and orders by `order_id`.
+Use the saved assignment receipt for assigned counts, and use query results for exposure, coupon claims, purchases, and order amounts. Match outcome accounts to verified exposure groups, keep the run and item filters, and match payment currency to the saved receipt or plan using the [Demo currency checks](#demo-currency). Deduplicate buyers by account and orders by `order_id`.
 
-Use verified distinct buyers divided by exposed users for each arm's payment rate. Follow the [Markdown A/B report layout](presentation.md#markdown-layouts) for the selected sample. Show exposure, buyers, payment rate and amount side by side. For the coupon scenario, include assigned users, coupon claims, costs and profit. Compute costs using `plan.cost_per_paid_order` and the verified unique order count. Format amounts in the saved currency (USD or CNY). Mark the result as a Demo simulation. If a group has no verified exposure, show its rate as unavailable.
+Use verified distinct buyers divided by exposed users for each arm's payment rate. Follow the [Markdown A/B report layout](presentation.md#markdown-layouts) for the selected sample. Show exposure, buyers, payment rate and amount side by side. For the coupon scenario, include assigned users, coupon claims, costs and profit. Compute costs using `plan.cost_per_paid_order` and the verified unique order count. Format every monetary value using the verified [Demo currency and display rules](#demo-currency). Mark the result as a Demo simulation. If a group has no verified exposure, show its rate as unavailable.
 
 The Demo result is ready when the persisted events reconcile with the saved replay receipt. For a versioned round, record completion with [shared progress](onboarding_run.md#shared-progress) before showing the final choices. If the platform report is pending, unavailable or disagrees, identify the affected metrics and label the event-derived figures as the source. Omit disputed platform statistics and continue to the completion message and choices in the same turn. A receiver acknowledgement or an exposure-only report does not establish that all expected events are present.
 
@@ -96,9 +104,10 @@ Show the [completion message](#completion-message) before opening the picker aft
 
 Keep all three parts in the final reply even if the host already showed them in a progress message or the user selected their next action before the reply finished. Keep the website and contact links directly under the greeting, including when those same URLs appeared earlier in the conversation.
 
-Open the host's single-choice control with **Continue the demo** and **Connect my data**, in that order. In Chinese use **继续体验Demo** and **接入数据**. If the host cannot display the picker, show those same two choices in chat after the closing section.
+Open the host's single-choice control with **Continue the demo**, **Connect my data**, and **Invite others to collaborate**, in that order. If the host cannot display the picker, show the same choices in chat after the closing section.
 
 - **Continue the demo** in an external agent or **Try another demo** in Web. List both available samples, put the current sample last and label it **Just tried**. Keep it selectable. Use the same session and run `ae-cli analysis onboarding run --session-id <session-id> --choice demo --sample <sample-id> --format json` after selection. Present the new overview as a new round and retain the prior report in the conversation. Use the existing `choose-sample` step in Web.
 - **Connect my data.** In an external agent, use [business data integration](business-data.md) to act on the customer's intent or show the data source choices. Keep the same onboarding session.
+- **Invite others to collaborate.** Follow [the member invitation flow](member_invitation_send.md) with the signed-in account and the same onboarding session.
 - If the customer asks about the product in the conversation, share [the introduction and resources](about-ae.md) and return to the same report choices.
 - If the customer asks to end the experience or replies **Not now** to an earlier completion picker, close the guided flow and retain the result and run ID.

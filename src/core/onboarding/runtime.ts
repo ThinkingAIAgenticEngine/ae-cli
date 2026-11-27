@@ -11,7 +11,7 @@ import { authorizeLoginDevice, resolveDeviceSessionRoute } from '../login-device
 import { fetchCliConfig } from '../compat-check.js';
 import { getLocalCliPackageInfo } from '../package-info.js';
 import { readExternalCliToken } from '../external-cli-token.js';
-import { localRegistrationLanguage, normalizeRegistrationLanguage, onboardingDeviceMarket, registrationLanguage, registrationMarket, type AeRegistrationLanguage } from '../host-guidance.js';
+import { existingAccountOptions, localRegistrationLanguage, normalizeRegistrationLanguage, onboardingDeviceMarket, registrationLanguage, registrationMarket, type AeRegistrationLanguage } from '../host-guidance.js';
 import { cliEntrySource, isProductionWebsiteOrigin, OVERSEAS_TEST_MARKETS, OVERSEAS_TEST_WEBSITE_ORIGIN,
   WEBSITE_MARKETS, websiteEnvironment, websiteOrigin } from '../website-entry.js';
 import { createBootstrap, readBootstrap, claimBootstrapDevice, bootstrapOrigin, trustedProductHost, type BootstrapState } from './bootstrap-client.js';
@@ -24,7 +24,8 @@ import { identifyWorkspaceProjects } from './workspace-projects.js';
 import { onboardingDemoOverview, onboardingEvidenceLinks, onboardingInteraction } from './interaction.js';
 import { onboardingBrowserPolicy, readBrowserMode, type OnboardingBrowserReceipt, type OnboardingBrowserTarget } from './browser-policy.js';
 import { DEMO_CONTEXT, DEMO_ENSURE, DEMO_STATUS, DEMO_SAMPLE_IDS, RUN_BUDGET_MS, NETWORK_BUDGET_MS,
-  OVERSEAS_TEST_PRODUCT_HOSTNAME, UUID_PATTERN, onboardingDemoCurrency, type OnboardingAction, type OnboardingInput, type LocalSession } from './contracts.js';
+  OVERSEAS_TEST_PRODUCT_HOSTNAME, US_ONBOARDING_LANGUAGE, UUID_PATTERN, isUsOnboarding, onboardingDemoCurrency,
+  type OnboardingAction, type OnboardingInput, type LocalSession } from './contracts.js';
 
 /** Reuse auth login navigation; reverse proxies may put an internal origin in Agent URL metadata. */
 export function agentVerificationUrl(base: string, authorization: DeviceAuthorizeResponse, language?: AeRegistrationLanguage): string {
@@ -71,6 +72,7 @@ export interface OnboardingDependencies {
   credentialKey(host: string): string | undefined;
   machineLoginAllowed(host?: string): boolean;
   webConversation?: boolean;
+  webMarket?: string;
   demoCurrency: typeof onboardingDemoCurrency;
   createBootstrap: typeof createBootstrap;
   readBootstrap: typeof readBootstrap;
@@ -146,7 +148,8 @@ export class OnboardingRuntime {
         return progress;
       }
       if (!/^[0-9a-f]{32}$/.test(input.run_id)) throw new Error('Pass the run ID returned by experiment-plan.');
-      const { receipt: _receipt, ...progress } = await verifyAndCompleteProgress(this.dependencies, host, input.run_id);
+      const market = this.dependencies.webMarket ?? this.store.session(undefined, host)?.region;
+      const { receipt: _receipt, ...progress } = await verifyAndCompleteProgress(this.dependencies, host, input.run_id, market);
       return progress;
     }
     if ((action === 'status' || action === 'plan') && input.run_id) {
@@ -195,15 +198,23 @@ export class OnboardingRuntime {
     const source = cliEntrySource(input.source ?? session?.source);
     const inspectLocalLanguage = !webConversation && !testHost && (action === 'plan' || (action === 'run' && !host && !session));
     const localLanguage = inspectLocalLanguage ? localRegistrationLanguage() : undefined;
-    const language = registrationLanguage(input.language ?? session?.language ?? localLanguage);
+    const requestedLanguage = registrationLanguage(input.language ?? session?.language ?? localLanguage);
     const markets = testHost ? OVERSEAS_TEST_MARKETS : WEBSITE_MARKETS;
-    const languageMarket = registrationMarket(language);
-    const defaultMarket = testHost && languageMarket === 'cn' ? 'us' : languageMarket;
-    const useDefaultMarket = testHost !== undefined || !host;
+    const languageMarket = registrationMarket(requestedLanguage);
+    const inferredMarket = testHost && languageMarket === 'cn' ? 'us' : languageMarket;
+    const unboundMarket = testHost || !host ? inferredMarket : undefined;
+    const selectedMarket = input.region ?? session?.region;
+    const us = isUsOnboarding(host, this.dependencies.webMarket ?? selectedMarket ?? unboundMarket);
+    const language = us ? US_ONBOARDING_LANGUAGE : requestedLanguage;
+    const defaultMarket = us ? 'us' : inferredMarket;
+    const useDefaultMarket = Boolean(unboundMarket) || (us && !webConversation);
+    const languageSource = us || input.language ? 'explicit' : 'system';
     const registrationOrigin = webConversation ? null : websiteOrigin(input.region ?? session?.region ?? defaultMarket, selectedWebsiteEnv);
     if (action === 'plan') return { dry_run: true, host: host ?? null, market: input.region ?? session?.region ?? (useDefaultMarket ? defaultMarket : null),
       language, default_market: defaultMarket,
       ...(localLanguage ? { local_language: localLanguage } : {}),
+      ...(!webConversation && !testHost && !explicitHost && !input.region && !input.session_id
+        ? { existing_account_options: existingAccountOptions(localLanguage) } : {}),
       device_market: testHost ? 'us' : onboardingDeviceMarket(webConversation ? registrationLanguage() : localLanguage), markets,
       selection_source: input.region ? 'explicit' : session?.region_source ?? (session?.region ? 'saved' : useDefaultMarket ? 'language_default' : 'existing_host'),
       website_env: selectedWebsiteEnv, website_origin: registrationOrigin,
@@ -214,7 +225,7 @@ export class OnboardingRuntime {
     if (!session && action === 'status' && (!host || !this.dependencies.authenticated(host))) return { host: host ?? null, project_id: null, phase: 'not_started', next_action: 'run_onboarding', poll_after_ms: 0 };
     const newSession = (market?: string): LocalSession => ({ schema_version: 1, id: crypto.randomUUID(), host,
       browser: browserMode,
-      source, region: market ?? (useDefaultMarket ? defaultMarket : undefined), language, language_source: input.language ? 'explicit' : 'system', website_env: selectedWebsiteEnv,
+      source, region: market ?? (useDefaultMarket ? defaultMarket : undefined), language, language_source: languageSource, website_env: selectedWebsiteEnv,
       region_source: market ? 'explicit' : useDefaultMarket ? 'language_default' : undefined,
       ...(testHost ? { requires_auth: true } : {}),
       updated_at: new Date(this.dependencies.now()).toISOString() });
@@ -230,7 +241,7 @@ export class OnboardingRuntime {
       if (session.region) session.region_source = input.region ? 'explicit' : 'language_default';
     }
     session.language = language;
-    if (input.language) session.language_source = 'explicit';
+    if (languageSource === 'explicit') session.language_source = languageSource;
     session.source = source;
     session.website_env ??= selectedWebsiteEnv;
     session.browser = browserMode;
@@ -451,13 +462,29 @@ export class OnboardingRuntime {
       }
     }
     if (session.device) {
-      if (action === 'status' && Date.parse(session.device.expires_at) <= this.dependencies.now()) return summary({ phase: 'waiting_user', next_action: 'reauthorize_cli', login_recovery_url: session.bootstrap?.login_url, poll_after_ms: 0 });
-      if (action === 'status') return summary({ phase: 'waiting_user', next_action: 'approve_device', verification_url: session.device.verification_url, login_recovery_url: session.bootstrap?.login_url, poll_after_ms: session.device.interval_ms });
-      if (Date.parse(session.device.expires_at) <= this.dependencies.now()) { delete session.device; this.store.save(session); }
+      const device = session.device;
+      const waitForDevice = (pollAfterMs: number) => {
+        let verificationUrl = device.verification_url;
+        if (isUsOnboarding(session.host, session.region)) {
+          const target = new URL(verificationUrl);
+          target.searchParams.set('locale', US_ONBOARDING_LANGUAGE);
+          verificationUrl = target.href;
+          if (action === 'run' && verificationUrl !== device.verification_url) {
+            device.verification_url = verificationUrl;
+            this.store.save(session);
+            open(verificationUrl, 'device_authorization');
+          }
+        }
+        return summary({ phase: 'waiting_user', next_action: 'approve_device', verification_url: verificationUrl,
+          login_recovery_url: session.bootstrap?.login_url, poll_after_ms: pollAfterMs });
+      };
+      if (action === 'status' && Date.parse(device.expires_at) <= this.dependencies.now()) return summary({ phase: 'waiting_user', next_action: 'reauthorize_cli', login_recovery_url: session.bootstrap?.login_url, poll_after_ms: 0 });
+      if (action === 'status') return waitForDevice(device.interval_ms);
+      if (Date.parse(device.expires_at) <= this.dependencies.now()) { delete session.device; this.store.save(session); }
       else {
-        if (session.device.host !== session.host) throw new Error('The device session belongs to another host.');
-        if (this.dependencies.now() < session.device.next_poll_at) return summary({ phase: 'waiting_user', next_action: 'approve_device', verification_url: session.device.verification_url, login_recovery_url: session.bootstrap?.login_url, poll_after_ms: session.device.next_poll_at - this.dependencies.now() });
-        const result = await network(signal => this.dependencies.poll(session.device!.base_url, session.device!.device_code, signal));
+        if (device.host !== session.host) throw new Error('The device session belongs to another host.');
+        if (this.dependencies.now() < device.next_poll_at) return waitForDevice(device.next_poll_at - this.dependencies.now());
+        const result = await network(signal => this.dependencies.poll(device.base_url, device.device_code, signal));
         if (result.status === 'approved') {
           await network(signal => this.dependencies.persist(session.host!, result.tokens, signal));
           delete session.device; delete session.bootstrap; delete session.requires_auth;
@@ -467,10 +494,10 @@ export class OnboardingRuntime {
         }
         if (result.status === 'expired') { delete session.device; this.store.save(session); return summary({ phase: 'waiting_user', next_action: 'reauthorize_cli', login_recovery_url: session.bootstrap?.login_url, poll_after_ms: 0 }); }
         if (result.status === 'denied' || result.status === 'unsupported') return summary({ phase: 'action_required', next_action: 'review_cli_authorization', code: result.status === 'denied' ? result.code : 'DEVICE_AUTH_UNSUPPORTED', poll_after_ms: 0 });
-        if (result.status === 'slow_down') session.device.interval_ms += 5000;
-        session.device.next_poll_at = this.dependencies.now() + session.device.interval_ms;
+        if (result.status === 'slow_down') device.interval_ms += 5000;
+        device.next_poll_at = this.dependencies.now() + device.interval_ms;
         this.store.save(session);
-        return summary({ phase: 'waiting_user', next_action: 'approve_device', verification_url: session.device.verification_url, login_recovery_url: session.bootstrap?.login_url, poll_after_ms: session.device.interval_ms });
+        return waitForDevice(device.interval_ms);
       }
     }
     if (action === 'status') {

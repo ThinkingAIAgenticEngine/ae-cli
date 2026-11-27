@@ -46,6 +46,7 @@ test('Web continuation uses the verified account across rotated task channels', 
     if (url.pathname.endsWith('/project.plg_demo.ensure/execute')) {
       assert.deepEqual(JSON.parse(String(init.body)).input, { sample_id: 'star-island' });
       return Response.json({ ok: true, data: { status: 'ready', project_id: 42,
+        sample_id: 'star-island', item_id: 'starlight-bundle',
         evidence: { dashboard_url: '/#/panel/panel/42_3' } } });
     }
     if (url.pathname.endsWith('/token/renew')) return Response.json({ return_code: 0 });
@@ -64,10 +65,19 @@ test('Web continuation uses the verified account across rotated task channels', 
   assert.equal(initialStatus.business_data, undefined);
   const plan = await invokeOnboarding('plan', { session_id });
   assert.deepEqual(plan.actions, ['read_project_state', 'choose_demo', 'prepare_demo']);
+  actorMarket = { platform_region: 'overseas', market: 'us' };
+  const us = await invokeOnboarding('run', { session_id, language: 'zh-CN' });
+  assert.equal(us.language, 'en-US');
+  assert.equal(us.product_resource_market, 'us');
+  assert.equal(us.market, null);
+  const usDraft = await invokeOnboarding('experiment-plan-preview', { session_id });
+  assert.equal(usDraft.currency, 'USD');
   actorMarket = { platform_region: 'overseas' };
-  for (const [language, expectedMarket] of [['zh-CN', 'us'], ['ja-JP', 'jp'], ['ko-KR', 'kr']] as const) {
+  for (const [language, expectedMarket, expectedLanguage] of [
+    ['zh-CN', 'us', 'en-US'], ['ja-JP', 'jp', 'ja-JP'], ['ko-KR', 'kr', 'ko-KR'],
+  ] as const) {
     const localized = await invokeOnboarding('run', { session_id, language });
-    assert.equal(localized.language, language);
+    assert.equal(localized.language, expectedLanguage);
     assert.equal(localized.product_resource_market, expectedMarket);
     assert.equal(localized.market, null);
     assert.equal(localized.next_action, 'choose_experience');
@@ -99,6 +109,11 @@ test('Web continuation uses the verified account across rotated task channels', 
   assert.equal(second.realtime_data_url, undefined);
   assert.equal(second.workspace_projects, undefined);
   assert.equal(second.business_data, undefined);
+  actorMarket = { platform_region: 'overseas', market: 'us' };
+  const draft = await invokeOnboarding('experiment-plan', { session_id, draft_only: true });
+  assert.equal((draft.plan as { currency: string }).currency, 'USD');
+  assert.match(String(draft.plan_preview_markdown), /\| \$100 · 50% \| \$80 · 50% \|/);
+  actorMarket = { platform_region: 'overseas' };
   const count = calls.filter(call => call.includes('/capabilities/')).length;
   const localizedPlan = await invokeOnboarding('plan', { session_id, language: 'ja-JP' });
   assert.equal(localizedPlan.product_resource_market, 'jp');

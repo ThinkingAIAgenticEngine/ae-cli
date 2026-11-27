@@ -8,7 +8,7 @@ import { registrationLanguage, registrationMarket } from '../host-guidance.js';
 import { isAeSandboxRuntime } from '../sandbox-runtime.js';
 import { fetchSigned } from '../te-agent-client.js';
 import { isWebsiteMarket } from '../website-entry.js';
-import { NETWORK_BUDGET_MS, onboardingDemoCurrency, type OnboardingAction, type OnboardingInput } from './contracts.js';
+import { NETWORK_BUDGET_MS, isUsOnboarding, onboardingDemoCurrency, type OnboardingAction, type OnboardingInput } from './contracts.js';
 import { OnboardingRuntime } from './runtime.js';
 import { OnboardingStore } from './session-store.js';
 
@@ -85,9 +85,14 @@ export async function invokeOnboarding(action: OnboardingAction, input: Onboardi
   if (session?.credential_key && session.credential_key !== key) {
     throw new Error('The current AE account does not match the onboarding session.');
   }
+  const languageMarket = registrationMarket(registrationLanguage(input.language ?? session?.language));
+  const overseasMarket = languageMarket === 'cn' ? 'us' : languageMarket;
+  const market = actor.market ?? (actor.platformRegion === 'overseas' ? overseasMarket : actor.platformRegion)
+    ?? (isUsOnboarding(host) ? 'us' : undefined);
   const runtime = new OnboardingRuntime(store, {
     webConversation: true,
-    demoCurrency: () => onboardingDemoCurrency(host),
+    webMarket: market,
+    demoCurrency: () => market === 'us' ? 'USD' : onboardingDemoCurrency(host),
     activeHost: () => SESSION_HOST,
     authenticated: scope => scope === SESSION_HOST,
     credentialKey: scope => scope === SESSION_HOST ? key : undefined,
@@ -102,10 +107,6 @@ export async function invokeOnboarding(action: OnboardingAction, input: Onboardi
   });
   const output = await runtime.invoke(action, input);
   if (output.host === SESSION_HOST) output.host = null;
-  if (typeof output.language === 'string') {
-    const languageMarket = registrationMarket(registrationLanguage(output.language));
-    const overseasMarket = languageMarket === 'cn' ? 'us' : languageMarket;
-    output.product_resource_market = actor.market ?? (actor.platformRegion === 'overseas' ? overseasMarket : actor.platformRegion ?? null);
-  }
+  if (typeof output.language === 'string') output.product_resource_market = market ?? null;
   return output;
 }

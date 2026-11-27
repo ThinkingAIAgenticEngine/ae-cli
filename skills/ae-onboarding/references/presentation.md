@@ -1,6 +1,6 @@
 # Onboarding copy and charts
 
-Use a short question or action as the choice label. Name the item or audience when that helps the user decide. Put sample scope, expected effects and approval consequences in the message immediately above the picker. Keep report, product and contact URLs in Markdown links. Localize visible copy and retain the underlying option values. Understand earlier labels when a user types them or replies to an older picker.
+Use a short question or action as the choice label. Name the item or audience when that helps the user decide. Put sample scope, expected effects and approval consequences in the message immediately above the picker. Keep report, product and contact URLs in Markdown links. Render visible copy in the [onboarding language](../SKILL.md#onboarding-language-and-currency) and retain the underlying option values. The Chinese examples are for a Chinese onboarding locale. Understand earlier labels when a user types them or replies to an older picker.
 
 ## Common choices
 
@@ -29,9 +29,9 @@ For draft review, keep the approval choice first until the user confirms. Contin
 | Stage | 星屿游戏 | 赛季通行证 |
 | --- | --- | --- |
 | Opening question | 玩家反复看礼包，后来更容易买吗？ | 有多少玩家开始结账，最后没有付款？ |
-| Opening visual | Horizontal bars comparing single-day and multi-day purchase rates | Ring chart of checkout outcomes with the unpaid count and share emphasized |
-| Start of business diagnosis | Seven-day line showing interest in the bundle | Seven-day line showing interest in the pass |
-| Main visual in purchase diagnosis | Step widths and losses from viewing the bundle to paying | Step widths and losses from opening the pass to paying |
+| Opening visual | Horizontal bars comparing single-day and multi-day purchase rates | 100% checkout share bar with the unpaid count and share emphasized |
+| Start of business diagnosis | Seven-day table of bundle viewers and daily changes | Seven-day table of pass viewers and daily changes |
+| Main visual in purchase diagnosis | Three-step path from viewing the bundle to paying, with losses and conversion rates | Three-step path from opening the pass to paying, with losses and conversion rates |
 | Audience follow-up | Bars for the follow-up counts | 100% stacked bar for the disjoint audience groups |
 | Explore route | 深挖礼包购买表现 | 深挖通行证转化 |
 | Follow-up route for revisits | 找出回访未购玩家 | 找出回看通行证的玩家 |
@@ -44,19 +44,19 @@ Use the sample's initial finding when entering its overview. Use the rotated `fe
 
 ## Choose and render a chart
 
-Use pure Markdown for the default walkthrough in every host. Place one primary visual above the next choice. Use the current verified result in the same reply, without images, render jobs, or extra queries. Copy the matching field from `markdown_charts` when present. Translate table headers, labels and legends, and preserve the exact values, shapes and whitespace inside `text` fences. With an older CLI, use the underlying counts to reproduce the same layout.
+Use pure Markdown for the default walkthrough in every host. Place one primary visual above the next choice and use the current verified result in the same reply. Copy the field from `markdown_charts` when it matches the layout below. Translate table headers, labels and legends and preserve the values. If older CLI output has a text ring, a text line plot, a centered funnel, or no preformatted Markdown, use the verified counts already returned to build the current layout.
 
 | Finding | Markdown layout | Field from `markdown_charts` |
 | --- | --- | --- |
 | Compare purchase rates | Horizontal bars on a common 0–100% scale | `purchase_rate` |
-| Show the checkout split | Ring with a legend and exact counts and shares | `checkout_share` |
-| Show change over the sample week | Text line chart with axes, plus exact daily counts | `daily_viewers` |
-| Show loss along the purchase flow | Centered funnel with loss and conversion columns | `purchase_funnel` |
+| Show the checkout split | 100% stacked bar with exact counts and shares | `checkout_share` |
+| Show change over the sample week | Daily viewers and change from the previous day | `daily_viewers` |
+| Show loss along the purchase flow | Three-step path with loss and conversion for each transition | `purchase_funnel` |
 | Compare eligible audiences | Horizontal bars with exact counts | `follow_up` |
 | Show audience overlap | 100% stacked bar for the three disjoint parts | `audience_overlap` |
 | Review or read A/B results | Side-by-side Markdown table | Saved plan or verified event counts |
 
-Use the host's Markdown typography. Use blue for a single series and blue and purple for different series when using colored blocks. Pair each color or texture with a text label. Keep the main result in bold once, use short metric titles and right-align numbers. Put units, dates, timezone and the counting rule where they help interpret the figure. Use `▲` or `▼` with the actual signed change and unit. Show a missing value as `—` and leave a gap in a trend. Preserve verified zeroes.
+Use the host's Markdown typography. Use blue for a single series and blue and purple for different series when using colored blocks. Pair each color with a text label. Keep the main result in bold once, use short metric titles and right-align numbers. Include units, dates, timezone and the counting rule where they help interpret the figure. Mark a missing value as `—` and preserve verified zeroes.
 
 If the user requests an interactive chart and the host supports native `chart`, use strict JSON with `type`, localized `title`, and `data` entries. Use numeric `value` with `label` for `bar`, `line` and `pie`. Leave the colors and typography to the host theme. When a native pie groups small slices, keep their exact counts and shares beside it.
 
@@ -64,16 +64,16 @@ If the user requests an interactive chart and the host supports native `chart`, 
 
 **Rate or count comparison.** Use a zero-based scale of 12 blue blocks. Use a shared 100% maximum for rates and the largest count for counts. Keep the exact value in a right-aligned column.
 
-**Composition.** For checkout, draw the two verified parts of the total as a ring inside a `text` fence with two distinguishable textures. Keep the precise count and percentage in the legend table. For audience overlap, divide 20 blocks at cumulative share boundaries so the bar sums to 100%. The three parts are intersection, checkout-only and revisit-only. Label each segment with its exact count and share. Omit a composition visual with a zero denominator.
+**Checkout split.** Use one inline bar of 12 blocks. Allocate blue blocks to the share of checkout starters who did not pay, rounded to the nearest block, and use purple for the remainder. Show the exact counts and shares beside the matching symbols. Use the labels from `visuals.checkout_share.data` for both groups. If it is absent in an older CLI, use `checkout_recovery.unpaid_count` and the remainder from `funnel.checkout`. Label the remainder as paid after checkout only if it equals `funnel.buyers`. Omit the share bar when nobody started checkout.
 
-**Seven-day trend.** Use a `text` fence with the y-axis ticks, dates along the x-axis, and connected points. Keep dates in chronological order and include the exact daily counts in a compact table. When the source has no verified trend, continue with the current finding.
+**Audience overlap.** Divide 20 blocks at cumulative share boundaries so the bar sums to 100%. The three parts are intersection, checkout-only and revisit-only. Label each segment with its exact count and share. Omit the bar with a zero denominator.
 
-**Purchase funnel.** Keep steps in the order they happen. Center the marks, and use the first stage as the width reference throughout. Next to each later stage show the loss and the conversion rate from the preceding one. A verified zero has an empty bar and a displayed zero. An undefined transition rate is unavailable.
+**Seven-day trend.** Use a Markdown table with one row per date and columns for the date, exact daily unique viewers and change from the previous day. Keep the sampled dates in chronological order. Show `↑ 9` for an increase of nine, `↓ 2` for a decrease of two and **No change** when the count stays the same. Localize **No change**. Show `—` for the first day's change or when either day has no verified count. With an older CLI, use `charts.daily_viewers.data`. When the source has no verified daily series, continue with the current finding.
 
-| 通行证购买步骤 | 人数 | 规模 | 较上一步流失 | 较上一步转化率 |
-| --- | ---: | :---: | ---: | ---: |
-| 浏览详情 | 120 | `━━━━━━━━━━━━` | — | — |
-| 开始结账 | 48 | `━━━━━` | 72 | 40.0% |
-| 完成付款 | 20 | `━━` | 28 | 41.7% |
+**Purchase funnel.** Show the ordered stages and their exact counts on one line separated by arrows. On a second line, show each transition's conversion rate and loss in parentheses from `data_basis.funnel_transitions`. With an older CLI, derive the loss from the difference between adjacent counts and the rate by dividing the later count by the earlier one. Use `—` for an undefined conversion rate.
 
-**A/B draft and report.** Use a side-by-side Markdown table. For a draft, use the two destinations or offers, split and price from the plan. For a verified report, lead with the rate difference in percentage points and show both denominators, buyers, rates and amounts. Include claims, order costs and profit for a coupon test. Use the experiment's saved currency and the scenario-specific labels.
+**120** Viewed → **48** Started checkout → **20** Paid
+
+Viewed → Started checkout **40.0%** (72 lost) · Started checkout → Paid **41.7%** (28 lost)
+
+**A/B draft and report.** Use a side-by-side Markdown table. For a draft, use the two destinations or offers, split and price from the plan. For a verified report, lead with the rate difference in percentage points and show both denominators, buyers, rates and amounts. Include claims, order costs and profit for a coupon test. Use the scenario-specific labels and the [Demo currency display rules](demo-operations.md#demo-currency) to render every amount.

@@ -2,7 +2,6 @@ type Point = { label: string; value: number };
 type Transition = { dropoff_accounts: number; conversion_rate: number | null };
 
 const barWidth = 12;
-const ringMarks = ['█', '▒'];
 const stackedMarks = ['🟦', '🟪', '⬜'];
 
 function share(value: number, total: number): string {
@@ -23,21 +22,13 @@ function compositionTable(points: readonly Point[], total: number, marks: string
     `| ${marks[index]} ${label} | ${value} | ${share(value, total)} |`)].join('\n');
 }
 
-export function checkoutRingMarkdown(points: readonly [Point, Point]): string | null {
+export function checkoutShareMarkdown(points: readonly [Point, Point]): string | null {
   const total = points[0].value + points[1].value;
   if (!total) return null;
-  const firstShare = points[0].value / total;
-  const rows: string[] = [];
-  for (let y = -4; y <= 4; y += 1) {
-    let row = '';
-    for (let x = -9; x <= 9; x += 1) {
-      const radius = Math.hypot(x / 2, y);
-      const angle = (Math.atan2(x / 2, -y) + 2 * Math.PI) % (2 * Math.PI);
-      row += radius < 2.7 || radius > 4.5 ? ' ' : ringMarks[angle / (2 * Math.PI) < firstShare ? 0 : 1];
-    }
-    rows.push(row.trimEnd());
-  }
-  return ['```text', ...rows, '```', '', compositionTable(points, total, ringMarks)].join('\n');
+  const [unpaidMark, otherMark] = stackedMarks;
+  const unpaidWidth = Math.round(points[0].value * barWidth / total);
+  const bar = unpaidMark.repeat(unpaidWidth) + otherMark.repeat(barWidth - unpaidWidth);
+  return `${bar}\n\n${compositionTable(points, total, [unpaidMark, otherMark])}`;
 }
 
 export function audienceShareMarkdown(points: readonly [Point, Point, Point]): string | null {
@@ -56,47 +47,27 @@ export function audienceShareMarkdown(points: readonly [Point, Point, Point]): s
   return `${marks}\n\n${compositionTable(points, total, stackedMarks)}`;
 }
 
-export function dailyTrendMarkdown(points: Point[]): string {
-  const levels = 6;
-  const counts = points.map(point => point.value);
-  const minimum = Math.min(...counts);
-  const maximum = Math.max(...counts);
-  const step = Math.max(1, Math.ceil((maximum - minimum) / levels));
-  const baseline = Math.max(0, maximum - step * levels);
-  const spacing = 6;
-  const grid = Array.from({ length: levels + 1 }, () => Array<string>((points.length - 1) * spacing + 1).fill(' '));
-  const heights = counts.map(value => Math.round((value - baseline) / step));
-  for (let index = 1; index < heights.length; index += 1) {
-    const rise = heights[index] - heights[index - 1];
-    for (let offset = 1; offset < spacing; offset += 1) {
-      const height = Math.round(heights[index - 1] + rise * offset / spacing);
-      const before = Math.round(heights[index - 1] + rise * (offset - 1) / spacing);
-      const after = Math.round(heights[index - 1] + rise * (offset + 1) / spacing);
-      const stroke = before === after ? '─' : rise > 0 ? '╱' : '╲';
-      grid[levels - height][(index - 1) * spacing + offset] = stroke;
+export function dailyViewerChangesMarkdown(points: readonly Point[]): string {
+  const rows = points.map(({ label, value }, index) => {
+    const date = label.slice(5).replace('-', '/');
+    const previousDay = points[index - 1];
+    let change = '—';
+    if (previousDay) {
+      const difference = value - previousDay.value;
+      change = difference === 0 ? 'No change' : `${difference > 0 ? '↑' : '↓'} ${Math.abs(difference)}`;
     }
-  }
-  heights.forEach((height, index) => { grid[levels - height][index * spacing] = '●'; });
-  const labelWidth = String(baseline + step * levels).length;
-  const dates = points.map(point => point.label.slice(5).replace('-', '/'));
-  const axis = grid.map((row, index) =>
-    `${String(baseline + (levels - index) * step).padStart(labelWidth)} │ ${row.join('')}`.trimEnd());
-  const table = [
-    `| Date | ${dates.join(' | ')} |`,
-    `| --- | ${dates.map(() => '---:').join(' | ')} |`,
-    `| Viewers | ${points.map(point => point.value).join(' | ')} |`,
-  ];
-  return ['```text', ...axis, `${' '.repeat(labelWidth + 1)} └${'─'.repeat(grid[0].length + 2)}`,
-    `${' '.repeat(labelWidth + 1)}${dates.join(' ')}`, '```', '', ...table].join('\n');
+    return `| ${date} | ${value} | ${change} |`;
+  });
+  return ['| Date | Viewers | Change vs prior day |', '| --- | ---: | ---: |', ...rows].join('\n');
 }
 
-export function funnelMarkdown(points: Point[], transitions: Transition[]): string {
-  const peak = points[0].value;
-  const rows = points.map(({ label, value }, index) => {
-    const width = peak ? Math.round(value * barWidth / peak) : 0;
-    const transition = transitions[index - 1];
+export function purchasePathMarkdown(points: readonly Point[], transitions: readonly Transition[]): string {
+  const path = points.map(({ label, value }) => `**${value}** ${label}`).join(' → ');
+  const details = points.slice(1).map(({ label }, index) => {
+    const transition = transitions[index];
     const rate = transition?.conversion_rate;
-    return `| ${label} | ${value} | ${'━'.repeat(width)} | ${transition?.dropoff_accounts ?? '—'} | ${rate == null ? '—' : share(rate, 1)} |`;
+    const conversion = rate == null ? '—' : share(rate, 1);
+    return `${points[index].label} → ${label} **${conversion}** (${transition?.dropoff_accounts ?? '—'} lost)`;
   });
-  return ['| Step | Players | Scale | Drop-off | Conversion |', '| --- | ---: | :---: | ---: | ---: |', ...rows].join('\n');
+  return `${path}\n\n${details.join(' · ')}`;
 }
