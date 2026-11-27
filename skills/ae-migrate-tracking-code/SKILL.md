@@ -1,7 +1,7 @@
 ---
 name: ae-migrate-tracking-code
-version: 1.0.1
-description: "Migrate existing third-party SDK tracking code (Firebase, Amplitude, Sensors Data, Mixpanel, GA4) to the AE SDK (数数 / ThinkingAI / Agentic Engine / AE SDK) — switch (replace) or add alongside existing tracking (dual-write). Trigger words: 埋点迁移、埋点切换、第三方埋点迁移、第三方埋点切换、迁移埋点到数数、把 xx SDK 切换到数数、把已有埋点用数数实现一遍、用数数替换 xx SDK、集成数数并参考已有 xx SDK 埋点、Firebase 迁移、Amplitude 迁移、Mixpanel 迁移、神策迁移、Sensors Data 迁移、GA4 迁移、gtag 迁移、双写、tracking migration、migrate Firebase/Amplitude/Mixpanel/Sensors Data/GA4 to AE、switch xx SDK to ThinkingAI、replace xx SDK with AE、replace logEvent with track、re-implement existing tracking with ThinkingAI、add AE tracking alongside existing analytics、dual-write. Provider-agnostic core with per-provider adapters; reuses ae-generate-tracking-plan and ae-generate-tracking-code."
+version: 1.0.2
+description: "Migrate existing tracking from Firebase, Amplitude, Sensors Data, Mixpanel, GA4, gtag, or another analytics SDK to the ThinkingAI AE SDK. Use when replacing a provider, converting calls such as logEvent to track, reimplementing existing tracking in AE, or dual-writing alongside the source SDK. Uses provider-specific adapters and reuses ae-generate-tracking-plan and ae-generate-tracking-code."
 ---
 
 # ae-migrate-tracking-code

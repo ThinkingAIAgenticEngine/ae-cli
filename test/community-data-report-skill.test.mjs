@@ -41,11 +41,9 @@ test('revision and frontmatter trigger reporting and WeCom ingestion requests', 
   const frontmatter = getFrontmatter(skill);
   assert.match(skill, /^Skill revision: 2\.7\.0\.$/m);
   assert.match(frontmatter, /data reporting/i);
-  assert.match(frontmatter, /ingestion\/import\/submission/i);
+  assert.match(frontmatter, /ingesting, importing, or submitting community data/i);
   assert.match(frontmatter, /WeCom chat data integration/i);
-  for (const trigger of ['社区数据上报', '导入', '提交社区数据', '企微聊天数据接入']) {
-    assert.ok(frontmatter.includes(trigger), `frontmatter missing trigger: ${trigger}`);
-  }
+  assert.doesNotMatch(frontmatter, /[\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}\p{Script=Hangul}]/u);
 });
 
 test('skill routes the command to its detailed reference', () => {

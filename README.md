@@ -2,7 +2,7 @@
 
 # ae-cli
 
-`ae-cli` is the command-line client for the ThinkingAI AgenticEngine (AE) platform. It provides stable, structured interfaces for both AI Agents and human operators across analytics, experimentation, project configuration, metadata, tracking, local-data ingestion, Engage, DataOps, knowledge bases, Agent resources, user memory, and system administration.
+`ae-cli` is the command-line client for the ThinkingAI AgenticEngine (AE) platform. It provides stable, structured interfaces for both AI Agents and human operators across analytics and project configuration, metadata, tracking, local-data ingestion, Engage, DataOps, knowledge bases, Agent resources, user memory, and system administration.
 
 The CLI is designed around:
 
@@ -12,10 +12,6 @@ The CLI is designed around:
 - Explicit validation, dry-run, and confirmation contracts for safer writes.
 - Exact CLI and Skills version synchronization with the connected AE environment.
 
-## User research with HearI
-
-On Node.js 22+, run `ae-cli heari schema` to explore commands offline. When your AE deployment enables HearI CLI login, HearI verifies your AE ticket on first use and links your active identity to its workspace. You can skip signing in on the HearI website and run `ae-cli heari studies list --no-input` directly after AE login. This grants read access for the current command. Use `ae-cli heari login` to verify access through the current AE registration. AE selects the endpoint; this flow has no browser callback. Use `ae-cli heari` wherever HearI help shows `heari`. The CLI and research Skill ship and update with AE.
-
 ## Requirements
 
 - Node.js 20 or later.
@@ -23,6 +19,8 @@ On Node.js 22+, run `ae-cli heari schema` to explore commands offline. When your
 - Access to the npm registry for CLI installation.
 
 ## Installation
+
+For setup through Codex, Claude Code, Cursor, or another terminal-capable AI Agent, see the [AE CLI installation and upgrade guide](./cli-installation-guide.md).
 
 Install the public CLI and Agent Skills:
 
@@ -32,8 +30,6 @@ npx @thinkingai/ae-cli@latest install --format json
 ```
 
 The installer checks Node.js 20+, installs and verifies the CLI, then uses the bundled Skills tool to install matching global Skills for supported clients. First installation includes all bundled Skills when no business state has been confirmed. `--dry-run`, `--format json`, and optional `--host <AE_HOST>` are supported. Being logged out is not an installation failure. See the [installation guide](./cli-installation-guide.md).
-
-When you ask Codex, Claude Code, Cursor, or another terminal-capable Agent to install AE CLI 6.1, the Agent verifies the installation and offers to create or sign in to an AE account if you are signed out. Creating an account opens guided website signup in China, Japan, South Korea, or the United States after you choose it. Sign in to an existing account using its original AE environment URL. If you used `npm install -g`, run `ae-cli install --format json` first to verify the installed version and sync its Skills. [Agent installation prompts](./cli-installation-guide.md#ai-installation-prompt)
 
 The Skills teach supported coding Agents, including Claude Code, Codex, Cursor, and similar tools, how to discover and call `ae-cli`.
 
@@ -52,7 +48,7 @@ ae-cli auth login --host https://your-ae-host.example.com
 ae-cli auth status
 ```
 
-Use the AE URL supplied by your AgenticEngine administrator.
+Use the AE URL supplied by your AgenticEngine administrator. If no Host is configured, `ae-cli` guides existing customers to obtain that URL first. Only users without an AgenticEngine environment are directed to [request a trial](https://thinkingai.cn/request-demo).
 
 Business-based command filtering and Skill selection apply only to local CLI use by external Agents; built-in TE Agent sandboxes keep the complete command and Skill sets. After successful login, the CLI filters `--help` and capability discovery by the active environment’s enabled businesses and synchronizes managed global Skills. Analysis remains available by default. Subsequent normal commands automatically synchronize managed Skills when a configuration refresh detects business changes; run `ae-cli config refresh` to refresh and synchronize immediately. Switching the active environment refreshes its business state and synchronizes only affected Skills, reusing the current set when no changes are needed. Terminal output summarizes Skill synchronization status and installation/removal counts; use `--format json` for per-directory details. Switching accounts synchronizes again; a one-off `--host` query does not change global Skills.
 
@@ -123,7 +119,6 @@ The table covers every current root command individually. Use `ae-cli --help` fo
 | Category | Root command | Purpose |
 |---|---|---|
 | Analysis and projects | `analysis` | Reports, dashboards, ad-hoc analysis, drilldowns, details, alerts, tags, and cohorts |
-| Analysis and projects | `experiment` | Atlas experiments, reports, traffic domains and layers, buckets, Features (including fixed values and reset), metrics, and operation logs |
 | Analysis and projects | `analysis-meta` | Event/property catalogs, metrics, virtual metadata, tracking governance, and project analysis settings |
 | Analysis and projects | `analysis-governance` | Data-asset search, lineage, impact analysis, certification, and governance |
 | Analysis and projects | `project` | Project information, members, roles, permissions, entities, time zones, and handover settings |
@@ -161,7 +156,6 @@ The table covers every current root command individually. Use `ae-cli --help` fo
 | General tools | `model` | Inspect and switch the current workspace model inside an Agent sandbox; blocked in AgentSpace context |
 | General tools | `update` | Synchronize CLI and Skills to the version required by the current Host |
 | General tools | `install` | Install and verify CLI and matching global Skills |
-| User research | `heari` | Design studies, manage interviews, and read results in a HearI workspace |
 | Agent platform | `workspace` | AgentSpace context, profiles, capabilities, members, activities, and lifecycle |
 | Agent platform | `things` | Workspace issues, collaborators, timeline, archive, and restore |
 | Agent platform | `automation` | Automation configuration, execution, history, and results |
@@ -175,19 +169,6 @@ Review collected analysis questions with `ae-cli analysis scenario list --projec
 To save and review Bad Cases, use `ae-cli analysis bad-case --help`. The Agent semantically deduplicates each batch against all historical states. Review in CLI or explicitly submit to the page; each batch reports discovered, duplicate, and new counts. Notes are optional. Approval adds the case to the bound AE dataset; revoking approval removes it. See the [Bad Case workflow](skills/ae-analysis/references/bad_case_review.md).
 
 Evaluation commands follow the current AE Host in personal terminals and sandboxes; use `--host` to select another host. Evaluation requests use the HTTP or HTTPS scheme configured for that AE Host, consistent with other AE commands. Legacy `--endpoint` and `AE_EVAL_BASE_URL` values may only match the current AE Host; other values fail before credentials are sent. Remove these settings and use `--host` to select a host. Outside a sandbox, export `AE_EVAL_ACCESS_TOKEN` with a platform session token; sandboxes can obtain a session automatically. See [endpoint and authentication rules](skills/ae-evaluation/SKILL.md#endpoint-and-authentication).
-
-### Scheduled Feature experiments
-
-For a configured Feature experiment, save its start time and optional fixed deadline, check readiness, then submit it:
-
-```bash
-ae-cli experiment experiment save --project-id 1 --req '{"expId":"exp_123"}' --start-time '2026-11-01T16:00:00+08:00' --fixed-end-time '2026-11-08T16:00:00+08:00'
-ae-cli experiment experiment ready-check --project-id 1 --exp-id exp_123
-ae-cli experiment experiment manage --project-id 1 --exp-id exp_123 --target-status pending
-ae-cli experiment experiment get --project-id 1 --exp-id exp_123
-```
-
-This submission path works on older and approval-capable servers. Saving a draft does not start it. On updated servers, Feature experiments require approval only when the project approver roster is non-empty; external experiments are exempt. Exempt Feature submissions retain the existing manual or scheduled start. When approval is required, approval can start a due Feature experiment; scheduled starts are checked every half hour. Verify runtime status and any approval with `experiment experiment get`. Before using dedicated approval commands, check [server compatibility](skills/ae-experiment/references/experiment_approval.md#server-compatibility); submit only once. See [Feature timing](skills/ae-experiment/references/save_experiment.md#feature-timing) for scheduling.
 
 ## Capability Gateway
 
@@ -270,11 +251,6 @@ External mode does not write the token or renewal state to the local credential 
 The new CLI persists only CLI tokens, never access or refresh tokens. Multiple accounts live in an encrypted V1 vault while the active account is projected into the historical file shape for automatic downgrades. When the CLI upgrades again, it reconciles login, switch, or logout changes made by the old CLI.
 
 Login uses a cross-platform device-code flow. Use `--no-browser` when the environment cannot open a browser.
-
-On upgraded 6.1 deployments, authorization always uses the UBA device endpoints and the platform `/#/cli/device-activate` page, independently of Kubernetes or Agent state. Only an explicit missing authorization endpoint (HTTP 404) selects the supported legacy Agent flow; network failures, HTML responses and permission denials never change the issuer. Use `auth login --no-wait`, then resume with the returned `--device-code` and the same `--host` for non-interactive authorization. Existing host accounts, CLI tokens and command flags remain compatible.
-
-The CLI calls business endpoints directly; services enforce product License and user/project permissions. An unavailable component returns the actual API error. HTTP 404 can also mean a missing resource or an unsupported route, so it does not by itself establish that a component is not deployed.
-
 Trial guidance is emitted only when no Host is configured; normal commands and authentication flows for configured environments do not display it.
 
 Before every business action, the analysis Skill runs `ae-cli context prepare` for company background and the full global personal directory, then `ae-cli context prepare --project-id <id>` after project selection for project background and personal/public catalogs. Context is cached per conversation, shared duplicates are folded, and every returned page must be consumed. Existing business commands remain independent. See [context preparation](skills/ae-analysis/references/context_prepare.md).
@@ -446,7 +422,6 @@ npm test
 npm run qa-changed
 npm run self-check
 npm run check:release
-npm run verify:experiment-tools
 npm run verify:readme
 npm run verify:auth-credentials
 npm run verify:update-check

@@ -1,6 +1,6 @@
 ---
 name: ae-system
-version: 1.2.2
+version: 1.2.0
 description: "AE Agent system administration CLI for root and agent administrators. Use when the user asks to manage Agent members, sandboxes and shared tools, company model visibility/defaults/pricing, usage statistics and exports, cost quotas, balance alerts, IM channels, channel routing, WhatsApp Web linking, or Feishu user bindings. Must use ae-cli system commands, discover real IDs before writes, and never attempt to bypass a permission denial."
 ---
 

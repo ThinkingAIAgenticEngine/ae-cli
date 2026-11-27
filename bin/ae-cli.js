@@ -7,9 +7,6 @@ if (Number(process.versions.node.split('.')[0]) < 20) {
   // Keep discovery independent of application imports and credential initialization.
   const capabilities = JSON.parse(readFileSync(new URL('./runtime-capabilities.json', import.meta.url), 'utf8'));
   process.stdout.write(JSON.stringify(capabilities) + '\n');
-} else if (process.argv[2] === 'heari') {
-  const { runHearI } = await import('./heari.mjs');
-  process.exitCode = await runHearI(process.argv.slice(3));
 } else {
   await import('../dist/index.js');
 }

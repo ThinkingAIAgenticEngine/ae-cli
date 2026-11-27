@@ -1,7 +1,7 @@
 ---
 name: ae-analysis-global
-version: 1.0.0
-description: "Use when AE analysis requests mention query/current/service/deployment clusters, current cluster (当前集群), cluster info (集群信息/有哪些集群), global or multi-cluster data, all clusters/all servers, GLOBAL/SLAVE, query-cluster, cluster_query_scope, slave_cluster_id, country/region/server/shard/site/market routing, or when cluster may mean query cluster rather than audience/user segment."
+version: 1.0.1
+description: "Route AE analysis across query, service, or deployment clusters. Use to identify the current cluster, list available clusters, query global or multi-cluster data, or route by country, region, server, shard, site, or market. Covers GLOBAL/SLAVE, query-cluster, cluster_query_scope, and slave_cluster_id. Use when cluster may refer to query infrastructure or an audience segment."
 ---
 
 # ae-analysis-global

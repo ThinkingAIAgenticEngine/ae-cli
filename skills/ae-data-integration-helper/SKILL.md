@@ -1,6 +1,6 @@
 ---
 name: ae-data-integration-helper
-description: "Answers questions about ThinkingAI SDK integration and usage, including the LogBus2 data import tool. Trigger words: 怎么接入 / 如何集成 / SDK / 埋点 / 报错 / 使用方式 / API / LogBus / tracking / integration / how to integrate / data import / データ連携 / インテグレーション / 트래킹 / 연동."
+description: "Answer questions about integrating, using, or troubleshooting the ThinkingAI SDK and LogBus2. Covers event tracking, data ingestion, SDK and LogBus APIs, setup, and integration errors."
 ---
 
 # ae-data-integration-helper

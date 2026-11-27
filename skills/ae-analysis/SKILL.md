@@ -219,7 +219,7 @@ After any project selection or switch, reuse that scope's retained catalog and b
 
 Before initializing any project analysis scope, read [the business semantics workflow](references/business_semantics_workspace.md). It covers complete context pages, exact detail consumption, dependencies, sharing and automatic following. Equivalent shared copies are represented by the project entry during preparation, so adoption and heat belong only to that project ID. For remaining distinct rules, resolve conflicts in this order: current explicit user intent, project personal rules, global personal rules, project public rules, project background, company background. Ask about contradictory equally applicable rules within one level.
 
-### Project Semantic Knowledge Base
+### Project Semantic Knowledge
 
 When the user explicitly asks to build, update, refresh, rebuild, or sync a project semantic knowledge base, open `references/project_semantic_knowledge_wiki.md`. That command-reference workflow starts from `ae-cli project-semantic asset-package export` and then uploads/compiles KB sources. The retired governed project-semantic candidate and release lifecycle is not part of this knowledge-base build path or CLI Agent asset-authentication and metric-recommendation review.
 

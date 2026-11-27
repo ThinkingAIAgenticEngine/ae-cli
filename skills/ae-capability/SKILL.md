@@ -1,6 +1,6 @@
 ---
 name: ae-capability
-version: 1.3.19
+version: 1.3.17
 description: "AE capability gateway discovery and generic invocation with ae-cli. Use when the user needs to list or search available capabilities, inspect an unknown capability schema/risk/auth contract, optionally validate complex input or dry-run before execute, or invoke a long-tail capability that has no curated ae-cli command. Always discover and inspect before composing input; never guess capability IDs or input fields. Prefer on-demand validate OR dry-run — do not stack both by default."
 ---
 
@@ -11,10 +11,6 @@ description: "AE capability gateway discovery and generic invocation with ae-cli
 When remaining work is outside this skill's scope, or a necessary prerequisite needs another capability, follow [the collaboration protocol](references/collaboration.md). Choose from the skills available in this run by capability, preserve verified context, and continue the remaining task. Reuse this protocol if already loaded.
 
 Use this skill for progressive capability discovery and generic gateway invocation. Prefer a domain-specific curated command when one exists; use `ae-cli capability ...` for discovery and long-tail capabilities.
-
-## HearI requests
-
-When the user mentions HearI in their own request (including just “hearI”), first run `ae-cli heari login --no-input` once for that request, unless they explicitly ask to stay offline. Use the environment registered with AE. A bare mention requests a read-only connection check. Report its result. For a specific task continue with the matching `ae-cli heari` command after login succeeds. Use `ae-heari-research` for the detailed workflow when available. On failure report the stage and stop platform operations. A product mention alone never authorizes a write.
 
 ## Decision Order
 

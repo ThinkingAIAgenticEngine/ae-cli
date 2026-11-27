@@ -1,6 +1,6 @@
 ---
 name: ae-data-integration
-description: "Bring local CSV, TSV, TXT, JSON, JSONL (NDJSON), XLS, XLSX, and Parquet files — and Feishu sheet / Bitable (多维表格) URLs — into AE end-to-end: identify the source's business meaning, generate and confirm a tracking plan, transform rows into UE records, and upload. Also supports privacy-preserving local analysis and handing a small file to AE Agent. Use whenever a user wants to import offline/local data or a Feishu sheet / Bitable into AE, or analyze a file without uploading it. Trigger words: 本地数据导入 / 离线数据 / 数据文件 / 文件导入 / 文件上报 / CSV 导入 / Excel 导入 / TSV 导入 / JSON 导入 / Parquet 导入 / 飞书表格导入 / 在线表格导入 / 飞书多维表格导入 / 多维表格导入 / 在线多维表格导入 / 导入到 AE / 导入到 ThinkingAI / local data import / import local file / parquet import / import Feishu sheet / import Feishu Bitable."
+description: "Import local or offline CSV, TSV, TXT, JSON, JSONL (NDJSON), XLS, XLSX, or Parquet files, or online Feishu Sheets and Bitable data, into AE. Identify the source's business meaning, generate and confirm a tracking plan, transform rows into UE records, and upload. Also use for privacy-preserving local analysis or handing a small file to an AE Agent."
 ---
 
 # AE Data Integration

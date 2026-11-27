@@ -20,11 +20,10 @@ test('real CLI exposes project asset-package export', () => {
   assert.match(result.stdout, /--asset-scope/);
 });
 
-test('real CLI exposes project semantics setup and asset-package export', () => {
+test('real CLI project-semantic surface matches release/6.0 asset-package export only', () => {
   const result = run(['--help']);
   assert.equal(result.status, 0, result.stderr);
-  assert.match(result.stdout, /^  asset-package\s/m);
-  assert.match(result.stdout, /^  setup\s/m);
+  assert.match(result.stdout, /asset-package/);
   assert.doesNotMatch(result.stdout, /\b(?:list|get|enable|disable|delete|delete-impact|candidate|release|retirement)\b/);
 
   const removed = run(['candidate', 'list', '--help']);

@@ -9,7 +9,7 @@ import {
 } from '../core/config.js';
 import { MultiselectCancelled, promptSingleSelect } from '../core/multiselect.js';
 import { normalizeUrl } from '../core/url-utils.js';
-import { aeRegistrationUrl } from '../core/host-guidance.js';
+import { AE_TRIAL_URL } from '../core/host-guidance.js';
 import { invalidateBusinessSkillSynchronization, refreshEnvironmentAfterLogin } from '../core/environment-refresh.js';
 
 interface MenuItem {
@@ -32,8 +32,7 @@ export async function runConfigUI(): Promise<void> {
   if (listHosts().length === 0) {
     process.stderr.write('\n\x1B[1mNo AE environments configured.\x1B[0m\n\n');
     process.stderr.write('Use the AE URL provided by your AgenticEngine administrator.\n');
-    const registration = aeRegistrationUrl();
-    process.stderr.write(`Website registration: ${registration}\nFor guided setup, run: ae-cli analysis onboarding run\n\n`);
+    process.stderr.write(`No AgenticEngine environment? Request a trial: ${AE_TRIAL_URL}\n\n`);
     await promptAddEnvironment();
     return;
   }

@@ -1,6 +1,6 @@
 ---
 name: ae-community
-description: "AE community analysis and data reporting for posts, comments, topics, livestreams, customer-service chats, WeCom after-sales groups, and in-game chat. Use for community content insight, sentiment, intent, evidence drill-down, community data ingestion/import/submission, and WeCom chat data integration (社区数据上报、导入、提交社区数据、企微聊天数据接入)."
+description: "AE community analysis and data reporting for posts, comments, topics, livestreams, customer-service chats, WeCom after-sales groups, and in-game chat. Use for community insight, sentiment, intent, evidence drill-down, ingesting, importing, or submitting community data, and WeCom chat data integration."
 ---
 
 # ae-community

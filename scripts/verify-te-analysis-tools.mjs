@@ -159,19 +159,17 @@ if (!/rename a BI dashboard/i.test(biPanelUpdate.description)) {
 }
 
 const EXPECTED_GATEWAY_LIFECYCLE_COUNT = 8;
-const plgOnboardingCommands = gatewayLifecycleCommands.filter(({ service, resource }) => service === 'analysis' && resource === 'onboarding');
-const analysisLifecycleCount = gatewayLifecycleCommands.length - plgOnboardingCommands.length;
-if (analysisLifecycleCount !== EXPECTED_GATEWAY_LIFECYCLE_COUNT) {
-  fail(`analysis gateway lifecycle command count mismatch: expected ${EXPECTED_GATEWAY_LIFECYCLE_COUNT}, got ${analysisLifecycleCount}`);
+if (gatewayLifecycleCommands.length !== EXPECTED_GATEWAY_LIFECYCLE_COUNT) {
+  fail(`analysis gateway lifecycle command count mismatch: expected ${EXPECTED_GATEWAY_LIFECYCLE_COUNT}, got ${gatewayLifecycleCommands.length}`);
 }
 
-const EXPECTED_CAPABILITY_COUNT = 363;
+const EXPECTED_CAPABILITY_COUNT = 362;
 if (capabilityCommands.length !== EXPECTED_CAPABILITY_COUNT) {
   fail(`analysis capability command count mismatch: expected ${EXPECTED_CAPABILITY_COUNT}, got ${capabilityCommands.length}`);
 }
 
 const EXPECTED_CAPABILITY_COUNTS_BY_SERVICE = {
-  analysis: 133,
+  analysis: 132,
   'analysis-meta': 66,
   'analysis-governance': 23,
   project: 51,
@@ -272,8 +270,7 @@ function capabilityReferenceName(item) {
 }
 
 for (const item of [...capabilityCommands, ...gatewayLifecycleCommands]) {
-  const skillPath = plgOnboardingCommands.includes(item) ? 'skills/ae-onboarding' : 'skills/ae-analysis';
-  const relPath = `${skillPath}/references/${capabilityReferenceName(item)}`;
+  const relPath = `skills/ae-analysis/references/${capabilityReferenceName(item)}`;
   const absPath = path.join(ROOT, relPath);
   if (!fs.existsSync(absPath)) {
     fail(`missing capability reference file: ${relPath}`);
@@ -333,10 +330,9 @@ const criticalReferenceTokens = {
     'only valid for `part_date`',
   ],
   'skills/ae-analysis/references/ai_models/path.md': [
-    '`second`: `1..3600`',
-    '`minute`: `1..1440`',
-    '`hour`: `1..168`',
-    '`day`: `1..180`',
+    '`second`: `1..999`',
+    '`minute`: `1..999`',
+    '`hour`: `1..24`',
     'never relabel it as `user_property`',
   ],
 };
